@@ -280,6 +280,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
 			ipInMonitoring := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoMonitoringPort)
 			ipInGrafana := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoGrafanaPort)
+			ipInLoki := awsAPI.CheckUserIPInSg(&sg, "0.0.0.0", constants.AvalanchegoLokiPort)
 
 			if !ipInTCP {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
@@ -298,6 +299,11 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			}
 			if !ipInGrafana {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoGrafanaPort); err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
+			}
+			if !ipInLoki {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0", constants.AvalanchegoLokiPort); err != nil {
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 				}
 			}
@@ -386,6 +392,29 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 	}
 	if !apiPortInSG {
 		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
+	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
+	if err != nil {
+		return err
+	}
+	if !securityGroupExists {
+		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
+	}
+	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if metricsPortInSG {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+			return err
+		}
+	}
+	if apiPortInSG {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
 			return err
 		}
 	}

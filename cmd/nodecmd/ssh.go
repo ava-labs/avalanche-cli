@@ -91,7 +91,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+				monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
 				if utils.DirectoryExists(monitoringInventoryPath) {
 					monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 					if err != nil {
@@ -136,11 +136,7 @@ func printNodeInfo(host *models.Host, clusterConf models.ClusterConfig, result s
 	if rolesStr != "" {
 		rolesStr = " [" + rolesStr + "]"
 	}
-	if result != "" {
-		ux.Logger.PrintToUser("  [Node %s (%s) %s%s] %s", host.GetCloudID(), nodeIDStr, nodeConfig.ElasticIP, rolesStr, result)
-	} else {
-		ux.Logger.PrintToUser("  Node %s (%s) %s%s", host.GetCloudID(), nodeIDStr, nodeConfig.ElasticIP, rolesStr)
-	}
+	ux.Logger.PrintToUser("  [Node %s (%s) %s%s] %s", host.GetCloudID(), nodeIDStr, nodeConfig.ElasticIP, rolesStr, result)
 	return nil
 }
 
@@ -225,7 +221,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 	if err != nil {
 		return err
 	}
-	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
 	if utils.DirectoryExists(monitoringInventoryPath) {
 		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 		if err != nil {

@@ -65,6 +65,9 @@ func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
 }
 
 func SpinComplete(s *ysmrr.Spinner) {
+	if s.IsComplete() {
+		return
+	}
 	s.Complete()
 	Logger.log.Info(s.GetMessage() + " [Spinner Complete]")
 }

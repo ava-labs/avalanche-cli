@@ -44,8 +44,8 @@ var (
 	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
-	errNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
-	errNoSubnetID                = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
+	ErrNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
+	ErrNoSubnetID                = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
 
 func newValidatePrimaryCmd() *cobra.Command {
@@ -327,21 +327,13 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
-	if err != nil {
+	if err := checkHostsAreBootstrapped(hosts); err != nil {
 		return err
 	}
-	if len(notBootstrappedNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
-	}
-	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	notHealthyNodes, err := checkHostsAreHealthy(hosts)
-	if err != nil {
+	if err := checkHostsAreHealthy(hosts); err != nil {
 		return err
 	}
-	if len(notHealthyNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
-	}
+
 	ux.Logger.PrintToUser("Note that we have staggered the end time of validation period to increase by 24 hours for each node added if multiple nodes are added as Primary Network validators simultaneously")
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	nodeErrors := map[string]error{}

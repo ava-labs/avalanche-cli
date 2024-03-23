@@ -42,7 +42,7 @@ If there is a static IP address attached, it will be released.`,
 	}
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
-	cmd.Flags().BoolVarP(&authorizeAll, "yes", "y", false, "authorize all CLI requests")
+	cmd.Flags().BoolVarP(&authorizeAll, "authorize-all", "y", false, "authorize all CLI requests")
 
 	return cmd
 }
@@ -152,6 +152,10 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					continue
 				}
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
+			}
+			if err = deleteMonitoringSecurityGroupRule(ec2Svc, nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
+				ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+					nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
 			}
 		} else {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {

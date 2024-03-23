@@ -88,7 +88,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
+	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
 	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
 	if err != nil {
 		return err
