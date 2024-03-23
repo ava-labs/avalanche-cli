@@ -216,10 +216,10 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if !avoidChecks {
-		if err := checkHostsAreBootstrappedWithMsg(hosts); err != nil {
+		if err := checkHostsAreBootstrapped(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreHealthyWithMsg(hosts); err != nil {
+		if err := checkHostsAreHealthy(hosts); err != nil {
 			return err
 		}
 	}
@@ -231,7 +231,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if !avoidSubnetValidationChecks {
 		blockchainID := sc.Networks[network.Name()].BlockchainID
 		if blockchainID == ids.Empty {
-			return errNoBlockchainID
+			return ErrNoBlockchainID
 		}
 	}
 	nodeErrors := map[string]error{}

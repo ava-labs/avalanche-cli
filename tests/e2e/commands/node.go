@@ -8,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -45,7 +47,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 		constants.E2EClusterName,
 		"--use-static-ip=false",
 		cmdVersion,
-		"--separate-monitoring-instance="+strconv.FormatBool(separateMonitoring),
+		"--enable-monitoring="+strconv.FormatBool(separateMonitoring),
 		"--region=local",
 		"--num-validators="+strconv.Itoa(numNodes),
 		"--"+network,
@@ -78,6 +80,7 @@ func NodeDevnet(numNodes int, numAPINodes int) string {
 		"create",
 		constants.E2EClusterName,
 		"--use-static-ip=false",
+		"--enable-monitoring=false",
 		"--latest-avalanchego-version=true",
 		"--region=local",
 		"--num-validators="+strconv.Itoa(numNodes),
@@ -108,7 +111,21 @@ func NodeSSH(name, command string) string {
 		name,
 		command,
 	)
-	return runCmd(cmd, ExpectSuccess)
+	multilineText := runCmd(cmd, ExpectSuccess)
+	// filter out additional output
+	pattern := `\[Node docker.*?\(NodeID-[^\s]+\)`
+	re := regexp.MustCompile(pattern)
+
+	lines := strings.Split(multilineText, "\n")
+	var output []string
+	for _, line := range lines {
+		if re.MatchString(line) {
+			continue
+		} else {
+			output = append(output, line)
+		}
+	}
+	return strings.Join(output, "\n")
 }
 
 func ConfigMetrics() {

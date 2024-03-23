@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
 # run load test command
-eval {{ .LoadTestCommand }}
+if [ -e {{ .LoadTestResultFile }} ]; then
+  rm {{ .LoadTestResultFile }}
+fi
+eval {{ .LoadTestCommand }} > {{ .LoadTestResultFile }}

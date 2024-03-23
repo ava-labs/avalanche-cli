@@ -48,13 +48,13 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	defer disconnectHosts(hosts)
-	if err := checkHostsAreBootstrappedWithMsg(hosts); err != nil {
+	if err := checkHostsAreBootstrapped(hosts); err != nil {
 		return err
 	}
-	if err := checkHostsAreHealthyWithMsg(hosts); err != nil {
+	if err := checkHostsAreHealthy(hosts); err != nil {
 		return err
 	}
-	if err := checkAvalancheGoVersionCompatibleWithMsg(hosts, subnetName); err != nil {
+	if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
 		return err
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(hosts, subnetName)

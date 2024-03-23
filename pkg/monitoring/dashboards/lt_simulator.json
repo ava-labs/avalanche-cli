@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 13,
+  "id": 5,
   "links": [],
   "panels": [
     {
@@ -461,7 +461,10 @@
   ],
   "refresh": "10s",
   "schemaVersion": 39,
-  "tags": [],
+  "tags": [
+    "Loadtest",
+    "Avalanche"
+  ],
   "templating": {
     "list": []
   },
@@ -497,6 +500,6 @@
   "timezone": "",
   "title": "Loadtest Simulator",
   "uid": "fdezkwwmkqmf4c",
-  "version": 4,
+  "version": 3,
   "weekStart": ""
 }

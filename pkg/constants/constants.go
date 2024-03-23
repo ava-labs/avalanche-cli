@@ -154,6 +154,7 @@ const (
 	AvalanchegoAPIPort                           = 9650
 	AvalanchegoP2PPort                           = 9651
 	AvalanchegoGrafanaPort                       = 3000
+	AvalanchegoLokiPort                          = 23101
 	CloudServerStorageSize                       = 1000
 	MonitoringCloudServerStorageSize             = 50
 	OutboundPort                                 = 0
@@ -211,8 +212,8 @@ const (
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
 	AvalanchegoMachineMetricsPort = 9100
-	MonitoringScriptFile          = "monitoring-separate-installer.sh"
 	MonitoringDir                 = "monitoring"
+	LoadTestDir                   = "loadtest"
 	DashboardsDir                 = "dashboards"
 	NodeConfigJSONFile            = "node.json"
 	IPAddressSuffix               = "/32"
@@ -290,6 +291,7 @@ const (
 	ValidatorRole                = "Validator"
 	MonitorRole                  = "Monitor"
 	AWMRelayerRole               = "Relayer"
+	LoadTestRole                 = "LoadTest"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
