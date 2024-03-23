@@ -51,6 +51,9 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID,
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", nil, err
 		}
+		if !sc.TeleporterReady {
+			return ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("subnet %s is not enabled for teleporter", subnetName)
+		}
 		subnetID = sc.Networks[network.Name()].SubnetID
 		chainID = sc.Networks[network.Name()].BlockchainID
 		teleporterMessengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress

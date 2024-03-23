@@ -106,9 +106,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
-	cmd.Flags().BoolVar(&sameMonitoringInstance, "same-monitoring-instance", false, "host monitoring for a cloud servers on the same instance")
-	cmd.Flags().BoolVar(&separateMonitoringInstance, "separate-monitoring-instance", false, "host monitoring for all cloud servers on a separate instance")
-	cmd.Flags().BoolVar(&skipMonitoring, "skip-monitoring", false, "don't set up monitoring in created nodes")
+	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, " set up Prometheus monitoring for created nodes. Please note that this option creates a separate monitoring instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	return cmd
 }
@@ -245,7 +243,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
-		return errNoSubnetID
+		return ErrNoSubnetID
 	}
 
 	ux.Logger.PrintToUser("")
@@ -295,7 +293,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
-		return errNoBlockchainID
+		return ErrNoBlockchainID
 	}
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
@@ -305,10 +303,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	} else if b {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proporser VMs"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proposer VMs"))
 		ux.Logger.PrintToUser("")
 		if err := updateProposerVMs(network); err != nil {
-			return err
+			// not going to consider fatal, as teleporter messaging will be working fine after a failed first msg
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("failure setting proposer: %s"), err)
 		}
 	}
 
@@ -337,6 +336,14 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
 	ux.Logger.PrintToUser("")
+
+	if addMonitoring {
+		// no need to check for error, as it's ok not to have monitoring host
+		monitoringHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+		if len(monitoringHosts) > 0 {
+			getMonitoringHint(monitoringHosts[0].IP)
+		}
+	}
 
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
@@ -387,7 +394,7 @@ func updateProposerVMs(
 			ux.Logger.PrintToUser("updating proposerVM on %s", deployedSubnetName)
 			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
 			if blockchainID == ids.Empty {
-				return errNoBlockchainID
+				return ErrNoBlockchainID
 			}
 			if err := teleporter.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
 				return err
@@ -460,9 +467,9 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 func deployClusterYAMLFile(clusterName, subnetName string) error {
 	var separateHosts []*models.Host
 	var err error
-	monitoringInventoryDir := app.GetMonitoringInventoryDir(clusterName)
-	if utils.FileExists(monitoringInventoryDir) {
-		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryDir)
+	loadTestInventoryDir := app.GetLoadTestInventoryDir(clusterName)
+	if utils.FileExists(loadTestInventoryDir) {
+		separateHosts, err = ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryDir)
 		if err != nil {
 			return err
 		}
@@ -509,7 +516,7 @@ func checkRPCCompatibility(
 		}
 	}
 	defer disconnectHosts(hosts)
-	return checkAvalancheGoVersionCompatibleWithMsg(hosts, subnetName)
+	return checkHostsAreRPCCompatible(hosts, subnetName)
 }
 
 func waitForHealthyCluster(
@@ -537,12 +544,12 @@ func waitForHealthyCluster(
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
 	for {
-		notHealthyNodes, err := checkHostsAreHealthy(hosts)
+		unhealthyNodes, err := getUnhealthyNodes(hosts)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return err
 		}
-		if len(notHealthyNodes) == 0 {
+		if len(unhealthyNodes) == 0 {
 			ux.SpinComplete(spinner)
 			spinSession.Stop()
 			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
@@ -553,7 +560,7 @@ func waitForHealthyCluster(
 			spinSession.Stop()
 			ux.Logger.PrintToUser("")
 			ux.Logger.RedXToUser("Unhealthy Nodes")
-			for _, failedNode := range notHealthyNodes {
+			for _, failedNode := range unhealthyNodes {
 				ux.Logger.PrintToUser("  " + failedNode)
 			}
 			ux.Logger.PrintToUser("")

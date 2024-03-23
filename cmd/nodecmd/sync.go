@@ -59,13 +59,13 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	}
 	defer disconnectHosts(hosts)
 	if !avoidChecks {
-		if err := checkHostsAreBootstrappedWithMsg(hosts); err != nil {
+		if err := checkHostsAreBootstrapped(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreHealthyWithMsg(hosts); err != nil {
+		if err := checkHostsAreHealthy(hosts); err != nil {
 			return err
 		}
-		if err := checkAvalancheGoVersionCompatibleWithMsg(hosts, subnetName); err != nil {
+		if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
 			return err
 		}
 	}

@@ -26,7 +26,7 @@ func (n NumNodes) All() int {
 	return n.numValidators + n.numAPI
 }
 
-func checkHostsAreHealthy(hosts []*models.Host) ([]string, error) {
+func getUnhealthyNodes(hosts []*models.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -69,7 +69,7 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 	return false, fmt.Errorf("unable to parse node healthy status")
 }
 
-func checkHostsAreBootstrapped(hosts []*models.Host) ([]string, error) {
+func getNotBootstrappedNodes(hosts []*models.Host) ([]string, error) {
 	ux.Logger.PrintToUser("Checking if node(s) are bootstrapped to Primary Network...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -113,7 +113,7 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 	return false, errors.New("unable to parse node bootstrap status")
 }
 
-func checkAvalancheGoVersionCompatible(hosts []*models.Host, subnetName string) ([]string, error) {
+func getRPCIncompatibleNodes(hosts []*models.Host, subnetName string) ([]string, error) {
 	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of subnet %s ...", subnetName)
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -182,8 +182,8 @@ func authorizedAccessFromSettings() bool {
 	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
 }
 
-func checkAvalancheGoVersionCompatibleWithMsg(hosts []*models.Host, subnetName string) error {
-	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
+func checkHostsAreRPCCompatible(hosts []*models.Host, subnetName string) error {
+	incompatibleNodes, err := getRPCIncompatibleNodes(hosts, subnetName)
 	if err != nil {
 		return err
 	}
@@ -206,20 +206,20 @@ func checkAvalancheGoVersionCompatibleWithMsg(hosts []*models.Host, subnetName s
 	return nil
 }
 
-func checkHostsAreHealthyWithMsg(hosts []*models.Host) error {
+func checkHostsAreHealthy(hosts []*models.Host) error {
 	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	notHealthyNodes, err := checkHostsAreHealthy(hosts)
+	unhealthyNodes, err := getUnhealthyNodes(hosts)
 	if err != nil {
 		return err
 	}
-	if len(notHealthyNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not healthy, please check the issue and try again later", notHealthyNodes)
+	if len(unhealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please check the issue and try again later", unhealthyNodes)
 	}
 	return nil
 }
 
-func checkHostsAreBootstrappedWithMsg(hosts []*models.Host) error {
-	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
+func checkHostsAreBootstrapped(hosts []*models.Host) error {
+	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
 	if err != nil {
 		return err
 	}
