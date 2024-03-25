@@ -845,14 +845,7 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 	return nil
 }
 
-func deleteAWMRelayerSecurityGroupRule(clusterName string, ec2Svc *awsAPI.AwsCloud, nodeConfig *models.NodeConfig) error {
-	awmRelayerHost, err := getAWMRelayerHost(clusterName)
-	if err != nil {
-		return err
-	}
-	if awmRelayerHost == nil {
-		return nil
-	}
+func deleteAWMRelayerSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, nodeConfig *models.NodeConfig, awmRelayerHost *models.Host) error {
 	if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 		securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(nodeConfig.SecurityGroup)
 		if err != nil {
