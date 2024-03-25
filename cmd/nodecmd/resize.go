@@ -162,7 +162,7 @@ func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
 		if err != nil {
 			return err
 		}
-		if diskSize > math.MaxInt64 {
+		if diskSize > math.MaxInt {
 			return fmt.Errorf("disk size exceeds maximum supported value")
 		}
 		return gcpCloud.ResizeVolume(rootVolume, nodeConfig.Region, int64(diskSize))
