@@ -41,6 +41,7 @@ type clusterInfo struct {
 	API       []nodeInfo `yaml:"API,omitempty"`
 	Validator []nodeInfo `yaml:"VALIDATOR,omitempty"`
 	LoadTest  nodeInfo   `yaml:"LOADTEST,omitempty"`
+	Monitor   nodeInfo   `yaml:"MONITOR,omitempty"`
 	ChainID   string     `yaml:"CHAIN_ID,omitempty"`
 	SubnetID  string     `yaml:"SUBNET_ID,omitempty"`
 }
@@ -408,6 +409,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 	}
 	var apiNodes []nodeInfo
 	var validatorNodes []nodeInfo
+	var monitorNode nodeInfo
 	for _, cloudID := range clusterConf.GetCloudIDs() {
 		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 		if err != nil {
@@ -441,6 +443,12 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 				Region:  nodeConfig.Region,
 			}
 			apiNodes = append(apiNodes, apiNode)
+		case constants.MonitorRole:
+			monitorNode = nodeInfo{
+				CloudID: cloudID,
+				IP:      nodeConfig.ElasticIP,
+				Region:  nodeConfig.Region,
+			}
 		default:
 		}
 	}
@@ -460,6 +468,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		Validator: validatorNodes,
 		API:       apiNodes,
 		LoadTest:  separateHostInfo,
+		Monitor:   monitorNode,
 		SubnetID:  subnetID,
 		ChainID:   chainID,
 	}
