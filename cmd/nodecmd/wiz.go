@@ -529,7 +529,7 @@ func deployClusterYAMLFile(clusterName, subnetName string) error {
 		if err = ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
 			return err
 		}
-		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/%s at external host", constants.ClusterYAMLFileName)
 	}
 	return nil
 }
