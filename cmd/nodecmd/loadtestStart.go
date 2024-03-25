@@ -175,6 +175,10 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	for index := range filteredSGList {
 		sgRegions = append(sgRegions, filteredSGList[index].region)
 	}
+	// if no loadtest region is provided, use some region of the cluster
+	if loadTestHostRegion == "" {
+		loadTestHostRegion = sgRegions[0]
+	}
 	if !slices.Contains(sgRegions, loadTestHostRegion) {
 		sgRegions = append(sgRegions, loadTestHostRegion)
 	}
