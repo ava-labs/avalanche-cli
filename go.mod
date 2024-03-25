@@ -23,7 +23,7 @@ require (
 	github.com/melbahja/goph v1.4.0
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.17.0
+	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.32.0
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
