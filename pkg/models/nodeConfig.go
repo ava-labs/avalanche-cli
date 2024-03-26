@@ -12,6 +12,7 @@ type NodeConfig struct {
 	ElasticIP     string // public IP address of the cloud server
 	CloudService  string // which cloud service node is hosted on (AWS / GCP)
 	UseStaticIP   bool   // node has a static IP association
-	IsMonitor     bool   // node is used to host monitoring
+	IsMonitor     bool   // node has a monitoring dashboard
+	IsAWMRelayer  bool   // node has an AWM relayer service
 	IsLoadTest    bool   // node is used to host load test
 }

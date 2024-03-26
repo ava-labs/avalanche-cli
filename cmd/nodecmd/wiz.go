@@ -8,15 +8,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -54,6 +56,7 @@ var (
 	subnetConf                     string
 	chainConf                      string
 	validators                     []string
+	customGrafanaDashboardPath     string
 )
 
 func newWizCmd() *cobra.Command {
@@ -94,6 +97,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
+	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
 	cmd.Flags().StringVar(&nodeConf, "node-config", "", "path to avalanchego node configuration for subnet")
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration for subnet")
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration for subnet")
@@ -201,6 +205,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
+
 	if subnetName == "" {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s has been created!"), clusterName)
@@ -208,10 +213,78 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Deploying the subnet"))
+	ux.Logger.PrintToUser(logging.Green.Wrap("Checking subnet compatibility"))
 	ux.Logger.PrintToUser("")
+	if err := checkRPCCompatibility(clusterName, subnetName); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the blockchain"))
+	ux.Logger.PrintToUser("")
+	avoidChecks = true
 	if err := deploySubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
+	ux.Logger.PrintToUser("")
+	avoidSubnetValidationChecks = true
+	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
+		return err
+	}
+
+	network, err := app.GetClusterNetwork(clusterName)
+	if err != nil {
+		return err
+	}
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return ErrNoSubnetID
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Waiting for nodes to be validating the subnet"))
+	ux.Logger.PrintToUser("")
+	if err := waitForSubnetValidators(network, clusterName, subnetID, validateCheckTimeout, validateCheckPoolTime); err != nil {
+		return err
+	}
+
+	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+	if err != nil {
+		return err
+	}
+
+	var awmRelayerHost *models.Host
+	if sc.TeleporterReady && isEVMGenesis {
+		// get or set AWM Relayer host and configure/stop service
+		awmRelayerHost, err = getAWMRelayerHost(clusterName)
+		if err != nil {
+			return err
+		}
+		if awmRelayerHost == nil {
+			awmRelayerHost, err = chooseAWMRelayerHost(clusterName)
+			if err != nil {
+				return err
+			}
+			if err := setAWMRelayerHost(awmRelayerHost); err != nil {
+				return err
+			}
+			if err := setAWMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
+				return err
+			}
+		} else {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
+			if err := ssh.RunSSHStopAWMRelayerService(awmRelayerHost); err != nil {
+				return err
+			}
+		}
 	}
 
 	ux.Logger.PrintToUser("")
@@ -223,35 +296,26 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-	network, err := app.GetClusterNetwork(clusterName)
-	if err != nil {
-		return err
-	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
-	}
-	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Syncing, syncCheckTimeout, syncCheckPoolTime); err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
-	ux.Logger.PrintToUser("")
-	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
-		return err
 	}
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
 	}
 
-	isEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
-	if err != nil {
+	if b, err := hasTeleporterDeploys(clusterName); err != nil {
 		return err
+	} else if b {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proposer VMs"))
+		ux.Logger.PrintToUser("")
+		if err := updateProposerVMs(network); err != nil {
+			// not going to consider fatal, as teleporter messaging will be working fine after a failed first msg
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("failure setting proposer: %s"), err)
+		}
 	}
+
 	if sc.TeleporterReady && isEVMGenesis {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
@@ -262,6 +326,12 @@ func wiz(cmd *cobra.Command, args []string) error {
 		if err := teleportercmd.CallDeploy(subnetName, flags); err != nil {
 			return err
 		}
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
+		ux.Logger.PrintToUser("")
+		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
+			return err
+		}
 	}
 
 	ux.Logger.PrintToUser("")
@@ -270,11 +340,172 @@ func wiz(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Devnet %s is successfully created and is now validating subnet %s!"), clusterName, subnetName)
 	}
+	ux.Logger.PrintToUser("")
+
+	if addMonitoring {
+		// no need to check for error, as it's ok not to have monitoring host
+		monitoringHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+		if len(monitoringHosts) > 0 {
+			getMonitoringHint(monitoringHosts[0].IP)
+		}
+	}
 
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
 	return nil
+}
+
+func hasTeleporterDeploys(
+	clusterName string,
+) (bool, error) {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return false, err
+	}
+	for _, deployedSubnetName := range clusterConfig.Subnets {
+		deployedSubnetIsEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		if err != nil {
+			return false, err
+		}
+		deployedSubnetSc, err := app.LoadSidecar(deployedSubnetName)
+		if err != nil {
+			return false, err
+		}
+		if deployedSubnetSc.TeleporterReady && deployedSubnetIsEVMGenesis {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func updateProposerVMs(
+	network models.Network,
+) error {
+	clusterConfig, err := app.GetClusterConfig(network.ClusterName)
+	if err != nil {
+		return err
+	}
+	for _, deployedSubnetName := range clusterConfig.Subnets {
+		deployedSubnetIsEVMGenesis, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		if err != nil {
+			return err
+		}
+		deployedSubnetSc, err := app.LoadSidecar(deployedSubnetName)
+		if err != nil {
+			return err
+		}
+		if deployedSubnetSc.TeleporterReady && deployedSubnetIsEVMGenesis {
+			ux.Logger.PrintToUser("updating proposerVM on %s", deployedSubnetName)
+			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
+			if blockchainID == ids.Empty {
+				return ErrNoBlockchainID
+			}
+			if err := teleporter.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
+				return err
+			}
+		}
+	}
+	ux.Logger.PrintToUser("updating proposerVM on c-chain")
+	return teleporter.SetProposerVM(app, network, "C", "")
+}
+
+func getHostWithCloudID(clusterName string, cloudID string) (*models.Host, error) {
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return nil, err
+	}
+	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryFile) {
+		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
+		if err != nil {
+			return nil, err
+		}
+		hosts = append(hosts, monitoringHosts...)
+	}
+	for _, host := range hosts {
+		if host.GetCloudID() == cloudID {
+			return host, nil
+		}
+	}
+	return nil, nil
+}
+
+func setAWMRelayerHost(host *models.Host) error {
+	cloudID := host.GetCloudID()
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
+	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+	if err != nil {
+		return err
+	}
+	if err := ssh.RunSSHSetupAWMRelayerService(host); err != nil {
+		return err
+	}
+	nodeConfig.IsAWMRelayer = true
+	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
+}
+
+func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
+	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
+	flags := teleportercmd.AddSubnetToRelayerServiceFlags{
+		Network: networkoptions.NetworkFlags{
+			ClusterName: clusterName,
+		},
+		CloudNodeID: host.GetCloudID(),
+	}
+	if err := teleportercmd.CallAddSubnetToRelayerService(subnetName, flags); err != nil {
+		return err
+	}
+	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
+		return err
+	}
+	return ssh.RunSSHStartAWMRelayerService(host)
+}
+
+func getAWMRelayerHost(clusterName string) (*models.Host, error) {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	relayerCloudID := ""
+	for _, cloudID := range clusterConfig.GetCloudIDs() {
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return nil, err
+		}
+		if nodeConfig.IsAWMRelayer {
+			relayerCloudID = nodeConfig.NodeID
+		}
+	}
+	return getHostWithCloudID(clusterName, relayerCloudID)
+}
+
+func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
+	// first look up for separate monitoring host
+	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
+	if utils.FileExists(monitoringInventoryFile) {
+		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
+		if err != nil {
+			return nil, err
+		}
+		if len(monitoringHosts) > 0 {
+			return monitoringHosts[0], nil
+		}
+	}
+	// then look up for API nodes
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	if len(clusterConfig.APINodes) > 0 {
+		return getHostWithCloudID(clusterName, clusterConfig.APINodes[0])
+	}
+	// finally go for other hosts
+	if len(clusterConfig.Nodes) > 0 {
+		return getHostWithCloudID(clusterName, clusterConfig.Nodes[0])
+	}
+	return nil, fmt.Errorf("no hosts found on cluster")
 }
 
 func deployClusterYAMLFile(clusterName, subnetName string) error {
@@ -304,9 +535,32 @@ func deployClusterYAMLFile(clusterName, subnetName string) error {
 		if err = ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
 			return err
 		}
-		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/%s at external host", constants.ClusterYAMLFileName)
 	}
 	return nil
+}
+
+func checkRPCCompatibility(
+	clusterName string,
+	subnetName string,
+) error {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
+	}
+	defer disconnectHosts(hosts)
+	return checkHostsAreRPCCompatible(hosts, subnetName)
 }
 
 func waitForHealthyCluster(
@@ -334,12 +588,12 @@ func waitForHealthyCluster(
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
 	for {
-		notHealthyNodes, err := checkHostsAreHealthy(hosts)
+		unhealthyNodes, err := getUnhealthyNodes(hosts)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return err
 		}
-		if len(notHealthyNodes) == 0 {
+		if len(unhealthyNodes) == 0 {
 			ux.SpinComplete(spinner)
 			spinSession.Stop()
 			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
@@ -350,11 +604,76 @@ func waitForHealthyCluster(
 			spinSession.Stop()
 			ux.Logger.PrintToUser("")
 			ux.Logger.RedXToUser("Unhealthy Nodes")
-			for _, failedNode := range notHealthyNodes {
+			for _, failedNode := range unhealthyNodes {
 				ux.Logger.PrintToUser("  " + failedNode)
 			}
 			ux.Logger.PrintToUser("")
 			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
+		}
+		time.Sleep(poolTime)
+	}
+}
+
+func waitForSubnetValidators(
+	network models.Network,
+	clusterName string,
+	subnetID ids.ID,
+	timeout time.Duration,
+	poolTime time.Duration,
+) error {
+	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be validators of subnet ID %s...", clusterName, subnetID)
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
+	if len(validators) != 0 {
+		hosts, err = filterHosts(hosts, validators)
+		if err != nil {
+			return err
+		}
+	}
+	defer disconnectHosts(hosts)
+	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
+	startTime := time.Now()
+	for {
+		failedNodes := []string{}
+		for _, host := range hosts {
+			nodeIDStr, b := nodeIDMap[host.NodeID]
+			if !b {
+				err, b := failedNodesMap[host.NodeID]
+				if !b {
+					return fmt.Errorf("expected to found an error for non mapped node")
+				}
+				return err
+			}
+			nodeID, err := ids.NodeIDFromString(nodeIDStr)
+			if err != nil {
+				return err
+			}
+			isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
+			if err != nil {
+				return err
+			}
+			if !isValidator {
+				failedNodes = append(failedNodes, host.GetCloudID())
+			}
+		}
+		if len(failedNodes) == 0 {
+			ux.Logger.PrintToUser("Nodes validating subnet ID %s after %d seconds", subnetID, uint32(time.Since(startTime).Seconds()))
+			return nil
+		}
+		if time.Since(startTime) > timeout {
+			ux.Logger.PrintToUser("Nodes not validating subnet ID %sf", subnetID)
+			for _, failedNode := range failedNodes {
+				ux.Logger.PrintToUser("  " + failedNode)
+			}
+			ux.Logger.PrintToUser("")
+			return fmt.Errorf("cluster %s not validating subnet ID %s after %d seconds", clusterName, subnetID, uint32(timeout.Seconds()))
 		}
 		time.Sleep(poolTime)
 	}
@@ -482,4 +801,58 @@ func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
 		}
 	}
 	return filteredHosts, nil
+}
+
+func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	hasGCPNodes := false
+	lastRegion := ""
+	var ec2Svc *awsAPI.AwsCloud
+	for _, cloudID := range clusterConfig.GetCloudIDs() {
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return err
+		}
+		switch {
+		case nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService:
+			if nodeConfig.Region != lastRegion {
+				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
+				if err != nil {
+					return err
+				}
+				lastRegion = nodeConfig.Region
+			}
+			securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(nodeConfig.SecurityGroup)
+			if err != nil {
+				return err
+			}
+			if !securityGroupExists {
+				return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
+			}
+			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort); !inSG {
+				if err = ec2Svc.AddSecurityGroupRule(
+					*sg.GroupId,
+					"ingress",
+					"tcp",
+					awmRelayerHost.IP+constants.IPAddressSuffix,
+					constants.AvalanchegoAPIPort,
+				); err != nil {
+					return err
+				}
+			}
+		case nodeConfig.CloudService == constants.GCPCloudService:
+			hasGCPNodes = true
+		default:
+			return fmt.Errorf("cloud %s is not supported", nodeConfig.CloudService)
+		}
+	}
+	if hasGCPNodes {
+		if err := setGCPAWMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
+			return err
+		}
+	}
+	return nil
 }

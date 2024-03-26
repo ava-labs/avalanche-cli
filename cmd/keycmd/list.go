@@ -32,17 +32,19 @@ const (
 	pchainFlag        = "pchain"
 	cchainFlag        = "cchain"
 	xchainFlag        = "xchain"
+	chainsFlag        = "chains"
 	ledgerIndicesFlag = "ledger"
 	useNanoAvaxFlag   = "use-nano-avax"
 )
 
 var (
 	globalNetworkFlags          networkoptions.NetworkFlags
-	listSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Mainnet, networkoptions.Fuji, networkoptions.Local}
+	listSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Mainnet, networkoptions.Fuji, networkoptions.Local, networkoptions.Cluster}
 	all                         bool
 	pchain                      bool
 	cchain                      bool
 	xchain                      bool
+	chains                      string
 	useNanoAvax                 bool
 	ledgerIndices               []uint
 	subnetName                  string
@@ -104,6 +106,12 @@ keys or for the ledger addresses associated to certain indices.`,
 		"subnet",
 		"",
 		"provide balance information for the given subnet (Subnet-Evm based only)",
+	)
+	cmd.Flags().StringVar(
+		&chains,
+		chainsFlag,
+		"pxc",
+		"short way to specify which chains to show information about (p=show p-chain, x=show x-chain, c=show c-chain). defaults to pxc",
 	)
 	return cmd
 }
@@ -181,18 +189,34 @@ func listKeys(*cobra.Command, []string) error {
 	if globalNetworkFlags.UseMainnet || all {
 		networks = append(networks, models.NewMainnetNetwork())
 	}
+	if globalNetworkFlags.ClusterName != "" {
+		network, err := app.GetClusterNetwork(globalNetworkFlags.ClusterName)
+		if err != nil {
+			return err
+		}
+		networks = append(networks, network)
+	}
 	if len(networks) == 0 {
 		network, err := networkoptions.GetNetworkFromCmdLineFlags(
 			app,
 			networkoptions.NetworkFlags{},
 			false,
 			listSupportedNetworkOptions,
-			"",
+			subnetName,
 		)
 		if err != nil {
 			return err
 		}
 		networks = append(networks, network)
+	}
+	if !strings.Contains(chains, "p") {
+		pchain = false
+	}
+	if !strings.Contains(chains, "x") {
+		xchain = false
+	}
+	if !strings.Contains(chains, "c") {
+		cchain = false
 	}
 	queryLedger := len(ledgerIndices) > 0
 	if queryLedger {

@@ -48,39 +48,14 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	defer disconnectHosts(hosts)
-	notBootstrappedNodes, err := checkHostsAreBootstrapped(hosts)
-	if err != nil {
+	if err := checkHostsAreBootstrapped(hosts); err != nil {
 		return err
 	}
-	if len(notBootstrappedNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
-	}
-	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	notHealthyNodes, err := checkHostsAreHealthy(hosts)
-	if err != nil {
+	if err := checkHostsAreHealthy(hosts); err != nil {
 		return err
 	}
-	if len(notHealthyNodes) > 0 {
-		return fmt.Errorf("node(s) %s are not healthy, please fix the issue and again", notHealthyNodes)
-	}
-	incompatibleNodes, err := checkAvalancheGoVersionCompatible(hosts, subnetName)
-	if err != nil {
+	if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
 		return err
-	}
-	if len(incompatibleNodes) > 0 {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Either modify your Avalanche Go version or modify your VM version")
-		ux.Logger.PrintToUser("To modify your Avalanche Go version: https://docs.avax.network/nodes/maintain/upgrade-your-avalanchego-node")
-		switch sc.VM {
-		case models.SubnetEvm:
-			ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
-		case models.CustomVM:
-			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
-		}
-		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(hosts, subnetName)
 	if err != nil {

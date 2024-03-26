@@ -8,7 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
 
@@ -22,7 +24,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var authorizeRemove bool
+var (
+	authorizeRemove bool
+	authorizeAll    bool
+)
 
 func newDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -39,6 +44,7 @@ If there is a static IP address attached, it will be released.`,
 	}
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
+	cmd.Flags().BoolVarP(&authorizeAll, "authorize-all", "y", false, "authorize all CLI requests")
 
 	return cmd
 }
@@ -95,20 +101,33 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	if authorizeAll {
+		authorizeAccess = true
+		authorizeRemove = true
+	}
 	if err := getDeleteConfigConfirmation(); err != nil {
 		return err
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	nodesToStop, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	nodesToStop := clusterNodes
 	monitoringNode, err := getClusterMonitoringNode(clusterName)
 	if err != nil {
 		return err
 	}
 	if monitoringNode != "" {
 		nodesToStop = append(nodesToStop, monitoringNode)
+	}
+	// stop all load test nodes if specified
+	ltHostsToStop, err := getClusterLoadTestNodes(clusterName)
+	if err != nil {
+		return err
+	}
+	nodesToStop = append(nodesToStop, ltHostsToStop...)
+	awmRelayerHost, err := getAWMRelayerHost(clusterName)
+	if err != nil {
+		return err
 	}
 	nodeErrors := map[string]error{}
 	lastRegion := ""
@@ -144,6 +163,16 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					continue
 				}
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
+			}
+			if awmRelayerHost != nil {
+				if err := deleteAWSAWMRelayerSecurityGroupRule(ec2Svc, &nodeConfig, awmRelayerHost); err != nil {
+					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+						awmRelayerHost.IP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+				}
+			}
+			if err = deleteMonitoringSecurityGroupRule(ec2Svc, nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
+				ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+					nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
 			}
 		} else {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
@@ -186,6 +215,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser("All nodes in cluster %s are successfully destroyed!", clusterName)
 	}
+
 	return removeClustersConfigFiles(clusterName)
 }
 
@@ -202,6 +232,21 @@ func getClusterMonitoringNode(clusterName string) (string, error) {
 		return "", fmt.Errorf("cluster %q does not exist", clusterName)
 	}
 	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
+}
+
+// getClusterLoadTestNodes returns the cloud IDs of the load test nodes in the cluster
+func getClusterLoadTestNodes(clusterName string) ([]string, error) {
+	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
+	if utils.FileExists(separateHostInventoryPath) {
+		separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
+		if err != nil {
+			return nil, err
+		}
+		return utils.Map(separateHosts, func(host *models.Host) string {
+			return host.GetCloudID()
+		}), nil
+	}
+	return nil, nil
 }
 
 func checkCluster(clusterName string) error {

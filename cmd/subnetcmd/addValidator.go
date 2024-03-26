@@ -33,6 +33,7 @@ var (
 	useDefaultStartTime    bool
 	useDefaultDuration     bool
 	useDefaultWeight       bool
+	justIssueTx            bool
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -78,10 +79,12 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().BoolVar(&justIssueTx, "just-issue-tx", false, "just issue the add validator tx, without waiting for its acceptance")
 	return cmd
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
+	subnetName := args[0]
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		globalNetworkFlags,
@@ -107,16 +110,22 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	network.HandlePublicNetworkSimulation()
-	return CallAddValidator(network, kc, useLedger, args[0], nodeIDStr, defaultValidatorParams)
+	if err := UpdateKeychainWithSubnetControlKeys(kc, network, subnetName); err != nil {
+		return err
+	}
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+	return CallAddValidator(deployer, network, kc, useLedger, subnetName, nodeIDStr, defaultValidatorParams, justIssueTx)
 }
 
 func CallAddValidator(
+	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
 	useLedgerSetting bool,
 	subnetName string,
 	nodeIDStr string,
 	defaultValidatorParamsSetting bool,
+	justIssueTxSetting bool,
 ) error {
 	var (
 		nodeID ids.NodeID
@@ -126,6 +135,7 @@ func CallAddValidator(
 
 	useLedger = useLedgerSetting
 	defaultValidatorParams = defaultValidatorParamsSetting
+	justIssueTx = justIssueTxSetting
 
 	if defaultValidatorParams {
 		useDefaultDuration = true
@@ -167,11 +177,6 @@ func CallAddValidator(
 
 	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
 	if err != nil {
-		return err
-	}
-
-	// add control keys to the keychain whenever possible
-	if err := kc.AddAddresses(controlKeys); err != nil {
 		return err
 	}
 
@@ -225,8 +230,8 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Weight: %d", selectedWeight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(
+		justIssueTx,
 		controlKeys,
 		subnetAuthKeys,
 		subnetID,

@@ -9,6 +9,8 @@ import (
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ava-labs/subnet-evm/rpc"
+	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -124,6 +126,28 @@ func FundAddress(
 	return nil
 }
 
+func ActivateProposerVM(
+	client ethclient.Client,
+	privateKeyStr string,
+) error {
+	privateKey, err := crypto.HexToECDSA(privateKeyStr)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return err
+	}
+	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(
+		ctx,
+		chainID,
+		privateKey,
+		client,
+	)
+}
+
 func IssueTx(
 	client ethclient.Client,
 	txStr string,
@@ -189,4 +213,37 @@ func GetEventFromLogs[T any](logs []*types.Log, parser func(log types.Log) (T, e
 		}
 	}
 	return *new(T), fmt.Errorf("failed to find %T event in receipt logs", *new(T))
+}
+
+func GetTrace(rpcURL string, txID string) (map[string]interface{}, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	client, err := rpc.DialContext(ctx, rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]interface{}
+	err = client.CallContext(ctx, &result, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
+	return result, err
+}
+
+func SetupProposerVM(
+	endpoint string,
+	privKeyStr string,
+) error {
+	client, err := GetClient(endpoint)
+	if err != nil {
+		return fmt.Errorf("failure connecting to %s: %w", endpoint, err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return err
+	}
+	privKey, err := crypto.HexToECDSA(privKeyStr)
+	if err != nil {
+		return err
+	}
+	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
 }

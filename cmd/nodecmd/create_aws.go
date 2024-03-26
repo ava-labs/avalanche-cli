@@ -276,10 +276,11 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		} else {
 			sgID = *sg.GroupId
 			ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
-			ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
-			ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
-			ipInMonitoring := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoMonitoringPort)
-			ipInGrafana := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoGrafanaPort)
+			ipInTCP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
+			ipInHTTP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+			ipInMonitoring := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalanchegoMonitoringPort)
+			ipInGrafana := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalanchegoGrafanaPort)
+			ipInLoki := awsAPI.CheckIPInSg(&sg, "0.0.0.0", constants.AvalanchegoLokiPort)
 
 			if !ipInTCP {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.SSHTCPPort); err != nil {
@@ -298,6 +299,11 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			}
 			if !ipInGrafana {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", userIPAddress, constants.AvalanchegoGrafanaPort); err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
+			}
+			if !ipInLoki {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0", constants.AvalanchegoLokiPort); err != nil {
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 				}
 			}
@@ -377,8 +383,8 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 	if !securityGroupExists {
 		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
 	}
-	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
-	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	metricsPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
 	if !metricsPortInSG {
 		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
 			return err
@@ -386,6 +392,29 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 	}
 	if !apiPortInSG {
 		if err = ec2Svc[region].AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName, region string) error {
+	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
+	if err != nil {
+		return err
+	}
+	if !securityGroupExists {
+		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
+	}
+	metricsPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	if metricsPortInSG {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+			return err
+		}
+	}
+	if apiPortInSG {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
 			return err
 		}
 	}
@@ -400,8 +429,8 @@ func grantAccessToPublicIPViaSecurityGroup(ec2Svc *awsAPI.AwsCloud, publicIP, se
 	if !securityGroupExists {
 		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
 	}
-	metricsPortInSG := awsAPI.CheckUserIPInSg(&sg, publicIP, constants.AvalanchegoMachineMetricsPort)
-	apiPortInSG := awsAPI.CheckUserIPInSg(&sg, publicIP, constants.AvalanchegoAPIPort)
+	metricsPortInSG := awsAPI.CheckIPInSg(&sg, publicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckIPInSg(&sg, publicIP, constants.AvalanchegoAPIPort)
 	if !metricsPortInSG {
 		if err = ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", publicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
 			return err
@@ -516,4 +545,35 @@ func checkRegions(regions []string) ([]string, error) {
 		}
 	}
 	return invalidRegions, nil
+}
+
+func deleteAWSAWMRelayerSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, nodeConfig *models.NodeConfig, awmRelayerHost *models.Host) error {
+	if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
+		securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(nodeConfig.SecurityGroup)
+		if err != nil {
+			return err
+		}
+		if !securityGroupExists {
+			return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
+		}
+		inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort)
+		if !inSG {
+			if err = ec2Svc.DeleteSecurityGroupRule(
+				*sg.GroupId,
+				"ingress",
+				"tcp",
+				awmRelayerHost.IP+constants.IPAddressSuffix,
+				constants.AvalanchegoAPIPort,
+			); err != nil {
+				return fmt.Errorf("failure removing rule IP %s port %d from security group %s region %s: %w",
+					awmRelayerHost.IP+constants.IPAddressSuffix,
+					constants.AvalanchegoAPIPort,
+					nodeConfig.SecurityGroup,
+					nodeConfig.Region,
+					err,
+				)
+			}
+		}
+	}
+	return nil
 }

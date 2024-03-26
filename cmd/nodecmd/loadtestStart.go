@@ -41,6 +41,7 @@ type clusterInfo struct {
 	API       []nodeInfo `yaml:"API,omitempty"`
 	Validator []nodeInfo `yaml:"VALIDATOR,omitempty"`
 	LoadTest  nodeInfo   `yaml:"LOADTEST,omitempty"`
+	Monitor   nodeInfo   `yaml:"MONITOR,omitempty"`
 	ChainID   string     `yaml:"CHAIN_ID,omitempty"`
 	SubnetID  string     `yaml:"SUBNET_ID,omitempty"`
 }
@@ -175,6 +176,10 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	for index := range filteredSGList {
 		sgRegions = append(sgRegions, filteredSGList[index].region)
 	}
+	// if no loadtest region is provided, use some region of the cluster
+	if loadTestHostRegion == "" {
+		loadTestHostRegion = sgRegions[0]
+	}
 	if !slices.Contains(sgRegions, loadTestHostRegion) {
 		sgRegions = append(sgRegions, loadTestHostRegion)
 	}
@@ -272,7 +277,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	var separateHosts []*models.Host
 	// separateHosts contains only current load test host defined in the command
 	var currentLoadTestHost []*models.Host
-	separateHostInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
+	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
 	if existingSeparateInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
 			return err
@@ -306,6 +311,26 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Setting up load test environment")
 	if err := ssh.RunSSHBuildLoadTestDependencies(currentLoadTestHost[0]); err != nil {
 		return err
+	}
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	if len(monitoringHosts) > 0 {
+		if err := ssh.RunSSHSetupPromtail(currentLoadTestHost[0]); err != nil {
+			return err
+		}
+		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest"); err != nil {
+			return err
+		}
+		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+		if err != nil {
+			return err
+		}
+		if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
+			return err
+		}
 	}
 
 	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
@@ -384,6 +409,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 	}
 	var apiNodes []nodeInfo
 	var validatorNodes []nodeInfo
+	var monitorNode nodeInfo
 	for _, cloudID := range clusterConf.GetCloudIDs() {
 		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 		if err != nil {
@@ -417,6 +443,12 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 				Region:  nodeConfig.Region,
 			}
 			apiNodes = append(apiNodes, apiNode)
+		case constants.MonitorRole:
+			monitorNode = nodeInfo{
+				CloudID: cloudID,
+				IP:      nodeConfig.ElasticIP,
+				Region:  nodeConfig.Region,
+			}
 		default:
 		}
 	}
@@ -436,6 +468,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 		Validator: validatorNodes,
 		API:       apiNodes,
 		LoadTest:  separateHostInfo,
+		Monitor:   monitorNode,
 		SubnetID:  subnetID,
 		ChainID:   chainID,
 	}

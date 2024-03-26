@@ -14,12 +14,19 @@ type GCPConfig struct {
 	ServiceAccFilePath string // location of GCP service account key file path
 }
 
+type ExtraNetworkData struct {
+	CChainTeleporterMessengerAddress string
+	CChainTeleporterRegistryAddress  string
+}
+
 type ClusterConfig struct {
 	Nodes              []string
 	APINodes           []string
 	Network            Network
 	MonitoringInstance string            // instance ID of the separate monitoring instance (if any)
 	LoadTestInstance   map[string]string // maps load test name to load test cloud instance ID of the separate load test instance (if any)
+	ExtraNetworkData   ExtraNetworkData
+	Subnets            []string
 }
 
 type ClustersConfig struct {
@@ -70,6 +77,9 @@ func (cc *ClusterConfig) GetHostRoles(nodeConf NodeConfig) []string {
 	}
 	if nodeConf.IsMonitor {
 		roles = append(roles, constants.MonitorRole)
+	}
+	if nodeConf.IsAWMRelayer {
+		roles = append(roles, constants.AWMRelayerRole)
 	}
 	return roles
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -77,7 +78,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 | |__| |  __/ || (_| | | \__ \
 |_____/ \___|\__\__,_|_|_|___/
 `
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Parameter", "Value"}
 	table.SetHeader(header)
@@ -136,7 +137,7 @@ func printGasTable(genesis core.Genesis) {
                                             |___/
 `
 
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Gas Parameter", "Value"}
 	table.SetHeader(header)
@@ -165,7 +166,7 @@ func printAirdropTable(genesis core.Genesis, sc models.Sidecar) error {
                                | |
                                |_|
 `
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
 	teleporterKeyAddress := ""
 	teleporterPrivKey := ""
 	if sc.TeleporterReady {
@@ -225,7 +226,7 @@ func printPrecompileTable(genesis core.Genesis) {
                                     |_|
 
 `
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
 
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Precompile", "Admin Addresses", "Enabled Addresses"}

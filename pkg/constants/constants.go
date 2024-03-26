@@ -52,13 +52,14 @@ const (
 	APIRequestTimeout   = 30 * time.Second
 	FastGRPCDialTimeout = 100 * time.Millisecond
 
-	SSHServerStartTimeout = 1 * time.Minute
-	SSHScriptTimeout      = 2 * time.Minute
-	SSHDirOpsTimeout      = 10 * time.Second
-	SSHFileOpsTimeout     = 30 * time.Second
-	SSHPOSTTimeout        = 10 * time.Second
-	SSHSleepBetweenChecks = 1 * time.Second
-	SSHShell              = "/bin/bash"
+	SSHServerStartTimeout       = 1 * time.Minute
+	SSHScriptTimeout            = 2 * time.Minute
+	SSHLongRunningScriptTimeout = 5 * time.Minute
+	SSHDirOpsTimeout            = 10 * time.Second
+	SSHFileOpsTimeout           = 30 * time.Second
+	SSHPOSTTimeout              = 10 * time.Second
+	SSHSleepBetweenChecks       = 1 * time.Second
+	SSHShell                    = "/bin/bash"
 
 	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
 
@@ -154,6 +155,7 @@ const (
 	AvalanchegoAPIPort                           = 9650
 	AvalanchegoP2PPort                           = 9651
 	AvalanchegoGrafanaPort                       = 3000
+	AvalanchegoLokiPort                          = 23101
 	CloudServerStorageSize                       = 1000
 	MonitoringCloudServerStorageSize             = 50
 	OutboundPort                                 = 0
@@ -161,7 +163,7 @@ const (
 	// Disable it for releases to save cluster creation time
 	EnableSetupCLIFromSource           = false
 	SetupCLIFromSourceBranch           = "main"
-	BuildEnvGolangVersion              = "1.21.1"
+	BuildEnvGolangVersion              = "1.22.1"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile         = "avalancheGoVersion.json"
@@ -289,6 +291,7 @@ const (
 	APIRole                      = "API"
 	ValidatorRole                = "Validator"
 	MonitorRole                  = "Monitor"
+	AWMRelayerRole               = "Relayer"
 	LoadTestRole                 = "LoadTest"
 	DefaultWalletCreationTimeout = 5 * time.Second
 
