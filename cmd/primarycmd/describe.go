@@ -63,19 +63,19 @@ func describe(_ *cobra.Command, _ []string) error {
 		teleporterRegistryAddress  string
 	)
 	if network.Kind == models.Local {
-		extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app)
-		if err != nil {
+		if extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app); err != nil {
 			return err
+		} else {
+			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
 		}
-		teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
-		teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
 	} else if network.ClusterName != "" {
-		clusterConfig, err := app.GetClusterConfig(network.ClusterName)
-		if err != nil {
+		if clusterConfig, err := app.GetClusterConfig(network.ClusterName); err != nil {
 			return err
+		} else {
+			teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
+			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
 		}
-		teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
-		teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
 	}
 	blockchainID, err := subnet.GetChainID(network, "C")
 	if err != nil {
