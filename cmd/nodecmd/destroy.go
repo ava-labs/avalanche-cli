@@ -8,7 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
 
@@ -106,11 +108,10 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err := getDeleteConfigConfirmation(); err != nil {
 		return err
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	nodesToStop, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	nodesToStop := clusterNodes
 	monitoringNode, err := getClusterMonitoringNode(clusterName)
 	if err != nil {
 		return err
@@ -118,6 +119,12 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if monitoringNode != "" {
 		nodesToStop = append(nodesToStop, monitoringNode)
 	}
+	// stop all load test nodes if specified
+	ltHostsToStop, err := getClusterLoadTestNodes(clusterName)
+	if err != nil {
+		return err
+	}
+	nodesToStop = append(nodesToStop, ltHostsToStop...)
 	awmRelayerHost, err := getAWMRelayerHost(clusterName)
 	if err != nil {
 		return err
@@ -208,6 +215,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser("All nodes in cluster %s are successfully destroyed!", clusterName)
 	}
+
 	return removeClustersConfigFiles(clusterName)
 }
 
@@ -224,6 +232,18 @@ func getClusterMonitoringNode(clusterName string) (string, error) {
 		return "", fmt.Errorf("cluster %q does not exist", clusterName)
 	}
 	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
+}
+
+// getClusterLoadTestNodes returns the cloud IDs of the load test nodes in the cluster
+func getClusterLoadTestNodes(clusterName string) ([]string, error) {
+	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
+	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
+	if err != nil {
+		return nil, err
+	}
+	return utils.Map(separateHosts, func(host *models.Host) string {
+		return host.GetCloudID()
+	}), nil
 }
 
 func checkCluster(clusterName string) error {
