@@ -3,12 +3,12 @@
 package nodecmd
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -45,29 +45,34 @@ func list(_ *cobra.Command, _ []string) error {
 	sort.Strings(clusterNames)
 	for _, clusterName := range clusterNames {
 		clusterConf := clustersConfig.Clusters[clusterName]
-		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
 		if err := checkCluster(clusterName); err != nil {
 			return err
 		}
+		nodeIDs := []string{}
 		for _, cloudID := range clusterConf.GetCloudIDs() {
-			nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-			if err != nil {
-				return err
-			}
 			nodeIDStr := "----------------------------------------"
 			if clusterConf.IsAvalancheGoHost(cloudID) {
 				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
 				if err != nil {
-					return err
+					ux.Logger.PrintToUser(logging.Yellow.Wrap("could not obtain node ID for nodes %s: %s"), cloudID, err)
+				} else {
+					nodeIDStr = nodeID.String()
 				}
-				nodeIDStr = nodeID.String()
+			}
+			nodeIDs = append(nodeIDs, nodeIDStr)
+		}
+		ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
+		for i, cloudID := range clusterConf.GetCloudIDs() {
+			nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+			if err != nil {
+				return err
 			}
 			roles := clusterConf.GetHostRoles(nodeConfig)
 			rolesStr := strings.Join(roles, ",")
 			if rolesStr != "" {
 				rolesStr = " [" + rolesStr + "]"
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("  Node %s (%s) %s%s", cloudID, nodeIDStr, nodeConfig.ElasticIP, rolesStr))
+			ux.Logger.PrintToUser("  Node %s (%s) %s%s", cloudID, nodeIDs[i], nodeConfig.ElasticIP, rolesStr)
 		}
 	}
 	return nil
