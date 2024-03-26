@@ -125,6 +125,10 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	nodesToStop = append(nodesToStop, ltHostsToStop...)
+	awmRelayerHost, err := getAWMRelayerHost(clusterName)
+	if err != nil {
+		return err
+	}
 	nodeErrors := map[string]error{}
 	lastRegion := ""
 	var ec2Svc *awsAPI.AwsCloud
@@ -159,6 +163,12 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					continue
 				}
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
+			}
+			if awmRelayerHost != nil {
+				if err := deleteAWSAWMRelayerSecurityGroupRule(ec2Svc, &nodeConfig, awmRelayerHost); err != nil {
+					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+						awmRelayerHost.IP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+				}
 			}
 			if err = deleteMonitoringSecurityGroupRule(ec2Svc, nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
 				ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",

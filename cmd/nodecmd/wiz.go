@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -272,6 +273,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if err := setAWMRelayerHost(awmRelayerHost); err != nil {
+				return err
+			}
+			if err := setAWMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
 				return err
 			}
 		} else {
@@ -797,4 +801,58 @@ func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
 		}
 	}
 	return filteredHosts, nil
+}
+
+func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	hasGCPNodes := false
+	lastRegion := ""
+	var ec2Svc *awsAPI.AwsCloud
+	for _, cloudID := range clusterConfig.GetCloudIDs() {
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return err
+		}
+		switch {
+		case nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService:
+			if nodeConfig.Region != lastRegion {
+				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
+				if err != nil {
+					return err
+				}
+				lastRegion = nodeConfig.Region
+			}
+			securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(nodeConfig.SecurityGroup)
+			if err != nil {
+				return err
+			}
+			if !securityGroupExists {
+				return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
+			}
+			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort); !inSG {
+				if err = ec2Svc.AddSecurityGroupRule(
+					*sg.GroupId,
+					"ingress",
+					"tcp",
+					awmRelayerHost.IP+constants.IPAddressSuffix,
+					constants.AvalanchegoAPIPort,
+				); err != nil {
+					return err
+				}
+			}
+		case nodeConfig.CloudService == constants.GCPCloudService:
+			hasGCPNodes = true
+		default:
+			return fmt.Errorf("cloud %s is not supported", nodeConfig.CloudService)
+		}
+	}
+	if hasGCPNodes {
+		if err := setGCPAWMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
+			return err
+		}
+	}
+	return nil
 }
