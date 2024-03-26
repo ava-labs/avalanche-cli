@@ -577,7 +577,7 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Build Env",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupBuildEnv.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
 	)
