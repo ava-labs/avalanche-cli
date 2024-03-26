@@ -8,7 +8,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -52,9 +51,8 @@ func list(_ *cobra.Command, _ []string) error {
 		for _, cloudID := range clusterConf.GetCloudIDs() {
 			nodeIDStr := "----------------------------------------"
 			if clusterConf.IsAvalancheGoHost(cloudID) {
-				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
-				if err != nil {
-					ux.Logger.PrintToUser(logging.Yellow.Wrap("could not obtain node ID for nodes %s: %s"), cloudID, err)
+				if nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID)); err != nil {
+					ux.Logger.RedXToUser("could not obtain node ID for nodes %s: %s", cloudID, err)
 				} else {
 					nodeIDStr = nodeID.String()
 				}
