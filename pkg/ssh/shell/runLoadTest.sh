@@ -3,5 +3,5 @@
 if [ -e {{ .LoadTestResultFile }} ]; then
   rm {{ .LoadTestResultFile }}
 fi
-eval {{ .LoadTestCommand }} > {{ .LoadTestResultFile }} 2> /dev/null &
+nohup {{ .LoadTestCommand }} > {{ .LoadTestResultFile }} 2>&1 &
 exit
