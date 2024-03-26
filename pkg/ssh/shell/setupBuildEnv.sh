@@ -13,7 +13,7 @@ install_go() {
   fi
   cd ~
   sudo rm -rf $GOFILE go
-  wget -nv https://go.dev/dl/$GOFILE
+  wget -q -nv https://go.dev/dl/$GOFILE
   tar xfz $GOFILE
   echo >> ~/.bashrc
   echo export PATH=\$PATH:~/go/bin:~/bin >> ~/.bashrc

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #name:TASK [download monitoring script]
-wget -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-monitoring/main/grafana/monitoring-installer.sh
+wget -q -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-monitoring/main/grafana/monitoring-installer.sh
 #name:TASK [modify permission for monitoring script]
 chmod 755 monitoring-installer.sh
 #name:TASK [set up Prometheus]
