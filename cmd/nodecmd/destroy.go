@@ -158,7 +158,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 			}
 			if awmRelayerHost != nil {
-				if err := deleteAWMRelayerSecurityGroupRule(ec2Svc, &nodeConfig, awmRelayerHost); err != nil {
+				if err := deleteAWSAWMRelayerSecurityGroupRule(ec2Svc, &nodeConfig, awmRelayerHost); err != nil {
 					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
 						awmRelayerHost.IP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
 				}

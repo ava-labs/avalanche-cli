@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -801,11 +802,36 @@ func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
 	return filteredHosts, nil
 }
 
+func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *models.Host) error {
+	gcpClient, _, _, _, projectName, err := getGCPConfig(true)
+	if err != nil {
+		return err
+	}
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return err
+	}
+	networkName := fmt.Sprintf("%s-network", prefix)
+	firewallName := fmt.Sprintf("%s-%s-relayer", networkName, strings.ReplaceAll(awmRelayerHost.IP, ".", ""))
+	ports := []string{
+		strconv.Itoa(constants.AvalanchegoAPIPort),
+	}
+	return gcpClient.AddFirewall(
+		awmRelayerHost.IP,
+		networkName,
+		projectName,
+		firewallName,
+		ports,
+		false,
+	)
+}
+
 func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
+	hasGCPNodes := false
 	lastRegion := ""
 	var ec2Svc *awsAPI.AwsCloud
 	for _, cloudID := range clusterConfig.GetCloudIDs() {
@@ -840,12 +866,19 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 					return err
 				}
 			}
+		} else if nodeConfig.CloudService == constants.GCPCloudService {
+			hasGCPNodes = true
+		}
+	}
+	if hasGCPNodes {
+		if err := setGCPAWMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func deleteAWMRelayerSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, nodeConfig *models.NodeConfig, awmRelayerHost *models.Host) error {
+func deleteAWSAWMRelayerSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, nodeConfig *models.NodeConfig, awmRelayerHost *models.Host) error {
 	if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 		securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(nodeConfig.SecurityGroup)
 		if err != nil {
