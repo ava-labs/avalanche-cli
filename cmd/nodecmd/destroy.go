@@ -227,13 +227,16 @@ func getClusterMonitoringNode(clusterName string) (string, error) {
 // getClusterLoadTestNodes returns the cloud IDs of the load test nodes in the cluster
 func getClusterLoadTestNodes(clusterName string) ([]string, error) {
 	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
-	separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
-	if err != nil {
-		return nil, err
+	if utils.FileExists(separateHostInventoryPath) {
+		separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
+		if err != nil {
+			return nil, err
+		}
+		return utils.Map(separateHosts, func(host *models.Host) string {
+			return host.GetCloudID()
+		}), nil
 	}
-	return utils.Map(separateHosts, func(host *models.Host) string {
-		return host.GetCloudID()
-	}), nil
+	return nil, nil
 }
 
 func checkCluster(clusterName string) error {
