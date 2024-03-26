@@ -167,8 +167,8 @@ func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userI
 	if err != nil || !securityGroupExists {
 		return fmt.Errorf("can't find security group %s in %s cloud region %s with err: %w", sgName, constants.AWSCloudService, region, err)
 	}
-	ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
-	ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+	ipInTCP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
+	ipInHTTP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
 	if ipInTCP {
 		ux.Logger.RedXToUser("IP %s is already whitelisted in %s cloud region %s for ssh access. Skipping...", userIPAddress, constants.AWSCloudService, region)
 	} else {

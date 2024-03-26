@@ -485,8 +485,8 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 	return sgID, nil
 }
 
-// CheckUserIPInSg checks if the user IP is present in the SecurityGroup.
-func CheckUserIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
+// CheckIPInSg checks if the IP is present in the SecurityGroup.
+func CheckIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
 	for _, ipPermission := range sg.IpPermissions {
 		for _, ip := range ipPermission.IpRanges {
 			if strings.Contains(*ip.CidrIp, currentIP) {
