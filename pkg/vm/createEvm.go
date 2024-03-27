@@ -16,9 +16,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
+	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -116,7 +118,13 @@ func createEvmGenesis(
 
 	// set non nil durango start block height 0
 	// TODO: check if needed to set on subnet deploy to a specific network
-	conf.MandatoryNetworkUpgrades = params.GetMandatoryNetworkUpgrades(constants.LocalNetworkID)
+	conf.NetworkUpgrades = params.NetworkUpgrades{
+		SubnetEVMTimestamp: utils.NewUint64(0),
+		DurangoTimestamp:   utils.NewUint64(0),
+	}
+	conf.AvalancheContext = params.AvalancheContext{
+		SnowCtx: &snow.Context{},
+	}
 
 	const (
 		descriptorsState = "descriptors"

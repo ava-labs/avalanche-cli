@@ -864,7 +864,7 @@ func FundLedgerAddress(amount uint64) error {
 		Addrs:     []ids.ShortID{ledgerAddr},
 	}
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.X().AVAXAssetID()},
+		Asset: avax.Asset{ID: wallet.X().Builder().Context().AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
@@ -894,7 +894,7 @@ func FundLedgerAddress(amount uint64) error {
 
 	// import X-Chain genesis addr to P-Chain ledger addr
 	fmt.Println("*** Please sign import hash on the ledger device *** ")
-	if _, err = wallet.P().IssueImportTx(wallet.X().BlockchainID(), &to); err != nil {
+	if _, err = wallet.P().IssueImportTx(wallet.X().Builder().Context().BlockchainID, &to); err != nil {
 		return err
 	}
 

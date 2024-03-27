@@ -328,7 +328,7 @@ func transferF(*cobra.Command, []string) error {
 			amountPlusFee = amount + fee
 		}
 		output := &avax.TransferableOutput{
-			Asset: avax.Asset{ID: wallet.P().AVAXAssetID()},
+			Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
 			Out: &secp256k1fx.TransferOutput{
 				Amt:          amountPlusFee,
 				OutputOwners: to,
@@ -341,7 +341,7 @@ func transferF(*cobra.Command, []string) error {
 			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
 		}
 		unsignedTx, err := wallet.P().Builder().NewExportTx(
-			wallet.X().BlockchainID(),
+			wallet.X().Builder().Context().BlockchainID,
 			outputs,
 		)
 		if err != nil {
@@ -439,7 +439,7 @@ func transferF(*cobra.Command, []string) error {
 				wallet,
 				ledgerIndex != wrongLedgerIndexVal,
 				true,
-				wallet.P().AVAXAssetID(),
+				wallet.P().Builder().Context().AVAXAssetID,
 				amount+fee*1,
 				&to,
 			)
