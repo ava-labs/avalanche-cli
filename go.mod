@@ -2,8 +2,6 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.21
 
-replace github.com/ava-labs/subnet-evm => ../subnet-evm/
-
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.7.7-0.20240322131413-e03e43a36107
