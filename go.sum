@@ -78,6 +78,8 @@ github.com/ava-labs/avalanche-network-runner v1.7.6 h1:2yXa2Zq099t900ffpn0RG9D5d
 github.com/ava-labs/avalanche-network-runner v1.7.6/go.mod h1:+Br4mCjreTMtnDiUDNXJba500fnchMk0Ygu5qWVj6A4=
 github.com/ava-labs/avalanche-network-runner v1.7.7-0.20240322131413-e03e43a36107 h1:wWn/R0MeqXbrBhjrxESF+/FV9Qb62XhX/2mm6xtPC6c=
 github.com/ava-labs/avalanche-network-runner v1.7.7-0.20240322131413-e03e43a36107/go.mod h1:exAb5aG32vslXT14LLGPtQnI87Asyqso7FbET4PCeoU=
+github.com/ava-labs/avalanche-network-runner v1.7.7 h1:Oz+ZY32tkvIMY1/JHEADKplEkZYuL5ytLa9jKeb256o=
+github.com/ava-labs/avalanche-network-runner v1.7.7/go.mod h1:exAb5aG32vslXT14LLGPtQnI87Asyqso7FbET4PCeoU=
 github.com/ava-labs/avalanchego v1.11.1 h1:NSelfZ/Di8uGCsRoFK32HOR262eHlpUFmAu8pbfg0Jo=
 github.com/ava-labs/avalanchego v1.11.1/go.mod h1:+UpgT8X2fNN93+iE100efkZL7ePfBRfRdmpJ/i3YnyY=
 github.com/ava-labs/avalanchego v1.11.3 h1:Fgf2R46SFsbe3dbaCu0vFPaA8F1zMqdf6Y/NYjG/wcA=
