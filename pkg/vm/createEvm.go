@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
@@ -120,6 +121,9 @@ func createEvmGenesis(
 	conf.NetworkUpgrades = params.NetworkUpgrades{
 		SubnetEVMTimestamp: utils.NewUint64(0),
 		DurangoTimestamp:   utils.NewUint64(0),
+	}
+	conf.AvalancheContext = params.AvalancheContext{
+		SnowCtx: &snow.Context{},
 	}
 
 	const (
