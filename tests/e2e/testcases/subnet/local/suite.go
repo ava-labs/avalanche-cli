@@ -162,9 +162,9 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		// wait for the last node to be current validator
 		time.Sleep(constants.StakingMinimumLeadTime)
 
-		isPendingValidator, err := utils.CheckAllNodesAreCurrentValidators(subnetName)
+		areCurrentValidators, err := utils.CheckAllNodesAreCurrentValidators(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(isPendingValidator).Should(gomega.BeTrue())
+		gomega.Expect(areCurrentValidators).Should(gomega.BeTrue())
 
 		exists, err := utils.AllPermissionlessValidatorExistsInSidecar(subnetName, localNetwork)
 		gomega.Expect(err).Should(gomega.BeNil())

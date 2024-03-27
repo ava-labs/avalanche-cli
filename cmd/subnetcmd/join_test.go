@@ -28,16 +28,6 @@ func TestIsNodeValidatingSubnet(t *testing.T) {
 			},
 		}, nil)
 
-	pClient.On("GetPendingValidators", mock.Anything, mock.Anything, mock.Anything).Return(
-		[]interface{}{}, nil, nil).Once()
-
-	interfaceReturn := make([]interface{}, 1)
-	val := map[string]interface{}{
-		"nodeID": nonValidator.String(),
-	}
-	interfaceReturn[0] = val
-	pClient.On("GetPendingValidators", mock.Anything, mock.Anything, mock.Anything).Return(interfaceReturn, nil, nil)
-
 	// first pass: should return true for the GetCurrentValidators
 	isValidating, err := checkIsValidating(subnetID, nodeID, pClient)
 	require.NoError(err)
@@ -47,10 +37,4 @@ func TestIsNodeValidatingSubnet(t *testing.T) {
 	isValidating, err = checkIsValidating(subnetID, nonValidator, pClient)
 	require.NoError(err)
 	require.False(isValidating)
-
-	// third pass: The second mocked GetPendingValidators applies, and this time
-	// nonValidator is in the pending set, hence true
-	isValidating, err = checkIsValidating(subnetID, nonValidator, pClient)
-	require.NoError(err)
-	require.True(isValidating)
 }
