@@ -343,6 +343,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("")
 
 	if addMonitoring {
+		if customGrafanaDashboardPath != "" {
+			if err = addCustomDashboard(clusterName, subnetName); err != nil {
+				return err
+			}
+		}
 		// no need to check for error, as it's ok not to have monitoring host
 		monitoringHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
 		if len(monitoringHosts) > 0 {
