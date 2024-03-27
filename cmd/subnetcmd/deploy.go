@@ -892,7 +892,6 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error) {
 		SnowCtx: &snow.Context{},
 	}
 	if err := genesis.Verify(); err != nil {
-		fmt.Println(err)
 		return false, nil
 	}
 	return true, nil
