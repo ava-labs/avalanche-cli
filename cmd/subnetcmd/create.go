@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -46,6 +47,8 @@ var (
 	useLatestPreReleasedEvmVersion bool
 	useRepo                        bool
 	teleporterReady                bool
+	runRelayer                     bool
+	useWarp                        bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -79,7 +82,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&evmVersion, "vm-version", "", "version of Subnet-EVM template to use")
 	cmd.Flags().Uint64Var(&evmChainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token name to use with Subnet-EVM")
-	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles with Subnet-EVM")
+	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles/teleporter with Subnet-EVM")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestPreReleasedEvmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
 	cmd.Flags().BoolVar(&useLatestReleasedEvmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
@@ -90,7 +93,9 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
-	cmd.Flags().BoolVar(&teleporterReady, "teleporter", true, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
+	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&runRelayer, "relayer", false, "run AWM relayer when deploying the vm")
 	return cmd
 }
 
@@ -226,7 +231,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			evmChainID,
 			evmToken,
 			evmDefaults,
-			teleporterReady,
+			useWarp,
 		)
 		if err != nil {
 			return err
@@ -249,8 +254,35 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
-	if teleporterReady {
-		if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); isSubnetEVMGenesis {
+	if isSubnetEVMGenesis := jsonIsSubnetEVMGenesis(genesisBytes); isSubnetEVMGenesis {
+		if evmDefaults {
+			teleporterReady = true
+			runRelayer = true
+		}
+		teleporterReady, err = prompts.CaptureBoolFlag(
+			app.Prompt,
+			cmd,
+			"teleporter",
+			teleporterReady,
+			"Would you like to enable Teleporter on your VM?",
+		)
+		if err != nil {
+			return err
+		}
+		if teleporterReady && !useWarp {
+			return fmt.Errorf("warp should be enabled for teleporter to work")
+		}
+		if teleporterReady {
+			runRelayer, err = prompts.CaptureBoolFlag(
+				app.Prompt,
+				cmd,
+				"relayer",
+				runRelayer,
+				"Would you like to run AMW Relayer when deploying your VM?",
+			)
+			if err != nil {
+				return err
+			}
 			keyPath := app.GetKeyPath(constants.TeleporterKeyName)
 			var k *key.SoftKey
 			if utils.FileExists(keyPath) {
@@ -283,6 +315,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			sc.TeleporterReady = true
 			sc.TeleporterKey = constants.TeleporterKeyName
 			sc.TeleporterVersion = teleporterVersion
+			sc.RunRelayer = runRelayer
 		}
 	}
 

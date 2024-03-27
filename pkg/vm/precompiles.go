@@ -265,13 +265,13 @@ func getPrecompiles(
 	config params.ChainConfig,
 	app *application.Avalanche,
 	useDefaults bool,
-	teleporter bool,
+	useWarp bool,
 ) (
 	params.ChainConfig,
 	statemachine.StateDirection,
 	error,
 ) {
-	if useDefaults || teleporter {
+	if useDefaults || useWarp {
 		warpConfig := configureWarp()
 		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
 	}
@@ -285,7 +285,7 @@ func getPrecompiles(
 	first := true
 
 	remainingPrecompiles := []string{Warp, NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
-	if teleporter {
+	if useWarp {
 		remainingPrecompiles = []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
 	}
 
