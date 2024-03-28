@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"text/template"
@@ -242,16 +243,54 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 	)
 }
 
-func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string, customGrafanaDasboardPath string) error {
-	// TODO: download dashboards from github instead
+func replaceCustomVarDashboardValues(monitoringDashboardPath, customGrafanaDashboardFileName, chainID string) error {
+	sedScript := fmt.Sprintf("s/\"text\": \"CHAIN_ID_VAL\"/\"text\": \"%[1]v\"/g; s/\"value\": \"CHAIN_ID_VAL\"/\"value\": \"%[1]v\"/g; s/\"query\": \"CHAIN_ID_VAL\"/\"query\": \"%[1]v\"/g", chainID)
+	cmd := exec.Command("sed", "-i", "-e", sedScript, customGrafanaDashboardFileName)
+	cmd.Dir = monitoringDashboardPath
+	_, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
 	remoteDashboardsPath := "/home/ubuntu/dashboards"
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
-	if customGrafanaDasboardPath != "" && utils.FileExists(utils.ExpandHome(customGrafanaDasboardPath)) {
-		if err := utils.FileCopy(utils.ExpandHome(customGrafanaDasboardPath), filepath.Join(monitoringDashboardPath, "custom.json")); err != nil {
+	if customGrafanaDashboardPath != "" && utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
+		if err := utils.FileCopy(utils.ExpandHome(customGrafanaDashboardPath), filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON)); err != nil {
 			return err
 		}
+		if err := replaceCustomVarDashboardValues(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON, chainID); err != nil {
+			return err
+		}
+	}
+	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON),
+		filepath.Join(remoteDashboardsPath, constants.CustomGrafanaDashboardJSON),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Sync Grafana Dashboards",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/updateGrafanaDashboards.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
+	// TODO: download dashboards from github instead
+	remoteDashboardsPath := "/home/ubuntu/dashboards"
+	if !utils.DirectoryExists(monitoringDashboardPath) {
+		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
 	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
 		return err
