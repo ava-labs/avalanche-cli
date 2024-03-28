@@ -279,7 +279,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	spinSession.Stop()
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		}
+	}
 	fmt.Printf("getPrometheusTargets \n")
 	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
 	if err != nil {
