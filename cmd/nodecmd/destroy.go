@@ -9,17 +9,14 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
 )
@@ -120,9 +117,17 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		nodesToStop = append(nodesToStop, monitoringNode)
 	}
 	// stop all load test nodes if specified
-	ltHostsToStop, err := getClusterLoadTestNodes(clusterName)
+	ltHosts, err := getLoadTestInstancesInCluster(clusterName)
 	if err != nil {
 		return err
+	}
+	var ltHostsToStop []string
+	for _, loadTestName := range ltHosts {
+		ltInstance, err := getExistingLoadTestInstance(clusterName, loadTestName)
+		if err != nil {
+			return err
+		}
+		ltHostsToStop = append(ltHostsToStop, ltInstance)
 	}
 	nodesToStop = append(nodesToStop, ltHostsToStop...)
 	awmRelayerHost, err := getAWMRelayerHost(clusterName)
