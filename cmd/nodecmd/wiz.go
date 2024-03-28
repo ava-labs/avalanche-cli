@@ -280,6 +280,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	wg.Wait()
 	spinSession.Stop()
+	fmt.Printf("getPrometheusTargets \n")
 	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
 	if err != nil {
 		return err

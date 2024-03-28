@@ -403,6 +403,7 @@ func RunSSHUpdateLokiConfig(host *models.Host, port int) error {
 }
 
 func RunSSHSetupPromtail(host *models.Host) error {
+	fmt.Printf("setting up promtail for host %s \n", host.GetCloudID())
 	return RunOverSSH(
 		"Setup Promtail",
 		host,
@@ -423,6 +424,7 @@ func RunSSHSetupLoki(host *models.Host) error {
 }
 
 func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
+	fmt.Printf("RunSSHUpdatePromtailConfig %s \n", host.NodeID)
 	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
 	promtailConfig, err := os.CreateTemp("", "promtail")
 	if err != nil {
