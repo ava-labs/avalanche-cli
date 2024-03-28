@@ -234,6 +234,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
+
 	network, err := app.GetClusterNetwork(clusterName)
 	if err != nil {
 		return err
