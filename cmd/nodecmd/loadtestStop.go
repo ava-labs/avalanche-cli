@@ -93,7 +93,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	var removedLoadTestHosts []*models.Host
+	removedLoadTestHosts := []*models.Host{}
 	for _, loadTestName := range loadTestsToStop {
 		existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {

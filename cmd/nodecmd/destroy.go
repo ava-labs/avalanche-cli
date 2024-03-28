@@ -8,12 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
@@ -121,7 +119,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	var ltHostsToStop []string
+	ltHostsToStop := []string{}
 	for _, loadTestName := range ltHosts {
 		ltInstance, err := getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
@@ -237,21 +235,6 @@ func getClusterMonitoringNode(clusterName string) (string, error) {
 		return "", fmt.Errorf("cluster %q does not exist", clusterName)
 	}
 	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
-}
-
-// getClusterLoadTestNodes returns the cloud IDs of the load test nodes in the cluster
-func getClusterLoadTestNodes(clusterName string) ([]string, error) {
-	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
-	if utils.FileExists(separateHostInventoryPath) {
-		separateHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(separateHostInventoryPath)
-		if err != nil {
-			return nil, err
-		}
-		return utils.Map(separateHosts, func(host *models.Host) string {
-			return host.GetCloudID()
-		}), nil
-	}
-	return nil, nil
 }
 
 func checkCluster(clusterName string) error {
