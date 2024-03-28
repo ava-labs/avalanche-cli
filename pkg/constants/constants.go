@@ -54,9 +54,9 @@ const (
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute
-	SSHLongRunningScriptTimeout = 5 * time.Minute
+	SSHLongRunningScriptTimeout = 10 * time.Minute
 	SSHDirOpsTimeout            = 10 * time.Second
-	SSHFileOpsTimeout           = 30 * time.Second
+	SSHFileOpsTimeout           = 100 * time.Second
 	SSHPOSTTimeout              = 10 * time.Second
 	SSHSleepBetweenChecks       = 1 * time.Second
 	SSHShell                    = "/bin/bash"

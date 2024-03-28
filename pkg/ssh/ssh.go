@@ -103,7 +103,7 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, c
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
 		scriptInputs{AvalancheGoVersion: avalancheGoVersion, CLIVersion: cliVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
 	); err != nil {
@@ -144,7 +144,7 @@ func RunSSHSetupAWMRelayerService(host *models.Host) error {
 	return RunOverSSH(
 		"Setup AWM Relayer Service",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupRelayerService.sh",
 		scriptInputs{},
 	)
@@ -155,7 +155,7 @@ func RunSSHStartAWMRelayerService(host *models.Host) error {
 	return RunOverSSH(
 		"Starts AWM Relayer Service",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/startRelayerService.sh",
 		scriptInputs{},
 	)
@@ -166,7 +166,7 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 	return RunOverSSH(
 		"Stops AWM Relayer Service",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/stopRelayerService.sh",
 		scriptInputs{},
 	)
@@ -206,7 +206,7 @@ func RunSSHStartNode(host *models.Host) error {
 	return RunOverSSH(
 		"Start Avalanchego",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/startNode.sh",
 		scriptInputs{},
 	)
@@ -280,7 +280,7 @@ func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath
 	return RunOverSSH(
 		"Sync Grafana Dashboards",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/updateGrafanaDashboards.sh",
 		scriptInputs{},
 	)
@@ -311,7 +311,7 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 	return RunOverSSH(
 		"Sync Grafana Dashboards",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/updateGrafanaDashboards.sh",
 		scriptInputs{},
 	)
@@ -332,7 +332,7 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Machine Metrics",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupMachineMetrics.sh",
 		scriptInputs{},
 	)
@@ -342,7 +342,7 @@ func RunSSHSetupSeparateMonitoring(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Prometheus and Grafana",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupMonitoring.sh",
 		scriptInputs{
 			IsE2E: utils.IsE2E(),
@@ -370,7 +370,7 @@ func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePo
 	return RunOverSSH(
 		"Update Prometheus Config",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/updatePrometheusConfig.sh",
 		scriptInputs{},
 	)
@@ -396,7 +396,7 @@ func RunSSHUpdateLokiConfig(host *models.Host, port int) error {
 	return RunOverSSH(
 		"Update Loki Config",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/updateLokiConfig.sh",
 		scriptInputs{},
 	)
@@ -406,7 +406,7 @@ func RunSSHSetupPromtail(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Promtail",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupPromtail.sh",
 		scriptInputs{},
 	)
@@ -416,7 +416,7 @@ func RunSSHSetupLoki(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Loki",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupLoki.sh",
 		scriptInputs{},
 	)
@@ -443,7 +443,7 @@ func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID 
 	return RunOverSSH(
 		"Update Promtail Config",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/updatePromtailConfig.sh",
 		scriptInputs{},
 	)
@@ -528,7 +528,7 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	return RunOverSSH(
 		"Setup DevNet",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupDevnet.sh",
 		scriptInputs{IsE2E: utils.IsE2E()},
 	)
@@ -626,7 +626,7 @@ func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, load
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/buildLoadTest.sh",
 		scriptInputs{
 			LoadTestRepoDir: repoDirName,
@@ -640,7 +640,7 @@ func RunSSHBuildLoadTestDependencies(host *models.Host) error {
 	return RunOverSSH(
 		"Build Load Test",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/buildLoadTestDeps.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
 	)
@@ -650,7 +650,7 @@ func RunSSHRunLoadTest(host *models.Host, loadTestCommand, loadTestName string) 
 	return RunOverSSH(
 		"Run Load Test",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/runLoadTest.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand, LoadTestResultFile: fmt.Sprintf("/home/ubuntu/loadtest_%s.txt", loadTestName)},
 	)
@@ -661,7 +661,7 @@ func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	if !constants.EnableSetupCLIFromSource {
 		return nil
 	}
-	timeout := constants.SSHScriptTimeout
+	timeout := constants.SSHLongRunningScriptTimeout
 	if utils.IsE2E() && utils.E2EDocker() {
 		timeout = 10 * time.Minute
 	}
