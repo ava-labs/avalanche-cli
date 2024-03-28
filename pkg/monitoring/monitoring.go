@@ -24,6 +24,7 @@ type configInputs struct {
 	Port             string
 	Host             string
 	NodeID           string
+	ChainIDLogsPath  string
 }
 
 //go:embed dashboards/*
@@ -98,15 +99,16 @@ func WriteLokiConfig(filePath string, port string) error {
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WritePromtailConfig(filePath string, ip string, port string, host string, nodeID string) error {
+func WritePromtailConfig(filePath string, ip string, port string, host string, nodeID string, chainID string) error {
 	if !utils.IsValidIP(ip) {
 		return fmt.Errorf("invalid IP address: %s", ip)
 	}
 	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
-		IP:     ip,
-		Port:   port,
-		Host:   host,
-		NodeID: nodeID,
+		IP:              ip,
+		Port:            port,
+		Host:            host,
+		NodeID:          nodeID,
+		ChainIDLogsPath: fmt.Sprintf("/home/ubuntu/.avalanchego/logs/%s.log", chainID),
 	})
 	if err != nil {
 		return err

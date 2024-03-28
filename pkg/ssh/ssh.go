@@ -422,7 +422,7 @@ func RunSSHSetupLoki(host *models.Host) error {
 	)
 }
 
-func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID string, nodeID string) error {
+func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
 	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
 	promtailConfig, err := os.CreateTemp("", "promtail")
 	if err != nil {
@@ -430,7 +430,7 @@ func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID 
 	}
 	defer os.Remove(promtailConfig.Name())
 	// get NodeID
-	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID); err != nil {
+	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID, chainID); err != nil {
 		return err
 	}
 	if err := host.Upload(

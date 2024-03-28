@@ -317,11 +317,16 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	if err != nil {
+		return err
+	}
+
 	if len(monitoringHosts) > 0 {
 		if err := ssh.RunSSHSetupPromtail(currentLoadTestHost[0]); err != nil {
 			return err
 		}
-		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest"); err != nil {
+		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest", chainID); err != nil {
 			return err
 		}
 		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
@@ -331,11 +336,6 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
 			return err
 		}
-	}
-
-	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
-	if err != nil {
-		return err
 	}
 
 	if err := createClusterYAMLFile(clusterName, subnetID, chainID, currentLoadTestHost[0]); err != nil {
