@@ -568,21 +568,21 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
-					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
-					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				if err := ssh.RunSSHUpdateLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
-					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
+				//if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+				//	nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+				//	ux.SpinFailWithError(spinner, "", err)
+				//	return
+				//}
+				//if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
+				//	nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+				//	ux.SpinFailWithError(spinner, "", err)
+				//	return
+				//}
+				//if err := ssh.RunSSHUpdateLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
+				//	nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+				//	ux.SpinFailWithError(spinner, "", err)
+				//	return
+				//}
 				ux.SpinComplete(spinner)
 			}(&wgResults, monitoringHost)
 		}

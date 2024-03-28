@@ -248,6 +248,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	fmt.Printf("obtained chainID %s \n", chainID)
 	if err != nil {
 		return err
 	}
@@ -287,6 +288,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	fmt.Printf("getPrometheusTargets \n")
 	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
 	if err != nil {
+		fmt.Printf("we have err %s \n", err)
 		return err
 	}
 	monitoringHost := monitoringHosts[0]
@@ -294,6 +296,22 @@ func wiz(cmd *cobra.Command, args []string) error {
 	hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
 	spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
 	if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		fmt.Printf("we have err RunSSHUpdatePrometheusConfig %s \n", err)
+		return err
+	}
+	//if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+	//	nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+	//	ux.SpinFailWithError(spinner, "", err)
+	//	return
+	//}
+	if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
+		//nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+		ux.SpinFailWithError(spinner, "", err)
+		return err
+	}
+	if err := ssh.RunSSHUpdateLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
+		//nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 		ux.SpinFailWithError(spinner, "", err)
 		return err
 	}

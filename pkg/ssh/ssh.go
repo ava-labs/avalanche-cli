@@ -351,7 +351,6 @@ func RunSSHSetupSeparateMonitoring(host *models.Host) error {
 }
 
 func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts, loadTestPorts []string) error {
-	fmt.Printf("udpating prometheus confnig %s \n", host.GetCloudID())
 	const cloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
 	promConfig, err := os.CreateTemp("", "prometheus")
 	if err != nil {
