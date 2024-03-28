@@ -20,6 +20,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -515,4 +516,101 @@ func zoneToRegion(zone string) string {
 // isIPLimitExceededError checks if error is IP limit exceeded
 func isIPLimitExceededError(err error) bool {
 	return strings.Contains(err.Error(), "IP address quota exceeded") || strings.Contains(err.Error(), "Insufficient IP addresses")
+}
+
+// ListAttachedVolumes returns a list of attached volumes to the instance excluding the boot volume
+func (c *GcpCloud) GetRootVolumeID(instanceID string, zone string) (string, error) {
+	instance, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceID).Do()
+	if err != nil {
+		return "", err
+	}
+	for _, disk := range instance.Disks {
+		if disk.Boot {
+			return extractDiskIDFromURL(disk.Source), nil
+		}
+	}
+	return "", fmt.Errorf("no root volume found for instance %s", instanceID)
+}
+
+// extractDiskIDFromURL extracts the disk ID from the disk URL
+func extractDiskIDFromURL(url string) string {
+	parts := strings.Split(url, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return url
+}
+
+// ResizeVolume resizes the volume to the new size
+func (c *GcpCloud) ResizeVolume(volumeID string, zone string, newSizeGb int64) error {
+	disk, err := c.gcpClient.Disks.Get(c.projectID, zone, volumeID).Do()
+	if err != nil {
+		return err
+	}
+	if disk.SizeGb > newSizeGb {
+		return fmt.Errorf("new size %dGb must be greater than the current size %dGb", newSizeGb, disk.SizeGb)
+	} else {
+		operation, err := c.gcpClient.Disks.Resize(c.projectID, zone, volumeID, &compute.DisksResizeRequest{SizeGb: newSizeGb}).Do()
+		if err != nil {
+			return err
+		}
+		if err := c.waitForOperation(operation); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ChangeInstanceType changes the instance type of the instance on-the-fly
+func (c *GcpCloud) ChangeInstanceType(instanceID, zone, machineType string) error {
+	// check if new and current machine types are the same
+	instance, err := c.gcpClient.Instances.Get(c.projectID, zone, instanceID).Do()
+	if err != nil {
+		return err
+	}
+	currentMachineType := instance.MachineType
+
+	if strings.HasSuffix(currentMachineType, fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType)) {
+		return fmt.Errorf("instance %s is already of type %s", instanceID, machineType)
+	}
+	// stop the instance
+	op, err := c.gcpClient.Instances.Stop(c.projectID, zone, instanceID).Do()
+	if err != nil {
+		return err
+	}
+	if err := c.waitForOperation(op); err != nil {
+		return err
+	}
+	// update the machine type
+	op, err = c.gcpClient.Instances.SetMachineType(c.projectID, zone, instanceID, &compute.InstancesSetMachineTypeRequest{
+		MachineType: fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType),
+	}).Do()
+	if err != nil {
+		return err
+	}
+	if err := c.waitForOperation(op); err != nil {
+		return err
+	}
+	// start the instance
+	op, err = c.gcpClient.Instances.Start(c.projectID, zone, instanceID).Do()
+	if err != nil {
+		return err
+	}
+	if err := c.waitForOperation(op); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// IsInstanceTypeSupported checks if the machine type is supported in the zone
+func (c *GcpCloud) IsInstanceTypeSupported(machineType string, zone string) (bool, error) {
+	machineTypes, err := c.gcpClient.MachineTypes.List(c.projectID, zone).Do()
+	if err != nil {
+		return false, err
+	}
+	supportedMachineTypes := utils.Map(machineTypes.Items, func(mt *compute.MachineType) string {
+		return mt.Name
+	})
+	return slices.Contains(supportedMachineTypes, machineType), nil
 }
