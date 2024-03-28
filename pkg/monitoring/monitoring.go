@@ -24,6 +24,7 @@ type configInputs struct {
 	Port             string
 	Host             string
 	NodeID           string
+	ChainIDLogsPath  string
 }
 
 //go:embed dashboards/*
