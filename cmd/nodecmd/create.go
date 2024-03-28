@@ -614,25 +614,25 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					return
 				}
 				ux.SpinComplete(spinner)
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Logging"))
-				if err := ssh.RunSSHSetupPromtail(host); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				cloudID := host.GetCloudID()
-				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
-				if err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				if err = ssh.RunSSHUpdatePromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String()); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				ux.SpinComplete(spinner)
+				//spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Logging"))
+				//if err := ssh.RunSSHSetupPromtail(host); err != nil {
+				//	nodeResults.AddResult(host.NodeID, nil, err)
+				//	ux.SpinFailWithError(spinner, "", err)
+				//	return
+				//}
+				//cloudID := host.GetCloudID()
+				//nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+				//if err != nil {
+				//	nodeResults.AddResult(host.NodeID, nil, err)
+				//	ux.SpinFailWithError(spinner, "", err)
+				//	return
+				//}
+				//if err = ssh.RunSSHUpdatePromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String()); err != nil {
+				//	nodeResults.AddResult(host.NodeID, nil, err)
+				//	ux.SpinFailWithError(spinner, "", err)
+				//	return
+				//}
+				//ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
 			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {

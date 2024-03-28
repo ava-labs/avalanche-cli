@@ -234,7 +234,63 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
-
+	////
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	spinSession := ux.NewUserSpinner()
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			if addMonitoring {
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Logging"))
+				if err := ssh.RunSSHSetupPromtail(host); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				cloudID := host.GetCloudID()
+				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+				if err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err = ssh.RunSSHUpdatePromtailConfig(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String()); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.SpinComplete(spinner)
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	spinSession.Stop()
+	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+	if err != nil {
+		return err
+	}
+	monitoringHost := monitoringHosts[0]
+	// remove monitoring host from created hosts list
+	hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
+	spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
+	if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		return err
+	}
+	ux.SpinComplete(spinner)
+	spinSession.Stop()
+	////
 	network, err := app.GetClusterNetwork(clusterName)
 	if err != nil {
 		return err
