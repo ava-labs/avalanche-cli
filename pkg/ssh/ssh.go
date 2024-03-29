@@ -449,6 +449,33 @@ func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID 
 	)
 }
 
+func RunSSHUpdatePromtailConfigHyperSDK(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
+	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
+	promtailConfig, err := os.CreateTemp("", "promtailHypersdk")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promtailConfig.Name())
+	// get NodeID
+	if err := monitoring.WritePromtailConfigHyperSDK(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID, chainID); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		promtailConfig.Name(),
+		cloudNodePromtailConfigTemp,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Update Promtail Config",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/updatePromtailConfig.sh",
+		scriptInputs{},
+	)
+}
+
 func RunSSHDownloadNodePrometheusConfig(host *models.Host, nodeInstanceDirPath string) error {
 	return host.Download(
 		constants.CloudNodePrometheusConfigPath,
