@@ -93,7 +93,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	removedLoadTestHosts := make([]*models.Host, len(loadTestsToStop))
+	removedLoadTestHosts := []*models.Host{}
 	for _, loadTestName := range loadTestsToStop {
 		existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
@@ -149,8 +149,8 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*models.Host, clusterName, separateHostInventoryPath string) error {
 	var remainingLoadTestHosts []*models.Host
 	for _, loadTestHost := range separateHosts {
-		hosts := utils.Filter(removedLoadTestHosts, func(h *models.Host) bool { return h.IP == loadTestHost.IP })
-		if len(hosts) == 0 {
+		filteredHosts := utils.Filter(removedLoadTestHosts, func(h *models.Host) bool { return h.IP == loadTestHost.IP })
+		if len(filteredHosts) == 0 {
 			remainingLoadTestHosts = append(remainingLoadTestHosts, loadTestHost)
 		}
 	}
