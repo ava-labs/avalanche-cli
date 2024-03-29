@@ -119,15 +119,13 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ltHostsToStop := []string{}
 	for _, loadTestName := range ltHosts {
 		ltInstance, err := getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
 			return err
 		}
-		ltHostsToStop = append(ltHostsToStop, ltInstance)
+		nodesToStop = append(nodesToStop, ltInstance)
 	}
-	nodesToStop = append(nodesToStop, ltHostsToStop...)
 	awmRelayerHost, err := getAWMRelayerHost(clusterName)
 	if err != nil {
 		return err
