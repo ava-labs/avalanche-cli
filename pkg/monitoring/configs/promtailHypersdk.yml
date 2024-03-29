@@ -47,7 +47,7 @@ scrape_configs:
     - targets:
         - localhost
       labels:
-        job: main
+        job: hypersdk
         host: { { .Host } }
         nodeID: { { .NodeID } }
         __path__: {{ .ChainID }}
