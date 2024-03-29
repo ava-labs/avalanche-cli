@@ -4,6 +4,8 @@
 if [ -d {{ .LoadTestRepoDir }} ]; then
   rm -r {{ .LoadTestRepoDir }}
 fi
+echo "final check to ensure that gcc is installed ..."
+gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
 git clone {{ .LoadTestRepo }}
 echo "getting load test repo ..."
 cd {{ .LoadTestRepoDir }}
