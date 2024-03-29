@@ -637,7 +637,7 @@ func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, load
 }
 
 func RunSSHBuildLoadTestDependencies(host *models.Host) error {
-	return StreamOverSSH(
+	return RunOverSSH(
 		"Build Load Test",
 		host,
 		constants.SSHLongRunningScriptTimeout,
