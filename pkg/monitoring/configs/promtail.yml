@@ -44,6 +44,13 @@ scrape_configs:
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
         __path__: /home/ubuntu/.avalanchego/logs/main.log
+    - targets:
+        - localhost
+      labels:
+        job: hypersdk
+        host: { { .Host } }
+        nodeID: { { .NodeID } }
+        __path__: /home/ubuntu/.avalanchego/logs/215Mee3vumhozR3kkVtfrxz263bpaE8BmbGszzBHUgLF7HKnCp.log
   - job_name: avalanchego-loadtest
     static_configs:
     - targets:
