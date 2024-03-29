@@ -119,6 +119,7 @@ func WritePromtailConfigHyperSDK(filePath string, ip string, port string, host s
 	if !utils.IsValidIP(ip) {
 		return fmt.Errorf("invalid IP address: %s", ip)
 	}
+	fmt.Printf("WritePromtailConfigHyperSDK %s, nodeID %s \n ", host, nodeID)
 	config, err := GenerateConfig("configs/promtailHypersdk.yml", "Promtail Config", configInputs{
 		IP:      ip,
 		Port:    port,

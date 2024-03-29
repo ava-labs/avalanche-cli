@@ -334,6 +334,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 				//}
 				cloudID := host.GetCloudID()
 				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+				fmt.Printf("Setup HyperSDK Logging cloud id %s nodeId %s", cloudID, nodeID)
 				if err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)

@@ -48,8 +48,8 @@ scrape_configs:
         - localhost
       labels:
         job: hypersdk
-        host: { { .Host } }
-        nodeID: { { .NodeID } }
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
         __path__: {{ .ChainID }}
   - job_name: avalanchego-loadtest
     static_configs:
