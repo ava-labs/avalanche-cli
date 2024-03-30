@@ -384,26 +384,29 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 		return err
 	}
 	for _, host := range hosts {
+		if !addMonitoring {
+			continue
+		}
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(host *models.Host) {
 			defer wg.Done()
 			if addMonitoring {
 				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
 				cloudID := host.GetCloudID()
 				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
 				if err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
+					wgResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
 				if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
+					wgResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
 				ux.SpinComplete(spinner)
 			}
-		}(&wgResults, host)
+		}(host)
 	}
 	wg.Wait()
 	for _, node := range hosts {
