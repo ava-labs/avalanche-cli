@@ -765,16 +765,15 @@ func RunSSHDownloadFile(host *models.Host, filePath string, localFilePath string
 	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
 }
 
-func RunSSHUpdatePromtailConfigHyperSDK(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
+func RunSSHUpdatePromtailConfigSubnet(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
 	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
-	promtailConfig, err := os.CreateTemp("", "promtailHypersdk")
+	promtailConfig, err := os.CreateTemp("", "promtailSubnet")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(promtailConfig.Name())
 	// get NodeID
-	chainIDPath := "/home/ubuntu/.avalanchego/logs/215Mee3vumhozR3kkVtfrxz263bpaE8BmbGszzBHUgLF7HKnCp.log"
-	if err := monitoring.WritePromtailConfigHyperSDK(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID, chainIDPath); err != nil {
+	if err := monitoring.WritePromtailConfigSubnet(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID, fmt.Sprintf("/home/ubuntu/.avalanchego/logs/%s.log", chainID)); err != nil {
 		return err
 	}
 	if err := host.Upload(

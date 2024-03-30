@@ -115,12 +115,11 @@ func WritePromtailConfig(filePath string, ip string, port string, host string, n
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WritePromtailConfigHyperSDK(filePath string, ip string, port string, host string, nodeID string, chainID string) error {
+func WritePromtailConfigSubnet(filePath string, ip string, port string, host string, nodeID string, chainID string) error {
 	if !utils.IsValidIP(ip) {
 		return fmt.Errorf("invalid IP address: %s", ip)
 	}
-	fmt.Printf("WritePromtailConfigHyperSDK %s, nodeID %s \n ", host, nodeID)
-	config, err := GenerateConfig("configs/promtailHypersdk.yml", "Promtail Config", configInputs{
+	config, err := GenerateConfig("configs/promtailSubnet.yml", "Promtail Config", configInputs{
 		IP:      ip,
 		Port:    port,
 		Host:    host,

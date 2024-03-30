@@ -393,7 +393,7 @@ func setUpSubnetLogs(clusterName string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err = ssh.RunSSHUpdatePromtailConfigHyperSDK(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+				if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
