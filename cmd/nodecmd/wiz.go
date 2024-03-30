@@ -423,6 +423,7 @@ func setUpSubnetLogging(clusterName string) error {
 	}
 	ux.SpinComplete(spinner)
 	spinSession.Stop()
+	return nil
 }
 
 func hasTeleporterDeploys(
