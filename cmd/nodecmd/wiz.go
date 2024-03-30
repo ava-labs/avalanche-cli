@@ -303,9 +303,65 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
 	}
-	if err = setUpSubnetLogs(clusterName); err != nil {
+
+	// set up subnet logs in Loki
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	spinSession := ux.NewUserSpinner()
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
 		return err
 	}
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	if err != nil {
+		return err
+	}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			if addMonitoring {
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
+				cloudID := host.GetCloudID()
+				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+				if err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.SpinComplete(spinner)
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		}
+	}
+	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+	if err != nil {
+		return err
+	}
+	monitoringHost := monitoringHosts[0]
+	spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
+	if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		return err
+	}
+	ux.SpinComplete(spinner)
+	spinSession.Stop()
+
 	if b, err := hasTeleporterDeploys(clusterName); err != nil {
 		return err
 	} else if b {
@@ -364,62 +420,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 }
 
 func setUpSubnetLogs(clusterName string) error {
-	wg := sync.WaitGroup{}
-	wgResults := models.NodeResults{}
-	spinSession := ux.NewUserSpinner()
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
-	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
-	if err != nil {
-		return err
-	}
-	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
-	if err != nil {
-		return err
-	}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			if addMonitoring {
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
-				cloudID := host.GetCloudID()
-				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
-				if err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				ux.SpinComplete(spinner)
-			}
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-		}
-	}
-	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
-	if err != nil {
-		return err
-	}
-	monitoringHost := monitoringHosts[0]
-	spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
-	if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
-		ux.SpinFailWithError(spinner, "", err)
-		return err
-	}
-	ux.SpinComplete(spinner)
-	spinSession.Stop()
+
 	return nil
 }
 
