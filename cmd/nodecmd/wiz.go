@@ -413,8 +413,6 @@ func setUpSubnetLogs(clusterName string) error {
 		return err
 	}
 	monitoringHost := monitoringHosts[0]
-	// remove monitoring host from created hosts list
-	hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
 	spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
 	if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
