@@ -419,11 +419,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func setUpSubnetLogs(clusterName string) error {
-
-	return nil
-}
-
 func hasTeleporterDeploys(
 	clusterName string,
 ) (bool, error) {
