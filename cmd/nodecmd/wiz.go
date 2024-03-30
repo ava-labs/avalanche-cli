@@ -381,7 +381,6 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 	}
 	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
 	if err != nil {
-		fmt.Printf("we have err here %s \n", err)
 		return err
 	}
 	for _, host := range hosts {
