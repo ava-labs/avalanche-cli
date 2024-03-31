@@ -764,3 +764,30 @@ func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 func RunSSHDownloadFile(host *models.Host, filePath string, localFilePath string) error {
 	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
 }
+
+func RunSSHUpdatePromtailConfigSubnet(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
+	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
+	promtailConfig, err := os.CreateTemp("", "promtailSubnet")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promtailConfig.Name())
+	// get NodeID
+	if err := monitoring.WritePromtailConfigSubnet(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID, fmt.Sprintf("/home/ubuntu/.avalanchego/logs/%s.log", chainID)); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		promtailConfig.Name(),
+		cloudNodePromtailConfigTemp,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Update Promtail Config",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/updatePromtailConfig.sh",
+		scriptInputs{},
+	)
+}
