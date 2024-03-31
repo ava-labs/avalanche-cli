@@ -390,22 +390,20 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 		wg.Add(1)
 		go func(host *models.Host) {
 			defer wg.Done()
-			if addMonitoring {
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
-				cloudID := host.GetCloudID()
-				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
-				if err != nil {
-					wgResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
-					wgResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				ux.SpinComplete(spinner)
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
+			cloudID := host.GetCloudID()
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+			if err != nil {
+				wgResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
 			}
+			if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+				wgResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			ux.SpinComplete(spinner)
 		}(host)
 	}
 	wg.Wait()
