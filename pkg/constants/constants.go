@@ -60,8 +60,12 @@ const (
 	SSHPOSTTimeout              = 10 * time.Second
 	SSHSleepBetweenChecks       = 1 * time.Second
 	SSHShell                    = "/bin/bash"
-
-	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
+	DefaultAWSVolumeType        = "gp3"
+	AWSVolumeTypeIO1            = "io1"
+	AWSVolumeTypeIO2            = "io2"
+	DefaultAWSIOPS              = 3000
+	DefaultAWSThroughput        = 125
+	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"

@@ -191,27 +191,33 @@ func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip stri
 }
 
 // CreateEC2Instances creates EC2 instances
-func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool, iops, throughput int) ([]string, error) {
+func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool, iops, throughput int, volumeType types.VolumeType) ([]string, error) {
 	var diskVolumeSize int32
 	if forMonitoring {
 		diskVolumeSize = constants.MonitoringCloudServerStorageSize
 	} else {
 		diskVolumeSize = constants.CloudServerStorageSize
 	}
-	iopsValue := int32(3000)      // 3000 is default for gp3
-	throughputValue := int32(125) // 125 is default for gp3
-	if iops != 0 {
-		iopsValue = int32(iops)
-	}
-	if throughput != 0 {
-		throughputValue = int32(throughput)
-	}
 	ebsValue := &types.EbsBlockDevice{
 		VolumeSize:          aws.Int32(diskVolumeSize),
-		VolumeType:          types.VolumeTypeGp3,
+		VolumeType:          volumeType,
 		DeleteOnTermination: aws.Bool(true),
-		Throughput:          aws.Int32(throughputValue),
-		Iops:                aws.Int32(iopsValue),
+	}
+	if volumeType == types.VolumeTypeGp3 {
+		ebsValue = &types.EbsBlockDevice{
+			VolumeSize:          aws.Int32(diskVolumeSize),
+			VolumeType:          volumeType,
+			DeleteOnTermination: aws.Bool(true),
+			Throughput:          aws.Int32(int32(throughput)),
+			Iops:                aws.Int32(int32(iops)),
+		}
+	} else if volumeType == types.VolumeTypeIo2 || volumeType == types.VolumeTypeIo1 {
+		ebsValue = &types.EbsBlockDevice{
+			VolumeSize:          aws.Int32(diskVolumeSize),
+			VolumeType:          volumeType,
+			DeleteOnTermination: aws.Bool(true),
+			Iops:                aws.Int32(int32(iops)),
+		}
 	}
 
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
