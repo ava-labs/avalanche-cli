@@ -60,7 +60,7 @@ const (
 	SSHPOSTTimeout              = 10 * time.Second
 	SSHSleepBetweenChecks       = 1 * time.Second
 	SSHShell                    = "/bin/bash"
-	DefaultAWSVolumeType        = "gp3"
+	AWSVolumeTypeGP3            = "gp3"
 	AWSVolumeTypeIO1            = "io1"
 	AWSVolumeTypeIO2            = "io2"
 	DefaultAWSIOPS              = 3000
