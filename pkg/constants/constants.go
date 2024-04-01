@@ -63,8 +63,8 @@ const (
 	AWSVolumeTypeGP3            = "gp3"
 	AWSVolumeTypeIO1            = "io1"
 	AWSVolumeTypeIO2            = "io2"
-	DefaultAWSIOPS              = 3000
-	DefaultAWSThroughput        = 125
+	AWSGP3DefaultIOPS           = 3000
+	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"

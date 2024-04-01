@@ -204,20 +204,10 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 		DeleteOnTermination: aws.Bool(true),
 	}
 	if volumeType == types.VolumeTypeGp3 {
-		ebsValue = &types.EbsBlockDevice{
-			VolumeSize:          aws.Int32(diskVolumeSize),
-			VolumeType:          volumeType,
-			DeleteOnTermination: aws.Bool(true),
-			Throughput:          aws.Int32(int32(throughput)),
-			Iops:                aws.Int32(int32(iops)),
-		}
+		ebsValue.Throughput = aws.Int32(int32(throughput))
+		ebsValue.Iops = aws.Int32(int32(iops))
 	} else if volumeType == types.VolumeTypeIo2 || volumeType == types.VolumeTypeIo1 {
-		ebsValue = &types.EbsBlockDevice{
-			VolumeSize:          aws.Int32(diskVolumeSize),
-			VolumeType:          volumeType,
-			DeleteOnTermination: aws.Bool(true),
-			Iops:                aws.Int32(int32(iops)),
-		}
+		ebsValue.Iops = aws.Int32(int32(iops))
 	}
 
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{

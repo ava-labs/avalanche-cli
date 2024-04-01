@@ -180,10 +180,10 @@ func preCreateChecks() error {
 		if stringToAWSVolumeType(volumeType) == "" {
 			return fmt.Errorf("invalid AWS volume type provided")
 		}
-		if volumeType != constants.AWSVolumeTypeGP3 && throughput != constants.DefaultAWSThroughput {
+		if volumeType != constants.AWSVolumeTypeGP3 && throughput != constants.AWSGP3DefaultThroughput {
 			return fmt.Errorf("AWS throughput setting is only applicable AWS gp3 volume type")
 		}
-		if volumeType != constants.AWSVolumeTypeGP3 && volumeType != constants.AWSVolumeTypeIO1 && volumeType != constants.AWSVolumeTypeIO2 && iops != constants.DefaultAWSIOPS {
+		if volumeType != constants.AWSVolumeTypeGP3 && volumeType != constants.AWSVolumeTypeIO1 && volumeType != constants.AWSVolumeTypeIO2 && iops != constants.AWSGP3DefaultIOPS {
 			return fmt.Errorf("AWS iops setting is only applicable AWS gp3, io1, and io2 volume types")
 		}
 	}
