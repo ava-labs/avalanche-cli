@@ -196,7 +196,7 @@ func preCreateChecks() error {
 
 func stringToAWSVolumeType(input string) types.VolumeType {
 	switch input {
-	case "standard":
+	case "gp3":
 		return types.VolumeTypeGp3
 	case "io1":
 		return types.VolumeTypeIo1
