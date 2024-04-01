@@ -110,8 +110,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
 	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, " set up Prometheus monitoring for created nodes. Please note that this option creates a separate monitoring instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
-	cmd.Flags().IntVar(&iops, "add-grafana-dashboard", 0, "AWS gp3 iops")
-	cmd.Flags().IntVar(&throughput, "add-grafana-dashboard", 0, "AWS gp3 throughput")
+	cmd.Flags().IntVar(&iops, "aws-gp3-iops", 0, "AWS gp3 iops")
+	cmd.Flags().IntVar(&throughput, "aws-gp3-throughput", 0, "AWS gp3 throughput")
 	return cmd
 }
 
