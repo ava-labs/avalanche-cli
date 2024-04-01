@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"io"
 	"math"
 	"os"
@@ -16,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 
@@ -176,6 +177,9 @@ func preCreateChecks() error {
 	}
 
 	if useAWS {
+		fmt.Printf("obtained volume type %s \n", volumeType)
+		fmt.Printf("obtained volume iops %s \n", iops)
+		fmt.Printf("obtained volume throughput %s \n", throughput)
 		if stringToAWSVolumeType(volumeType) == "" {
 			return fmt.Errorf("invalid AWS volume type provided")
 		}
