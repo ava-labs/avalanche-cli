@@ -212,7 +212,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 					VolumeSize:          aws.Int32(diskVolumeSize),
 					VolumeType:          types.VolumeTypeGp3,
 					DeleteOnTermination: aws.Bool(true),
-					Throughput:          aws.Int32(500),  // 125 is default for gp3
+					Throughput:          aws.Int32(750),  // 125 is default for gp3
 					Iops:                aws.Int32(5000), // 3000 is default for gp3
 				},
 			},
