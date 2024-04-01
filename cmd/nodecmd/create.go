@@ -177,9 +177,6 @@ func preCreateChecks() error {
 	}
 
 	if useAWS {
-		fmt.Printf("obtained volume type %s \n", volumeType)
-		fmt.Printf("obtained volume iops %s \n", iops)
-		fmt.Printf("obtained volume throughput %s \n", throughput)
 		if stringToAWSVolumeType(volumeType) == "" {
 			return fmt.Errorf("invalid AWS volume type provided")
 		}
