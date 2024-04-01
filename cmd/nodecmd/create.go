@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -67,6 +69,9 @@ var (
 	useSSHAgent                           bool
 	sshIdentity                           string
 	numAPINodes                           []int
+	throughput                            int
+	iops                                  int
+	volumeType                            string
 	versionComments                       = map[string]string{
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
@@ -116,6 +121,9 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
+	cmd.Flags().IntVar(&iops, "aws-iops", constants.AWSGP3DefaultIOPS, "AWS iops (for gp3, io1, and io2 volume types only)")
+	cmd.Flags().IntVar(&throughput, "aws-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
+	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	return cmd
 }
 
@@ -132,6 +140,7 @@ func preCreateChecks() error {
 	if len(utils.Unique(cmdLineRegion)) != len(numValidatorsNodes) {
 		return fmt.Errorf("regions provided is not consistent with number of nodes provided. Please make sure list of regions is unique")
 	}
+
 	if len(numValidatorsNodes) > 0 {
 		for _, num := range numValidatorsNodes {
 			if num <= 0 {
@@ -166,7 +175,39 @@ func preCreateChecks() error {
 	if customGrafanaDashboardPath != "" && !utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
 		return fmt.Errorf("custom grafana dashboard file does not exist")
 	}
+
+	if useAWS {
+		if stringToAWSVolumeType(volumeType) == "" {
+			return fmt.Errorf("invalid AWS volume type provided")
+		}
+		if volumeType != constants.AWSVolumeTypeGP3 && throughput != constants.AWSGP3DefaultThroughput {
+			return fmt.Errorf("AWS throughput setting is only applicable AWS gp3 volume type")
+		}
+		if volumeType != constants.AWSVolumeTypeGP3 && volumeType != constants.AWSVolumeTypeIO1 && volumeType != constants.AWSVolumeTypeIO2 && iops != constants.AWSGP3DefaultIOPS {
+			return fmt.Errorf("AWS iops setting is only applicable AWS gp3, io1, and io2 volume types")
+		}
+	}
+
 	return nil
+}
+
+func stringToAWSVolumeType(input string) types.VolumeType {
+	switch input {
+	case "gp3":
+		return types.VolumeTypeGp3
+	case "io1":
+		return types.VolumeTypeIo1
+	case "io2":
+		return types.VolumeTypeIo2
+	case "gp2":
+		return types.VolumeTypeGp2
+	case "sc1":
+		return types.VolumeTypeSc1
+	case "st1":
+		return types.VolumeTypeSt1
+	default:
+		return ""
+	}
 }
 
 func createNodes(cmd *cobra.Command, args []string) error {

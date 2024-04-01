@@ -191,13 +191,25 @@ func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip stri
 }
 
 // CreateEC2Instances creates EC2 instances
-func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool) ([]string, error) {
+func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool, iops, throughput int, volumeType types.VolumeType) ([]string, error) {
 	var diskVolumeSize int32
 	if forMonitoring {
 		diskVolumeSize = constants.MonitoringCloudServerStorageSize
 	} else {
 		diskVolumeSize = constants.CloudServerStorageSize
 	}
+	ebsValue := &types.EbsBlockDevice{
+		VolumeSize:          aws.Int32(diskVolumeSize),
+		VolumeType:          volumeType,
+		DeleteOnTermination: aws.Bool(true),
+	}
+	if volumeType == types.VolumeTypeGp3 {
+		ebsValue.Throughput = aws.Int32(int32(throughput))
+		ebsValue.Iops = aws.Int32(int32(iops))
+	} else if volumeType == types.VolumeTypeIo2 || volumeType == types.VolumeTypeIo1 {
+		ebsValue.Iops = aws.Int32(int32(iops))
+	}
+
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
 		InstanceType:     types.InstanceType(instanceType),
@@ -208,10 +220,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 		BlockDeviceMappings: []types.BlockDeviceMapping{
 			{
 				DeviceName: aws.String("/dev/sda1"), // ubuntu ami disk name
-				Ebs: &types.EbsBlockDevice{
-					VolumeSize: aws.Int32(diskVolumeSize),
-					VolumeType: types.VolumeTypeGp3,
-				},
+				Ebs:        ebsValue,
 			},
 		},
 		TagSpecifications: []types.TagSpecification{
