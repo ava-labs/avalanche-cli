@@ -209,8 +209,11 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 			{
 				DeviceName: aws.String("/dev/sda1"), // ubuntu ami disk name
 				Ebs: &types.EbsBlockDevice{
-					VolumeSize: aws.Int32(diskVolumeSize),
-					VolumeType: types.VolumeTypeGp3,
+					VolumeSize:          aws.Int32(diskVolumeSize),
+					VolumeType:          types.VolumeTypeGp3,
+					DeleteOnTermination: aws.Bool(true),
+					Throughput:          aws.Int32(300),  // 125 is default for gp3
+					Iops:                aws.Int32(3000), // default for gp3
 				},
 			},
 		},
