@@ -118,8 +118,8 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
-	cmd.Flags().IntVar(&iops, "add-grafana-dashboard", 0, "AWS gp3 iops")
-	cmd.Flags().IntVar(&throughput, "add-grafana-dashboard", 0, "AWS gp3 throughput")
+	cmd.Flags().IntVar(&iops, "aws-gp3-iops", 0, "AWS gp3 iops")
+	cmd.Flags().IntVar(&throughput, "aws-gp3-throughput", 0, "AWS gp3 throughput")
 	return cmd
 }
 
