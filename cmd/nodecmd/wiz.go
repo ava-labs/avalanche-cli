@@ -307,9 +307,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// set up subnet logs in Loki
-	if err = setUpSubnetLogging(clusterName, subnetName); err != nil {
-		return err
+	if addMonitoring {
+		// set up subnet logs in Loki
+		if err = setUpSubnetLogging(clusterName, subnetName); err != nil {
+			return err
+		}
 	}
 
 	if b, err := hasTeleporterDeploys(clusterName); err != nil {
