@@ -116,15 +116,41 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		if err = ssh.RunSSHDownloadFile(host, fmt.Sprintf("/home/ubuntu/%s", loadTestResultFileName), filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
 			ux.Logger.RedXToUser("Unable to download load test result %s to local machine due to %s", loadTestResultFileName, err.Error())
 		}
+		clusterNodes, err := getClusterNodes(clusterName)
+		if err != nil {
+			return err
+		}
+		cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
+		if err != nil {
+			return err
+		}
+		filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == nodeConfig.CloudService })
+		if len(filteredSGList) == 0 {
+			return fmt.Errorf("no endpoint found in the  %s", nodeConfig.CloudService)
+		}
+		sgRegions := []string{}
+		for index := range filteredSGList {
+			sgRegions = append(sgRegions, filteredSGList[index].region)
+		}
 		switch nodeConfig.CloudService {
 		case constants.AWSCloudService:
-			_, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
+			loadTestNodeConfig, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
 			if err != nil {
 				return err
 			}
 			loadTestEc2SvcMap, err := getAWSMonitoringEC2Svc(awsProfile, separateHostRegion)
 			if err != nil {
 				return err
+			}
+			ec2SvcMap, _, _, err := getAWSCloudConfig(awsProfile, true, sgRegions, nodeType)
+			if err != nil {
+				return err
+			}
+			for _, sg := range filteredSGList {
+				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, loadTestNodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
+					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+						nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+				}
 			}
 			if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, loadTestEc2SvcMap[separateHostRegion], nil); err != nil {
 				return err

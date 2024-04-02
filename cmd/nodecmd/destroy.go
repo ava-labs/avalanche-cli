@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"strings"
 
@@ -132,8 +133,34 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	}
 	nodeErrors := map[string]error{}
 	lastRegion := ""
+	fmt.Printf("we are here before getClusterNodes \n")
+	clusterNodes, err := getClusterNodes(clusterName)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("we are here getClusterNodes \n")
+	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("we are here getCloudSecurityGroupList \n")
+	nodeToStopConfig, err := app.LoadClusterNodeConfig(nodesToStop[0])
+	if err != nil {
+		return err
+	}
+	fmt.Printf("we are here LoadClusterNodeConfig \n")
+	// TODO: will need to change this logic if we decide to mix AWS and GCP instances in a cluster
+	filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == nodeToStopConfig.CloudService })
+	if len(filteredSGList) == 0 {
+		return fmt.Errorf("no endpoint found in the  %s", nodeToStopConfig.CloudService)
+	}
+	sgRegions := []string{}
+	for index := range filteredSGList {
+		sgRegions = append(sgRegions, filteredSGList[index].region)
+	}
 	var ec2Svc *awsAPI.AwsCloud
 	var gcpCloud *gcpAPI.GcpCloud
+	ec2SvcMap := make(map[string]*awsAPI.AwsCloud)
 	for _, node := range nodesToStop {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
@@ -153,6 +180,14 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				}
 				lastRegion = nodeConfig.Region
 			}
+			for _, sg := range filteredSGList {
+				sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+				if err != nil {
+					return err
+				}
+				ec2SvcMap[sg.region] = sgEc2Svc
+			}
+			fmt.Printf("obtained ec2SvcMap %s \n", ec2SvcMap)
 			if err = ec2Svc.DestroyAWSNode(nodeConfig, clusterName); err != nil {
 				if isExpiredCredentialError(err) {
 					ux.Logger.PrintToUser("")
@@ -171,9 +206,11 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 						awmRelayerHost.IP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
 				}
 			}
-			if err = deleteMonitoringSecurityGroupRule(ec2Svc, nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
-				ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
-					nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+			for _, sg := range filteredSGList {
+				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
+					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+						nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+				}
 			}
 		} else {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
