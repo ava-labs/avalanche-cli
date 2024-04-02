@@ -4,14 +4,12 @@ package ux
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"sync"
-	"time"
-
 	"github.com/chelnak/ysmrr"
 	"github.com/chelnak/ysmrr/pkg/animations"
 	"github.com/chelnak/ysmrr/pkg/colors"
+	"io"
+	"os"
+	"sync"
 )
 
 type UserSpinner struct {
@@ -28,7 +26,6 @@ func newSpinner(writer io.Writer) ysmrr.SpinnerManager {
 		ysmrr.WithAnimation(animations.Dots),
 		ysmrr.WithSpinnerColor(colors.FgHiBlue),
 		ysmrr.WithWriter(writer),
-		ysmrr.WithFrameDuration(time.Second),
 	)
 }
 
