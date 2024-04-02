@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/chelnak/ysmrr"
 	"github.com/chelnak/ysmrr/pkg/animations"
@@ -27,6 +28,7 @@ func newSpinner(writer io.Writer) ysmrr.SpinnerManager {
 		ysmrr.WithAnimation(animations.Dots),
 		ysmrr.WithSpinnerColor(colors.FgHiBlue),
 		ysmrr.WithWriter(writer),
+		ysmrr.WithFrameDuration(time.Second),
 	)
 }
 
