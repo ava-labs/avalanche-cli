@@ -4,12 +4,13 @@ package ux
 
 import (
 	"fmt"
-	"github.com/chelnak/ysmrr"
-	"github.com/chelnak/ysmrr/pkg/animations"
-	"github.com/chelnak/ysmrr/pkg/colors"
 	"io"
 	"os"
 	"sync"
+
+	"github.com/chelnak/ysmrr"
+	"github.com/chelnak/ysmrr/pkg/animations"
+	"github.com/chelnak/ysmrr/pkg/colors"
 )
 
 type UserSpinner struct {
