@@ -425,29 +425,6 @@ func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPu
 	return nil
 }
 
-func deleteHostSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, hostIP, securityGroupName, region string) error {
-	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
-	if err != nil {
-		return err
-	}
-	if !securityGroupExists {
-		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
-	}
-	metricsPortInSG := awsAPI.CheckIPInSg(&sg, hostIP, constants.AvalanchegoMachineMetricsPort)
-	apiPortInSG := awsAPI.CheckIPInSg(&sg, hostIP, constants.AvalanchegoAPIPort)
-	if metricsPortInSG {
-		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", hostIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
-			return err
-		}
-	}
-	if apiPortInSG {
-		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", hostIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func grantAccessToPublicIPViaSecurityGroup(ec2Svc *awsAPI.AwsCloud, publicIP, securityGroupName, region string) error {
 	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
 	if err != nil {
