@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -1069,9 +1068,6 @@ func getAvalancheGoVersion() (string, error) {
 	case useLatestAvalanchegoPreReleaseVersion:
 		version = latestPreReleaseVersion
 	case useCustomAvalanchegoVersion != "":
-		if !semver.IsValid(useCustomAvalanchegoVersion) {
-			return "", errors.New("custom avalanchego version must be a legal semantic version (ex: v1.1.1)")
-		}
 		version = useCustomAvalanchegoVersion
 	case useAvalanchegoVersionFromSubnet != "":
 		sc, err := app.LoadSidecar(useAvalanchegoVersionFromSubnet)
