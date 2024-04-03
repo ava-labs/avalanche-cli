@@ -10,7 +10,7 @@ while ! gcc --version >/dev/null 2>&1; do
         sleep 10
     fi
 done
-#name:TASK [install go]
+name:TASK [install go]
 #install_go() {
 #  local GOFILE
 #  if [[ "$(uname -m)" == "aarch64" ]]; then
