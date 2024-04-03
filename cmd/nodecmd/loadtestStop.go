@@ -94,6 +94,37 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 	removedLoadTestHosts := []*models.Host{}
+	if len(loadTestsToStop) == 0 {
+		return fmt.Errorf("no load test instances to stop in cluster %s", clusterName)
+	}
+	existingLoadTestInstance, err := getExistingLoadTestInstance(clusterName, loadTestsToStop[0])
+	if err != nil {
+		return err
+	}
+	nodeToStopConfig, err := app.LoadClusterNodeConfig(existingLoadTestInstance)
+	if err != nil {
+		return err
+	}
+	clusterNodes, err := getClusterNodes(clusterName)
+	if err != nil {
+		return err
+	}
+	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
+	if err != nil {
+		return err
+	}
+	filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == nodeToStopConfig.CloudService })
+	if len(filteredSGList) == 0 {
+		return fmt.Errorf("no endpoint found in the  %s", nodeToStopConfig.CloudService)
+	}
+	ec2SvcMap := make(map[string]*awsAPI.AwsCloud)
+	for _, sg := range filteredSGList {
+		sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+		if err != nil {
+			return err
+		}
+		ec2SvcMap[sg.region] = sgEc2Svc
+	}
 	for _, loadTestName := range loadTestsToStop {
 		existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
@@ -116,22 +147,6 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		if err = ssh.RunSSHDownloadFile(host, fmt.Sprintf("/home/ubuntu/%s", loadTestResultFileName), filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
 			ux.Logger.RedXToUser("Unable to download load test result %s to local machine due to %s", loadTestResultFileName, err.Error())
 		}
-		clusterNodes, err := getClusterNodes(clusterName)
-		if err != nil {
-			return err
-		}
-		cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
-		if err != nil {
-			return err
-		}
-		filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == nodeConfig.CloudService })
-		if len(filteredSGList) == 0 {
-			return fmt.Errorf("no endpoint found in the  %s", nodeConfig.CloudService)
-		}
-		sgRegions := []string{}
-		for index := range filteredSGList {
-			sgRegions = append(sgRegions, filteredSGList[index].region)
-		}
 		switch nodeConfig.CloudService {
 		case constants.AWSCloudService:
 			loadTestNodeConfig, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
@@ -142,18 +157,14 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ec2SvcMap, _, _, err := getAWSCloudConfig(awsProfile, true, sgRegions, nodeType)
-			if err != nil {
+			if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, loadTestEc2SvcMap[separateHostRegion], nil); err != nil {
 				return err
 			}
 			for _, sg := range filteredSGList {
-				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, loadTestNodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
+				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
 					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
-						nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+						loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region, err.Error())
 				}
-			}
-			if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, loadTestEc2SvcMap[separateHostRegion], nil); err != nil {
-				return err
 			}
 		case constants.GCPCloudService:
 			var gcpClient *gcpAPI.GcpCloud

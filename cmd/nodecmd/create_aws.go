@@ -406,8 +406,9 @@ func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPu
 	if err != nil {
 		return err
 	}
+	// early exit if security group doesn't exist
 	if !securityGroupExists {
-		return fmt.Errorf("security group %s doesn't exist in region %s", securityGroupName, region)
+		return nil
 	}
 	metricsPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
 	apiPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
