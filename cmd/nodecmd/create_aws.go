@@ -406,7 +406,7 @@ func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPu
 	if err != nil {
 		return err
 	}
-	// early exit if security group doesn't exist
+	// exit early if security group doesn't exist
 	if !securityGroupExists {
 		return nil
 	}
