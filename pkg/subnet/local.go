@@ -648,16 +648,18 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		); err != nil {
 			return nil, err
 		}
-		ux.Logger.PrintToUser("")
-		// start relayer
-		if err := teleporter.DeployRelayer(
-			d.app.GetAWMRelayerBinDir(),
-			d.app.GetAWMRelayerConfigPath(),
-			d.app.GetAWMRelayerLogPath(),
-			d.app.GetAWMRelayerRunPath(),
-			d.app.GetAWMRelayerStorageDir(),
-		); err != nil {
-			return nil, err
+		if sc.RunRelayer {
+			ux.Logger.PrintToUser("")
+			// start relayer
+			if err := teleporter.DeployRelayer(
+				d.app.GetAWMRelayerBinDir(),
+				d.app.GetAWMRelayerConfigPath(),
+				d.app.GetAWMRelayerLogPath(),
+				d.app.GetAWMRelayerRunPath(),
+				d.app.GetAWMRelayerStorageDir(),
+			); err != nil {
+				return nil, err
+			}
 		}
 	}
 
