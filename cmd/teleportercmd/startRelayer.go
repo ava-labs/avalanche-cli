@@ -44,13 +44,13 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 	}
 	switch {
 	case network.Kind == models.Local:
-		b, _, _, err := teleporter.RelayerIsUp(
+		relayerIsUp, _, _, err := teleporter.RelayerIsUp(
 			app.GetAWMRelayerRunPath(),
 		)
 		if err != nil {
 			return err
 		}
-		if b {
+		if relayerIsUp {
 			return fmt.Errorf("local AWM relayer is already running")
 		}
 		if err := teleporter.DeployRelayer(
