@@ -1,15 +1,9 @@
 #!/usr/bin/env bash
 set -e
 #name:TASK [install gcc if not available]
-sudo apt-get -y -o DPkg::Lock::Timeout=120 update
-while ! gcc --version >/dev/null 2>&1; do
-    echo "GCC is not installed. Trying to install..."
-    DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
-    if [ $? -ne 0 ]; then
-        echo "Failed to install GCC. Retrying in 10 seconds..."
-        sleep 10
-    fi
-done
+export DEBIAN_FRONTEND=noninteractive
+until sudo apt-get -y update -o DPkg::Lock::Timeout=120; do sleep 1 && echo "Try again"; done
+until sudo apt-get -y install -o DPkg::Lock::Timeout=120 gcc; do sleep 1 && echo "Try again"; done
 #name:TASK [install go]
 install_go() {
   local GOFILE
