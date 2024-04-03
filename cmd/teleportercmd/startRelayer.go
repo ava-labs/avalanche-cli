@@ -44,13 +44,11 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 	}
 	switch {
 	case network.Kind == models.Local:
-		relayerIsUp, _, _, err := teleporter.RelayerIsUp(
+		if relayerIsUp, _, _, err := teleporter.RelayerIsUp(
 			app.GetAWMRelayerRunPath(),
-		)
-		if err != nil {
+		); err != nil {
 			return err
-		}
-		if relayerIsUp {
+		} else if relayerIsUp {
 			return fmt.Errorf("local AWM relayer is already running")
 		}
 		if err := teleporter.DeployRelayer(
@@ -62,7 +60,7 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 		); err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Local AWM Relayer successfully started")
+		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started")
 		ux.Logger.PrintToUser("Logs can be found at %s", app.GetAWMRelayerLogPath())
 	case network.ClusterName != "":
 		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
@@ -72,7 +70,7 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 		if err := ssh.RunSSHStartAWMRelayerService(host); err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
+		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
 	}
 	return nil
 }

@@ -37,11 +37,9 @@ func GetAWMRelayerHost(app *application.Avalanche, clusterName string) (*models.
 	}
 	relayerCloudID := ""
 	for _, cloudID := range clusterConfig.GetCloudIDs() {
-		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-		if err != nil {
+		if nodeConfig, err := app.LoadClusterNodeConfig(cloudID); err != nil {
 			return nil, err
-		}
-		if nodeConfig.IsAWMRelayer {
+		} else if nodeConfig.IsAWMRelayer {
 			relayerCloudID = nodeConfig.NodeID
 		}
 	}

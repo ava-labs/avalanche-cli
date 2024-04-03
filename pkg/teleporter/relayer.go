@@ -146,13 +146,12 @@ func RelayerCleanup(runFilePath string, storageDir string) error {
 	if err := os.RemoveAll(storageDir); err != nil {
 		return err
 	}
-	b, pid, proc, err := RelayerIsUp(runFilePath)
+	relayerIsUp, pid, proc, err := RelayerIsUp(runFilePath)
 	if err != nil {
 		return err
 	}
-	if b {
+	if relayerIsUp {
 		if err := proc.Signal(os.Interrupt); err != nil {
-			ux.Logger.PrintToUser("failed trying to kill awm relayer with SIGINT. Using SIGKILL instead")
 			if err := proc.Signal(os.Kill); err != nil {
 				return fmt.Errorf("failed killing relayer process with pid %d: %w", pid, err)
 			}
