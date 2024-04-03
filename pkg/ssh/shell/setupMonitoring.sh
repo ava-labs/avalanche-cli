@@ -14,5 +14,5 @@ chmod 755 monitoring-installer.sh
 ./monitoring-installer.sh --2
 #name:TASK [set up node_exporter]
 ./monitoring-installer.sh --3
-#name:TASK [set up dashboards]
+#name:TASK [set up dashboardst]
 ./monitoring-installer.sh --4
