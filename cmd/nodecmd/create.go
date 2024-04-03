@@ -639,7 +639,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			ux.SpinComplete(spinner)
+			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, remoteCLIVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
@@ -674,13 +681,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			}
-			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			ux.SpinComplete(spinner)
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Avalanche-CLI"))
 			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
