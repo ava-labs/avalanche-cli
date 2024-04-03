@@ -550,34 +550,3 @@ func checkRegions(regions []string) ([]string, error) {
 	}
 	return invalidRegions, nil
 }
-
-func deleteAWSAWMRelayerSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, nodeConfig *models.NodeConfig, awmRelayerHost *models.Host) error {
-	if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
-		securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(nodeConfig.SecurityGroup)
-		if err != nil {
-			return err
-		}
-		if !securityGroupExists {
-			return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
-		}
-		inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort)
-		if !inSG {
-			if err = ec2Svc.DeleteSecurityGroupRule(
-				*sg.GroupId,
-				"ingress",
-				"tcp",
-				awmRelayerHost.IP+constants.IPAddressSuffix,
-				constants.AvalanchegoAPIPort,
-			); err != nil {
-				return fmt.Errorf("failure removing rule IP %s port %d from security group %s region %s: %w",
-					awmRelayerHost.IP+constants.IPAddressSuffix,
-					constants.AvalanchegoAPIPort,
-					nodeConfig.SecurityGroup,
-					nodeConfig.Region,
-					err,
-				)
-			}
-		}
-	}
-	return nil
-}
