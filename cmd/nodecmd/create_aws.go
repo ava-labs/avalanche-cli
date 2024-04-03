@@ -401,7 +401,7 @@ func AddMonitoringSecurityGroupRule(ec2Svc map[string]*awsAPI.AwsCloud, monitori
 	return nil
 }
 
-func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPublicIP, securityGroupName string) error {
+func deleteHostSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, hostPublicIP, securityGroupName string) error {
 	securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(securityGroupName)
 	if err != nil {
 		return err
@@ -410,15 +410,15 @@ func deleteMonitoringSecurityGroupRule(ec2Svc *awsAPI.AwsCloud, monitoringHostPu
 	if !securityGroupExists {
 		return nil
 	}
-	metricsPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoMachineMetricsPort)
-	apiPortInSG := awsAPI.CheckIPInSg(&sg, monitoringHostPublicIP, constants.AvalanchegoAPIPort)
+	metricsPortInSG := awsAPI.CheckIPInSg(&sg, hostPublicIP, constants.AvalanchegoMachineMetricsPort)
+	apiPortInSG := awsAPI.CheckIPInSg(&sg, hostPublicIP, constants.AvalanchegoAPIPort)
 	if metricsPortInSG {
-		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", hostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoMachineMetricsPort); err != nil {
 			return err
 		}
 	}
 	if apiPortInSG {
-		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", monitoringHostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
+		if err = ec2Svc.DeleteSecurityGroupRule(*sg.GroupId, "ingress", "tcp", hostPublicIP+constants.IPAddressSuffix, constants.AvalanchegoAPIPort); err != nil {
 			return err
 		}
 	}

@@ -144,12 +144,15 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	}
 	var gcpCloud *gcpAPI.GcpCloud
 	ec2SvcMap := make(map[string]*awsAPI.AwsCloud)
-	for _, sg := range filteredSGList {
-		sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
-		if err != nil {
-			return err
+	// TODO: need implementation for GCP
+	if nodeToStopConfig.CloudService == constants.AWSCloudService {
+		for _, sg := range filteredSGList {
+			sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+			if err != nil {
+				return err
+			}
+			ec2SvcMap[sg.region] = sgEc2Svc
 		}
-		ec2SvcMap[sg.region] = sgEc2Svc
 	}
 	for _, node := range nodesToStop {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
@@ -175,7 +178,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 			}
 			for _, sg := range filteredSGList {
-				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, sg.securityGroup); err != nil {
+				if err = deleteHostSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, sg.securityGroup); err != nil {
 					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
 						nodeConfig.ElasticIP, sg.securityGroup, sg.region, err.Error())
 				}
