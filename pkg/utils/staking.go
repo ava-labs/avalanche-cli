@@ -17,9 +17,13 @@ func NewBlsSecretKeyBytes() ([]byte, error) {
 }
 
 func ToNodeID(certBytes []byte, keyBytes []byte) (ids.NodeID, error) {
-	cert, err := staking.LoadTLSCertFromBytes(keyBytes, certBytes)
+	tlsCert, err := staking.LoadTLSCertFromBytes(keyBytes, certBytes)
 	if err != nil {
-		return ids.NodeID{}, err
+		return ids.EmptyNodeID, err
 	}
-	return ids.NodeIDFromCert(staking.CertificateFromX509(cert.Leaf)), nil
+	cert, err := staking.ParseCertificate(tlsCert.Leaf.Raw)
+	if err != nil {
+		return ids.EmptyNodeID, err
+	}
+	return ids.NodeIDFromCert(cert), nil
 }

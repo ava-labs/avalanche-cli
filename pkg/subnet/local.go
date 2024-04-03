@@ -165,7 +165,7 @@ func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subn
 func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) error {
 	xWallet := wallet.X()
 	pWallet := wallet.P()
-	xChainID := xWallet.BlockchainID()
+	xChainID := xWallet.Builder().Context().BlockchainID
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
 	_, err := pWallet.IssueImportTx(
 		xChainID,

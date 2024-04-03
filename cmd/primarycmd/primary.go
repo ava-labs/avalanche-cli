@@ -28,5 +28,7 @@ Primary Network`,
 	app = injectedApp
 	// primary addValidator
 	cmd.AddCommand(newAddValidatorCmd())
+	// primary describe
+	cmd.AddCommand(newDescribeCmd())
 	return cmd
 }

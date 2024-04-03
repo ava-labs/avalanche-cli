@@ -8,16 +8,13 @@ import (
 	"os"
 	"strings"
 
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
-	"golang.org/x/exp/maps"
-	"golang.org/x/net/context"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"golang.org/x/exp/maps"
+	"golang.org/x/net/context"
 
 	"github.com/spf13/cobra"
 )
@@ -106,17 +103,32 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err := getDeleteConfigConfirmation(); err != nil {
 		return err
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	nodesToStop, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	nodesToStop := clusterNodes
 	monitoringNode, err := getClusterMonitoringNode(clusterName)
 	if err != nil {
 		return err
 	}
 	if monitoringNode != "" {
 		nodesToStop = append(nodesToStop, monitoringNode)
+	}
+	// stop all load test nodes if specified
+	ltHosts, err := getLoadTestInstancesInCluster(clusterName)
+	if err != nil {
+		return err
+	}
+	for _, loadTestName := range ltHosts {
+		ltInstance, err := getExistingLoadTestInstance(clusterName, loadTestName)
+		if err != nil {
+			return err
+		}
+		nodesToStop = append(nodesToStop, ltInstance)
+	}
+	awmRelayerHost, err := getAWMRelayerHost(clusterName)
+	if err != nil {
+		return err
 	}
 	nodeErrors := map[string]error{}
 	lastRegion := ""
@@ -152,6 +164,12 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					continue
 				}
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
+			}
+			if awmRelayerHost != nil {
+				if err := deleteAWSAWMRelayerSecurityGroupRule(ec2Svc, &nodeConfig, awmRelayerHost); err != nil {
+					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+						awmRelayerHost.IP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+				}
 			}
 			if err = deleteMonitoringSecurityGroupRule(ec2Svc, nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
 				ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
@@ -198,6 +216,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser("All nodes in cluster %s are successfully destroyed!", clusterName)
 	}
+
 	return removeClustersConfigFiles(clusterName)
 }
 

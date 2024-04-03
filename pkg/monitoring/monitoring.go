@@ -24,6 +24,7 @@ type configInputs struct {
 	Port             string
 	Host             string
 	NodeID           string
+	ChainID          string
 }
 
 //go:embed dashboards/*
@@ -107,6 +108,23 @@ func WritePromtailConfig(filePath string, ip string, port string, host string, n
 		Port:   port,
 		Host:   host,
 		NodeID: nodeID,
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
+}
+
+func WritePromtailConfigSubnet(filePath string, ip string, port string, host string, nodeID string, chainID string) error {
+	if !utils.IsValidIP(ip) {
+		return fmt.Errorf("invalid IP address: %s", ip)
+	}
+	config, err := GenerateConfig("configs/promtailSubnet.yml", "Promtail Config", configInputs{
+		IP:      ip,
+		Port:    port,
+		Host:    host,
+		NodeID:  nodeID,
+		ChainID: chainID,
 	})
 	if err != nil {
 		return err

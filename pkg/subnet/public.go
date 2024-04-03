@@ -368,7 +368,7 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 		return ids.Empty, err
 	}
 	if subnetAssetID == ids.Empty {
-		subnetAssetID = wallet.P().AVAXAssetID()
+		subnetAssetID = wallet.P().Builder().Context().AVAXAssetID
 	}
 	// popBytes is a marshalled json object containing publicKey and proofOfPossession of the node's BLS info
 	txID, err := d.issueAddPermissionlessValidatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet, delegationFee, popBytes, proofOfPossession)
@@ -999,7 +999,7 @@ func IssuePFromXImportTx(
 ) (ids.ID, error) {
 	showLedgerSignatureMsg(usingLedger, hasOnlyOneKey, "X -> P Chain Import Transaction")
 	unsignedTx, err := wallet.P().Builder().NewImportTx(
-		wallet.X().BlockchainID(),
+		wallet.X().Builder().Context().BlockchainID,
 		owner,
 	)
 	if err != nil {

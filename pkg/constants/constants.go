@@ -52,15 +52,20 @@ const (
 	APIRequestTimeout   = 30 * time.Second
 	FastGRPCDialTimeout = 100 * time.Millisecond
 
-	SSHServerStartTimeout = 1 * time.Minute
-	SSHScriptTimeout      = 2 * time.Minute
-	SSHDirOpsTimeout      = 10 * time.Second
-	SSHFileOpsTimeout     = 30 * time.Second
-	SSHPOSTTimeout        = 10 * time.Second
-	SSHSleepBetweenChecks = 1 * time.Second
-	SSHShell              = "/bin/bash"
-
-	SimulatePublicNetwork = "SIMULATE_PUBLIC_NETWORK"
+	SSHServerStartTimeout       = 1 * time.Minute
+	SSHScriptTimeout            = 2 * time.Minute
+	SSHLongRunningScriptTimeout = 10 * time.Minute
+	SSHDirOpsTimeout            = 10 * time.Second
+	SSHFileOpsTimeout           = 100 * time.Second
+	SSHPOSTTimeout              = 10 * time.Second
+	SSHSleepBetweenChecks       = 1 * time.Second
+	SSHShell                    = "/bin/bash"
+	AWSVolumeTypeGP3            = "gp3"
+	AWSVolumeTypeIO1            = "io1"
+	AWSVolumeTypeIO2            = "io2"
+	AWSGP3DefaultIOPS           = 3000
+	AWSGP3DefaultThroughput     = 125
+	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
@@ -113,17 +118,17 @@ const (
 	ExtraLocalNetworkDataFilename     = "extra-local-network-data.json"
 	ExtraLocalNetworkDataSnapshotsDir = "extra-local-network-data"
 
-	CliInstallationURL      = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
-	ExpectedCliInstallErr   = "resource temporarily unavailable"
-	EIPLimitErr             = "AddressLimitExceeded"
-	ErrCreatingAWSNode      = "failed to create AWS Node"
-	ErrCreatingGCPNode      = "failed to create GCP Node"
-	ErrReleasingGCPStaticIP = "failed to release gcp static ip"
-	KeyDir                  = "key"
-	KeySuffix               = ".pk"
-	YAMLSuffix              = ".yml"
-
-	Enable = "enable"
+	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
+	ExpectedCliInstallErr      = "resource temporarily unavailable"
+	EIPLimitErr                = "AddressLimitExceeded"
+	ErrCreatingAWSNode         = "failed to create AWS Node"
+	ErrCreatingGCPNode         = "failed to create GCP Node"
+	ErrReleasingGCPStaticIP    = "failed to release gcp static ip"
+	KeyDir                     = "key"
+	KeySuffix                  = ".pk"
+	YAMLSuffix                 = ".yml"
+	CustomGrafanaDashboardJSON = "custom.json"
+	Enable                     = "enable"
 
 	Disable = "disable"
 

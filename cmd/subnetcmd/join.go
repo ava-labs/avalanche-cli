@@ -481,24 +481,6 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 			return true, nil
 		}
 	}
-
-	// if not, also check the pending validator set
-	pVals, _, err := pClient.GetPendingValidators(ctx, subnetID, nodeIDs)
-	if err != nil {
-		return false, err
-	}
-	// pVals is an array of interfaces as it can be of different types
-	// but it's content is a JSON map[string]interface{}
-	for _, iv := range pVals {
-		if v, ok := iv.(map[string]interface{}); ok {
-			// strictly this is not needed, as we are providing the nodeID as param
-			// just a double check
-			if v["nodeID"] == nodeID.String() {
-				return true, nil
-			}
-		}
-	}
-
 	return false, nil
 }
 
