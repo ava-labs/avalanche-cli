@@ -3,8 +3,10 @@
 package teleporter
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -16,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -28,6 +31,11 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/awm-relayer/config"
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
+)
+
+const (
+	localRelayerCheckPoolTime = 100 * time.Millisecond
+	localRelayerCheckTimeout  = 3 * time.Second
 )
 
 var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
@@ -151,10 +159,31 @@ func RelayerCleanup(runFilePath string, storageDir string) error {
 		return err
 	}
 	if relayerIsUp {
+		waitedCh := make(chan struct{})
+		go func() {
+			for {
+				if err := proc.Signal(syscall.Signal(0)); err != nil {
+					if errors.Is(err, os.ErrProcessDone) {
+						close(waitedCh)
+						return
+					} else {
+						ux.Logger.RedXToUser("failure checking to process pid %d aliveness due to: %s", proc.Pid, err)
+					}
+				}
+				time.Sleep(localRelayerCheckPoolTime)
+			}
+		}()
 		if err := proc.Signal(os.Interrupt); err != nil {
+			return fmt.Errorf("failed sending interrupt signal to relayer process with pid %d: %w", pid, err)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), localRelayerCheckTimeout)
+		defer cancel()
+		select {
+		case <-ctx.Done():
 			if err := proc.Signal(os.Kill); err != nil {
 				return fmt.Errorf("failed killing relayer process with pid %d: %w", pid, err)
 			}
+		case <-waitedCh:
 		}
 		return removeRelayerRunFile(runFilePath)
 	}
