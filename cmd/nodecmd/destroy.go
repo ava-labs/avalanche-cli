@@ -12,6 +12,7 @@ import (
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
@@ -126,7 +127,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		}
 		nodesToStop = append(nodesToStop, ltInstance)
 	}
-	awmRelayerHost, err := getAWMRelayerHost(clusterName)
+	awmRelayerHost, err := node.GetAWMRelayerHost(app, clusterName)
 	if err != nil {
 		return err
 	}
