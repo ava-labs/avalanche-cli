@@ -215,7 +215,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 		InstanceType:     types.InstanceType(instanceType),
 		KeyName:          aws.String(keyName),
 		SecurityGroupIds: []string{securityGroupID},
-		MinCount:         aws.Int32(int32(count)),
+		MinCount:         aws.Int32(1),
 		MaxCount:         aws.Int32(int32(count)),
 		BlockDeviceMappings: []types.BlockDeviceMapping{
 			{
