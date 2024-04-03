@@ -123,7 +123,9 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		ec2SvcMap[sg.region] = sgEc2Svc
+		if _, ok := ec2SvcMap[sg.region]; !ok {
+			ec2SvcMap[sg.region] = sgEc2Svc
+		}
 	}
 	for _, loadTestName := range loadTestsToStop {
 		existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
