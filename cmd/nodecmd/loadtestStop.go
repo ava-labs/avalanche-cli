@@ -161,7 +161,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 				return err
 			}
 			for _, sg := range filteredSGList {
-				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region); err != nil {
+				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup); err != nil {
 					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
 						loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region, err.Error())
 				}

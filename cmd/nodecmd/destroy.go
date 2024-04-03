@@ -175,7 +175,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 			}
 			for _, sg := range filteredSGList {
-				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, sg.securityGroup, nodeConfig.Region); err != nil {
+				if err = deleteMonitoringSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, sg.securityGroup); err != nil {
 					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
 						nodeConfig.ElasticIP, sg.securityGroup, sg.region, err.Error())
 				}
