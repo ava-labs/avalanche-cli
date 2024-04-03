@@ -37,7 +37,7 @@ func CreateEvmSubnetConfig(
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
-	teleporterReady bool,
+	useWarp bool,
 ) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
@@ -76,7 +76,7 @@ func CreateEvmSubnetConfig(
 			subnetEVMChainID,
 			subnetEVMTokenName,
 			useSubnetEVMDefaults,
-			teleporterReady,
+			useWarp,
 		)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
@@ -109,7 +109,7 @@ func createEvmGenesis(
 	subnetEVMChainID uint64,
 	subnetEVMTokenName string,
 	useSubnetEVMDefaults bool,
-	teleporterReady bool,
+	useWarp bool,
 ) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
@@ -154,9 +154,9 @@ func createEvmGenesis(
 		case feeState:
 			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
-			allocation, direction, err = getEVMAllocation(app, useSubnetEVMDefaults)
+			allocation, direction, err = getEVMAllocation(app, subnetName, useSubnetEVMDefaults)
 		case precompilesState:
-			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, teleporterReady)
+			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, useWarp)
 		default:
 			err = errors.New("invalid creation stage")
 		}
@@ -230,8 +230,8 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 }
 
 // In own function to facilitate testing
-func getEVMAllocation(app *application.Avalanche, useDefaults bool) (core.GenesisAlloc, statemachine.StateDirection, error) {
-	return getAllocation(app, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)", useDefaults)
+func getEVMAllocation(app *application.Avalanche, subnetName string, useDefaults bool) (core.GenesisAlloc, statemachine.StateDirection, error) {
+	return getAllocation(app, subnetName, defaultEvmAirdropAmount, oneAvax, "Amount to airdrop (in AVAX units)", useDefaults)
 }
 
 func getVMVersion(

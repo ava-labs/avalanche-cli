@@ -265,7 +265,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	var awmRelayerHost *models.Host
-	if sc.TeleporterReady && isEVMGenesis {
+	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
 		awmRelayerHost, err = node.GetAWMRelayerHost(app, clusterName)
 		if err != nil {
@@ -327,7 +327,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sc.TeleporterReady && isEVMGenesis {
+	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
 		ux.Logger.PrintToUser("")
