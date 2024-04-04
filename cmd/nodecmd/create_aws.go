@@ -320,6 +320,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			iops,
 			throughput,
 			stringToAWSVolumeType(volumeType),
+			volumeSize,
 		); err != nil {
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}
