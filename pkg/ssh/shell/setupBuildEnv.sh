@@ -6,6 +6,6 @@ until sudo apt-get -y update -o DPkg::Lock::Timeout=120; do sleep 10 && echo "Tr
 until sudo apt-get -y install -o DPkg::Lock::Timeout=120 gcc; do sleep 10 && echo "Try again"; done
 #name:TASK [install go]
 {{if .IsE2E }}
-sudo apt-get -y install snap
+sudo apt-get -y install snapd
 {{end}}
 go version || sudo snap install go --classic
