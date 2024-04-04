@@ -11,7 +11,7 @@ sudo apt-get -y install -o DPkg::Lock::Timeout=120 wget curl git
 #name:TASK [create .avalanche-cli .avalanchego dirs]
 mkdir -p .avalanche-cli .avalanchego/staking
 #name:TASK [get avalanche go script]
-wget -q -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-docs/build-commits/scripts/avalanchego-installer.sh
+wget -q -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-docs/master/scripts/avalanchego-installer.sh
 #name:TASK [modify permissions]
 chmod 755 avalanchego-installer.sh
 #name:TASK [call avalanche go install script]
