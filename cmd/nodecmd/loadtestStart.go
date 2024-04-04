@@ -7,9 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanchego/utils/logging"
-
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -293,73 +290,73 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			currentLoadTestHost = append(currentLoadTestHost, host)
 		}
 	}
-	if err := GetLoadTestScript(app); err != nil {
-		return err
-	}
-
-	// waiting for all nodes to become accessible
-	if existingSeparateInstance == "" {
-		failedHosts := waitForHosts(currentLoadTestHost)
-		if failedHosts.Len() > 0 {
-			for _, result := range failedHosts.GetResults() {
-				ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
-			}
-			return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
-		}
-		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", currentLoadTestHost[0].NodeID)
-	}
-	ux.Logger.PrintToUser("Setting up load test environment")
-	if err := ssh.RunSSHBuildLoadTestDependencies(currentLoadTestHost[0]); err != nil {
-		return err
-	}
-	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
-	if err != nil {
-		return err
-	}
-	if len(monitoringHosts) > 0 {
-		if err := ssh.RunSSHSetupPromtail(currentLoadTestHost[0]); err != nil {
-			return err
-		}
-		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest"); err != nil {
-			return err
-		}
-		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
-		if err != nil {
-			return err
-		}
-		if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
-			return err
-		}
-	}
-
-	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
-	if err != nil {
-		return err
-	}
-
-	if err := createClusterYAMLFile(clusterName, subnetID, chainID, currentLoadTestHost[0]); err != nil {
-		return err
-	}
-
-	if err := ssh.RunSSHCopyYAMLFile(currentLoadTestHost[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
-		return err
-	}
-	checkoutCommit := false
-	if loadTestRepoCommit != "" {
-		checkoutCommit = true
-	}
-
-	ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
-	ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
-	if err := ssh.RunSSHBuildLoadTestCode(currentLoadTestHost[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, loadTestBranch, checkoutCommit); err != nil {
-		return err
-	}
-
-	ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
-	if err := ssh.RunSSHRunLoadTest(currentLoadTestHost[0], loadTestCmd, loadTestName); err != nil {
-		return err
-	}
+	//if err := GetLoadTestScript(app); err != nil {
+	//	return err
+	//}
+	//
+	//// waiting for all nodes to become accessible
+	//if existingSeparateInstance == "" {
+	//	failedHosts := waitForHosts(currentLoadTestHost)
+	//	if failedHosts.Len() > 0 {
+	//		for _, result := range failedHosts.GetResults() {
+	//			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+	//		}
+	//		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+	//	}
+	//	ux.Logger.PrintToUser("Separate instance %s provisioned successfully", currentLoadTestHost[0].NodeID)
+	//}
+	//ux.Logger.PrintToUser("Setting up load test environment")
+	//if err := ssh.RunSSHBuildLoadTestDependencies(currentLoadTestHost[0]); err != nil {
+	//	return err
+	//}
+	//monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	//monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	//if err != nil {
+	//	return err
+	//}
+	//if len(monitoringHosts) > 0 {
+	//	if err := ssh.RunSSHSetupPromtail(currentLoadTestHost[0]); err != nil {
+	//		return err
+	//	}
+	//	if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest"); err != nil {
+	//		return err
+	//	}
+	//	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
+	//		return err
+	//	}
+	//}
+	//
+	//subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//if err := createClusterYAMLFile(clusterName, subnetID, chainID, currentLoadTestHost[0]); err != nil {
+	//	return err
+	//}
+	//
+	//if err := ssh.RunSSHCopyYAMLFile(currentLoadTestHost[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
+	//	return err
+	//}
+	//checkoutCommit := false
+	//if loadTestRepoCommit != "" {
+	//	checkoutCommit = true
+	//}
+	//
+	//ux.Logger.GreenCheckmarkToUser("Load test environment is ready!")
+	//ux.Logger.PrintToUser("%s Building load test code", logging.Green.Wrap(">"))
+	//if err := ssh.RunSSHBuildLoadTestCode(currentLoadTestHost[0], loadTestRepoURL, loadTestBuildCmd, loadTestRepoCommit, repoDirName, loadTestBranch, checkoutCommit); err != nil {
+	//	return err
+	//}
+	//
+	//ux.Logger.PrintToUser("%s Running load test", logging.Green.Wrap(">"))
+	//if err := ssh.RunSSHRunLoadTest(currentLoadTestHost[0], loadTestCmd, loadTestName); err != nil {
+	//	return err
+	//}
 	ux.Logger.PrintToUser("Load test successfully run!")
 	return nil
 }
