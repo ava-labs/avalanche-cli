@@ -8,6 +8,14 @@ sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 wget -q -nd -m https://raw.githubusercontent.com/ava-labs/avalanche-monitoring/main/grafana/monitoring-installer.sh
 #name:TASK [modify permission for monitoring script]
 chmod 755 monitoring-installer.sh
+while ! gcc --version >/dev/null 2>&1; do
+    echo "GCC is not installed. Trying to install..."
+    DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
+    if [ $? -ne 0 ]; then
+        echo "Failed to install GCC. Retrying in 10 seconds..."
+        sleep 10
+    fi
+done
 #name:TASK [set up Prometheus]
 while ! sudo systemctl status prometheus >/dev/null 2>&1; do
    ./monitoring-installer.sh --1
