@@ -618,7 +618,7 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupBuildEnv.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
+		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, IsE2E: utils.IsE2E()},
 	)
 }
 
