@@ -191,12 +191,12 @@ func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip stri
 }
 
 // CreateEC2Instances creates EC2 instances
-func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool, iops, throughput int, volumeType types.VolumeType) ([]string, error) {
+func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool, iops, throughput int, volumeType types.VolumeType, volumeSize int) ([]string, error) {
 	var diskVolumeSize int32
 	if forMonitoring {
 		diskVolumeSize = constants.MonitoringCloudServerStorageSize
 	} else {
-		diskVolumeSize = constants.CloudServerStorageSize
+		diskVolumeSize = int32(volumeSize)
 	}
 	ebsValue := &types.EbsBlockDevice{
 		VolumeSize:          aws.Int32(diskVolumeSize),
