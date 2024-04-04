@@ -6,8 +6,8 @@ sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 {{end}}
 #name:TASK [update apt data and install dependencies]
 export DEBIAN_FRONTEND=noninteractive
-until sudo apt-get -y update -o DPkg::Lock::Timeout=120; do sleep 1 && echo "Try again"; done 
-sudo apt-get -y install -o DPkg::Lock::Timeout=120 wget curl git 
+until sudo apt-get -y update -o DPkg::Lock::Timeout=120; do sleep 10 && echo "Try again"; done
+until sudo apt-get -y install -o DPkg::Lock::Timeout=120 wget curl git; do sleep 10 && echo "Try again"; done
 #name:TASK [create .avalanche-cli .avalanchego dirs]
 mkdir -p .avalanche-cli .avalanchego/staking
 #name:TASK [get avalanche go script]
