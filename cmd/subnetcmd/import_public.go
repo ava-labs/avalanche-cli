@@ -203,6 +203,7 @@ func importPublic(*cobra.Command, []string) error {
 		Subnet:       subnetName,
 		Version:      constants.SidecarVersion,
 		TokenName:    constants.DefaultTokenName,
+		TokenSymbol:  constants.DefaultTokenSymbol,
 		ImportedVMID: vmIDstr,
 		// signals that the VMID wasn't derived from the subnet name but through import
 		ImportedFromAPM: true,

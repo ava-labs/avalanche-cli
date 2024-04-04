@@ -77,7 +77,9 @@ const (
 	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
 
-	DefaultTokenName = "TEST"
+	DefaultTokenName = "Test Token"
+
+	DefaultTokenSymbol = "TEST"
 
 	HealthCheckInterval = 100 * time.Millisecond
 

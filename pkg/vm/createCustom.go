@@ -35,11 +35,9 @@ func CreateCustomSubnetConfig(
 	}
 
 	sc := &models.Sidecar{
-		Name:      subnetName,
-		VM:        models.CustomVM,
-		VMVersion: "",
-		Subnet:    subnetName,
-		TokenName: "",
+		Name:   subnetName,
+		VM:     models.CustomVM,
+		Subnet: subnetName,
 	}
 
 	if customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {

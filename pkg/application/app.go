@@ -460,6 +460,7 @@ func (app *Avalanche) LoadRawNetworkUpgrades(subnetName string) ([]byte, error) 
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
+		sc.TokenSymbol = constants.DefaultTokenSymbol
 	}
 
 	sidecarPath := app.GetSidecarPath(sc.Name)
@@ -489,6 +490,7 @@ func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
 
 	if sc.TokenName == "" {
 		sc.TokenName = constants.DefaultTokenName
+		sc.TokenSymbol = constants.DefaultTokenSymbol
 	}
 
 	return sc, err
@@ -602,6 +604,14 @@ func (app *Avalanche) GetTokenName(subnetName string) string {
 		return constants.DefaultTokenName
 	}
 	return sidecar.TokenName
+}
+
+func (app *Avalanche) GetTokenSymbol(subnetName string) string {
+	sidecar, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return constants.DefaultTokenSymbol
+	}
+	return sidecar.TokenSymbol
 }
 
 func (app *Avalanche) GetSidecarNames() ([]string, error) {
