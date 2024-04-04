@@ -207,7 +207,6 @@ func createEvmGenesis(
 		RPCVersion:  rpcVersion,
 		Subnet:      subnetName,
 		TokenSymbol: tokenSymbol,
-		// backwards compat
 		TokenName: tokenSymbol + " Token",
 	}
 
