@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -640,7 +639,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			ux.SpinComplete(spinner)
+			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, remoteCLIVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
@@ -675,13 +681,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			}
-			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			ux.SpinComplete(spinner)
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Avalanche-CLI"))
 			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -1069,9 +1068,6 @@ func getAvalancheGoVersion() (string, error) {
 	case useLatestAvalanchegoPreReleaseVersion:
 		version = latestPreReleaseVersion
 	case useCustomAvalanchegoVersion != "":
-		if !semver.IsValid(useCustomAvalanchegoVersion) {
-			return "", errors.New("custom avalanchego version must be a legal semantic version (ex: v1.1.1)")
-		}
 		version = useCustomAvalanchegoVersion
 	case useAvalanchegoVersionFromSubnet != "":
 		sc, err := app.LoadSidecar(useAvalanchegoVersionFromSubnet)
