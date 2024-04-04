@@ -94,6 +94,39 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 	removedLoadTestHosts := []*models.Host{}
+	if len(loadTestsToStop) == 0 {
+		return fmt.Errorf("no load test instances to stop in cluster %s", clusterName)
+	}
+	existingLoadTestInstance, err := getExistingLoadTestInstance(clusterName, loadTestsToStop[0])
+	if err != nil {
+		return err
+	}
+	nodeToStopConfig, err := app.LoadClusterNodeConfig(existingLoadTestInstance)
+	if err != nil {
+		return err
+	}
+	clusterNodes, err := getClusterNodes(clusterName)
+	if err != nil {
+		return err
+	}
+	cloudSecurityGroupList, err := getCloudSecurityGroupList(clusterNodes)
+	if err != nil {
+		return err
+	}
+	filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == nodeToStopConfig.CloudService })
+	if len(filteredSGList) == 0 {
+		return fmt.Errorf("no hosts with cloud service %s found in cluster %s", nodeToStopConfig.CloudService, clusterName)
+	}
+	ec2SvcMap := make(map[string]*awsAPI.AwsCloud)
+	for _, sg := range filteredSGList {
+		sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+		if err != nil {
+			return err
+		}
+		if _, ok := ec2SvcMap[sg.region]; !ok {
+			ec2SvcMap[sg.region] = sgEc2Svc
+		}
+	}
 	for _, loadTestName := range loadTestsToStop {
 		existingSeparateInstance, err = getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
@@ -118,7 +151,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		}
 		switch nodeConfig.CloudService {
 		case constants.AWSCloudService:
-			_, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
+			loadTestNodeConfig, separateHostRegion, err := getNodeCloudConfig(existingSeparateInstance)
 			if err != nil {
 				return err
 			}
@@ -128,6 +161,12 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 			}
 			if err = destroyNode(existingSeparateInstance, clusterName, loadTestName, loadTestEc2SvcMap[separateHostRegion], nil); err != nil {
 				return err
+			}
+			for _, sg := range filteredSGList {
+				if err = deleteHostSecurityGroupRule(ec2SvcMap[sg.region], loadTestNodeConfig.PublicIPs[0], sg.securityGroup); err != nil {
+					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+						loadTestNodeConfig.PublicIPs[0], sg.securityGroup, sg.region, err.Error())
+				}
 			}
 		case constants.GCPCloudService:
 			var gcpClient *gcpAPI.GcpCloud

@@ -473,7 +473,7 @@ func updateProposerVMs(
 			return err
 		}
 		if deployedSubnetSc.TeleporterReady && deployedSubnetIsEVMGenesis {
-			ux.Logger.PrintToUser("updating proposerVM on %s", deployedSubnetName)
+			ux.Logger.PrintToUser("Updating proposerVM on %s", deployedSubnetName)
 			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
 			if blockchainID == ids.Empty {
 				return ErrNoBlockchainID
@@ -483,7 +483,7 @@ func updateProposerVMs(
 			}
 		}
 	}
-	ux.Logger.PrintToUser("updating proposerVM on c-chain")
+	ux.Logger.PrintToUser("Updating proposerVM on c-chain")
 	return teleporter.SetProposerVM(app, network, "C", "")
 }
 
