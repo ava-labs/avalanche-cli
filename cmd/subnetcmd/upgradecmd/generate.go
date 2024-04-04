@@ -218,6 +218,11 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		return err
 	}
 
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+
 	if yes {
 		_, cancel, err := prompts.CaptureListDecision(
 			app.Prompt,
@@ -227,7 +232,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 				if err != nil {
 					return "", err
 				}
-				amount, err := app.Prompt.CaptureUint64("Amount to airdrop (in AVAX units)")
+				amount, err := app.Prompt.CaptureUint64(fmt.Sprintf("Amount to airdrop (in %s units)", sc.TokenSymbol))
 				if err != nil {
 					return "", err
 				}

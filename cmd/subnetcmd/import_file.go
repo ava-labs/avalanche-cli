@@ -330,6 +330,7 @@ func importFromAPM() error {
 		RPCVersion:      rpcVersion,
 		Subnet:          subnetDescr.Alias,
 		TokenName:       constants.DefaultTokenName,
+		TokenSymbol:     constants.DefaultTokenSymbol,
 		Version:         constants.SidecarVersion,
 		ImportedFromAPM: true,
 		ImportedVMID:    vmDescr.ID,

@@ -24,7 +24,7 @@ func TestUpdateSideCar(t *testing.T) {
 	sc := &models.Sidecar{
 		Name:      "TEST",
 		VM:        models.SubnetEvm,
-		TokenName: "TEST",
+		TokenName: "Test Token",
 		ChainID:   "42",
 	}
 
@@ -131,7 +131,7 @@ func Test_createSidecar_success(t *testing.T) {
 			name:              "no token name",
 			subnetName:        subnetName1,
 			tokenName:         "",
-			expectedTokenName: "TEST",
+			expectedTokenName: "Test Token",
 			chainID:           "888",
 		},
 	}
@@ -193,10 +193,11 @@ func Test_loadSidecar_success(t *testing.T) {
 
 	// Check contents
 	expectedSc := models.Sidecar{
-		Name:      subnetName1,
-		VM:        vm,
-		Subnet:    subnetName1,
-		TokenName: constants.DefaultTokenName,
+		Name:        subnetName1,
+		VM:          vm,
+		Subnet:      subnetName1,
+		TokenName:   constants.DefaultTokenName,
+		TokenSymbol: constants.DefaultTokenSymbol,
 	}
 
 	sc, err := ap.LoadSidecar(subnetName1)

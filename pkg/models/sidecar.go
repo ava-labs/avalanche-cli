@@ -36,6 +36,7 @@ type Sidecar struct {
 	RPCVersion          int
 	Subnet              string
 	TokenName           string
+	TokenSymbol         string
 	ChainID             string
 	Version             string
 	Networks            map[string]NetworkData

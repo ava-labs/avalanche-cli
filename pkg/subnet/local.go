@@ -724,7 +724,7 @@ func (d *LocalDeployer) printExtraEvmInfo(
 	}
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
-	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenName(chain))
+	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenSymbol(chain))
 	return nil
 }
 

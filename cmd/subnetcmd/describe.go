@@ -92,6 +92,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 		table.Append([]string{"Mainnet ChainID", fmt.Sprint(sc.SubnetEVMMainnetChainID)})
 	}
 	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
+	table.Append([]string{"Token Symbol", app.GetTokenSymbol(sc.Subnet)})
 	table.Append([]string{"VM Version", sc.VMVersion})
 	if sc.ImportedVMID != "" {
 		table.Append([]string{"VM ID", sc.ImportedVMID})

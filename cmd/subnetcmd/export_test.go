@@ -78,7 +78,8 @@ func TestExportImportSubnet(t *testing.T) {
 	require.Equal(control["VM"], "Subnet-EVM")
 	require.Equal(control["VMVersion"], vmVersion)
 	require.Equal(control["Subnet"], testSubnet)
-	require.Equal(control["TokenName"], "TEST")
+	require.Equal(control["TokenName"], "Test Token")
+	require.Equal(control["TokenSymbol"], "TEST")
 	require.Equal(control["Version"], constants.SidecarVersion)
 	require.Equal(control["Networks"], nil)
 
