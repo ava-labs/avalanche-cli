@@ -207,7 +207,7 @@ func createEvmGenesis(
 		RPCVersion:  rpcVersion,
 		Subnet:      subnetName,
 		TokenSymbol: tokenSymbol,
-		TokenName: tokenSymbol + " Token",
+		TokenName:   tokenSymbol + " Token",
 	}
 
 	return prettyJSON.Bytes(), sc, nil
