@@ -1143,7 +1143,10 @@ func promptAvalancheGoVersionChoice(latestReleaseVersion string, latestPreReleas
 }
 
 func setCloudService() (string, error) {
-	if utils.IsE2E() && utils.E2EDocker() {
+	if utils.IsE2E() {
+		if !utils.E2EDocker() {
+			return "", fmt.Errorf("E2E is required but docker-compose is not available")
+		}
 		return constants.E2EDocker, nil
 	}
 	if useAWS {

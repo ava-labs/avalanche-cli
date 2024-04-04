@@ -174,7 +174,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 
 	if !clusterAlreadyExists {
 		globalNetworkFlags.UseDevnet = true
-		if len(useCustomAvalanchegoVersion) == 0 {
+		if len(useCustomAvalanchegoVersion) == 0 && !useLatestAvalanchegoReleaseVersion && !useLatestAvalanchegoPreReleaseVersion {
 			useAvalanchegoVersionFromSubnet = subnetName
 		}
 		ux.Logger.PrintToUser("")
