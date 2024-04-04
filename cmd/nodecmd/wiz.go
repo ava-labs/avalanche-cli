@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -268,7 +269,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	var awmRelayerHost *models.Host
 	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
-		awmRelayerHost, err = getAWMRelayerHost(clusterName)
+		awmRelayerHost, err = node.GetAWMRelayerHost(app, clusterName)
 		if err != nil {
 			return err
 		}
@@ -488,31 +489,10 @@ func updateProposerVMs(
 	return teleporter.SetProposerVM(app, network, "C", "")
 }
 
-func getHostWithCloudID(clusterName string, cloudID string) (*models.Host, error) {
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
-	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
-	if utils.FileExists(monitoringInventoryFile) {
-		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
-		if err != nil {
-			return nil, err
-		}
-		hosts = append(hosts, monitoringHosts...)
-	}
-	for _, host := range hosts {
-		if host.GetCloudID() == cloudID {
-			return host, nil
-		}
-	}
-	return nil, nil
-}
-
 func setAWMRelayerHost(host *models.Host) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
+	ux.Logger.PrintToUser("configuring AWM RElayer on host %s", cloudID)
 	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 	if err != nil {
 		return err
@@ -541,24 +521,6 @@ func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterNam
 	return ssh.RunSSHStartAWMRelayerService(host)
 }
 
-func getAWMRelayerHost(clusterName string) (*models.Host, error) {
-	clusterConfig, err := app.GetClusterConfig(clusterName)
-	if err != nil {
-		return nil, err
-	}
-	relayerCloudID := ""
-	for _, cloudID := range clusterConfig.GetCloudIDs() {
-		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-		if err != nil {
-			return nil, err
-		}
-		if nodeConfig.IsAWMRelayer {
-			relayerCloudID = nodeConfig.NodeID
-		}
-	}
-	return getHostWithCloudID(clusterName, relayerCloudID)
-}
-
 func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 	// first look up for separate monitoring host
 	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
@@ -577,11 +539,11 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 		return nil, err
 	}
 	if len(clusterConfig.APINodes) > 0 {
-		return getHostWithCloudID(clusterName, clusterConfig.APINodes[0])
+		return node.GetHostWithCloudID(app, clusterName, clusterConfig.APINodes[0])
 	}
 	// finally go for other hosts
 	if len(clusterConfig.Nodes) > 0 {
-		return getHostWithCloudID(clusterName, clusterConfig.Nodes[0])
+		return node.GetHostWithCloudID(app, clusterName, clusterConfig.Nodes[0])
 	}
 	return nil, fmt.Errorf("no hosts found on cluster")
 }
