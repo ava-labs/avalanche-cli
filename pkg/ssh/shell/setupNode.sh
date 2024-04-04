@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+export PATH=$PATH:~/go/bin
 {{if .IsE2E }}
 #name:TASK [disable systemctl]
 sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
