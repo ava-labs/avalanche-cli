@@ -28,6 +28,7 @@ var (
 	app           *application.Avalanche
 	userIPAddress string
 	userPubKey    string
+	discoverIP    bool
 )
 
 func newWhitelistCmd() *cobra.Command {
@@ -45,6 +46,7 @@ func newWhitelistCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&userIPAddress, "ip", "", "ip address to whitelist")
 	cmd.Flags().StringVar(&userPubKey, "ssh", "", "ssh public key to whitelist")
+	cmd.Flags().BoolVarP(&discoverIP, "current-ip", "y", false, "whitelist current host ip")
 	return cmd
 }
 
@@ -61,6 +63,13 @@ func whitelist(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
+	}
+	if discoverIP {
+		userIPAddress, err = utils.GetUserIPAddress()
+		if err != nil {
+			return fmt.Errorf("failed to get user IP address")
+		}
+		ux.Logger.PrintToUser("Detected your IP address as: %s", logging.LightBlue.Wrap(userIPAddress))
 	}
 	if userIPAddress == "" && userPubKey == "" {
 		// prompt for ssh key
