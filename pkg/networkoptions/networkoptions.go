@@ -93,6 +93,27 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, always
 	}
 }
 
+func GetNetworkFromSidecarNetworkName(
+	app *application.Avalanche,
+	networkName string,
+) (models.Network, error) {
+	switch {
+	case strings.HasPrefix(networkName, Local.String()):
+		return models.NewLocalNetwork(), nil
+	case strings.HasPrefix(networkName, Cluster.String()):
+		parts := strings.Split(networkName, " ")
+		if len(parts) != 2 {
+			return models.UndefinedNetwork, fmt.Errorf("expected 'Cluster clusterName' on network name %s", networkName)
+		}
+		return app.GetClusterNetwork(parts[1])
+	case strings.HasPrefix(networkName, Fuji.String()):
+		return models.NewFujiNetwork(), nil
+	case strings.HasPrefix(networkName, Mainnet.String()):
+		return models.NewMainnetNetwork(), nil
+	}
+	return models.UndefinedNetwork, fmt.Errorf("unsupported network name")
+}
+
 func GetSupportedNetworkOptionsForSubnet(
 	app *application.Avalanche,
 	subnetName string,

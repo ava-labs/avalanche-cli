@@ -356,6 +356,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("")
 
+	ux.Logger.PrintToUser(logging.Green.Wrap("Subnet %s RPC URL: %s"), subnetName, network.BlockchainEndpoint(blockchainID.String()))
+	ux.Logger.PrintToUser("")
+
 	if addMonitoring {
 		if customGrafanaDashboardPath != "" {
 			if err = addCustomDashboard(clusterName, subnetName); err != nil {
