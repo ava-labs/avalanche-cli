@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -69,7 +70,7 @@ func printGenesis(sc models.Sidecar, subnetName string) error {
 	return nil
 }
 
-func printDetails(genesis core.Genesis, sc models.Sidecar) {
+func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 	const art = `
  _____       _        _ _
 |  __ \     | |      (_) |
@@ -106,10 +107,15 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	}
 
 	for net, data := range sc.Networks {
+		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		if err != nil {
+			return err
+		}
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
 		}
 		if data.BlockchainID != ids.Empty {
+			table.Append([]string{fmt.Sprintf("%s RPC URL", net), network.BlockchainEndpoint(data.BlockchainID.String())})
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), data.BlockchainID.String()})
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), hexEncoding})
@@ -122,6 +128,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 		}
 	}
 	table.Render()
+	return nil
 }
 
 func printGasTable(genesis core.Genesis) {
@@ -313,7 +320,9 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 		return err
 	}
 
-	printDetails(genesis, sc)
+	if err := printDetails(genesis, sc); err != nil {
+		return err
+	}
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
