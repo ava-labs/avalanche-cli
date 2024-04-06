@@ -58,6 +58,8 @@ var (
 	chainConf                      string
 	validators                     []string
 	customGrafanaDashboardPath     string
+	teleporterReady                bool
+	runRelayer                     bool
 )
 
 func newWizCmd() *cobra.Command {
@@ -87,6 +89,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 
 	cmd.Flags().BoolVar(&forceSubnetCreate, "force-subnet-create", false, "overwrite the existing subnet configuration if one exists")
 	cmd.Flags().StringVar(&subnetGenesisFile, "subnet-genesis", "", "file path of the subnet genesis")
+	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&runRelayer, "relayer", false, "run AWM relayer when deploying the vm")
 	cmd.Flags().BoolVar(&useEvmSubnet, "evm-subnet", false, "use Subnet-EVM as the subnet virtual machine")
 	cmd.Flags().BoolVar(&useCustomSubnet, "custom-subnet", false, "use a custom VM as the subnet virtual machine")
 	cmd.Flags().StringVar(&evmVersion, "evm-version", "", "version of Subnet-EVM to use")
