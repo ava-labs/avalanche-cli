@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 
@@ -87,9 +86,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	evmChainID, err := client.ChainID(ctx)
+	evmChainID, err := evm.GetChainID(client)
 	if err != nil {
 		return err
 	}

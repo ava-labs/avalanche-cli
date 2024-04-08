@@ -3,24 +3,28 @@
 package evm
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/rpc"
 	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
 	BaseFeeFactor               = 2
 	MaxPriorityFeePerGas        = 2500000000 // 2.5 gwei
 	NativeTransferGas    uint64 = 21_000
+	repeatsOnFailure            = 3
+	sleepBetweenRepeats         = 1 * time.Second
 )
 
 func ContractAlreadyDeployed(
@@ -38,20 +42,46 @@ func GetContractBytecode(
 	client ethclient.Client,
 	contractAddressStr string,
 ) ([]byte, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
 	contractAddress := common.HexToAddress(contractAddressStr)
-	return client.CodeAt(ctx, contractAddress, nil)
+	var (
+		code []byte
+		err  error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		code, err = client.CodeAt(ctx, contractAddress, nil)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining code for %s on %#v: %w", contractAddressStr, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return code, err
 }
 
 func GetAddressBalance(
 	client ethclient.Client,
 	addressStr string,
 ) (*big.Int, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
 	address := common.HexToAddress(addressStr)
-	return client.BalanceAt(ctx, address, nil)
+	var (
+		balance *big.Int
+		err     error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		balance, err = client.BalanceAt(ctx, address, nil)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining balance for %s on %#v: %w", addressStr, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return balance, err
 }
 
 // Returns the gasFeeCap, gasTipCap, and nonce the be used when constructing a transaction from address
@@ -59,24 +89,86 @@ func CalculateTxParams(
 	client ethclient.Client,
 	addressStr string,
 ) (*big.Int, *big.Int, uint64, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	address := common.HexToAddress(addressStr)
-	baseFee, err := client.EstimateBaseFee(ctx)
+	baseFee, err := EstimateBaseFee(client)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	gasTipCap, err := client.SuggestGasTipCap(ctx)
+	gasTipCap, err := SuggestGasTipCap(client)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	nonce, err := client.NonceAt(ctx, address, nil)
+	nonce, err := NonceAt(client, addressStr)
 	if err != nil {
 		return nil, nil, 0, err
 	}
 	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(BaseFeeFactor))
 	gasFeeCap.Add(gasFeeCap, big.NewInt(MaxPriorityFeePerGas))
 	return gasFeeCap, gasTipCap, nonce, nil
+}
+
+func NonceAt(
+	client ethclient.Client,
+	addressStr string,
+) (uint64, error) {
+	address := common.HexToAddress(addressStr)
+	var (
+		nonce uint64
+		err   error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		nonce, err = client.NonceAt(ctx, address, nil)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining nonce for %s on %#v: %w", addressStr, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return nonce, err
+}
+
+func SuggestGasTipCap(
+	client ethclient.Client,
+) (*big.Int, error) {
+	var (
+		gasTipCap *big.Int
+		err       error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		gasTipCap, err = client.SuggestGasTipCap(ctx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining gas tip cap on %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return gasTipCap, err
+}
+
+func EstimateBaseFee(
+	client ethclient.Client,
+) (*big.Int, error) {
+	var (
+		baseFee *big.Int
+		err     error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		baseFee, err = client.EstimateBaseFee(ctx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure estimating base fee on %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return baseFee, err
 }
 
 func FundAddress(
@@ -95,9 +187,7 @@ func FundAddress(
 		return err
 	}
 	targetAddress := common.HexToAddress(targetAddressStr)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
+	chainID, err := GetChainID(client)
 	if err != nil {
 		return err
 	}
@@ -115,7 +205,7 @@ func FundAddress(
 	if err != nil {
 		return err
 	}
-	if err := client.SendTransaction(ctx, signedTx); err != nil {
+	if err := SendTransaction(client, signedTx); err != nil {
 		return err
 	}
 	if _, b, err := WaitForTransaction(client, signedTx); err != nil {
@@ -126,28 +216,6 @@ func FundAddress(
 	return nil
 }
 
-func ActivateProposerVM(
-	client ethclient.Client,
-	privateKeyStr string,
-) error {
-	privateKey, err := crypto.HexToECDSA(privateKeyStr)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
-	if err != nil {
-		return err
-	}
-	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(
-		ctx,
-		chainID,
-		privateKey,
-		client,
-	)
-}
-
 func IssueTx(
 	client ethclient.Client,
 	txStr string,
@@ -156,9 +224,7 @@ func IssueTx(
 	if err := tx.UnmarshalBinary(common.FromHex(txStr)); err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	if err := client.SendTransaction(ctx, tx); err != nil {
+	if err := SendTransaction(client, tx); err != nil {
 		return err
 	}
 	if _, b, err := WaitForTransaction(client, tx); err != nil {
@@ -169,10 +235,61 @@ func IssueTx(
 	return nil
 }
 
+func SendTransaction(
+	client ethclient.Client,
+	tx *types.Transaction,
+) error {
+	var err error
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		err = client.SendTransaction(ctx, tx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure sending transaction %#v to %#v: %w", tx, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return err
+}
+
 func GetClient(rpcURL string) (ethclient.Client, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	return ethclient.DialContext(ctx, rpcURL)
+	var (
+		client ethclient.Client
+		err    error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		client, err = ethclient.DialContext(ctx, rpcURL)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure connecting to %s: %w", rpcURL, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return client, err
+}
+
+func GetChainID(client ethclient.Client) (*big.Int, error) {
+	var (
+		chainID *big.Int
+		err     error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		chainID, err = client.ChainID(ctx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure getting chain id from client %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return chainID, err
 }
 
 func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
@@ -180,11 +297,9 @@ func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.Tr
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
+	chainID, err := GetChainID(client)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failure generating signer: %w", err)
 	}
 	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
 }
@@ -193,15 +308,24 @@ func WaitForTransaction(
 	client ethclient.Client,
 	tx *types.Transaction,
 ) (*types.Receipt, bool, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-
-	receipt, err := bind.WaitMined(ctx, client, tx)
-	if err != nil {
-		return nil, false, err
+	var (
+		err     error
+		receipt *types.Receipt
+		success bool
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		receipt, err = bind.WaitMined(ctx, client, tx)
+		if err == nil {
+			success = receipt.Status == types.ReceiptStatusSuccessful
+			break
+		}
+		err = fmt.Errorf("failure waiting for tx %#v on client %#v: %w", tx, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
 	}
-
-	return receipt, receipt.Status == types.ReceiptStatusSuccessful, nil
+	return receipt, success, err
 }
 
 // Returns the first log in 'logs' that is successfully parsed by 'parser'
@@ -215,35 +339,90 @@ func GetEventFromLogs[T any](logs []*types.Log, parser func(log types.Log) (T, e
 	return *new(T), fmt.Errorf("failed to find %T event in receipt logs", *new(T))
 }
 
+func GetRPCClient(rpcURL string) (*rpc.Client, error) {
+	var (
+		client *rpc.Client
+		err    error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		client, err = rpc.DialContext(ctx, rpcURL)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure connecting to rpc client on %s: %w", rpcURL, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return client, err
+}
+
+func DebugTraceTransaction(
+	client *rpc.Client,
+	txID string,
+) (map[string]interface{}, error) {
+	var (
+		err   error
+		trace map[string]interface{}
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		err = client.CallContext(ctx, &trace, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure tracing tx %s for client %#v: %w", txID, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return trace, err
+}
+
 func GetTrace(rpcURL string, txID string) (map[string]interface{}, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	client, err := rpc.DialContext(ctx, rpcURL)
+	client, err := GetRPCClient(rpcURL)
 	if err != nil {
 		return nil, err
 	}
-	var result map[string]interface{}
-	err = client.CallContext(ctx, &result, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
-	return result, err
+	return DebugTraceTransaction(client, txID)
 }
 
 func SetupProposerVM(
 	endpoint string,
 	privKeyStr string,
 ) error {
-	client, err := GetClient(endpoint)
-	if err != nil {
-		return fmt.Errorf("failure connecting to %s: %w", endpoint, err)
-	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
-	if err != nil {
-		return err
-	}
 	privKey, err := crypto.HexToECDSA(privKeyStr)
 	if err != nil {
 		return err
 	}
-	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
+	client, err := GetClient(endpoint)
+	if err != nil {
+		return err
+	}
+	chainID, err := GetChainID(client)
+	if err != nil {
+		return err
+	}
+	return IssueTxsToActivateProposerVMFork(client, chainID, privKey)
+}
+
+func IssueTxsToActivateProposerVMFork(
+	client ethclient.Client,
+	chainID *big.Int,
+	privKey *ecdsa.PrivateKey,
+) error {
+	var err error
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		err = subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure issuing txs to activate proposer VM fork for client %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return err
 }

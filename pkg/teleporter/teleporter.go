@@ -140,7 +140,7 @@ func (t *Deployer) DeployMessenger(
 	// check if contract is already deployed
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
-		return false, "", fmt.Errorf("failure connecting to %s: %w", rpcURL, err)
+		return false, "", err
 	}
 	if teleporterMessengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.teleporterMessengerContractAddress); err != nil {
 		return false, "", fmt.Errorf("failure making a request to %s: %w", rpcURL, err)
