@@ -46,7 +46,7 @@ func UserHomePath(filePath ...string) string {
 	return filepath.Join(fullPath...)
 }
 
-// expandHome expands ~ symbol to home directory
+// ExpandHome expands ~ symbol to home directory
 func ExpandHome(path string) string {
 	if len(path) > 0 && path[0] == '~' {
 		home, _ := os.UserHomeDir()
@@ -65,4 +65,18 @@ func FileCopy(src string, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, constants.WriteReadReadPerms)
+}
+
+// ReadFile reads a file and returns the contents as a string
+func ReadFile(filePath string) (string, error) {
+	filePath = ExpandHome(filePath)
+	if !FileExists(filePath) {
+		return "", fmt.Errorf("file does not exist")
+	} else {
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	}
 }
