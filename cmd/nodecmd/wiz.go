@@ -500,7 +500,7 @@ func updateProposerVMs(
 func setAWMRelayerHost(host *models.Host) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("configuring AWM RElayer on host %s", cloudID)
+	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
 	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 	if err != nil {
 		return err
