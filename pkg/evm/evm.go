@@ -89,24 +89,86 @@ func CalculateTxParams(
 	client ethclient.Client,
 	addressStr string,
 ) (*big.Int, *big.Int, uint64, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	address := common.HexToAddress(addressStr)
-	baseFee, err := client.EstimateBaseFee(ctx)
+	baseFee, err := EstimateBaseFee(client)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	gasTipCap, err := client.SuggestGasTipCap(ctx)
+	gasTipCap, err := SuggestGasTipCap(client)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	nonce, err := client.NonceAt(ctx, address, nil)
+	nonce, err := NonceAt(client, addressStr)
 	if err != nil {
 		return nil, nil, 0, err
 	}
 	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(BaseFeeFactor))
 	gasFeeCap.Add(gasFeeCap, big.NewInt(MaxPriorityFeePerGas))
 	return gasFeeCap, gasTipCap, nonce, nil
+}
+
+func NonceAt(
+	client ethclient.Client,
+	addressStr string,
+) (uint64, error) {
+	address := common.HexToAddress(addressStr)
+	var (
+		nonce uint64
+		err   error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		nonce, err = client.NonceAt(ctx, address, nil)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining nonce for %s on %#v: %w", addressStr, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return nonce, err
+}
+
+func SuggestGasTipCap(
+	client ethclient.Client,
+) (*big.Int, error) {
+	var (
+		gasTipCap *big.Int
+		err       error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		gasTipCap, err = client.SuggestGasTipCap(ctx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining gas tip cap on %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return gasTipCap, err
+}
+
+func EstimateBaseFee(
+	client ethclient.Client,
+) (*big.Int, error) {
+	var (
+		baseFee *big.Int
+		err     error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		baseFee, err = client.EstimateBaseFee(ctx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure estimating base fee on %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return baseFee, err
 }
 
 func FundAddress(
@@ -277,16 +339,53 @@ func GetEventFromLogs[T any](logs []*types.Log, parser func(log types.Log) (T, e
 	return *new(T), fmt.Errorf("failed to find %T event in receipt logs", *new(T))
 }
 
+func GetRPCClient(rpcURL string) (*rpc.Client, error) {
+	var (
+		client *rpc.Client
+		err    error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		client, err = rpc.DialContext(ctx, rpcURL)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure connecting to rpc client on %s: %w", rpcURL, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return client, err
+}
+
+func DebugTraceTransaction(
+	client *rpc.Client,
+	txID string,
+) (map[string]interface{}, error) {
+	var (
+		err   error
+		trace map[string]interface{}
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		err = client.CallContext(ctx, &trace, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure tracing tx %s for client %#v: %w", txID, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return trace, err
+}
+
 func GetTrace(rpcURL string, txID string) (map[string]interface{}, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	client, err := rpc.DialContext(ctx, rpcURL)
+	client, err := GetRPCClient(rpcURL)
 	if err != nil {
 		return nil, err
 	}
-	var result map[string]interface{}
-	err = client.CallContext(ctx, &result, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
-	return result, err
+	return DebugTraceTransaction(client, txID)
 }
 
 func SetupProposerVM(
