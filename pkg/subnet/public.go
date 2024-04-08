@@ -498,9 +498,9 @@ func (d *PublicDeployer) Commit(
 			break
 		}
 		if ctx.Err() != nil {
-			issueTxErr = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+			issueTxErr = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), issueTxErr)
 		} else {
-			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), issueTxErr)
 		}
 		ux.Logger.RedXToUser("%s", issueTxErr)
 		time.Sleep(sleepBetweenRepeats)
