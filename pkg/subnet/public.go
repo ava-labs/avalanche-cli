@@ -33,6 +33,8 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
+const commitRepeats = 3
+
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
 
 type PublicDeployer struct {
@@ -477,25 +479,33 @@ func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
 	justIssueTx bool,
 ) (ids.ID, error) {
+	var issueTxErr error
 	wallet, err := d.loadCacheWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	options := []common.Option{common.WithContext(ctx)}
-	if justIssueTx {
-		options = append(options, common.WithAssumeDecided())
-	}
-	err = wallet.P().IssueTx(tx, options...)
-	if err != nil {
-		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-		} else {
-			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+	for i := 0; i < commitRepeats; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		options := []common.Option{common.WithContext(ctx)}
+		if justIssueTx {
+			options = append(options, common.WithAssumeDecided())
 		}
+		issueTxErr = wallet.P().IssueTx(tx, options...)
+		if issueTxErr == nil {
+			break
+		}
+		if ctx.Err() != nil {
+			issueTxErr = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		ux.Logger.RedXToUser("%s", issueTxErr)
 	}
-	return tx.ID(), err
+	if issueTxErr != nil {
+		d.cleanCacheWallet()
+	}
+	return tx.ID(), issueTxErr
 }
 
 func (d *PublicDeployer) Sign(
@@ -546,6 +556,10 @@ func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error
 		return nil, err
 	}
 	return wallet, nil
+}
+
+func (d *PublicDeployer) cleanCacheWallet() {
+	d.wallet = nil
 }
 
 func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {

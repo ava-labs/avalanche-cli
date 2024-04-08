@@ -80,6 +80,11 @@ func GetAPIContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.APIRequestTimeout)
 }
 
+// Context for API requests with large timeout
+func GetAPILargeContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+}
+
 func GetRealFilePath(path string) string {
 	if strings.HasPrefix(path, "~") {
 		usr, _ := user.Current()
