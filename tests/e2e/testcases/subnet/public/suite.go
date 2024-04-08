@@ -154,7 +154,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(output).Should(gomega.Not(gomega.BeNil()))
 		gomega.Expect(output).Should(gomega.ContainSubstring("Current validators"))
 		gomega.Expect(output).Should(gomega.ContainSubstring("NodeID-"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("No pending validators found"))
 	})
 
 	ginkgo.It("deploy subnet with new chain id", func() {

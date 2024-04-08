@@ -27,8 +27,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -886,6 +888,9 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error) {
 	if err != nil {
 		return false, nil
 	}
+	genesis.Config.AvalancheContext = params.AvalancheContext{
+		SnowCtx: &snow.Context{},
+	}
 	if err := genesis.Verify(); err != nil {
 		return false, nil
 	}
@@ -896,6 +901,9 @@ func jsonIsSubnetEVMGenesis(jsonBytes []byte) bool {
 	genesis, err := app.LoadEvmGenesisFromJSON(jsonBytes)
 	if err != nil {
 		return false
+	}
+	genesis.Config.AvalancheContext = params.AvalancheContext{
+		SnowCtx: &snow.Context{},
 	}
 	if err := genesis.Verify(); err != nil {
 		return false

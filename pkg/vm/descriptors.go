@@ -19,23 +19,23 @@ func getChainID(app *application.Avalanche, subnetEVMChainID uint64) (*big.Int, 
 	return app.Prompt.CapturePositiveBigInt("ChainId")
 }
 
-func getTokenName(app *application.Avalanche, subnetEVMTokenName string) (string, error) {
-	if subnetEVMTokenName != "" {
-		return subnetEVMTokenName, nil
+func getTokenSymbol(app *application.Avalanche, subnetEVMTokenSymbol string) (string, error) {
+	if subnetEVMTokenSymbol != "" {
+		return subnetEVMTokenSymbol, nil
 	}
 	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
-	tokenName, err := app.Prompt.CaptureString("Token symbol")
+	tokenSymbol, err := app.Prompt.CaptureString("Token symbol")
 	if err != nil {
 		return "", err
 	}
 
-	return tokenName, nil
+	return tokenSymbol, nil
 }
 
 func getDescriptors(
 	app *application.Avalanche,
 	subnetEVMChainID uint64,
-	subnetEVMTokenName string,
+	subnetEVMTokenSymbol string,
 ) (
 	*big.Int,
 	string,
@@ -47,10 +47,10 @@ func getDescriptors(
 		return nil, "", statemachine.Stop, err
 	}
 
-	tokenName, err := getTokenName(app, subnetEVMTokenName)
+	tokenSymbol, err := getTokenSymbol(app, subnetEVMTokenSymbol)
 	if err != nil {
 		return nil, "", statemachine.Stop, err
 	}
 
-	return chainID, tokenName, statemachine.Forward, nil
+	return chainID, tokenSymbol, statemachine.Forward, nil
 }

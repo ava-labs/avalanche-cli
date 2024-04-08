@@ -192,26 +192,36 @@ func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip stri
 }
 
 // CreateEC2Instances creates EC2 instances
-func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool) ([]string, error) {
+func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceType, keyName, securityGroupID string, forMonitoring bool, iops, throughput int, volumeType types.VolumeType, volumeSize int) ([]string, error) {
 	var diskVolumeSize int32
 	if forMonitoring {
 		diskVolumeSize = constants.MonitoringCloudServerStorageSize
 	} else {
-		diskVolumeSize = constants.CloudServerStorageSize
+		diskVolumeSize = int32(volumeSize)
 	}
+	ebsValue := &types.EbsBlockDevice{
+		VolumeSize:          aws.Int32(diskVolumeSize),
+		VolumeType:          volumeType,
+		DeleteOnTermination: aws.Bool(true),
+	}
+	if volumeType == types.VolumeTypeGp3 {
+		ebsValue.Throughput = aws.Int32(int32(throughput))
+		ebsValue.Iops = aws.Int32(int32(iops))
+	} else if volumeType == types.VolumeTypeIo2 || volumeType == types.VolumeTypeIo1 {
+		ebsValue.Iops = aws.Int32(int32(iops))
+	}
+
 	runResult, err := c.ec2Client.RunInstances(c.ctx, &ec2.RunInstancesInput{
 		ImageId:          aws.String(amiID),
 		InstanceType:     types.InstanceType(instanceType),
 		KeyName:          aws.String(keyName),
 		SecurityGroupIds: []string{securityGroupID},
-		MinCount:         aws.Int32(1),
+		MinCount:         aws.Int32(int32(count)),
 		MaxCount:         aws.Int32(int32(count)),
 		BlockDeviceMappings: []types.BlockDeviceMapping{
 			{
 				DeviceName: aws.String("/dev/sda1"), // ubuntu ami disk name
-				Ebs: &types.EbsBlockDevice{
-					VolumeSize: aws.Int32(diskVolumeSize),
-				},
+				Ebs:        ebsValue,
 			},
 		},
 		TagSpecifications: []types.TagSpecification{
@@ -486,8 +496,8 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 	return sgID, nil
 }
 
-// CheckUserIPInSg checks if the user IP is present in the SecurityGroup.
-func CheckUserIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
+// CheckIPInSg checks if the IP is present in the SecurityGroup.
+func CheckIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
 	for _, ipPermission := range sg.IpPermissions {
 		for _, ip := range ipPermission.IpRanges {
 			if strings.Contains(*ip.CidrIp, currentIP) {

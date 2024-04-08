@@ -420,3 +420,27 @@ func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName st
 	}
 	return nil
 }
+
+func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *models.Host) error {
+	gcpClient, _, _, _, projectName, err := getGCPConfig(true)
+	if err != nil {
+		return err
+	}
+	prefix, err := defaultAvalancheCLIPrefix("")
+	if err != nil {
+		return err
+	}
+	networkName := fmt.Sprintf("%s-network", prefix)
+	firewallName := fmt.Sprintf("%s-%s-relayer", networkName, strings.ReplaceAll(awmRelayerHost.IP, ".", ""))
+	ports := []string{
+		strconv.Itoa(constants.AvalanchegoAPIPort),
+	}
+	return gcpClient.AddFirewall(
+		awmRelayerHost.IP,
+		networkName,
+		projectName,
+		firewallName,
+		ports,
+		false,
+	)
+}

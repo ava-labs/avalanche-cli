@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 set -e
 #name:TASK [install gcc if not available]
-sudo apt-get -y -o DPkg::Lock::Timeout=120 update
-gcc --version || DEBIAN_FRONTEND=noninteractive sudo apt-get -y -o DPkg::Lock::Timeout=120 install gcc
+export DEBIAN_FRONTEND=noninteractive
+until sudo apt-get -y update -o DPkg::Lock::Timeout=120; do sleep 10 && echo "Try again"; done
+until sudo apt-get -y install -o DPkg::Lock::Timeout=120 gcc; do sleep 10 && echo "Try again"; done
 #name:TASK [install go]
 install_go() {
-  local GOFILE
-  if [[ "$(uname -m)" == "aarch64" ]]; then
-    GOFILE="go{{ .GoVersion }}.linux-arm64.tar.gz"
-  else
-    GOFILE="go{{ .GoVersion }}.linux-amd64.tar.gz"
-  fi
-  cd ~
+  ARCH=amd64
+  [[ "$(uname -m)" == "aarch64" ]] && ARCH=arm64
+  GOFILE="go{{ .GoVersion }}.linux-$ARCH.tar.gz"
+  cd
   sudo rm -rf $GOFILE go
-  wget -nv https://go.dev/dl/$GOFILE
+  wget -q -nv https://go.dev/dl/$GOFILE
   tar xfz $GOFILE
   echo >> ~/.bashrc
   echo export PATH=\$PATH:~/go/bin:~/bin >> ~/.bashrc

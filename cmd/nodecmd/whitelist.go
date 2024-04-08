@@ -28,6 +28,7 @@ var (
 	app           *application.Avalanche
 	userIPAddress string
 	userPubKey    string
+	discoverIP    bool
 )
 
 func newWhitelistCmd() *cobra.Command {
@@ -45,6 +46,7 @@ func newWhitelistCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&userIPAddress, "ip", "", "ip address to whitelist")
 	cmd.Flags().StringVar(&userPubKey, "ssh", "", "ssh public key to whitelist")
+	cmd.Flags().BoolVarP(&discoverIP, "current-ip", "y", false, "whitelist current host ip")
 	return cmd
 }
 
@@ -61,6 +63,13 @@ func whitelist(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
+	}
+	if discoverIP {
+		userIPAddress, err = utils.GetUserIPAddress()
+		if err != nil {
+			return fmt.Errorf("failed to get user IP address")
+		}
+		ux.Logger.PrintToUser("Detected your IP address as: %s", logging.LightBlue.Wrap(userIPAddress))
 	}
 	if userIPAddress == "" && userPubKey == "" {
 		// prompt for ssh key
@@ -167,8 +176,9 @@ func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userI
 	if err != nil || !securityGroupExists {
 		return fmt.Errorf("can't find security group %s in %s cloud region %s with err: %w", sgName, constants.AWSCloudService, region, err)
 	}
-	ipInTCP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
-	ipInHTTP := awsAPI.CheckUserIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+	ipInTCP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.SSHTCPPort)
+	ipInHTTP := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalanchegoAPIPort)
+	ipInGrafana := awsAPI.CheckIPInSg(&sg, userIPAddress, constants.AvalanchegoGrafanaPort)
 	if ipInTCP {
 		ux.Logger.RedXToUser("IP %s is already whitelisted in %s cloud region %s for ssh access. Skipping...", userIPAddress, constants.AWSCloudService, region)
 	} else {
@@ -181,6 +191,13 @@ func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userI
 	} else {
 		if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoAPIPort); err != nil {
 			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for http access with err: %w", userIPAddress, constants.AWSCloudService, region, err)
+		}
+	}
+	if ipInGrafana {
+		ux.Logger.RedXToUser("IP %s is already whitelisted in %s cloud region %s for grafana access. Skipping...", userIPAddress, constants.AWSCloudService, region)
+	} else {
+		if err := ec2Svc.AddSecurityGroupRule(*sg.GroupId, "ingress", "tcp", userIPAddress, constants.AvalanchegoGrafanaPort); err != nil {
+			return fmt.Errorf("failed to whitelist IP %s in %s cloud region %s for grafana access with err: %w", userIPAddress, constants.AWSCloudService, region, err)
 		}
 	}
 	return nil
@@ -201,7 +218,7 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
-	if _, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort)}); err != nil {
+	if _, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}); err != nil {
 		if errors.IsAlreadyExists(err) {
 			return fmt.Errorf("IP %s is already whitelisted in %s cloud. Skipping... ", userIPAddress, constants.GCPCloudService)
 		} else {

@@ -4,6 +4,7 @@ package subnet
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -165,7 +166,7 @@ func exportToPChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners, subn
 func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) error {
 	xWallet := wallet.X()
 	pWallet := wallet.P()
-	xChainID := xWallet.BlockchainID()
+	xChainID := xWallet.Builder().Context().BlockchainID
 	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultWalletCreationTimeout)
 	_, err := pWallet.IssueImportTx(
 		xChainID,
@@ -647,16 +648,18 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		); err != nil {
 			return nil, err
 		}
-		ux.Logger.PrintToUser("")
-		// start relayer
-		if err := teleporter.DeployRelayer(
-			d.app.GetAWMRelayerBinDir(),
-			d.app.GetAWMRelayerConfigPath(),
-			d.app.GetAWMRelayerLogPath(),
-			d.app.GetAWMRelayerRunPath(),
-			d.app.GetAWMRelayerStorageDir(),
-		); err != nil {
-			return nil, err
+		if sc.RunRelayer {
+			ux.Logger.PrintToUser("")
+			// start relayer
+			if err := teleporter.DeployRelayer(
+				d.app.GetAWMRelayerBinDir(),
+				d.app.GetAWMRelayerConfigPath(),
+				d.app.GetAWMRelayerLogPath(),
+				d.app.GetAWMRelayerRunPath(),
+				d.app.GetAWMRelayerStorageDir(),
+			); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -670,7 +673,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
 
 	if sc.VM == models.SubnetEvm {
-		if err := d.printExtraEvmInfo(chain, chainGenesis, teleporterKeyAddress); err != nil {
+		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetSubnetAirdropKeyInfo(d.app, chain)
+		if err != nil {
+			ux.Logger.PrintToUser("failure loading subnet airdrop info: %s", err)
+		}
+		if err := d.printExtraEvmInfo(chain, chainGenesis, teleporterKeyAddress, subnetAirdropAddress, subnetAirdropPrivKey); err != nil {
 			// not supposed to happen due to genesis pre validation
 			return nil, nil
 		}
@@ -692,7 +699,13 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}, nil
 }
 
-func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte, teleporterKeyAddress string) error {
+func (d *LocalDeployer) printExtraEvmInfo(
+	chain string,
+	chainGenesis []byte,
+	teleporterKeyAddress string,
+	subnetAirdropAddress string,
+	subnetAirdropPrivKey string,
+) error {
 	var evmGenesis core.Genesis
 	if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
 		return fmt.Errorf("failed to unmarshall genesis: %w", err)
@@ -700,15 +713,18 @@ func (d *LocalDeployer) printExtraEvmInfo(chain string, chainGenesis []byte, tel
 	for address := range evmGenesis.Alloc {
 		amount := evmGenesis.Alloc[address].Balance
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-		if address == vm.PrefundedEwoqAddress {
+		switch address.Hex() {
+		case vm.PrefundedEwoqAddress.Hex():
 			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
-		} else if address.Hex() != teleporterKeyAddress {
+		case subnetAirdropAddress:
+			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), subnetAirdropPrivKey)
+		case teleporterKeyAddress:
 			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
 		}
 	}
 	ux.Logger.PrintToUser("Network name:     %s", chain)
 	ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
-	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenName(chain))
+	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenSymbol(chain))
 	return nil
 }
 
@@ -1143,4 +1159,17 @@ func GetChainIDs(network models.Network, chainName string) (string, string, erro
 		return chain.SubnetID.String(), chain.ID.String(), nil
 	}
 	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
+}
+
+func GetSubnetAirdropKeyInfo(app *application.Avalanche, subnetName string) (string, string, string, error) {
+	keyName := vm.GetSubnetAirdropKeyName(subnetName)
+	keyPath := app.GetKeyPath(keyName)
+	if utils.FileExists(keyPath) {
+		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
+		if err != nil {
+			return "", "", "", err
+		}
+		return keyName, k.C(), hex.EncodeToString(k.Raw()), nil
+	}
+	return "", "", "", nil
 }

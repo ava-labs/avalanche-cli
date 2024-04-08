@@ -11,9 +11,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -55,6 +57,9 @@ var (
 	subnetConf                     string
 	chainConf                      string
 	validators                     []string
+	customGrafanaDashboardPath     string
+	teleporterReady                bool
+	runRelayer                     bool
 )
 
 func newWizCmd() *cobra.Command {
@@ -84,6 +89,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 
 	cmd.Flags().BoolVar(&forceSubnetCreate, "force-subnet-create", false, "overwrite the existing subnet configuration if one exists")
 	cmd.Flags().StringVar(&subnetGenesisFile, "subnet-genesis", "", "file path of the subnet genesis")
+	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&runRelayer, "relayer", false, "run AWM relayer when deploying the vm")
 	cmd.Flags().BoolVar(&useEvmSubnet, "evm-subnet", false, "use Subnet-EVM as the subnet virtual machine")
 	cmd.Flags().BoolVar(&useCustomSubnet, "custom-subnet", false, "use a custom VM as the subnet virtual machine")
 	cmd.Flags().StringVar(&evmVersion, "evm-version", "", "version of Subnet-EVM to use")
@@ -95,6 +102,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
+	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
 	cmd.Flags().StringVar(&nodeConf, "node-config", "", "path to avalanchego node configuration for subnet")
 	cmd.Flags().StringVar(&subnetConf, "subnet-config", "", "path to the subnet configuration for subnet")
 	cmd.Flags().StringVar(&chainConf, "chain-config", "", "path to the chain configuration for subnet")
@@ -102,11 +110,15 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used.")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
-	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "avalanchego-version", "", "install given avalanchego version on node/s")
+	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "deploy subnet into given comma separated list of validators. defaults to all cluster nodes")
 	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, " set up Prometheus monitoring for created nodes. Please note that this option creates a separate monitoring instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
+	cmd.Flags().IntVar(&iops, "aws-iops", constants.AWSGP3DefaultIOPS, "AWS iops (for gp3, io1, and io2 volume types only)")
+	cmd.Flags().IntVar(&throughput, "aws-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
+	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
+	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	return cmd
 }
 
@@ -166,7 +178,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 
 	if !clusterAlreadyExists {
 		globalNetworkFlags.UseDevnet = true
-		useAvalanchegoVersionFromSubnet = subnetName
+		if len(useCustomAvalanchegoVersion) == 0 && !useLatestAvalanchegoReleaseVersion && !useLatestAvalanchegoPreReleaseVersion {
+			useAvalanchegoVersionFromSubnet = subnetName
+		}
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
 		ux.Logger.PrintToUser("")
@@ -258,9 +272,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	var awmRelayerHost *models.Host
-	if sc.TeleporterReady && isEVMGenesis {
+	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
-		awmRelayerHost, err = getAWMRelayerHost(clusterName)
+		awmRelayerHost, err = node.GetAWMRelayerHost(app, clusterName)
 		if err != nil {
 			return err
 		}
@@ -270,6 +284,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if err := setAWMRelayerHost(awmRelayerHost); err != nil {
+				return err
+			}
+			if err := setAWMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
 				return err
 			}
 		} else {
@@ -298,6 +315,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if addMonitoring {
+		// set up subnet logs in Loki
+		if err = setUpSubnetLogging(clusterName, subnetName); err != nil {
+			return err
+		}
+	}
+
 	if b, err := hasTeleporterDeploys(clusterName); err != nil {
 		return err
 	} else if b {
@@ -310,7 +334,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sc.TeleporterReady && isEVMGenesis {
+	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
 		ux.Logger.PrintToUser("")
@@ -336,7 +360,15 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("")
 
+	ux.Logger.PrintToUser(logging.Green.Wrap("Subnet %s RPC URL: %s"), subnetName, network.BlockchainEndpoint(blockchainID.String()))
+	ux.Logger.PrintToUser("")
+
 	if addMonitoring {
+		if customGrafanaDashboardPath != "" {
+			if err = addCustomDashboard(clusterName, subnetName); err != nil {
+				return err
+			}
+		}
 		// no need to check for error, as it's ok not to have monitoring host
 		monitoringHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
 		if len(monitoringHosts) > 0 {
@@ -347,6 +379,67 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
+	return nil
+}
+
+func setUpSubnetLogging(clusterName, subnetName string) error {
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	spinSession := ux.NewUserSpinner()
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	if err != nil {
+		return err
+	}
+	for _, host := range hosts {
+		if !addMonitoring {
+			continue
+		}
+		wg.Add(1)
+		go func(host *models.Host) {
+			defer wg.Done()
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
+			cloudID := host.GetCloudID()
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+			if err != nil {
+				wgResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+				wgResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			ux.SpinComplete(spinner)
+		}(host)
+	}
+	wg.Wait()
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		}
+	}
+	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+	if err != nil {
+		return err
+	}
+	monitoringHost := monitoringHosts[0]
+	spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
+	if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		return err
+	}
+	ux.SpinComplete(spinner)
+	spinSession.Stop()
 	return nil
 }
 
@@ -390,7 +483,7 @@ func updateProposerVMs(
 			return err
 		}
 		if deployedSubnetSc.TeleporterReady && deployedSubnetIsEVMGenesis {
-			ux.Logger.PrintToUser("updating proposerVM on %s", deployedSubnetName)
+			ux.Logger.PrintToUser("Updating proposerVM on %s", deployedSubnetName)
 			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
 			if blockchainID == ids.Empty {
 				return ErrNoBlockchainID
@@ -400,35 +493,14 @@ func updateProposerVMs(
 			}
 		}
 	}
-	ux.Logger.PrintToUser("updating proposerVM on c-chain")
+	ux.Logger.PrintToUser("Updating proposerVM on c-chain")
 	return teleporter.SetProposerVM(app, network, "C", "")
-}
-
-func getHostWithCloudID(clusterName string, cloudID string) (*models.Host, error) {
-	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return nil, err
-	}
-	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
-	if utils.FileExists(monitoringInventoryFile) {
-		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryFile)
-		if err != nil {
-			return nil, err
-		}
-		hosts = append(hosts, monitoringHosts...)
-	}
-	for _, host := range hosts {
-		if host.GetCloudID() == cloudID {
-			return host, nil
-		}
-	}
-	return nil, nil
 }
 
 func setAWMRelayerHost(host *models.Host) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
+	ux.Logger.PrintToUser("configuring AWM RElayer on host %s", cloudID)
 	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 	if err != nil {
 		return err
@@ -457,24 +529,6 @@ func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterNam
 	return ssh.RunSSHStartAWMRelayerService(host)
 }
 
-func getAWMRelayerHost(clusterName string) (*models.Host, error) {
-	clusterConfig, err := app.GetClusterConfig(clusterName)
-	if err != nil {
-		return nil, err
-	}
-	relayerCloudID := ""
-	for _, cloudID := range clusterConfig.GetCloudIDs() {
-		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-		if err != nil {
-			return nil, err
-		}
-		if nodeConfig.IsAWMRelayer {
-			relayerCloudID = nodeConfig.NodeID
-		}
-	}
-	return getHostWithCloudID(clusterName, relayerCloudID)
-}
-
 func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 	// first look up for separate monitoring host
 	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
@@ -493,11 +547,11 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 		return nil, err
 	}
 	if len(clusterConfig.APINodes) > 0 {
-		return getHostWithCloudID(clusterName, clusterConfig.APINodes[0])
+		return node.GetHostWithCloudID(app, clusterName, clusterConfig.APINodes[0])
 	}
 	// finally go for other hosts
 	if len(clusterConfig.Nodes) > 0 {
-		return getHostWithCloudID(clusterName, clusterConfig.Nodes[0])
+		return node.GetHostWithCloudID(app, clusterName, clusterConfig.Nodes[0])
 	}
 	return nil, fmt.Errorf("no hosts found on cluster")
 }
@@ -529,7 +583,7 @@ func deployClusterYAMLFile(clusterName, subnetName string) error {
 		if err = ssh.RunSSHCopyYAMLFile(separateHosts[0], app.GetClusterYAMLFilePath(clusterName)); err != nil {
 			return err
 		}
-		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/clusterInfo.yaml at external host")
+		ux.Logger.GreenCheckmarkToUser("Cluster information YAML file can be found at /home/ubuntu/%s at external host", constants.ClusterYAMLFileName)
 	}
 	return nil
 }
@@ -795,4 +849,58 @@ func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
 		}
 	}
 	return filteredHosts, nil
+}
+
+func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	hasGCPNodes := false
+	lastRegion := ""
+	var ec2Svc *awsAPI.AwsCloud
+	for _, cloudID := range clusterConfig.GetCloudIDs() {
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return err
+		}
+		switch {
+		case nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService:
+			if nodeConfig.Region != lastRegion {
+				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
+				if err != nil {
+					return err
+				}
+				lastRegion = nodeConfig.Region
+			}
+			securityGroupExists, sg, err := ec2Svc.CheckSecurityGroupExists(nodeConfig.SecurityGroup)
+			if err != nil {
+				return err
+			}
+			if !securityGroupExists {
+				return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
+			}
+			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort); !inSG {
+				if err = ec2Svc.AddSecurityGroupRule(
+					*sg.GroupId,
+					"ingress",
+					"tcp",
+					awmRelayerHost.IP+constants.IPAddressSuffix,
+					constants.AvalanchegoAPIPort,
+				); err != nil {
+					return err
+				}
+			}
+		case nodeConfig.CloudService == constants.GCPCloudService:
+			hasGCPNodes = true
+		default:
+			return fmt.Errorf("cloud %s is not supported", nodeConfig.CloudService)
+		}
+	}
+	if hasGCPNodes {
+		if err := setGCPAWMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
+			return err
+		}
+	}
+	return nil
 }

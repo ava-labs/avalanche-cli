@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 
@@ -67,6 +68,10 @@ var (
 	useSSHAgent                           bool
 	sshIdentity                           string
 	numAPINodes                           []int
+	throughput                            int
+	iops                                  int
+	volumeType                            string
+	volumeSize                            int
 	versionComments                       = map[string]string{
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
@@ -115,6 +120,11 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
 	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
+	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
+	cmd.Flags().IntVar(&iops, "aws-iops", constants.AWSGP3DefaultIOPS, "AWS iops (for gp3, io1, and io2 volume types only)")
+	cmd.Flags().IntVar(&throughput, "aws-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
+	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
+	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	return cmd
 }
 
@@ -131,6 +141,7 @@ func preCreateChecks() error {
 	if len(utils.Unique(cmdLineRegion)) != len(numValidatorsNodes) {
 		return fmt.Errorf("regions provided is not consistent with number of nodes provided. Please make sure list of regions is unique")
 	}
+
 	if len(numValidatorsNodes) > 0 {
 		for _, num := range numValidatorsNodes {
 			if num <= 0 {
@@ -162,7 +173,42 @@ func preCreateChecks() error {
 			return fmt.Errorf("invalid semantic version for CLI on hosts")
 		}
 	}
+	if customGrafanaDashboardPath != "" && !utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
+		return fmt.Errorf("custom grafana dashboard file does not exist")
+	}
+
+	if useAWS {
+		if stringToAWSVolumeType(volumeType) == "" {
+			return fmt.Errorf("invalid AWS volume type provided")
+		}
+		if volumeType != constants.AWSVolumeTypeGP3 && throughput != constants.AWSGP3DefaultThroughput {
+			return fmt.Errorf("AWS throughput setting is only applicable AWS gp3 volume type")
+		}
+		if volumeType != constants.AWSVolumeTypeGP3 && volumeType != constants.AWSVolumeTypeIO1 && volumeType != constants.AWSVolumeTypeIO2 && iops != constants.AWSGP3DefaultIOPS {
+			return fmt.Errorf("AWS iops setting is only applicable AWS gp3, io1, and io2 volume types")
+		}
+	}
+
 	return nil
+}
+
+func stringToAWSVolumeType(input string) types.VolumeType {
+	switch input {
+	case "gp3":
+		return types.VolumeTypeGp3
+	case "io1":
+		return types.VolumeTypeIo1
+	case "io2":
+		return types.VolumeTypeIo2
+	case "gp2":
+		return types.VolumeTypeGp2
+	case "sc1":
+		return types.VolumeTypeSc1
+	case "st1":
+		return types.VolumeTypeSt1
+	default:
+		return ""
+	}
 }
 
 func createNodes(cmd *cobra.Command, args []string) error {
@@ -595,7 +641,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
+			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			ux.SpinComplete(spinner)
+			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, remoteCLIVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
@@ -630,13 +683,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			}
-			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			ux.SpinComplete(spinner)
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Avalanche-CLI"))
 			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -1024,9 +1070,6 @@ func getAvalancheGoVersion() (string, error) {
 	case useLatestAvalanchegoPreReleaseVersion:
 		version = latestPreReleaseVersion
 	case useCustomAvalanchegoVersion != "":
-		if !semver.IsValid(useCustomAvalanchegoVersion) {
-			return "", errors.New("custom avalanchego version must be a legal semantic version (ex: v1.1.1)")
-		}
 		version = useCustomAvalanchegoVersion
 	case useAvalanchegoVersionFromSubnet != "":
 		sc, err := app.LoadSidecar(useAvalanchegoVersionFromSubnet)
@@ -1100,7 +1143,10 @@ func promptAvalancheGoVersionChoice(latestReleaseVersion string, latestPreReleas
 }
 
 func setCloudService() (string, error) {
-	if utils.IsE2E() && utils.E2EDocker() {
+	if utils.IsE2E() {
+		if !utils.E2EDocker() {
+			return "", fmt.Errorf("E2E is required but docker-compose is not available")
+		}
 		return constants.E2EDocker, nil
 	}
 	if useAWS {
