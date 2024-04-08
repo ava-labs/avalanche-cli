@@ -42,20 +42,46 @@ func GetContractBytecode(
 	client ethclient.Client,
 	contractAddressStr string,
 ) ([]byte, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
 	contractAddress := common.HexToAddress(contractAddressStr)
-	return client.CodeAt(ctx, contractAddress, nil)
+	var (
+		code []byte
+		err  error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		code, err = client.CodeAt(ctx, contractAddress, nil)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining code for %s on %#v: %w", contractAddressStr, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return code, err
 }
 
 func GetAddressBalance(
 	client ethclient.Client,
 	addressStr string,
 ) (*big.Int, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
 	address := common.HexToAddress(addressStr)
-	return client.BalanceAt(ctx, address, nil)
+	var (
+		balance *big.Int
+		err     error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		balance, err = client.BalanceAt(ctx, address, nil)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure obtaining balance for %s on %#v: %w", addressStr, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return balance, err
 }
 
 // Returns the gasFeeCap, gasTipCap, and nonce the be used when constructing a transaction from address
@@ -117,9 +143,7 @@ func FundAddress(
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	if err := client.SendTransaction(ctx, signedTx); err != nil {
+	if err := SendTransaction(client, signedTx); err != nil {
 		return err
 	}
 	if _, b, err := WaitForTransaction(client, signedTx); err != nil {
@@ -138,9 +162,7 @@ func IssueTx(
 	if err := tx.UnmarshalBinary(common.FromHex(txStr)); err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	if err := client.SendTransaction(ctx, tx); err != nil {
+	if err := SendTransaction(client, tx); err != nil {
 		return err
 	}
 	if _, b, err := WaitForTransaction(client, tx); err != nil {
@@ -149,6 +171,25 @@ func IssueTx(
 		return fmt.Errorf("failure sending tx")
 	}
 	return nil
+}
+
+func SendTransaction(
+	client ethclient.Client,
+	tx *types.Transaction,
+) error {
+	var err error
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		err = client.SendTransaction(ctx, tx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure sending transaction %#v to %#v: %w", tx, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return err
 }
 
 func GetClient(rpcURL string) (ethclient.Client, error) {
@@ -196,7 +237,7 @@ func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.Tr
 	}
 	chainID, err := GetChainID(client)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failure generating signer: %w", err)
 	}
 	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
 }
@@ -205,15 +246,24 @@ func WaitForTransaction(
 	client ethclient.Client,
 	tx *types.Transaction,
 ) (*types.Receipt, bool, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-
-	receipt, err := bind.WaitMined(ctx, client, tx)
-	if err != nil {
-		return nil, false, err
+	var (
+		err     error
+		receipt *types.Receipt
+		success bool
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		receipt, err = bind.WaitMined(ctx, client, tx)
+		if err == nil {
+			success = receipt.Status == types.ReceiptStatusSuccessful
+			break
+		}
+		err = fmt.Errorf("failure waiting for tx %#v on client %#v: %w", tx, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
 	}
-
-	return receipt, receipt.Status == types.ReceiptStatusSuccessful, nil
+	return receipt, success, err
 }
 
 // Returns the first log in 'logs' that is successfully parsed by 'parser'
