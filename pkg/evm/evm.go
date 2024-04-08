@@ -48,7 +48,7 @@ func GetContractBytecode(
 		err  error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		code, err = client.CodeAt(ctx, contractAddress, nil)
 		if err == nil {
@@ -71,7 +71,7 @@ func GetAddressBalance(
 		err     error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		balance, err = client.BalanceAt(ctx, address, nil)
 		if err == nil {
@@ -116,7 +116,7 @@ func NonceAt(
 		err   error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		nonce, err = client.NonceAt(ctx, address, nil)
 		if err == nil {
@@ -137,7 +137,7 @@ func SuggestGasTipCap(
 		err       error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		gasTipCap, err = client.SuggestGasTipCap(ctx)
 		if err == nil {
@@ -158,7 +158,7 @@ func EstimateBaseFee(
 		err     error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		baseFee, err = client.EstimateBaseFee(ctx)
 		if err == nil {
@@ -241,7 +241,7 @@ func SendTransaction(
 ) error {
 	var err error
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		err = client.SendTransaction(ctx, tx)
 		if err == nil {
@@ -260,7 +260,7 @@ func GetClient(rpcURL string) (ethclient.Client, error) {
 		err    error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		client, err = ethclient.DialContext(ctx, rpcURL)
 		if err == nil {
@@ -279,7 +279,7 @@ func GetChainID(client ethclient.Client) (*big.Int, error) {
 		err     error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		chainID, err = client.ChainID(ctx)
 		if err == nil {
@@ -314,7 +314,7 @@ func WaitForTransaction(
 		success bool
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		receipt, err = bind.WaitMined(ctx, client, tx)
 		if err == nil {
@@ -345,7 +345,7 @@ func GetRPCClient(rpcURL string) (*rpc.Client, error) {
 		err    error
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		client, err = rpc.DialContext(ctx, rpcURL)
 		if err == nil {
@@ -367,7 +367,7 @@ func DebugTraceTransaction(
 		trace map[string]interface{}
 	)
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		err = client.CallContext(ctx, &trace, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
 		if err == nil {
@@ -414,7 +414,7 @@ func IssueTxsToActivateProposerVMFork(
 ) error {
 	var err error
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPIContext()
+		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		err = subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
 		if err == nil {
