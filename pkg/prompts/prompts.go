@@ -855,8 +855,14 @@ func CaptureBoolFlag(
 	flagValue bool,
 	promptMsg string,
 ) (bool, error) {
-	if !cmd.Flags().Lookup(flagName).Changed && !flagValue {
-		return prompt.CaptureYesNo(promptMsg)
+	if flagValue {
+		return true, nil
 	}
-	return flagValue, nil
+	if flag := cmd.Flags().Lookup(flagName); flag == nil {
+		return false, fmt.Errorf("flag configuration %q not found for cmd %q", flagName, cmd.Use)
+	} else if !flag.Changed {
+		return prompt.CaptureYesNo(promptMsg)
+	} else {
+		return cmd.Flags().GetBool(flagName)
+	}
 }
