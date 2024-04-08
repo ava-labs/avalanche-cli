@@ -175,7 +175,7 @@ func GetClient(rpcURL string) (ethclient.Client, error) {
 	return ethclient.DialContext(ctx, rpcURL)
 }
 
-func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
+func GetTxOptsWithSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
 	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
 	if err != nil {
 		return nil, err

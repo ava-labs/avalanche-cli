@@ -193,11 +193,11 @@ func (t *Deployer) DeployRegistry(
 		return "", err
 	}
 	defer client.Close()
-	signer, err := evm.GetSigner(client, prefundedPrivateKey)
+	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
 	if err != nil {
 		return "", err
 	}
-	teleporterRegistryAddress, tx, _, err := teleporterRegistry.DeployTeleporterRegistry(signer, client, teleporterRegistryConstructorInput)
+	teleporterRegistryAddress, tx, _, err := teleporterRegistry.DeployTeleporterRegistry(txOpts, client, teleporterRegistryConstructorInput)
 	if err != nil {
 		return "", err
 	}
@@ -208,6 +208,14 @@ func (t *Deployer) DeployRegistry(
 	}
 	ux.Logger.PrintToUser("Teleporter Registry successfully deployed to %s (%s)", subnetName, teleporterRegistryAddress)
 	return teleporterRegistryAddress.String(), nil
+}
+
+func DeployTeleporterRegistry(
+	txOpts int,
+	client int,
+	teleporterRegistryConstructorInput int,
+) (int, int, int, error) {
+	return teleporterRegistry.DeployTeleporterRegistry(txOpts, client, teleporterRegistryConstructorInput)
 }
 
 func getPrivateKey(

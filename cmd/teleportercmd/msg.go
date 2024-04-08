@@ -105,7 +105,7 @@ func msg(_ *cobra.Command, args []string) error {
 	defer destHeadsSubscription.Unsubscribe()
 
 	// send tx to the teleporter contract at the source
-	sourceSigner, err := evm.GetSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
+	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func msg(_ *cobra.Command, args []string) error {
 		Message:                 []byte(message),
 	}
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceChainID)
-	tx, err := sourceMessenger.SendCrossChainMessage(sourceSigner, msgInput)
+	tx, err := sourceMessenger.SendCrossChainMessage(txOpts, msgInput)
 	if err != nil {
 		return err
 	}
