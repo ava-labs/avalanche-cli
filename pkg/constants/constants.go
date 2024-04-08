@@ -48,9 +48,10 @@ const (
 
 	CloudOperationTimeout = 2 * time.Minute
 
-	ANRRequestTimeout   = 3 * time.Minute
-	APIRequestTimeout   = 30 * time.Second
-	FastGRPCDialTimeout = 100 * time.Millisecond
+	ANRRequestTimeout      = 3 * time.Minute
+	APIRequestTimeout      = 30 * time.Second
+	APIRequestLargeTimeout = 1 * time.Minute
+	FastGRPCDialTimeout    = 100 * time.Millisecond
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute
