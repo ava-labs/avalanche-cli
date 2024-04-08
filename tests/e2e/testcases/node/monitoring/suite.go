@@ -119,6 +119,43 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 			gomega.Expect(sshOutput).To(gomega.ContainSubstring("Active: active (running)"))
 		}
 	})
+	ginkgo.It("verifies promtail metrics configured on monitoring host", func() {
+		sshOutput := commands.NodeSSH(monitoringHostID, "sudo systemctl status promtail")
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("Active: active (running)"))
+	})
+	ginkgo.It("verifies loki metrics configured on monitoring host", func() {
+		sshOutput := commands.NodeSSH(monitoringHostID, "sudo systemctl status loki")
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("Active: active (running)"))
+	})
+	ginkgo.It("verifies correct promtail config", func() {
+		usr, err := user.Current()
+		gomega.Expect(err).Should(gomega.BeNil())
+		homeDir := usr.HomeDir
+		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(monitoringHost).To(gomega.HaveLen(1))
+		sshOutput := commands.NodeSSH(monitoringHostID, "sudo cat /etc/promtail/promtail.yml")
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring(fmt.Sprintf("url: http://%s:%d/loki/api/v1/push", monitoringHost[0].IP, constants.AvalanchegoLokiPort)))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("tenant_id: avalanche"))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("CF-Access-Client-Id: avalanche"))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/.avalanchego/logs/C.log"))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/.avalanchego/logs/P.log"))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/.avalanchego/logs/X.log"))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/.avalanchego/logs/main.log"))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("__path__: /home/ubuntu/loadtest_*.txt"))
+	})
+	ginkgo.It("verifies correct loki config", func() {
+		usr, err := user.Current()
+		gomega.Expect(err).Should(gomega.BeNil())
+		homeDir := usr.HomeDir
+		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(monitoringHost).To(gomega.HaveLen(1))
+		sshOutput := commands.NodeSSH(monitoringHostID, "sudo cat /etc/loki/loki.yml")
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring(fmt.Sprintf("http_listen_port: %d", constants.AvalanchegoLokiPort)))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("chunks_directory: /var/lib/loki/chunks"))
+		gomega.Expect(sshOutput).To(gomega.ContainSubstring("store: tsdb"))
+	})
 	ginkgo.It("installs and runs avalanchego", func() {
 		avalancegoProcess := commands.NodeSSH(constants.E2EClusterName, "ps -elf")
 		gomega.Expect(avalancegoProcess).To(gomega.ContainSubstring("/home/ubuntu/avalanche-node/avalanchego"))

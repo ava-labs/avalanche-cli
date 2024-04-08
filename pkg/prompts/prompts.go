@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
+	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 )
@@ -845,4 +846,23 @@ func captureKeyName(prompt Prompter, goal string, keyDir string) (string, error)
 	}
 
 	return keyName, nil
+}
+
+func CaptureBoolFlag(
+	prompt Prompter,
+	cmd *cobra.Command,
+	flagName string,
+	flagValue bool,
+	promptMsg string,
+) (bool, error) {
+	if flagValue {
+		return true, nil
+	}
+	if flag := cmd.Flags().Lookup(flagName); flag == nil {
+		return false, fmt.Errorf("flag configuration %q not found for cmd %q", flagName, cmd.Use)
+	} else if !flag.Changed {
+		return prompt.CaptureYesNo(promptMsg)
+	} else {
+		return cmd.Flags().GetBool(flagName)
+	}
 }

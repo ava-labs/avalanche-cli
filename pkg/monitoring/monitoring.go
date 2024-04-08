@@ -6,6 +6,7 @@ package monitoring
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,6 +19,12 @@ import (
 type configInputs struct {
 	AvalancheGoPorts string
 	MachinePorts     string
+	LoadTestPorts    string
+	IP               string
+	Port             string
+	Host             string
+	NodeID           string
+	ChainID          string
 }
 
 //go:embed dashboards/*
@@ -70,10 +77,54 @@ func GenerateConfig(configPath string, configDesc string, templateVars configInp
 	return config.String(), nil
 }
 
-func WritePrometheusConfig(filePath string, avalancheGoPorts []string, machinePorts []string) error {
+func WritePrometheusConfig(filePath string, avalancheGoPorts []string, machinePorts []string, loadTestPorts []string) error {
 	config, err := GenerateConfig("configs/prometheus.yml", "Prometheus Config", configInputs{
 		AvalancheGoPorts: strings.Join(utils.AddSingleQuotes(avalancheGoPorts), ","),
 		MachinePorts:     strings.Join(utils.AddSingleQuotes(machinePorts), ","),
+		LoadTestPorts:    strings.Join(utils.AddSingleQuotes(loadTestPorts), ","),
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
+}
+
+func WriteLokiConfig(filePath string, port string) error {
+	config, err := GenerateConfig("configs/loki.yml", "Loki Config", configInputs{
+		Port: port,
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
+}
+
+func WritePromtailConfig(filePath string, ip string, port string, host string, nodeID string) error {
+	if !utils.IsValidIP(ip) {
+		return fmt.Errorf("invalid IP address: %s", ip)
+	}
+	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
+		IP:     ip,
+		Port:   port,
+		Host:   host,
+		NodeID: nodeID,
+	})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
+}
+
+func WritePromtailConfigSubnet(filePath string, ip string, port string, host string, nodeID string, chainID string) error {
+	if !utils.IsValidIP(ip) {
+		return fmt.Errorf("invalid IP address: %s", ip)
+	}
+	config, err := GenerateConfig("configs/promtailSubnet.yml", "Promtail Config", configInputs{
+		IP:      ip,
+		Port:    port,
+		Host:    host,
+		NodeID:  nodeID,
+		ChainID: chainID,
 	})
 	if err != nil {
 		return err

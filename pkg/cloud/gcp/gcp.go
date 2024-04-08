@@ -140,7 +140,7 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if _, err := c.SetFirewallRule("0.0.0.0/0",
 		fmt.Sprintf("%s-%s", networkName, "default"),
 		networkName,
-		[]string{strconv.Itoa(constants.AvalanchegoP2PPort)}); err != nil {
+		[]string{strconv.Itoa(constants.AvalanchegoP2PPort), strconv.Itoa(constants.AvalanchegoLokiPort)}); err != nil {
 		return nil, err
 	}
 	if _, err := c.SetFirewallRule(ipAddress,
@@ -350,7 +350,7 @@ func (c *GcpCloud) CheckFirewallExists(firewallName string, checkMonitoring bool
 		if firewall.Name == firewallName {
 			if checkMonitoring {
 				for _, allowed := range firewall.Allowed {
-					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoMonitoringPort))) {
+					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoMonitoringPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoLokiPort))) {
 						return false, nil
 					}
 				}

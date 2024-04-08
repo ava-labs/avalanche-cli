@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"text/template"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -56,6 +59,7 @@ func RunOverSSH(
 	scriptPath string,
 	templateVars scriptInputs,
 ) error {
+	startTime := time.Now()
 	shellScript, err := script.ReadFile(scriptPath)
 	if err != nil {
 		return err
@@ -73,6 +77,8 @@ func RunOverSSH(
 	if output, err := host.Command(script.String(), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
+	executionTime := time.Since(startTime)
+	ux.Logger.Info("RunOverSSH[%s]%s took %s with err: %v", host.NodeID, scriptDesc, executionTime, err)
 	return nil
 }
 
@@ -97,7 +103,7 @@ func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, c
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
 		scriptInputs{AvalancheGoVersion: avalancheGoVersion, CLIVersion: cliVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
 	); err != nil {
@@ -138,7 +144,7 @@ func RunSSHSetupAWMRelayerService(host *models.Host) error {
 	return RunOverSSH(
 		"Setup AWM Relayer Service",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupRelayerService.sh",
 		scriptInputs{},
 	)
@@ -149,7 +155,7 @@ func RunSSHStartAWMRelayerService(host *models.Host) error {
 	return RunOverSSH(
 		"Starts AWM Relayer Service",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/startRelayerService.sh",
 		scriptInputs{},
 	)
@@ -160,7 +166,7 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 	return RunOverSSH(
 		"Stops AWM Relayer Service",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/stopRelayerService.sh",
 		scriptInputs{},
 	)
@@ -200,7 +206,7 @@ func RunSSHStartNode(host *models.Host) error {
 	return RunOverSSH(
 		"Start Avalanchego",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/startNode.sh",
 		scriptInputs{},
 	)
@@ -237,6 +243,49 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 	)
 }
 
+func replaceCustomVarDashboardValues(monitoringDashboardPath, customGrafanaDashboardFileName, chainID string) error {
+	sedScript := fmt.Sprintf("s/\"text\": \"CHAIN_ID_VAL\"/\"text\": \"%[1]v\"/g; s/\"value\": \"CHAIN_ID_VAL\"/\"value\": \"%[1]v\"/g; s/\"query\": \"CHAIN_ID_VAL\"/\"query\": \"%[1]v\"/g", chainID)
+	cmd := exec.Command("sed", "-i", "-e", sedScript, customGrafanaDashboardFileName)
+	cmd.Dir = monitoringDashboardPath
+	_, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
+	remoteDashboardsPath := "/home/ubuntu/dashboards"
+	if !utils.DirectoryExists(monitoringDashboardPath) {
+		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
+	}
+	if customGrafanaDashboardPath != "" && utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
+		if err := utils.FileCopy(utils.ExpandHome(customGrafanaDashboardPath), filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON)); err != nil {
+			return err
+		}
+		if err := replaceCustomVarDashboardValues(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON, chainID); err != nil {
+			return err
+		}
+	}
+	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON),
+		filepath.Join(remoteDashboardsPath, constants.CustomGrafanaDashboardJSON),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Sync Grafana Dashboards",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/updateGrafanaDashboards.sh",
+		scriptInputs{},
+	)
+}
+
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
 	// TODO: download dashboards from github instead
 	remoteDashboardsPath := "/home/ubuntu/dashboards"
@@ -262,7 +311,7 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 	return RunOverSSH(
 		"Sync Grafana Dashboards",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/updateGrafanaDashboards.sh",
 		scriptInputs{},
 	)
@@ -283,7 +332,7 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Machine Metrics",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupMachineMetrics.sh",
 		scriptInputs{},
 	)
@@ -293,7 +342,7 @@ func RunSSHSetupSeparateMonitoring(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Prometheus and Grafana",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupMonitoring.sh",
 		scriptInputs{
 			IsE2E: utils.IsE2E(),
@@ -301,14 +350,14 @@ func RunSSHSetupSeparateMonitoring(host *models.Host) error {
 	)
 }
 
-func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts []string) error {
+func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts, loadTestPorts []string) error {
 	const cloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
 	promConfig, err := os.CreateTemp("", "prometheus")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(promConfig.Name())
-	if err := monitoring.WritePrometheusConfig(promConfig.Name(), avalancheGoPorts, machinePorts); err != nil {
+	if err := monitoring.WritePrometheusConfig(promConfig.Name(), avalancheGoPorts, machinePorts, loadTestPorts); err != nil {
 		return err
 	}
 	if err := host.Upload(
@@ -321,8 +370,81 @@ func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePo
 	return RunOverSSH(
 		"Update Prometheus Config",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/updatePrometheusConfig.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHUpdateLokiConfig(host *models.Host, port int) error {
+	const cloudNodeLokiConfigTemp = "/tmp/loki.yml"
+	lokiConfig, err := os.CreateTemp("", "loki")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(lokiConfig.Name())
+	if err := monitoring.WriteLokiConfig(lokiConfig.Name(), strconv.Itoa(port)); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		lokiConfig.Name(),
+		cloudNodeLokiConfigTemp,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Update Loki Config",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/updateLokiConfig.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHSetupPromtail(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Promtail",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/setupPromtail.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHSetupLoki(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Loki",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/setupLoki.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID string, nodeID string) error {
+	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
+	promtailConfig, err := os.CreateTemp("", "promtail")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promtailConfig.Name())
+	// get NodeID
+	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		promtailConfig.Name(),
+		cloudNodePromtailConfigTemp,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Update Promtail Config",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/updatePromtailConfig.sh",
 		scriptInputs{},
 	)
 }
@@ -406,7 +528,7 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	return RunOverSSH(
 		"Setup DevNet",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupDevnet.sh",
 		scriptInputs{IsE2E: utils.IsE2E()},
 	)
@@ -494,7 +616,7 @@ func RunSSHSetupBuildEnv(host *models.Host) error {
 	return RunOverSSH(
 		"Setup Build Env",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/setupBuildEnv.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
 	)
@@ -504,7 +626,7 @@ func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, load
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/buildLoadTest.sh",
 		scriptInputs{
 			LoadTestRepoDir: repoDirName,
@@ -518,7 +640,7 @@ func RunSSHBuildLoadTestDependencies(host *models.Host) error {
 	return RunOverSSH(
 		"Build Load Test",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/buildLoadTestDeps.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
 	)
@@ -528,7 +650,7 @@ func RunSSHRunLoadTest(host *models.Host, loadTestCommand, loadTestName string) 
 	return RunOverSSH(
 		"Run Load Test",
 		host,
-		constants.SSHScriptTimeout,
+		constants.SSHLongRunningScriptTimeout,
 		"shell/runLoadTest.sh",
 		scriptInputs{GoVersion: constants.BuildEnvGolangVersion, LoadTestCommand: loadTestCommand, LoadTestResultFile: fmt.Sprintf("/home/ubuntu/loadtest_%s.txt", loadTestName)},
 	)
@@ -539,7 +661,7 @@ func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
 	if !constants.EnableSetupCLIFromSource {
 		return nil
 	}
-	timeout := constants.SSHScriptTimeout
+	timeout := constants.SSHLongRunningScriptTimeout
 	if utils.IsE2E() && utils.E2EDocker() {
 		timeout = 10 * time.Minute
 	}
@@ -641,4 +763,31 @@ func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 // RunSSHDownloadFile downloads specified file from the specified host
 func RunSSHDownloadFile(host *models.Host, filePath string, localFilePath string) error {
 	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
+}
+
+func RunSSHUpdatePromtailConfigSubnet(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
+	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
+	promtailConfig, err := os.CreateTemp("", "promtailSubnet")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(promtailConfig.Name())
+	// get NodeID
+	if err := monitoring.WritePromtailConfigSubnet(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID, fmt.Sprintf("/home/ubuntu/.avalanchego/logs/%s.log", chainID)); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		promtailConfig.Name(),
+		cloudNodePromtailConfigTemp,
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	return RunOverSSH(
+		"Update Promtail Config",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/updatePromtailConfig.sh",
+		scriptInputs{},
+	)
 }

@@ -197,7 +197,7 @@ func getAdminAndEnabledAddresses(adminPrompt, enabledPrompt, info string, app *a
 
 func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool, error) {
 	config := nativeminter.Config{}
-	adminPrompt := "Configure native minting allow list"
+	adminPrompt := "Configure native minting admin addresses"
 	enabledPrompt := "Configure native minting enabled addresses"
 	info := "\nThis precompile allows admins to permit designated contracts to mint the native token " +
 		"on your subnet.\nFor more information visit " +
@@ -230,8 +230,8 @@ func configureWarp() warp.Config {
 
 func configureFeeConfigAllowList(app *application.Avalanche) (feemanager.Config, bool, error) {
 	config := feemanager.Config{}
-	adminPrompt := "Configure fee manager allow list"
-	enabledPrompt := "Configure native minting enabled addresses"
+	adminPrompt := "Configure fee manager admin addresses"
+	enabledPrompt := "Configure fee manager enabled addresses"
 	info := "\nThis precompile allows admins to adjust chain gas and fee parameters without " +
 		"performing a hardfork.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#configuring-dynamic-fees\n\n"
@@ -265,13 +265,13 @@ func getPrecompiles(
 	config params.ChainConfig,
 	app *application.Avalanche,
 	useDefaults bool,
-	teleporter bool,
+	useWarp bool,
 ) (
 	params.ChainConfig,
 	statemachine.StateDirection,
 	error,
 ) {
-	if useDefaults || teleporter {
+	if useDefaults || useWarp {
 		warpConfig := configureWarp()
 		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
 	}
@@ -285,7 +285,7 @@ func getPrecompiles(
 	first := true
 
 	remainingPrecompiles := []string{Warp, NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
-	if teleporter {
+	if useWarp {
 		remainingPrecompiles = []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
 	}
 

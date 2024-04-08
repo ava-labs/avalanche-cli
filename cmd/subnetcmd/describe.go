@@ -11,10 +11,15 @@ import (
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -65,7 +70,7 @@ func printGenesis(sc models.Sidecar, subnetName string) error {
 	return nil
 }
 
-func printDetails(genesis core.Genesis, sc models.Sidecar) {
+func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 	const art = `
  _____       _        _ _
 |  __ \     | |      (_) |
@@ -74,7 +79,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 | |__| |  __/ || (_| | | \__ \
 |_____/ \___|\__\__,_|_|_|___/
 `
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Parameter", "Value"}
 	table.SetHeader(header)
@@ -84,8 +89,11 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 
 	table.Append([]string{"Subnet Name", sc.Subnet})
 	table.Append([]string{"ChainID", genesis.Config.ChainID.String()})
-	table.Append([]string{"Mainnet ChainID", fmt.Sprint(sc.SubnetEVMMainnetChainID)})
+	if sc.SubnetEVMMainnetChainID != 0 {
+		table.Append([]string{"Mainnet ChainID", fmt.Sprint(sc.SubnetEVMMainnetChainID)})
+	}
 	table.Append([]string{"Token Name", app.GetTokenName(sc.Subnet)})
+	table.Append([]string{"Token Symbol", app.GetTokenSymbol(sc.Subnet)})
 	table.Append([]string{"VM Version", sc.VMVersion})
 	if sc.ImportedVMID != "" {
 		table.Append([]string{"VM ID", sc.ImportedVMID})
@@ -99,10 +107,15 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 	}
 
 	for net, data := range sc.Networks {
+		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		if err != nil {
+			return err
+		}
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
 		}
 		if data.BlockchainID != ids.Empty {
+			table.Append([]string{fmt.Sprintf("%s RPC URL", net), network.BlockchainEndpoint(data.BlockchainID.String())})
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), data.BlockchainID.String()})
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), hexEncoding})
@@ -115,6 +128,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) {
 		}
 	}
 	table.Render()
+	return nil
 }
 
 func printGasTable(genesis core.Genesis) {
@@ -131,7 +145,7 @@ func printGasTable(genesis core.Genesis) {
                                             |___/
 `
 
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Gas Parameter", "Value"}
 	table.SetHeader(header)
@@ -149,7 +163,7 @@ func printGasTable(genesis core.Genesis) {
 	table.Render()
 }
 
-func printAirdropTable(genesis core.Genesis) {
+func printAirdropTable(genesis core.Genesis, sc models.Sidecar) error {
 	const art = `
           _         _
     /\   (_)       | |
@@ -160,23 +174,51 @@ func printAirdropTable(genesis core.Genesis) {
                                | |
                                |_|
 `
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
+	teleporterKeyAddress := ""
+	teleporterPrivKey := ""
+	if sc.TeleporterReady {
+		k, err := key.LoadSoft(models.NewLocalNetwork().ID, app.GetKeyPath(sc.TeleporterKey))
+		if err != nil {
+			return err
+		}
+		teleporterKeyAddress = k.C()
+		teleporterPrivKey = hex.EncodeToString(k.Raw())
+	}
+	subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetSubnetAirdropKeyInfo(app, sc.Name)
+	if err != nil {
+		return err
+	}
 	if len(genesis.Alloc) > 0 {
 		table := tablewriter.NewWriter(os.Stdout)
-		header := []string{"Address", "Airdrop Amount (10^18)", "Airdrop Amount (wei)"}
+		header := []string{"Description", "Address", "Airdrop Amount (10^18)", "Airdrop Amount (wei)", "Private Key"}
 		table.SetHeader(header)
 		table.SetRowLine(true)
 
 		for address := range genesis.Alloc {
 			amount := genesis.Alloc[address].Balance
 			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-			table.Append([]string{address.Hex(), formattedAmount.String(), amount.String()})
+			description := ""
+			privKey := ""
+			switch address.Hex() {
+			case teleporterKeyAddress:
+				description = fmt.Sprintf("Teleporter deploys %s", sc.TeleporterKey)
+				privKey = teleporterPrivKey
+			case subnetAirdropAddress:
+				description = fmt.Sprintf("Main funded account %s", subnetAirdropKeyName)
+				privKey = subnetAirdropPrivKey
+			case vm.PrefundedEwoqAddress.Hex():
+				description = "Main funded account EWOQ"
+				privKey = vm.PrefundedEwoqPrivate
+			}
+			table.Append([]string{description, address.Hex(), formattedAmount.String(), amount.String(), privKey})
 		}
 
 		table.Render()
 	} else {
 		fmt.Printf("No airdrops allocated")
 	}
+	return nil
 }
 
 func printPrecompileTable(genesis core.Genesis) {
@@ -192,7 +234,7 @@ func printPrecompileTable(genesis core.Genesis) {
                                     |_|
 
 `
-	fmt.Print(art)
+	fmt.Print(logging.LightBlue.Wrap(art))
 
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Precompile", "Admin Addresses", "Enabled Addresses"}
@@ -278,11 +320,15 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 		return err
 	}
 
-	printDetails(genesis, sc)
+	if err := printDetails(genesis, sc); err != nil {
+		return err
+	}
 	// Write gas table
 	printGasTable(genesis)
 	// fmt.Printf("\n\n")
-	printAirdropTable(genesis)
+	if err := printAirdropTable(genesis, sc); err != nil {
+		return err
+	}
 	printPrecompileTable(genesis)
 	return nil
 }

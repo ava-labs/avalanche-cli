@@ -91,7 +91,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+				monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
 				if utils.DirectoryExists(monitoringInventoryPath) {
 					monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 					if err != nil {
@@ -221,7 +221,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 	if err != nil {
 		return err
 	}
-	monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.MonitoringDir)
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
 	if utils.DirectoryExists(monitoringInventoryPath) {
 		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 		if err != nil {

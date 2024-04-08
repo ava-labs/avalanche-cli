@@ -3,8 +3,10 @@
 package teleporter
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -16,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -28,6 +31,11 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/awm-relayer/config"
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
+)
+
+const (
+	localRelayerCheckPoolTime = 100 * time.Millisecond
+	localRelayerCheckTimeout  = 3 * time.Second
 )
 
 var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
@@ -115,38 +123,71 @@ func DeployRelayer(
 	return saveRelayerRunFile(runFilePath, pid)
 }
 
-func RelayerCleanup(runFilePath string, storageDir string) error {
-	if err := os.RemoveAll(storageDir); err != nil {
-		return err
-	}
+func RelayerIsUp(runFilePath string) (bool, int, *os.Process, error) {
 	if !utils.FileExists(runFilePath) {
-		return nil
+		return false, 0, nil, nil
 	}
 	bs, err := os.ReadFile(runFilePath)
 	if err != nil {
-		return err
+		return false, 0, nil, err
 	}
 	rf := relayerRunFile{}
 	if err := json.Unmarshal(bs, &rf); err != nil {
-		return err
+		return false, 0, nil, err
 	}
 	proc, err := os.FindProcess(rf.Pid)
 	if err != nil {
 		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
-		return removeRelayerRunFile(runFilePath)
+		err := removeRelayerRunFile(runFilePath)
+		return false, 0, nil, err
 	}
 	if err := proc.Signal(syscall.Signal(0)); err != nil {
 		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
 		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
+		err := removeRelayerRunFile(runFilePath)
+		return false, 0, nil, err
+	}
+	return true, rf.Pid, proc, nil
+}
+
+func RelayerCleanup(runFilePath string, storageDir string) error {
+	if err := os.RemoveAll(storageDir); err != nil {
+		return err
+	}
+	relayerIsUp, pid, proc, err := RelayerIsUp(runFilePath)
+	if err != nil {
+		return err
+	}
+	if relayerIsUp {
+		waitedCh := make(chan struct{})
+		go func() {
+			for {
+				if err := proc.Signal(syscall.Signal(0)); err != nil {
+					if errors.Is(err, os.ErrProcessDone) {
+						close(waitedCh)
+						return
+					} else {
+						ux.Logger.RedXToUser("failure checking to process pid %d aliveness due to: %s", proc.Pid, err)
+					}
+				}
+				time.Sleep(localRelayerCheckPoolTime)
+			}
+		}()
+		if err := proc.Signal(os.Interrupt); err != nil {
+			return fmt.Errorf("failed sending interrupt signal to relayer process with pid %d: %w", pid, err)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), localRelayerCheckTimeout)
+		defer cancel()
+		select {
+		case <-ctx.Done():
+			if err := proc.Signal(os.Kill); err != nil {
+				return fmt.Errorf("failed killing relayer process with pid %d: %w", pid, err)
+			}
+		case <-waitedCh:
+		}
 		return removeRelayerRunFile(runFilePath)
 	}
-	if err := proc.Signal(os.Interrupt); err != nil {
-		ux.Logger.PrintToUser("failed trying to kill awm relayer with SIGINT. Using SIGKILL instead")
-		if err := proc.Signal(os.Kill); err != nil {
-			return fmt.Errorf("failed killing relayer process with pid %d: %w", rf.Pid, err)
-		}
-	}
-	return removeRelayerRunFile(runFilePath)
+	return nil
 }
 
 func removeRelayerRunFile(runFilePath string) error {

@@ -76,11 +76,15 @@ func (us *UserSpinner) SpinFailWithError(s *ysmrr.Spinner, txt string, err error
 }
 
 func (us *UserSpinner) SpinComplete(s *ysmrr.Spinner) {
+	if s.IsComplete() {
+		return
+	}
 	elapsed := 0 * time.Second
 	if startTime, ok := us.startTimes[s]; ok {
 		elapsed = time.Since(startTime)
 	}
 	s.UpdateMessage(fmt.Sprintf("%s [%.1fs]", s.GetMessage(), elapsed.Seconds()))
+
 	s.Complete()
 	Logger.log.Info(s.GetMessage() + " [Spinner Complete]")
 }

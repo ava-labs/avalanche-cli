@@ -8,16 +8,15 @@ import (
 	"os"
 	"strings"
 
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
-	"golang.org/x/exp/maps"
-	"golang.org/x/net/context"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"golang.org/x/exp/maps"
+	"golang.org/x/net/context"
 
 	"github.com/spf13/cobra"
 )
@@ -43,6 +42,7 @@ If there is a static IP address attached, it will be released.`,
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
 	cmd.Flags().BoolVarP(&authorizeAll, "authorize-all", "y", false, "authorize all CLI requests")
+	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 
 	return cmd
 }
@@ -106,11 +106,10 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err := getDeleteConfigConfirmation(); err != nil {
 		return err
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	nodesToStop, err := getClusterNodes(clusterName)
 	if err != nil {
 		return err
 	}
-	nodesToStop := clusterNodes
 	monitoringNode, err := getClusterMonitoringNode(clusterName)
 	if err != nil {
 		return err
@@ -118,10 +117,44 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if monitoringNode != "" {
 		nodesToStop = append(nodesToStop, monitoringNode)
 	}
+	// stop all load test nodes if specified
+	ltHosts, err := getLoadTestInstancesInCluster(clusterName)
+	if err != nil {
+		return err
+	}
+	for _, loadTestName := range ltHosts {
+		ltInstance, err := getExistingLoadTestInstance(clusterName, loadTestName)
+		if err != nil {
+			return err
+		}
+		nodesToStop = append(nodesToStop, ltInstance)
+	}
 	nodeErrors := map[string]error{}
-	lastRegion := ""
-	var ec2Svc *awsAPI.AwsCloud
+	cloudSecurityGroupList, err := getCloudSecurityGroupList(nodesToStop)
+	if err != nil {
+		return err
+	}
+	nodeToStopConfig, err := app.LoadClusterNodeConfig(nodesToStop[0])
+	if err != nil {
+		return err
+	}
+	// TODO: will need to change this logic if we decide to mix AWS and GCP instances in a cluster
+	filteredSGList := utils.Filter(cloudSecurityGroupList, func(sg regionSecurityGroup) bool { return sg.cloud == nodeToStopConfig.CloudService })
+	if len(filteredSGList) == 0 {
+		return fmt.Errorf("no endpoint found in the  %s", nodeToStopConfig.CloudService)
+	}
 	var gcpCloud *gcpAPI.GcpCloud
+	ec2SvcMap := make(map[string]*awsAPI.AwsCloud)
+	// TODO: need implementation for GCP
+	if nodeToStopConfig.CloudService == constants.AWSCloudService {
+		for _, sg := range filteredSGList {
+			sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+			if err != nil {
+				return err
+			}
+			ec2SvcMap[sg.region] = sgEc2Svc
+		}
+	}
 	for _, node := range nodesToStop {
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
@@ -133,15 +166,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
-			// need to check if it's empty because we didn't set cloud service when only using AWS
-			if nodeConfig.Region != lastRegion {
-				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
-				if err != nil {
-					return err
-				}
-				lastRegion = nodeConfig.Region
-			}
-			if err = ec2Svc.DestroyAWSNode(nodeConfig, clusterName); err != nil {
+			if err = ec2SvcMap[nodeConfig.Region].DestroyAWSNode(nodeConfig, clusterName); err != nil {
 				if isExpiredCredentialError(err) {
 					ux.Logger.PrintToUser("")
 					printExpiredCredentialsOutput(awsProfile)
@@ -153,9 +178,11 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				}
 				ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 			}
-			if err = deleteMonitoringSecurityGroupRule(ec2Svc, nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region); err != nil {
-				ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
-					nodeConfig.ElasticIP, nodeConfig.SecurityGroup, nodeConfig.Region, err.Error())
+			for _, sg := range filteredSGList {
+				if err = deleteHostSecurityGroupRule(ec2SvcMap[sg.region], nodeConfig.ElasticIP, sg.securityGroup); err != nil {
+					ux.Logger.RedXToUser("unable to delete IP address %s from security group %s in region %s due to %s, please delete it manually",
+						nodeConfig.ElasticIP, sg.securityGroup, sg.region, err.Error())
+				}
 			}
 		} else {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
@@ -198,6 +225,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.PrintToUser("All nodes in cluster %s are successfully destroyed!", clusterName)
 	}
+
 	return removeClustersConfigFiles(clusterName)
 }
 
