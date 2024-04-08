@@ -3,24 +3,28 @@
 package evm
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/rpc"
 	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
 	BaseFeeFactor               = 2
 	MaxPriorityFeePerGas        = 2500000000 // 2.5 gwei
 	NativeTransferGas    uint64 = 21_000
+	repeatsOnFailure            = 3
+	sleepBetweenRepeats         = 1 * time.Second
 )
 
 func ContractAlreadyDeployed(
@@ -95,9 +99,7 @@ func FundAddress(
 		return err
 	}
 	targetAddress := common.HexToAddress(targetAddressStr)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
+	chainID, err := GetChainID(client)
 	if err != nil {
 		return err
 	}
@@ -115,6 +117,8 @@ func FundAddress(
 	if err != nil {
 		return err
 	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	if err := client.SendTransaction(ctx, signedTx); err != nil {
 		return err
 	}
@@ -124,28 +128,6 @@ func FundAddress(
 		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
 	}
 	return nil
-}
-
-func ActivateProposerVM(
-	client ethclient.Client,
-	privateKeyStr string,
-) error {
-	privateKey, err := crypto.HexToECDSA(privateKeyStr)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
-	if err != nil {
-		return err
-	}
-	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(
-		ctx,
-		chainID,
-		privateKey,
-		client,
-	)
 }
 
 func IssueTx(
@@ -170,9 +152,41 @@ func IssueTx(
 }
 
 func GetClient(rpcURL string) (ethclient.Client, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	return ethclient.DialContext(ctx, rpcURL)
+	var (
+		client ethclient.Client
+		err    error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		client, err = ethclient.DialContext(ctx, rpcURL)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure connecting to %s: %w", rpcURL, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return client, err
+}
+
+func GetChainID(client ethclient.Client) (*big.Int, error) {
+	var (
+		chainID *big.Int
+		err     error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		chainID, err = client.ChainID(ctx)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure getting chain id from client %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return chainID, err
 }
 
 func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
@@ -180,9 +194,7 @@ func GetSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.Tr
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
+	chainID, err := GetChainID(client)
 	if err != nil {
 		return nil, err
 	}
@@ -231,19 +243,37 @@ func SetupProposerVM(
 	endpoint string,
 	privKeyStr string,
 ) error {
-	client, err := GetClient(endpoint)
-	if err != nil {
-		return fmt.Errorf("failure connecting to %s: %w", endpoint, err)
-	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	chainID, err := client.ChainID(ctx)
-	if err != nil {
-		return err
-	}
 	privKey, err := crypto.HexToECDSA(privKeyStr)
 	if err != nil {
 		return err
 	}
-	return subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
+	client, err := GetClient(endpoint)
+	if err != nil {
+		return err
+	}
+	chainID, err := GetChainID(client)
+	if err != nil {
+		return err
+	}
+	return IssueTxsToActivateProposerVMFork(client, chainID, privKey)
+}
+
+func IssueTxsToActivateProposerVMFork(
+	client ethclient.Client,
+	chainID *big.Int,
+	privKey *ecdsa.PrivateKey,
+) error {
+	var err error
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		err = subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure issuing txs to activate proposer VM fork for client %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return err
 }

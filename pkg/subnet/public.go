@@ -33,8 +33,6 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
-const commitRepeats = 3
-
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
 
 type PublicDeployer struct {
@@ -479,12 +477,16 @@ func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
 	justIssueTx bool,
 ) (ids.ID, error) {
+	const (
+		repeats             = 3
+		sleepBetweenRepeats = 1 * time.Second
+	)
 	var issueTxErr error
 	wallet, err := d.loadCacheWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
-	for i := 0; i < commitRepeats; i++ {
+	for i := 0; i < repeats; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		options := []common.Option{common.WithContext(ctx)}
@@ -501,6 +503,7 @@ func (d *PublicDeployer) Commit(
 			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
 		}
 		ux.Logger.RedXToUser("%s", issueTxErr)
+		time.Sleep(sleepBetweenRepeats)
 	}
 	if issueTxErr != nil {
 		d.cleanCacheWallet()
