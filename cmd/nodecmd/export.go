@@ -39,14 +39,14 @@ If no file is specified, the configuration is printed to the stdout.`,
 }
 
 type exportNode struct {
-	nodeConfig models.NodeConfig `json:"nodeConfig"`
-	signerKey  string            `json:"signerKey"`
-	stakerKey  string            `json:"stakerKey"`
-	stakerCrt  string            `json:"stakerCrt"`
+	NodeConfig models.NodeConfig `json:"nodeConfig"`
+	SignerKey  string            `json:"signerKey"`
+	StakerKey  string            `json:"stakerKey"`
+	StakerCrt  string            `json:"stakerCrt"`
 }
 type exportCluster struct {
-	clusterConfig models.ClusterConfig `json:"clusterConfig"`
-	nodes         []exportNode         `json:"nodes"`
+	ClusterConfig models.ClusterConfig `json:"clusterConfig"`
+	Nodes         []exportNode         `json:"nodes"`
 }
 
 func export(_ *cobra.Command, args []string) error {
@@ -74,31 +74,37 @@ func export(_ *cobra.Command, args []string) error {
 			return exportNode{}, err
 		}
 		return exportNode{
-			nodeConfig: nodeConf,
-			signerKey:  signerKey,
-			stakerKey:  stakerKey,
-			stakerCrt:  stakerCrt,
+			NodeConfig: nodeConf,
+			SignerKey:  signerKey,
+			StakerKey:  stakerKey,
+			StakerCrt:  stakerCrt,
 		}, nil
 	})
 	if err != nil {
-		ux.Logger.RedXToUser("could not load node configuration: %s", err)
+		ux.Logger.RedXToUser("could not load node configuration: %w", err)
 		return err
 	}
 	exportCluster := exportCluster{
-		clusterConfig: clusterConf,
-		nodes:         nodes,
+		ClusterConfig: clusterConf,
+		Nodes:         nodes,
 	}
 	if clusterFileName != "" {
 		outFile, err := os.Create(utils.ExpandHome(clusterFileName))
 		if err != nil {
-			ux.Logger.RedXToUser("could not create file: %s", err)
+			ux.Logger.RedXToUser("could not create file: %w", err)
 			return err
 		}
 		defer outFile.Close()
 		ux.Logger.GreenCheckmarkToUser("exported cluster [%s] configuration to %s", clusterName, clusterFileName)
-		writeExportFile(exportCluster, outFile)
+		if err := writeExportFile(exportCluster, outFile); err != nil {
+			ux.Logger.RedXToUser("could not write to file: %w", err)
+			return err
+		}
 	} else {
-		writeExportFile(exportCluster, os.Stdout)
+		if err := writeExportFile(exportCluster, os.Stdout); err != nil {
+			ux.Logger.RedXToUser("could not write to stdout: %w", err)
+			return err
+		}
 	}
 	return nil
 }
@@ -120,6 +126,7 @@ func readKeys(nodeConfPath string) (string, string, string, error) {
 	return signerKey, stakerKey, stakerCrt, nil
 }
 
+// writeExportFile writes the exportCluster to the out writer
 func writeExportFile(exportCluster exportCluster, out io.Writer) error {
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
