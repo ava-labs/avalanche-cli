@@ -9,13 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"net"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -305,7 +302,7 @@ func UpdateRelayerConfig(
 			network.Endpoint,
 		)
 	}
-	host, port, err := GetURIHostAndPort(network.Endpoint)
+	host, port, _, err := utils.GetURIHostPortAndPath(network.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -391,21 +388,4 @@ func addChainToRelayerConfig(
 	if !utils.Any(relayerConfig.DestinationBlockchains, func(s *config.DestinationBlockchain) bool { return s.BlockchainID == blockchainID }) {
 		relayerConfig.DestinationBlockchains = append(relayerConfig.DestinationBlockchains, destination)
 	}
-}
-
-// Get the host and port from a URI. The URI should be in the format http://host:port or https://host:port or host:port
-func GetURIHostAndPort(uri string) (string, uint32, error) {
-	u, err := url.Parse(uri)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to parse uri %s: %w", uri, err)
-	}
-	host, portStr, err := net.SplitHostPort(u.Host)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to split host/port at uri %s: %w", uri, err)
-	}
-	port, err := strconv.ParseUint(portStr, 10, 32)
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to convert port to uint at uri %s: %w", uri, err)
-	}
-	return host, uint32(port), nil
 }

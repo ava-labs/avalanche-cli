@@ -409,7 +409,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	rootDir := clusterInfo.GetRootDataDir()
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
-			utils.FindErrorLogs(rootDir, backendLogDir)
+			FindErrorLogs(rootDir, backendLogDir)
 			return nil, fmt.Errorf("failed to query network health: %w", err)
 		} else {
 			networkBooted = false
@@ -443,7 +443,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
-			utils.FindErrorLogs(rootDir, backendLogDir)
+			FindErrorLogs(rootDir, backendLogDir)
 			return nil, err
 		}
 	}
@@ -468,7 +468,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// get VM info
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		utils.FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
+		FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
 		return nil, fmt.Errorf("failed to query network health: %w", err)
 	}
 	rootDir = clusterInfo.GetRootDataDir()
@@ -544,7 +544,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
-		utils.FindErrorLogs(rootDir, backendLogDir)
+		FindErrorLogs(rootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
@@ -557,7 +557,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		utils.FindErrorLogs(rootDir, backendLogDir)
+		FindErrorLogs(rootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
@@ -665,12 +665,21 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Blockchain ready to use. Local network node endpoints:")
-	ux.PrintTableEndpoints(clusterInfo)
-	ux.Logger.PrintToUser("")
+	if err := ux.PrintEndpointTables(clusterInfo); err != nil {
+		return nil, err
+	}
 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
-	ux.Logger.PrintToUser("RPC URL:          %s", endpoint[strings.LastIndex(endpoint, "http"):])
+	rpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
+	ux.Logger.PrintToUser("RPC URL:           %s", rpcURL)
+	codespaceURL, err := utils.GetCodespaceURL(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	if codespaceURL != "" {
+		ux.Logger.PrintToUser("Codespace RPC URL: %s", codespaceURL)
+	}
 
 	if sc.VM == models.SubnetEvm {
 		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetSubnetAirdropKeyInfo(d.app, chain)
@@ -715,16 +724,16 @@ func (d *LocalDeployer) printExtraEvmInfo(
 		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 		switch address.Hex() {
 		case vm.PrefundedEwoqAddress.Hex():
-			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
+			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
 		case subnetAirdropAddress:
-			ux.Logger.PrintToUser("Funded address:   %s with %s (10^18) - private key: %s", address, formattedAmount.String(), subnetAirdropPrivKey)
+			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18) - private key: %s", address, formattedAmount.String(), subnetAirdropPrivKey)
 		case teleporterKeyAddress:
-			ux.Logger.PrintToUser("Funded address:   %s with %s", address, formattedAmount.String())
+			ux.Logger.PrintToUser("Funded address:    %s with %s", address, formattedAmount.String())
 		}
 	}
-	ux.Logger.PrintToUser("Network name:     %s", chain)
-	ux.Logger.PrintToUser("Chain ID:         %s", evmGenesis.Config.ChainID)
-	ux.Logger.PrintToUser("Currency Symbol:  %s", d.app.GetTokenSymbol(chain))
+	ux.Logger.PrintToUser("Network name:      %s", chain)
+	ux.Logger.PrintToUser("Chain ID:          %s", evmGenesis.Config.ChainID)
+	ux.Logger.PrintToUser("Currency Symbol:   %s", d.app.GetTokenSymbol(chain))
 	return nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 
@@ -109,6 +110,13 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.Append([]string{"RPC URL", rpcURL})
+	codespaceURL, err := utils.GetCodespaceURL(rpcURL)
+	if err != nil {
+		return err
+	}
+	if codespaceURL != "" {
+		table.Append([]string{"Codespace RPC URL", codespaceURL})
+	}
 	table.Append([]string{"EVM Chain ID", fmt.Sprint(evmChainID)})
 	table.Append([]string{"TOKEN SYMBOL", "AVAX"})
 	table.Append([]string{"Address", address})

@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -364,4 +366,37 @@ func AddSingleQuotes(s []string) []string {
 		}
 		return item
 	})
+}
+
+// Get the host, port and path from a URL.
+func GetURIHostPortAndPath(uri string) (string, uint32, string, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return "", 0, "", fmt.Errorf("failed to parse uri %s: %w", uri, err)
+	}
+	host, portStr, err := net.SplitHostPort(u.Host)
+	if err != nil {
+		return "", 0, "", fmt.Errorf("failed to split host/port at uri %s: %w", uri, err)
+	}
+	port, err := strconv.ParseUint(portStr, 10, 32)
+	if err != nil {
+		return "", 0, "", fmt.Errorf("failed to convert port to uint at uri %s: %w", uri, err)
+	}
+	return host, uint32(port), u.Path, nil
+}
+
+func GetCodespaceURL(url string) (string, error) {
+	_, port, path, err := GetURIHostPortAndPath(url)
+	if err != nil {
+		return "", err
+	}
+	codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
+	if codespaceName != "" {
+		return fmt.Sprintf("https://%s-%d.app.github.dev%s", codespaceName, port, path), nil
+	}
+	return "", nil
+}
+
+func InsideCodespace() bool {
+	return os.Getenv(constants.CodespaceNameEnvVar) != ""
 }
