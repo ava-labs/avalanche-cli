@@ -240,6 +240,8 @@ const (
 	TeleporterKeyName = "cli-teleporter-deployer"
 	AWMRelayerKeyName = "cli-awm-relayer"
 
+	AWMRelayerMetricsPort = 9091
+
 	SubnetEVMBin = "subnet-evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
