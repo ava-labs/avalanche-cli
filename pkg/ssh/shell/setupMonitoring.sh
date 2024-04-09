@@ -16,13 +16,18 @@ while ! sudo systemctl status prometheus >/dev/null 2>&1; do
     fi
 done
 #name:TASK [install Grafana]
-while ! sudo systemctl status grafana-server >/dev/null 2>&1; do
-    ./monitoring-installer.sh --2
-    if [ $? -ne 0 ]; then
-        echo "Failed to install Grafana. Retrying in 10 seconds..."
-        sleep 10
-    fi
-done
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get -y update
+sudo apt-get install -y adduser libfontconfig1 musl fontconfig-config fonts-dejavu-core
+wget https://dl.grafana.com/oss/release/grafana_10.4.1_amd64.deb
+sudo dpkg -i grafana_10.4.1_amd64.deb
+#while ! sudo systemctl status grafana-server >/dev/null 2>&1; do
+#    ./monitoring-installer.sh --2
+#    if [ $? -ne 0 ]; then
+#        echo "Failed to install Grafana. Retrying in 10 seconds..."
+#        sleep 10
+#    fi
+#done
 #name:TASK [set up node_exporter]
 while ! sudo systemctl status node_exporter >/dev/null 2>&1; do
     ./monitoring-installer.sh --3
