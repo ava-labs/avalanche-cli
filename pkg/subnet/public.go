@@ -898,22 +898,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	err = wallet.P().IssueTx(
-		&tx,
-		common.WithContext(ctx),
-	)
-	if err != nil {
-		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-		} else {
-			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
-		}
-		return ids.Empty, err
-	}
-
-	return tx.ID(), nil
+	return d.Commit(&tx, false)
 }
 
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {

@@ -50,7 +50,7 @@ const (
 
 	ANRRequestTimeout      = 3 * time.Minute
 	APIRequestTimeout      = 30 * time.Second
-	APIRequestLargeTimeout = 1 * time.Minute
+	APIRequestLargeTimeout = 2 * time.Minute
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
 	SSHServerStartTimeout       = 1 * time.Minute
