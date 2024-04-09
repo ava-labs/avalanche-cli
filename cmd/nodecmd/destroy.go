@@ -249,17 +249,29 @@ func checkCluster(clusterName string) error {
 	return err
 }
 
-func getClusterNodes(clusterName string) ([]string, error) {
+func checkClusterExists(clusterName string) (bool, error) {
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
 		var err error
 		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
-			return nil, err
+			return false, err
 		}
 	}
 	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
-		return nil, fmt.Errorf("cluster %q does not exist", clusterName)
+		return ok, fmt.Errorf("cluster %q does not exist", clusterName)
+	} else {
+		return ok, nil
+	}
+}
+
+func getClusterNodes(clusterName string) ([]string, error) {
+	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
+		return nil, fmt.Errorf("cluster %q not found with err: %w", clusterName, err)
+	}
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return nil, err
 	}
 	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
 	if len(clusterNodes) == 0 {

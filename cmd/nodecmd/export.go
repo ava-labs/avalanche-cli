@@ -27,11 +27,12 @@ func newExportCmd() *cobra.Command {
 		Short: "(ALPHA Warning) Export cluster configuration to a file",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node export command export clusters configuration including their nodes to a text file.
+The node export command exports cluster configuration including their nodes to a text file.
+Please keep the file secure as it contains sensitive information.
 If no file is specified, the configuration is printed to the stdout.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
-		RunE:         export,
+		RunE:         exportFile,
 	}
 	cmd.Flags().StringVar(&clusterFileName, "file", "", "specify the file to export the cluster configuration to")
 	cmd.Flags().BoolVar(&force, "force", false, "overwrite the file if it exists")
@@ -49,7 +50,7 @@ type exportCluster struct {
 	Nodes         []exportNode         `json:"nodes"`
 }
 
-func export(_ *cobra.Command, args []string) error {
+func exportFile(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if clusterFileName != "" && utils.FileExists(utils.ExpandHome(clusterFileName)) && !force {
 		ux.Logger.RedXToUser("file already exists, use --force to overwrite")

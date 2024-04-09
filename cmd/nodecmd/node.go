@@ -58,5 +58,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newAddDashboardCmd())
 	// node export
 	cmd.AddCommand(newExportCmd())
+	// node import
+	cmd.AddCommand(newImportCmd())
 	return cmd
 }
