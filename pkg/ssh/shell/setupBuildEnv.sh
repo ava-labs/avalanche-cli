@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e
 #name:TASK [install gcc if not available]
 export DEBIAN_FRONTEND=noninteractive
 while ! gcc --version >/dev/null 2>&1; do
