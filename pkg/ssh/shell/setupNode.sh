@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -e
 export PATH=$PATH:~/go/bin
 {{if .IsE2E }}
 #name:TASK [disable systemctl]
