@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -16,6 +17,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
+	"github.com/ava-labs/subnet-evm/core/types"
+	"github.com/ava-labs/subnet-evm/ethclient"
 	teleporterRegistry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -193,11 +197,11 @@ func (t *Deployer) DeployRegistry(
 		return "", err
 	}
 	defer client.Close()
-	signer, err := evm.GetSigner(client, prefundedPrivateKey)
+	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
 	if err != nil {
 		return "", err
 	}
-	teleporterRegistryAddress, tx, _, err := teleporterRegistry.DeployTeleporterRegistry(signer, client, teleporterRegistryConstructorInput)
+	teleporterRegistryAddress, tx, _, err := DeployTeleporterRegistry(txOpts, client, teleporterRegistryConstructorInput)
 	if err != nil {
 		return "", err
 	}
@@ -208,6 +212,36 @@ func (t *Deployer) DeployRegistry(
 	}
 	ux.Logger.PrintToUser("Teleporter Registry successfully deployed to %s (%s)", subnetName, teleporterRegistryAddress)
 	return teleporterRegistryAddress.String(), nil
+}
+
+func DeployTeleporterRegistry(
+	txOpts *bind.TransactOpts,
+	client ethclient.Client,
+	teleporterRegistryConstructorInput []teleporterRegistry.ProtocolRegistryEntry,
+) (common.Address, *types.Transaction, *teleporterRegistry.TeleporterRegistry, error) {
+	const (
+		repeatsOnFailure    = 3
+		sleepBetweenRepeats = 1 * time.Second
+	)
+	var (
+		addr     common.Address
+		tx       *types.Transaction
+		registry *teleporterRegistry.TeleporterRegistry
+		err      error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		txOpts.Context = ctx
+		addr, tx, registry, err = teleporterRegistry.DeployTeleporterRegistry(txOpts, client, teleporterRegistryConstructorInput)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure deploying teleporter registry on %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return addr, tx, registry, err
 }
 
 func getPrivateKey(
