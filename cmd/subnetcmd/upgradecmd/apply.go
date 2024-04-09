@@ -216,7 +216,9 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 			app.Log.Warn("looks like the upgrade went well, but we failed getting the timestamp of the next upcoming upgrade: %w")
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
-		ux.PrintTableEndpoints(clusterInfo)
+		if err := ux.PrintEndpointTables(clusterInfo); err != nil {
+			return err
+		}
 
 		return writeLockFile(precmpUpgrades, subnetName)
 	}

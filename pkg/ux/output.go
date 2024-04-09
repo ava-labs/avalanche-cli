@@ -12,6 +12,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/fatih/color"
@@ -77,8 +78,23 @@ func PrintWait(cancel chan struct{}) {
 	}
 }
 
-// PrintTableEndpoints prints the endpoints coming from the healthy call
-func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
+// PrintEndpointTables prints the endpoints coming from the healthy call
+func PrintEndpointTables(clusterInfo *rpcpb.ClusterInfo) error {
+	if err := PrintTableEndpoints(clusterInfo, false); err != nil {
+		return err
+	}
+	Logger.PrintToUser("")
+	if utils.InsideCodespace() {
+		Logger.PrintToUser("Codespace node endpoints:")
+		if err := PrintTableEndpoints(clusterInfo, true); err != nil {
+			return err
+		}
+		Logger.PrintToUser("")
+	}
+	return nil
+}
+
+func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"node", "VM", "URL", "ALIAS_URL"}
 	table.SetHeader(header)
@@ -91,10 +107,24 @@ func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo) {
 	for _, nodeName := range clusterInfo.NodeNames {
 		nodeInfo := nodeInfos[nodeName]
 		for blockchainID, chainInfo := range clusterInfo.CustomChains {
-			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID), fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), chainInfo.ChainName)})
+			blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)
+			aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), chainInfo.ChainName)
+			if codespaceURLs {
+				var err error
+				blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
+				if err != nil {
+					return err
+				}
+				aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
+				if err != nil {
+					return err
+				}
+			}
+			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, blockchainIDURL, aliasedURL})
 		}
 	}
 	table.Render()
+	return nil
 }
 
 func ConvertToStringWithThousandSeparator(input uint64) string {

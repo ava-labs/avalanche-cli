@@ -306,6 +306,8 @@ const (
 
 	PayTxsFeesMsg = "pay transaction fees"
 
+	CodespaceNameEnvVar = "CODESPACE_NAME"
+
 	// E2E
 	E2ENetworkPrefix        = "172.18.0"
 	E2EClusterName          = "e2e"
