@@ -343,6 +343,7 @@ func createRelayerConfig(
 		ProcessMissedBlocks:    false,
 		SourceBlockchains:      []*config.SourceBlockchain{},
 		DestinationBlockchains: []*config.DestinationBlockchain{},
+		MetricsPort:            constants.AWMRelayerMetricsPort,
 	}
 }
 
