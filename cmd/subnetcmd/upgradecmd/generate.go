@@ -41,7 +41,7 @@ const (
 	enabledAddressesKey = "enabledAddresses"
 
 	enabledLabel = "enabled"
-	managerLabel   = "admin"
+	managerLabel = "manager"
 	adminLabel   = "admin"
 )
 
@@ -392,7 +392,7 @@ func ensureHaveBalanceLocalNetwork(which string, addresses []common.Address, blo
 		}
 	}
 
-	return errors.New(fmt.Sprintf("at least one of the %s addresses requires a positive token balance", which))
+	return fmt.Errorf("at least one of the %s addresses requires a positive token balance", which)
 }
 
 func ensureHaveBalance(which string, addresses []common.Address, subnetName string) error {
