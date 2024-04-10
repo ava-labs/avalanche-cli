@@ -20,8 +20,8 @@ done
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get -y update
 sudo apt-get install -y adduser libfontconfig1 musl fontconfig-config fonts-dejavu-core
-wget https://dl.grafana.com/oss/release/grafana_10.4.1_amd64.deb
-sudo dpkg -i grafana_10.4.1_amd64.deb
+wget -O grafana.deb {{ .GrafanaPkg }}
+sudo dpkg -i grafana.deb
 {{ else }}
 while ! sudo systemctl status grafana-server >/dev/null 2>&1; do
     ./monitoring-installer.sh --2
