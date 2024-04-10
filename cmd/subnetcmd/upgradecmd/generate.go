@@ -38,6 +38,7 @@ const (
 	feeConfigKey        = "initialFeeConfig"
 	initialMintKey      = "initialMint"
 	adminAddressesKey   = "adminAddresses"
+	managerAddressesKey = "managerAddresses"
 	enabledAddressesKey = "enabledAddresses"
 
 	enabledLabel = "enabled"
@@ -466,6 +467,16 @@ func promptAdminManagerAndEnabledAddresses() ([]common.Address, []common.Address
 		for _, adminsAddress := range admin {
 			adminsMap[adminsAddress.String()] = true
 		}
+		managersMap := make(map[string]bool)
+		for _, managerAddress := range manager {
+			managersMap[managerAddress.String()] = true
+		}
+
+		for _, managerAddress := range manager {
+			if _, ok := adminsMap[managerAddress.String()]; ok {
+				return nil, nil, nil, fmt.Errorf("can't have address %s in both admin and manager addresses", managerAddress.String())
+			}
+		}
 
 		if err := captureAddress(enabledLabel, &enabled); err != nil {
 			return nil, nil, nil, err
@@ -475,10 +486,13 @@ func promptAdminManagerAndEnabledAddresses() ([]common.Address, []common.Address
 			if _, ok := adminsMap[enabledAddress.String()]; ok {
 				return nil, nil, nil, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
 			}
+			if _, ok := managersMap[enabledAddress.String()]; ok {
+				return nil, nil, nil, fmt.Errorf("can't have address %s in both manager and enabled addresses", enabledAddress.String())
+			}
 		}
-		if len(enabled) == 0 && len(admin) == 0 {
+		if len(enabled) == 0 && len(admin) == 0 && len(manager) == 0 {
 			ux.Logger.PrintToUser(fmt.Sprintf(
-				"We need at least one address for either '%s' or '%s'. Otherwise abort.", enabledAddressesKey, adminAddressesKey))
+				"We need at least one address for either '%s', '%s' or '%s'. Otherwise abort.", enabledAddressesKey, managerAddressesKey, adminAddressesKey))
 			continue
 		}
 		return admin, manager, enabled, nil
