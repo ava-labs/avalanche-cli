@@ -101,7 +101,6 @@ func exportFile(_ *cobra.Command, args []string) error {
 			StakerKey:  "",
 			StakerCrt:  "",
 		}
-
 	}
 	exportCluster := exportCluster{
 		ClusterConfig: clusterConf,

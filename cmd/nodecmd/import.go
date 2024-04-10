@@ -68,8 +68,8 @@ func importFile(_ *cobra.Command, args []string) error {
 	// add nodes
 	for _, node := range importCluster.Nodes {
 		keyPath := filepath.Join(app.GetNodesDir(), node.NodeConfig.NodeID)
-
-		if err := app.CreateNodeCloudConfigFile(node.NodeConfig.NodeID, &node.NodeConfig); err != nil {
+		nc := node.NodeConfig
+		if err := app.CreateNodeCloudConfigFile(node.NodeConfig.NodeID, &nc); err != nil {
 			ux.Logger.RedXToUser("error creating node config file: %w", err)
 			return err
 		}
