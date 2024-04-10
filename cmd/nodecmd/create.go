@@ -815,11 +815,10 @@ func CreateClusterNodeConfig(
 				UseStaticIP:   useStaticIP,
 				IsMonitor:     false,
 			}
-			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
-			if err != nil {
+			if err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig); err != nil {
 				return err
 			}
-			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false, "", ""); err != nil {
+			if err := addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false, "", ""); err != nil {
 				return err
 			}
 		}

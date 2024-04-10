@@ -80,3 +80,9 @@ func ReadFile(filePath string) (string, error) {
 		return string(data), nil
 	}
 }
+
+// WriteStringToFile writes a string to a file
+func WriteStringToFile(filePath string, data string) error {
+	filePath = ExpandHome(filePath)
+	return os.WriteFile(filePath, []byte(data), constants.WriteReadReadPerms)
+}

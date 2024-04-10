@@ -48,6 +48,7 @@ type exportNode struct {
 type exportCluster struct {
 	ClusterConfig models.ClusterConfig `json:"clusterConfig"`
 	Nodes         []exportNode         `json:"nodes"`
+	MonitorNode   exportNode           `json:"monitorNode"`
 }
 
 func exportFile(_ *cobra.Command, args []string) error {
@@ -67,6 +68,7 @@ func exportFile(_ *cobra.Command, args []string) error {
 	nodes, err := utils.MapWithError(clusterConf.Nodes, func(nodeName string) (exportNode, error) {
 		var err error
 		nodeConf, err := app.LoadClusterNodeConfig(nodeName)
+		nodeConf.CertPath, nodeConf.SecurityGroup = "", "" // hide cert path and sg id
 		if err != nil {
 			return exportNode{}, err
 		}
@@ -85,9 +87,26 @@ func exportFile(_ *cobra.Command, args []string) error {
 		ux.Logger.RedXToUser("could not load node configuration: %w", err)
 		return err
 	}
+	// monitoring instance
+	monitor := exportNode{}
+	if clusterConf.MonitoringInstance != "" {
+		monitoringHost, err := app.LoadClusterNodeConfig(clusterConf.MonitoringInstance)
+		if err != nil {
+			ux.Logger.RedXToUser("could not load monitoring host configuration: %w", err)
+			return err
+		}
+		monitor = exportNode{
+			NodeConfig: monitoringHost,
+			SignerKey:  "",
+			StakerKey:  "",
+			StakerCrt:  "",
+		}
+
+	}
 	exportCluster := exportCluster{
 		ClusterConfig: clusterConf,
 		Nodes:         nodes,
+		MonitorNode:   monitor,
 	}
 	if clusterFileName != "" {
 		outFile, err := os.Create(utils.ExpandHome(clusterFileName))
