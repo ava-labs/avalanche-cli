@@ -193,6 +193,9 @@ func preCreateChecks() error {
 	if grafanaPkg != "" && (!strings.HasSuffix(grafanaPkg, ".deb") || !utils.IsValidURL(grafanaPkg)) {
 		return fmt.Errorf("grafana package must be URL to a .deb file")
 	}
+	if grafanaPkg != "" && !addMonitoring {
+		return fmt.Errorf("grafana package can only be used with monitoring setup")
+	}
 
 	return nil
 }
