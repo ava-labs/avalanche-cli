@@ -75,6 +75,7 @@ var (
 	versionComments                       = map[string]string{
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
+	grafanaPkg string
 )
 
 func newCreateCmd() *cobra.Command {
@@ -119,6 +120,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&sshIdentity, "ssh-agent-identity", "", "use given ssh identity(only for ssh agent). If not set, default will be used")
 	cmd.Flags().BoolVar(&addMonitoring, enableMonitoringFlag, false, "set up Prometheus monitoring for created nodes. This option creates a separate monitoring cloud instance and incures additional cost")
+	cmd.Flags().StringVar(&grafanaPkg, "grafana-pkg", "", "use grafana pkg instead of apt repo(by default), for example https://dl.grafana.com/oss/release/grafana_10.4.1_amd64.deb")
 	cmd.Flags().IntSliceVar(&numAPINodes, "num-apis", []int{}, "number of API nodes(nodes without stake) to create in the new Devnet")
 	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
 	cmd.Flags().IntVar(&iops, "aws-iops", constants.AWSGP3DefaultIOPS, "AWS iops (for gp3, io1, and io2 volume types only)")
@@ -187,6 +189,9 @@ func preCreateChecks() error {
 		if volumeType != constants.AWSVolumeTypeGP3 && volumeType != constants.AWSVolumeTypeIO1 && volumeType != constants.AWSVolumeTypeIO2 && iops != constants.AWSGP3DefaultIOPS {
 			return fmt.Errorf("AWS iops setting is only applicable AWS gp3, io1, and io2 volume types")
 		}
+	}
+	if grafanaPkg != "" && (!strings.HasSuffix(grafanaPkg, ".deb") || !utils.IsValidURL(grafanaPkg)) {
+		return fmt.Errorf("grafana package must be URL to a .deb file")
 	}
 
 	return nil
@@ -600,7 +605,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost); err != nil {
+				if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, grafanaPkg); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -615,7 +620,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err := ssh.RunSSHSetupLoki(monitoringHost); err != nil {
+				if err := ssh.RunSSHSetupLoki(monitoringHost, grafanaPkg); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
