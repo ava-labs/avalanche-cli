@@ -41,6 +41,7 @@ const (
 	enabledAddressesKey = "enabledAddresses"
 
 	enabledLabel = "enabled"
+	managerLabel   = "admin"
 	adminLabel   = "admin"
 )
 
@@ -208,7 +209,7 @@ func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) error
 func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
 	initialMint := map[common.Address]*math.HexOrDecimal256{}
 
-	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	adminAddrs, managerAddrs, enabledAddrs, err := promptAdminManagerAndEnabledAddresses()
 	if err != nil {
 		return err
 	}
@@ -256,7 +257,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
-		nil,
+		managerAddrs,
 		initialMint,
 	)
 	upgrade := params.PrecompileUpgrade{
@@ -267,7 +268,7 @@ func promptNativeMintParams(precompiles *[]params.PrecompileUpgrade, date time.T
 }
 
 func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
-	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	adminAddrs, managerAddrs, enabledAddrs, err := promptAdminManagerAndEnabledAddresses()
 	if err != nil {
 		return err
 	}
@@ -281,7 +282,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
-		nil,
+		managerAddrs,
 		initialConfig,
 	)
 
@@ -293,7 +294,7 @@ func promptRewardManagerParams(precompiles *[]params.PrecompileUpgrade, date tim
 }
 
 func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
-	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	adminAddrs, managerAddrs, enabledAddrs, err := promptAdminManagerAndEnabledAddresses()
 	if err != nil {
 		return err
 	}
@@ -318,7 +319,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
-		nil,
+		managerAddrs,
 		feeConfig,
 	)
 	upgrade := params.PrecompileUpgrade{
@@ -329,7 +330,7 @@ func promptFeeManagerParams(precompiles *[]params.PrecompileUpgrade, date time.T
 }
 
 func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
-	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	adminAddrs, managerAddrs, enabledAddrs, err := promptAdminManagerAndEnabledAddresses()
 	if err != nil {
 		return err
 	}
@@ -338,7 +339,7 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
-		nil,
+		managerAddrs,
 	)
 	upgrade := params.PrecompileUpgrade{
 		Config: config,
@@ -348,7 +349,7 @@ func promptContractAllowListParams(precompiles *[]params.PrecompileUpgrade, date
 }
 
 func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.Time) error {
-	adminAddrs, enabledAddrs, err := promptAdminAndEnabledAddresses()
+	adminAddrs, managerAddrs, enabledAddrs, err := promptAdminManagerAndEnabledAddresses()
 	if err != nil {
 		return err
 	}
@@ -357,7 +358,7 @@ func promptTxAllowListParams(precompiles *[]params.PrecompileUpgrade, date time.
 		subnetevmutils.NewUint64(uint64(date.Unix())),
 		adminAddrs,
 		enabledAddrs,
-		nil,
+		managerAddrs,
 	)
 	upgrade := params.PrecompileUpgrade{
 		Config: config,
@@ -374,15 +375,15 @@ func getCClient(apiEndpoint string, blockchainID string) (ethclient.Client, erro
 	return cClient, nil
 }
 
-func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, blockchainID string) error {
+func ensureHaveBalanceLocalNetwork(which string, addresses []common.Address, blockchainID string) error {
 	cClient, err := getCClient(constants.LocalAPIEndpoint, blockchainID)
 	if err != nil {
 		return err
 	}
 
-	for _, admin := range admins {
-		// we can break at the first admin who has a non-zero balance
-		accountBalance, err := getAccountBalance(cClient, admin.String())
+	for _, address := range addresses {
+		// we can break at the first address who has a non-zero balance
+		accountBalance, err := getAccountBalance(cClient, address.String())
 		if err != nil {
 			return err
 		}
@@ -391,11 +392,11 @@ func ensureAdminsHaveBalanceLocalNetwork(admins []common.Address, blockchainID s
 		}
 	}
 
-	return errors.New("at least one of the admin addresses requires a positive token balance")
+	return errors.New(fmt.Sprintf("at least one of the %s addresses requires a positive token balance", which))
 }
 
-func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
-	if len(admins) < 1 {
+func ensureHaveBalance(which string, addresses []common.Address, subnetName string) error {
+	if len(addresses) < 1 {
 		return nil
 	}
 
@@ -414,7 +415,7 @@ func ensureAdminsHaveBalance(admins []common.Address, subnetName string) error {
 		// Currently only checking if admins have balance for subnets deployed in Local Network
 		if networkData, ok := sc.Networks["Local Network"]; ok {
 			blockchainID := networkData.BlockchainID.String()
-			err = ensureAdminsHaveBalanceLocalNetwork(admins, blockchainID)
+			err = ensureHaveBalanceLocalNetwork(which, addresses, blockchainID)
 			if err != nil {
 				return err
 			}
@@ -441,16 +442,24 @@ func getAccountBalance(cClient ethclient.Client, addrStr string) (float64, error
 	return float64(balance.Uint64()) / float64(units.Avax), nil
 }
 
-func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error) {
-	var admin, enabled []common.Address
+func promptAdminManagerAndEnabledAddresses() ([]common.Address, []common.Address, []common.Address, error) {
+	var admin, manager, enabled []common.Address
 
 	for {
 		if err := captureAddress(adminLabel, &admin); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
-		if err := ensureAdminsHaveBalance(admin, subnetName); err != nil {
-			return nil, nil, err
+		if err := ensureHaveBalance(adminLabel, admin, subnetName); err != nil {
+			return nil, nil, nil, err
+		}
+
+		if err := captureAddress(managerLabel, &manager); err != nil {
+			return nil, nil, nil, err
+		}
+
+		if err := ensureHaveBalance(managerLabel, admin, subnetName); err != nil {
+			return nil, nil, nil, err
 		}
 
 		adminsMap := make(map[string]bool)
@@ -459,12 +468,12 @@ func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error
 		}
 
 		if err := captureAddress(enabledLabel, &enabled); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		for _, enabledAddress := range enabled {
 			if _, ok := adminsMap[enabledAddress.String()]; ok {
-				return nil, nil, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
+				return nil, nil, nil, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
 			}
 		}
 		if len(enabled) == 0 && len(admin) == 0 {
@@ -472,7 +481,7 @@ func promptAdminAndEnabledAddresses() ([]common.Address, []common.Address, error
 				"We need at least one address for either '%s' or '%s'. Otherwise abort.", enabledAddressesKey, adminAddressesKey))
 			continue
 		}
-		return admin, enabled, nil
+		return admin, manager, enabled, nil
 	}
 }
 
