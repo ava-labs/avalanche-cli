@@ -10,7 +10,7 @@ curl -s https://apt.grafana.com/gpg.key | sudo apt-key add -
 echo "deb https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
 sudo apt-get -y update
 {{ end}}
-sudo apt-get -y -o DPkg::Lock::Timeout=120 install loki promtail
+sudo apt-get -y -o DPkg::Lock::Timeout=60 install loki promtail
 sudo mkdir -p /var/lib/loki && sudo chown -R loki /var/lib/loki
 echo "Provisioning datasource..."
 {
