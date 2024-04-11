@@ -54,6 +54,8 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newRefreshIPsCmd())
 	// node loadtest
 	cmd.AddCommand(NewLoadTestCmd())
+	// node resize
+	cmd.AddCommand(newResizeCmd())
 	// node addDashboard
 	cmd.AddCommand(newAddDashboardCmd())
 	// node export

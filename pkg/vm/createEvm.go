@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -115,11 +116,9 @@ func createEvmGenesis(
 	genesis := core.Genesis{}
 	conf := params.SubnetEVMDefaultChainConfig
 
-	// set non nil durango start block height 0
-	// TODO: check if needed to set on subnet deploy to a specific network
 	conf.NetworkUpgrades = params.NetworkUpgrades{
 		SubnetEVMTimestamp: utils.NewUint64(0),
-		DurangoTimestamp:   utils.NewUint64(0),
+		DurangoTimestamp:   utils.NewUint64(uint64(time.Now().Unix())),
 	}
 	conf.AvalancheContext = params.AvalancheContext{
 		SnowCtx: &snow.Context{},

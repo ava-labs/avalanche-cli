@@ -230,7 +230,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 			}
 		}
 		if pluginDir == "" {
-			pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely avalanchego/build/plugins)")
+			pluginDir, err = app.Prompt.CaptureString("Path to your avalanchego plugin dir (likely .avalanchego/plugins)")
 			if err != nil {
 				return err
 			}
@@ -638,7 +638,7 @@ To setup your node, you must do two things:
 To add the VM to your plugin directory, copy or scp from %s
 
 If you installed avalanchego with the install script, your plugin directory is likely
-~/.avalanchego/build/plugins.
+~/.avalanchego/plugins.
 
 If you start your node from the command line WITHOUT a config file (e.g. via command
 line or systemd script), add the following flag to your node's startup command:
