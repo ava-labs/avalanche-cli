@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -149,8 +150,10 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("exported cluster [%s] configuration", constants.E2EClusterName)))
 		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("to %s", exportFileName)))
+		exportFile, err := utils.ReadFile(exportFileName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(exportFile)
 		content, err := os.ReadFile(exportFileName)
-		fmt.Println(content)
 		gomega.Expect(err).Should(gomega.BeNil())
 		exportCluster := models.ExportCluster{}
 		err = json.Unmarshal(content, &exportCluster)
