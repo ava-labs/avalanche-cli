@@ -42,7 +42,7 @@ change amount of CPU, memory and disk space available for the cluster nodes.
 	return cmd
 }
 
-func preResizeChecks() error {
+func preResizeChecks(clusterName string) error {
 	if nodeType == "" && diskSize == "" {
 		return fmt.Errorf("at least one of the flags --node-type or --disk-size must be provided")
 	}
@@ -55,15 +55,18 @@ func preResizeChecks() error {
 			return fmt.Errorf("disk-size must be an integer")
 		}
 	}
+	if err := failForExternal(clusterName); err != nil {
+		return fmt.Errorf("cannot resize external cluster %s", clusterName)
+	}
 	return nil
 }
 
 func resize(_ *cobra.Command, args []string) error {
-	if err := preResizeChecks(); err != nil {
-		return err
-	}
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
+	if err := preResizeChecks(clusterName); err != nil {
 		return err
 	}
 	clusterNodes, err := getClusterNodes(clusterName)

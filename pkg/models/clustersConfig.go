@@ -27,6 +27,7 @@ type ClusterConfig struct {
 	LoadTestInstance   map[string]string // maps load test name to load test cloud instance ID of the separate load test instance (if any)
 	ExtraNetworkData   ExtraNetworkData
 	Subnets            []string
+	External           bool
 }
 
 type ClustersConfig struct {

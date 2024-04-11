@@ -3,6 +3,9 @@
 package utils
 
 import (
+	"encoding/pem"
+	"fmt"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
@@ -16,12 +19,12 @@ func NewBlsSecretKeyBytes() ([]byte, error) {
 	return bls.SecretKeyToBytes(blsSignerKey), nil
 }
 
-func ToNodeID(certBytes []byte, keyBytes []byte) (ids.NodeID, error) {
-	tlsCert, err := staking.LoadTLSCertFromBytes(keyBytes, certBytes)
-	if err != nil {
-		return ids.EmptyNodeID, err
+func ToNodeID(certBytes []byte) (ids.NodeID, error) {
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		return ids.EmptyNodeID, fmt.Errorf("failed to decode certificate")
 	}
-	cert, err := staking.ParseCertificate(tlsCert.Leaf.Raw)
+	cert, err := staking.ParseCertificate(block.Bytes)
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
