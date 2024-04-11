@@ -125,11 +125,11 @@ func exportFile(_ *cobra.Command, args []string) error {
 			return err
 		}
 		defer outFile.Close()
-		ux.Logger.GreenCheckmarkToUser("exported cluster [%s] configuration to %s", clusterName, clusterFileName)
 		if err := writeExportFile(exportCluster, outFile); err != nil {
 			ux.Logger.RedXToUser("could not write to file: %v", err)
 			return err
 		}
+		ux.Logger.GreenCheckmarkToUser("exported cluster [%s] configuration to %s", clusterName, utils.ExpandHome(outFile.Name()))
 	} else {
 		if err := writeExportFile(exportCluster, os.Stdout); err != nil {
 			ux.Logger.RedXToUser("could not write to stdout: %v", err)
