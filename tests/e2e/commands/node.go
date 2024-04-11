@@ -185,7 +185,7 @@ func NodeExport(filename string, withSecrets bool) string {
 		filename,
 	)
 	if withSecrets {
-		cmd.Args = append(cmd.Args, "--with-secrets")
+		cmd.Args = append(cmd.Args, "--include-secrets")
 	}
 	return runCmd(cmd, ExpectSuccess)
 }
