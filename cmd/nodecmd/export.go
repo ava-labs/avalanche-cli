@@ -96,10 +96,28 @@ func exportFile(_ *cobra.Command, args []string) error {
 			StakerCrt:  "",
 		}
 	}
+	// loadtest nodes
+	loadTestNodes := []models.ExportNode{}
+	for _, loadTestNode := range clusterConf.LoadTestInstance {
+		loadTestNodeConf, err := app.LoadClusterNodeConfig(loadTestNode)
+		if err != nil {
+			ux.Logger.RedXToUser("could not load load test node configuration: %v", err)
+			return err
+		}
+		loadTestNodeConf.CertPath, loadTestNodeConf.SecurityGroup, loadTestNodeConf.KeyPair = "", "", "" // hide cert path and sg id
+		loadTestNodes = append(loadTestNodes, models.ExportNode{
+			NodeConfig: loadTestNodeConf,
+			SignerKey:  "",
+			StakerKey:  "",
+			StakerCrt:  "",
+		})
+	}
+
 	exportCluster := models.ExportCluster{
 		ClusterConfig: clusterConf,
 		Nodes:         nodes,
 		MonitorNode:   monitor,
+		LoadTestNodes: loadTestNodes,
 	}
 	if clusterFileName != "" {
 		outFile, err := os.Create(utils.ExpandHome(clusterFileName))

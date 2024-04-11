@@ -237,9 +237,28 @@ func whitelistSSHPubKey(clusterName string, pubkey string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	clusterConfig := clustersConfig.Clusters[clusterName]
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
+	}
+	if clusterConfig.MonitoringInstance != "" {
+		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetMonitoringInventoryDir(clusterName))
+		if err != nil {
+			return err
+		}
+		hosts = append(hosts, monitoringHost...)
+	}
+	if clusterConfig.LoadTestInstance != nil {
+		loadTestHost, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetLoadTestInventoryDir(clusterName))
+		if err != nil {
+			return err
+		}
+		hosts = append(hosts, loadTestHost...)
 	}
 	ux.Logger.PrintToUser("Whitelisting SSH public key on all nodes in cluster: %s", logging.LightBlue.Wrap(clusterName))
 	wg := sync.WaitGroup{}

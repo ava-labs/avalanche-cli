@@ -49,7 +49,12 @@ func importFile(_ *cobra.Command, args []string) error {
 	}
 	importCluster.ClusterConfig.External = true // mark cluster as external
 	// check for existing nodes
-	for _, node := range importCluster.Nodes {
+	nodestoCheck := importCluster.Nodes
+	nodestoCheck = append(nodestoCheck, importCluster.LoadTestNodes...)
+	if importCluster.ClusterConfig.MonitoringInstance != "" {
+		nodestoCheck = append(nodestoCheck, importCluster.MonitorNode)
+	}
+	for _, node := range nodestoCheck {
 		keyPath := filepath.Join(app.GetNodesDir(), node.NodeConfig.NodeID)
 		if utils.DirectoryExists(keyPath) {
 			ux.Logger.RedXToUser("node %s already exists and belongs to the existing cluster, can't import", node.NodeConfig.NodeID)
@@ -57,15 +62,6 @@ func importFile(_ *cobra.Command, args []string) error {
 			return nil
 		}
 	}
-	if importCluster.ClusterConfig.MonitoringInstance != "" {
-		keyPath := filepath.Join(app.GetNodesDir(), importCluster.MonitorNode.NodeConfig.NodeID)
-		if utils.DirectoryExists(keyPath) {
-			ux.Logger.RedXToUser("monitor node %s already exists and belongs to the existing cluster, can't import", importCluster.MonitorNode.NodeConfig.NodeID)
-			ux.Logger.RedXToUser("you can use destroy command to remove the cluster it belongs to and then retry import")
-			return nil
-		}
-	}
-
 	// add nodes
 	for _, node := range importCluster.Nodes {
 		keyPath := filepath.Join(app.GetNodesDir(), node.NodeConfig.NodeID)

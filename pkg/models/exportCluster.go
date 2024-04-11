@@ -12,4 +12,5 @@ type ExportCluster struct {
 	ClusterConfig ClusterConfig `json:"clusterConfig"`
 	Nodes         []ExportNode  `json:"nodes"`
 	MonitorNode   ExportNode    `json:"monitorNode"`
+	LoadTestNodes []ExportNode  `json:"loadTestNodes"`
 }
