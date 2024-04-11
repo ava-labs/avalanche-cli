@@ -116,7 +116,7 @@ func importFile(_ *cobra.Command, args []string) error {
 	if err := app.WriteClustersConfigFile(&clustersConfig); err != nil {
 		ux.Logger.RedXToUser("error saving clusters config: %v", err)
 	}
-	ux.Logger.GreenCheckmarkToUser("cluster %s imported successfully", clusterName)
+	ux.Logger.GreenCheckmarkToUser("cluster [%s] imported successfully", clusterName)
 	return nil
 }
 
