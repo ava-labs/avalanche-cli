@@ -150,6 +150,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("exported cluster [%s] configuration", constants.E2EClusterName)))
 		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("to %s", exportFileName)))
 		content, err := os.ReadFile(exportFileName)
+		fmt.Println(content)
 		gomega.Expect(err).Should(gomega.BeNil())
 		exportCluster := models.ExportCluster{}
 		err = json.Unmarshal(content, &exportCluster)
