@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#!/usr/bin/env bash
 {{if .IsE2E }}
 #name:TASK [disable systemctl]
 sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
@@ -17,6 +16,13 @@ while ! sudo systemctl status prometheus >/dev/null 2>&1; do
     fi
 done
 #name:TASK [install Grafana]
+{{if .GrafanaPkg  }}
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get -y update
+sudo apt-get install -y adduser libfontconfig1 musl fontconfig-config fonts-dejavu-core
+wget -O grafana.deb {{ .GrafanaPkg }}
+sudo dpkg -i grafana.deb
+{{ else }}
 while ! sudo systemctl status grafana-server >/dev/null 2>&1; do
     ./monitoring-installer.sh --2
     if [ $? -ne 0 ]; then
@@ -24,6 +30,7 @@ while ! sudo systemctl status grafana-server >/dev/null 2>&1; do
         sleep 10
     fi
 done
+{{ end }}
 #name:TASK [set up node_exporter]
 while ! sudo systemctl status node_exporter >/dev/null 2>&1; do
     ./monitoring-installer.sh --3

@@ -15,9 +15,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -99,7 +100,7 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 		table.Append([]string{"VM ID", sc.ImportedVMID})
 	} else {
 		id := constants.NotAvailableLabel
-		vmID, err := utils.VMID(sc.Name)
+		vmID, err := anr_utils.VMID(sc.Name)
 		if err == nil {
 			id = vmID.String()
 		}
@@ -116,6 +117,15 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 		}
 		if data.BlockchainID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s RPC URL", net), network.BlockchainEndpoint(data.BlockchainID.String())})
+			if network.Kind == models.Local {
+				codespaceURL, err := utils.GetCodespaceURL(network.BlockchainEndpoint(data.BlockchainID.String()))
+				if err != nil {
+					return err
+				}
+				if codespaceURL != "" {
+					table.Append([]string{"Codespace RPC URL", codespaceURL})
+				}
+			}
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), data.BlockchainID.String()})
 			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), hexEncoding})

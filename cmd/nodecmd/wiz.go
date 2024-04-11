@@ -119,6 +119,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().IntVar(&throughput, "aws-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
+	cmd.Flags().StringVar(&grafanaPkg, "grafana-pkg", "", "use grafana pkg instead of apt repo(by default), for example https://dl.grafana.com/oss/release/grafana_10.4.1_amd64.deb")
 	return cmd
 }
 
@@ -500,7 +501,7 @@ func updateProposerVMs(
 func setAWMRelayerHost(host *models.Host) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("configuring AWM RElayer on host %s", cloudID)
+	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
 	nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
 	if err != nil {
 		return err

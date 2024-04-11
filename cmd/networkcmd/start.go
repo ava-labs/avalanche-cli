@@ -150,7 +150,9 @@ func StartNetwork(*cobra.Command, []string) error {
 	if subnet.HasEndpoints(resp.ClusterInfo) {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Local network node endpoints:")
-		ux.PrintTableEndpoints(resp.ClusterInfo)
+		if err := ux.PrintEndpointTables(resp.ClusterInfo); err != nil {
+			return err
+		}
 	}
 
 	relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)

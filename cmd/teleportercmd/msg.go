@@ -75,7 +75,7 @@ func msg(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	// get clients + messengers
@@ -105,10 +105,6 @@ func msg(_ *cobra.Command, args []string) error {
 	defer destHeadsSubscription.Unsubscribe()
 
 	// send tx to the teleporter contract at the source
-	sourceSigner, err := evm.GetSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
-	if err != nil {
-		return err
-	}
 	sourceAddress := common.HexToAddress(sourceKey.C())
 	msgInput := teleportermessenger.TeleporterMessageInput{
 		DestinationBlockchainID: destChainID,
@@ -122,7 +118,12 @@ func msg(_ *cobra.Command, args []string) error {
 		Message:                 []byte(message),
 	}
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceChainID)
-	tx, err := sourceMessenger.SendCrossChainMessage(sourceSigner, msgInput)
+	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
+	if err != nil {
+		return err
+	}
+	txOpts.Context = ctx
+	tx, err := sourceMessenger.SendCrossChainMessage(txOpts, msgInput)
 	if err != nil {
 		return err
 	}

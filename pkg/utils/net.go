@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
@@ -45,4 +46,13 @@ func GetUserIPAddress() (string, error) {
 
 func IsValidIP(ipStr string) bool {
 	return net.ParseIP(ipStr) != nil
+}
+
+// IsValidURL checks if a URL is valid.
+func IsValidURL(urlString string) bool {
+	u, err := url.Parse(urlString)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+	return true
 }

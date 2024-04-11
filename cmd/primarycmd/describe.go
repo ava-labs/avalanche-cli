@@ -87,9 +87,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	evmChainID, err := client.ChainID(ctx)
+	evmChainID, err := evm.GetChainID(client)
 	if err != nil {
 		return err
 	}
@@ -112,6 +110,13 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.Append([]string{"RPC URL", rpcURL})
+	codespaceURL, err := utils.GetCodespaceURL(rpcURL)
+	if err != nil {
+		return err
+	}
+	if codespaceURL != "" {
+		table.Append([]string{"Codespace RPC URL", codespaceURL})
+	}
 	table.Append([]string{"EVM Chain ID", fmt.Sprint(evmChainID)})
 	table.Append([]string{"TOKEN SYMBOL", "AVAX"})
 	table.Append([]string{"Address", address})
