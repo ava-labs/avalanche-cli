@@ -92,7 +92,7 @@ func importFile(_ *cobra.Command, args []string) error {
 	}
 	// add inventory
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	nodes := utils.Map(importCluster.Nodes, func(node exportNode) models.NodeConfig { return node.NodeConfig })
+	nodes := utils.Map(importCluster.Nodes, func(node models.ExportNode) models.NodeConfig { return node.NodeConfig })
 	if err := ansible.WriteNodeConfigsToAnsibleInventory(inventoryPath, nodes); err != nil {
 		ux.Logger.RedXToUser("error writing inventory file: %v", err)
 		return err
@@ -125,8 +125,8 @@ func importFile(_ *cobra.Command, args []string) error {
 }
 
 // readExportClusterFromFile  reads the export cluster configuration from a file
-func readExportClusterFromFile(filename string) (exportCluster, error) {
-	var cluster exportCluster
+func readExportClusterFromFile(filename string) (models.ExportCluster, error) {
+	var cluster models.ExportCluster
 	if !utils.FileExists(utils.ExpandHome(filename)) {
 		return cluster, fmt.Errorf("file does not exist")
 	} else {

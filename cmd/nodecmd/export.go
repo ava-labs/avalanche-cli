@@ -41,18 +41,6 @@ Use --include-secrets to include keys in the export. In this case please keep th
 	return cmd
 }
 
-type exportNode struct {
-	NodeConfig models.NodeConfig `json:"nodeConfig"`
-	SignerKey  string            `json:"signerKey"`
-	StakerKey  string            `json:"stakerKey"`
-	StakerCrt  string            `json:"stakerCrt"`
-}
-type exportCluster struct {
-	ClusterConfig models.ClusterConfig `json:"clusterConfig"`
-	Nodes         []exportNode         `json:"nodes"`
-	MonitorNode   exportNode           `json:"monitorNode"`
-}
-
 func exportFile(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if clusterFileName != "" && utils.FileExists(utils.ExpandHome(clusterFileName)) && !force {
@@ -70,18 +58,18 @@ func exportFile(_ *cobra.Command, args []string) error {
 	clusterConf.Network.ClusterName = ""               // hide cluster name
 	clusterConf.LoadTestInstance = map[string]string{} // hide load test instance
 	clusterConf.External = true                        // mark cluster as external
-	nodes, err := utils.MapWithError(clusterConf.Nodes, func(nodeName string) (exportNode, error) {
+	nodes, err := utils.MapWithError(clusterConf.Nodes, func(nodeName string) (models.ExportNode, error) {
 		var err error
 		nodeConf, err := app.LoadClusterNodeConfig(nodeName)
 		nodeConf.CertPath, nodeConf.SecurityGroup, nodeConf.KeyPair = "", "", "" // hide cert path and sg id
 		if err != nil {
-			return exportNode{}, err
+			return models.ExportNode{}, err
 		}
 		signerKey, stakerKey, stakerCrt, err := readKeys(filepath.Join(app.GetNodesDir(), nodeConf.NodeID))
 		if err != nil {
-			return exportNode{}, err
+			return models.ExportNode{}, err
 		}
-		return exportNode{
+		return models.ExportNode{
 			NodeConfig: nodeConf,
 			SignerKey:  signerKey,
 			StakerKey:  stakerKey,
@@ -93,7 +81,7 @@ func exportFile(_ *cobra.Command, args []string) error {
 		return err
 	}
 	// monitoring instance
-	monitor := exportNode{}
+	monitor := models.ExportNode{}
 	if clusterConf.MonitoringInstance != "" {
 		monitoringHost, err := app.LoadClusterNodeConfig(clusterConf.MonitoringInstance)
 		if err != nil {
@@ -101,14 +89,14 @@ func exportFile(_ *cobra.Command, args []string) error {
 			return err
 		}
 		monitoringHost.CertPath, monitoringHost.SecurityGroup, monitoringHost.KeyPair = "", "", "" // hide cert path and sg id
-		monitor = exportNode{
+		monitor = models.ExportNode{
 			NodeConfig: monitoringHost,
 			SignerKey:  "",
 			StakerKey:  "",
 			StakerCrt:  "",
 		}
 	}
-	exportCluster := exportCluster{
+	exportCluster := models.ExportCluster{
 		ClusterConfig: clusterConf,
 		Nodes:         nodes,
 		MonitorNode:   monitor,
@@ -156,7 +144,7 @@ func readKeys(nodeConfPath string) (string, string, string, error) {
 }
 
 // writeExportFile writes the exportCluster to the out writer
-func writeExportFile(exportCluster exportCluster, out io.Writer) error {
+func writeExportFile(exportCluster models.ExportCluster, out io.Writer) error {
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(exportCluster); err != nil {
