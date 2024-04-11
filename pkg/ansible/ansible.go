@@ -67,6 +67,25 @@ func writeToInventoryFile(inventoryFile *os.File, ansibleInstanceID, publicIP, c
 	return nil
 }
 
+// WriteNodeConfigsToAnsibleInventory writes node configs to ansible inventory file
+func WriteNodeConfigsToAnsibleInventory(inventoryDirPath string, nc []models.NodeConfig) error {
+	inventoryHostsFilePath := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
+	if err := os.MkdirAll(inventoryDirPath, os.ModePerm); err != nil {
+		return err
+	}
+	inventoryFile, err := os.OpenFile(inventoryHostsFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, constants.WriteReadReadPerms)
+	if err != nil {
+		return err
+	}
+	defer inventoryFile.Close()
+	for _, nodeConfig := range nc {
+		if err := writeToInventoryFile(inventoryFile, nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.CertPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // GetAnsibleHostsFromInventory gets alias of all hosts in an inventory file
 func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
 	ansibleHostIDs := []string{}

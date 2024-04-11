@@ -64,6 +64,10 @@ func whitelist(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	if err := failForExternal(clusterName); err != nil {
+		return err
+	}
+
 	if discoverIP {
 		userIPAddress, err = utils.GetUserIPAddress()
 		if err != nil {

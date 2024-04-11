@@ -258,11 +258,8 @@ func checkClusterExists(clusterName string) (bool, error) {
 			return false, err
 		}
 	}
-	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
-		return ok, fmt.Errorf("cluster %q does not exist", clusterName)
-	} else {
-		return ok, nil
-	}
+	_, ok := clustersConfig.Clusters[clusterName]
+	return ok, nil
 }
 
 func getClusterNodes(clusterName string) ([]string, error) {

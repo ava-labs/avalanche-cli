@@ -9,7 +9,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -18,49 +20,48 @@ import (
 
 func newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "import",
+		Use:   "import [clusterName]",
 		Short: "(ALPHA Warning) Import cluster configuration from a file",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node import command export cluster configuration and nodes from a text file.
-If no file is specified, the configuration is printed to the stdout.`,
+The node import command imports cluster configuration and nodes from a text file.
+This file should be created using the export command.
+Please make sure thatyour ssh public key and IP address are whitelisted by the cluster owner.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         importFile,
 	}
 	cmd.Flags().StringVar(&clusterFileName, "file", "", "specify the file to export the cluster configuration to")
-	cmd.Flags().BoolVar(&force, "force", false, "overwrite the cluster if it exists")
 	return cmd
 }
 
 func importFile(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	clusterExists, err := checkClusterExists(clusterName)
-	if err != nil {
-		ux.Logger.RedXToUser("error checking cluster: %w", err)
-		return err
-	} else if clusterExists && !force {
-		ux.Logger.RedXToUser("cluster already exists, use --force to overwrite")
+	if clusterExists, err := checkClusterExists(clusterName); clusterExists || err != nil {
+		ux.Logger.RedXToUser("cluster %s already exists, please use a different name", clusterName)
 		return nil
 	}
 
 	importCluster, err := readExportClusterFromFile(clusterFileName)
 	if err != nil {
-		ux.Logger.RedXToUser("error reading file: %w", err)
+		ux.Logger.RedXToUser("error reading file: %v", err)
 		return err
 	}
+	importCluster.ClusterConfig.External = true // mark cluster as external
 	// check for existing nodes
 	for _, node := range importCluster.Nodes {
 		keyPath := filepath.Join(app.GetNodesDir(), node.NodeConfig.NodeID)
-		if utils.DirectoryExists(keyPath) && !force {
-			ux.Logger.RedXToUser("node %s already exists, use --force to overwrite", node.NodeConfig.NodeID)
+		if utils.DirectoryExists(keyPath) {
+			ux.Logger.RedXToUser("node %s already exists and belongs to the existing cluster, can't import", node.NodeConfig.NodeID)
+			ux.Logger.RedXToUser("you can use destroy command to remove the cluster it belongs to and then retry import")
 			return nil
 		}
 	}
 	if importCluster.ClusterConfig.MonitoringInstance != "" {
 		keyPath := filepath.Join(app.GetNodesDir(), importCluster.MonitorNode.NodeConfig.NodeID)
-		if utils.DirectoryExists(keyPath) && !force {
-			ux.Logger.RedXToUser("monitor node %s already exists, use --force to overwrite", importCluster.MonitorNode.NodeConfig.NodeID)
+		if utils.DirectoryExists(keyPath) {
+			ux.Logger.RedXToUser("monitor node %s already exists and belongs to the existing cluster, can't import", importCluster.MonitorNode.NodeConfig.NodeID)
+			ux.Logger.RedXToUser("you can use destroy command to remove the cluster it belongs to and then retry import")
 			return nil
 		}
 	}
@@ -70,7 +71,7 @@ func importFile(_ *cobra.Command, args []string) error {
 		keyPath := filepath.Join(app.GetNodesDir(), node.NodeConfig.NodeID)
 		nc := node.NodeConfig
 		if err := app.CreateNodeCloudConfigFile(node.NodeConfig.NodeID, &nc); err != nil {
-			ux.Logger.RedXToUser("error creating node config file: %w", err)
+			ux.Logger.RedXToUser("error creating node config file: %v", err)
 			return err
 		}
 		if err := writeSecretToFile(node.StakerKey, filepath.Join(keyPath, constants.StakerKeyFileName)); err != nil {
@@ -85,19 +86,39 @@ func importFile(_ *cobra.Command, args []string) error {
 	}
 	if importCluster.ClusterConfig.MonitoringInstance != "" {
 		if err := app.CreateNodeCloudConfigFile(importCluster.MonitorNode.NodeConfig.NodeID, &importCluster.MonitorNode.NodeConfig); err != nil {
-			ux.Logger.RedXToUser("error creating monitor node config file: %w", err)
+			ux.Logger.RedXToUser("error creating monitor node config file: %v", err)
 			return err
 		}
 	}
-	// add cluster
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		ux.Logger.RedXToUser("error loading clusters config: %w", err)
+	// add inventory
+	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	nodes := utils.Map(importCluster.Nodes, func(node exportNode) models.NodeConfig { return node.NodeConfig })
+	if err := ansible.WriteNodeConfigsToAnsibleInventory(inventoryPath, nodes); err != nil {
+		ux.Logger.RedXToUser("error writing inventory file: %v", err)
 		return err
 	}
+	if importCluster.ClusterConfig.MonitoringInstance != "" {
+		monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+		if err := ansible.WriteNodeConfigsToAnsibleInventory(monitoringInventoryPath, []models.NodeConfig{importCluster.MonitorNode.NodeConfig}); err != nil {
+			ux.Logger.RedXToUser("error writing monitoring inventory file: %v", err)
+			return err
+		}
+	}
+
+	// add cluster
+	clustersConfig := models.ClustersConfig{}
+	clustersConfig.Clusters = make(map[string]models.ClusterConfig)
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			ux.Logger.RedXToUser("error loading clusters config: %v", err)
+			return err
+		}
+	}
+	importCluster.ClusterConfig.Network.ClusterName = clusterName
 	clustersConfig.Clusters[clusterName] = importCluster.ClusterConfig
 	if err := app.WriteClustersConfigFile(&clustersConfig); err != nil {
-		ux.Logger.RedXToUser("error saving clusters config: %w", err)
+		ux.Logger.RedXToUser("error saving clusters config: %v", err)
 	}
 	ux.Logger.GreenCheckmarkToUser("cluster %s imported successfully", clusterName)
 	return nil
@@ -131,7 +152,7 @@ func writeSecretToFile(secret, filePath string) error {
 	if secret == "" {
 		return nil // nothing to write(no error)
 	}
-	if err := utils.WriteStringToFile(secret, filePath); err != nil {
+	if err := utils.WriteStringToFile(filePath, secret); err != nil {
 		ux.Logger.RedXToUser("error writing %s file: %w", filePath, err)
 		return err
 	}

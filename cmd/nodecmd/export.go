@@ -19,23 +19,25 @@ import (
 var (
 	clusterFileName string
 	force           bool
+	includeSecrets  bool
 )
 
 func newExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "export",
+		Use:   "export [clusterName]",
 		Short: "(ALPHA Warning) Export cluster configuration to a file",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
 The node export command exports cluster configuration including their nodes to a text file.
-Please keep the file secure as it contains sensitive information.
-If no file is specified, the configuration is printed to the stdout.`,
+If no file is specified, the configuration is printed to the stdout.
+Use --include-secrets to include keys in the export. In this case please keep the file secure as it contains sensitive information.`,
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE:         exportFile,
 	}
 	cmd.Flags().StringVar(&clusterFileName, "file", "", "specify the file to export the cluster configuration to")
 	cmd.Flags().BoolVar(&force, "force", false, "overwrite the file if it exists")
+	cmd.Flags().BoolVar(&includeSecrets, "include-secrets", false, "include keys in the export")
 	return cmd
 }
 
@@ -58,17 +60,20 @@ func exportFile(_ *cobra.Command, args []string) error {
 		return nil
 	}
 	if err := checkCluster(clusterName); err != nil {
-		ux.Logger.RedXToUser("cluster not found: %w", err)
+		ux.Logger.RedXToUser("cluster not found: %v", err)
 		return err
 	}
 	clusterConf, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
+	clusterConf.Network.ClusterName = ""               // hide cluster name
+	clusterConf.LoadTestInstance = map[string]string{} // hide load test instance
+	clusterConf.External = true                        // mark cluster as external
 	nodes, err := utils.MapWithError(clusterConf.Nodes, func(nodeName string) (exportNode, error) {
 		var err error
 		nodeConf, err := app.LoadClusterNodeConfig(nodeName)
-		nodeConf.CertPath, nodeConf.SecurityGroup = "", "" // hide cert path and sg id
+		nodeConf.CertPath, nodeConf.SecurityGroup, nodeConf.KeyPair = "", "", "" // hide cert path and sg id
 		if err != nil {
 			return exportNode{}, err
 		}
@@ -84,7 +89,7 @@ func exportFile(_ *cobra.Command, args []string) error {
 		}, nil
 	})
 	if err != nil {
-		ux.Logger.RedXToUser("could not load node configuration: %w", err)
+		ux.Logger.RedXToUser("could not load node configuration: %v", err)
 		return err
 	}
 	// monitoring instance
@@ -92,9 +97,10 @@ func exportFile(_ *cobra.Command, args []string) error {
 	if clusterConf.MonitoringInstance != "" {
 		monitoringHost, err := app.LoadClusterNodeConfig(clusterConf.MonitoringInstance)
 		if err != nil {
-			ux.Logger.RedXToUser("could not load monitoring host configuration: %w", err)
+			ux.Logger.RedXToUser("could not load monitoring host configuration: %v", err)
 			return err
 		}
+		monitoringHost.CertPath, monitoringHost.SecurityGroup, monitoringHost.KeyPair = "", "", "" // hide cert path and sg id
 		monitor = exportNode{
 			NodeConfig: monitoringHost,
 			SignerKey:  "",
@@ -116,12 +122,12 @@ func exportFile(_ *cobra.Command, args []string) error {
 		defer outFile.Close()
 		ux.Logger.GreenCheckmarkToUser("exported cluster [%s] configuration to %s", clusterName, clusterFileName)
 		if err := writeExportFile(exportCluster, outFile); err != nil {
-			ux.Logger.RedXToUser("could not write to file: %w", err)
+			ux.Logger.RedXToUser("could not write to file: %v", err)
 			return err
 		}
 	} else {
 		if err := writeExportFile(exportCluster, os.Stdout); err != nil {
-			ux.Logger.RedXToUser("could not write to stdout: %w", err)
+			ux.Logger.RedXToUser("could not write to stdout: %v", err)
 			return err
 		}
 	}
@@ -130,6 +136,13 @@ func exportFile(_ *cobra.Command, args []string) error {
 
 // readKeys reads the keys from the node configuration
 func readKeys(nodeConfPath string) (string, string, string, error) {
+	stakerCrt, err := utils.ReadFile(filepath.Join(nodeConfPath, constants.StakerCertFileName))
+	if err != nil {
+		return "", "", "", err
+	}
+	if !includeSecrets {
+		return "", "", stakerCrt, nil // return only the certificate
+	}
 	signerKey, err := utils.ReadFile(filepath.Join(nodeConfPath, constants.BLSKeyFileName))
 	if err != nil {
 		return "", "", "", err
@@ -138,10 +151,7 @@ func readKeys(nodeConfPath string) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", err
 	}
-	stakerCrt, err := utils.ReadFile(filepath.Join(nodeConfPath, constants.StakerCertFileName))
-	if err != nil {
-		return "", "", "", err
-	}
+
 	return signerKey, stakerKey, stakerCrt, nil
 }
 
