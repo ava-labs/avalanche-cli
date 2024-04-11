@@ -32,7 +32,7 @@ import (
 
 const (
 	healthCheckPoolTime   = 10 * time.Second
-	healthCheckTimeout    = 4 * time.Minute
+	healthCheckTimeout    = 3 * time.Minute
 	syncCheckPoolTime     = 10 * time.Second
 	syncCheckTimeout      = 1 * time.Minute
 	validateCheckPoolTime = 10 * time.Second
