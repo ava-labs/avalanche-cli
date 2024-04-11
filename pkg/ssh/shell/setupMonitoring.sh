@@ -18,8 +18,8 @@ done
 #name:TASK [install Grafana]
 {{if .GrafanaPkg  }}
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get -y -o DPkg::Lock::Timeout=60 update
-sudo apt-get install -y -o DPkg::Lock::Timeout=60 adduser libfontconfig1 musl fontconfig-config fonts-dejavu-core
+sudo apt-get -y -o DPkg::Lock::Timeout=120 update
+sudo apt-get install -y -o DPkg::Lock::Timeout=120 adduser libfontconfig1 musl fontconfig-config fonts-dejavu-core
 wget -q -O grafana.deb --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 {{ .GrafanaPkg }}
 sudo dpkg -i grafana.deb
 {{ else }}
