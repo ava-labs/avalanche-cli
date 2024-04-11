@@ -55,9 +55,8 @@ func exportFile(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	clusterConf.Network.ClusterName = ""               // hide cluster name
-	clusterConf.LoadTestInstance = map[string]string{} // hide load test instance
-	clusterConf.External = true                        // mark cluster as external
+	clusterConf.Network.ClusterName = "" // hide cluster name
+	clusterConf.External = true          // mark cluster as external
 	nodes, err := utils.MapWithError(clusterConf.Nodes, func(nodeName string) (models.ExportNode, error) {
 		var err error
 		nodeConf, err := app.LoadClusterNodeConfig(nodeName)

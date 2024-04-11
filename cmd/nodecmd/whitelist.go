@@ -253,7 +253,7 @@ func whitelistSSHPubKey(clusterName string, pubkey string) error {
 		}
 		hosts = append(hosts, monitoringHost...)
 	}
-	if clusterConfig.LoadTestInstance != nil {
+	if len(clusterConfig.LoadTestInstance) != 0 {
 		loadTestHost, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetLoadTestInventoryDir(clusterName))
 		if err != nil {
 			return err

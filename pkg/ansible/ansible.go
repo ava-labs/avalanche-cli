@@ -79,7 +79,11 @@ func WriteNodeConfigsToAnsibleInventory(inventoryDirPath string, nc []models.Nod
 	}
 	defer inventoryFile.Close()
 	for _, nodeConfig := range nc {
-		if err := writeToInventoryFile(inventoryFile, nodeConfig.NodeID, nodeConfig.ElasticIP, nodeConfig.CertPath); err != nil {
+		nodeID, err := models.HostCloudIDToAnsibleID(nodeConfig.CloudService, nodeConfig.NodeID)
+		if err != nil {
+			return err
+		}
+		if err := writeToInventoryFile(inventoryFile, nodeID, nodeConfig.ElasticIP, nodeConfig.CertPath); err != nil {
 			return err
 		}
 	}
