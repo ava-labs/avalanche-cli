@@ -321,3 +321,29 @@ func DeployAndFundRelayer(
 	}
 	return alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err
 }
+
+func GetTeleporterKeyInfo(
+	app *application.Avalanche,
+	keyName string,
+) (string, string, *big.Int, error) {
+	keyPath := app.GetKeyPath(keyName)
+	var (
+		k   *key.SoftKey
+		err error
+	)
+	if utils.FileExists(keyPath) {
+		k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
+		if err != nil {
+			return "", "", nil, err
+		}
+	} else {
+		k, err = key.NewSoft(0)
+		if err != nil {
+			return "", "", nil, err
+		}
+		if err := k.Save(keyPath); err != nil {
+			return "", "", nil, err
+		}
+	}
+	return k.C(), hex.EncodeToString(k.Raw()), TeleporterPrefundedAddressBalance, nil
+}

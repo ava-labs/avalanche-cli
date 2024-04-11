@@ -38,6 +38,9 @@ func CreateEvmSubnetConfig(
 	subnetEVMTokenSymbol string,
 	useSubnetEVMDefaults bool,
 	useWarp bool,
+	teleporterReady bool,
+	teleporterKeyAddress string,
+	teleporterKeyBalance *big.Int,
 ) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
@@ -45,11 +48,6 @@ func CreateEvmSubnetConfig(
 		err          error
 		rpcVersion   int
 	)
-
-	subnetEVMVersion, err = getVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, subnetEVMVersion)
-	if err != nil {
-		return nil, &models.Sidecar{}, err
-	}
 
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
@@ -77,6 +75,9 @@ func CreateEvmSubnetConfig(
 			subnetEVMTokenSymbol,
 			useSubnetEVMDefaults,
 			useWarp,
+			teleporterReady,
+			teleporterKeyAddress,
+			teleporterKeyBalance,
 		)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
@@ -109,6 +110,9 @@ func createEvmGenesis(
 	subnetEVMTokenSymbol string,
 	useSubnetEVMDefaults bool,
 	useWarp bool,
+	teleporterReady bool,
+	teleporterKeyAddress string,
+	teleporterKeyBalance *big.Int,
 ) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
@@ -153,7 +157,15 @@ func createEvmGenesis(
 		case feeState:
 			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
-			allocation, direction, err = getEVMAllocation(app, subnetName, useSubnetEVMDefaults, tokenSymbol)
+			allocation, direction, err = getEVMAllocation(
+				app,
+				subnetName,
+				useSubnetEVMDefaults,
+				tokenSymbol,
+				teleporterReady,
+				teleporterKeyAddress,
+				teleporterKeyBalance,
+			)
 		case precompilesState:
 			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, useWarp)
 		default:
@@ -230,7 +242,15 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 }
 
 // In own function to facilitate testing
-func getEVMAllocation(app *application.Avalanche, subnetName string, useDefaults bool, tokenSymbol string) (core.GenesisAlloc, statemachine.StateDirection, error) {
+func getEVMAllocation(
+	app *application.Avalanche,
+	subnetName string,
+	useDefaults bool,
+	tokenSymbol string,
+	teleporterReady bool,
+	teleporterKeyAddress string,
+	teleporterKeyBalance *big.Int,
+) (core.GenesisAlloc, statemachine.StateDirection, error) {
 	return getAllocation(
 		app,
 		subnetName,
@@ -238,10 +258,13 @@ func getEVMAllocation(app *application.Avalanche, subnetName string, useDefaults
 		oneAvax,
 		fmt.Sprintf("Amount to airdrop (in %s units)", tokenSymbol),
 		useDefaults,
+		teleporterReady,
+		teleporterKeyAddress,
+		teleporterKeyBalance,
 	)
 }
 
-func getVMVersion(
+func GetVMVersion(
 	app *application.Avalanche,
 	vmName string,
 	repoName string,
