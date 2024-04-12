@@ -515,7 +515,7 @@ func CheckIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
 				if err != nil {
 					continue
 				}
-				ip := net.ParseIP(currentIP)
+				ip := net.ParseIP(strings.Split(currentIP, "/")[0])
 				if ip == nil {
 					continue
 				}
