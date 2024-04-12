@@ -795,3 +795,13 @@ func RunSSHUpdatePromtailConfigSubnet(host *models.Host, ip string, port int, cl
 		scriptInputs{},
 	)
 }
+
+func RunSSHUpsizeRootDisk(host *models.Host) error {
+	return RunOverSSH(
+		"Upsize Disk",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/upsizeRootDisk.sh",
+		scriptInputs{},
+	)
+}

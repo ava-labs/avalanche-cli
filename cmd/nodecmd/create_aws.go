@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -174,6 +175,13 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 			}
 			return nil, nil, nil, err
 		}
+		isSupported, err := ec2SvcMap[region].IsInstanceTypeSupported(instanceType)
+		if err != nil {
+			return nil, nil, nil, err
+		} else if !isSupported {
+			return nil, nil, nil, fmt.Errorf("instance type %s is not supported in region %s", instanceType, region)
+		}
+
 		numNodesMap[region] = finalRegions[region]
 	}
 	return ec2SvcMap, amiMap, numNodesMap, nil
@@ -326,7 +334,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		}
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Waiting for EC2 instance(s) in AWS[%s] to be provisioned...", region)
-		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region]); err != nil {
+		if err := ec2Svc[region].WaitForEC2Instances(instanceIDs[region], types.InstanceStateNameRunning); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -256,7 +257,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 }
 
 // WaitForEC2Instances waits for the EC2 instances to be running
-func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string) error {
+func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string, state types.InstanceStateName) error {
 	instanceInput := &ec2.DescribeInstancesInput{
 		InstanceIds: nodeIDs,
 	}
@@ -273,22 +274,22 @@ func (c *AwsCloud) WaitForEC2Instances(nodeIDs []string) error {
 		}
 
 		// Check if all instances are in the 'running' state
-		allRunning := true
+		allInDesiredState := true
 		for _, reservation := range result.Reservations {
 			for _, instance := range reservation.Instances {
-				if instance.State.Name != "running" {
-					allRunning = false
+				if instance.State.Name != state {
+					allInDesiredState = false
 					break
 				}
 			}
 		}
-		if allRunning {
+		if allInDesiredState {
 			return nil
 		}
 		// If not all instances are running, wait and retry
 		time.Sleep(delay)
 	}
-	return fmt.Errorf("timeout waiting for instances to be running")
+	return fmt.Errorf("timeout waiting for instances to be in %s state", state)
 }
 
 // GetInstancePublicIPs returns a map from instance ID to public IP
@@ -585,4 +586,153 @@ func (c *AwsCloud) GetInstanceTypeArch(instanceType string) (string, error) {
 		return "", fmt.Errorf("no instance type found for %s", instanceType)
 	}
 	return string(archOutput.InstanceTypes[0].ProcessorInfo.SupportedArchitectures[0]), nil
+}
+
+// IsInstanceTypeSupported checks if the given instance type is supported by the AWS cloud.
+func (c *AwsCloud) IsInstanceTypeSupported(instanceType string) (bool, error) {
+	var supportedInstanceTypes []string
+	paginator := ec2.NewDescribeInstanceTypesPaginator(c.ec2Client, &ec2.DescribeInstanceTypesInput{})
+
+	for paginator.HasMorePages() {
+		output, err := paginator.NextPage(c.ctx)
+		if err != nil {
+			return false, err
+		}
+
+		for _, it := range output.InstanceTypes {
+			supportedInstanceTypes = append(supportedInstanceTypes, string(it.InstanceType))
+		}
+	}
+	return slices.Contains(supportedInstanceTypes, instanceType), nil
+}
+
+// GetRootVolume returns a volume IDs attached to the given which is used as a root volume
+func (c *AwsCloud) GetRootVolumeID(instanceID string) (string, error) {
+	describeInstanceOutput, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: []string{instanceID},
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(describeInstanceOutput.Reservations) == 0 || len(describeInstanceOutput.Reservations[0].Instances) == 0 {
+		return "", fmt.Errorf("instance with ID %s not found", instanceID)
+	}
+	rootDeviceName := describeInstanceOutput.Reservations[0].Instances[0].RootDeviceName
+
+	volumeOutput, err := c.ec2Client.DescribeVolumes(c.ctx, &ec2.DescribeVolumesInput{
+		Filters: []types.Filter{
+			{
+				Name:   aws.String("attachment.instance-id"),
+				Values: []string{instanceID},
+			},
+			{
+				Name:   aws.String("attachment.device"),
+				Values: []string{*rootDeviceName},
+			},
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(volumeOutput.Volumes) == 0 {
+		return "", fmt.Errorf("root volume not found for instance with ID %s", instanceID)
+	}
+	return *volumeOutput.Volumes[0].VolumeId, nil
+}
+
+// ResizeVolume resizes the given volume to the new size.
+func (c *AwsCloud) ResizeVolume(volumeID string, newSizeInGB int32) error {
+	volumeOutput, err := c.ec2Client.DescribeVolumes(c.ctx, &ec2.DescribeVolumesInput{
+		VolumeIds: []string{volumeID},
+	})
+	if err != nil {
+		return err
+	}
+	if volumeOutput != nil && len(volumeOutput.Volumes) == 0 {
+		return fmt.Errorf("volume with ID %s not found", volumeID)
+	}
+
+	currentSize := *volumeOutput.Volumes[0].Size
+
+	if currentSize > newSizeInGB {
+		return fmt.Errorf("new size %dGb must be greater than the current size %dGb", newSizeInGB, currentSize)
+	} else {
+		if _, err := c.ec2Client.ModifyVolume(c.ctx, &ec2.ModifyVolumeInput{
+			Size:     &newSizeInGB,
+			VolumeId: volumeOutput.Volumes[0].VolumeId,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return c.WaitForVolumeModificationState(volumeID, "optimizing", 30*time.Second)
+}
+
+// WaitForVolumeModificationState waits for the specified modification state of the volume.
+func (c *AwsCloud) WaitForVolumeModificationState(volumeID string, targetState string, timeout time.Duration) error {
+	startTime := time.Now()
+	for {
+		modificationOutput, err := c.ec2Client.DescribeVolumesModifications(c.ctx, &ec2.DescribeVolumesModificationsInput{
+			VolumeIds: []string{volumeID},
+		})
+		if err != nil {
+			return err
+		}
+		if len(modificationOutput.VolumesModifications) == 0 {
+			return fmt.Errorf("volume modification with ID %s not found", volumeID)
+		}
+		modificationState := modificationOutput.VolumesModifications[0].ModificationState
+		if modificationState == types.VolumeModificationState(targetState) {
+			break
+		}
+		if time.Since(startTime) > timeout {
+			return fmt.Errorf("timeout waiting for volume modification state to be %s", targetState)
+		}
+		time.Sleep(2 * time.Second)
+	}
+	return nil
+}
+
+// ChangeInstanceType resizes the given instance to the new instance type.
+func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
+	// check if old and new instance types are the same
+	resp, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
+		InstanceIds: []string{instanceID},
+	})
+	if err != nil {
+		return err
+	}
+	if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
+		return fmt.Errorf("instance not found")
+	}
+	currentInstanceType := resp.Reservations[0].Instances[0].InstanceType
+	if currentInstanceType == types.InstanceType(instanceType) {
+		return fmt.Errorf("instance %s is already of type %s", instanceID, instanceType)
+	}
+
+	// stop the instance
+	if _, err := c.ec2Client.StopInstances(c.ctx, &ec2.StopInstancesInput{
+		InstanceIds: []string{instanceID},
+	}); err != nil {
+		return err
+	}
+	if err := c.WaitForEC2Instances([]string{instanceID}, types.InstanceStateNameStopped); err != nil {
+		return err
+	}
+	// update the instance type
+	if _, err := c.ec2Client.ModifyInstanceAttribute(c.ctx, &ec2.ModifyInstanceAttributeInput{
+		InstanceId: aws.String(instanceID),
+		InstanceType: &types.AttributeValue{
+			Value: aws.String(instanceType),
+		},
+	}); err != nil {
+		return err
+	}
+	// start the instance
+	if _, err := c.ec2Client.StartInstances(c.ctx, &ec2.StartInstancesInput{
+		InstanceIds: []string{instanceID},
+	}); err != nil {
+		return err
+	}
+	return nil
 }

@@ -82,6 +82,14 @@ func sshNode(_ *cobra.Command, args []string) error {
 					}
 					clusterHosts = append(clusterHosts, monitoringHosts...)
 				}
+				loadTestInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterNameOrNodeID), constants.LoadTestDir)
+				if utils.DirectoryExists(loadTestInventoryPath) {
+					loadTestHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryPath)
+					if err != nil {
+						return err
+					}
+					clusterHosts = append(clusterHosts, loadTestHosts...)
+				}
 				return sshHosts(clusterHosts, cmd, clustersConfig.Clusters[clusterNameOrNodeID])
 			}
 		} else {
@@ -216,7 +224,15 @@ func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig
 }
 
 func printClusterConnectionString(clusterName string, networkName string) error {
-	ux.Logger.PrintToUser("Cluster: %s (%s)", logging.LightBlue.Wrap(clusterName), logging.Green.Wrap(networkName))
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	if clusterConf.External {
+		ux.Logger.PrintToUser("Cluster: %s (%s) EXTERNAL", logging.LightBlue.Wrap(clusterName), logging.Green.Wrap(networkName))
+	} else {
+		ux.Logger.PrintToUser("Cluster: %s (%s)", logging.LightBlue.Wrap(clusterName), logging.Green.Wrap(networkName))
+	}
 	clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err

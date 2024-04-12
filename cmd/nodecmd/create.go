@@ -130,7 +130,7 @@ will apply to all nodes in the cluster`,
 	return cmd
 }
 
-func preCreateChecks() error {
+func preCreateChecks(clusterName string) error {
 	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
 		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
 	}
@@ -196,8 +196,29 @@ func preCreateChecks() error {
 	if grafanaPkg != "" && !addMonitoring {
 		return fmt.Errorf("grafana package can only be used with monitoring setup")
 	}
+	// check external cluster
+	if err := failForExternal(clusterName); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+func checkClusterExternal(clusterName string) (bool, error) {
+	clusterExists, err := checkClusterExists(clusterName)
+	if err != nil {
+		return false, fmt.Errorf("error checking cluster: %w", err)
+	}
+	if clusterExists {
+		clusterConf, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return false, err
+		}
+		if clusterConf.External {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func stringToAWSVolumeType(input string) types.VolumeType {
@@ -220,10 +241,10 @@ func stringToAWSVolumeType(input string) types.VolumeType {
 }
 
 func createNodes(cmd *cobra.Command, args []string) error {
-	if err := preCreateChecks(); err != nil {
+	clusterName := args[0]
+	if err := preCreateChecks(clusterName); err != nil {
 		return err
 	}
-	clusterName := args[0]
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		globalNetworkFlags,
@@ -823,11 +844,10 @@ func CreateClusterNodeConfig(
 				UseStaticIP:   useStaticIP,
 				IsMonitor:     false,
 			}
-			err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig)
-			if err != nil {
+			if err := app.CreateNodeCloudConfigFile(cloudConfig.InstanceIDs[i], &nodeConfig); err != nil {
 				return err
 			}
-			if err = addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false, "", ""); err != nil {
+			if err := addNodeToClustersConfig(network, cloudConfig.InstanceIDs[i], clusterName, slices.Contains(cloudConfig.APIInstanceIDs, cloudConfig.InstanceIDs[i]), false, "", ""); err != nil {
 				return err
 			}
 		}
@@ -983,11 +1003,7 @@ func getNodeID(nodeDir string) (ids.NodeID, error) {
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
-	keyBytes, err := os.ReadFile(filepath.Join(nodeDir, constants.StakerKeyFileName))
-	if err != nil {
-		return ids.EmptyNodeID, err
-	}
-	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
+	nodeID, err := utils.ToNodeID(certBytes)
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
@@ -999,7 +1015,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
-	nodeID, err := utils.ToNodeID(certBytes, keyBytes)
+	nodeID, err := utils.ToNodeID(certBytes)
 	if err != nil {
 		return ids.EmptyNodeID, err
 	}
