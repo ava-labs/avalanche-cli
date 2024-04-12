@@ -501,17 +501,27 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 func CheckIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
 	for _, ipPermission := range sg.IpPermissions {
 		for _, ipRange := range ipPermission.IpRanges {
-			_, ipNet, err := net.ParseCIDR(*ipRange.CidrIp)
-			if err != nil {
-				continue
-			}
-			ip := net.ParseIP(currentIP)
-			if ip == nil {
-				continue
-			}
-
-			if ipNet.Contains(ip) && ipPermission.FromPort != nil && *ipPermission.FromPort == port {
-				return true
+			cidr := *ipRange.CidrIp
+			if cidr == "0.0.0.0/0" {
+				if ipPermission.FromPort != nil && *ipPermission.FromPort == port {
+					return true
+				}
+			} else if cidr == currentIP {
+				if ipPermission.FromPort != nil && *ipPermission.FromPort == port {
+					return true
+				}
+			} else {
+				_, ipNet, err := net.ParseCIDR(cidr)
+				if err != nil {
+					continue
+				}
+				ip := net.ParseIP(currentIP)
+				if ip == nil {
+					continue
+				}
+				if ipNet.Contains(ip) && ipPermission.FromPort != nil && *ipPermission.FromPort == port {
+					return true
+				}
 			}
 		}
 	}
