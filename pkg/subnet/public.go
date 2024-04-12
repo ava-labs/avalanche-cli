@@ -33,8 +33,6 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
-const commitRepeats = 3
-
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
 
 type PublicDeployer struct {
@@ -479,12 +477,16 @@ func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
 	justIssueTx bool,
 ) (ids.ID, error) {
+	const (
+		repeats             = 3
+		sleepBetweenRepeats = 1 * time.Second
+	)
 	var issueTxErr error
 	wallet, err := d.loadCacheWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
-	for i := 0; i < commitRepeats; i++ {
+	for i := 0; i < repeats; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		options := []common.Option{common.WithContext(ctx)}
@@ -496,11 +498,12 @@ func (d *PublicDeployer) Commit(
 			break
 		}
 		if ctx.Err() != nil {
-			issueTxErr = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+			issueTxErr = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), issueTxErr)
 		} else {
-			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), issueTxErr)
 		}
 		ux.Logger.RedXToUser("%s", issueTxErr)
+		time.Sleep(sleepBetweenRepeats)
 	}
 	if issueTxErr != nil {
 		d.cleanCacheWallet()
@@ -895,22 +898,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	err = wallet.P().IssueTx(
-		&tx,
-		common.WithContext(ctx),
-	)
-	if err != nil {
-		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-		} else {
-			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
-		}
-		return ids.Empty, err
-	}
-
-	return tx.ID(), nil
+	return d.Commit(&tx, false)
 }
 
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {

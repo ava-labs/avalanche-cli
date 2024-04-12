@@ -221,6 +221,9 @@ func printOutput(
 	subnetName string,
 	nodeConfigs []models.NodeConfig,
 ) {
+	if clusterConf.External {
+		ux.Logger.PrintToUser("Cluster %s (%s) is EXTERNAL", logging.LightBlue.Wrap(clusterName), clusterConf.Network.Kind.String())
+	}
 	if subnetName == "" && len(notBootstrappedHosts) == 0 {
 		ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
 	}

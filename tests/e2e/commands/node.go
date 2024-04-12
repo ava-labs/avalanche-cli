@@ -174,6 +174,35 @@ func NodeUpgrade() string {
 	return runCmd(cmd, ExpectSuccess)
 }
 
+func NodeExport(filename string, withSecrets bool) string {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"export",
+		constants.E2EClusterName,
+		"--file",
+		filename,
+	)
+	if withSecrets {
+		cmd.Args = append(cmd.Args, "--include-secrets")
+	}
+	return runCmd(cmd, ExpectSuccess)
+}
+
+func NodeImport(filename string, clusterName string) string {
+	/* #nosec G204 */
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"import",
+		clusterName,
+		"--file",
+		filename,
+	)
+	return runCmd(cmd, ExpectSuccess)
+}
+
 type StaticConfig struct {
 	Targets []string `yaml:"targets"`
 }

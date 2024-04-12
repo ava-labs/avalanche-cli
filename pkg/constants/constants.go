@@ -50,7 +50,7 @@ const (
 
 	ANRRequestTimeout      = 3 * time.Minute
 	APIRequestTimeout      = 30 * time.Second
-	APIRequestLargeTimeout = 1 * time.Minute
+	APIRequestLargeTimeout = 2 * time.Minute
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
 	SSHServerStartTimeout       = 1 * time.Minute
@@ -240,6 +240,8 @@ const (
 	TeleporterKeyName = "cli-teleporter-deployer"
 	AWMRelayerKeyName = "cli-awm-relayer"
 
+	AWMRelayerMetricsPort = 9091
+
 	SubnetEVMBin = "subnet-evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
@@ -305,6 +307,8 @@ const (
 	DefaultConfirmTxTimeout = 20 * time.Second
 
 	PayTxsFeesMsg = "pay transaction fees"
+
+	CodespaceNameEnvVar = "CODESPACE_NAME"
 
 	// E2E
 	E2ENetworkPrefix        = "172.18.0"

@@ -45,6 +45,7 @@ type scriptInputs struct {
 	LoadTestGitCommit       string
 	CheckoutCommit          bool
 	LoadTestResultFile      string
+	GrafanaPkg              string
 }
 
 //go:embed shell/*.sh
@@ -338,14 +339,15 @@ func RunSSHSetupMachineMetrics(host *models.Host) error {
 	)
 }
 
-func RunSSHSetupSeparateMonitoring(host *models.Host) error {
+func RunSSHSetupSeparateMonitoring(host *models.Host, grafanaPkg string) error {
 	return RunOverSSH(
 		"Setup Prometheus and Grafana",
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupMonitoring.sh",
 		scriptInputs{
-			IsE2E: utils.IsE2E(),
+			IsE2E:      utils.IsE2E(),
+			GrafanaPkg: grafanaPkg,
 		},
 	)
 }
@@ -412,13 +414,15 @@ func RunSSHSetupPromtail(host *models.Host) error {
 	)
 }
 
-func RunSSHSetupLoki(host *models.Host) error {
+func RunSSHSetupLoki(host *models.Host, grafanaPkg string) error {
 	return RunOverSSH(
 		"Setup Loki",
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupLoki.sh",
-		scriptInputs{},
+		scriptInputs{
+			GrafanaPkg: grafanaPkg,
+		},
 	)
 }
 
@@ -788,6 +792,16 @@ func RunSSHUpdatePromtailConfigSubnet(host *models.Host, ip string, port int, cl
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/updatePromtailConfig.sh",
+		scriptInputs{},
+	)
+}
+
+func RunSSHUpsizeRootDisk(host *models.Host) error {
+	return RunOverSSH(
+		"Upsize Disk",
+		host,
+		constants.SSHScriptTimeout,
+		"shell/upsizeRootDisk.sh",
 		scriptInputs{},
 	)
 }

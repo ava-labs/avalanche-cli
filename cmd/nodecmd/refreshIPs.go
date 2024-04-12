@@ -3,6 +3,8 @@
 package nodecmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
@@ -30,5 +32,19 @@ func refreshIPs(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	if err := failForExternal(clusterName); err != nil {
+		return err
+	}
 	return updatePublicIPs(clusterName)
+}
+
+func failForExternal(clusterName string) error {
+	external, err := checkClusterExternal(clusterName)
+	if err != nil {
+		return err
+	}
+	if external {
+		return fmt.Errorf("cannot refresh IPs for external cluster %s", clusterName)
+	}
+	return nil
 }

@@ -216,7 +216,9 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 			app.Log.Warn("looks like the upgrade went well, but we failed getting the timestamp of the next upcoming upgrade: %w")
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
-		ux.PrintTableEndpoints(clusterInfo)
+		if err := ux.PrintEndpointTables(clusterInfo); err != nil {
+			return err
+		}
 
 		return writeLockFile(precmpUpgrades, subnetName)
 	}
@@ -341,14 +343,17 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 		return nil, "", err
 	}
 
-	// checks that adminAddress in precompile upgrade for TxAllowList has enough token balance
+	// checks that adminAddresses and managerAddresses in precompile upgrade for TxAllowList has enough token balance
 	for _, precmpUpgrade := range upgrds {
 		allowListCfg, ok := precmpUpgrade.Config.(*txallowlist.Config)
 		if !ok {
 			continue
 		}
 		if allowListCfg != nil {
-			if err := ensureAdminsHaveBalance(allowListCfg.AdminAddresses, subnetName); err != nil {
+			if err := ensureHaveBalance(adminLabel, allowListCfg.AdminAddresses, subnetName); err != nil {
+				return nil, "", err
+			}
+			if err := ensureHaveBalance(managerLabel, allowListCfg.ManagerAddresses, subnetName); err != nil {
 				return nil, "", err
 			}
 		}

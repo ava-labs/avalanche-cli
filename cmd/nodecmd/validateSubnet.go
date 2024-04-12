@@ -84,6 +84,7 @@ func parseSubnetSyncOutput(byteValue []byte) (string, error) {
 func addNodeAsSubnetValidator(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
+	subnetID ids.ID,
 	kc *keychain.Keychain,
 	useLedger bool,
 	nodeID string,
@@ -100,13 +101,43 @@ func addNodeAsSubnetValidator(
 		subnetName,
 		nodeID,
 		defaultValidatorParams,
-		justIssueTx,
+		true,
 	); err != nil {
+		return err
+	}
+	if err := waitForSubnetValidator(network, subnetID, nodeID); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Node %s successfully added as Subnet validator! (%d / %d)", nodeID, currentNodeIndex+1, nodeCount)
 	ux.Logger.PrintLineSeparator()
 	return nil
+}
+
+func waitForSubnetValidator(
+	network models.Network,
+	subnetID ids.ID,
+	nodeIDStr string,
+) error {
+	timeout := 5 * time.Minute
+	poolTime := 1 * time.Second
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return err
+	}
+	startTime := time.Now()
+	for {
+		isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
+		if err != nil {
+			return err
+		}
+		if isValidator {
+			return nil
+		}
+		if time.Since(startTime) > timeout {
+			return fmt.Errorf("node %s not validating subnet ID %s after %d seconds", nodeID, subnetID, uint32(timeout.Seconds()))
+		}
+		time.Sleep(poolTime)
+	}
 }
 
 // getNodeSubnetSyncStatus checks if node is bootstrapped to blockchain blockchainID
@@ -227,6 +258,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	subnetID := sc.Networks[network.Name()].SubnetID
 	var blockchainID ids.ID
 	if !avoidSubnetValidationChecks {
 		blockchainID := sc.Networks[network.Name()].BlockchainID
@@ -285,7 +317,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 				continue
 			}
 		}
-		err = addNodeAsSubnetValidator(deployer, network, kc, useLedger, nodeIDStr, subnetName, i, len(hosts))
+		err = addNodeAsSubnetValidator(deployer, network, subnetID, kc, useLedger, nodeIDStr, subnetName, i, len(hosts))
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err
