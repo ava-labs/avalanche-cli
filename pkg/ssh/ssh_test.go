@@ -37,12 +37,12 @@ func TestReplaceCustomVarDashboardValues(t *testing.T) {
 			]
 		}
 	}`)
-	err := os.WriteFile(tempFileName, tempContent, 0644)
+	err := os.WriteFile(tempFileName, tempContent, 0o644)
 	if err != nil {
 		t.Fatalf("Error creating test file: %v", err)
 	}
 	defer func() {
-		err := os.WriteFile(tempFileName, []byte{}, 0644)
+		err := os.WriteFile(tempFileName, []byte{}, 0o644)
 		if err != nil {
 			t.Fatalf("Error cleaning up test file: %v", err)
 		}

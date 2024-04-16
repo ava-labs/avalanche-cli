@@ -260,7 +260,7 @@ func replaceCustomVarDashboardValues(monitoringDashboardPath, customGrafanaDashb
 	for _, r := range replacements {
 		content = []byte(strings.ReplaceAll(string(content), r.old, r.new))
 	}
-	err = os.WriteFile(customGrafanaDashboardFileName, content, 0644)
+	err = os.WriteFile(customGrafanaDashboardFileName, content, 0o644)
 	if err != nil {
 		return err
 	}
