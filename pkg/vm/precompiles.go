@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -20,7 +21,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/precompile/precompileconfig"
-	"github.com/ava-labs/subnet-evm/utils"
+	subnetevmutils "github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -63,7 +64,13 @@ func configureRewardManager(app *application.Avalanche) (rewardmanager.Config, b
 		"on your subnet, including burning or sending fees.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#changing-fee-reward-mechanisms\n\n"
 
-	admins, manager, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(adminPrompt, managerPrompt, enabledPrompt, info, app)
+	admins, manager, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(
+		adminPrompt,
+		managerPrompt,
+		enabledPrompt,
+		info,
+		app,
+	)
 	if err != nil {
 		return config, false, err
 	}
@@ -74,7 +81,7 @@ func configureRewardManager(app *application.Avalanche) (rewardmanager.Config, b
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: utils.NewUint64(0),
+		BlockTimestamp: subnetevmutils.NewUint64(0),
 	}
 	config.InitialRewardConfig, err = ConfigureInitialRewardConfig(app)
 	if err != nil {
@@ -84,7 +91,9 @@ func configureRewardManager(app *application.Avalanche) (rewardmanager.Config, b
 	return config, cancelled, nil
 }
 
-func ConfigureInitialRewardConfig(app *application.Avalanche) (*rewardmanager.InitialRewardConfig, error) {
+func ConfigureInitialRewardConfig(
+	app *application.Avalanche,
+) (*rewardmanager.InitialRewardConfig, error) {
 	config := &rewardmanager.InitialRewardConfig{}
 
 	burnPrompt := "Should fees be burnt?"
@@ -115,7 +124,11 @@ func ConfigureInitialRewardConfig(app *application.Avalanche) (*rewardmanager.In
 	return config, nil
 }
 
-func getAddressList(initialPrompt string, info string, app *application.Avalanche) ([]common.Address, bool, error) {
+func getAddressList(
+	initialPrompt string,
+	info string,
+	app *application.Avalanche,
+) ([]common.Address, bool, error) {
 	label := "Address"
 
 	return prompts.CaptureListDecision(
@@ -128,7 +141,9 @@ func getAddressList(initialPrompt string, info string, app *application.Avalanch
 	)
 }
 
-func configureContractAllowList(app *application.Avalanche) (deployerallowlist.Config, bool, error) {
+func configureContractAllowList(
+	app *application.Avalanche,
+) (deployerallowlist.Config, bool, error) {
 	config := deployerallowlist.Config{}
 	adminPrompt := "Configure contract deployment admin addresses"
 	managerPrompt := "Configure contract deployment manager addresses"
@@ -137,7 +152,13 @@ func configureContractAllowList(app *application.Avalanche) (deployerallowlist.C
 		"on your subnet.\nFor more information visit " + //nolint:goconst
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-smart-contract-deployers\n\n"
 
-	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(adminPrompt, managerPrompt, enabledPrompt, info, app)
+	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(
+		adminPrompt,
+		managerPrompt,
+		enabledPrompt,
+		info,
+		app,
+	)
 	if err != nil {
 		return config, false, err
 	}
@@ -148,7 +169,7 @@ func configureContractAllowList(app *application.Avalanche) (deployerallowlist.C
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: utils.NewUint64(0),
+		BlockTimestamp: subnetevmutils.NewUint64(0),
 	}
 
 	return config, cancelled, nil
@@ -163,7 +184,13 @@ func configureTransactionAllowList(app *application.Avalanche) (txallowlist.Conf
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-who-can-submit-transactions\n\n"
 
-	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(adminPrompt, managerPrompt, enabledPrompt, info, app)
+	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(
+		adminPrompt,
+		managerPrompt,
+		enabledPrompt,
+		info,
+		app,
+	)
 	if err != nil {
 		return config, false, err
 	}
@@ -174,7 +201,7 @@ func configureTransactionAllowList(app *application.Avalanche) (txallowlist.Conf
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: utils.NewUint64(0),
+		BlockTimestamp: subnetevmutils.NewUint64(0),
 	}
 
 	return config, cancelled, nil
@@ -209,15 +236,24 @@ func getAdminManagerAndEnabledAddresses(
 	}
 	for _, managerAddress := range managers {
 		if _, ok := adminsMap[managerAddress.String()]; ok {
-			return nil, nil, nil, false, fmt.Errorf("can't have address %s in both admin and manager addresses", managerAddress.String())
+			return nil, nil, nil, false, fmt.Errorf(
+				"can't have address %s in both admin and manager addresses",
+				managerAddress.String(),
+			)
 		}
 	}
 	for _, enabledAddress := range enabled {
 		if _, ok := adminsMap[enabledAddress.String()]; ok {
-			return nil, nil, nil, false, fmt.Errorf("can't have address %s in both admin and enabled addresses", enabledAddress.String())
+			return nil, nil, nil, false, fmt.Errorf(
+				"can't have address %s in both admin and enabled addresses",
+				enabledAddress.String(),
+			)
 		}
 		if _, ok := managersMap[enabledAddress.String()]; ok {
-			return nil, nil, nil, false, fmt.Errorf("can't have address %s in both manager and enabled addresses", enabledAddress.String())
+			return nil, nil, nil, false, fmt.Errorf(
+				"can't have address %s in both manager and enabled addresses",
+				enabledAddress.String(),
+			)
 		}
 	}
 	return admins, managers, enabled, cancelled, nil
@@ -232,7 +268,13 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#minting-native-coins\n\n"
 
-	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(adminPrompt, managerPrompt, enabledPrompt, info, app)
+	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(
+		adminPrompt,
+		managerPrompt,
+		enabledPrompt,
+		info,
+		app,
+	)
 	if err != nil {
 		return config, false, err
 	}
@@ -242,7 +284,7 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: utils.NewUint64(0),
+		BlockTimestamp: subnetevmutils.NewUint64(0),
 	}
 
 	return config, cancelled, nil
@@ -253,7 +295,7 @@ func configureWarp() warp.Config {
 		QuorumNumerator: warp.WarpDefaultQuorumNumerator,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: utils.NewUint64(uint64(time.Now().Unix())),
+		BlockTimestamp: subnetevmutils.NewUint64(uint64(time.Now().Unix())),
 	}
 	return config
 }
@@ -267,7 +309,13 @@ func configureFeeConfigAllowList(app *application.Avalanche) (feemanager.Config,
 		"performing a hardfork.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#configuring-dynamic-fees\n\n"
 
-	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(adminPrompt, managerPrompt, enabledPrompt, info, app)
+	admins, managers, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(
+		adminPrompt,
+		managerPrompt,
+		enabledPrompt,
+		info,
+		app,
+	)
 	if err != nil {
 		return config, false, err
 	}
@@ -278,7 +326,7 @@ func configureFeeConfigAllowList(app *application.Avalanche) (feemanager.Config,
 		EnabledAddresses: enabled,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: utils.NewUint64(0),
+		BlockTimestamp: subnetevmutils.NewUint64(0),
 	}
 
 	return config, cancelled, nil
@@ -293,6 +341,65 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 	return arr, errors.New("string not in array")
 }
 
+func getTestAllowList(app *application.Avalanche) (txallowlist.Config, error) {
+	config := txallowlist.Config{}
+	admins := []common.Address{}
+	managers := []common.Address{}
+	enabled := []common.Address{}
+	config.AllowListConfig = allowlist.AllowListConfig{
+		AdminAddresses:   admins,
+		ManagerAddresses: managers,
+		EnabledAddresses: enabled,
+	}
+	config.Upgrade = precompileconfig.Upgrade{
+		BlockTimestamp: subnetevmutils.NewUint64(0),
+	}
+	return config, nil
+}
+
+func fixPrecompilesForTeleporter(
+	config params.ChainConfig,
+	teleporterReady bool,
+	teleporterAddress string,
+	teleporterMessengerDeployerAddress string,
+	relayerAddress string,
+) params.ChainConfig {
+	if teleporterReady {
+		for _, addressStr := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
+			address := common.HexToAddress(addressStr)
+			precompileConfig := config.GenesisPrecompiles[txallowlist.ConfigKey].(*txallowlist.Config)
+			if precompileConfig != nil {
+				allowed := false
+				if utils.Belongs(
+					precompileConfig.AllowListConfig.AdminAddresses,
+					address,
+				) {
+					allowed = true
+				}
+				if utils.Belongs(
+					precompileConfig.AllowListConfig.ManagerAddresses,
+					address,
+				) {
+					allowed = true
+				}
+				if utils.Belongs(
+					precompileConfig.AllowListConfig.EnabledAddresses,
+					address,
+				) {
+					allowed = true
+				}
+				if !allowed {
+					precompileConfig.AllowListConfig.EnabledAddresses = append(
+						precompileConfig.AllowListConfig.EnabledAddresses,
+						address,
+					)
+				}
+			}
+		}
+	}
+	return config
+}
+
 func getPrecompiles(
 	config params.ChainConfig,
 	app *application.Avalanche,
@@ -303,6 +410,12 @@ func getPrecompiles(
 	statemachine.StateDirection,
 	error,
 ) {
+	txConfig, err := getTestAllowList(app)
+	if err != nil {
+		return config, statemachine.Stop, err
+	}
+	config.GenesisPrecompiles[txallowlist.ConfigKey] = &txConfig
+
 	if useDefaults || useWarp {
 		warpConfig := configureWarp()
 		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
@@ -316,9 +429,24 @@ func getPrecompiles(
 
 	first := true
 
-	remainingPrecompiles := []string{Warp, NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
+	remainingPrecompiles := []string{
+		Warp,
+		NativeMint,
+		ContractAllowList,
+		TxAllowList,
+		FeeManager,
+		RewardManager,
+		cancel,
+	}
 	if useWarp {
-		remainingPrecompiles = []string{NativeMint, ContractAllowList, TxAllowList, FeeManager, RewardManager, cancel}
+		remainingPrecompiles = []string{
+			NativeMint,
+			ContractAllowList,
+			TxAllowList,
+			FeeManager,
+			RewardManager,
+			cancel,
+		}
 	}
 
 	for {
@@ -331,7 +459,10 @@ func getPrecompiles(
 			first = false
 		}
 
-		addPrecompile, err := app.Prompt.CaptureList(promptStr, []string{prompts.No, prompts.Yes, goBackMsg})
+		addPrecompile, err := app.Prompt.CaptureList(
+			promptStr,
+			[]string{prompts.No, prompts.Yes, goBackMsg},
+		)
 		if err != nil {
 			return config, statemachine.Stop, err
 		}
@@ -372,7 +503,10 @@ func getPrecompiles(
 			}
 			if !cancelled {
 				config.GenesisPrecompiles[deployerallowlist.ConfigKey] = &contractConfig
-				remainingPrecompiles, err = removePrecompile(remainingPrecompiles, ContractAllowList)
+				remainingPrecompiles, err = removePrecompile(
+					remainingPrecompiles,
+					ContractAllowList,
+				)
 				if err != nil {
 					return config, statemachine.Stop, err
 				}

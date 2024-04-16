@@ -33,14 +33,30 @@ const (
 )
 
 var (
-	teleporterMessengerDeployerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(10))  // 10 AVAX
-	TeleporterPrefundedAddressBalance          = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600)) // 600 AVAX
+	teleporterMessengerDeployerRequiredBalance = big.NewInt(0).
+							Mul(big.NewInt(1e18), big.NewInt(10))
+	// 10 AVAX
+	TeleporterPrefundedAddressBalance = big.NewInt(0).
+						Mul(big.NewInt(1e18), big.NewInt(600))
+	// 600 AVAX
 )
 
 func getTeleporterURLs(version string) (string, string, string) {
-	teleporterMessengerContractAddressURL := fmt.Sprintf(teleporterMessengerContractAddressURLFmt, version, version)
-	teleporterMessengerDeployerAddressURL := fmt.Sprintf(teleporterMessengerDeployerAddressURLFmt, version, version)
-	teleporterMessengerDeployerTxURL := fmt.Sprintf(teleporterMessengerDeployerTxURLFmt, version, version)
+	teleporterMessengerContractAddressURL := fmt.Sprintf(
+		teleporterMessengerContractAddressURLFmt,
+		version,
+		version,
+	)
+	teleporterMessengerDeployerAddressURL := fmt.Sprintf(
+		teleporterMessengerDeployerAddressURLFmt,
+		version,
+		version,
+	)
+	teleporterMessengerDeployerTxURL := fmt.Sprintf(
+		teleporterMessengerDeployerTxURLFmt,
+		version,
+		version,
+	)
 	return teleporterMessengerContractAddressURL, teleporterMessengerDeployerAddressURL, teleporterMessengerDeployerTxURL
 }
 
@@ -50,20 +66,43 @@ type Deployer struct {
 	teleporterMessengerDeployerTx      string
 }
 
+func (t *Deployer) GetAssets(
+	teleporterInstallDir string,
+	version string,
+) (string, string, string, error) {
+	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+		return "", "", "", err
+	}
+	return t.teleporterMessengerContractAddress, t.teleporterMessengerDeployerAddress, t.teleporterMessengerDeployerTx, nil
+}
+
 func (t *Deployer) DownloadAssets(
 	teleporterInstallDir string,
 	version string,
 ) error {
 	var err error
 	binDir := filepath.Join(teleporterInstallDir, version)
-	teleporterMessengerContractAddressURL, teleporterMessengerDeployerAddressURL, teleporterMessengerDeployerTxURL := getTeleporterURLs(version)
-	teleporterMessengerContractAddressPath := filepath.Join(binDir, filepath.Base(teleporterMessengerContractAddressURL))
-	teleporterMessengerDeployerAddressPath := filepath.Join(binDir, filepath.Base(teleporterMessengerDeployerAddressURL))
-	teleporterMessengerDeployerTxPath := filepath.Join(binDir, filepath.Base(teleporterMessengerDeployerTxURL))
+	teleporterMessengerContractAddressURL, teleporterMessengerDeployerAddressURL, teleporterMessengerDeployerTxURL := getTeleporterURLs(
+		version,
+	)
+	teleporterMessengerContractAddressPath := filepath.Join(
+		binDir,
+		filepath.Base(teleporterMessengerContractAddressURL),
+	)
+	teleporterMessengerDeployerAddressPath := filepath.Join(
+		binDir,
+		filepath.Base(teleporterMessengerDeployerAddressURL),
+	)
+	teleporterMessengerDeployerTxPath := filepath.Join(
+		binDir,
+		filepath.Base(teleporterMessengerDeployerTxURL),
+	)
 	if t.teleporterMessengerContractAddress == "" {
 		var teleporterMessengerContractAddressBytes []byte
 		if utils.FileExists(teleporterMessengerContractAddressPath) {
-			teleporterMessengerContractAddressBytes, err = os.ReadFile(teleporterMessengerContractAddressPath)
+			teleporterMessengerContractAddressBytes, err = os.ReadFile(
+				teleporterMessengerContractAddressPath,
+			)
 			if err != nil {
 				return err
 			}
@@ -79,7 +118,9 @@ func (t *Deployer) DownloadAssets(
 	if t.teleporterMessengerDeployerAddress == "" {
 		var teleporterMessengerDeployerAddressBytes []byte
 		if utils.FileExists(teleporterMessengerDeployerAddressPath) {
-			teleporterMessengerDeployerAddressBytes, err = os.ReadFile(teleporterMessengerDeployerAddressPath)
+			teleporterMessengerDeployerAddressBytes, err = os.ReadFile(
+				teleporterMessengerDeployerAddressPath,
+			)
 			if err != nil {
 				return err
 			}
@@ -117,7 +158,13 @@ func (t *Deployer) Deploy(
 	rpcURL string,
 	prefundedPrivateKey string,
 ) (bool, string, string, error) {
-	alreadyDeployed, messengerAddress, err := t.DeployMessenger(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey)
+	alreadyDeployed, messengerAddress, err := t.DeployMessenger(
+		teleporterInstallDir,
+		version,
+		subnetName,
+		rpcURL,
+		prefundedPrivateKey,
+	)
 	if err != nil {
 		return false, "", "", err
 	}
@@ -153,12 +200,16 @@ func (t *Deployer) DeployMessenger(
 		return true, t.teleporterMessengerContractAddress, nil
 	}
 	// get teleporter deployer balance
-	teleporterMessengerDeployerBalance, err := evm.GetAddressBalance(client, t.teleporterMessengerDeployerAddress)
+	teleporterMessengerDeployerBalance, err := evm.GetAddressBalance(
+		client,
+		t.teleporterMessengerDeployerAddress,
+	)
 	if err != nil {
 		return false, "", err
 	}
 	if teleporterMessengerDeployerBalance.Cmp(teleporterMessengerDeployerRequiredBalance) < 0 {
-		toFund := big.NewInt(0).Sub(teleporterMessengerDeployerRequiredBalance, teleporterMessengerDeployerBalance)
+		toFund := big.NewInt(0).
+			Sub(teleporterMessengerDeployerRequiredBalance, teleporterMessengerDeployerBalance)
 		if err := evm.FundAddress(
 			client,
 			prefundedPrivateKey,
@@ -171,7 +222,11 @@ func (t *Deployer) DeployMessenger(
 	if err := evm.IssueTx(client, t.teleporterMessengerDeployerTx); err != nil {
 		return false, "", err
 	}
-	ux.Logger.PrintToUser("Teleporter Messenger successfully deployed to %s (%s)", subnetName, t.teleporterMessengerContractAddress)
+	ux.Logger.PrintToUser(
+		"Teleporter Messenger successfully deployed to %s (%s)",
+		subnetName,
+		t.teleporterMessengerContractAddress,
+	)
 	return false, t.teleporterMessengerContractAddress, nil
 }
 
@@ -201,7 +256,11 @@ func (t *Deployer) DeployRegistry(
 	if err != nil {
 		return "", err
 	}
-	teleporterRegistryAddress, tx, _, err := DeployTeleporterRegistry(txOpts, client, teleporterRegistryConstructorInput)
+	teleporterRegistryAddress, tx, _, err := DeployTeleporterRegistry(
+		txOpts,
+		client,
+		teleporterRegistryConstructorInput,
+	)
 	if err != nil {
 		return "", err
 	}
@@ -210,7 +269,11 @@ func (t *Deployer) DeployRegistry(
 	} else if !success {
 		return "", fmt.Errorf("failed receipt status deploying teleporter registry")
 	}
-	ux.Logger.PrintToUser("Teleporter Registry successfully deployed to %s (%s)", subnetName, teleporterRegistryAddress)
+	ux.Logger.PrintToUser(
+		"Teleporter Registry successfully deployed to %s (%s)",
+		subnetName,
+		teleporterRegistryAddress,
+	)
 	return teleporterRegistryAddress.String(), nil
 }
 
@@ -233,7 +296,11 @@ func DeployTeleporterRegistry(
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		txOpts.Context = ctx
-		addr, tx, registry, err = teleporterRegistry.DeployTeleporterRegistry(txOpts, client, teleporterRegistryConstructorInput)
+		addr, tx, registry, err = teleporterRegistry.DeployTeleporterRegistry(
+			txOpts,
+			client,
+			teleporterRegistryConstructorInput,
+		)
 		if err == nil {
 			break
 		}

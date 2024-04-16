@@ -289,6 +289,19 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+  teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
+  if err != nil {
+    return err
+  }
+  teleporterDeployer := teleporter.Deployer{}
+  _, teleporterMessengerDeployerAddress, _, err := teleporterDeployer.GetAssets(app.GetTeleporterBinDir(), teleporterVersion)
+  if err != nil {
+    return err
+  }
+  relayerAddress, _, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+  if err != nil {
+    return err
+  }
 
 	switch subnetType {
 	case models.SubnetEvm:
@@ -305,6 +318,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			teleporterReady,
 			teleporterKeyAddress,
 			teleporterKeyBalance,
+      teleporterMessengerDeployerAddress,
+      relayerAddress,
 		)
 		if err != nil {
 			return err
@@ -328,10 +343,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if teleporterReady {
-		teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
-		if err != nil {
-			return err
-		}
 		sc.TeleporterReady = teleporterReady
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterVersion

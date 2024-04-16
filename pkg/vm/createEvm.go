@@ -42,6 +42,8 @@ func CreateEvmSubnetConfig(
 	teleporterReady bool,
 	teleporterKeyAddress string,
 	teleporterKeyBalance *big.Int,
+	teleporterMessengerDeployerAddress string,
+	relayerAddress string,
 ) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
@@ -79,6 +81,8 @@ func CreateEvmSubnetConfig(
 			teleporterReady,
 			teleporterKeyAddress,
 			teleporterKeyBalance,
+			teleporterMessengerDeployerAddress,
+			relayerAddress,
 		)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
@@ -114,6 +118,8 @@ func createEvmGenesis(
 	teleporterReady bool,
 	teleporterKeyAddress string,
 	teleporterKeyBalance *big.Int,
+	teleporterMessengerDeployerAddress string,
+	relayerAddress string,
 ) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
@@ -152,7 +158,11 @@ func createEvmGenesis(
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
 		case descriptorsState:
-			chainID, tokenSymbol, direction, err = getDescriptors(app, subnetEVMChainID, subnetEVMTokenSymbol)
+			chainID, tokenSymbol, direction, err = getDescriptors(
+				app,
+				subnetEVMChainID,
+				subnetEVMTokenSymbol,
+			)
 		case feeState:
 			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
@@ -167,6 +177,13 @@ func createEvmGenesis(
 			)
 		case precompilesState:
 			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, useWarp)
+			*conf = fixPrecompilesForTeleporter(
+				*conf,
+				teleporterReady,
+				teleporterKeyAddress,
+				teleporterMessengerDeployerAddress,
+				relayerAddress,
+			)
 		default:
 			err = errors.New("invalid creation stage")
 		}
@@ -179,7 +196,10 @@ func createEvmGenesis(
 	if conf != nil && conf.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
 		allowListCfg, ok := conf.GenesisPrecompiles[txallowlist.ConfigKey].(*txallowlist.Config)
 		if !ok {
-			return nil, nil, fmt.Errorf("expected config of type txallowlist.AllowListConfig, but got %T", allowListCfg)
+			return nil, nil, fmt.Errorf(
+				"expected config of type txallowlist.AllowListConfig, but got %T",
+				allowListCfg,
+			)
 		}
 
 		if err := ensureAdminsHaveBalance(
@@ -237,7 +257,9 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 			return nil
 		}
 	}
-	return errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue")
+	return errors.New(
+		"none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue",
+	)
 }
 
 // In own function to facilitate testing
@@ -301,10 +323,12 @@ func askForVMVersion(
 	vmName string,
 	repoName string,
 ) (string, error) {
-	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-		constants.AvaLabsOrg,
-		repoName,
-	))
+	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(
+		binutils.GetGithubLatestReleaseURL(
+			constants.AvaLabsOrg,
+			repoName,
+		),
+	)
 	if err != nil {
 		return "", err
 	}
@@ -344,7 +368,10 @@ func askForVMVersion(
 	}
 
 	// prompt for version
-	versions, err := app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+	versions, err := app.Downloader.GetAllReleasesForRepo(
+		constants.AvaLabsOrg,
+		constants.SubnetEVMRepoName,
+	)
 	if err != nil {
 		return "", err
 	}

@@ -26,7 +26,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
+func SetupRealtimeCLIOutput(
+	cmd *exec.Cmd,
+	redirectStdout bool,
+	redirectStderr bool,
+) (*bytes.Buffer, *bytes.Buffer) {
 	var stdoutBuffer bytes.Buffer
 	var stderrBuffer bytes.Buffer
 	if redirectStdout {
@@ -113,6 +117,15 @@ func Find[T any](input []T, f func(T) bool) *T {
 	return nil
 }
 
+func Belongs[T comparable](input []T, elem T) bool {
+	for _, e := range input {
+		if e == elem {
+			return true
+		}
+	}
+	return false
+}
+
 func Filter[T any](input []T, f func(T) bool) []T {
 	output := make([]T, 0, len(input))
 	for _, e := range input {
@@ -179,7 +192,11 @@ func IsUnsignedSlice(n []int) bool {
 }
 
 // TimedFunction is a function that executes the given function `f` within a specified timeout duration.
-func TimedFunction(f func() (interface{}, error), name string, timeout time.Duration) (interface{}, error) {
+func TimedFunction(
+	f func() (interface{}, error),
+	name string,
+	timeout time.Duration,
+) (interface{}, error) {
 	var (
 		ret interface{}
 		err error
@@ -259,7 +276,11 @@ func Download(url string) ([]byte, error) {
 		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed downloading %s: unexpected http status code: %d", url, resp.StatusCode)
+		return nil, fmt.Errorf(
+			"failed downloading %s: unexpected http status code: %d",
+			url,
+			resp.StatusCode,
+		)
 	}
 	defer resp.Body.Close()
 	bs, err := io.ReadAll(resp.Body)
