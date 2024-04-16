@@ -5,6 +5,8 @@ package ssh
 import (
 	"os"
 	"testing"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func TestReplaceCustomVarDashboardValues(t *testing.T) {
@@ -37,18 +39,18 @@ func TestReplaceCustomVarDashboardValues(t *testing.T) {
 			]
 		}
 	}`)
-	err := os.WriteFile(tempFileName, tempContent, 0o644)
+	err := os.WriteFile(tempFileName, tempContent, constants.WriteReadUserOnlyPerms)
 	if err != nil {
 		t.Fatalf("Error creating test file: %v", err)
 	}
 	defer func() {
-		err := os.WriteFile(tempFileName, []byte{}, 0o644)
+		err := os.WriteFile(tempFileName, []byte{}, constants.WriteReadUserOnlyPerms)
 		if err != nil {
 			t.Fatalf("Error cleaning up test file: %v", err)
 		}
 	}()
 
-	err = replaceCustomVarDashboardValues("", tempFileName, "newChainID")
+	err = replaceCustomVarDashboardValues(tempFileName, "newChainID")
 	if err != nil {
 		t.Fatalf("Error replacing custom variables: %v", err)
 	}

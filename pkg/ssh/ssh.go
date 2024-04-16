@@ -244,7 +244,7 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 	)
 }
 
-func replaceCustomVarDashboardValues(monitoringDashboardPath, customGrafanaDashboardFileName, chainID string) error {
+func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID string) error {
 	content, err := os.ReadFile(customGrafanaDashboardFileName)
 	if err != nil {
 		return err
@@ -260,7 +260,7 @@ func replaceCustomVarDashboardValues(monitoringDashboardPath, customGrafanaDashb
 	for _, r := range replacements {
 		content = []byte(strings.ReplaceAll(string(content), r.old, r.new))
 	}
-	err = os.WriteFile(customGrafanaDashboardFileName, content, 0o644)
+	err = os.WriteFile(customGrafanaDashboardFileName, content, constants.WriteReadUserOnlyPerms)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath
 		if err := utils.FileCopy(utils.ExpandHome(customGrafanaDashboardPath), filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON)); err != nil {
 			return err
 		}
-		if err := replaceCustomVarDashboardValues(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON, chainID); err != nil {
+		if err := replaceCustomVarDashboardValues(constants.CustomGrafanaDashboardJSON, chainID); err != nil {
 			return err
 		}
 	}
