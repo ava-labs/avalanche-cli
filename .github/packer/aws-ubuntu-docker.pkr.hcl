@@ -40,7 +40,8 @@ source "amazon-ebs" "ubuntu" {
   ami_users = []
   ami_regions = local.all_regions
   tags = {
-    OS_Version = "ubuntu-22.04"
+    Name = "avaplatform-ubuntu-jammy-22.04-docker"
+    Release = "ubuntu-22.04"
     Org = "avaplatform"
     Base_AMI_ID = "{{ .SourceAMI }}"
     Base_AMI_Name = "{{ .SourceAMIName }}"
@@ -60,6 +61,12 @@ build {
             "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
             "sudo apt-get -y update && sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-compose",
         ]
+    }
+    
+    provisioner "shell" {
+        inline = [
+            "sudo rm -f /root/.ssh/authorized_keys && sudo rm -f /home/ubuntu/.ssh/authorized_keys"
+            ]
     }
 }
 
