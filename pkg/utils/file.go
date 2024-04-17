@@ -48,6 +48,10 @@ func UserHomePath(filePath ...string) string {
 
 // ExpandHome expands ~ symbol to home directory
 func ExpandHome(path string) string {
+	if path == "" {
+		home, _ := os.UserHomeDir()
+		return home
+	}
 	if len(path) > 0 && path[0] == '~' {
 		home, _ := os.UserHomeDir()
 		path = filepath.Join(home, path[1:])

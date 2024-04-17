@@ -267,6 +267,26 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+// FileExists checks if a file exists on the remote server.
+func (h *Host) FileExists(path string) (bool, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return false, err
+		}
+	}
+
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return false, nil
+	}
+	defer sftp.Close()
+	_, err = sftp.Stat(path)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (h *Host) GetAnsibleInventoryRecord() string {
 	return strings.Join([]string{
 		h.NodeID,

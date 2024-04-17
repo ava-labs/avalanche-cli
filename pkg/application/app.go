@@ -894,3 +894,7 @@ func (app *Avalanche) ListClusterNames() ([]string, error) {
 	}
 	return maps.Keys(clustersConfig.Clusters), nil
 }
+
+func (app *Avalanche) GetClusterDockerSwarmPath(clusterName string) string {
+	return filepath.Join(utils.ExpandHome(""), constants.BaseDirName, "docker", fmt.Sprintf("%s.swarm", clusterName))
+}

@@ -317,4 +317,7 @@ const (
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
 	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
 	GitExtension            = ".git"
+
+	// Docker
+	RemoteDockeSocketPath = "/var/run/docker.sock"
 )

@@ -35,4 +35,12 @@ func TestExpandHome(t *testing.T) {
 	if expandedTildePath != expectedTildePath {
 		t.Errorf("ExpandHome failed for path starting with ~: expected %s, got %s", expectedTildePath, expandedTildePath)
 	}
+
+	// Test case 4: Empty path
+	emptyPath := ""
+	expectedEmptyPath := homeDir
+	expandedEmptyPath := ExpandHome(emptyPath)
+	if expandedEmptyPath != expectedEmptyPath {
+		t.Errorf("ExpandHome failed for empty path: expected %s, got %s", expectedEmptyPath, expandedEmptyPath)
+	}
 }
