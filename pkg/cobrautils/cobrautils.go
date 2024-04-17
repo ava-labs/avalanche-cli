@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
 	"github.com/spf13/cobra"
 )
 
@@ -74,7 +76,7 @@ func HandleErrors(err error) {
 			usageErr.cmd.Println()
 			usageErr.cmd.Println(usageErr.cmd.UsageString())
 		} else {
-			fmt.Printf("Error: %s\n", err)
+			ux.Logger.PrintToUser("Error: %s", err)
 		}
 		os.Exit(1)
 	}

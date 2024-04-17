@@ -28,10 +28,8 @@ func (*Config) SetConfig(log logging.Logger, s string) {
 	viper.SetConfigFile(s)
 	viper.AutomaticEnv() // read in environment variables that match
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		log.Info("Using config file", zap.String("config-file", s))
-	} else {
-		log.Info("No log file found")
+	if err := viper.ReadInConfig(); err != nil {
+		log.Info("No config file found", zap.Error(err))
 	}
 }
 

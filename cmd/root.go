@@ -112,6 +112,8 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	log.Info("-----------")
+	log.Info(fmt.Sprintf("cmd: %s", strings.Join(os.Args[1:], " ")))
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
@@ -316,7 +318,9 @@ func initConfig() {
 	app.Conf.SetConfig(app.Log, cfgFile)
 	// check if metrics setting is available, and if not load metricConfig
 	if !app.Conf.ConfigValueIsSet(constants.ConfigMetricsEnabledKey) {
-		app.Conf.MergeConfig(app.Log, oldMetricsConfig)
+		if utils.FileExists(oldMetricsConfig) {
+			app.Conf.MergeConfig(app.Log, oldMetricsConfig)
+		}
 	}
 }
 
