@@ -7,23 +7,22 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanchego/utils/logging"
-
-	"golang.org/x/exp/slices"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -64,9 +63,8 @@ test binary based on the provided load test Git Repo URL and load test binary bu
 
 The command will then run the load test binary based on the provided load test run command.`,
 
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(3),
-		RunE:         startLoadTest,
+		Args: cobrautils.ExactArgs(3),
+		RunE: startLoadTest,
 	}
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create loadtest node in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create loadtest in GCP cloud")

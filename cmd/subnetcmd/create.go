@@ -13,6 +13,7 @@ import (
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -69,8 +70,7 @@ the path to your genesis and VM binaries with the --genesis and --vm flags.
 By default, running the command with a subnetName that already exists
 causes the command to fail. If you’d like to overwrite an existing
 configuration, pass the -f flag.`,
-		SilenceUsage:      true,
-		Args:              cobra.ExactArgs(1),
+		Args:              cobrautils.ExactArgs(1),
 		RunE:              createSubnetConfig,
 		PersistentPostRun: handlePostRun,
 	}

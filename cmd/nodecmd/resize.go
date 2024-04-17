@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -32,9 +33,8 @@ The node resize command can be used to resize cluster instance size
 and/or size of the permanent storage attached to the instance. In another words, it can 
 change amount of CPU, memory and disk space available for the cluster nodes.
 `,
-		SilenceUsage: true,
-		Args:         cobra.MinimumNArgs(1),
-		RunE:         resize,
+		Args: cobrautils.MinimumNArgs(1),
+		RunE: resize,
 	}
 	cmd.Flags().StringVar(&nodeType, "node-type", "", "Node type to resize (e.g. t3.2xlarge)")
 	cmd.Flags().StringVar(&diskSize, "disk-size", "", "Disk size to resize in Gb (e.g. 1000Gb)")

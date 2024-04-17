@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -35,12 +36,11 @@ var describeSupportedNetworkOptions = []networkoptions.NetworkOption{networkopti
 // avalanche primary describe
 func newDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "describe",
-		Short:        "Print details of the primary network configuration",
-		Long:         `The subnet describe command prints details of the primary network configuration to the console.`,
-		SilenceUsage: true,
-		RunE:         describe,
-		Args:         cobra.ExactArgs(0),
+		Use:   "describe",
+		Short: "Print details of the primary network configuration",
+		Long:  `The subnet describe command prints details of the primary network configuration to the console.`,
+		RunE:  describe,
+		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, describeSupportedNetworkOptions)
 	return cmd

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -20,12 +21,11 @@ var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoption
 // avalanche teleporter deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "deploy [subnetName]",
-		Short:        "Deploys Teleporter into the given Subnet",
-		Long:         `Deploys Teleporter into the given Subnet.`,
-		SilenceUsage: true,
-		RunE:         deploy,
-		Args:         cobra.ExactArgs(1),
+		Use:   "deploy [subnetName]",
+		Short: "Deploys Teleporter into the given Subnet",
+		Long:  `Deploys Teleporter into the given Subnet.`,
+		RunE:  deploy,
+		Args:  cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
 	return cmd

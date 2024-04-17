@@ -15,6 +15,7 @@ import (
 
 	"github.com/ava-labs/apm/types"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -42,12 +43,11 @@ type newPublisherFunc func(string, string, string) subnet.Publisher
 // avalanche subnet publish
 func newPublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "publish [subnetName]",
-		Short:        "Publish the subnet's VM to a repository",
-		Long:         `The subnet publish command publishes the Subnet's VM to a repository.`,
-		SilenceUsage: true,
-		RunE:         publish,
-		Args:         cobra.ExactArgs(1),
+		Use:   "publish [subnetName]",
+		Short: "Publish the subnet's VM to a repository",
+		Long:  `The subnet publish command publishes the Subnet's VM to a repository.`,
+		RunE:  publish,
+		Args:  cobrautils.ExactArgs(1),
 	}
 	cmd.Flags().StringVar(&alias, "alias", "",
 		"We publish to a remote repo, but identify the repo locally under a user-provided alias (e.g. myrepo).")

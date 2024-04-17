@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -32,11 +33,10 @@ var (
 // avalanche subnet import public
 func newImportPublicCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "public [subnetPath]",
-		Short:        "Import an existing subnet config from running subnets on a public network",
-		RunE:         importPublic,
-		SilenceUsage: true,
-		Args:         cobra.MaximumNArgs(1),
+		Use:   "public [subnetPath]",
+		Short: "Import an existing subnet config from running subnets on a public network",
+		RunE:  importPublic,
+		Args:  cobrautils.MaximumNArgs(1),
 		Long: `The subnet import public command imports a Subnet configuration from a running network.
 
 The genesis file should be available from the disk for this to work. By default, an imported Subnet

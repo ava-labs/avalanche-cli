@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -40,9 +41,8 @@ func newWhitelistCmd() *cobra.Command {
 	Command adds IP if --ip params provided to cloud security access rules allowing it to access all nodes in the cluster via ssh or http.
 	It also command adds SSH public key to all nodes in the cluster if --ssh params is there.
 	If no params provided it detects current user IP automaticaly and whitelists it`,
-		SilenceUsage: true,
-		Args:         cobra.MinimumNArgs(1),
-		RunE:         whitelist,
+		Args: cobrautils.MinimumNArgs(1),
+		RunE: whitelist,
 	}
 	cmd.Flags().StringVar(&userIPAddress, "ip", "", "ip address to whitelist")
 	cmd.Flags().StringVar(&userPubKey, "ssh", "", "ssh public key to whitelist")

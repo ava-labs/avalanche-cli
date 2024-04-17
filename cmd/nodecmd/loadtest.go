@@ -3,8 +3,7 @@
 package nodecmd
 
 import (
-	"fmt"
-
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -15,11 +14,8 @@ func NewLoadTestCmd() *cobra.Command {
 		Long: `(ALPHA Warning) This command is currently in experimental mode. 
 
 The node loadtest command suite starts and stops a load test for an existing devnet cluster.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cobrautils.CommandSuiteUsage(cmd, args)
 		},
 	}
 	// node loadtest start cluster subnetName

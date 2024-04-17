@@ -8,27 +8,26 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/spf13/cobra"
 )
 
 // avalanche subnet delete
 func newDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete",
+		Use:   "delete [subnetName]",
 		Short: "Delete a subnet configuration",
 		Long:  "The subnet delete command deletes an existing subnet configuration.",
 		RunE:  deleteSubnet,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobrautils.ExactArgs(1),
 	}
 }
 
 func deleteSubnet(_ *cobra.Command, args []string) error {
 	// TODO sanitize this input
 	subnetName := args[0]
-	subnetDir := filepath.Join(app.GetSubnetDir(), subnetName)
-
-	customVMPath := app.GetCustomVMPath(subnetName)
 
 	sidecar, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -36,6 +35,7 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	if sidecar.VM == models.CustomVM {
+		customVMPath := app.GetCustomVMPath(subnetName)
 		if _, err := os.Stat(customVMPath); err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
 				return err
@@ -56,12 +56,25 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 	// but only if no other subnet is using it.
 	// More info: https://github.com/ava-labs/avalanche-cli/issues/246
 
+	subnetDir := filepath.Join(app.GetSubnetDir(), subnetName)
 	if _, err := os.Stat(subnetDir); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 		app.Log.Warn("tried to remove the Subnet dir path but it actually does not exist. Ignoring")
 		return nil
+	}
+
+	// rm airdrop key if exists
+	airdropKeyName, _, _, err := subnet.GetSubnetAirdropKeyInfo(app, subnetName)
+	if err != nil {
+		return err
+	}
+	if airdropKeyName != "" {
+		airdropKeyPath := app.GetKeyPath(airdropKeyName)
+		if err := os.Remove(airdropKeyPath); err != nil {
+			return err
+		}
 	}
 
 	// exists

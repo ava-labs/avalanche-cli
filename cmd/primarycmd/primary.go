@@ -3,9 +3,8 @@
 package primarycmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -18,11 +17,8 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Interact with the Primary Network",
 		Long: `The primary command suite provides a collection of tools for interacting with the
 Primary Network`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cobrautils.CommandSuiteUsage(cmd, args)
 		},
 	}
 	app = injectedApp

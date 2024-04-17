@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -31,9 +32,8 @@ func newExportCmd() *cobra.Command {
 The node export command exports cluster configuration including their nodes to a text file.
 If no file is specified, the configuration is printed to the stdout.
 Use --include-secrets to include keys in the export. In this case please keep the file secure as it contains sensitive information.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         exportFile,
+		Args: cobrautils.ExactArgs(1),
+		RunE: exportFile,
 	}
 	cmd.Flags().StringVar(&clusterFileName, "file", "", "specify the file to export the cluster configuration to")
 	cmd.Flags().BoolVar(&force, "force", false, "overwrite the file if it exists")

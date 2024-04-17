@@ -8,19 +8,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
-	"golang.org/x/exp/maps"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 var loadTestsToStop []string
@@ -34,9 +32,8 @@ func newLoadTestStopCmd() *cobra.Command {
 The node loadtest stop command stops load testing for an existing devnet cluster and terminates the 
 separate cloud server created to host the load test.`,
 
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         stopLoadTest,
+		Args: cobrautils.ExactArgs(1),
+		RunE: stopLoadTest,
 	}
 	cmd.Flags().StringSliceVar(&loadTestsToStop, "load-test", []string{}, "stop specified load test node(s). Use comma to separate multiple load test instance names")
 	return cmd

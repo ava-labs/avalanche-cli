@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -31,12 +32,11 @@ var (
 // avalanche transaction sign
 func newTransactionSignCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "sign [subnetName]",
-		Short:        "sign a transaction",
-		Long:         "The transaction sign command signs a multisig transaction.",
-		RunE:         signTx,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Use:   "sign [subnetName]",
+		Short: "sign a transaction",
+		Long:  "The transaction sign command signs a multisig transaction.",
+		RunE:  signTx,
+		Args:  cobrautils.ExactArgs(1),
 	}
 
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction file for signing")

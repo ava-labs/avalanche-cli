@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -21,7 +22,7 @@ func newUpgradeImportCmd() *cobra.Command {
 		Short: "Import the upgrade bytes file into the local environment",
 		Long:  `Import the upgrade bytes file into the local environment`,
 		RunE:  upgradeImportCmd,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobrautils.ExactArgs(1),
 	}
 
 	cmd.Flags().StringVar(&upgradeBytesFilePath, upgradeBytesFilePathKey, "", "Import upgrade bytes file into local environment")

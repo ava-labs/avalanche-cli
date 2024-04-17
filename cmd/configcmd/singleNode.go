@@ -5,6 +5,7 @@ package configcmd
 import (
 	"errors"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
@@ -12,12 +13,11 @@ import (
 // avalanche config singlenode command
 func newSingleNodeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "singleNode [enable | disable]",
-		Short:        "opt in or out of single node local network",
-		Long:         "set user preference between single node and five nodes local network",
-		RunE:         handleSingleNodeSettings,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Use:   "singleNode [enable | disable]",
+		Short: "opt in or out of single node local network",
+		Long:  "set user preference between single node and five nodes local network",
+		RunE:  handleSingleNodeSettings,
+		Args:  cobrautils.ExactArgs(1),
 	}
 
 	return cmd

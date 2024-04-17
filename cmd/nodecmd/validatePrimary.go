@@ -9,25 +9,22 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-	"golang.org/x/exp/maps"
-
-	"github.com/ava-labs/avalanchego/utils/units"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/keychain"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -56,9 +53,8 @@ func newValidatePrimaryCmd() *cobra.Command {
 
 The node validate primary command enables all nodes in a cluster to be validators of Primary
 Network.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         validatePrimaryNetwork,
+		Args: cobrautils.ExactArgs(1),
+		RunE: validatePrimaryNetwork,
 	}
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")

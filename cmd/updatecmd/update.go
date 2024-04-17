@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -29,13 +30,12 @@ var (
 func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
 	app = injectedApp
 	cmd := &cobra.Command{
-		Use:          "update",
-		Short:        "Check for latest updates of Avalanche-CLI",
-		Long:         `Check if an update is available, and prompt the user to install it`,
-		RunE:         runUpdate,
-		Args:         cobra.ExactArgs(0),
-		SilenceUsage: true,
-		Version:      version,
+		Use:     "update",
+		Short:   "Check for latest updates of Avalanche-CLI",
+		Long:    `Check if an update is available, and prompt the user to install it`,
+		RunE:    runUpdate,
+		Args:    cobrautils.ExactArgs(0),
+		Version: version,
 	}
 
 	cmd.Flags().BoolVarP(&yes, "confirm", "c", false, "Assume yes for installation")

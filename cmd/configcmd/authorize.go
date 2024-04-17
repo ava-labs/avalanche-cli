@@ -5,6 +5,7 @@ package configcmd
 import (
 	"errors"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -13,12 +14,11 @@ import (
 // avalanche config metrics command
 func newAuthorizeCloudAccessCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "authorize-cloud-access [enable | disable]",
-		Short:        "authorize access to cloud resources",
-		Long:         "set preferences to authorize access to cloud resources",
-		RunE:         handleAuthorizeCloudAccess,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Use:   "authorize-cloud-access [enable | disable]",
+		Short: "authorize access to cloud resources",
+		Long:  "set preferences to authorize access to cloud resources",
+		RunE:  handleAuthorizeCloudAccess,
+		Args:  cobrautils.ExactArgs(1),
 	}
 
 	return cmd

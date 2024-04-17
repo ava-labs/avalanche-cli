@@ -7,14 +7,12 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -27,9 +25,8 @@ func newSyncCmd() *cobra.Command {
 
 The node sync command enables all nodes in a cluster to be bootstrapped to a Subnet. 
 You can check the subnet bootstrap status by calling avalanche node status <clusterName> --subnet <subnetName>`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
-		RunE:         syncSubnet,
+		Args: cobrautils.ExactArgs(2),
+		RunE: syncSubnet,
 	}
 
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "sync subnet into given comma separated list of validators. defaults to all cluster nodes")

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -27,9 +28,8 @@ func newDeployCmd() *cobra.Command {
 The node devnet deploy command deploys a subnet into a devnet cluster, creating subnet and blockchain txs for it.
 It saves the deploy info both locally and remotely.
 `,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
-		RunE:         deploySubnet,
+		Args: cobrautils.ExactArgs(2),
+		RunE: deploySubnet,
 	}
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
 	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for healthy status or rpc compatibility of nodes against subnet")

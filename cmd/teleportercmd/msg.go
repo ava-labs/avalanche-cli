@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -28,12 +29,11 @@ var (
 // avalanche teleporter msg
 func newMsgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "msg [sourceSubnetName] [destinationSubnetName] [messageContent]",
-		Short:        "Verifies exchange of teleporter message between two subnets",
-		Long:         `Sends and wait reception for a teleporter msg between two subnets (Currently only for local network).`,
-		SilenceUsage: true,
-		RunE:         msg,
-		Args:         cobra.ExactArgs(3),
+		Use:   "msg [sourceSubnetName] [destinationSubnetName] [messageContent]",
+		Short: "Verifies exchange of teleporter message between two subnets",
+		Long:  `Sends and wait reception for a teleporter msg between two subnets (Currently only for local network).`,
+		RunE:  msg,
+		Args:  cobrautils.ExactArgs(3),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, msgSupportedNetworkOptions)
 	return cmd

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -18,12 +19,11 @@ import (
 // avalanche transaction commit
 func newTransactionCommitCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "commit [subnetName]",
-		Short:        "commit a transaction",
-		Long:         "The transaction commit command commits a transaction by submitting it to the P-Chain.",
-		RunE:         commitTx,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Use:   "commit [subnetName]",
+		Short: "commit a transaction",
+		Long:  "The transaction commit command commits a transaction by submitting it to the P-Chain.",
+		RunE:  commitTx,
+		Args:  cobrautils.ExactArgs(1),
 	}
 
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction signed by all signatories")
