@@ -64,4 +64,5 @@ release:
   github:
     owner: ava-labs
     name: avalanche-cli
+  # If tag indicates rc, will mark it as prerelease
   prerelease: auto
