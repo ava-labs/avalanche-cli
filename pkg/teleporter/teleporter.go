@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -389,7 +390,7 @@ func DeployAndFundRelayer(
 	return alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err
 }
 
-func GetTeleporterKeyInfo(
+func getTeleporterKeyInfo(
 	app *application.Avalanche,
 	keyName string,
 ) (string, string, *big.Int, error) {
@@ -413,4 +414,45 @@ func GetTeleporterKeyInfo(
 		}
 	}
 	return k.C(), hex.EncodeToString(k.Raw()), TeleporterPrefundedAddressBalance, nil
+}
+
+type Info struct {
+	Version                  string
+	FundedAddress            string
+	FundedBalance            *big.Int
+	MessengerDeployerAddress string
+	RelayerAddress           string
+}
+
+func GetInfo(
+	app *application.Avalanche,
+) (*Info, error) {
+	var err error
+	ti := Info{}
+	ti.FundedAddress, _, ti.FundedBalance, err = getTeleporterKeyInfo(
+		app,
+		constants.TeleporterKeyName,
+	)
+	if err != nil {
+		return nil, err
+	}
+	ti.Version, err = app.Downloader.GetLatestReleaseVersion(
+		binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName),
+	)
+	if err != nil {
+		return nil, err
+	}
+	deployer := Deployer{}
+	_, ti.MessengerDeployerAddress, _, err = deployer.GetAssets(
+		app.GetTeleporterBinDir(),
+		ti.Version,
+	)
+	if err != nil {
+		return nil, err
+	}
+	ti.RelayerAddress, _, err = GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	if err != nil {
+		return nil, err
+	}
+	return &ti, nil
 }

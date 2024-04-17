@@ -54,7 +54,12 @@ func GetContractBytecode(
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure obtaining code for %s on %#v: %w", contractAddressStr, client, err)
+		err = fmt.Errorf(
+			"failure obtaining code for %s on %#v: %w",
+			contractAddressStr,
+			client,
+			err,
+		)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -227,10 +232,10 @@ func IssueTx(
 	if err := SendTransaction(client, tx); err != nil {
 		return err
 	}
-	if _, b, err := WaitForTransaction(client, tx); err != nil {
+	if receipt, b, err := WaitForTransaction(client, tx); err != nil {
 		return err
 	} else if !b {
-		return fmt.Errorf("failure sending tx")
+		return fmt.Errorf("failure sending tx: got status %d expected %d", receipt.Status, types.ReceiptStatusSuccessful)
 	}
 	return nil
 }
@@ -292,7 +297,10 @@ func GetChainID(client ethclient.Client) (*big.Int, error) {
 	return chainID, err
 }
 
-func GetTxOptsWithSigner(client ethclient.Client, prefundedPrivateKeyStr string) (*bind.TransactOpts, error) {
+func GetTxOptsWithSigner(
+	client ethclient.Client,
+	prefundedPrivateKeyStr string,
+) (*bind.TransactOpts, error) {
 	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
 	if err != nil {
 		return nil, err
@@ -369,7 +377,13 @@ func DebugTraceTransaction(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		err = client.CallContext(ctx, &trace, "debug_traceTransaction", txID, map[string]string{"tracer": "callTracer"})
+		err = client.CallContext(
+			ctx,
+			&trace,
+			"debug_traceTransaction",
+			txID,
+			map[string]string{"tracer": "callTracer"},
+		)
 		if err == nil {
 			break
 		}
@@ -420,7 +434,11 @@ func IssueTxsToActivateProposerVMFork(
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure issuing txs to activate proposer VM fork for client %#v: %w", client, err)
+		err = fmt.Errorf(
+			"failure issuing txs to activate proposer VM fork for client %#v: %w",
+			client,
+			err,
+		)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}

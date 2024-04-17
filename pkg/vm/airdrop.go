@@ -77,32 +77,18 @@ func getEwoqAllocation(defaultAirdropAmount string) (core.GenesisAlloc, error) {
 	return allocation, nil
 }
 
-func getAllocation(
-	app *application.Avalanche,
-	subnetName string,
-	defaultAirdropAmount string,
-	multiplier *big.Int,
-	captureAmountLabel string,
-	useDefaults bool,
-	teleporterReady bool,
+func addTeleporterAddressToAllocations(
+	alloc core.GenesisAlloc,
 	teleporterKeyAddress string,
 	teleporterKeyBalance *big.Int,
-) (core.GenesisAlloc, statemachine.StateDirection, error) {
-	alloc, direction, err := getAllocationWithoutTeleporter(
-		app,
-		subnetName,
-		defaultAirdropAmount,
-		multiplier,
-		captureAmountLabel,
-		useDefaults,
-	)
-	if teleporterReady && alloc != nil {
+) core.GenesisAlloc {
+	if alloc != nil {
 		addAllocation(alloc, teleporterKeyAddress, teleporterKeyBalance)
 	}
-	return alloc, direction, err
+	return alloc
 }
 
-func getAllocationWithoutTeleporter(
+func getAllocation(
 	app *application.Avalanche,
 	subnetName string,
 	defaultAirdropAmount string,

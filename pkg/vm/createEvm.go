@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/subnet-evm/core"
@@ -39,11 +40,7 @@ func CreateEvmSubnetConfig(
 	subnetEVMTokenSymbol string,
 	useSubnetEVMDefaults bool,
 	useWarp bool,
-	teleporterReady bool,
-	teleporterKeyAddress string,
-	teleporterKeyBalance *big.Int,
-	teleporterMessengerDeployerAddress string,
-	relayerAddress string,
+	teleporterInfo *teleporter.Info,
 ) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
@@ -78,11 +75,7 @@ func CreateEvmSubnetConfig(
 			subnetEVMTokenSymbol,
 			useSubnetEVMDefaults,
 			useWarp,
-			teleporterReady,
-			teleporterKeyAddress,
-			teleporterKeyBalance,
-			teleporterMessengerDeployerAddress,
-			relayerAddress,
+			teleporterInfo,
 		)
 		if err != nil {
 			return nil, &models.Sidecar{}, err
@@ -115,11 +108,7 @@ func createEvmGenesis(
 	subnetEVMTokenSymbol string,
 	useSubnetEVMDefaults bool,
 	useWarp bool,
-	teleporterReady bool,
-	teleporterKeyAddress string,
-	teleporterKeyBalance *big.Int,
-	teleporterMessengerDeployerAddress string,
-	relayerAddress string,
+	teleporterInfo *teleporter.Info,
 ) ([]byte, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
@@ -166,24 +155,31 @@ func createEvmGenesis(
 		case feeState:
 			*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
 		case airdropState:
-			allocation, direction, err = getEVMAllocation(
+			allocation, direction, err = getAllocation(
 				app,
 				subnetName,
+				defaultEvmAirdropAmount,
+				oneAvax,
+				fmt.Sprintf("Amount to airdrop (in %s units)", tokenSymbol),
 				useSubnetEVMDefaults,
-				tokenSymbol,
-				teleporterReady,
-				teleporterKeyAddress,
-				teleporterKeyBalance,
 			)
+			if teleporterInfo != nil {
+				allocation = addTeleporterAddressToAllocations(
+					allocation,
+					teleporterInfo.FundedAddress,
+					teleporterInfo.FundedBalance,
+				)
+			}
 		case precompilesState:
 			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, useWarp)
-			*conf = fixPrecompilesForTeleporter(
-				*conf,
-				teleporterReady,
-				teleporterKeyAddress,
-				teleporterMessengerDeployerAddress,
-				relayerAddress,
-			)
+			if teleporterInfo != nil {
+				*conf = addTeleporterAddressesToAllowLists(
+					*conf,
+					teleporterInfo.FundedAddress,
+					teleporterInfo.MessengerDeployerAddress,
+					teleporterInfo.RelayerAddress,
+				)
+			}
 		default:
 			err = errors.New("invalid creation stage")
 		}
@@ -259,29 +255,6 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 	}
 	return errors.New(
 		"none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue",
-	)
-}
-
-// In own function to facilitate testing
-func getEVMAllocation(
-	app *application.Avalanche,
-	subnetName string,
-	useDefaults bool,
-	tokenSymbol string,
-	teleporterReady bool,
-	teleporterKeyAddress string,
-	teleporterKeyBalance *big.Int,
-) (core.GenesisAlloc, statemachine.StateDirection, error) {
-	return getAllocation(
-		app,
-		subnetName,
-		defaultEvmAirdropAmount,
-		oneAvax,
-		fmt.Sprintf("Amount to airdrop (in %s units)", tokenSymbol),
-		useDefaults,
-		teleporterReady,
-		teleporterKeyAddress,
-		teleporterKeyBalance,
 	)
 }
 

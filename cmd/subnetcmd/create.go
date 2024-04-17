@@ -13,14 +13,11 @@ import (
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
@@ -227,17 +224,16 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	isEVM := subnetType == models.SubnetEvm
-	genesisFileIsEVM, err := isEVMGenesis(genesisFile)
+	genesisFileIsEVM, err := pathIsSubnetEVMGenesis(genesisFile)
 	if err != nil {
 		return err
 	}
 
-	if isEVM && genesisFile != "" && !genesisFileIsEVM {
+	if subnetType == models.SubnetEvm && genesisFile != "" && !genesisFileIsEVM {
 		return fmt.Errorf("provided genesis file has no proper Subnet-EVM format")
 	}
 
-	if isEVM || genesisFileIsEVM {
+	if subnetType == models.SubnetEvm || genesisFileIsEVM {
 		if evmDefaults {
 			teleporterReady = true
 			runRelayer = true
@@ -266,42 +262,16 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			keyPath := app.GetKeyPath(constants.TeleporterKeyName)
-			var k *key.SoftKey
-			if utils.FileExists(keyPath) {
-				k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
-				if err != nil {
-					return err
-				}
-			} else {
-				k, err = key.NewSoft(0)
-				if err != nil {
-					return err
-				}
-				if err := k.Save(keyPath); err != nil {
-					return err
-				}
-			}
 		}
 	}
 
-	teleporterKeyAddress, _, teleporterKeyBalance, err := teleporter.GetTeleporterKeyInfo(app, constants.TeleporterKeyName)
-	if err != nil {
-		return err
+	var teleporterInfo *teleporter.Info
+	if teleporterReady {
+		teleporterInfo, err = teleporter.GetInfo(app)
+		if err != nil {
+			return err
+		}
 	}
-  teleporterVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName))
-  if err != nil {
-    return err
-  }
-  teleporterDeployer := teleporter.Deployer{}
-  _, teleporterMessengerDeployerAddress, _, err := teleporterDeployer.GetAssets(app.GetTeleporterBinDir(), teleporterVersion)
-  if err != nil {
-    return err
-  }
-  relayerAddress, _, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
-  if err != nil {
-    return err
-  }
 
 	switch subnetType {
 	case models.SubnetEvm:
@@ -315,11 +285,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			evmToken,
 			evmDefaults,
 			useWarp,
-			teleporterReady,
-			teleporterKeyAddress,
-			teleporterKeyBalance,
-      teleporterMessengerDeployerAddress,
-      relayerAddress,
+			teleporterInfo,
 		)
 		if err != nil {
 			return err
@@ -345,11 +311,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if teleporterReady {
 		sc.TeleporterReady = teleporterReady
 		sc.TeleporterKey = constants.TeleporterKeyName
-		sc.TeleporterVersion = teleporterVersion
+		sc.TeleporterVersion = teleporterInfo.Version
 		sc.RunRelayer = runRelayer
 		if genesisFile != "" && genesisFileIsEVM {
 			// evm genesis file was given. make appropriate checks and customizations for teleporter
-			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterKeyAddress, teleporterKeyBalance.String())
+			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())
 			if err != nil {
 				return err
 			}
@@ -437,7 +403,7 @@ func checkInvalidSubnetNames(name string) error {
 	return nil
 }
 
-func isEVMGenesis(genesisPath string) (bool, error) {
+func pathIsSubnetEVMGenesis(genesisPath string) (bool, error) {
 	if genesisPath == "" {
 		return false, nil
 	}
