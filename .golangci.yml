@@ -1,13 +1,14 @@
 # https://golangci-lint.run/usage/configuration/
 run:
+  go: "1.21.7"
   timeout: 10m
-  # skip auto-generated files.
-  skip-files:
-    - ".*\\.pb\\.go$"
 
 issues:
   # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
   max-same-issues: 0
+  # skip auto-generated files.
+  exclude-files:
+    - ".*\\.pb\\.go$"
 
 linters:
   # please, do not use `enable-all`: it's deprecated and will be removed soon.
@@ -94,7 +95,6 @@ linters-settings:
       - name: useless-break
         disabled: false
   staticcheck:
-    go: "1.21.7"
     # https://staticcheck.io/docs/options#checks
     checks:
       - "all"

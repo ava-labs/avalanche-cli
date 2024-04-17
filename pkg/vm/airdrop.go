@@ -28,6 +28,12 @@ func GetSubnetAirdropKeyName(subnetName string) string {
 	return "subnet_" + subnetName + "_airdrop"
 }
 
+func addAllocation(alloc core.GenesisAlloc, address string, amount *big.Int) {
+	alloc[common.HexToAddress(address)] = core.GenesisAccount{
+		Balance: amount,
+	}
+}
+
 func getNewAllocation(app *application.Avalanche, subnetName string, defaultAirdropAmount string) (core.GenesisAlloc, error) {
 	keyName := GetSubnetAirdropKeyName(subnetName)
 	keyPath := app.GetKeyPath(keyName)
@@ -49,16 +55,13 @@ func getNewAllocation(app *application.Avalanche, subnetName string, defaultAird
 			return core.GenesisAlloc{}, err
 		}
 	}
-	ux.Logger.PrintToUser("configuring airdrop to stored key %q with address %s", keyName, k.C())
+	ux.Logger.PrintToUser("prefunding address %s with balance %s", k.C(), defaultAirdropAmount)
 	allocation := core.GenesisAlloc{}
 	defaultAmount, ok := new(big.Int).SetString(defaultAirdropAmount, 10)
 	if !ok {
 		return allocation, errors.New("unable to decode default allocation")
 	}
-
-	allocation[common.HexToAddress(k.C())] = core.GenesisAccount{
-		Balance: defaultAmount,
-	}
+	addAllocation(allocation, k.C(), defaultAmount)
 	return allocation, nil
 }
 
@@ -69,10 +72,20 @@ func getEwoqAllocation(defaultAirdropAmount string) (core.GenesisAlloc, error) {
 		return allocation, errors.New("unable to decode default allocation")
 	}
 
-	allocation[PrefundedEwoqAddress] = core.GenesisAccount{
-		Balance: defaultAmount,
-	}
+	ux.Logger.PrintToUser("prefunding address %s with balance %s", PrefundedEwoqAddress, defaultAirdropAmount)
+	addAllocation(allocation, PrefundedEwoqAddress.String(), defaultAmount)
 	return allocation, nil
+}
+
+func addTeleporterAddressToAllocations(
+	alloc core.GenesisAlloc,
+	teleporterKeyAddress string,
+	teleporterKeyBalance *big.Int,
+) core.GenesisAlloc {
+	if alloc != nil {
+		addAllocation(alloc, teleporterKeyAddress, teleporterKeyBalance)
+	}
+	return alloc
 }
 
 func getAllocation(

@@ -33,7 +33,7 @@ func TestGetAllocationCustomUnits(t *testing.T) {
 	mockPrompt.On("CapturePositiveBigInt", mock.Anything).Return(airdropInputAmount, nil)
 	mockPrompt.On("CaptureNoYes", mock.Anything).Return(false, nil)
 
-	alloc, direction, err := getEVMAllocation(app, "", false, "")
+	alloc, direction, err := getAllocation(app, "", defaultEvmAirdropAmount, oneAvax, "", false)
 	require.NoError(err)
 	require.Equal(direction, statemachine.Forward)
 
@@ -56,14 +56,24 @@ func TestMultipleAirdropsSameAddress(t *testing.T) {
 
 	mockPrompt.On("CaptureList", mock.Anything, mock.Anything).Return(customAirdrop, nil).Once()
 
-	captureAddress := mockPrompt.On("CaptureAddress", mock.Anything).Return(testAirdropAddress, nil).Once()
-	captureInt := mockPrompt.On("CapturePositiveBigInt", mock.Anything).Return(airdropInputAmount, nil).Once()
+	captureAddress := mockPrompt.On("CaptureAddress", mock.Anything).
+		Return(testAirdropAddress, nil).
+		Once()
+	captureInt := mockPrompt.On("CapturePositiveBigInt", mock.Anything).
+		Return(airdropInputAmount, nil).
+		Once()
 	captureNoYes := mockPrompt.On("CaptureNoYes", mock.Anything).Return(true, nil).Once()
-	mockPrompt.On("CaptureAddress", mock.Anything).Return(testAirdropAddress, nil).Once().NotBefore(captureAddress)
-	mockPrompt.On("CapturePositiveBigInt", mock.Anything).Return(airdropInputAmount2, nil).Once().NotBefore(captureInt)
+	mockPrompt.On("CaptureAddress", mock.Anything).
+		Return(testAirdropAddress, nil).
+		Once().
+		NotBefore(captureAddress)
+	mockPrompt.On("CapturePositiveBigInt", mock.Anything).
+		Return(airdropInputAmount2, nil).
+		Once().
+		NotBefore(captureInt)
 	mockPrompt.On("CaptureNoYes", mock.Anything).Return(false, nil).Once().NotBefore(captureNoYes)
 
-	alloc, direction, err := getEVMAllocation(app, "", false, "")
+	alloc, direction, err := getAllocation(app, "", defaultEvmAirdropAmount, oneAvax, "", false)
 	require.NoError(err)
 	require.Equal(direction, statemachine.Forward)
 
