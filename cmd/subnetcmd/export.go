@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -31,9 +31,8 @@ func newExportCmd() *cobra.Command {
 
 The command prompts for an output path. You can also provide one with
 the --output flag.`,
-		RunE:         exportSubnet,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		RunE: exportSubnet,
+		Args: cobrautils.ExactArgs(1),
 	}
 
 	cmd.Flags().StringVarP(

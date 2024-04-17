@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -56,12 +57,11 @@ var (
 
 func newTransferCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "transfer [options]",
-		Short:        "Fund a ledger address or stored key from another one",
-		Long:         `The key transfer command allows to transfer funds between stored keys or ledger addresses.`,
-		RunE:         transferF,
-		Args:         cobra.ExactArgs(0),
-		SilenceUsage: true,
+		Use:   "transfer [options]",
+		Short: "Fund a ledger address or stored key from another one",
+		Long:  `The key transfer command allows to transfer funds between stored keys or ledger addresses.`,
+		RunE:  transferF,
+		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, transferSupportedNetworkOptions)
 	cmd.Flags().BoolVar(

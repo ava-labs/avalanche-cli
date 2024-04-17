@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -26,12 +27,11 @@ var statsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions
 // avalanche subnet stats
 func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "stats [subnetName]",
-		Short:        "Show validator statistics for the given subnet",
-		Long:         `The subnet stats command prints validator statistics for the given Subnet.`,
-		Args:         cobra.ExactArgs(1),
-		RunE:         stats,
-		SilenceUsage: true,
+		Use:   "stats [subnetName]",
+		Short: "Show validator statistics for the given subnet",
+		Long:  `The subnet stats command prints validator statistics for the given Subnet.`,
+		Args:  cobrautils.ExactArgs(1),
+		RunE:  stats,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, statsSupportedNetworkOptions)
 	return cmd

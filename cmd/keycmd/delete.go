@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -21,9 +22,8 @@ func newDeleteCmd() *cobra.Command {
 
 To delete a key, provide the keyName. The command prompts for confirmation
 before deleting the key. To skip the confirmation, provide the --force flag.`,
-		RunE:         deleteKey,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		RunE: deleteKey,
+		Args: cobrautils.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(
 		&forceDelete,

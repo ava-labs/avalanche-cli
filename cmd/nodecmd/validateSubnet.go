@@ -8,18 +8,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/status"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )
@@ -42,9 +41,8 @@ If The command is run before the nodes are bootstrapped on the Primary Network, 
 You can check the bootstrap status by calling avalanche node status <clusterName>
 If The command is run before the nodes are synced to the subnet, the command will fail.
 You can check the subnet sync status by calling avalanche node status <clusterName> --subnet <subnetName>`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
-		RunE:         validateSubnet,
+		Args: cobrautils.ExactArgs(2),
+		RunE: validateSubnet,
 	}
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")

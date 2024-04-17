@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	es "github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -59,8 +60,7 @@ P-Chain. When enabling Elastic Validation, the creator permanently locks the Sub
 (they relinquish their control keys), specifies an Avalanche Native Token (ANT) that validators must use for staking 
 and that will be distributed as staking rewards, and provides a set of parameters that govern how the Subnet’s staking 
 mechanics will work.`,
-		SilenceUsage:      true,
-		Args:              cobra.ExactArgs(1),
+		Args:              cobrautils.ExactArgs(1),
 		RunE:              transformElasticSubnet,
 		PersistentPostRun: handlePostRun,
 	}

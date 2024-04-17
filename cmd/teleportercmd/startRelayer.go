@@ -5,6 +5,7 @@ package teleportercmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -20,12 +21,11 @@ var startRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.L
 // avalanche teleporter relayer start
 func newStartRelayerCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "start",
-		Short:        "starts AWM relayer",
-		Long:         `Starts AWM relayer on the specified network (Currently only for local network).`,
-		SilenceUsage: true,
-		RunE:         startRelayer,
-		Args:         cobra.ExactArgs(0),
+		Use:   "start",
+		Short: "starts AWM relayer",
+		Long:  `Starts AWM relayer on the specified network (Currently only for local network).`,
+		RunE:  startRelayer,
+		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startRelayerNetworkOptions)
 	return cmd

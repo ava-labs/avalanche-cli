@@ -7,13 +7,12 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -26,9 +25,8 @@ func newUpdateSubnetCmd() *cobra.Command {
 
 The node update subnet command updates all nodes in a cluster with latest Subnet configuration and VM for custom VM.
 You can check the updated subnet bootstrap status by calling avalanche node status <clusterName> --subnet <subnetName>`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
-		RunE:         updateSubnet,
+		Args: cobrautils.ExactArgs(2),
+		RunE: updateSubnet,
 	}
 
 	return cmd

@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -29,9 +29,8 @@ func newCleanCmd() *cobra.Command {
 		Long: `The network clean command shuts down your local, multi-node network. All deployed Subnets
 shutdown and delete their state. You can restart the network by deploying a new Subnet
 configuration.`,
-		RunE:         clean,
-		Args:         cobra.ExactArgs(0),
-		SilenceUsage: true,
+		RunE: clean,
+		Args: cobrautils.ExactArgs(0),
 	}
 
 	cmd.Flags().BoolVar(

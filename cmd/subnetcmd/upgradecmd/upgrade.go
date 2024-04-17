@@ -3,9 +3,8 @@
 package upgradecmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -18,12 +17,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Upgrade your Subnets",
 		Long: `The subnet upgrade command suite provides a collection of tools for
 updating your developmental and deployed Subnets.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// subnet upgrade vm

@@ -9,17 +9,16 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/utils/units"
-	"github.com/ava-labs/coreth/ethclient"
-	"go.uber.org/zap"
-
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/coreth/ethclient"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -31,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 const (
@@ -56,7 +56,7 @@ func newUpgradeGenerateCmd() *cobra.Command {
 		Long: `The subnet upgrade generate command builds a new upgrade.json file to customize your Subnet. It
 guides the user through the process using an interactive wizard.`,
 		RunE: upgradeGenerateCmd,
-		Args: cobra.ExactArgs(1),
+		Args: cobrautils.ExactArgs(1),
 	}
 	return cmd
 }

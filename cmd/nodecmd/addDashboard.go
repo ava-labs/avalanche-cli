@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/spf13/cobra"
 )
@@ -17,9 +18,8 @@ func newAddDashboardCmd() *cobra.Command {
 The node addDashboard command adds custom dashboard to the Grafana monitoring dashboard for the 
 cluster.`,
 
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         addDashboard,
+		Args: cobrautils.ExactArgs(1),
+		RunE: addDashboard,
 	}
 	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
 	cmd.Flags().StringVar(&subnetName, "subnet", "", "subnet that the dasbhoard is intended for (if any)")

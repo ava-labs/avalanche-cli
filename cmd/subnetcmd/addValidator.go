@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -56,9 +57,8 @@ these prompts by providing the values with flags.
 
 This command currently only works on Subnets deployed to either the Fuji
 Testnet or Mainnet.`,
-		SilenceUsage: true,
-		RunE:         addValidator,
-		Args:         cobra.ExactArgs(1),
+		RunE: addValidator,
+		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 

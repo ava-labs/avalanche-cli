@@ -5,6 +5,7 @@ package subnetcmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -27,9 +28,8 @@ func newChangeOwnerCmd() *cobra.Command {
 		Long: `The subnet changeOwner changes the owner of the deployed Subnet.
 
 This command currently only works on Subnets deployed to Devnet, Fuji or Mainnet.`,
-		SilenceUsage: true,
-		RunE:         changeOwner,
-		Args:         cobra.ExactArgs(1),
+		RunE: changeOwner,
+		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, changeOwnerSupportedNetworkOptions)
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")

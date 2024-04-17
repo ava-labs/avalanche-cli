@@ -6,6 +6,7 @@ import (
 	"errors"
 	"regexp"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -84,9 +85,8 @@ can use this key in other commands by providing this keyName.
 
 If you'd like to import an existing key instead of generating one from scratch, provide the
 --file flag.`,
-		Args:         cobra.ExactArgs(1),
-		RunE:         createKey,
-		SilenceUsage: true,
+		Args: cobrautils.ExactArgs(1),
+		RunE: createKey,
 	}
 
 	cmd.Flags().StringVar(

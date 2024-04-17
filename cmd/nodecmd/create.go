@@ -15,29 +15,26 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
-
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
 
@@ -96,9 +93,8 @@ status by running avalanche node status
 The created node will be part of group of validators called <clusterName> 
 and users can call node commands with <clusterName> so that the command
 will apply to all nodes in the cluster`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         createNodes,
+		Args: cobrautils.ExactArgs(1),
+		RunE: createNodes,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")

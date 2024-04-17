@@ -3,8 +3,7 @@
 package teleportercmd
 
 import (
-	"fmt"
-
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -15,12 +14,7 @@ func newRelayerCmd() *cobra.Command {
 		Short: "Install and configure relayer on localhost",
 		Long: `The relayert command suite provides a collection of tools for installing
 and configuring an AWM relayer on localhost.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	cmd.AddCommand(newPrepareRelayerServiceCmd())
 	cmd.AddCommand(newAddSubnetToRelayerServiceCmd())

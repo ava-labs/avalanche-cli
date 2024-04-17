@@ -4,6 +4,7 @@ package networkcmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -18,9 +19,8 @@ func newStatusCmd() *cobra.Command {
 		Long: `The network status command prints whether or not a local Avalanche
 network is running and some basic stats about the network.`,
 
-		RunE:         networkStatus,
-		Args:         cobra.ExactArgs(0),
-		SilenceUsage: true,
+		RunE: networkStatus,
+		Args: cobrautils.ExactArgs(0),
 	}
 }
 

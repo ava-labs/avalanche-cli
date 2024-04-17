@@ -9,19 +9,18 @@ import (
 	"math"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanchego/ids"
-
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
@@ -54,9 +53,8 @@ func newAddValidatorCmd() *cobra.Command {
 		Short: "Add a validator to Primary Network",
 		Long: `The primary addValidator command adds a node as a validator 
 in the Primary Network`,
-		SilenceUsage: true,
-		RunE:         addValidator,
-		Args:         cobra.ExactArgs(0),
+		RunE: addValidator,
+		Args: cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, addValidatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")

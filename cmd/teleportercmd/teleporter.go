@@ -3,9 +3,8 @@
 package teleportercmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -18,12 +17,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Interact with teleporter-enabled subnets",
 		Long: `The teleporter command suite provides a collection of tools for interacting
 with Teleporter-Enabled Subnets.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// teleporter msg

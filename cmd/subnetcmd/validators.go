@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -27,9 +28,8 @@ func newValidatorsCmd() *cobra.Command {
 		Short: "List a subnet's validators",
 		Long: `The subnet validators command lists the validators of a subnet and provides
 severarl statistics about them.`,
-		RunE:         printValidators,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		RunE: printValidators,
+		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, validatorsSupportedNetworkOptions)
 	return cmd

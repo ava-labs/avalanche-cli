@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -78,10 +79,9 @@ allowed. If you'd like to redeploy a Subnet locally for testing, you must first 
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
 redeploy the chain with fresh state. You can deploy the same Subnet to multiple networks,
 so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
-		SilenceUsage:      true,
 		RunE:              deploySubnet,
 		PersistentPostRun: handlePostRun,
-		Args:              cobra.ExactArgs(1),
+		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -71,7 +72,7 @@ After you update your validator's configuration, you need to restart your valida
 If you provide the --avalanchego-chain-config-dir flag, this command attempts to write the upgrade file at that path.
 Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chain-configs for related documentation.`,
 		RunE: applyCmd,
-		Args: cobra.ExactArgs(1),
+		Args: cobrautils.ExactArgs(1),
 	}
 
 	cmd.Flags().BoolVar(&useConfig, "config", false, "create upgrade config for future subnet deployments (same as generate)")

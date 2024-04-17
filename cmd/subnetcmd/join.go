@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -73,9 +74,8 @@ you provide the --avalanchego-config flag, this command attempts to edit the con
 at that path.
 
 This command currently only supports Subnets deployed on the Fuji Testnet and Mainnet.`,
-		SilenceUsage: true,
-		RunE:         joinCmd,
-		Args:         cobra.ExactArgs(1),
+		RunE: joinCmd,
+		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, joinAllSupportedNetworkOptions)
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")

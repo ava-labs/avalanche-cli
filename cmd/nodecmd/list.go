@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -20,9 +21,8 @@ func newListCmd() *cobra.Command {
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
 The node list command lists all clusters together with their nodes.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(0),
-		RunE:         list,
+		Args: cobrautils.ExactArgs(0),
+		RunE: list,
 	}
 
 	return cmd

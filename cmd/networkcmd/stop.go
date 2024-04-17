@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -31,9 +32,8 @@ reload this snapshot with network start --snapshot-name <snapshotName>. Otherwis
 network saves to the default snapshot, overwriting any existing state. You can reload the
 default snapshot with network start.`,
 
-		RunE:         StopNetwork,
-		Args:         cobra.ExactArgs(0),
-		SilenceUsage: true,
+		RunE: StopNetwork,
+		Args: cobrautils.ExactArgs(0),
 	}
 	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
 	return cmd

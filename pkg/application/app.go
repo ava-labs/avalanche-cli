@@ -479,6 +479,10 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 }
 
 func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
+	if !app.SidecarExists(subnetName) {
+		return models.Sidecar{}, fmt.Errorf("subnet %q does not exist", subnetName)
+	}
+
 	sidecarPath := app.GetSidecarPath(subnetName)
 	jsonBytes, err := os.ReadFile(sidecarPath)
 	if err != nil {
