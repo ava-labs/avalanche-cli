@@ -16,9 +16,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Use:   "transaction",
 		Short: "Sign and execute specific transactions",
 		Long:  `The transaction command suite provides all of the utilities required to sign multisig transactions.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE:  cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// subnet upgrade vm

@@ -17,9 +17,7 @@ func newImportCmd() *cobra.Command {
 This command suite supports importing from a file created on another computer,
 or importing from subnets running public networks
 (e.g. created manually or with the deprecated subnet-cli)`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	// subnet import file
 	cmd.AddCommand(newImportFileCmd())

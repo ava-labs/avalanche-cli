@@ -15,9 +15,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Use:   "config",
 		Short: "Modify configuration for Avalanche-CLI",
 		Long:  `Customize configuration for Avalanche-CLI`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE:  cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// set user metrics collection preferences cmd

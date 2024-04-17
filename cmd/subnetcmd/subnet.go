@@ -23,9 +23,7 @@ To get started, use the subnet create command wizard to walk through the
 configuration of your very first Subnet. Then, go ahead and deploy it
 with the subnet deploy command. You can use the rest of the commands to
 manage your Subnet configurations and live deployments.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// subnet create

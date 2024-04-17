@@ -16,9 +16,7 @@ func newDevnetCmd() *cobra.Command {
 
 The node devnet command suite provides a collection of commands related to devnets.
 You can check the updated status by calling avalanche node status <clusterName>`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	// node devnet deploy
 	cmd.AddCommand(newDeployCmd())

@@ -17,9 +17,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Upgrade your Subnets",
 		Long: `The subnet upgrade command suite provides a collection of tools for
 updating your developmental and deployed Subnets.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// subnet upgrade vm

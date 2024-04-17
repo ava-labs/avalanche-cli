@@ -17,9 +17,7 @@ The node update command suite provides a collection of commands for nodes to upd
 their avalanchego or VM config.
 
 You can check the status after update by calling avalanche node status`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	// node update subnet
 	cmd.AddCommand(newUpdateSubnetCmd())

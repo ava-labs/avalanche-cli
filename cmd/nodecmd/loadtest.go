@@ -14,9 +14,7 @@ func NewLoadTestCmd() *cobra.Command {
 		Long: `(ALPHA Warning) This command is currently in experimental mode. 
 
 The node loadtest command suite starts and stops a load test for an existing devnet cluster.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	// node loadtest start cluster subnetName
 	cmd.AddCommand(newLoadTestStartCmd())

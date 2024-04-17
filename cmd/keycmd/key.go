@@ -22,9 +22,7 @@ but these keys are NOT suitable to use in production environments. DO NOT use
 these keys on Mainnet.
 
 To get started, use the key create command.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 
 	// avalanche key create

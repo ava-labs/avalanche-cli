@@ -14,9 +14,7 @@ func newRelayerCmd() *cobra.Command {
 		Short: "Install and configure relayer on localhost",
 		Long: `The relayert command suite provides a collection of tools for installing
 and configuring an AWM relayer on localhost.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	cmd.AddCommand(newPrepareRelayerServiceCmd())
 	cmd.AddCommand(newAddSubnetToRelayerServiceCmd())

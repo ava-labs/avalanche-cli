@@ -17,9 +17,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Interact with teleporter-enabled subnets",
 		Long: `The teleporter command suite provides a collection of tools for interacting
 with Teleporter-Enabled Subnets.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// teleporter msg

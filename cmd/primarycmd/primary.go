@@ -17,9 +17,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short: "Interact with the Primary Network",
 		Long: `The primary command suite provides a collection of tools for interacting with the
 Primary Network`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// primary addValidator

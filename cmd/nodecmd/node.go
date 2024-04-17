@@ -19,9 +19,7 @@ validators on Avalanche Network.
 To get started, use the node create command wizard to walk through the
 configuration to make your node a primary validator on Avalanche public network. You can use the 
 rest of the commands to maintain your node and make your node a Subnet Validator.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// node create

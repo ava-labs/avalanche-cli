@@ -23,9 +23,7 @@ subnet deploy command starts this network in the background. This command suite 
 to shutdown, restart, and clear that network.
 
 This network currently supports multiple, concurrently deployed Subnets.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return cobrautils.CommandSuiteUsage(cmd, args)
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 		Args: cobrautils.ExactArgs(0),
 	}
 	// network start
