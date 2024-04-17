@@ -276,7 +276,7 @@ func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath
 		if err := utils.FileCopy(utils.ExpandHome(customGrafanaDashboardPath), filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON)); err != nil {
 			return err
 		}
-		if err := replaceCustomVarDashboardValues(constants.CustomGrafanaDashboardJSON, chainID); err != nil {
+		if err := replaceCustomVarDashboardValues(filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON), chainID); err != nil {
 			return err
 		}
 	}
