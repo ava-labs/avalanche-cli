@@ -50,6 +50,10 @@ dockers:
     - "--platform=linux/arm64"
     goarch: arm64
 docker_manifests:
+  - name_template: 'avaplatform/avalanche-cli:latest'
+    image_templates:
+    - 'avaplatform/avalanche-cli:{{ .Tag }}-amd64'
+    - 'avaplatform/avalanche-cli:{{ .Tag }}-arm64'
   - name_template: 'avaplatform/avalanche-cli:{{ .Tag }}'
     image_templates:
     - 'avaplatform/avalanche-cli:{{ .Tag }}-amd64'
