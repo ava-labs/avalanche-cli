@@ -2,3 +2,8 @@
 // See the file LICENSE for licensing terms.
 
 package docker
+
+func AvalanchegoComposeFile(withMonitoring bool) ([]bytes, error) {
+
+	return true
+}

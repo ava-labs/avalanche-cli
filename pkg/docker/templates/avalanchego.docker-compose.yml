@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  avalanchego:
+    image: avalanchelabs/avalanchego:{{ .AvalanchegoVersion }}
+    container_name: avalanchego
+    restart: always
+    user: "1000:1000"  # ubuntu user
+    command: >
+        --config-file=/home/ubuntu/.avalanchego/configs/node.json
+        --log-dir=/home/ubuntu/.avalanchego_logs
+    volumes:
+      - /home/ubuntu/.avalanchego:/home/ubuntu/.avalanchego
+      - /home/ubuntu/.avalanchego_logs:/home/ubuntu/.avalanchego_logs
+    ports:
+      - "9650:9650"
+      - "9651:9651"
+    networks:
+      - avalanchego_net
+
+{{if .WithMonitoring}}
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    restart: always
+    user: "1000:1000"  # ubuntu user
+    volumes:
+      - /home/ubuntu/.avalanchego_logs:/logs
+    command: -config.file=/etc/promtail/promtail.yaml
+    networks:
+      - avalanchego_net
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: always
+    ports:
+      - "9100:9100"
+    networks:
+      - avalanchego_net
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+{{end}}
+
+networks:
+  avalanchego_net:
