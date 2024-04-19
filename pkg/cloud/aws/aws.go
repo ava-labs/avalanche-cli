@@ -548,7 +548,7 @@ func (c *AwsCloud) GetUbuntuAMIID(arch string, ubuntuVerLTS string) (string, err
 	if !utils.ArchSupported(arch) {
 		return "", fmt.Errorf("unsupported architecture: %s", arch)
 	}
-	descriptionFilterValue := fmt.Sprintf("Canonical, Ubuntu, %s LTS*", ubuntuVerLTS)
+	descriptionFilterValue := fmt.Sprintf("AvalancheCLI Ubuntu %s Docker", ubuntuVerLTS)
 	imageInput := &ec2.DescribeImagesInput{
 		Filters: []types.Filter{
 			{Name: aws.String("root-device-type"), Values: []string{"ebs"}},

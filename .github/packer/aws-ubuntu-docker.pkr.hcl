@@ -24,7 +24,7 @@ packer {
 }
 
 source "amazon-ebs" "ubuntu" {
-  ami_name      = "avaplatform-ubuntu-jammy-22.04-docker-{{timestamp}}"
+  ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-{{timestamp}}"
   instance_type = "t3.xlarge"
   region        = "us-east-1"
   source_ami_filter {
@@ -39,8 +39,9 @@ source "amazon-ebs" "ubuntu" {
   ssh_username = "ubuntu"
   ami_users = []
   ami_regions = local.all_regions
+  description = "AvalancheCLI Ubuntu 22.04 Docker"
   tags = {
-    Name = "avaplatform-ubuntu-jammy-22.04-docker"
+    Name = "public-avalanchecli-ubuntu-jammy-22.04-docker"
     Release = "ubuntu-22.04"
     Org = "avaplatform"
     Base_AMI_ID = "{{ .SourceAMI }}"
@@ -48,10 +49,38 @@ source "amazon-ebs" "ubuntu" {
     }
 }
 
+source "amazon-ebs" "ubuntu_arm64" {
+  ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-arm64-{{timestamp}}"
+  instance_type = "t4g.xlarge"  # Adjust the instance type for arm64
+  region        = "us-east-1"
+  source_ami_filter {
+    filters = {
+      name                = "ubuntu/images/*ubuntu-jammy-22.04-arm64-server-*"  # Filter for arm64 AMIs
+      root-device-type    = "ebs"
+      virtualization-type = "hvm"
+    }
+    most_recent = true
+    owners      = ["099720109477"]
+  }
+  ssh_username = "ubuntu"
+  ami_users = []
+  ami_regions = local.all_regions
+  description = "AvalancheCLI Ubuntu 22.04 Docker"
+  tags = {
+    Name = "public-avalanchecli-ubuntu-jammy-22.04-docker-arm64"
+    Release = "ubuntu-22.04"
+    Org = "avaplatform"
+    Base_AMI_ID = "{{ .SourceAMI }}"
+    Base_AMI_Name = "{{ .SourceAMIName }}"
+  }
+}
+
+
 build {
   name    = "docker"
   sources = [
-    "source.amazon-ebs.ubuntu"
+    "source.amazon-ebs.ubuntu",
+    "source.amazon-ebs.ubuntu_arm64"
   ]
 
     provisioner "shell" {
