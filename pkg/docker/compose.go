@@ -19,8 +19,8 @@ import (
 )
 
 type dockerComposeInputs struct {
-	IsMonitoringEnabled bool
-	AvalancheGoVersion  string
+	WithMonitoring     bool
+	AvalanchegoVersion string
 }
 
 //go:embed templates/*.docker-compose.yml
@@ -101,8 +101,8 @@ func ComposeSSHSetupNode(host *models.Host, avalancheGoVersion string, withMonit
 		constants.SSHScriptTimeout,
 		"templates/avalanchego.docker-compose.yml",
 		dockerComposeInputs{
-			AvalancheGoVersion:  avalancheGoVersion,
-			IsMonitoringEnabled: withMonitoring,
+			AvalanchegoVersion: avalancheGoVersion,
+			WithMonitoring:     withMonitoring,
 		})
 }
 

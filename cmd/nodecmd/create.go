@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
@@ -570,6 +571,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, publicIPMap, cloudConfigMap); err != nil {
 		return err
 	}
+	startTime := time.Now()
 	monitoringInventoryPath := ""
 	var monitoringHosts []*models.Host
 	if addMonitoring {
@@ -714,6 +716,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("time taken: ", time.Since(startTime))
 	if addMonitoring {
 		monitoringHost := monitoringHosts[0]
 		// remove monitoring host from created hosts list
