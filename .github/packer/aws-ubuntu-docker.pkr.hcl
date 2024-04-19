@@ -99,11 +99,11 @@ build {
     provisioner "shell" {
         inline = [
             "docker pull avaplatform/avalanchego",
-            "docker pull grafana/promtail:latest",
-            "docker pull grafana/loki:latest",
-            "docker pull prom/node-exporter:latest",
-            "docker pull grafana/grafana:latest",
-            "docker pull prom/prometheus:latest"
+            "docker pull grafana/promtail:3.0.0",
+            "docker pull grafana/loki:3.0.0",
+            "docker pull prom/node-exporter:1.7.0",
+            "docker pull grafana/grafana:10.4.1",
+            "docker pull prom/prometheus:2.51.2"
         ]
    }
 

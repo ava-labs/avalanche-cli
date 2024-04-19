@@ -21,7 +21,7 @@ services:
 
 {{if .WithMonitoring}}
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.0.0
     container_name: promtail
     restart: always
     user: "1000:1000"  # ubuntu user
@@ -32,7 +32,7 @@ services:
       - avalanchego_net
 
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:1.7.0
     container_name: node-exporter
     restart: always
     ports:
