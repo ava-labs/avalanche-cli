@@ -48,7 +48,7 @@ func StartDockerProxy(dockerHost Host, localSocketPath string, stopCh chan struc
 	}
 	defer l.Close()
 
-	ux.Logger.Info("Local docker proxy listening on", localSocketPath)
+	ux.Logger.Info("Local docker proxy listening on %s", localSocketPath)
 
 	// Accept connections and proxy them to remote socket
 	for {
@@ -61,7 +61,7 @@ func StartDockerProxy(dockerHost Host, localSocketPath string, stopCh chan struc
 		go handleConnection(conn, dockerHost, constants.RemoteDockeSocketPath)
 		select {
 		case <-stopCh:
-			conn.Close()
+			_ = conn.Close()
 			return
 		default:
 			continue
