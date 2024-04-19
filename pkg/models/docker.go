@@ -22,10 +22,10 @@ type DockerProxy struct {
 	ctx        context.Context
 }
 
-func NewDockerProxy(socketPath string, hosts []Host) (*DockerProxy, error) {
+func NewDockerProxy(socketPath string, host Host) (*DockerProxy, error) {
 	stopCh := make(chan struct{})
 
-	go StartDockerProxy(hosts, socketPath, stopCh)
+	go StartDockerProxy(host, socketPath, stopCh)
 
 	return &DockerProxy{
 		SocketPath: socketPath,

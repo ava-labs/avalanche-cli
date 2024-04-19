@@ -5,13 +5,7 @@
 sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 {{end}}
 #name:TASK [install loki]
-{{ if .GrafanaPkg}}
-curl -s https://apt.grafana.com/gpg.key | sudo apt-key add -
-echo "deb https://apt.grafana.com stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
-sudo apt-get -y update
-{{ end}}
-sudo apt-get -y -o DPkg::Lock::Timeout=120 install loki promtail
-sudo mkdir -p /var/lib/loki && sudo chown -R loki /var/lib/loki
+sudo mkdir -p /var/lib/loki
 echo "Provisioning datasource..."
 {
     echo "apiVersion: 1"
@@ -28,4 +22,3 @@ echo "Provisioning datasource..."
     echo "         maxLines: 1000"
 } >loki.yaml
 sudo cp loki.yaml /etc/grafana/provisioning/datasources/
-sudo systemctl restart grafana-server

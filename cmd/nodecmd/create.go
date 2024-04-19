@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -629,11 +630,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err := ssh.RunSSHSetupSeparateMonitoring(monitoringHost, grafanaPkg); err != nil {
-					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
 				if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -654,6 +650,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
+				if err := docker.ComposeSSHSetupMonitoring(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
 				ux.SpinComplete(spinner)
 			}(&wgResults, monitoringHost)
 		}
@@ -670,34 +671,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Build Env"))
-			if err := ssh.RunSSHSetupBuildEnv(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			ux.SpinComplete(spinner)
-			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), avalancheGoVersion, remoteCLIVersion, network.Kind == models.Devnet); err != nil {
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), remoteCLIVersion, network.Kind == models.Devnet); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
 			ux.SpinComplete(spinner)
 			if addMonitoring {
-				spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Metrics"))
-				if err := ssh.RunSSHSetupMachineMetrics(host); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				ux.SpinComplete(spinner)
-				spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Logging"))
-				if err := ssh.RunSSHSetupPromtail(host); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
 				cloudID := host.GetCloudID()
 				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
 				if err != nil {
@@ -712,6 +693,13 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				}
 				ux.SpinComplete(spinner)
 			}
+			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
+			if err := docker.ComposeSSHSetupNode(host, avalancheGoVersion, addMonitoring); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			ux.SpinComplete(spinner)
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Avalanche-CLI"))
 			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)

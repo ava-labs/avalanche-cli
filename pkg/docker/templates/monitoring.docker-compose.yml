@@ -21,6 +21,8 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    volumes:
+      - /etc/grafana/provisioning/:/etc/grafana/provisioning/
     networks:
       - monitoring_net
 
@@ -30,6 +32,8 @@ services:
     restart: always
     ports:
       - "3100:3100"
+    volumes:
+      - /var/lib/loki:/var/lib/loki
     networks:
       - monitoring_net
 

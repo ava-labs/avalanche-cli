@@ -95,10 +95,21 @@ func ComposeOverSSH(
 	return nil
 }
 
-func ComposeSSHSetupNode(host *models.Host, avalancheGoVersion string) error {
+func ComposeSSHSetupNode(host *models.Host, avalancheGoVersion string, withMonitoring bool) error {
 	return ComposeOverSSH("Setup Node",
 		host,
 		constants.SSHScriptTimeout,
 		"templates/avalanchego.docker-compose.yml",
-		dockerComposeInputs{AvalancheGoVersion: avalancheGoVersion})
+		dockerComposeInputs{
+			AvalancheGoVersion:  avalancheGoVersion,
+			IsMonitoringEnabled: withMonitoring,
+		})
+}
+
+func ComposeSSHSetupMonitoring(host *models.Host) error {
+	return ComposeOverSSH("Setup Monitoring",
+		host,
+		constants.SSHScriptTimeout,
+		"templates/monitoring.docker-compose.yml",
+		dockerComposeInputs{})
 }

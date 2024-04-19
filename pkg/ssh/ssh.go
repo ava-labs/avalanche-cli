@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -100,13 +100,13 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host *models.Host, configPath, avalancheGoVersion string, cliVersion string, isDevNet bool) error {
+func RunSSHSetupNode(host *models.Host, configPath, cliVersion string, isDevNet bool) error {
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{AvalancheGoVersion: avalancheGoVersion, CLIVersion: cliVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
+		scriptInputs{CLIVersion: cliVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
@@ -244,11 +244,23 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 	)
 }
 
-func replaceCustomVarDashboardValues(monitoringDashboardPath, customGrafanaDashboardFileName, chainID string) error {
-	sedScript := fmt.Sprintf("s/\"text\": \"CHAIN_ID_VAL\"/\"text\": \"%[1]v\"/g; s/\"value\": \"CHAIN_ID_VAL\"/\"value\": \"%[1]v\"/g; s/\"query\": \"CHAIN_ID_VAL\"/\"query\": \"%[1]v\"/g", chainID)
-	cmd := exec.Command("sed", "-i", "-e", sedScript, customGrafanaDashboardFileName)
-	cmd.Dir = monitoringDashboardPath
-	_, err := cmd.Output()
+func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID string) error {
+	content, err := os.ReadFile(customGrafanaDashboardFileName)
+	if err != nil {
+		return err
+	}
+	replacements := []struct {
+		old string
+		new string
+	}{
+		{"\"text\": \"CHAIN_ID_VAL\"", fmt.Sprintf("\"text\": \"%v\"", chainID)},
+		{"\"value\": \"CHAIN_ID_VAL\"", fmt.Sprintf("\"value\": \"%v\"", chainID)},
+		{"\"query\": \"CHAIN_ID_VAL\"", fmt.Sprintf("\"query\": \"%v\"", chainID)},
+	}
+	for _, r := range replacements {
+		content = []byte(strings.ReplaceAll(string(content), r.old, r.new))
+	}
+	err = os.WriteFile(customGrafanaDashboardFileName, content, constants.WriteReadUserOnlyPerms)
 	if err != nil {
 		return err
 	}
@@ -256,6 +268,7 @@ func replaceCustomVarDashboardValues(monitoringDashboardPath, customGrafanaDashb
 }
 
 func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
+	fmt.Println("monitoringDashboardPath", monitoringDashboardPath)
 	remoteDashboardsPath := "/home/ubuntu/dashboards"
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
@@ -264,7 +277,7 @@ func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath
 		if err := utils.FileCopy(utils.ExpandHome(customGrafanaDashboardPath), filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON)); err != nil {
 			return err
 		}
-		if err := replaceCustomVarDashboardValues(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON, chainID); err != nil {
+		if err := replaceCustomVarDashboardValues(filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON), chainID); err != nil {
 			return err
 		}
 	}
