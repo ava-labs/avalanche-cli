@@ -106,20 +106,9 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string, isDevNet 
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{CLIVersion: cliVersion, IsDevNet: isDevNet, IsE2E: utils.IsE2E()},
+		scriptInputs{CLIVersion: cliVersion},
 	); err != nil {
 		return err
-	}
-	if utils.IsE2E() && utils.E2EDocker() {
-		if err := RunOverSSH(
-			"E2E Start Avalanchego",
-			host,
-			constants.SSHScriptTimeout,
-			"shell/e2e_startNode.sh",
-			scriptInputs{},
-		); err != nil {
-			return err
-		}
 	}
 	// name: copy metrics config to cloud server
 	return host.Upload(
