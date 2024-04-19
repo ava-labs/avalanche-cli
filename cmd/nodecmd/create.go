@@ -571,7 +571,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, publicIPMap, cloudConfigMap); err != nil {
 		return err
 	}
-	startTime := time.Now()
 	monitoringInventoryPath := ""
 	var monitoringHosts []*models.Host
 	if addMonitoring {
@@ -612,6 +611,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	startTime := time.Now()
 	if addMonitoring {
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
@@ -716,7 +716,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("time taken: ", time.Since(startTime))
+	ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
 	if addMonitoring {
 		monitoringHost := monitoringHosts[0]
 		// remove monitoring host from created hosts list
