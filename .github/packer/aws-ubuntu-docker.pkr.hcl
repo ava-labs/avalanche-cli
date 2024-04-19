@@ -91,9 +91,22 @@ build {
             "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
             "sudo apt-get -y update && sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-compose",
             "sudo usermod -aG docker ubuntu",
+            "sudo systemctl enable docker || true",
+            "sudo systemctl start docker || true",
+            "sudo chmod 666 /var/run/docker.sock"
         ]
     }
-    
+    provisioner "shell" {
+        inline = [
+            "docker pull avaplatform/avalanchego",
+            "docker pull grafana/promtail:latest",
+            "docker pull grafana/loki:latest",
+            "docker pull prom/node-exporter:latest",
+            "docker pull grafana/grafana:latest",
+            "docker pull prom/prometheus:latest"
+        ]
+   }
+
     provisioner "shell" {
         inline = [
             "sudo rm -f /root/.ssh/authorized_keys && sudo rm -f /home/ubuntu/.ssh/authorized_keys"

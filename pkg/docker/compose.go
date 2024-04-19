@@ -56,7 +56,7 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string) err
 }
 
 func StartDockerCompose(host *models.Host, composeFile string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker-compose -f %s up -d", composeFile), nil, timeout); err != nil {
+	if output, err := host.Command(fmt.Sprintf("docker-compose -f %s up -d --wait --pull missing", composeFile), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
