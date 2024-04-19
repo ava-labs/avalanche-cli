@@ -2,7 +2,7 @@ version: '3'
 
 services:
   avalanchego:
-    image: avalanchelabs/avalanchego:{{ .AvalanchegoVersion }}
+    image: avaplatform/avalanchego:{{ .AvalanchegoVersion }}
     container_name: avalanchego
     restart: always
     user: "1000:1000"  # ubuntu user

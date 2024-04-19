@@ -747,15 +747,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
 				}
-				if err = addHTTPHostToConfigFile(app.GetNodeConfigJSONFile(host.NodeID)); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					return
-				}
 				if err := ssh.RunSSHUploadNodeMonitoringConfig(host, nodeDirPath); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					return
-				}
-				if err := ssh.RunSSHRestartNode(host); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					return
 				}

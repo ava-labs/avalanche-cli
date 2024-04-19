@@ -5,7 +5,7 @@
 sudo cp -vf /usr/bin/true /usr/local/sbin/systemctl
 {{end}}
 #name:TASK [install loki]
-sudo mkdir -p /var/lib/loki
+sudo mkdir -p /var/lib/loki /etc/grafana/provisioning/datasources
 echo "Provisioning datasource..."
 {
     echo "apiVersion: 1"
