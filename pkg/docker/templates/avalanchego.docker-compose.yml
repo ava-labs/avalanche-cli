@@ -7,6 +7,7 @@ services:
     restart: always
     user: "1000:1000"  # ubuntu user
     command: >
+        ./avalanchego
         --config-file=/home/ubuntu/.avalanchego/configs/node.json
         --log-dir=/home/ubuntu/.avalanchego_logs
     volumes:
@@ -26,7 +27,7 @@ services:
     user: "1000:1000"  # ubuntu user
     volumes:
       - /home/ubuntu/.avalanchego_logs:/logs
-    command: -config.file=/etc/promtail/promtail.yaml
+    command: promtail -config.file=/etc/promtail/promtail.yaml
     networks:
       - avalanchego_net
 
