@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/olekukonko/tablewriter"
@@ -92,6 +93,7 @@ func describe(_ *cobra.Command, _ []string) error {
 		}
 		return err
 	}
+	fmt.Print(logging.LightBlue.Wrap(art))
 	blockchainIDHexEncoding := "0x" + hex.EncodeToString(blockchainID[:])
 	rpcURL := network.CChainEndpoint()
 	client, err := evm.GetClient(rpcURL)
@@ -121,7 +123,6 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.Append([]string{"RPC URL", rpcURL})
-	fmt.Println(rpcURL)
 	codespaceURL, err := utils.GetCodespaceURL(rpcURL)
 	if err != nil {
 		return err
