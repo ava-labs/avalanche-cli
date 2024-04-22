@@ -9,11 +9,11 @@ import (
 )
 
 type AvalancheConfigInputs struct {
-	HttpHost         string
-	ApiAdminEnabled  bool
+	HTTPHost         string
+	APIAdminEnabled  bool
 	IndexEnabled     bool
 	NetworkID        string
-	DbDir            string
+	DBDir            string
 	LogDir           string
 	PublicIP         string
 	StateSyncEnabled bool
@@ -22,9 +22,9 @@ type AvalancheConfigInputs struct {
 
 func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
-		HttpHost:         "0.0.0.0",
+		HTTPHost:         "0.0.0.0",
 		NetworkID:        networkID,
-		DbDir:            "/home/ubuntu/.avalanchego/db/",
+		DBDir:            "/home/ubuntu/.avalanchego/db/",
 		LogDir:           "/home/ubuntu/.avalanchego/logs/",
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,

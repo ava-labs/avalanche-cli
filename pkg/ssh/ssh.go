@@ -350,7 +350,7 @@ func RunSSHSetupLokiConfig(host *models.Host, port int) error {
 	)
 }
 
-func RunSSHSetupPromtail(host *models.Host, ip string, lokiPort string, LokiHost string, nodeID string, chainID string) error {
+func RunSSHSetupPromtailConfig(host *models.Host, lokiIp string, lokiPort int, cloudID string, nodeID string, chainID string) error {
 	for _, folder := range remoteconfig.PromtailFoldersToCreate() {
 		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
 			return err
@@ -362,7 +362,8 @@ func RunSSHSetupPromtail(host *models.Host, ip string, lokiPort string, LokiHost
 		return err
 	}
 	defer os.Remove(promtailConfig.Name())
-	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), ip, lokiPort, LokiHost, nodeID, chainID); err != nil {
+
+	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), lokiIp, strconv.Itoa(lokiPort), cloudID, nodeID, chainID); err != nil {
 		return err
 	}
 	return host.Upload(
