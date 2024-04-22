@@ -407,15 +407,18 @@ func GetURIHostPortAndPath(uri string) (string, uint32, string, error) {
 }
 
 func GetCodespaceURL(url string) (string, error) {
+	codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
+	if codespaceName == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(url, constants.MainnetAPIEndpoint) || strings.HasPrefix(url, constants.FujiAPIEndpoint) {
+		return "", nil
+	}
 	_, port, path, err := GetURIHostPortAndPath(url)
 	if err != nil {
 		return "", err
 	}
-	codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
-	if codespaceName != "" {
-		return fmt.Sprintf("https://%s-%d.app.github.dev%s", codespaceName, port, path), nil
-	}
-	return "", nil
+	return fmt.Sprintf("https://%s-%d.app.github.dev%s", codespaceName, port, path), nil
 }
 
 func InsideCodespace() bool {
