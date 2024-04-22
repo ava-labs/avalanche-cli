@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -15,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/olekukonko/tablewriter"
@@ -57,17 +58,19 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(logging.LightBlue.Wrap(art))
 	var (
 		teleporterMessengerAddress string
 		teleporterRegistryAddress  string
 	)
 	if network.Kind == models.Local {
-		if extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app); err != nil {
-			return err
-		} else {
-			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
-			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
+		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
+		if utils.FileExists(extraLocalNetworkDataPath) {
+			if extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app); err != nil {
+				return err
+			} else {
+				teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+				teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
+			}
 		}
 	} else if network.ClusterName != "" {
 		if clusterConfig, err := app.GetClusterConfig(network.ClusterName); err != nil {
@@ -79,6 +82,14 @@ func describe(_ *cobra.Command, _ []string) error {
 	}
 	blockchainID, err := subnet.GetChainID(network, "C")
 	if err != nil {
+		if strings.Contains(err.Error(), "connection refused") {
+			networkUpMsg := ""
+			if network.Kind != models.Fuji && network.Kind != models.Mainnet {
+				networkUpMsg = fmt.Sprintf(" Is the %s up?", network.Name())
+			}
+			ux.Logger.RedXToUser("Could not connect to Primary Network at %s.%s", network.Endpoint, networkUpMsg)
+			return nil
+		}
 		return err
 	}
 	blockchainIDHexEncoding := "0x" + hex.EncodeToString(blockchainID[:])
@@ -110,6 +121,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	table.Append([]string{"RPC URL", rpcURL})
+	fmt.Println(rpcURL)
 	codespaceURL, err := utils.GetCodespaceURL(rpcURL)
 	if err != nil {
 		return err
@@ -124,8 +136,12 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.Append([]string{"Private Key", privKey})
 	table.Append([]string{"BlockchainID", blockchainID.String()})
 	table.Append([]string{"BlockchainID", blockchainIDHexEncoding})
-	table.Append([]string{"Teleporter Messenger Address", teleporterMessengerAddress})
-	table.Append([]string{"Teleporter Registry Address", teleporterRegistryAddress})
+	if teleporterMessengerAddress != "" {
+		table.Append([]string{"Teleporter Messenger Address", teleporterMessengerAddress})
+	}
+	if teleporterRegistryAddress != "" {
+		table.Append([]string{"Teleporter Registry Address", teleporterRegistryAddress})
+	}
 	table.Render()
 	return nil
 }
