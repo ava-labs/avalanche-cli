@@ -3,12 +3,16 @@
 
 package remoteconfig
 
+import "github.com/ava-labs/avalanche-cli/pkg/utils"
+
 func RenderGrafanaLokiDataSourceConfig() ([]byte, error) {
 	return templates.ReadFile("templates/grafana-loki-datasource.yaml")
 }
 
-func GrafanaLokiFoldersToCreate() []string {
-	return []string{"/var/lib/loki",
-		"/etc/grafana/provisioning/datasources",
-		"/etc/grafana/provisioning/dashboards"}
+func GrafanaFoldersToCreate() []string {
+	return []string{
+		utils.GetRemoteComposeServicePath("grafana", "data"),
+		utils.GetRemoteComposeServicePath("grafana", "provisioning", "datasources"),
+		utils.GetRemoteComposeServicePath("grafana", "provisioning", "dashboards"),
+	}
 }

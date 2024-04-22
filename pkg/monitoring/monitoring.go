@@ -99,27 +99,11 @@ func WriteLokiConfig(filePath string, port string) error {
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WritePromtailConfig(filePath string, ip string, port string, host string, nodeID string) error {
+func WritePromtailConfig(filePath string, ip string, port string, host string, nodeID string, chainID string) error {
 	if !utils.IsValidIP(ip) {
 		return fmt.Errorf("invalid IP address: %s", ip)
 	}
 	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
-		IP:     ip,
-		Port:   port,
-		Host:   host,
-		NodeID: nodeID,
-	})
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
-}
-
-func WritePromtailConfigSubnet(filePath string, ip string, port string, host string, nodeID string, chainID string) error {
-	if !utils.IsValidIP(ip) {
-		return fmt.Errorf("invalid IP address: %s", ip)
-	}
-	config, err := GenerateConfig("configs/promtailSubnet.yml", "Promtail Config", configInputs{
 		IP:      ip,
 		Port:    port,
 		Host:    host,

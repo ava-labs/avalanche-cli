@@ -7,16 +7,6 @@ import (
 	"testing"
 )
 
-// TestSpitStringWithQuotes test case
-func TestSpitStringWithQuotes(t *testing.T) {
-	input1 := " arg1 arg2 'hello world' "
-	expected1 := []string{"arg1", "arg2", "'hello world'"}
-	result1 := SplitStringWithQuotes(input1, ' ')
-	if !reflect.DeepEqual(result1, expected1) {
-		t.Errorf("Expected %v, but got %v", expected1, result1)
-	}
-}
-
 func TestSplitKeyValueStringToMap(t *testing.T) {
 	// Test case 1: Splitting a string with multiple key-value pairs separated by delimiter
 	input1 := "key1=value1,key2=value2,key3=value3"
@@ -162,12 +152,41 @@ func TestGetGitCommit(t *testing.T) {
 	}
 }
 
-func TestAddSingleQuotes(t *testing.T) {
-	input := []string{"", "b", "orange banana", "'apple'", "'a", "b'"}
-	expected := []string{"''", "'b'", "'orange banana'", "'apple'", "'a'", "'b'"}
-	output := AddSingleQuotes(input)
+// TestAppendSlices tests AppendSlices
+func TestAppendSlices(t *testing.T) {
+	tests := []struct {
+		name   string
+		slices [][]interface{}
+		want   []interface{}
+	}{
+		{
+			name:   "AppendSlices with strings",
+			slices: [][]interface{}{{"a", "b", "c"}, {"d", "e", "f"}, {"g", "h", "i"}},
+			want:   []interface{}{"a", "b", "c", "d", "e", "f", "g", "h", "i"},
+		},
+		{
+			name:   "AppendSlices with ints",
+			slices: [][]interface{}{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}},
+			want:   []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9},
+		},
+		{
+			name:   "AppendSlices with empty slices",
+			slices: [][]interface{}{{}, {}, {}},
+			want:   []interface{}{},
+		},
+		{
+			name:   "Append identical slices",
+			slices: [][]interface{}{{"a", "b", "c"}, {"a", "b", "c"}},
+			want:   []interface{}{"a", "b", "c", "a", "b", "c"},
+		},
+	}
 
-	if !reflect.DeepEqual(output, expected) {
-		t.Errorf("AddSingleQuotes(%v) = %v, expected %v", input, output, expected)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := AppendSlices(tt.slices...)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("AppendSlices() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

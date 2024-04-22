@@ -2,3 +2,11 @@
 // See the file LICENSE for licensing terms.
 
 package remoteconfig
+
+import (
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+)
+
+func LokiFoldersToCreate() []string {
+	return []string{utils.GetRemoteComposeServicePath("loki", "data")}
+}

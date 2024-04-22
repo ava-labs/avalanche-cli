@@ -90,3 +90,14 @@ func WriteStringToFile(filePath string, data string) error {
 	filePath = ExpandHome(filePath)
 	return os.WriteFile(filePath, []byte(data), constants.WriteReadReadPerms)
 }
+
+// RemoteComposeFile returns the path to the remote docker-compose file
+func GetRemoteComposeFile() string {
+	return filepath.Join(constants.CloudNodeCLIConfigBasePath, "services", "docker-compose.yml")
+}
+
+// GetRemoteComposeServicePath returns the path to the remote service directory
+func GetRemoteComposeServicePath(serviceName string, dirs ...string) string {
+	servicePrefix := filepath.Join(constants.CloudNodeCLIConfigBasePath, "services", serviceName)
+	return filepath.Join(append([]string{servicePrefix}, dirs...)...)
+}

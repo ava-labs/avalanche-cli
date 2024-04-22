@@ -61,17 +61,6 @@ func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, 
 	return kvMap, nil
 }
 
-// SplitString split string with a rune comma ignore quoted
-func SplitStringWithQuotes(str string, r rune) []string {
-	quoted := false
-	return strings.FieldsFunc(str, func(r1 rune) bool {
-		if r1 == '\'' {
-			quoted = !quoted
-		}
-		return !quoted && r1 == r
-	})
-}
-
 // Context for ANR network operations
 func GetANRContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
@@ -153,19 +142,6 @@ func ConvertInterfaceToMap(value interface{}) (map[string]interface{}, error) {
 	default:
 		return nil, fmt.Errorf("unsupported type: %T", value)
 	}
-}
-
-// SplitComaSeparatedString splits and trims a comma-separated string into a slice of strings.
-func SplitComaSeparatedString(s string) []string {
-	return Map(strings.Split(s, ","), strings.TrimSpace)
-}
-
-// SplitComaSeparatedInt splits a comma-separated string into a slice of integers.
-func SplitComaSeparatedInt(s string) []int {
-	return Map(SplitComaSeparatedString(s), func(item string) int {
-		num, _ := strconv.Atoi(item)
-		return num
-	})
 }
 
 // IsUnsignedSlice returns true if all elements in the slice are unsigned integers.
@@ -349,25 +325,6 @@ func ArchSupported(arch string) bool {
 	return slices.Contains(SupportedAvagoArch(), arch)
 }
 
-// AddSingleQuotes adds single quotes to each string in the given slice.
-func AddSingleQuotes(s []string) []string {
-	return Map(s, func(item string) string {
-		if item == "" {
-			return "''"
-		}
-		if !strings.HasPrefix(item, "'") {
-			item = fmt.Sprintf("'%s", item)
-		}
-		if !strings.HasSuffix(item, "'") {
-			item = fmt.Sprintf("%s'", item)
-		}
-		if !strings.HasPrefix(item, "'") && !strings.HasSuffix(item, "'") {
-			item = fmt.Sprintf("'%s'", item)
-		}
-		return item
-	})
-}
-
 // Get the host, port and path from a URL.
 func GetURIHostPortAndPath(uri string) (string, uint32, string, error) {
 	u, err := url.Parse(uri)
@@ -399,4 +356,17 @@ func GetCodespaceURL(url string) (string, error) {
 
 func InsideCodespace() bool {
 	return os.Getenv(constants.CodespaceNameEnvVar) != ""
+}
+
+// AppendSlices appends multiple slices into a single slice.
+func AppendSlices[T any](slices ...[]T) []T {
+	totalLength := 0
+	for _, slice := range slices {
+		totalLength += len(slice)
+	}
+	result := make([]T, 0, totalLength)
+	for _, slice := range slices {
+		result = append(result, slice...)
+	}
+	return result
 }

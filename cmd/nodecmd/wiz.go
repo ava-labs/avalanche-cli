@@ -415,7 +415,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
-			if err = ssh.RunSSHUpdatePromtailConfigSubnet(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+			if err = ssh.RunSSHUpdatePromtailConfig(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
 				wgResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

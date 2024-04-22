@@ -321,7 +321,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupPromtail(currentLoadTestHost[0]); err != nil {
 			return err
 		}
-		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest"); err != nil {
+		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest", ""); err != nil {
 			return err
 		}
 		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)

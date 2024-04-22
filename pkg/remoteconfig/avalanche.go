@@ -71,5 +71,6 @@ func AvalancheFolderToCreate() []string {
 		"~/.avalanchego/logs",
 		"~/.avalanchego/configs",
 		"~/.avalanchego/configs/chains/C",
-		"~/.avalanchego/staking"}
+		"~/.avalanchego/staking",
+	}
 }

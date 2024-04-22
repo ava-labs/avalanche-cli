@@ -14,7 +14,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
+	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -120,13 +122,8 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string, isDevNet 
 
 // RunSSHRestartNode runs script to restart avalanchego
 func RunSSHRestartNode(host *models.Host) error {
-	return RunOverSSH(
-		"Restart Avalanchego",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/restartNode.sh",
-		scriptInputs{},
-	)
+	remoteComposeFile := utils.GetRemoteComposeFile()
+	return docker.RestartDockerComposeService(host, remoteComposeFile, "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHSetupAWMRelayerService runs script to set up an AWM Relayer Service
@@ -173,13 +170,16 @@ func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) erro
 			scriptInputs{AvalancheGoVersion: avalancheGoVersion},
 		)
 	}
-	return RunOverSSH(
-		"Upgrade Avalanchego",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/upgradeAvalancheGo.sh",
-		scriptInputs{AvalancheGoVersion: avalancheGoVersion},
-	)
+
+	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
+	if err != nil {
+		return err
+	}
+
+	if err := docker.ComposeSSHSetupNode(host, avalancheGoVersion, withMonitoring); err != nil {
+		return err
+	}
+	return docker.RestartDockerCompose(host, utils.GetRemoteComposeFile(), constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStartNode runs script to start avalanchego
@@ -193,13 +193,7 @@ func RunSSHStartNode(host *models.Host) error {
 			scriptInputs{},
 		)
 	}
-	return RunOverSSH(
-		"Start Avalanchego",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/startNode.sh",
-		scriptInputs{},
-	)
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStopNode runs script to stop avalanchego
@@ -213,13 +207,7 @@ func RunSSHStopNode(host *models.Host) error {
 			scriptInputs{},
 		)
 	}
-	return RunOverSSH(
-		"Stop Avalanchego",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/stopNode.sh",
-		scriptInputs{},
-	)
+	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
@@ -257,8 +245,7 @@ func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID str
 }
 
 func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
-	fmt.Println("monitoringDashboardPath", monitoringDashboardPath)
-	remoteDashboardsPath := "/home/ubuntu/dashboards"
+	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "provisioning", "dashboards")
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
@@ -280,18 +267,12 @@ func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath
 	); err != nil {
 		return err
 	}
-	return RunOverSSH(
-		"Sync Grafana Dashboards",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/updateGrafanaDashboards.sh",
-		scriptInputs{},
-	)
+	return docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "grafana", constants.SSHLongRunningScriptTimeout)
 }
 
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
 	// TODO: download dashboards from github instead
-	remoteDashboardsPath := "/home/ubuntu/dashboards"
+	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "provisioning", "dashboards")
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
@@ -311,13 +292,7 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 			return err
 		}
 	}
-	return RunOverSSH(
-		"Sync Grafana Dashboards",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/updateGrafanaDashboards.sh",
-		scriptInputs{},
-	)
+	return docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "grafana", constants.SSHLongRunningScriptTimeout)
 }
 
 func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
@@ -331,31 +306,13 @@ func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
 	return nil
 }
 
-func RunSSHSetupMachineMetrics(host *models.Host) error {
-	return RunOverSSH(
-		"Setup Machine Metrics",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupMachineMetrics.sh",
-		scriptInputs{},
-	)
-}
-
-func RunSSHSetupSeparateMonitoring(host *models.Host, grafanaPkg string) error {
-	return RunOverSSH(
-		"Setup Prometheus and Grafana",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupMonitoring.sh",
-		scriptInputs{
-			IsE2E:      utils.IsE2E(),
-			GrafanaPkg: grafanaPkg,
-		},
-	)
-}
-
-func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts, loadTestPorts []string) error {
-	const cloudNodePrometheusConfigTemp = "/tmp/prometheus.yml"
+func RunSSHSetupPrometheusConfig(host *models.Host, avalancheGoPorts, machinePorts, loadTestPorts []string) error {
+	for _, folder := range remoteconfig.PrometheusFoldersToCreate() {
+		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+	}
+	cloudNodePrometheusConfigTemp := utils.GetRemoteComposeServicePath("prometheus", "prometheus.yml")
 	promConfig, err := os.CreateTemp("", "prometheus")
 	if err != nil {
 		return err
@@ -364,24 +321,20 @@ func RunSSHUpdatePrometheusConfig(host *models.Host, avalancheGoPorts, machinePo
 	if err := monitoring.WritePrometheusConfig(promConfig.Name(), avalancheGoPorts, machinePorts, loadTestPorts); err != nil {
 		return err
 	}
-	if err := host.Upload(
+	return host.Upload(
 		promConfig.Name(),
 		cloudNodePrometheusConfigTemp,
 		constants.SSHFileOpsTimeout,
-	); err != nil {
-		return err
-	}
-	return RunOverSSH(
-		"Update Prometheus Config",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/updatePrometheusConfig.sh",
-		scriptInputs{},
 	)
 }
 
-func RunSSHUpdateLokiConfig(host *models.Host, port int) error {
-	const cloudNodeLokiConfigTemp = "/tmp/loki.yml"
+func RunSSHSetupLokiConfig(host *models.Host, port int) error {
+	for _, folder := range remoteconfig.LokiFoldersToCreate() {
+		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+	}
+	cloudNodeLokiConfigTemp := utils.GetRemoteComposeServicePath("loki", "loki.yml")
 	lokiConfig, err := os.CreateTemp("", "loki")
 	if err != nil {
 		return err
@@ -390,68 +343,32 @@ func RunSSHUpdateLokiConfig(host *models.Host, port int) error {
 	if err := monitoring.WriteLokiConfig(lokiConfig.Name(), strconv.Itoa(port)); err != nil {
 		return err
 	}
-	if err := host.Upload(
+	return host.Upload(
 		lokiConfig.Name(),
 		cloudNodeLokiConfigTemp,
 		constants.SSHFileOpsTimeout,
-	); err != nil {
-		return err
+	)
+}
+
+func RunSSHSetupPromtail(host *models.Host, ip string, lokiPort string, LokiHost string, nodeID string, chainID string) error {
+	for _, folder := range remoteconfig.PromtailFoldersToCreate() {
+		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
 	}
-	return RunOverSSH(
-		"Update Loki Config",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/updateLokiConfig.sh",
-		scriptInputs{},
-	)
-}
-
-func RunSSHSetupPromtail(host *models.Host) error {
-	return RunOverSSH(
-		"Setup Promtail",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupPromtail.sh",
-		scriptInputs{},
-	)
-}
-
-func RunSSHSetupLoki(host *models.Host, grafanaPkg string) error {
-	return RunOverSSH(
-		"Setup Loki",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupLoki.sh",
-		scriptInputs{
-			GrafanaPkg: grafanaPkg,
-		},
-	)
-}
-
-func RunSSHUpdatePromtailConfig(host *models.Host, ip string, port int, cloudID string, nodeID string) error {
-	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
+	cloudNodePromtailConfigTemp := utils.GetRemoteComposeServicePath("promtail", "promtail.yml")
 	promtailConfig, err := os.CreateTemp("", "promtail")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(promtailConfig.Name())
-	// get NodeID
-	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID); err != nil {
+	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), ip, lokiPort, LokiHost, nodeID, chainID); err != nil {
 		return err
 	}
-	if err := host.Upload(
+	return host.Upload(
 		promtailConfig.Name(),
 		cloudNodePromtailConfigTemp,
 		constants.SSHFileOpsTimeout,
-	); err != nil {
-		return err
-	}
-	return RunOverSSH(
-		"Update Promtail Config",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/updatePromtailConfig.sh",
-		scriptInputs{},
 	)
 }
 
@@ -617,17 +534,6 @@ func RunSSHUpdateSubnet(host *models.Host, subnetName, importPath string) error 
 	)
 }
 
-// RunSSHSetupBuildEnv installs gcc, golang, rust and etc
-func RunSSHSetupBuildEnv(host *models.Host) error {
-	return RunOverSSH(
-		"Setup Build Env",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupBuildEnv.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion},
-	)
-}
-
 func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {
 	return StreamOverSSH(
 		"Build Load Test",
@@ -769,33 +675,6 @@ func RunSSHWhitelistPubKey(host *models.Host, sshPubKey string) error {
 // RunSSHDownloadFile downloads specified file from the specified host
 func RunSSHDownloadFile(host *models.Host, filePath string, localFilePath string) error {
 	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
-}
-
-func RunSSHUpdatePromtailConfigSubnet(host *models.Host, ip string, port int, cloudID string, nodeID string, chainID string) error {
-	const cloudNodePromtailConfigTemp = "/tmp/promtail.yml"
-	promtailConfig, err := os.CreateTemp("", "promtailSubnet")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(promtailConfig.Name())
-	// get NodeID
-	if err := monitoring.WritePromtailConfigSubnet(promtailConfig.Name(), ip, strconv.Itoa(port), cloudID, nodeID, fmt.Sprintf("/home/ubuntu/.avalanchego/logs/%s.log", chainID)); err != nil {
-		return err
-	}
-	if err := host.Upload(
-		promtailConfig.Name(),
-		cloudNodePromtailConfigTemp,
-		constants.SSHFileOpsTimeout,
-	); err != nil {
-		return err
-	}
-	return RunOverSSH(
-		"Update Promtail Config",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/updatePromtailConfig.sh",
-		scriptInputs{},
-	)
 }
 
 func RunSSHUpsizeRootDisk(host *models.Host) error {
