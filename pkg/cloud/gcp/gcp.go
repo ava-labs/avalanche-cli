@@ -115,7 +115,7 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
 	}
 }
 
-// SetNetwork creates a new network in GCP
+// SetupNetwork creates a new network in GCP
 func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network, error) {
 	insertOp, err := c.gcpClient.Networks.Insert(c.projectID, &compute.Network{
 		Name:                  networkName,

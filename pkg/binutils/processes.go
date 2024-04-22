@@ -115,7 +115,7 @@ func NewGRPCClient(opts ...GRPCClientOpOption) (client.Client, error) {
 	return client, err
 }
 
-// NewGRPCClient hides away the details (params) of creating a gRPC server
+// NewGRPCServer hides away the details (params) of creating a gRPC server
 func NewGRPCServer(snapshotsDir string) (server.Server, error) {
 	logFactory := logging.NewFactory(logging.Config{
 		DisplayLevel: logging.Info,
