@@ -294,6 +294,15 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 				continue
 			}
 		}
+		if isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network); err != nil {
+			ux.Logger.PrintToUser("Failed to get validator status for node %s", host.NodeID)
+			nodeErrors[host.NodeID] = err
+			continue
+		} else if isValidator {
+			ux.Logger.PrintToUser("Failed to add node %s as subnet validator as node is already a subnet validator", host.NodeID)
+			nodeErrors[host.NodeID] = errors.New("node is already a subnet validator")
+			continue
+		}
 		clusterNodeID := host.GetCloudID()
 		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, clusterNodeID)
 		if err != nil {
