@@ -9,10 +9,8 @@ services:
     command: >
         ./avalanchego
         --config-file=/home/ubuntu/.avalanchego/configs/node.json
-        --log-dir=/home/ubuntu/.avalanchego_logs
     volumes:
       - /home/ubuntu/.avalanchego:/home/ubuntu/.avalanchego
-      - /home/ubuntu/.avalanchego_logs:/home/ubuntu/.avalanchego_logs
     ports:
       - "9650:9650"
       - "9651:9651"
@@ -26,7 +24,8 @@ services:
     restart: always
     user: "1000:1000"  # ubuntu user
     volumes:
-      - /home/ubuntu/.avalanchego_logs:/logs
+      - /home/ubuntu/.avalanchego/logs:/logs
+      - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail
     command: promtail -config.file=/etc/promtail/promtail.yaml
     networks:
       - avalanchego_net
