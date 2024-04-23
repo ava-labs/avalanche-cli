@@ -491,7 +491,6 @@ func (d *PublicDeployer) Commit(
 		defer cancel()
 		options := []common.Option{common.WithContext(ctx)}
 		if !waitForTxAcceptance {
-			fmt.Println("ASSUMED DECIDED")
 			options = append(options, common.WithAssumeDecided())
 		}
 		issueTxErr = wallet.P().IssueTx(tx, options...)
