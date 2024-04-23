@@ -3,9 +3,7 @@
 package nodecmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"os/user"
@@ -864,25 +862,6 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 		return err
 	}
 	return updateKeyPairClustersConfig(nodeConfig)
-}
-
-func addHTTPHostToConfigFile(filePath string) error {
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer jsonFile.Close()
-	byteValue, _ := io.ReadAll(jsonFile)
-	var result map[string]interface{}
-	if err := json.Unmarshal(byteValue, &result); err != nil {
-		return err
-	}
-	result["http-host"] = "0.0.0.0"
-	byteValue, err = json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filePath, byteValue, constants.WriteReadReadPerms)
 }
 
 func getExistingMonitoringInstance(clusterName string) (string, error) {
