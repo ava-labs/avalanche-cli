@@ -438,7 +438,7 @@ func setAWMRelayerHost(host *models.Host) error {
 	if err != nil {
 		return err
 	}
-	if err := ssh.RunSSHSetupAWMRelayerService(host); err != nil {
+	if err := ssh.ComposeSSHSetupAWMRelayer(host); err != nil {
 		return err
 	}
 	nodeConfig.IsAWMRelayer = true

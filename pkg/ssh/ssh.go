@@ -127,36 +127,21 @@ func RunSSHRestartNode(host *models.Host) error {
 }
 
 // RunSSHSetupAWMRelayerService runs script to set up an AWM Relayer Service
-func RunSSHSetupAWMRelayerService(host *models.Host) error {
-	return RunOverSSH(
-		"Setup AWM Relayer Service",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupRelayerService.sh",
-		scriptInputs{},
-	)
+func ComposeSSHSetupAWMRelayer(host *models.Host) error {
+	if err := docker.ComposeSSHSetupAWMRelayer(host); err != nil {
+		return err
+	}
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStartAWMRelayerService runs script to start an AWM Relayer Service
 func RunSSHStartAWMRelayerService(host *models.Host) error {
-	return RunOverSSH(
-		"Starts AWM Relayer Service",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/startRelayerService.sh",
-		scriptInputs{},
-	)
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStopAWMRelayerService runs script to start an AWM Relayer Service
 func RunSSHStopAWMRelayerService(host *models.Host) error {
-	return RunOverSSH(
-		"Stops AWM Relayer Service",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/stopRelayerService.sh",
-		scriptInputs{},
-	)
+	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego

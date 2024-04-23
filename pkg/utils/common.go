@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -369,4 +370,14 @@ func AppendSlices[T any](slices ...[]T) []T {
 		result = append(result, slice...)
 	}
 	return result
+}
+
+// ExtractValueFromBytes extracts a value from a byte array using a regular expression.
+func ExtractPlaceholderValue(pattern, text string) (string, error) {
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringSubmatch(text)
+	if len(matches) == 0 {
+		return "", fmt.Errorf("placeholder value not found in text")
+	}
+	return matches[1], nil
 }

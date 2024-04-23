@@ -42,14 +42,69 @@ func renderComposeFile(composePath string, composeDesc string, templateVars dock
 	return composeBytes.Bytes(), nil
 }
 
-func pushComposeFile(host *models.Host, localFile string, remoteFile string) error {
+func pushComposeFile(host *models.Host, localFile string, remoteFile string, merge bool) error {
 	if !utils.FileExists(localFile) {
 		return fmt.Errorf("file %s does not exist", localFile)
 	}
 	if err := host.MkdirAll(filepath.Dir(remoteFile), constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
-	if err := host.Upload(localFile, remoteFile, constants.SSHFileOpsTimeout); err != nil {
+	fileExists, err := host.FileExists(remoteFile)
+	if err != nil {
+		return err
+	}
+	if fileExists && merge {
+		// upload new and merge files
+		tmpFile, err := host.CreateTemp()
+		if err != nil {
+			return err
+		}
+		defer host.Remove(tmpFile)
+		if err := host.Upload(localFile, tmpFile, constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
+		if err := mergeComposeFiles(host, remoteFile, tmpFile); err != nil {
+			return err
+		}
+	} else {
+		if err := host.Upload(localFile, remoteFile, constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// mergeComposeFiles merges two docker-compose files on a remote host.
+func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeFile string) error {
+	fileExists, err := host.FileExists(currentComposeFile)
+	if err != nil {
+		return err
+	}
+	if !fileExists {
+		return fmt.Errorf("file %s does not exist", currentComposeFile)
+	}
+
+	fileExists, err = host.FileExists(newComposeFile)
+	if err != nil {
+		return err
+	}
+	if !fileExists {
+		return fmt.Errorf("file %s does not exist", newComposeFile)
+	}
+
+	output, err := host.Command(fmt.Sprintf("docker-compose -f %s -f %s config", currentComposeFile, newComposeFile), nil, constants.SSHScriptTimeout)
+	if err != nil {
+		return fmt.Errorf("%w: %s", err, string(output))
+	}
+	tmpFile, err := os.CreateTemp("", "avalancecli-docker-compose-*.yml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmpFile.Name())
+	if _, err := tmpFile.Write(output); err != nil {
+		return err
+	}
+	if err := pushComposeFile(host, tmpFile.Name(), currentComposeFile, false); err != nil {
 		return err
 	}
 	return nil
@@ -120,7 +175,7 @@ func ComposeOverSSH(
 	if _, err := tmpFile.Write(composeData); err != nil {
 		return err
 	}
-	if err := pushComposeFile(host, tmpFile.Name(), remoteComposeFile); err != nil {
+	if err := pushComposeFile(host, tmpFile.Name(), remoteComposeFile, true); err != nil {
 		return err
 	}
 	if err := StartDockerCompose(host, remoteComposeFile, timeout); err != nil {
@@ -138,6 +193,32 @@ func ListRemoteComposeServices(host *models.Host, composeFile string, timeout ti
 		return nil, err
 	}
 	return utils.CleanupStrings(utils.SplitSeparatedBytesToString(output, "\n")), nil
+}
+
+// GetRemoteComposeContent gets the content of a remote docker-compose file.
+func GetRemoteComposeContent(host *models.Host, composeFile string, timeout time.Duration) (string, error) {
+	tmpFile, err := os.CreateTemp("", "avalancecli-docker-compose-*.yml")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmpFile.Name())
+	if err := host.Download(composeFile, tmpFile.Name(), timeout); err != nil {
+		return "", err
+	}
+	data, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// ParseRemoteComposeContent extracts a value from a remote docker-compose file.
+func ParseRemoteComposeContent(host *models.Host, composeFile string, pattern string, timeout time.Duration) (string, error) {
+	content, err := GetRemoteComposeContent(host, composeFile, timeout)
+	if err != nil {
+		return "", err
+	}
+	return utils.ExtractPlaceholderValue(pattern, content)
 }
 
 // HasRemoteComposeService checks if a service is present in a remote docker-compose file.
@@ -173,11 +254,32 @@ func WasNodeSetupWithMonitoring(host *models.Host) (bool, error) {
 	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "promtail", constants.SSHScriptTimeout)
 }
 
+// WasNodeSetupWithTeleporter checks if an AvalancheGo node was setup with teleporter on a remote host.
+func WasNodeSetupWithTeleporter(host *models.Host) (bool, error) {
+	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHScriptTimeout)
+}
+
+func GetComposeAvalancheGoVersion(host *models.Host) (string, error) {
+	output, err := host.Command("docker-compose -f /home/ubuntu/.avalanchego/services/docker-compose.yml config", nil, constants.SSHScriptTimeout)
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
+
 // ComposeSSHSetupCChain sets up an Avalanche C-Chain node and dependencies on a remote host over SSH.
 func ComposeSSHSetupMonitoring(host *models.Host) error {
 	return ComposeOverSSH("Setup Monitoring",
 		host,
 		constants.SSHScriptTimeout,
 		"templates/monitoring.docker-compose.yml",
+		dockerComposeInputs{})
+}
+
+func ComposeSSHSetupAWMRelayer(host *models.Host) error {
+	return ComposeOverSSH("Setup AWM Relayer",
+		host,
+		constants.SSHScriptTimeout,
+		"templates/awmrelayer.docker-compose.yml",
 		dockerComposeInputs{})
 }

@@ -287,6 +287,41 @@ func (h *Host) FileExists(path string) (bool, error) {
 	return true, nil
 }
 
+// CreateTemp creates a temporary file on the remote server.
+func (h *Host) CreateTemp() (string, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return "", err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return "", err
+	}
+	defer sftp.Close()
+	tmpFileName := filepath.Join("/tmp", utils.RandomString(10))
+	_, err = sftp.Create(tmpFileName)
+	if err != nil {
+		return "", err
+	}
+	return tmpFileName, nil
+}
+
+// Remove removes a file on the remote server.
+func (h *Host) Remove(path string) error {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return err
+	}
+	defer sftp.Close()
+	return sftp.Remove(path)
+}
+
 func (h *Host) GetAnsibleInventoryRecord() string {
 	return strings.Join([]string{
 		h.NodeID,
