@@ -26,6 +26,8 @@ services:
     volumes:
       - /home/ubuntu/.avalanchego/logs:/logs
       - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     command: promtail -config.file=/etc/promtail/promtail.yaml
     networks:
       - avalanchego_net

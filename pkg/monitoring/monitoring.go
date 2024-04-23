@@ -99,12 +99,12 @@ func WriteLokiConfig(filePath string, port string) error {
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }
 
-func WritePromtailConfig(filePath string, lokiIp string, lokiPort string, host string, nodeID string, chainID string) error {
-	if !utils.IsValidIP(lokiIp) {
-		return fmt.Errorf("invalid IP address: %s", lokiIp)
+func WritePromtailConfig(filePath string, lokiIP string, lokiPort string, host string, nodeID string, chainID string) error {
+	if !utils.IsValidIP(lokiIP) {
+		return fmt.Errorf("invalid IP address: %s", lokiIP)
 	}
 	config, err := GenerateConfig("configs/promtail.yml", "Promtail Config", configInputs{
-		IP:      lokiIp,
+		IP:      lokiIP,
 		Port:    lokiPort,
 		Host:    host,
 		NodeID:  nodeID,
