@@ -41,7 +41,7 @@ services:
       - monitoring_net
   
   node-exporter:
-    image: prom/node-exporter:1.7.0
+    image: prom/node-exporter:v1.7.0
     container_name: node-exporter
     restart: always
     ports:

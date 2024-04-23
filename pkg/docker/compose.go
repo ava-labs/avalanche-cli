@@ -59,7 +59,11 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 		if err != nil {
 			return err
 		}
-		defer host.Remove(tmpFile)
+		defer func() {
+			if err := host.Remove(tmpFile); err != nil {
+				ux.Logger.Error("Error removing temporary file %s: %s", tmpFile, err)
+			}
+		}()
 		if err := host.Upload(localFile, tmpFile, constants.SSHFileOpsTimeout); err != nil {
 			return err
 		}

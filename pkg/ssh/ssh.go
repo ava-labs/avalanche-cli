@@ -102,7 +102,7 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host *models.Host, configPath, cliVersion string, isDevNet bool) error {
+func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 	if err := RunOverSSH(
 		"Setup Node",
 		host,

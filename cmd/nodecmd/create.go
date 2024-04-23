@@ -667,7 +667,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return
 			}
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), remoteCLIVersion, network.Kind == models.Devnet); err != nil {
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), remoteCLIVersion); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

@@ -86,6 +86,7 @@ build {
 
     provisioner "shell" {
         inline = [
+            "export DEBIAN_FRONTEND=noninteractive",
             "sudo apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y install ca-certificates curl",
             "sudo install -m 0755 -d /etc/apt/keyrings && sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && sudo chmod a+r /etc/apt/keyrings/docker.asc",
             "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
@@ -101,9 +102,9 @@ build {
             "docker pull avaplatform/avalanchego",
             "docker pull grafana/promtail:3.0.0",
             "docker pull grafana/loki:3.0.0",
-            "docker pull prom/node-exporter:1.7.0",
+            "docker pull prom/node-exporter:v1.7.0",
             "docker pull grafana/grafana:10.4.1",
-            "docker pull prom/prometheus:2.51.2"
+            "docker pull prom/prometheus:2.51.2",
             "docker pull avaplatform/awm-relayer:v1.1.0"
         ]
    }
