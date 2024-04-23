@@ -253,7 +253,7 @@ func getNodeIDs(hosts []*models.Host) (map[string]string, map[string]error) {
 	return nodeIDMap, failedNodes
 }
 
-// checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
+// checkNodeIsPrimaryNetworkValidator returns true if node is already a Primary Network validator
 func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) (bool, error) {
 	isValidator, err := subnet.IsSubnetValidator(ids.Empty, nodeID, network)
 	if err != nil {
