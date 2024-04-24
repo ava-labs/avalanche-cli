@@ -21,7 +21,7 @@ import (
 
 type dockerComposeInputs struct {
 	WithMonitoring     bool
-	withAvalanchego    bool
+	WithAvalanchego    bool
 	AvalanchegoVersion string
 }
 
@@ -315,7 +315,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 		dockerComposeInputs{
 			AvalanchegoVersion: avalancheGoVersion,
 			WithMonitoring:     withMonitoring,
-			withAvalanchego:    true,
+			WithAvalanchego:    true,
 		})
 }
 
