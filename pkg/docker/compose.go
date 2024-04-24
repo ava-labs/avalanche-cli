@@ -326,7 +326,7 @@ func ComposeSSHSetupLoadTest(host *models.Host) error {
 		"templates/avalanchego.docker-compose.yml",
 		dockerComposeInputs{
 			WithMonitoring:  true,
-			withAvalanchego: false,
+			WithAvalanchego: false,
 		})
 }
 
