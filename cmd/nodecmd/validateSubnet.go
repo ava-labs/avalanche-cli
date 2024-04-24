@@ -165,7 +165,7 @@ func getNodeSubnetSyncStatus(
 }
 
 func waitForNodeToBePrimaryNetworkValidator(network models.Network, nodeID ids.NodeID) error {
-	ux.Logger.PrintToUser("Waiting for the node to start as a Primary Network Validator...")
+	ux.Logger.PrintToUser("Waiting for the node %s to start as a Primary Network Validator...", nodeID)
 	return waitForSubnetValidator(network, ids.Empty, nodeID.String())
 }
 
@@ -200,14 +200,8 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	defer disconnectHosts(hosts)
 
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
-
 	nonPrimaryValidators := 0
-	for hostNodeID, nodeIDStr := range nodeIDMap {
-		nodeID, err := ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to verify if node %s is a primary network validator due to %s", hostNodeID, err)
-			continue
-		}
+	for hostNodeID, nodeID := range nodeIDMap {
 		isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to verify if node %s is a primary network validator due to %s", hostNodeID, err)
@@ -258,22 +252,57 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 	nodeErrors := map[string]error{}
-	for i, host := range hosts {
-		nodeIDStr, b := nodeIDMap[host.NodeID]
-		if !b {
-			err, b := failedNodesMap[host.NodeID]
-			if !b {
+	// set node errors for node ID conversions
+	for _, host := range hosts {
+		if _, b := nodeIDMap[host.NodeID]; !b {
+			if err, b := failedNodesMap[host.NodeID]; !b {
 				return fmt.Errorf("expected to found an error for non mapped node")
+			} else {
+				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err)
+				nodeErrors[host.NodeID] = err
 			}
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err)
-			nodeErrors[host.NodeID] = err
+		}
+	}
+	if nonPrimaryValidators > 0 {
+		// add primary validators loop
+		for i, host := range hosts {
+			if _, ok := nodeErrors[host.NodeID]; ok {
+				continue
+			}
+			nodeID, b := nodeIDMap[host.NodeID]
+			if !b {
+				return fmt.Errorf("nodeID should be defined on add primary validators")
+			}
+			if err := addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, host.GetCloudID()); err != nil {
+				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
+				nodeErrors[host.NodeID] = err
+				continue
+			}
+		}
+		// wait primary validators loop
+		for _, host := range hosts {
+			if _, ok := nodeErrors[host.NodeID]; ok {
+				continue
+			}
+			nodeID, b := nodeIDMap[host.NodeID]
+			if !b {
+				return fmt.Errorf("nodeID should be defined on primary validators wait loop")
+			}
+			if err := waitForNodeToBePrimaryNetworkValidator(network, nodeID); err != nil {
+				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
+				nodeErrors[host.NodeID] = err
+				continue
+			}
+		}
+	}
+	// add subnet validators loop
+	for i, host := range hosts {
+		if _, ok := nodeErrors[host.NodeID]; ok {
 			continue
 		}
-		nodeID, err := ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err)
-			nodeErrors[host.NodeID] = err
-			continue
+		nodeID, b := nodeIDMap[host.NodeID]
+		if !b {
+			return fmt.Errorf("nodeID should be defined on add subnet validators loop")
 		}
 		if !avoidSubnetValidationChecks {
 			// we have to check if node is synced to subnet before adding the node as a validator
@@ -303,22 +332,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = errors.New("node is already a subnet validator")
 			continue
 		}
-		clusterNodeID := host.GetCloudID()
-		addedNodeAsPrimaryNetworkValidator, err := addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, clusterNodeID)
-		if err != nil {
-			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
-			nodeErrors[host.NodeID] = err
-			continue
-		}
-		if addedNodeAsPrimaryNetworkValidator {
-			if err := waitForNodeToBePrimaryNetworkValidator(network, nodeID); err != nil {
-				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
-				nodeErrors[host.NodeID] = err
-				continue
-			}
-		}
-		err = addNodeAsSubnetValidator(deployer, network, subnetID, kc, useLedger, nodeIDStr, subnetName, i, len(hosts))
-		if err != nil {
+		if err := addNodeAsSubnetValidator(deployer, network, subnetID, kc, useLedger, nodeID.String(), subnetName, i, len(hosts)); err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err
 		}
