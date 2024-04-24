@@ -100,7 +100,7 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 		return fmt.Errorf("file %s does not exist", newComposeFile)
 	}
 
-	output, err := host.Command(fmt.Sprintf("docker-compose -f %s -f %s config", currentComposeFile, newComposeFile), nil, constants.SSHScriptTimeout)
+	output, err := host.Command(fmt.Sprintf("docker compose -f %s -f %s config", currentComposeFile, newComposeFile), nil, constants.SSHScriptTimeout)
 	if err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
@@ -119,14 +119,14 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 }
 
 func StartDockerCompose(host *models.Host, composeFile string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker-compose -f %s up -d --wait --pull missing", composeFile), nil, timeout); err != nil {
+	if output, err := host.Command(fmt.Sprintf("docker compose -f %s up -d --wait", composeFile), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
 
 func StopDockerCompose(host *models.Host, composeFile string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker-compose -f %s down", composeFile), nil, timeout); err != nil {
+	if output, err := host.Command(fmt.Sprintf("docker compose -f %s down", composeFile), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
@@ -140,21 +140,21 @@ func RestartDockerCompose(host *models.Host, composeFile string, timeout time.Du
 }
 
 func StartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker-compose -f %s start %s", composeFile, service), nil, timeout); err != nil {
+	if output, err := host.Command(fmt.Sprintf("docker compose -f %s start %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
 
 func StopDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker-compose -f %s stop %s", composeFile, service), nil, timeout); err != nil {
+	if output, err := host.Command(fmt.Sprintf("docker compose -f %s stop %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
 
 func RestartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker-compose -f %s restart %s", composeFile, service), nil, timeout); err != nil {
+	if output, err := host.Command(fmt.Sprintf("docker compose -f %s restart %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
@@ -183,22 +183,22 @@ func ComposeOverSSH(
 	if _, err := tmpFile.Write(composeData); err != nil {
 		return err
 	}
-	fmt.Printf("pushComposeFile [%s]%s", host.NodeID, composeDesc)
+	ux.Logger.Info("pushComposeFile [%s]%s", host.NodeID, composeDesc)
 	if err := pushComposeFile(host, tmpFile.Name(), remoteComposeFile, true); err != nil {
 		return err
 	}
-	fmt.Printf("StartDockerCompose [%s]%s", host.NodeID, composeDesc)
+	ux.Logger.Info("StartDockerCompose [%s]%s", host.NodeID, composeDesc)
 	if err := StartDockerCompose(host, remoteComposeFile, timeout); err != nil {
 		return err
 	}
 	executionTime := time.Since(startTime)
-	fmt.Printf("ComposeOverSSH[%s]%s took %s with err: %v", host.NodeID, composeDesc, executionTime, err)
+	ux.Logger.Info("ComposeOverSSH[%s]%s took %s with err: %v", host.NodeID, composeDesc, executionTime, err)
 	return nil
 }
 
 // ListRemoteComposeServices lists the services in a remote docker-compose file.
 func ListRemoteComposeServices(host *models.Host, composeFile string, timeout time.Duration) ([]string, error) {
-	output, err := host.Command(fmt.Sprintf("docker-compose -f %s config --services", composeFile), nil, timeout)
+	output, err := host.Command(fmt.Sprintf("docker compose -f %s config --services", composeFile), nil, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -325,14 +325,6 @@ func WasNodeSetupWithMonitoring(host *models.Host) (bool, error) {
 // WasNodeSetupWithTeleporter checks if an AvalancheGo node was setup with teleporter on a remote host.
 func WasNodeSetupWithTeleporter(host *models.Host) (bool, error) {
 	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHScriptTimeout)
-}
-
-func GetComposeAvalancheGoVersion(host *models.Host) (string, error) {
-	output, err := host.Command("docker-compose -f /home/ubuntu/.avalanchego/services/docker-compose.yml config", nil, constants.SSHScriptTimeout)
-	if err != nil {
-		return "", err
-	}
-	return string(output), nil
 }
 
 // ComposeSSHSetupCChain sets up an Avalanche C-Chain node and dependencies on a remote host over SSH.

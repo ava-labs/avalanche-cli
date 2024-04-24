@@ -8,9 +8,9 @@ services:
     user: "1000:1000"  # ubuntu user
     command: >
         ./avalanchego
-        --config-file=/home/ubuntu/.avalanchego/configs/node.json
+        --config-file=/.avalanchego/configs/node.json
     volumes:
-      - /home/ubuntu/.avalanchego:/home/ubuntu/.avalanchego:rw
+      - /home/ubuntu/.avalanchego:/.avalanchego:rw
     ports:
       - "9650:9650"
       - "9651:9651"

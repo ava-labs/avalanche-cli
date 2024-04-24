@@ -5,6 +5,7 @@ services:
     image: prom/prometheus:v2.51.2
     container_name: prometheus
     restart: always
+    user: "1000:1000"  # ubuntu user
     ports:
       - "9090:9090"
     volumes:
@@ -20,6 +21,7 @@ services:
     image: grafana/grafana:10.4.1
     container_name: grafana
     restart: always
+    user: "1000:1000"  # ubuntu user
     ports:
       - "3000:3000"
     volumes:
@@ -32,6 +34,7 @@ services:
     image: grafana/loki:3.0.0
     container_name: loki
     restart: always
+    user: "1000:1000"  # ubuntu user
     ports:
       - "3100:3100"
     volumes:

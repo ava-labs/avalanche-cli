@@ -630,26 +630,31 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
+				ux.Logger.Info("SetupMonitoringEnv completed")
 				if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
+				ux.Logger.Info("RunSSHCopyMonitoringDashboards completed")
 				if err := ssh.RunSSHSetupPrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
+				ux.Logger.Info("RunSSHSetupPrometheusConfig completed")
 				if err := ssh.RunSSHSetupLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
+				ux.Logger.Info("RunSSHSetupLokiConfig completed")
 				if err := docker.ComposeSSHSetupMonitoring(monitoringHost); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
+				ux.Logger.Info("ComposeSSHSetupMonitoring completed")
 				ux.SpinComplete(spinner)
 			}(&wgResults, monitoringHost)
 		}

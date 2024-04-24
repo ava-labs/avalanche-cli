@@ -281,7 +281,11 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 			return err
 		}
 	}
-	return docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "grafana", constants.SSHLongRunningScriptTimeout)
+	if composeFileExists(host) {
+		return docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "grafana", constants.SSHLongRunningScriptTimeout)
+	} else {
+		return nil
+	}
 }
 
 func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
@@ -310,6 +314,7 @@ func RunSSHSetupPrometheusConfig(host *models.Host, avalancheGoPorts, machinePor
 	if err := monitoring.WritePrometheusConfig(promConfig.Name(), avalancheGoPorts, machinePorts, loadTestPorts); err != nil {
 		return err
 	}
+
 	return host.Upload(
 		promConfig.Name(),
 		cloudNodePrometheusConfigTemp,
@@ -337,6 +342,7 @@ func RunSSHSetupLokiConfig(host *models.Host, port int) error {
 		cloudNodeLokiConfigTemp,
 		constants.SSHFileOpsTimeout,
 	)
+
 }
 
 func RunSSHSetupPromtailConfig(host *models.Host, lokiIP string, lokiPort int, cloudID string, nodeID string, chainID string) error {
@@ -675,4 +681,10 @@ func RunSSHUpsizeRootDisk(host *models.Host) error {
 		"shell/upsizeRootDisk.sh",
 		scriptInputs{},
 	)
+}
+
+// composeFileExists checks if the docker-compose file exists on the host
+func composeFileExists(host *models.Host) bool {
+	composeFileExists, _ := host.FileExists(utils.GetRemoteComposeFile())
+	return composeFileExists
 }

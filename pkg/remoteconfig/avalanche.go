@@ -24,8 +24,8 @@ func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfi
 	return AvalancheConfigInputs{
 		HTTPHost:         "0.0.0.0",
 		NetworkID:        networkID,
-		DBDir:            "/home/ubuntu/.avalanchego/db/",
-		LogDir:           "/home/ubuntu/.avalanchego/logs/",
+		DBDir:            "/.avalanchego/db/",
+		LogDir:           "/.avalanchego/logs/",
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,
 	}
