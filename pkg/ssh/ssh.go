@@ -234,7 +234,7 @@ func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID str
 }
 
 func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
-	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "provisioning", "dashboards")
+	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
@@ -270,7 +270,7 @@ func RunSSHSetupMonitoringFolders(host *models.Host) error {
 
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
 	// TODO: download dashboards from github instead
-	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "provisioning", "dashboards")
+	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}

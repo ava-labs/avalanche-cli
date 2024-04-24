@@ -340,41 +340,72 @@ func WasNodeSetupWithTeleporter(host *models.Host) (bool, error) {
 	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHScriptTimeout)
 }
 
-func prepareGrafanaConfig() (string, string, error) {
+func prepareGrafanaConfig() (string, string, string, string, error) {
 	grafanaDataSource, err := remoteconfig.RenderGrafanaLokiDataSourceConfig()
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 	grafanaDataSourceFile, err := os.CreateTemp("", "avalanchecli-grafana-datasource-*.yml")
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 	if err := os.WriteFile(grafanaDataSourceFile.Name(), grafanaDataSource, constants.WriteReadUserOnlyPerms); err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
+
+	grafanaPromDataSource, err := remoteconfig.RenderGrafanaPrometheusDataSourceConfigg()
+	if err != nil {
+		return "", "", "", "", err
+	}
+	grafanaPromDataSourceFile, err := os.CreateTemp("", "avalanchecli-grafana-prom-datasource-*.yml")
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if err := os.WriteFile(grafanaPromDataSourceFile.Name(), grafanaPromDataSource, constants.WriteReadUserOnlyPerms); err != nil {
+		return "", "", "", "", err
+	}
+
+	grafanaDashboards, err := remoteconfig.RenderGrafanaDashboardConfig()
+	if err != nil {
+		return "", "", "", "", err
+	}
+	grafanaDashboardsFile, err := os.CreateTemp("", "avalanchecli-grafana-dashboards-*.yml")
+	if err != nil {
+		return "", "", "", "", err
+	}
+	if err := os.WriteFile(grafanaDashboardsFile.Name(), grafanaDashboards, constants.WriteReadUserOnlyPerms); err != nil {
+		return "", "", "", "", err
+	}
+
 	grafanaConfig, err := remoteconfig.RenderGrafanaConfig()
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 	grafanaConfigFile, err := os.CreateTemp("", "avalanchecli-grafana-config-*.ini")
 	if err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
 	if err := os.WriteFile(grafanaConfigFile.Name(), grafanaConfig, constants.WriteReadUserOnlyPerms); err != nil {
-		return "", "", err
+		return "", "", "", "", err
 	}
-	return grafanaDataSourceFile.Name(), grafanaConfigFile.Name(), nil
+	return grafanaConfigFile.Name(), grafanaDashboardsFile.Name(), grafanaDataSourceFile.Name(), grafanaPromDataSourceFile.Name(), nil
 }
 
 // ComposeSSHSetupCChain sets up an Avalanche C-Chain node and dependencies on a remote host over SSH.
 func ComposeSSHSetupMonitoring(host *models.Host) error {
-	grafanaLokiDatasourceFile, grafanaConfigFile, err := prepareGrafanaConfig()
+	grafanaConfigFile, grafanaDashboardsFile, grafanaLokiDatasourceFile, grafanaPromDatasourceFile, err := prepareGrafanaConfig()
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if err := os.Remove(grafanaLokiDatasourceFile); err != nil {
 			ux.Logger.Error("Error removing temporary file %s: %s", grafanaLokiDatasourceFile, err)
+		}
+		if err := os.Remove(grafanaPromDatasourceFile); err != nil {
+			ux.Logger.Error("Error removing temporary file %s: %s", grafanaPromDatasourceFile, err)
+		}
+		if err := os.Remove(grafanaDashboardsFile); err != nil {
+			ux.Logger.Error("Error removing temporary file %s: %s", grafanaDashboardsFile, err)
 		}
 		if err := os.Remove(grafanaConfigFile); err != nil {
 			ux.Logger.Error("Error removing temporary file %s: %s", grafanaConfigFile, err)
@@ -383,6 +414,14 @@ func ComposeSSHSetupMonitoring(host *models.Host) error {
 
 	grafanaLokiDatasourceRemoteFileName := filepath.Join(utils.GetRemoteComposeServicePath("grafana", "provisioning", "datasources"), "loki.yml")
 	if err := host.Upload(grafanaLokiDatasourceFile, grafanaLokiDatasourceRemoteFileName, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	grafanaPromDatasourceFileName := filepath.Join(utils.GetRemoteComposeServicePath("grafana", "provisioning", "datasources"), "prometheus.yml")
+	if err := host.Upload(grafanaPromDatasourceFile, grafanaPromDatasourceFileName, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	grafanaDashboardsRemoteFileName := filepath.Join(utils.GetRemoteComposeServicePath("grafana", "provisioning", "dashboards"), "dashboards.yml")
+	if err := host.Upload(grafanaDashboardsFile, grafanaDashboardsRemoteFileName, constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
 	grafanaConfigRemoteFileName := filepath.Join(utils.GetRemoteComposeServicePath("grafana"), "grafana.ini")
