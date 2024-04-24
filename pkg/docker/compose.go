@@ -21,6 +21,7 @@ import (
 
 type dockerComposeInputs struct {
 	WithMonitoring     bool
+	withAvalanchego    bool
 	AvalanchegoVersion string
 }
 
@@ -314,6 +315,18 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 		dockerComposeInputs{
 			AvalanchegoVersion: avalancheGoVersion,
 			WithMonitoring:     withMonitoring,
+			withAvalanchego:    true,
+		})
+}
+
+func ComposeSSHSetupLoadTest(host *models.Host) error {
+	return ComposeOverSSH("Compose Node",
+		host,
+		constants.SSHScriptTimeout,
+		"templates/avalanchego.docker-compose.yml",
+		dockerComposeInputs{
+			WithMonitoring:  true,
+			withAvalanchego: false,
 		})
 }
 

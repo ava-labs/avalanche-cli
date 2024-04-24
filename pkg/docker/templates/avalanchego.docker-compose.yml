@@ -1,6 +1,7 @@
 version: '3'
 
 services:
+{{if .WithAvalanchego}}
   avalanchego:
     image: avaplatform/avalanchego:{{ .AvalanchegoVersion }}
     container_name: avalanchego
@@ -16,6 +17,7 @@ services:
       - "9651:9651"
     networks:
       - avalanchego_net
+{{end}}
 {{if .WithMonitoring}}
   promtail:
     image: grafana/promtail:3.0.0

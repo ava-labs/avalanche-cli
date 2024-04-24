@@ -384,14 +384,6 @@ func RunSSHDownloadNodePrometheusConfig(host *models.Host, nodeInstanceDirPath s
 	)
 }
 
-func RunSSHDownloadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath string) error {
-	return host.Download(
-		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
-		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
-		constants.SSHFileOpsTimeout,
-	)
-}
-
 func RunSSHUploadNodeAWMRelayerConfig(host *models.Host, nodeInstanceDirPath string) error {
 	cloudAWMRelayerConfigDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.ServicesDir, constants.AWMRelayerInstallDir)
 	if err := host.MkdirAll(cloudAWMRelayerConfigDir, constants.SSHDirOpsTimeout); err != nil {
@@ -400,20 +392,6 @@ func RunSSHUploadNodeAWMRelayerConfig(host *models.Host, nodeInstanceDirPath str
 	return host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.ServicesDir, constants.AWMRelayerInstallDir, constants.AWMRelayerConfigFilename),
 		filepath.Join(cloudAWMRelayerConfigDir, constants.AWMRelayerConfigFilename),
-		constants.SSHFileOpsTimeout,
-	)
-}
-
-func RunSSHUploadNodeMonitoringConfig(host *models.Host, nodeInstanceDirPath string) error {
-	if err := host.MkdirAll(
-		constants.CloudNodeConfigPath,
-		constants.SSHDirOpsTimeout,
-	); err != nil {
-		return err
-	}
-	return host.Upload(
-		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
 		constants.SSHFileOpsTimeout,
 	)
 }
