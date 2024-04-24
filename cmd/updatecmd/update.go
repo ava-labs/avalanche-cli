@@ -144,12 +144,14 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 	if err := installCmd.Start(); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Downloading new release...")
+	ux.Logger.PrintToUser("Downloading install script...")
 	if err := downloadCmd.Run(); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Installing new release...")
 	if err := installCmd.Wait(); err != nil {
+		ux.Logger.PrintToUser(outbuf.String())
+		ux.Logger.PrintToUser(errbuf.String())
 		ux.Logger.PrintToUser("installation failed: %s", err.Error())
 		return err
 	}

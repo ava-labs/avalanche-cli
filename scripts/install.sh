@@ -54,7 +54,8 @@ execute() {
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"
     fi
-    install "${tmpdir}/${binexe}" "${BINDIR}/"
+    cp "${tmpdir}/${binexe}" "${BINDIR}/"
+    chmod 0755 "${BINDIR}/${binexe}"
     log_info "installed ${BINDIR}/${binexe}"
   done
   rm -rf "${tmpdir}"
