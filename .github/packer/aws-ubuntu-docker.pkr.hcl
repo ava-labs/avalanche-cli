@@ -104,7 +104,7 @@ build {
             "docker pull grafana/loki:3.0.0",
             "docker pull prom/node-exporter:v1.7.0",
             "docker pull grafana/grafana:10.4.1",
-            "docker pull prom/prometheus:2.51.2",
+            "docker pull prom/prometheus:v2.51.2",
             "docker pull avaplatform/awm-relayer:v1.1.0"
         ]
    }

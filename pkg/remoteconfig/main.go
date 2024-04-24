@@ -12,12 +12,19 @@ import (
 //go:embed templates/*
 var templates embed.FS
 
-// RemoteFoldersToCreate returns a list of folders that need to be created on the remote machine
-func RemoteFoldersToCreate() []string {
+// RemoteFoldersToCreateMonitoring returns a list of folders that need to be created on the remote Monitoring server
+func RemoteFoldersToCreateMonitoring() []string {
 	return utils.AppendSlices[string](
 		GrafanaFoldersToCreate(),
 		LokiFoldersToCreate(),
 		PrometheusFoldersToCreate(),
+		PromtailFoldersToCreate(),
+	)
+}
+
+// RemoteFoldersToCreateAvalanchego returns a list of folders that need to be created on the remote Avalanchego server
+func RemoteFoldersToCreateAvalanchego() []string {
+	return utils.AppendSlices[string](
 		PromtailFoldersToCreate(),
 	)
 }

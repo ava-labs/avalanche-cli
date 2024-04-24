@@ -600,7 +600,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 	}
-	ux.Logger.PrintToUser("Installing AvalancheGo and Avalanche-CLI and starting bootstrap process on the newly created Avalanche node(s)...")
+	ux.Logger.PrintToUser("Starting bootstrap process on the newly created Avalanche node(s)...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
@@ -689,7 +689,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			if err := docker.ComposeSSHSetupNode(host, avalancheGoVersion, addMonitoring); err != nil {
+			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -1223,9 +1223,9 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 			publicIP := ""
 			publicIP = publicIPMap[instanceID]
 			if slices.Contains(cloudConfig.APIInstanceIDs, instanceID) {
-				ux.Logger.PrintToUser("%s [API] Cloud Instance ID: %s | Public IP:%s | %s", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
+				ux.Logger.PrintToUser("%s [API] Cloud Instance ID: %s | Public IP: %s | %s", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
 			} else {
-				ux.Logger.PrintToUser("%s Cloud Instance ID: %s | Public IP:%s | %s ", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
+				ux.Logger.PrintToUser("%s Cloud Instance ID: %s | Public IP: %s | %s ", logging.Green.Wrap(">"), instanceID, publicIP, logging.Green.Wrap(nodeID.String()))
 			}
 			ux.Logger.PrintToUser("staker.crt, staker.key and signer.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", app.GetNodeInstanceDirPath(instanceID))
 			ux.Logger.PrintLineSeparator()

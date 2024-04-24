@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
@@ -53,8 +54,10 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 	if err != nil {
 		return err
 	}
+	ux.Logger.Info("Pushing compose file %s to %s", localFile, remoteFile)
 	if fileExists && merge {
 		// upload new and merge files
+		ux.Logger.Info("Merging compose files")
 		tmpFile, err := host.CreateTemp()
 		if err != nil {
 			return err
@@ -71,6 +74,7 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 			return err
 		}
 	} else {
+		ux.Logger.Info("Uploading compose file")
 		if err := host.Upload(localFile, remoteFile, constants.SSHFileOpsTimeout); err != nil {
 			return err
 		}
@@ -179,14 +183,16 @@ func ComposeOverSSH(
 	if _, err := tmpFile.Write(composeData); err != nil {
 		return err
 	}
+	fmt.Printf("pushComposeFile [%s]%s", host.NodeID, composeDesc)
 	if err := pushComposeFile(host, tmpFile.Name(), remoteComposeFile, true); err != nil {
 		return err
 	}
+	fmt.Printf("StartDockerCompose [%s]%s", host.NodeID, composeDesc)
 	if err := StartDockerCompose(host, remoteComposeFile, timeout); err != nil {
 		return err
 	}
 	executionTime := time.Since(startTime)
-	ux.Logger.Info("ComposeOverSSH[%s]%s took %s with err: %v", host.NodeID, composeDesc, executionTime, err)
+	fmt.Printf("ComposeOverSSH[%s]%s took %s with err: %v", host.NodeID, composeDesc, executionTime, err)
 	return nil
 }
 
@@ -241,9 +247,67 @@ func HasRemoteComposeService(host *models.Host, composeFile string, service stri
 	return found, nil
 }
 
+func prepareAvalanchegoConfig(host *models.Host, networkID string) (string, string, error) {
+	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, networkID)
+	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
+	if err != nil {
+		return "", "", err
+	}
+	nodeConfFile, err := os.CreateTemp("", "avalanchecli-node-*.yml")
+	if err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(nodeConfFile.Name(), nodeConf, constants.WriteReadUserOnlyPerms); err != nil {
+		return "", "", err
+	}
+	cChainConf, err := remoteconfig.RenderAvalancheCChainConfig(avagoConf)
+	if err != nil {
+		return "", "", err
+	}
+	cChainConfFile, err := os.CreateTemp("", "avalanchecli-cchain-*.yml")
+	if err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(cChainConfFile.Name(), cChainConf, constants.WriteReadUserOnlyPerms); err != nil {
+		return "", "", err
+	}
+	return nodeConfFile.Name(), cChainConfFile.Name(), nil
+}
+
 // ComposeSSHSetupNode sets up an AvalancheGo node and dependencies on a remote host over SSH.
-func ComposeSSHSetupNode(host *models.Host, avalancheGoVersion string, withMonitoring bool) error {
-	return ComposeOverSSH("Setup Node",
+func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool) error {
+	for _, dir := range remoteconfig.RemoteFoldersToCreateAvalanchego() {
+		if err := host.MkdirAll(dir, constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
+	}
+	ux.Logger.Info("avalancheCLI folder structure created on remote host")
+	// configs
+	networkID := network.NetworkIDFlagValue()
+	if network.Kind == models.Local || network.Kind == models.Devnet {
+		networkID = fmt.Sprintf("%d", network.ID)
+	}
+
+	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(host, networkID)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := os.Remove(nodeConfFile); err != nil {
+			ux.Logger.Error("Error removing temporary file %s: %s", nodeConfFile, err)
+		}
+		if err := os.Remove(cChainConfFile); err != nil {
+			ux.Logger.Error("Error removing temporary file %s: %s", cChainConfFile, err)
+		}
+	}()
+
+	if err := host.Upload(nodeConfFile, remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	if err := host.Upload(cChainConfFile, remoteconfig.GetRemoteAvalancheCChainConfig(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	return ComposeOverSSH("Compose Node",
 		host,
 		constants.SSHScriptTimeout,
 		"templates/avalanchego.docker-compose.yml",

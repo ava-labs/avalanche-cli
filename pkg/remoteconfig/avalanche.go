@@ -65,6 +65,14 @@ func RenderAvalancheCChainConfig(config AvalancheConfigInputs) ([]byte, error) {
 	}
 }
 
+func GetRemoteAvalancheNodeConfig() string {
+	return "/home/ubuntu/.avalanchego/configs/node.json"
+}
+
+func GetRemoteAvalancheCChainConfig() string {
+	return "/home/ubuntu/.avalanchego/configs/chains/C/config.json"
+}
+
 func AvalancheFolderToCreate() []string {
 	return []string{
 		"~/.avalanchego/db",

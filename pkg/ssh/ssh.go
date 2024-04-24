@@ -113,11 +113,15 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 		return err
 	}
 	// name: copy metrics config to cloud server
-	return host.Upload(
+	ux.Logger.Info("Uploading config %s to server %s: %s", configPath, host.NodeID, filepath.Join(constants.CloudNodeCLIConfigBasePath, filepath.Base(configPath)))
+	if err := host.Upload(
 		configPath,
 		filepath.Join(constants.CloudNodeCLIConfigBasePath, filepath.Base(configPath)),
 		constants.SSHFileOpsTimeout,
-	)
+	); err != nil {
+		return err
+	}
+	return nil
 }
 
 // RunSSHRestartNode runs script to restart avalanchego
@@ -145,7 +149,7 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
+func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string) error {
 	if utils.IsE2E() && utils.E2EDocker() {
 		return RunOverSSH(
 			"E2E Upgrade Avalanchego",
@@ -161,7 +165,7 @@ func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) erro
 		return err
 	}
 
-	if err := docker.ComposeSSHSetupNode(host, avalancheGoVersion, withMonitoring); err != nil {
+	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring); err != nil {
 		return err
 	}
 	return docker.RestartDockerCompose(host, utils.GetRemoteComposeFile(), constants.SSHLongRunningScriptTimeout)
