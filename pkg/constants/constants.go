@@ -121,7 +121,7 @@ const (
 	ExtraLocalNetworkDataFilename     = "extra-local-network-data.json"
 	ExtraLocalNetworkDataSnapshotsDir = "extra-local-network-data"
 
-	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/fix-update/scripts/install.sh"
+	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr      = "resource temporarily unavailable"
 	EIPLimitErr                = "AddressLimitExceeded"
 	ErrCreatingAWSNode         = "failed to create AWS Node"
