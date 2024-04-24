@@ -37,14 +37,19 @@ services:
     image: prom/node-exporter:v1.7.0
     container_name: node-exporter
     restart: always
-    ports:
-      - "9100:9100"
-    networks:
-      - avalanchego_net
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+    ports:
+      - "9100:9100"
+{{if .WithAvalanchego}}
+    links:
+      - avalanchego
+{{end}}
+    networks:
+      - avalanchego_net
+
 {{end}}
 
 networks:
