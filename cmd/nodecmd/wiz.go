@@ -691,16 +691,12 @@ func waitForSubnetValidators(
 	for {
 		failedNodes := []string{}
 		for _, host := range hosts {
-			nodeIDStr, b := nodeIDMap[host.NodeID]
+			nodeID, b := nodeIDMap[host.NodeID]
 			if !b {
 				err, b := failedNodesMap[host.NodeID]
 				if !b {
 					return fmt.Errorf("expected to found an error for non mapped node")
 				}
-				return err
-			}
-			nodeID, err := ids.NodeIDFromString(nodeIDStr)
-			if err != nil {
 				return err
 			}
 			isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)

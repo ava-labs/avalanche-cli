@@ -59,7 +59,7 @@ func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, networ
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) AddValidator(
-	justIssueTx bool,
+	waitForTxAcceptance bool,
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
@@ -100,7 +100,7 @@ func (d *PublicDeployer) AddValidator(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		id, err := d.Commit(tx, justIssueTx)
+		id, err := d.Commit(tx, waitForTxAcceptance)
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -154,7 +154,7 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		id, err := d.Commit(tx, false)
+		id, err := d.Commit(tx, true)
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -289,7 +289,7 @@ func (d *PublicDeployer) TransformSubnetTx(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		txID, err := d.Commit(tx, false)
+		txID, err := d.Commit(tx, true)
 		if err != nil {
 			return false, ids.Empty, nil, nil, err
 		}
@@ -339,7 +339,7 @@ func (d *PublicDeployer) RemoveValidator(
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	if isFullySigned {
-		id, err := d.Commit(tx, false)
+		id, err := d.Commit(tx, true)
 		if err != nil {
 			return false, nil, nil, err
 		}
@@ -464,7 +464,7 @@ func (d *PublicDeployer) DeployBlockchain(
 
 	id := ids.Empty
 	if isFullySigned {
-		id, err = d.Commit(tx, false)
+		id, err = d.Commit(tx, true)
 		if err != nil {
 			return false, ids.Empty, nil, nil, err
 		}
@@ -475,11 +475,11 @@ func (d *PublicDeployer) DeployBlockchain(
 
 func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
-	justIssueTx bool,
+	waitForTxAcceptance bool,
 ) (ids.ID, error) {
 	const (
 		repeats             = 3
-		sleepBetweenRepeats = 1 * time.Second
+		sleepBetweenRepeats = 2 * time.Second
 	)
 	var issueTxErr error
 	wallet, err := d.loadCacheWallet()
@@ -490,7 +490,7 @@ func (d *PublicDeployer) Commit(
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		options := []common.Option{common.WithContext(ctx)}
-		if justIssueTx {
+		if !waitForTxAcceptance {
 			options = append(options, common.WithAssumeDecided())
 		}
 		issueTxErr = wallet.P().IssueTx(tx, options...)
@@ -898,7 +898,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
 	}
 
-	return d.Commit(&tx, false)
+	return d.Commit(&tx, true)
 }
 
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {
