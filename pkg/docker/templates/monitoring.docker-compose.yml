@@ -37,7 +37,7 @@ services:
     user: "1000:1000"  # ubuntu user
     command: -config.file=/etc/loki/loki.yml
     ports:
-      - "3100:3100"
+      - "23101:3100"
     volumes:
       - /home/ubuntu/.avalanche-cli/services/loki:/etc/loki:ro
       - /home/ubuntu/.avalanche-cli/services/loki/data:/var/lib/loki:rw
