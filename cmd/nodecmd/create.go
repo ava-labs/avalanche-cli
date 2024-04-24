@@ -716,59 +716,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	ansibleHostIDs, err := utils.MapWithError(cloudConfigMap.GetAllInstanceIDs(), func(s string) (string, error) { return models.HostCloudIDToAnsibleID(cloudService, s) })
-	if err != nil {
-		return err
-	}
 	ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
-	if addMonitoring {
-		monitoringHost := monitoringHosts[0]
-		// remove monitoring host from created hosts list
-		hosts = utils.Filter(hosts, func(h *models.Host) bool { return h.NodeID != monitoringHost.NodeID })
-		if existingMonitoringInstance != "" {
-			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.NodeID, "Update Monitoring Targets"))
-			if err := ssh.RunSSHSetupPrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
-				ux.SpinFailWithError(spinner, "", err)
-				return err
-			}
-			ux.SpinComplete(spinner)
-		}
-		for _, ansibleNodeID := range ansibleHostIDs {
-			if err = app.CreateAnsibleNodeConfigDir(ansibleNodeID); err != nil {
-				return err
-			}
-		}
-		// download node configs
-		wg := sync.WaitGroup{}
-		wgResults := models.NodeResults{}
-		spinner := spinSession.SpinToUser("Configure Monitoring Agents")
-		for _, host := range hosts {
-			wg.Add(1)
-			go func(nodeResults *models.NodeResults, host *models.Host) {
-				defer wg.Done()
-				nodeDirPath := app.GetNodeInstanceAvaGoConfigDirPath(host.NodeID)
-				if err := ssh.RunSSHDownloadNodeMonitoringConfig(host, nodeDirPath); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					return
-				}
-				if err := ssh.RunSSHUploadNodeMonitoringConfig(host, nodeDirPath); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					return
-				}
-				if err := os.RemoveAll(nodeDirPath); err != nil {
-					return
-				}
-			}(&wgResults, host)
-		}
-		wg.Wait()
-		for _, node := range hosts {
-			if wgResults.HasNodeIDWithError(node.NodeID) {
-				ux.SpinFailWithError(spinner, node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-				return fmt.Errorf("node %s failed to setup with error: %w", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
-			}
-		}
-		ux.SpinComplete(spinner)
-	}
 	spinSession.Stop()
 	if network.Kind == models.Devnet {
 		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
