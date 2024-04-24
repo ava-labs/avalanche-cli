@@ -150,6 +150,7 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 
 // MkdirAll creates a folder on the remote server.
 func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
+	remoteDir = utils.ExpandHome(remoteDir)
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return err

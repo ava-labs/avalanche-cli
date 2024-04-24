@@ -25,6 +25,7 @@ func RemoteFoldersToCreateMonitoring() []string {
 // RemoteFoldersToCreateAvalanchego returns a list of folders that need to be created on the remote Avalanchego server
 func RemoteFoldersToCreateAvalanchego() []string {
 	return utils.AppendSlices[string](
+		AvalancheFolderToCreate(),
 		PromtailFoldersToCreate(),
 	)
 }

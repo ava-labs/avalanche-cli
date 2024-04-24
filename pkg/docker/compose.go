@@ -281,7 +281,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 			return err
 		}
 	}
-	ux.Logger.Info("avalancheCLI folder structure created on remote host")
+	ux.Logger.Info("avalancheCLI folder structure created on remote host %s", remoteconfig.RemoteFoldersToCreateAvalanchego())
 	// configs
 	networkID := network.NetworkIDFlagValue()
 	if network.Kind == models.Local || network.Kind == models.Devnet {
