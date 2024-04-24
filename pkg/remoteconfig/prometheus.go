@@ -6,5 +6,8 @@ package remoteconfig
 import "github.com/ava-labs/avalanche-cli/pkg/utils"
 
 func PrometheusFoldersToCreate() []string {
-	return []string{utils.GetRemoteComposeServicePath("prometheus")}
+	return []string{
+		utils.GetRemoteComposeServicePath("prometheus"),
+		utils.GetRemoteComposeServicePath("prometheus", "data"),
+	}
 }

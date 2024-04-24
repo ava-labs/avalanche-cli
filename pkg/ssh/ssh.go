@@ -259,6 +259,15 @@ func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath
 	return docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "grafana", constants.SSHLongRunningScriptTimeout)
 }
 
+func RunSSHSetupMonitoringFolders(host *models.Host) error {
+	for _, folder := range remoteconfig.RemoteFoldersToCreateMonitoring() {
+		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
 	// TODO: download dashboards from github instead
 	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "provisioning", "dashboards")
@@ -342,7 +351,6 @@ func RunSSHSetupLokiConfig(host *models.Host, port int) error {
 		cloudNodeLokiConfigTemp,
 		constants.SSHFileOpsTimeout,
 	)
-
 }
 
 func RunSSHSetupPromtailConfig(host *models.Host, lokiIP string, lokiPort int, cloudID string, nodeID string, chainID string) error {

@@ -9,6 +9,10 @@ func RenderGrafanaLokiDataSourceConfig() ([]byte, error) {
 	return templates.ReadFile("templates/grafana-loki-datasource.yaml")
 }
 
+func RenderGrafanaConfig() ([]byte, error) {
+	return templates.ReadFile("templates/grafana.ini")
+}
+
 func GrafanaFoldersToCreate() []string {
 	return []string{
 		utils.GetRemoteComposeServicePath("grafana", "data"),

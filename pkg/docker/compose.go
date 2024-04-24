@@ -327,8 +327,56 @@ func WasNodeSetupWithTeleporter(host *models.Host) (bool, error) {
 	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHScriptTimeout)
 }
 
+func prepareGrafanaConfig(host *models.Host) (string, string, error) {
+	grafanaDataSource, err := remoteconfig.RenderGrafanaLokiDataSourceConfig()
+	if err != nil {
+		return "", "", err
+	}
+	grafanaDataSourceFile, err := os.CreateTemp("", "avalanchecli-grafana-datasource-*.yml")
+	if err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(grafanaDataSourceFile.Name(), grafanaDataSource, constants.WriteReadUserOnlyPerms); err != nil {
+		return "", "", err
+	}
+	grafanaConfig, err := remoteconfig.RenderGrafanaConfig()
+	if err != nil {
+		return "", "", err
+	}
+	grafanaConfigFile, err := os.CreateTemp("", "avalanchecli-grafana-config-*.ini")
+	if err != nil {
+		return "", "", err
+	}
+	if err := os.WriteFile(grafanaConfigFile.Name(), grafanaConfig, constants.WriteReadUserOnlyPerms); err != nil {
+		return "", "", err
+	}
+	return grafanaDataSourceFile.Name(), grafanaConfigFile.Name(), nil
+}
+
 // ComposeSSHSetupCChain sets up an Avalanche C-Chain node and dependencies on a remote host over SSH.
 func ComposeSSHSetupMonitoring(host *models.Host) error {
+	grafanaLokiDatasourceFile, grafanaConfigFile, err := prepareGrafanaConfig(host)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := os.Remove(grafanaLokiDatasourceFile); err != nil {
+			ux.Logger.Error("Error removing temporary file %s: %s", grafanaLokiDatasourceFile, err)
+		}
+		if err := os.Remove(grafanaConfigFile); err != nil {
+			ux.Logger.Error("Error removing temporary file %s: %s", grafanaConfigFile, err)
+		}
+	}()
+
+	grafanaLokiDatasourceRemoteFileName := filepath.Join(utils.GetRemoteComposeServicePath("grafana", "provisioning", "datasources"), "loki.yml")
+	if err := host.Upload(grafanaLokiDatasourceFile, grafanaLokiDatasourceRemoteFileName, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	grafanaConfigRemoteFileName := filepath.Join(utils.GetRemoteComposeServicePath("grafana"), "grafana.ini")
+	if err := host.Upload(grafanaConfigFile, grafanaConfigRemoteFileName, constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+
 	return ComposeOverSSH("Setup Monitoring",
 		host,
 		constants.SSHScriptTimeout,

@@ -631,6 +631,12 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					return
 				}
 				ux.Logger.Info("SetupMonitoringEnv completed")
+				if err = ssh.RunSSHSetupMonitoringFolders(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("RunSSHSetupMonitoringFolders completed")
 				if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)

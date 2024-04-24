@@ -13,7 +13,7 @@ services:
       - /home/ubuntu/.avalanche-cli/services/prometheus/data:/var/lib/prometheus:rw
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.path=/var/lib/prometheus'
     networks:
       - monitoring_net
 
@@ -35,6 +35,7 @@ services:
     container_name: loki
     restart: always
     user: "1000:1000"  # ubuntu user
+    command: -config.file=/etc/loki/loki.yml
     ports:
       - "3100:3100"
     volumes:
