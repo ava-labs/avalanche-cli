@@ -278,7 +278,7 @@ func prepareAvalanchegoConfig(host *models.Host, networkID string) (string, stri
 func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool) error {
 	for _, dir := range remoteconfig.RemoteFoldersToCreateAvalanchego() {
 		if err := host.MkdirAll(dir, constants.SSHFileOpsTimeout); err != nil {
-			return err
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
 	ux.Logger.Info("avalancheCLI folder structure created on remote host %s", remoteconfig.RemoteFoldersToCreateAvalanchego())

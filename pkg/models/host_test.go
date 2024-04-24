@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -266,5 +267,42 @@ func startSSHServer(sshPort int, keyFileName string, t *testing.T) error {
 func stopSSHServer() {
 	if sshServer != nil {
 		close(stopChan) // Close the stop channel to signal stopping the server goroutine
+	}
+}
+
+func TestExpandHome(t *testing.T) {
+	// Mock Host with SSHUser set to "testuser"
+	host := &Host{SSHUser: "testuser"}
+
+	// Test case 1: path starts with "~/"
+	input1 := "~/documents/file.txt"
+	expected1 := filepath.Join("/home", "testuser", "documents/file.txt")
+	result1 := host.ExpandHome(input1)
+	if result1 != expected1 {
+		t.Errorf("Expected: %s, Got: %s", expected1, result1)
+	}
+
+	// Test case 2: path starts with "~/" but with no following directory
+	input2 := "~/"
+	expected2 := filepath.Join("/home", "testuser")
+	result2 := host.ExpandHome(input2)
+	if result2 != expected2 {
+		t.Errorf("Expected: %s, Got: %s", expected2, result2)
+	}
+
+	// Test case 3: path does not start with "~/"
+	input3 := "/var/www"
+	expected3 := "/var/www"
+	result3 := host.ExpandHome(input3)
+	if result3 != expected3 {
+		t.Errorf("Expected: %s, Got: %s", expected3, result3)
+	}
+
+	// Test case 4: empty input
+	input4 := ""
+	expected4 := ""
+	result4 := host.ExpandHome(input4)
+	if result4 != expected4 {
+		t.Errorf("Expected: %s, Got: %s", expected4, result4)
 	}
 }

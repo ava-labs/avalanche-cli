@@ -10,7 +10,7 @@ services:
     networks:
       - avalanchego_net
     volumes:
-      - /home/ubuntu/.avalanche-cli/services/awm-relayer:/etc/awm-relayer
+      - /home/ubuntu/.avalanche-cli/services/awm-relayer:/etc/awm-relayer:ro
     command: 'awm-relayer --config-file /etc/awm-relayer/awm-relayer-config.json'
 networks:
   avalanchego_net:

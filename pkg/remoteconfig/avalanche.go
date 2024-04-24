@@ -75,10 +75,11 @@ func GetRemoteAvalancheCChainConfig() string {
 
 func AvalancheFolderToCreate() []string {
 	return []string{
-		"~/.avalanchego/db",
-		"~/.avalanchego/logs",
-		"~/.avalanchego/configs",
-		"~/.avalanchego/configs/chains/C",
-		"~/.avalanchego/staking",
+		"/home/ubuntu/.avalanchego/db",
+		"/home/ubuntu/.avalanchego/logs",
+		"/home/ubuntu/.avalanchego/configs",
+		"/home/ubuntu/.avalanchego/configs/chains/C",
+		"/home/ubuntu/.avalanchego/staking",
+		"/home/ubuntu/.avalanchego/plugins",
 	}
 }

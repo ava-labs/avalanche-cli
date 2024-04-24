@@ -10,7 +10,7 @@ services:
         ./avalanchego
         --config-file=/home/ubuntu/.avalanchego/configs/node.json
     volumes:
-      - /home/ubuntu/.avalanchego:/home/ubuntu/.avalanchego
+      - /home/ubuntu/.avalanchego:/home/ubuntu/.avalanchego:rw
     ports:
       - "9650:9650"
       - "9651:9651"
@@ -23,10 +23,10 @@ services:
     restart: always
     user: "1000:1000"  # ubuntu user
     volumes:
-      - /home/ubuntu/.avalanchego/logs:/logs
-      - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail
+      - /home/ubuntu/.avalanchego/logs:/logs:ro
+      - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     command: promtail -config.file=/etc/promtail/promtail.yaml
     networks:
       - avalanchego_net

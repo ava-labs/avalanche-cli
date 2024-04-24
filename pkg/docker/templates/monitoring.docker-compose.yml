@@ -8,8 +8,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - /home/ubuntu/.avalanche-cli/services/prometheus:/etc/prometheus
-      - /home/ubuntu/.avalanche-cli/services/prometheus/data:/var/lib/prometheus
+      - /home/ubuntu/.avalanche-cli/services/prometheus:/etc/prometheus:ro
+      - /home/ubuntu/.avalanche-cli/services/prometheus/data:/var/lib/prometheus:rw
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -23,8 +23,8 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - /home/ubuntu/.avalanche-cli/services/grafana:/etc/grafana
-      - /home/ubuntu/.avalanche-cli/services/grafana/data:/var/lib/grafana
+      - /home/ubuntu/.avalanche-cli/services/grafana:/etc/grafana:ro
+      - /home/ubuntu/.avalanche-cli/services/grafana/data:/var/lib/grafana:rw
     networks:
       - monitoring_net
 
@@ -35,8 +35,8 @@ services:
     ports:
       - "3100:3100"
     volumes:
-      - /home/ubuntu/.avalanche-cli/services/loki:/etc/loki
-      - /home/ubuntu/.avalanche-cli/services/loki/data:/var/lib/loki
+      - /home/ubuntu/.avalanche-cli/services/loki:/etc/loki:ro
+      - /home/ubuntu/.avalanche-cli/services/loki/data:/var/lib/loki:rw
     networks:
       - monitoring_net
   
