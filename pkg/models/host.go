@@ -315,7 +315,7 @@ func (h *Host) CreateTemp() (string, error) {
 }
 
 // Remove removes a file on the remote server.
-func (h *Host) Remove(path string) error {
+func (h *Host) Remove(path string, recursive bool) error {
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return err
@@ -326,7 +326,11 @@ func (h *Host) Remove(path string) error {
 		return err
 	}
 	defer sftp.Close()
-	return sftp.Remove(path)
+	if recursive {
+		return sftp.RemoveAll(path)
+	} else {
+		return sftp.Remove(path)
+	}
 }
 
 func (h *Host) GetAnsibleInventoryRecord() string {

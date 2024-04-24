@@ -429,14 +429,22 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	); err != nil {
 		return err
 	}
-	// name: setup devnet
-	return RunOverSSH(
-		"Setup DevNet",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupDevnet.sh",
-		scriptInputs{IsE2E: utils.IsE2E()},
-	)
+	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
+		return err
+	}
+	if err := host.Remove("/home/ubuntu/.avalanchego/db", true); err != nil {
+		return err
+	}
+	if err := host.MkdirAll("/home/ubuntu/.avalanchego/db", constants.SSHDirOpsTimeout); err != nil {
+		return err
+	}
+	if err := host.Remove("/home/ubuntu/.avalanchego/logs", true); err != nil {
+		return err
+	}
+	if err := host.MkdirAll("/home/ubuntu/.avalanchego/logs", constants.SSHDirOpsTimeout); err != nil {
+		return err
+	}
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
 func RunSSHUploadClustersConfig(host *models.Host, localClustersConfigPath string) error {

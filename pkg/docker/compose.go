@@ -64,7 +64,7 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 			return err
 		}
 		defer func() {
-			if err := host.Remove(tmpFile); err != nil {
+			if err := host.Remove(tmpFile, false); err != nil {
 				ux.Logger.Error("Error removing temporary file %s: %s", tmpFile, err)
 			}
 		}()
