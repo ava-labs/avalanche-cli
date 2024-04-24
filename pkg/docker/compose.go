@@ -327,7 +327,7 @@ func WasNodeSetupWithTeleporter(host *models.Host) (bool, error) {
 	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHScriptTimeout)
 }
 
-func prepareGrafanaConfig(host *models.Host) (string, string, error) {
+func prepareGrafanaConfig() (string, string, error) {
 	grafanaDataSource, err := remoteconfig.RenderGrafanaLokiDataSourceConfig()
 	if err != nil {
 		return "", "", err
@@ -355,7 +355,7 @@ func prepareGrafanaConfig(host *models.Host) (string, string, error) {
 
 // ComposeSSHSetupCChain sets up an Avalanche C-Chain node and dependencies on a remote host over SSH.
 func ComposeSSHSetupMonitoring(host *models.Host) error {
-	grafanaLokiDatasourceFile, grafanaConfigFile, err := prepareGrafanaConfig(host)
+	grafanaLokiDatasourceFile, grafanaConfigFile, err := prepareGrafanaConfig()
 	if err != nil {
 		return err
 	}
