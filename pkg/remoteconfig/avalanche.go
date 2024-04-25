@@ -28,6 +28,7 @@ func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfi
 		LogDir:           "/.avalanchego/logs/",
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,
+		PruningEnabled:   false,
 	}
 }
 
