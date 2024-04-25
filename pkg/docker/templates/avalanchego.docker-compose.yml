@@ -23,7 +23,7 @@ services:
     image: grafana/promtail:3.0.0
     container_name: promtail
     restart: always
-    user: "1000:1000"  # ubuntu user
+    user: "1000:999"  # ubuntu user docker group
     volumes:
       - /home/ubuntu/.avalanchego/logs:/logs:ro
       - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
