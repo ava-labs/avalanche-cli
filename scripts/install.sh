@@ -49,12 +49,13 @@ execute() {
   hash_sha256_verify "${tmpdir}/${TARBALL}" "${tmpdir}/${CHECKSUM}"
   rm -rf "${tmpdir}/${NAME}"
   (cd "${tmpdir}" && untar "${TARBALL}")
-  test ! -d "${BINDIR}" && install -d "${BINDIR}"
+  test ! -d "${BINDIR}" && mkdir -p "${BINDIR}"
   for binexe in $BINARIES; do
     if [ "$OS" = "windows" ]; then
       binexe="${binexe}.exe"
     fi
-    install "${tmpdir}/${binexe}" "${BINDIR}/"
+    cp "${tmpdir}/${binexe}" "${BINDIR}/"
+    chmod 0755 "${BINDIR}/${binexe}"
     log_info "installed ${BINDIR}/${binexe}"
   done
   rm -rf "${tmpdir}"
