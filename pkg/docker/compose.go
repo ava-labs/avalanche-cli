@@ -119,25 +119,25 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 	return nil
 }
 
-func StartDockerCompose(host *models.Host, composeFile string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker compose -f %s up -d --wait", composeFile), nil, timeout); err != nil {
+func StartDockerCompose(host *models.Host, timeout time.Duration) error {
+	if output, err := host.Command("sudo systemctl start avalanche-cli-docker", nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
 
-func StopDockerCompose(host *models.Host, composeFile string, timeout time.Duration) error {
-	if output, err := host.Command(fmt.Sprintf("docker compose -f %s down", composeFile), nil, timeout); err != nil {
+func StopDockerCompose(host *models.Host, timeout time.Duration) error {
+	if output, err := host.Command("sudo systemctl stop avalanche-cli-docker", nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
 
-func RestartDockerCompose(host *models.Host, composeFile string, timeout time.Duration) error {
-	if err := StopDockerCompose(host, composeFile, timeout); err != nil {
-		return err
+func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
+	if output, err := host.Command("sudo systemctl restart avalanche-cli-docker", nil, timeout); err != nil {
+		return fmt.Errorf("%w: %s", err, string(output))
 	}
-	return StartDockerCompose(host, composeFile, timeout)
+	return nil
 }
 
 func StartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
@@ -189,7 +189,7 @@ func ComposeOverSSH(
 		return err
 	}
 	ux.Logger.Info("StartDockerCompose [%s]%s", host.NodeID, composeDesc)
-	if err := StartDockerCompose(host, remoteComposeFile, timeout); err != nil {
+	if err := StartDockerCompose(host, timeout); err != nil {
 		return err
 	}
 	executionTime := time.Since(startTime)

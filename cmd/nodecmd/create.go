@@ -630,7 +630,12 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				ux.Logger.Info("SetupMonitoringEnv completed")
+				if err = ssh.RunSSHSetupDockerService(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("SetupMonitoringEnv RunSSHSetupDockerService completed")
 				if err = ssh.RunSSHSetupMonitoringFolders(monitoringHost); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
@@ -679,6 +684,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			}
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
 			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), remoteCLIVersion); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			if err := ssh.RunSSHSetupDockerService(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

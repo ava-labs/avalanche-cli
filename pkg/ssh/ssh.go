@@ -124,6 +124,17 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 	return nil
 }
 
+// RunSSHSetupDockerService runs script to setup docker compose service for CLI
+func RunSSHSetupDockerService(host *models.Host) error {
+	return RunOverSSH(
+		"Setup Docker Service",
+		host,
+		constants.SSHLongRunningScriptTimeout,
+		"shell/setupDockerService.sh",
+		scriptInputs{},
+	)
+}
+
 // RunSSHRestartNode runs script to restart avalanchego
 func RunSSHRestartNode(host *models.Host) error {
 	remoteComposeFile := utils.GetRemoteComposeFile()
@@ -168,7 +179,7 @@ func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalanc
 	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring); err != nil {
 		return err
 	}
-	return docker.RestartDockerCompose(host, utils.GetRemoteComposeFile(), constants.SSHLongRunningScriptTimeout)
+	return docker.RestartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStartNode runs script to start avalanchego
