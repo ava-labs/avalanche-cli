@@ -26,6 +26,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.EXPERIMENTAL_AWS_ACCESS_KEY_PACKER }}
           aws-secret-access-key: ${{ secrets.EXPERIMENTAL_AWS_SECRET_KEY_PACKER }}
+          #aws-session-token: ${{ secrets.EXPERIMENTAL_AWS_SESSION_TOKEN_PACKER }}
           aws-region: us-east-1
 
       - name: Setup `packer`
