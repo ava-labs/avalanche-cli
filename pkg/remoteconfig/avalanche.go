@@ -6,6 +6,9 @@ package remoteconfig
 import (
 	"bytes"
 	"html/template"
+	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 type AvalancheConfigInputs struct {
@@ -67,11 +70,11 @@ func RenderAvalancheCChainConfig(config AvalancheConfigInputs) ([]byte, error) {
 }
 
 func GetRemoteAvalancheNodeConfig() string {
-	return "/home/ubuntu/.avalanchego/configs/node.json"
+	return filepath.Join(constants.CloudNodeConfigPath, "node.json")
 }
 
 func GetRemoteAvalancheCChainConfig() string {
-	return "/home/ubuntu/.avalanchego/configs/chains/C/config.json"
+	return filepath.Join(constants.CloudNodeConfigPath, "chains", "C", "config.json")
 }
 
 func AvalancheFolderToCreate() []string {

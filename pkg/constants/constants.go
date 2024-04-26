@@ -216,6 +216,7 @@ const (
 	CloudNodeSubnetEvmBinaryPath  = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath          = "/home/ubuntu/.avalanchego/staking/"
 	CloudNodeConfigPath           = "/home/ubuntu/.avalanchego/configs/"
+	DockerNodeConfigPath          = "/.avalanchego/configs/"
 	CloudNodePrometheusConfigPath = "/etc/prometheus/prometheus.yml"
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
