@@ -504,24 +504,59 @@ func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath str
 
 // RunSSHTrackSubnet enables tracking of specified subnet
 func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag string) error {
-	return RunOverSSH(
-		"Track Subnet",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/trackSubnet.sh",
-		scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath, NetworkFlag: networkFlag},
-	)
+	/*#!/usr/bin/env bash
+	  set -e
+	  export PATH=$PATH:~/go/bin:~/.cargo/bin
+	  /home/ubuntu/bin/avalanche subnet import file {{ .SubnetExportFileName }} --force
+	  sudo systemctl stop avalanchego
+	  /home/ubuntu/bin/avalanche subnet join {{ .SubnetName }} {{ .NetworkFlag }} --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write
+	  sudo systemctl start avalanchego
+	*/
+	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
+		return err
+	}
+	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
+		return err
+	}
+	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s %s --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName, networkFlag), nil, constants.SSHScriptTimeout); err != nil {
+		return err
+	}
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
 func RunSSHUpdateSubnet(host *models.Host, subnetName, importPath string) error {
-	return RunOverSSH(
-		"Update Subnet",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/updateSubnet.sh",
-		scriptInputs{SubnetName: subnetName, SubnetExportFileName: importPath},
-	)
+	/*
+			#!/usr/bin/env bash
+		set -e
+		#name:TASK [stop node - stop avalanchego]
+		{{if .IsE2E }}
+		sudo pkill avalanchego || echo "avalanchego not running"
+		{{ else }}
+		sudo systemctl stop avalanchego
+		{{end}}
+		#name:TASK [import subnet]
+		/home/ubuntu/bin/avalanche subnet import file {{ .SubnetExportFileName }} --force
+		#name:TASK [avalanche join subnet]
+		/home/ubuntu/bin/avalanche subnet join {{ .SubnetName }} --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write
+		#name:TASK [restart node - start avalanchego]
+		{{if .IsE2E }}
+		nohup /home/ubuntu/avalanche-node/avalanchego --config-file=/home/ubuntu/.avalanchego/configs/node.json </dev/null &>/dev/null &
+		sleep 2
+		{{ else }}
+		sudo systemctl start avalanchego
+		{{end}}
+	*/
+	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
+		return err
+	}
+	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
+		return err
+	}
+	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName), nil, constants.SSHScriptTimeout); err != nil {
+		return err
+	}
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
 func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {

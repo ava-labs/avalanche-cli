@@ -332,7 +332,6 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupPrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
 			return err
 		}
-
 	}
 
 	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
