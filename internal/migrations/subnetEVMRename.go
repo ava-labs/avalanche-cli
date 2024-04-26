@@ -4,6 +4,7 @@
 package migrations
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -32,6 +33,10 @@ func migrateSubnetEVMNames(app *application.Avalanche, runner *migrationRunner) 
 		}
 		if len(dirContents) == 0 {
 			continue
+		}
+
+		if !app.SidecarExists(subnet.Name()) {
+			return fmt.Errorf("subnet %s has inconsistent configuration. there is no sidecar on directory", subnet.Name())
 		}
 
 		sc, err := app.LoadSidecar(subnet.Name())

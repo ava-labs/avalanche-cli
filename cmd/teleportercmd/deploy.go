@@ -54,7 +54,7 @@ func CallDeploy(subnetName string, flags networkoptions.NetworkFlags) error {
 	if !sc.TeleporterReady {
 		return fmt.Errorf("subnet is not configured for teleporter")
 	}
-	if b, err := subnetcmd.HasSubnetEVMGenesis(subnetName); err != nil {
+	if b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName); err != nil {
 		return err
 	} else if !b {
 		return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")

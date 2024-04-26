@@ -5,7 +5,6 @@ package subnetcmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -25,7 +24,6 @@ import (
 
 var (
 	importPublicSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
-	genesisFilePath                     string
 	blockchainIDstr                     string
 	nodeURL                             string
 )
@@ -57,12 +55,6 @@ flag.`,
 		"overwrite the existing configuration if one exists",
 	)
 	cmd.Flags().StringVar(
-		&genesisFilePath,
-		"genesis-file-path",
-		"",
-		"path to the genesis file",
-	)
-	cmd.Flags().StringVar(
 		&blockchainIDstr,
 		"blockchain-id",
 		"",
@@ -83,17 +75,10 @@ func importPublic(*cobra.Command, []string) error {
 		return err
 	}
 
-	if genesisFilePath == "" {
-		genesisFilePath, err = app.Prompt.CaptureExistingFilepath("Provide the path to the genesis file")
-		if err != nil {
-			return err
-		}
-	}
-
 	var reply *info.GetNodeVersionReply
 
 	if nodeURL == "" {
-		yes, err := app.Prompt.CaptureYesNo("Have nodes already been deployed to this subnet?")
+		yes, err := app.Prompt.CaptureNoYes("Have validator nodes with public API already been deployed to this subnet?")
 		if err != nil {
 			return err
 		}
@@ -158,6 +143,7 @@ func importPublic(*cobra.Command, []string) error {
 	vmID = createChainTx.VMID
 	subnetID = createChainTx.SubnetID
 	subnetName = createChainTx.ChainName
+	genBytes := createChainTx.GenesisData
 
 	ux.Logger.PrintToUser("Retrieved information. BlockchainID: %s, SubnetID: %s, Name: %s, VMID: %s",
 		blockchainID.String(),
@@ -167,15 +153,6 @@ func importPublic(*cobra.Command, []string) error {
 	)
 	// TODO: it's probably possible to deploy VMs with the same name on a public network
 	// In this case, an import could clash because the tool supports unique names only
-
-	genBytes, err := os.ReadFile(genesisFilePath)
-	if err != nil {
-		return err
-	}
-
-	if err = app.WriteGenesisFile(subnetName, genBytes); err != nil {
-		return err
-	}
 
 	vmType := getVMFromFlag()
 	if vmType == "" {
@@ -205,8 +182,6 @@ func importPublic(*cobra.Command, []string) error {
 		TokenName:    constants.DefaultTokenName,
 		TokenSymbol:  constants.DefaultTokenSymbol,
 		ImportedVMID: vmIDstr,
-		// signals that the VMID wasn't derived from the subnet name but through import
-		ImportedFromAPM: true,
 	}
 
 	var versions []string
@@ -252,6 +227,10 @@ func importPublic(*cobra.Command, []string) error {
 
 	if err := app.CreateSidecar(sc); err != nil {
 		return fmt.Errorf("failed creating the sidecar for import: %w", err)
+	}
+
+	if err = app.WriteGenesisFile(subnetName, genBytes); err != nil {
+		return err
 	}
 
 	ux.Logger.PrintToUser("Subnet %q imported successfully", sc.Name)

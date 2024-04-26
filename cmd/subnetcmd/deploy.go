@@ -295,12 +295,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, err := HasSubnetEVMGenesis(chain)
+	isEVMGenesis, validationErr, err := HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
 	}
 	if sidecar.VM == models.SubnetEvm && !isEVMGenesis {
-		return fmt.Errorf("failed to validate SubnetEVM genesis format")
+		return fmt.Errorf("failed to validate SubnetEVM genesis format: %w", validationErr)
 	}
 
 	chainGenesis, err := app.LoadRawGenesis(chain)
@@ -879,22 +879,22 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 	return desiredAvagoVersion, nil
 }
 
-func HasSubnetEVMGenesis(subnetName string) (bool, error) {
+func HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
 	if _, err := app.LoadRawGenesis(subnetName); err != nil {
-		return false, err
+		return false, nil, err
 	}
 	// from here, we are sure to have a genesis file
 	genesis, err := app.LoadEvmGenesis(subnetName)
 	if err != nil {
-		return false, nil
+		return false, err, nil
 	}
 	genesis.Config.AvalancheContext = params.AvalancheContext{
 		SnowCtx: &snow.Context{},
 	}
 	if err := genesis.Verify(); err != nil {
-		return false, nil
+		return false, err, nil
 	}
-	return true, nil
+	return true, nil, nil
 }
 
 func jsonIsSubnetEVMGenesis(jsonBytes []byte) bool {
