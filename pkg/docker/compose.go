@@ -259,6 +259,14 @@ func HasRemoteComposeService(host *models.Host, composeFile string, service stri
 	return found, nil
 }
 
+// ValidateComposeFile validates a docker-compose file on a remote host.
+func ValidateComposeFile(host *models.Host, composeFile string, timeout time.Duration) error {
+	if output, err := host.Command(fmt.Sprintf("docker compose -f %s config", composeFile), nil, timeout); err != nil {
+		return fmt.Errorf("%w: %s", err, string(output))
+	}
+	return nil
+}
+
 func prepareAvalanchegoConfig(host *models.Host, networkID string) (string, string, error) {
 	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, networkID)
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
