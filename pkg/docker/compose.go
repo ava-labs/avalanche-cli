@@ -113,6 +113,7 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 	if _, err := tmpFile.Write(output); err != nil {
 		return err
 	}
+	ux.Logger.Info("Merged compose files as %s", output)
 	if err := pushComposeFile(host, tmpFile.Name(), currentComposeFile, false); err != nil {
 		return err
 	}
@@ -141,6 +142,9 @@ func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
 }
 
 func StartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
+	if err := InitDockerComposeService(host, composeFile, service, timeout); err != nil {
+		return err
+	}
 	if output, err := host.Command(fmt.Sprintf("docker compose -f %s start %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
@@ -156,6 +160,13 @@ func StopDockerComposeService(host *models.Host, composeFile string, service str
 
 func RestartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
 	if output, err := host.Command(fmt.Sprintf("docker compose -f %s restart %s", composeFile, service), nil, timeout); err != nil {
+		return fmt.Errorf("%w: %s", err, string(output))
+	}
+	return nil
+}
+
+func InitDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
+	if output, err := host.Command(fmt.Sprintf("docker compose -f %s create %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil

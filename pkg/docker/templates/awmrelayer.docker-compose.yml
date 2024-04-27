@@ -1,12 +1,9 @@
-version: '3'
-
 services:
   awm-relayer:
     image: avaplatform/awm-relayer:v1.1.0
     container_name: awm-relayer
-    restart: always
+    restart: unless-stopped
     user: "1000:1000"  # ubuntu user
-    volumes:
     networks:
       - avalanchego_net
     volumes:

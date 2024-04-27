@@ -170,7 +170,7 @@ func BuildCustomVM(
 	if err := os.MkdirAll(repoDir, constants.DefaultPerms755); err != nil {
 		return err
 	}
-
+	ux.Logger.Info("DEBUG: Created directory %s", repoDir)
 	// get branch from repo
 	cmd := exec.Command("git", "init", "-q")
 	cmd.Dir = repoDir
@@ -184,8 +184,10 @@ func BuildCustomVM(
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not add origin %s on git: %w", sc.CustomVMRepoURL, err)
 	}
+	ux.Logger.Info("DEBUG: Added origin %s", sc.CustomVMRepoURL)
 	cmd = exec.Command("git", "fetch", "--depth", "1", "origin", sc.CustomVMBranch, "-q")
 	cmd.Dir = repoDir
+	ux.Logger.Info("DEBUG: Fetching branch %s", sc.CustomVMBranch)
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not fetch git branch/commit %s of repository %s: %w", sc.CustomVMBranch, sc.CustomVMRepoURL, err)
@@ -203,6 +205,7 @@ func BuildCustomVM(
 	// build
 	cmd = exec.Command(sc.CustomVMBuildScript, vmPath)
 	cmd.Dir = repoDir
+	ux.Logger.Info("DEBUG: Building custom VM binary using script %s into %s", sc.CustomVMBuildScript, vmPath)
 	utils.SetupRealtimeCLIOutput(cmd, true, true)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("error building custom vm binary using script %s on repo %s: %w", sc.CustomVMBuildScript, sc.CustomVMRepoURL, err)

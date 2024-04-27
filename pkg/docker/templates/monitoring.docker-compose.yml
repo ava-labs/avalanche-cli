@@ -1,10 +1,8 @@
-version: '3'
-
 services:
   prometheus:
     image: prom/prometheus:v2.51.2
     container_name: prometheus
-    restart: always
+    restart: unless-stopped
     user: "1000:1000"  # ubuntu user
     ports:
       - "9090:9090"
@@ -22,7 +20,7 @@ services:
   grafana:
     image: grafana/grafana:10.4.1
     container_name: grafana
-    restart: always
+    restart: unless-stopped
     user: "1000:1000"  # ubuntu user
     ports:
       - "3000:3000"
@@ -38,7 +36,7 @@ services:
   loki:
     image: grafana/loki:3.0.0
     container_name: loki
-    restart: always
+    restart: unless-stopped
     user: "1000:1000"  # ubuntu user
     command: -config.file=/etc/loki/loki.yml
     ports:
@@ -52,7 +50,7 @@ services:
   node-exporter:
     image: prom/node-exporter:v1.7.0
     container_name: node-exporter
-    restart: always
+    restart: unless-stopped
     ports:
       - "9100:9100"
     networks:

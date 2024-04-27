@@ -1,11 +1,9 @@
-version: '3'
-
 services:
 {{if .WithAvalanchego}}
   avalanchego:
     image: avaplatform/avalanchego:{{ .AvalanchegoVersion }}
     container_name: avalanchego
-    restart: always
+    restart: unless-stopped
     user: "1000:1000"  # ubuntu user
     command: >
         ./avalanchego
@@ -22,7 +20,7 @@ services:
   promtail:
     image: grafana/promtail:3.0.0
     container_name: promtail
-    restart: always
+    restart: unless-stopped
     user: "0:999"  # root user docker group
     volumes:
       - /home/ubuntu/.avalanchego/logs:/logs:ro
@@ -36,7 +34,7 @@ services:
   node-exporter:
     image: prom/node-exporter:v1.7.0
     container_name: node-exporter
-    restart: always
+    restart: unless-stopped
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro

@@ -85,5 +85,6 @@ func AvalancheFolderToCreate() []string {
 		"/home/ubuntu/.avalanchego/configs/chains/C",
 		"/home/ubuntu/.avalanchego/staking",
 		"/home/ubuntu/.avalanchego/plugins",
+		"/home/ubuntu/.avalanche-cli/services/awm-relayer",
 	}
 }
