@@ -47,7 +47,6 @@ services:
 {{end}}
     networks:
       - avalanchego_net
-
 {{end}}
 
 networks:
