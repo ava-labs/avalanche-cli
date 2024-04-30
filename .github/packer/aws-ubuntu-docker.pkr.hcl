@@ -1,5 +1,5 @@
 locals {
-  /*all_regions = [
+  all_regions = [
     "us-east-1", "us-east-2", "us-west-1", "us-west-2",
     "ap-east-1", "ap-south-1", "ap-northeast-1", "ap-northeast-2", "ap-northeast-3", "ap-southeast-1", "ap-southeast-2",
     "ca-central-1",
@@ -8,10 +8,11 @@ locals {
     "me-south-1",
     "sa-east-1"
   ]
-  */
-  all_regions = [
+  
+  /*all_regions = [
     "us-east-1"
   ]
+  */
 }
 
 packer {
@@ -88,7 +89,7 @@ build {
         inline = [
             "export DEBIAN_FRONTEND=noninteractive",
             "sudo add-apt-repository -y ppa:longsleep/golang-backports",
-            "sudo apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y install ca-certificates curl git golang-go=2:1.22~3longsleep1",
+            "sudo apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y install ca-certificates curl gcc git golang-go=2:1.22~3longsleep1",
             "sudo install -m 0755 -d /etc/apt/keyrings && sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && sudo chmod a+r /etc/apt/keyrings/docker.asc",
             "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
             "sudo apt-get -y update && sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-compose",
