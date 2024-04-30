@@ -271,7 +271,7 @@ func (c *GcpCloud) SetupInstances(
 					{
 						InitializeParams: &compute.AttachedDiskInitializeParams{
 							DiskSizeGb:  int64(cloudDiskSize),
-							SourceImage: fmt.Sprintf("projects/%s/global/images/%s", "ubuntu-os-cloud", ami),
+							SourceImage: fmt.Sprintf("projects/%s/global/images/%s", constants.GCPDefaultImageProvider, ami),
 						},
 						Boot:       true, // Set this if it's the boot disk
 						AutoDelete: true,
