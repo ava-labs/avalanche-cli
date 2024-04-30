@@ -29,9 +29,7 @@ func newResizeCmd() *cobra.Command {
 		Short: "(ALPHA Warning) Resize cluster node and disk sizes",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node resize command can be used to resize cluster instance size 
-and/or size of the permanent storage attached to the instance. In another words, it can 
-change amount of CPU, memory and disk space available for the cluster nodes.
+The node resize command can change the amount of CPU, memory and disk space available for the cluster nodes.
 `,
 		Args: cobrautils.MinimumNArgs(1),
 		RunE: resize,
