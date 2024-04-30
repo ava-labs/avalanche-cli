@@ -25,9 +25,14 @@ func newImportCmd() *cobra.Command {
 		Short: "(ALPHA Warning) Import cluster configuration from a file",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node import command imports cluster configuration and nodes from a text file.
-This file should be created using the export command.
-Please make sure thatyour ssh public key and IP address are whitelisted by the cluster owner.`,
+The node import command imports cluster configuration and its nodes configuration from a text file
+created from the node export command.
+
+Prior to calling this command, call node whitelist command to have your SSH public key and IP whitelisted by
+the cluster owner. This will enable you to use avalanche-cli commands to manage the imported cluster.
+
+Please note, that this imported cluster will be considered as EXTERNAL by avalanche-cli, so some commands
+affecting cloud nodes like node create or node destroy will be not applicable to it.`,
 		Args: cobrautils.ExactArgs(1),
 		RunE: importFile,
 	}
