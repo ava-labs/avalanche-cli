@@ -555,7 +555,7 @@ func (c *AwsCloud) GetUbuntuAMIID(arch string, ubuntuVerLTS string) (string, err
 			{Name: aws.String("description"), Values: []string{descriptionFilterValue}},
 			{Name: aws.String("architecture"), Values: []string{arch}},
 		},
-		Owners: []string{"self", "amazon"},
+		Owners: []string{"self", "931867039610"},
 	}
 	images, err := c.ec2Client.DescribeImages(c.ctx, imageInput)
 	if err != nil {
