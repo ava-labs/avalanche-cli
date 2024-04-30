@@ -2,19 +2,7 @@
 // See the file LICENSE for licensing terms.
 package models
 
-import (
-	"context"
-	"fmt"
-	"io"
-	"net"
-	"os"
-	"sync"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/docker/docker/client"
-)
-
+/*
 type DockerProxy struct {
 	SocketPath string
 	stopCh     chan struct{}
@@ -116,3 +104,4 @@ func (s *DockerProxy) Connect() error {
 	}
 	return nil
 }
+*/
