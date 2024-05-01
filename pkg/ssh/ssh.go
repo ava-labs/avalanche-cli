@@ -440,7 +440,7 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	); err != nil {
 		return err
 	}
-	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
+	if err := docker.StopDockerCompose(host, constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
 	if err := host.Remove("/home/ubuntu/.avalanchego/db", true); err != nil {
@@ -455,7 +455,7 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll("/home/ubuntu/.avalanchego/logs", constants.SSHDirOpsTimeout); err != nil {
 		return err
 	}
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
+	return docker.StartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
 }
 
 func RunSSHUploadClustersConfig(host *models.Host, localClustersConfigPath string) error {
