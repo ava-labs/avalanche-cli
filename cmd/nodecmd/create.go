@@ -1217,7 +1217,7 @@ func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
-	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%s/dashboards", monitoringHostIP, constants.AvalanchegoGrafanaPort)))
+	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalanchegoGrafanaPort)))
 	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
@@ -1231,6 +1231,7 @@ func waitForMonitoringEndpoint(monitoringHost *models.Host) error {
 		return err
 	}
 	spinner.Complete()
+	spinSession.Stop()
 	return nil
 }
 
