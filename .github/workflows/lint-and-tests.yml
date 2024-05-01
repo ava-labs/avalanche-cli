@@ -71,15 +71,15 @@ jobs:
             "\\[Node devnet\\]",
             "\\[Docker\\]",
           ]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-13]
         exclude:
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Node create\\]"
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Node devnet\\]"
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Docker\\]"
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Public Subnet\\]"
     steps:
       - name: Git checkout
@@ -87,7 +87,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install macosx dependencies
-        if: ${{ matrix.os == 'macos-latest' }}
+        if: ${{ matrix.os == 'macos-13' }}
         run: |
           brew install python-setuptools
       - name: Set up Go
@@ -111,7 +111,7 @@ jobs:
           npm install -g typescript
           npm install -g ts-node
       - name: Install docker on macos
-        if: ${{ matrix.os == 'macos-latest' }}
+        if: ${{ matrix.os == 'macos-13' }}
         run: |
           brew update
           brew upgrade
