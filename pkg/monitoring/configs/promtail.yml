@@ -9,34 +9,6 @@ clients:
 
 
 scrape_configs:
-  - job_name: docker
-    docker_sd_configs:
-      - host: unix:///var/run/docker.sock
-        refresh_interval: 5s
-    pipeline_stages:
-      - static_labels:
-          job: docker
-    relabel_configs:
-      - source_labels:
-          - '__meta_docker_container_name'
-        regex: '/(.*)'
-        target_label: 'container'
-      - source_labels:
-          - '__meta_docker_container_label_com_docker_compose_project'
-        regex: '(.*)'
-        target_label: 'compose_project'
-      - source_labels:
-          - '__meta_docker_container_label_com_docker_compose_container_number'
-        regex: '(.*)'
-        target_label: 'compose_container_number'
-      - source_labels:
-          - '__meta_docker_container_label_com_docker_compose_project_config_files'
-        regex: '(.*)'
-        target_label: 'compose_project_config_files'
-      - source_labels:
-          - '__meta_docker_container_label_com_docker_compose_service'
-        regex: '(.*)'
-        target_label: 'compose_service'
   - job_name: avalanchego
     pipeline_stages:
       - regex:
