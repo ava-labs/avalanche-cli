@@ -19,7 +19,21 @@ packer {
       version = ">= 1.2.8"
       source  = "github.com/hashicorp/amazon"
     }
+    googlecompute = {
+      version = ">= 1.1.1"
+      source = "github.com/hashicorp/googlecompute"
+    }
   }
+}
+
+source "googlecompute" "ubuntu_gcp" {
+  project_id      = "avalabs-experimental"
+  source_image_family = "ubuntu-2204-lts"
+  zone            = "us-central1-a"
+  ssh_username    = "ubuntu"
+  image_name     = "public-avalanchecli-ubuntu-jammy-2204-docker"
+  image_family   = "avalanchecli-ubuntu-2204"
+  tags = ["public-avalanchecli","ubuntu-2204", "avaplatform"]
 }
 
 source "amazon-ebs" "ubuntu" {
@@ -80,7 +94,8 @@ build {
   name    = "docker"
   sources = [
     "source.amazon-ebs.ubuntu",
-    "source.amazon-ebs.ubuntu_arm64"
+    "source.amazon-ebs.ubuntu_arm64",
+    "source.googlecompute.ubuntu_gcp"
   ]
 
     provisioner "shell" {

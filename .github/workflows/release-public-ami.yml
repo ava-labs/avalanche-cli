@@ -1,6 +1,8 @@
 name: build-public-ami
 
 on:
+  schedule:
+    - cron: '10 10 * * 1'
   push:
     tags:
       - "*"
@@ -28,6 +30,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.EXPERIMENTAL_AWS_SECRET_KEY_PACKER }}
           #aws-session-token: ${{ secrets.EXPERIMENTAL_AWS_SESSION_TOKEN_PACKER }}
           aws-region: us-east-1
+
+      - name: Configure GCP credentials
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.EXPERIMENTAL_GCP_SA_KEY_PACKER }}
 
       - name: Setup `packer`
         uses: hashicorp/setup-packer@main
