@@ -116,6 +116,11 @@ jobs:
           brew update
           brew install docker
           brew install colima
+          # workaround for broken qemu on macos
+          brew remove --ignore-dependencies qemu
+          curl -o ./qemu.rb https://raw.githubusercontent.com/Homebrew/homebrew-core/dc0669eca9479e9eeb495397ba3a7480aaa45c2e/Formula/qemu.rb
+          # end of workaround
+          brew install ./qemu.rb
           colima start
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
       - name: generate ssh token for e2e tests
