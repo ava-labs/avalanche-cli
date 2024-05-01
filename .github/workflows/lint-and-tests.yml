@@ -113,8 +113,6 @@ jobs:
       - name: Install docker on macos
         if: ${{ matrix.os == 'macos-13' }}
         run: |
-          brew update
-          brew upgrade
           brew install docker
           brew install colima
           colima start
