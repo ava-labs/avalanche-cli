@@ -374,8 +374,8 @@ func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
 	return cloudService, cloudIDPrefix, nil
 }
 
-// WaitForSSHPort waits for the SSH port to become available on the host.
-func (h *Host) WaitForSSHPort(port uint, timeout time.Duration) error {
+// WaitForPort waits for the SSH port to become available on the host.
+func (h *Host) WaitForPort(port uint, timeout time.Duration) error {
 	if port == 0 {
 		port = constants.SSHTCPPort
 	}
@@ -398,7 +398,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		return fmt.Errorf("host IP is empty")
 	}
 	start := time.Now()
-	if err := h.WaitForSSHPort(constants.SSHTCPPort, timeout); err != nil {
+	if err := h.WaitForPort(constants.SSHTCPPort, timeout); err != nil {
 		return err
 	}
 

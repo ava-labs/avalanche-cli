@@ -1201,7 +1201,14 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 		}
 	}
 	if addMonitoring {
-		getMonitoringHint(monitoringHostIP)
+		monitoringHost := models.Host{
+			IP: monitoringHostIP,
+		}
+		if err := waitForMonitoringEndpoint(&monitoringHost); err != nil {
+			ux.Logger.RedXToUser("Failed to wait for monitoring endpoint to be available with error: %w", err)
+		} else {
+			getMonitoringHint(monitoringHostIP)
+		}
 	}
 }
 
@@ -1210,10 +1217,21 @@ func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
-	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:3000/dashboards", monitoringHostIP)))
+	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%s/dashboards", monitoringHostIP, constants.AvalanchegoGrafanaPort)))
 	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
+}
+
+func waitForMonitoringEndpoint(monitoringHost *models.Host) error {
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Waiting for monitoring endpoint to be available")
+	if err := monitoringHost.WaitForPort(constants.AvalanchegoGrafanaPort, constants.SSHLongRunningScriptTimeout); err != nil {
+		spinner.Error()
+		return err
+	}
+	spinner.Complete()
+	return nil
 }
 
 // waitForHosts waits for all hosts to become available via SSH.

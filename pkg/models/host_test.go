@@ -159,7 +159,7 @@ func hostRunTest(t *testing.T) {
 		SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
 	}
 	// good connection
-	if err := host.WaitForSSHPort(sshPort, 10*time.Second); err != nil {
+	if err := host.WaitForPort(sshPort, 10*time.Second); err != nil {
 		t.Fatal(err)
 	}
 
