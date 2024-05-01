@@ -97,7 +97,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "16.x"
+          node-version: "18.x"
       - name: Yarn install
         uses: nick-fields/retry@v2
         with:
@@ -113,7 +113,6 @@ jobs:
       - name: Install docker on macos
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
-          brew install docker
           brew install colima
           colima start
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
