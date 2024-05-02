@@ -78,7 +78,7 @@ func importPublic(*cobra.Command, []string) error {
 	var reply *info.GetNodeVersionReply
 
 	if nodeURL == "" {
-		yes, err := app.Prompt.CaptureNoYes("Have validator nodes with public API already been deployed to this subnet?")
+		yes, err := app.Prompt.CaptureNoYes("Have validator nodes already been deployed to this subnet?")
 		if err != nil {
 			return err
 		}

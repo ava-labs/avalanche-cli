@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -27,7 +28,8 @@ func migrateSubnetEVMNames(app *application.Avalanche, runner *migrationRunner) 
 			continue
 		}
 		// disregard any empty subnet directories
-		dirContents, err := os.ReadDir(filepath.Join(subnetDir, subnet.Name()))
+		dirName := filepath.Join(subnetDir, subnet.Name())
+		dirContents, err := os.ReadDir(dirName)
 		if err != nil {
 			return err
 		}
@@ -36,7 +38,12 @@ func migrateSubnetEVMNames(app *application.Avalanche, runner *migrationRunner) 
 		}
 
 		if !app.SidecarExists(subnet.Name()) {
-			return fmt.Errorf("subnet %s has inconsistent configuration. there is no sidecar on directory", subnet.Name())
+			return fmt.Errorf(
+				"subnet %s has inconsistent configuration. there is no %s file present on directory %s. please backup any file and then remove the subnet",
+				subnet.Name(),
+				constants.SidecarFileName,
+				dirName,
+			)
 		}
 
 		sc, err := app.LoadSidecar(subnet.Name())
