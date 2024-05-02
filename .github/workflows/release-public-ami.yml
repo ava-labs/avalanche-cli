@@ -52,4 +52,4 @@ jobs:
 
       - name: Run `packer build`
         id: build
-        run: "packer build ./.github/packer/aws-ubuntu-docker.pkr.hcl"
+        run: "packer build -color=false -force ./.github/packer/aws-ubuntu-docker.pkr.hcl"

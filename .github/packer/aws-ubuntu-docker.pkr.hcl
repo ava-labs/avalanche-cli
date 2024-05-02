@@ -6,11 +6,6 @@ locals {
     "eu-central-1", "eu-north-1", "eu-west-1", "eu-west-2", "eu-west-3",
     "sa-east-1"
   ]
-  
-  /*all_regions = [
-    "us-east-1"
-  ]
-  */
 }
 
 packer {
@@ -36,7 +31,7 @@ source "googlecompute" "ubuntu_gcp" {
   tags = ["public-avalanchecli","ubuntu-2204", "avaplatform"]
 }
 
-source "amazon-ebs" "ubuntu" {
+source "amazon-ebs" "ubuntu_amd64" {
   ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-{{timestamp}}"
   ami_description = "Avalanche-CLI Ubuntu 22.04 Docker"
   instance_type = "t3.xlarge"
@@ -93,7 +88,7 @@ source "amazon-ebs" "ubuntu_arm64" {
 build {
   name    = "docker"
   sources = [
-    "source.amazon-ebs.ubuntu",
+    "source.amazon-ebs.ubuntu_amd64",
     "source.amazon-ebs.ubuntu_arm64",
     "source.googlecompute.ubuntu_gcp"
   ]
