@@ -1,0 +1,55 @@
+name: build-public-ami
+
+on:
+  schedule:
+    - cron: '10 10 * * 1'
+  push:
+    tags:
+      - "*"
+
+env:
+  PACKER_VERSION: "1.10.2"
+
+jobs:
+  build-public-ami-and-upload:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '~1.21.9'
+          check-latest: true
+      - run: go version
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.EXPERIMENTAL_AWS_ACCESS_KEY_PACKER }}
+          aws-secret-access-key: ${{ secrets.EXPERIMENTAL_AWS_SECRET_KEY_PACKER }}
+          #aws-session-token: ${{ secrets.EXPERIMENTAL_AWS_SESSION_TOKEN_PACKER }}
+          aws-region: us-east-1
+
+      - name: Configure GCP credentials
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.EXPERIMENTAL_GCP_SA_KEY_PACKER }}
+
+      - name: Setup `packer`
+        uses: hashicorp/setup-packer@main
+        id: setup
+        with:
+          version: ${{ env.PACKER_VERSION }}
+        
+      - name: Run `packer init`
+        id: init
+        run: "packer init ./.github/packer/aws-ubuntu-docker.pkr.hcl"
+
+      - name: Run `packer validate`
+        id: validate
+        run: "packer validate ./.github/packer/aws-ubuntu-docker.pkr.hcl"
+
+      - name: Run `packer build`
+        id: build
+        run: "packer build -color=false -force ./.github/packer/aws-ubuntu-docker.pkr.hcl"

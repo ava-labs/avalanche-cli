@@ -49,6 +49,12 @@ func (ul *UserLog) Info(msg string, args ...interface{}) {
 	ul.log.Info(formattedMsg)
 }
 
+// Error prints to the log file
+func (ul *UserLog) Error(msg string, args ...interface{}) {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	ul.log.Error(formattedMsg)
+}
+
 // GreenCheckmarkToUser prints a green checkmark to the user before the message
 func (ul *UserLog) GreenCheckmarkToUser(msg string, args ...interface{}) {
 	checkmark := "\u2713" // Unicode for checkmark symbol

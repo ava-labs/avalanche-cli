@@ -7,6 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
+	"golang.org/x/exp/slices"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -316,17 +322,17 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if len(monitoringHosts) > 0 {
-		if err := ssh.RunSSHSetupPromtail(currentLoadTestHost[0]); err != nil {
+		if err := ssh.RunSSHSetupPromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest", ""); err != nil {
 			return err
 		}
-		if err := ssh.RunSSHUpdatePromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest"); err != nil {
+		if err := docker.ComposeSSHSetupLoadTest(currentLoadTestHost[0]); err != nil {
 			return err
 		}
 		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
 		if err != nil {
 			return err
 		}
-		if err := ssh.RunSSHUpdatePrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
+		if err := ssh.RunSSHSetupPrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
 			return err
 		}
 	}

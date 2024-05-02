@@ -148,8 +148,15 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 	return err
 }
 
+// ExpandHome expands the ~ symbol to the home directory.
+func (h *Host) ExpandHome(path string) string {
+	userHome := filepath.Join("/home", h.SSHUser)
+	return strings.Replace(path, "~/", userHome, 1)
+}
+
 // MkdirAll creates a folder on the remote server.
 func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
+	remoteDir = h.ExpandHome(remoteDir)
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return err
@@ -271,6 +278,65 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+// FileExists checks if a file exists on the remote server.
+func (h *Host) FileExists(path string) (bool, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return false, err
+		}
+	}
+
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return false, nil
+	}
+	defer sftp.Close()
+	_, err = sftp.Stat(path)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// CreateTemp creates a temporary file on the remote server.
+func (h *Host) CreateTemp() (string, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return "", err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return "", err
+	}
+	defer sftp.Close()
+	tmpFileName := filepath.Join("/tmp", utils.RandomString(10))
+	_, err = sftp.Create(tmpFileName)
+	if err != nil {
+		return "", err
+	}
+	return tmpFileName, nil
+}
+
+// Remove removes a file on the remote server.
+func (h *Host) Remove(path string, recursive bool) error {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return err
+	}
+	defer sftp.Close()
+	if recursive {
+		return sftp.RemoveAll(path)
+	} else {
+		return sftp.Remove(path)
+	}
+}
+
 func (h *Host) GetAnsibleInventoryRecord() string {
 	return strings.Join([]string{
 		h.NodeID,
@@ -312,8 +378,8 @@ func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
 	return cloudService, cloudIDPrefix, nil
 }
 
-// WaitForSSHPort waits for the SSH port to become available on the host.
-func (h *Host) WaitForSSHPort(port uint, timeout time.Duration) error {
+// WaitForPort waits for the SSH port to become available on the host.
+func (h *Host) WaitForPort(port uint, timeout time.Duration) error {
 	if port == 0 {
 		port = constants.SSHTCPPort
 	}
@@ -336,7 +402,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		return fmt.Errorf("host IP is empty")
 	}
 	start := time.Now()
-	if err := h.WaitForSSHPort(constants.SSHTCPPort, timeout); err != nil {
+	if err := h.WaitForPort(constants.SSHTCPPort, timeout); err != nil {
 		return err
 	}
 

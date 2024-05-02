@@ -7,6 +7,7 @@ positions:
 clients:
 - url: http://{{ .IP }}:{{ .Port}}/loki/api/v1/push
 
+
 scrape_configs:
   - job_name: avalanchego
     pipeline_stages:
@@ -22,28 +23,37 @@ scrape_configs:
         job: c-chain
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
-        __path__: /home/ubuntu/.avalanchego/logs/C.log
+        __path__: /logs/C.log
     - targets:
         - localhost
       labels:
         job: p-chain
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
-        __path__: /home/ubuntu/.avalanchego/logs/P.log
+        __path__: /logs/P.log
     - targets:
         - localhost
       labels:
         job: x-chain
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
-        __path__: /home/ubuntu/.avalanchego/logs/X.log
+        __path__: /logs/X.log
     - targets:
         - localhost
       labels:
         job: main
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
-        __path__: /home/ubuntu/.avalanchego/logs/main.log
+        __path__: /logs/main.log
+{{ if .ChainID }}
+    - targets:
+        - localhost
+      labels:
+        job: subnet
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
+        __path__: {{ .ChainID }}
+{{ end }}
   - job_name: avalanchego-loadtest
     static_configs:
     - targets:

@@ -48,6 +48,10 @@ func UserHomePath(filePath ...string) string {
 
 // ExpandHome expands ~ symbol to home directory
 func ExpandHome(path string) string {
+	if path == "" {
+		home, _ := os.UserHomeDir()
+		return home
+	}
 	if len(path) > 0 && path[0] == '~' {
 		home, _ := os.UserHomeDir()
 		path = filepath.Join(home, path[1:])
@@ -85,4 +89,15 @@ func ReadFile(filePath string) (string, error) {
 func WriteStringToFile(filePath string, data string) error {
 	filePath = ExpandHome(filePath)
 	return os.WriteFile(filePath, []byte(data), constants.WriteReadReadPerms)
+}
+
+// RemoteComposeFile returns the path to the remote docker-compose file
+func GetRemoteComposeFile() string {
+	return filepath.Join(constants.CloudNodeCLIConfigBasePath, "services", "docker-compose.yml")
+}
+
+// GetRemoteComposeServicePath returns the path to the remote service directory
+func GetRemoteComposeServicePath(serviceName string, dirs ...string) string {
+	servicePrefix := filepath.Join(constants.CloudNodeCLIConfigBasePath, "services", serviceName)
+	return filepath.Join(append([]string{servicePrefix}, dirs...)...)
 }

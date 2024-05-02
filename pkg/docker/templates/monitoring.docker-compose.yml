@@ -1,0 +1,64 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: prometheus
+    restart: unless-stopped
+    user: "1000:1000"  # ubuntu user
+    ports:
+      - "9090:9090"
+    volumes:
+      - /home/ubuntu/.avalanche-cli/services/prometheus:/etc/prometheus:ro
+      - /home/ubuntu/.avalanche-cli/services/prometheus/data:/var/lib/prometheus:rw
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/var/lib/prometheus'
+    links:
+      - node-exporter
+    networks:
+      - monitoring_net
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: grafana
+    restart: unless-stopped
+    user: "1000:1000"  # ubuntu user
+    ports:
+      - "3000:3000"
+    volumes:
+      - /home/ubuntu/.avalanche-cli/services/grafana:/etc/grafana:ro
+      - /home/ubuntu/.avalanche-cli/services/grafana/data:/var/lib/grafana:rw
+    links:
+      - prometheus
+      - loki
+    networks:
+      - monitoring_net
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    restart: unless-stopped
+    user: "1000:1000"  # ubuntu user
+    command: -config.file=/etc/loki/loki.yml
+    ports:
+      - "23101:23101"
+    volumes:
+      - /home/ubuntu/.avalanche-cli/services/loki:/etc/loki:ro
+      - /home/ubuntu/.avalanche-cli/services/loki/data:/var/lib/loki:rw
+    networks:
+      - monitoring_net
+  
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring_net
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+networks:
+  monitoring_net:

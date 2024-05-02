@@ -1,0 +1,9 @@
+{
+	"http-host": "{{.HTTPHost}}",
+	"api-admin-enabled": {{.APIAdminEnabled}},
+	"index-enabled": {{.IndexEnabled}},
+	"network-id": "{{if .NetworkID}}{{.NetworkID}}{{else}}fuji{{end}}",
+	"db-dir": "{{.DBDir}}",
+	"log-dir": "{{.LogDir}}",
+    {{if .PublicIP}}"public-ip": "{{.PublicIP}}"{{else}}"public-ip-resolution-service": "opendns"{{end}}
+}

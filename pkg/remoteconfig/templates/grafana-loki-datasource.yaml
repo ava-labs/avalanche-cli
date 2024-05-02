@@ -1,0 +1,12 @@
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    type: loki
+    access: proxy
+    orgId: 1
+    url: http://loki:23101
+    editable: false
+    jsonData:
+      timeout: 60
+      maxLines: 1000
