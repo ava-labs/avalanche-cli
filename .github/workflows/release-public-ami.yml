@@ -53,3 +53,19 @@ jobs:
       - name: Run `packer build`
         id: build
         run: "packer build -color=false -force ./.github/packer/aws-ubuntu-docker.pkr.hcl"
+
+      - name: install nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: install npx aws-amicleaner
+        run: npm install -g aws-amicleaner
+      
+      - name: clean up old AMIs
+        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 2 --exclude-days 14 --region="*"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.EXPERIMENTAL_AWS_ACCESS_KEY_PACKER }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.EXPERIMENTAL_AWS_SECRET_KEY_PACKER }}
+          AWS_REGION: us-east-1
+
