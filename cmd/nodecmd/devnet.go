@@ -3,7 +3,7 @@
 package nodecmd
 
 import (
-	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 
 	"github.com/spf13/cobra"
 )
@@ -16,12 +16,7 @@ func newDevnetCmd() *cobra.Command {
 
 The node devnet command suite provides a collection of commands related to devnets.
 You can check the updated status by calling avalanche node status <clusterName>`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	// node devnet deploy
 	cmd.AddCommand(newDeployCmd())

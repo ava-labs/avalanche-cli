@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/apmintegration"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -29,11 +30,10 @@ var (
 // avalanche subnet import
 func newImportFileCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "file [subnetPath]",
-		Short:        "Import an existing subnet config",
-		RunE:         importSubnet,
-		SilenceUsage: true,
-		Args:         cobra.MaximumNArgs(1),
+		Use:   "file [subnetPath]",
+		Short: "Import an existing subnet config",
+		RunE:  importSubnet,
+		Args:  cobrautils.MaximumNArgs(1),
 		Long: `The subnet import command will import a subnet configuration from a file or a git repository.
 
 To import from a file, you can optionally provide the path as a command-line argument.

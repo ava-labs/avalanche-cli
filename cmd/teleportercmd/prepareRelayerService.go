@@ -9,6 +9,7 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/spf13/cobra"
@@ -20,12 +21,11 @@ var awmRelayerServiceTemplate []byte
 // avalanche teleporter msg
 func newPrepareRelayerServiceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "prepareService",
-		Short:        "Installs AWM relayer as a service",
-		Long:         `Installs AWM relayer as a service. Disabled by default.`,
-		SilenceUsage: true,
-		RunE:         prepareRelayerService,
-		Args:         cobra.ExactArgs(0),
+		Use:   "prepareService",
+		Short: "Installs AWM relayer as a service",
+		Long:  `Installs AWM relayer as a service. Disabled by default.`,
+		RunE:  prepareRelayerService,
+		Args:  cobrautils.ExactArgs(0),
 	}
 	return cmd
 }

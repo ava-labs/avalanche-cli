@@ -3,9 +3,8 @@
 package keycmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -23,12 +22,7 @@ but these keys are NOT suitable to use in production environments. DO NOT use
 these keys on Mainnet.
 
 To get started, use the key create command.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 
 	// avalanche key create

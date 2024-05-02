@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -46,7 +47,7 @@ func newDescribeCmd() *cobra.Command {
 By default, the command prints a summary of the configuration. By providing the --genesis
 flag, the command instead prints out the raw genesis file.`,
 		RunE: readGenesis,
-		Args: cobra.ExactArgs(1),
+		Args: cobrautils.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(
 		&printGenesisOnly,

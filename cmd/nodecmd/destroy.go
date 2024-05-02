@@ -8,12 +8,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
@@ -35,9 +35,8 @@ func newDestroyCmd() *cobra.Command {
 The node destroy command terminates all running nodes in cloud server and deletes all storage disks.
 
 If there is a static IP address attached, it will be released.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         destroyNodes,
+		Args: cobrautils.ExactArgs(1),
+		RunE: destroyNodes,
 	}
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
@@ -274,7 +273,7 @@ func checkClusterExists(clusterName string) (bool, error) {
 
 func getClusterNodes(clusterName string) ([]string, error) {
 	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
-		return nil, fmt.Errorf("cluster %q not found with err: %w", clusterName, err)
+		return nil, fmt.Errorf("cluster %q not found", clusterName)
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {

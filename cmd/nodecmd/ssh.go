@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -32,9 +33,8 @@ If no command is given, just prints the ssh command to be used to connect to eac
 For provided NodeID or InstanceID or IP, the command [cmd] will be executed on that node.
 If no [cmd] is provided for the node, it will open ssh shell there.
 `,
-		SilenceUsage: true,
-		Args:         cobra.MinimumNArgs(0),
-		RunE:         sshNode,
+		Args: cobrautils.MinimumNArgs(0),
+		RunE: sshNode,
 	}
 	cmd.Flags().BoolVar(&isParallel, "parallel", false, "run ssh command on all nodes in parallel")
 	return cmd

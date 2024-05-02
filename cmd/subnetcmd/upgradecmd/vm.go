@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
@@ -49,9 +50,8 @@ can upgrade both local Subnets and publicly deployed Subnets on Fuji and Mainnet
 
 The command walks the user through an interactive wizard. The user can skip the wizard by providing
 command line flags.`,
-		RunE:         upgradeVM,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		RunE: upgradeVM,
+		Args: cobrautils.ExactArgs(1),
 	}
 
 	cmd.Flags().BoolVar(&useConfig, "config", false, "upgrade config for future subnet deployments")

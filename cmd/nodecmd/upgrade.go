@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -37,9 +38,8 @@ The node update command suite provides a collection of commands for nodes to upd
 their avalanchego or VM version.
 
 You can check the status after upgrade by calling avalanche node status`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         upgrade,
+		Args: cobrautils.ExactArgs(1),
+		RunE: upgrade,
 	}
 
 	return cmd

@@ -4,6 +4,7 @@ package updatecmd
 
 import (
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -29,13 +31,12 @@ var (
 func NewCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
 	app = injectedApp
 	cmd := &cobra.Command{
-		Use:          "update",
-		Short:        "Check for latest updates of Avalanche-CLI",
-		Long:         `Check if an update is available, and prompt the user to install it`,
-		RunE:         runUpdate,
-		Args:         cobra.ExactArgs(0),
-		SilenceUsage: true,
-		Version:      version,
+		Use:     "update",
+		Short:   "Check for latest updates of Avalanche-CLI",
+		Long:    `Check if an update is available, and prompt the user to install it`,
+		RunE:    runUpdate,
+		Args:    cobrautils.ExactArgs(0),
+		Version: version,
 	}
 
 	cmd.Flags().BoolVarP(&yes, "confirm", "c", false, "Assume yes for installation")
@@ -111,7 +112,7 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 		return err
 	}
 	execPath := filepath.Dir(ex)
-	defaultDir := filepath.Join(os.ExpandEnv("$HOME"), "bin")
+
 	/* #nosec G204 */
 	downloadCmd := exec.Command("curl", "-sSfL", constants.CliInstallationURL)
 
@@ -119,8 +120,9 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 	// -n skips shell completion installation, which would result in an error,
 	// as it requires to launch the binary, but we are already executing it
 	installCmdArgs := []string{"-s", "--", "-n"}
-	// custom installation path
-	if execPath != defaultDir {
+
+	// custom installation path when not executing from tempdir (go run)
+	if !strings.HasPrefix(execPath, os.TempDir()) {
 		installCmdArgs = append(installCmdArgs, "-b", execPath)
 	}
 
@@ -129,27 +131,42 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 	installCmd := exec.Command("sh", installCmdArgs...)
 
 	// redirect the download command to the install
-	installCmd.Stdin, err = downloadCmd.StdoutPipe()
+	var downloadOutbuf, downloadErrbuf strings.Builder
+	downloadCmdStdoutPipe, err := downloadCmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
+	downloadCmd.Stderr = &downloadErrbuf
+	installCmd.Stdin = io.TeeReader(downloadCmdStdoutPipe, &downloadOutbuf)
 
 	// we are going to collect the output from the command into a string
 	// instead of writing directly to the string
-	var outbuf, errbuf strings.Builder
-	installCmd.Stdout = &outbuf
-	installCmd.Stderr = &errbuf
+	var installOutbuf, installErrbuf strings.Builder
+	installCmd.Stdout = &installOutbuf
+	installCmd.Stderr = &installErrbuf
 
 	ux.Logger.PrintToUser("Starting update...")
 	if err := installCmd.Start(); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Downloading new release...")
+	ux.Logger.PrintToUser("Downloading install script...")
 	if err := downloadCmd.Run(); err != nil {
+		if downloadOutbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(downloadOutbuf.String(), "\n"))
+		}
+		if downloadErrbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(downloadErrbuf.String(), "\n"))
+		}
 		return err
 	}
 	ux.Logger.PrintToUser("Installing new release...")
 	if err := installCmd.Wait(); err != nil {
+		if installOutbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
+		}
+		if installErrbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(installErrbuf.String(), "\n"))
+		}
 		ux.Logger.PrintToUser("installation failed: %s", err.Error())
 		return err
 	}
@@ -165,8 +182,9 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 	lastActs.LastUpdated = time.Now()
 	app.WriteLastActionsFile(lastActs)
 
-	app.Log.Debug(outbuf.String())
-	app.Log.Debug(errbuf.String())
+	app.Log.Debug(installOutbuf.String())
+	app.Log.Debug(installErrbuf.String())
+
 	ux.Logger.PrintToUser("Installation successful. Please run the shell completion update manually after this process terminates.")
 	ux.Logger.PrintToUser("The new version will be used on next command execution")
 	return nil

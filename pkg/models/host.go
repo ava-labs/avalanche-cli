@@ -212,17 +212,21 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 
 // Forward forwards the TCP connection to a remote address.
 func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error) {
+	maxAttempts := 3
+
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
 		}
 	}
-	retI, err := utils.TimedFunction(
+	retI, err := utils.TimedFunctionWithRetry(
 		func() (interface{}, error) {
 			return h.UntimedForward(httpRequest)
 		},
 		"post over ssh",
 		timeout,
+		maxAttempts,
+		2*time.Second,
 	)
 	if err != nil {
 		err = fmt.Errorf("%w for host %s", err, h.IP)

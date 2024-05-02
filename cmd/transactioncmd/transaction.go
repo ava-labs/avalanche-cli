@@ -3,9 +3,8 @@
 package transactioncmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -17,12 +16,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Use:   "transaction",
 		Short: "Sign and execute specific transactions",
 		Long:  `The transaction command suite provides all of the utilities required to sign multisig transactions.`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE:  cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// subnet upgrade vm

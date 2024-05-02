@@ -27,7 +27,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func SetupRealtimeCLIOutput(cmd *exec.Cmd, redirectStdout bool, redirectStderr bool) (*bytes.Buffer, *bytes.Buffer) {
+func SetupRealtimeCLIOutput(
+	cmd *exec.Cmd,
+	redirectStdout bool,
+	redirectStderr bool,
+) (*bytes.Buffer, *bytes.Buffer) {
 	var stdoutBuffer bytes.Buffer
 	var stderrBuffer bytes.Buffer
 	if redirectStdout {
@@ -103,6 +107,15 @@ func Find[T any](input []T, f func(T) bool) *T {
 	return nil
 }
 
+func Belongs[T comparable](input []T, elem T) bool {
+	for _, e := range input {
+		if e == elem {
+			return true
+		}
+	}
+	return false
+}
+
 func Filter[T any](input []T, f func(T) bool) []T {
 	output := make([]T, 0, len(input))
 	for _, e := range input {
@@ -155,8 +168,33 @@ func IsUnsignedSlice(n []int) bool {
 	return true
 }
 
+// RetryFunction retries the given function until it succeeds or the maximum number of attempts is reached.
+func RetryFunction(fn func() (interface{}, error), maxAttempts int, retryInterval time.Duration) (
+	interface{},
+	error,
+) {
+	var err error
+	var result interface{}
+	const defaultRetryInterval = 2 * time.Second
+	if retryInterval == 0 {
+		retryInterval = defaultRetryInterval
+	}
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		result, err = fn()
+		if err == nil {
+			return result, nil
+		}
+		time.Sleep(retryInterval)
+	}
+	return nil, fmt.Errorf("maximum retry attempts reached: %w", err)
+}
+
 // TimedFunction is a function that executes the given function `f` within a specified timeout duration.
-func TimedFunction(f func() (interface{}, error), name string, timeout time.Duration) (interface{}, error) {
+func TimedFunction(
+	f func() (interface{}, error),
+	name string,
+	timeout time.Duration,
+) (interface{}, error) {
 	var (
 		ret interface{}
 		err error
@@ -174,6 +212,19 @@ func TimedFunction(f func() (interface{}, error), name string, timeout time.Dura
 	case <-ch:
 	}
 	return ret, err
+}
+
+// TimedFunctionWithRetry is a function that executes the given function `f` within a specified timeout duration.
+func TimedFunctionWithRetry(
+	f func() (interface{}, error),
+	name string,
+	timeout time.Duration,
+	maxAttempts int,
+	retryInterval time.Duration,
+) (interface{}, error) {
+	return RetryFunction(func() (interface{}, error) {
+		return TimedFunction(f, name, timeout)
+	}, maxAttempts, retryInterval)
 }
 
 func SortUint32(arr []uint32) {
@@ -236,7 +287,11 @@ func Download(url string) ([]byte, error) {
 		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed downloading %s: unexpected http status code: %d", url, resp.StatusCode)
+		return nil, fmt.Errorf(
+			"failed downloading %s: unexpected http status code: %d",
+			url,
+			resp.StatusCode,
+		)
 	}
 	defer resp.Body.Close()
 	bs, err := io.ReadAll(resp.Body)
@@ -344,15 +399,18 @@ func GetURIHostPortAndPath(uri string) (string, uint32, string, error) {
 }
 
 func GetCodespaceURL(url string) (string, error) {
+	codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
+	if codespaceName == "" {
+		return "", nil
+	}
+	if strings.HasPrefix(url, constants.MainnetAPIEndpoint) || strings.HasPrefix(url, constants.FujiAPIEndpoint) {
+		return "", nil
+	}
 	_, port, path, err := GetURIHostPortAndPath(url)
 	if err != nil {
 		return "", err
 	}
-	codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
-	if codespaceName != "" {
-		return fmt.Sprintf("https://%s-%d.app.github.dev%s", codespaceName, port, path), nil
-	}
-	return "", nil
+	return fmt.Sprintf("https://%s-%d.app.github.dev%s", codespaceName, port, path), nil
 }
 
 func InsideCodespace() bool {

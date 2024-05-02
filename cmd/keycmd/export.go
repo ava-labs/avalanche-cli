@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/spf13/cobra"
@@ -20,9 +21,8 @@ applications or import it into another instance of Avalanche-CLI.
 
 By default, the tool writes the hex encoded key to stdout. If you provide the --output
 flag, the command writes the key to a file of your choosing.`,
-		Args:         cobra.ExactArgs(1),
-		RunE:         exportKey,
-		SilenceUsage: true,
+		Args: cobrautils.ExactArgs(1),
+		RunE: exportKey,
 	}
 
 	cmd.Flags().StringVarP(

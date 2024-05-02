@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -42,9 +43,8 @@ By default, the command loads the default snapshot. If you provide the --snapsho
 flag, the network loads that snapshot instead. The command fails if the local network is
 already running.`,
 
-		RunE:         StartNetwork,
-		Args:         cobra.ExactArgs(0),
-		SilenceUsage: true,
+		RunE: StartNetwork,
+		Args: cobrautils.ExactArgs(0),
 	}
 
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")

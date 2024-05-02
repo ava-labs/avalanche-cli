@@ -5,6 +5,7 @@ package configcmd
 import (
 	"errors"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
@@ -13,12 +14,11 @@ import (
 // avalanche config metrics command
 func newMetricsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "metrics [enable | disable]",
-		Short:        "opt in or out of metrics collection",
-		Long:         "set user metrics collection preferences",
-		RunE:         handleMetricsSettings,
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Use:   "metrics [enable | disable]",
+		Short: "opt in or out of metrics collection",
+		Long:  "set user metrics collection preferences",
+		RunE:  handleMetricsSettings,
+		Args:  cobrautils.ExactArgs(1),
 	}
 
 	return cmd

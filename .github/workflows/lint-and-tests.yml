@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix:
         go: ["1.21.7"]
-        os: [ubuntu-20.04, macos-latest]
+        os: [ubuntu-20.04, macos-13]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
@@ -71,21 +71,25 @@ jobs:
             "\\[Node devnet\\]",
             "\\[Docker\\]",
           ]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-13]
         exclude:
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Node create\\]"
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Node devnet\\]"
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Docker\\]"
-          - os: macos-latest
+          - os: macos-13
             suite: "\\[Public Subnet\\]"
     steps:
       - name: Git checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - name: Install macosx dependencies
+        if: ${{ matrix.os == 'macos-13' }}
+        run: |
+          brew install python-setuptools
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -93,7 +97,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "14.x"
+          node-version: "16.x"
       - name: Yarn install
         uses: nick-fields/retry@v2
         with:
@@ -107,9 +111,10 @@ jobs:
           npm install -g typescript
           npm install -g ts-node
       - name: Install docker on macos
-        if: ${{ matrix.os == 'macos-latest' }}
+        if: ${{ matrix.os == 'macos-13' }}
         run: |
           brew install docker
+          brew install colima
           colima start
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
       - name: generate ssh token for e2e tests

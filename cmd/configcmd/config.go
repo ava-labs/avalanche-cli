@@ -3,10 +3,8 @@
 package configcmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -17,12 +15,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Use:   "config",
 		Short: "Modify configuration for Avalanche-CLI",
 		Long:  `Customize configuration for Avalanche-CLI`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE:  cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
 	// set user metrics collection preferences cmd

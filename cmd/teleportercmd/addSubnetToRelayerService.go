@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -27,12 +28,11 @@ var (
 // avalanche teleporter relayer addSubnetToService
 func newAddSubnetToRelayerServiceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "addSubnetToService [subnetName]",
-		Short:        "Adds a subnet to the AWM relayer service configuration",
-		Long:         `Adds a subnet to the AWM relayer service configuration".`,
-		SilenceUsage: true,
-		RunE:         addSubnetToRelayerService,
-		Args:         cobra.ExactArgs(1),
+		Use:   "addSubnetToService [subnetName]",
+		Short: "Adds a subnet to the AWM relayer service configuration",
+		Long:  `Adds a subnet to the AWM relayer service configuration".`,
+		RunE:  addSubnetToRelayerService,
+		Args:  cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &addSubnetToRelayerServiceFlags.Network, true, addSubnetToRelayerServiceSupportedNetworkOptions)
 	cmd.Flags().StringVar(&addSubnetToRelayerServiceFlags.CloudNodeID, "cloud-node-id", "", "generate a config to be used on given cloud node")

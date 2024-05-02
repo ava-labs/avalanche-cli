@@ -93,7 +93,7 @@ func NetworkFromNetworkID(networkID uint32) Network {
 }
 
 func (n Network) Name() string {
-	if n.ClusterName != "" {
+	if n.ClusterName != "" && n.Kind == Devnet {
 		return "Cluster " + n.ClusterName
 	}
 	name := n.Kind.String()

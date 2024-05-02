@@ -9,25 +9,22 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-	"golang.org/x/exp/maps"
-
-	"github.com/ava-labs/avalanchego/utils/units"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/keychain"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 var (
@@ -56,9 +53,8 @@ func newValidatePrimaryCmd() *cobra.Command {
 
 The node validate primary command enables all nodes in a cluster to be validators of Primary
 Network.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         validatePrimaryNetwork,
+		Args: cobrautils.ExactArgs(1),
+		RunE: validatePrimaryNetwork,
 	}
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
@@ -94,6 +90,7 @@ func joinAsPrimaryNetworkValidator(
 	nodeCmd bool,
 ) error {
 	ux.Logger.PrintToUser(fmt.Sprintf("Adding node %s as a Primary Network Validator...", nodeID.String()))
+	defer ux.Logger.PrintLineSeparator()
 	var (
 		start time.Time
 		err   error
@@ -129,7 +126,7 @@ func joinAsPrimaryNetworkValidator(
 	if err != nil {
 		return err
 	}
-	_, err = deployer.AddPermissionlessValidator(
+	if _, err := deployer.AddPermissionlessValidator(
 		ids.Empty,
 		ids.Empty,
 		nodeID,
@@ -140,8 +137,11 @@ func joinAsPrimaryNetworkValidator(
 		delegationFee,
 		nil,
 		signer.NewProofOfPossession(blsSk),
-	)
-	return err
+	); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
+	return nil
 }
 
 func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
@@ -242,8 +242,8 @@ func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex
 	return d, nil
 }
 
-func getNodeIDs(hosts []*models.Host) (map[string]string, map[string]error) {
-	nodeIDMap := map[string]string{}
+func getNodeIDs(hosts []*models.Host) (map[string]ids.NodeID, map[string]error) {
+	nodeIDMap := map[string]ids.NodeID{}
 	failedNodes := map[string]error{}
 	for _, host := range hosts {
 		cloudNodeID := host.GetCloudID()
@@ -252,12 +252,12 @@ func getNodeIDs(hosts []*models.Host) (map[string]string, map[string]error) {
 			failedNodes[host.NodeID] = err
 			continue
 		}
-		nodeIDMap[host.NodeID] = nodeID.String()
+		nodeIDMap[host.NodeID] = nodeID
 	}
 	return nodeIDMap, failedNodes
 }
 
-// checkNodeIsPrimaryNetworkValidator only returns err if node is already a Primary Network validator
+// checkNodeIsPrimaryNetworkValidator returns true if node is already a Primary Network validator
 func checkNodeIsPrimaryNetworkValidator(nodeID ids.NodeID, network models.Network) (bool, error) {
 	isValidator, err := subnet.IsSubnetValidator(ids.Empty, nodeID, network)
 	if err != nil {
@@ -275,20 +275,14 @@ func addNodeAsPrimaryNetworkValidator(
 	nodeID ids.NodeID,
 	nodeIndex int,
 	instanceID string,
-) (bool, error) {
-	isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network)
-	if err != nil {
-		return false, err
-	}
-	if !isValidator {
+) error {
+	if isValidator, err := checkNodeIsPrimaryNetworkValidator(nodeID, network); err != nil {
+		return err
+	} else if !isValidator {
 		signingKeyPath := app.GetNodeBLSSecretKeyPath(instanceID)
-		if err = joinAsPrimaryNetworkValidator(deployer, network, kc, nodeID, nodeIndex, signingKeyPath, true); err != nil {
-			return false, err
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Node %s successfully added as Primary Network validator!", nodeID.String()))
-		return true, nil
+		return joinAsPrimaryNetworkValidator(deployer, network, kc, nodeID, nodeIndex, signingKeyPath, true)
 	}
-	return false, nil
+	return nil
 }
 
 func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
@@ -338,18 +332,12 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	nodeErrors := map[string]error{}
 	for i, host := range hosts {
-		nodeIDStr, b := nodeIDMap[host.NodeID]
+		nodeID, b := nodeIDMap[host.NodeID]
 		if !b {
 			err, b := failedNodesMap[host.NodeID]
 			if !b {
 				return fmt.Errorf("expected to found an error for non mapped node")
 			}
-			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
-			nodeErrors[host.NodeID] = err
-			continue
-		}
-		nodeID, err := ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
 			nodeErrors[host.NodeID] = err
 			continue
@@ -360,8 +348,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
-		_, err = addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, clusterNodeID)
-		if err != nil {
+		if err = addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, clusterNodeID); err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
 			nodeErrors[host.NodeID] = err
 		}

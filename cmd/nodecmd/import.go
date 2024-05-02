@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -24,12 +25,16 @@ func newImportCmd() *cobra.Command {
 		Short: "(ALPHA Warning) Import cluster configuration from a file",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node import command imports cluster configuration and nodes from a text file.
-This file should be created using the export command.
-Please make sure thatyour ssh public key and IP address are whitelisted by the cluster owner.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         importFile,
+The node import command imports cluster configuration and its nodes configuration from a text file
+created from the node export command.
+
+Prior to calling this command, call node whitelist command to have your SSH public key and IP whitelisted by
+the cluster owner. This will enable you to use avalanche-cli commands to manage the imported cluster.
+
+Please note, that this imported cluster will be considered as EXTERNAL by avalanche-cli, so some commands
+affecting cloud nodes like node create or node destroy will be not applicable to it.`,
+		Args: cobrautils.ExactArgs(1),
+		RunE: importFile,
 	}
 	cmd.Flags().StringVar(&clusterFileName, "file", "", "specify the file to export the cluster configuration to")
 	return cmd

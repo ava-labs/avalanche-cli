@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -21,9 +22,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
-
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
@@ -70,9 +70,8 @@ func newWizCmd() *cobra.Command {
 
 The node wiz command creates a devnet and deploys, sync and validate a subnet into it. It creates the subnet if so needed.
 `,
-		SilenceUsage: true,
-		Args:         cobra.RangeArgs(1, 2),
-		RunE:         wiz,
+		Args: cobrautils.RangeArgs(1, 2),
+		RunE: wiz,
 	}
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
@@ -624,16 +623,12 @@ func waitForSubnetValidators(
 	for {
 		failedNodes := []string{}
 		for _, host := range hosts {
-			nodeIDStr, b := nodeIDMap[host.NodeID]
+			nodeID, b := nodeIDMap[host.NodeID]
 			if !b {
 				err, b := failedNodesMap[host.NodeID]
 				if !b {
 					return fmt.Errorf("expected to found an error for non mapped node")
 				}
-				return err
-			}
-			nodeID, err := ids.NodeIDFromString(nodeIDStr)
-			if err != nil {
 				return err
 			}
 			isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)

@@ -3,8 +3,7 @@
 package nodecmd
 
 import (
-	"fmt"
-
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -18,12 +17,7 @@ The node update command suite provides a collection of commands for nodes to upd
 their avalanchego or VM config.
 
 You can check the status after update by calling avalanche node status`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	// node update subnet
 	cmd.AddCommand(newUpdateSubnetCmd())

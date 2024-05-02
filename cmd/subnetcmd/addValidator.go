@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -33,7 +34,7 @@ var (
 	useDefaultStartTime    bool
 	useDefaultDuration     bool
 	useDefaultWeight       bool
-	justIssueTx            bool
+	waitForTxAcceptance    bool
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -56,9 +57,8 @@ these prompts by providing the values with flags.
 
 This command currently only works on Subnets deployed to either the Fuji
 Testnet or Mainnet.`,
-		SilenceUsage: true,
-		RunE:         addValidator,
-		Args:         cobra.ExactArgs(1),
+		RunE: addValidator,
+		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
@@ -79,7 +79,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().BoolVar(&justIssueTx, "just-issue-tx", false, "just issue the add validator tx, without waiting for its acceptance")
+	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "just issue the add validator tx, without waiting for its acceptance")
 	return cmd
 }
 
@@ -114,7 +114,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	return CallAddValidator(deployer, network, kc, useLedger, subnetName, nodeIDStr, defaultValidatorParams, justIssueTx)
+	return CallAddValidator(deployer, network, kc, useLedger, subnetName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 }
 
 func CallAddValidator(
@@ -125,7 +125,7 @@ func CallAddValidator(
 	subnetName string,
 	nodeIDStr string,
 	defaultValidatorParamsSetting bool,
-	justIssueTxSetting bool,
+	waitForTxAcceptanceSetting bool,
 ) error {
 	var (
 		nodeID ids.NodeID
@@ -135,7 +135,7 @@ func CallAddValidator(
 
 	useLedger = useLedgerSetting
 	defaultValidatorParams = defaultValidatorParamsSetting
-	justIssueTx = justIssueTxSetting
+	waitForTxAcceptance = waitForTxAcceptanceSetting
 
 	if defaultValidatorParams {
 		useDefaultDuration = true
@@ -231,7 +231,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(
-		justIssueTx,
+		waitForTxAcceptance,
 		controlKeys,
 		subnetAuthKeys,
 		subnetID,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +23,7 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Short:  "Run the backend server",
 		Long:   "This tool requires a backend process to run; this command starts it",
 		RunE:   startBackend,
-		Args:   cobra.ExactArgs(0),
+		Args:   cobrautils.ExactArgs(0),
 		Hidden: true,
 	}
 }

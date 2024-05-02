@@ -70,7 +70,6 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 }
 
 func getNotBootstrappedNodes(hosts []*models.Host) ([]string, error) {
-	ux.Logger.PrintToUser("Checking if node(s) are bootstrapped to Primary Network...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {

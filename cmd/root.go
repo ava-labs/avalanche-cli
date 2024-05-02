@@ -26,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
@@ -59,14 +60,19 @@ in with avalanche subnet create myNewSubnet.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
 		PersistentPostRun: handleTracking,
+		SilenceErrors:     true,
+		SilenceUsage:      true,
 	}
 
 	// Disable printing the completion command
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli/config.json)")
-	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
-	rootCmd.PersistentFlags().BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
+	rootCmd.PersistentFlags().
+		StringVar(&cfgFile, "config", "", "config file (default is $HOME/.avalanche-cli/config.json)")
+	rootCmd.PersistentFlags().
+		StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
+	rootCmd.PersistentFlags().
+		BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
 	// add sub commands
 	rootCmd.AddCommand(subnetcmd.NewCmd(app))
@@ -92,6 +98,8 @@ in with avalanche subnet create myNewSubnet.`,
 	// add teleporter command
 	rootCmd.AddCommand(teleportercmd.NewCmd(app))
 
+	cobrautils.ConfigureRootCmd(rootCmd)
+
 	return rootCmd
 }
 
@@ -104,6 +112,8 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	log.Info("-----------")
+	log.Info(fmt.Sprintf("cmd: %s", strings.Join(os.Args[1:], " ")))
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
@@ -112,7 +122,9 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-	if utils.IsE2E() && !app.Conf.ConfigFileExists() && !utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) && metrics.CheckCommandIsNotCompletion(cmd) {
+	if utils.IsE2E() && !app.Conf.ConfigFileExists() &&
+		!utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) &&
+		metrics.CheckCommandIsNotCompletion(cmd) {
 		err = metrics.HandleUserMetricsPreference(app)
 		if err != nil {
 			return err
@@ -146,15 +158,20 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 				return nil
 			}
 		}
-		app.Log.Warn("failed to read last-actions file! This is non-critical but is logged", zap.Error(err))
+		app.Log.Warn(
+			"failed to read last-actions file! This is non-critical but is logged",
+			zap.Error(err),
+		)
 		lastActs = &application.LastActions{}
 	}
 
 	// if the user had requested to skipCheck less than 24 hrs ago, we skip in any case
 	if lastActs.LastSkipCheck != (time.Time{}) &&
 		time.Now().Before(lastActs.LastSkipCheck.Add(24*time.Hour)) {
-		app.Log.Debug("last checked %s, so less than 24 hrs earlier. Skipping to check for updates.",
-			zap.Time("lastSkipCheck", lastActs.LastSkipCheck))
+		app.Log.Debug(
+			"last checked %s, so less than 24 hrs earlier. Skipping to check for updates.",
+			zap.Time("lastSkipCheck", lastActs.LastSkipCheck),
+		)
 		return nil
 	}
 
@@ -173,16 +190,18 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 	isUserCalled := false
 	commandList := strings.Fields(cmd.CommandPath())
 	if !(len(commandList) > 1 && commandList[1] == "update") {
-		if lastActs.LastCheckGit != (time.Time{}) && time.Now().Before(lastActs.LastCheckGit.Add(24*time.Hour)) {
+		if lastActs.LastCheckGit == (time.Time{}) || time.Now().After(lastActs.LastCheckGit.Add(24*time.Hour)) {
 			if err := updatecmd.Update(cmd, isUserCalled, Version, lastActs); err != nil {
 				if errors.Is(err, updatecmd.ErrUserAbortedInstallation) {
 					return nil
 				}
 				if err == updatecmd.ErrNoVersion {
 					ux.Logger.PrintToUser(
-						"Attempted to check if a new version is available, but couldn't find the currently running version information")
+						"Attempted to check if a new version is available, but couldn't find the currently running version information",
+					)
 					ux.Logger.PrintToUser(
-						"Make sure to follow official instructions, or automatic updates won't be available for you")
+						"Make sure to follow official instructions, or automatic updates won't be available for you",
+					)
 					return nil
 				}
 				return err
@@ -298,7 +317,9 @@ func initConfig() {
 	app.Conf.SetConfig(app.Log, cfgFile)
 	// check if metrics setting is available, and if not load metricConfig
 	if !app.Conf.ConfigValueIsSet(constants.ConfigMetricsEnabledKey) {
-		app.Conf.MergeConfig(app.Log, oldMetricsConfig)
+		if utils.FileExists(oldMetricsConfig) {
+			app.Conf.MergeConfig(app.Log, oldMetricsConfig)
+		}
 	}
 }
 
@@ -308,7 +329,5 @@ func Execute() {
 	app = application.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
+	cobrautils.HandleErrors(err)
 }

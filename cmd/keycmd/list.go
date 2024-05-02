@@ -57,8 +57,7 @@ func newListCmd() *cobra.Command {
 		Short: "List stored signing keys or ledger addresses",
 		Long: `The key list command prints information for all stored signing
 keys or for the ledger addresses associated to certain indices.`,
-		RunE:         listKeys,
-		SilenceUsage: true,
+		RunE: listKeys,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, listSupportedNetworkOptions)
 	cmd.Flags().BoolVarP(

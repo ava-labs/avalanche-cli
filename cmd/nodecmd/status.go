@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -35,9 +36,8 @@ The node status command gets the bootstrap status of all nodes in a cluster with
 If no cluster is given, defaults to node list behaviour.
 
 To get the bootstrap status of a node with a Subnet, use --subnet flag`,
-		SilenceUsage: true,
-		Args:         cobra.MinimumNArgs(0),
-		RunE:         statusNode,
+		Args: cobrautils.MinimumNArgs(0),
+		RunE: statusNode,
 	}
 	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is syncing with")
 
@@ -88,19 +88,24 @@ func statusNode(_ *cobra.Command, args []string) error {
 	}
 	defer disconnectHosts(hosts)
 
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Checking node status...")
 	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
 	if err != nil {
+		ux.SpinFailWithError(spinner, "", err)
 		return err
 	}
+	ux.SpinComplete(spinner)
 
-	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
+	spinner = spinSession.SpinToUser("Checking if node(s) are healthy...")
 	unhealthyNodes, err := getUnhealthyNodes(hosts)
 	if err != nil {
+		ux.SpinFailWithError(spinner, "", err)
 		return err
 	}
+	ux.SpinComplete(spinner)
 
-	ux.Logger.PrintToUser("Getting avalanchego version of node(s)...")
-
+	spinner = spinSession.SpinToUser("Getting avalanchego version of node(s)...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -120,9 +125,14 @@ func statusNode(_ *cobra.Command, args []string) error {
 		}(&wgResults, host)
 	}
 	wg.Wait()
+
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
+		e := fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
+		ux.SpinFailWithError(spinner, "", e)
+		return e
 	}
+	ux.SpinComplete(spinner)
+	spinSession.Stop()
 	avagoVersions := map[string]string{}
 	for nodeID, avalanchegoVersion := range wgResults.GetResultMap() {
 		avagoVersions[nodeID] = fmt.Sprintf("%v", avalanchegoVersion)

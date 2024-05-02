@@ -3,8 +3,7 @@
 package subnetcmd
 
 import (
-	"fmt"
-
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
@@ -15,15 +14,10 @@ func newImportCmd() *cobra.Command {
 		Short: "Import subnets into avalanche-cli",
 		Long: `Import subnet configurations into avalanche-cli.
 
-This command supports importing from a file created on another computer,
+This command suite supports importing from a file created on another computer,
 or importing from subnets running public networks
 (e.g. created manually or with the deprecated subnet-cli)`,
-		Run: func(cmd *cobra.Command, _ []string) {
-			err := cmd.Help()
-			if err != nil {
-				fmt.Println(err)
-			}
-		},
+		RunE: cobrautils.CommandSuiteUsage,
 	}
 	// subnet import file
 	cmd.AddCommand(newImportFileCmd())

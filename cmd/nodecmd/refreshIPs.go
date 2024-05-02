@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
@@ -17,9 +18,8 @@ func newRefreshIPsCmd() *cobra.Command {
 
 The node refresh-ips command obtains the current IP for all nodes with dynamic IPs in the cluster,
 and updates the local node information used by CLI commands.`,
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
-		RunE:         refreshIPs,
+		Args: cobrautils.ExactArgs(1),
+		RunE: refreshIPs,
 	}
 
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
