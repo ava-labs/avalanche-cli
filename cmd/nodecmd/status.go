@@ -131,6 +131,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		ux.SpinFailWithError(spinner, "", e)
 		return e
 	}
+	ux.SpinComplete(spinner)
 	spinSession.Stop()
 	avagoVersions := map[string]string{}
 	for nodeID, avalanchegoVersion := range wgResults.GetResultMap() {
