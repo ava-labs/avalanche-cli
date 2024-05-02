@@ -34,6 +34,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"

@@ -128,8 +128,8 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 				}
 			}
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
-			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), data.BlockchainID.String()})
-			table.Append([]string{fmt.Sprintf("%s BlockchainID", net), hexEncoding})
+			table.Append([]string{fmt.Sprintf("%s BlockchainID (CB58)", net), data.BlockchainID.String()})
+			table.Append([]string{fmt.Sprintf("%s BlockchainID (HEX)", net), hexEncoding})
 		}
 		if data.TeleporterMessengerAddress != "" {
 			table.Append([]string{fmt.Sprintf("%s Teleporter Messenger Address", net), data.TeleporterMessengerAddress})
@@ -358,7 +358,7 @@ func readGenesis(_ *cobra.Command, args []string) error {
 		return printGenesis(sc, subnetName)
 	}
 
-	isEVM, err := HasSubnetEVMGenesis(subnetName)
+	isEVM, _, err := HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
 	}
