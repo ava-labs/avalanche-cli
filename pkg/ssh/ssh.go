@@ -141,7 +141,7 @@ func RunSSHRestartNode(host *models.Host) error {
 	return docker.RestartDockerComposeService(host, remoteComposeFile, "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
-// RunSSHSetupAWMRelayerService runs script to set up an AWM Relayer Service
+// ComposeSSHSetupAWMRelayer used docker compose to setup AWM Relayer
 func ComposeSSHSetupAWMRelayer(host *models.Host) error {
 	if err := docker.ComposeSSHSetupAWMRelayer(host); err != nil {
 		return err

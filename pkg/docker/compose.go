@@ -46,7 +46,7 @@ func renderComposeFile(composePath string, composeDesc string, templateVars dock
 
 func pushComposeFile(host *models.Host, localFile string, remoteFile string, merge bool) error {
 	if !utils.FileExists(localFile) {
-		return fmt.Errorf("file %s does not exist", localFile)
+		return fmt.Errorf("file %s does not exist to be uploaded to host: %s", localFile, host.NodeID)
 	}
 	if err := host.MkdirAll(filepath.Dir(remoteFile), constants.SSHFileOpsTimeout); err != nil {
 		return err
@@ -55,7 +55,7 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 	if err != nil {
 		return err
 	}
-	ux.Logger.Info("Pushing compose file %s to %s", localFile, remoteFile)
+	ux.Logger.Info("Pushing compose file %s to %s:%s", localFile, host.NodeID, remoteFile)
 	if fileExists && merge {
 		// upload new and merge files
 		ux.Logger.Info("Merging compose files")
@@ -65,7 +65,7 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 		}
 		defer func() {
 			if err := host.Remove(tmpFile, false); err != nil {
-				ux.Logger.Error("Error removing temporary file %s: %s", tmpFile, err)
+				ux.Logger.Error("Error removing temporary file %s:%s %s", host.NodeID, tmpFile, err)
 			}
 		}()
 		if err := host.Upload(localFile, tmpFile, constants.SSHFileOpsTimeout); err != nil {
@@ -75,7 +75,7 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 			return err
 		}
 	} else {
-		ux.Logger.Info("Uploading compose file")
+		ux.Logger.Info("Uploading compose file for host; %s", host.NodeID)
 		if err := host.Upload(localFile, remoteFile, constants.SSHFileOpsTimeout); err != nil {
 			return err
 		}
@@ -197,6 +197,11 @@ func ComposeOverSSH(
 	}
 	ux.Logger.Info("pushComposeFile [%s]%s", host.NodeID, composeDesc)
 	if err := pushComposeFile(host, tmpFile.Name(), remoteComposeFile, true); err != nil {
+		return err
+	}
+	ux.Logger.Info("ValidateComposeFile [%s]%s", host.NodeID, composeDesc)
+	if err := ValidateComposeFile(host, remoteComposeFile, timeout); err != nil {
+		ux.Logger.Error("ComposeOverSSH[%s]%s failed to validate: %v", host.NodeID, composeDesc, err)
 		return err
 	}
 	ux.Logger.Info("StartDockerCompose [%s]%s", host.NodeID, composeDesc)
@@ -354,11 +359,6 @@ func WasNodeSetupWithMonitoring(host *models.Host) (bool, error) {
 	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "promtail", constants.SSHScriptTimeout)
 }
 
-// WasNodeSetupWithTeleporter checks if an AvalancheGo node was setup with teleporter on a remote host.
-func WasNodeSetupWithTeleporter(host *models.Host) (bool, error) {
-	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHScriptTimeout)
-}
-
 func prepareGrafanaConfig() (string, string, string, string, error) {
 	grafanaDataSource, err := remoteconfig.RenderGrafanaLokiDataSourceConfig()
 	if err != nil {
@@ -410,7 +410,7 @@ func prepareGrafanaConfig() (string, string, string, string, error) {
 	return grafanaConfigFile.Name(), grafanaDashboardsFile.Name(), grafanaDataSourceFile.Name(), grafanaPromDataSourceFile.Name(), nil
 }
 
-// ComposeSSHSetupCChain sets up an Avalanche C-Chain node and dependencies on a remote host over SSH.
+// ComposeSSHSetupMonitoring sets up monitoring using docker-compose.
 func ComposeSSHSetupMonitoring(host *models.Host) error {
 	grafanaConfigFile, grafanaDashboardsFile, grafanaLokiDatasourceFile, grafanaPromDatasourceFile, err := prepareGrafanaConfig()
 	if err != nil {

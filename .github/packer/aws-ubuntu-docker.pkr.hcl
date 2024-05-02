@@ -38,7 +38,7 @@ source "googlecompute" "ubuntu_gcp" {
 
 source "amazon-ebs" "ubuntu" {
   ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-{{timestamp}}"
-  ami_description = "AvalancheCLI Ubuntu 22.04 Docker"
+  ami_description = "Avalanche-CLI Ubuntu 22.04 Docker"
   instance_type = "t3.xlarge"
   region        = "us-east-1"
   source_ami_filter {
@@ -65,7 +65,7 @@ source "amazon-ebs" "ubuntu" {
 
 source "amazon-ebs" "ubuntu_arm64" {
   ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-arm64-{{timestamp}}"
-  ami_description = "AvalancheCLI Ubuntu 22.04 Docker"
+  ami_description = "Avalanche-CLI Ubuntu 22.04 Docker"
   instance_type = "t4g.xlarge"  # Adjust the instance type for arm64
   region        = "us-east-1"
   source_ami_filter {
