@@ -45,8 +45,8 @@ github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240411154734-7523771903c
 github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240411154734-7523771903c1/go.mod h1:exAb5aG32vslXT14LLGPtQnI87Asyqso7FbET4PCeoU=
 github.com/ava-labs/avalanchego v1.11.5 h1:3HCE6I1/9BOSrIvwXXuOhVuMGMi926jKhQ+sgU3LEX8=
 github.com/ava-labs/avalanchego v1.11.5/go.mod h1:XPNUEh0ezPEW1IV6yo6AwvqjTZSG1twGskDb7dVcIRA=
-github.com/ava-labs/awm-relayer v1.1.0 h1:2yrxwXk1rGpSP2iAe41cdsxOpcBU1YQxcXQn/Z0MXm8=
-github.com/ava-labs/awm-relayer v1.1.0/go.mod h1:xTsIghzl4y86Fm3dIqjqYz5tCoYVUl3bT2CDH10ZqdA=
+github.com/ava-labs/awm-relayer v1.2.0 h1:3YzmsXKtAmmlSmUZtTGof9073XAQGRAQLqEqX+ozHvI=
+github.com/ava-labs/awm-relayer v1.2.0/go.mod h1:3QPPkrV8qIKjqESHMzI9BFtMKxhYLHuhvjcxmuhW2TM=
 github.com/ava-labs/coreth v0.13.3-rc.2 h1:lhyQwln6at1DTs1O586dMSAtGtSfQWlt2WH+Z2kgYdQ=
 github.com/ava-labs/coreth v0.13.3-rc.2/go.mod h1:4l15XGak3FklhIb7CtlC/1YVwGAfMl83R2zd2N0hNE0=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34 h1:mg9Uw6oZFJKytJxgxnl3uxZOs/SB8CVHg6Io4Tf99Zc=
@@ -75,8 +75,8 @@ github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 h1:Ji0DY1x
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2/go.mod h1:5CsjAbs3NlGQyZNFACh+zztPDI7fU6eW9QsxjfnuBKg=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.7 h1:ogRAwT1/gxJBcSWDMZlgyFUM962F51A5CRhDLbxLdmo=
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.7/go.mod h1:YCsIZhXfRPLFFCl5xxY+1T9RKzOKjCut+28JSX2DnAk=
-github.com/aws/aws-sdk-go-v2/service/kms v1.30.0 h1:yS0JkEdV6h9JOo8sy2JSpjX+i7vsKifU8SIeHrqiDhU=
-github.com/aws/aws-sdk-go-v2/service/kms v1.30.0/go.mod h1:+I8VUUSVD4p5ISQtzpgSva4I8cJ4SQ4b1dcBcof7O+g=
+github.com/aws/aws-sdk-go-v2/service/kms v1.31.0 h1:yl7wcqbisxPzknJVfWTLnK83McUvXba+pz2+tPbIUmQ=
+github.com/aws/aws-sdk-go-v2/service/kms v1.31.0/go.mod h1:2snWQJQUKsbN66vAawJuOGX7dr37pfOq9hb0tZDGIqQ=
 github.com/aws/aws-sdk-go-v2/service/sso v1.20.3 h1:mnbuWHOcM70/OFUlZZ5rcdfA8PflGXXiefU/O+1S3+8=
 github.com/aws/aws-sdk-go-v2/service/sso v1.20.3/go.mod h1:5HFu51Elk+4oRBZVxmHrSds5jFXmFj8C3w7DVF2gnrs=
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.23.3 h1:uLq0BKatTmDzWa/Nu4WO0M1AaQDaPpwTKAeByEc6WFM=
@@ -502,8 +502,8 @@ github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7J
 github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/onsi/gomega v1.19.0/go.mod h1:LY+I3pBVzYsTBU1AnDwOSxaYi9WoWiqgwooUqq9yPro=
-github.com/onsi/gomega v1.32.0 h1:JRYU78fJ1LPxlckP6Txi/EYqJvjtMrDC04/MM5XRHPk=
-github.com/onsi/gomega v1.32.0/go.mod h1:a4x4gW6Pz2yK1MAmvluYme5lvYTn61afQ2ETw/8n4Lg=
+github.com/onsi/gomega v1.33.0 h1:snPCflnZrpMsy94p4lXVEkHo12lmPnc3vY5XBbreexE=
+github.com/onsi/gomega v1.33.0/go.mod h1:+925n5YtiFsLzzafLUHzVMBpvvRAzrydIBiSIxjX3wY=
 github.com/otiai10/copy v1.11.0 h1:OKBD80J/mLBrwnzXqGtFCzprFSGioo30JcmR4APsNwc=
 github.com/otiai10/copy v1.11.0/go.mod h1:rSaLseMUsZFFbsFGc7wCJnnkTAvdc5L6VWxPE4308Ww=
 github.com/otiai10/mint v1.5.1 h1:XaPLeE+9vGbuyEHem1JNk3bYc7KKqyI/na0/mLd/Kks=

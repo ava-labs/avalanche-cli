@@ -333,9 +333,15 @@ func createRelayerConfig(
 	endpoint string,
 ) config.Config {
 	return config.Config{
-		LogLevel:               logLevel,
-		PChainAPIURL:           endpoint,
-		InfoAPIURL:             endpoint,
+		LogLevel: logLevel,
+		PChainAPI: &config.APIConfig{
+			BaseURL:     endpoint,
+			QueryParams: map[string]string{},
+		},
+		InfoAPI: &config.APIConfig{
+			BaseURL:     endpoint,
+			QueryParams: map[string]string{},
+		},
 		StorageLocation:        storageLocation,
 		ProcessMissedBlocks:    false,
 		SourceBlockchains:      []*config.SourceBlockchain{},
