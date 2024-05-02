@@ -135,8 +135,8 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.Append([]string{"Address", address})
 	table.Append([]string{"Balance", balanceStr})
 	table.Append([]string{"Private Key", privKey})
-	table.Append([]string{"BlockchainID", blockchainID.String()})
-	table.Append([]string{"BlockchainID", blockchainIDHexEncoding})
+	table.Append([]string{"BlockchainID (CB58)", blockchainID.String()})
+	table.Append([]string{"BlockchainID (HEX)", blockchainIDHexEncoding})
 	if teleporterMessengerAddress != "" {
 		table.Append([]string{"Teleporter Messenger Address", teleporterMessengerAddress})
 	}
