@@ -171,7 +171,8 @@ func IsUnsignedSlice(n []int) bool {
 // RetryFunction retries the given function until it succeeds or the maximum number of attempts is reached.
 func RetryFunction(fn func() (interface{}, error), maxAttempts int, retryInterval time.Duration) (
 	interface{},
-	error) {
+	error,
+) {
 	var err error
 	var result interface{}
 	const defaultRetryInterval = 2 * time.Second
