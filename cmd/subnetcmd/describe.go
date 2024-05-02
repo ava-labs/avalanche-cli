@@ -358,7 +358,7 @@ func readGenesis(_ *cobra.Command, args []string) error {
 		return printGenesis(sc, subnetName)
 	}
 
-	isEVM, err := HasSubnetEVMGenesis(subnetName)
+	isEVM, _, err := HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
 	}
