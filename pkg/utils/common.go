@@ -191,6 +191,26 @@ func IsUnsignedSlice(n []int) bool {
 	return true
 }
 
+// RetryFunction retries the given function until it succeeds or the maximum number of attempts is reached.
+func RetryFunction(fn func() (interface{}, error), maxAttempts int, retryInterval time.Duration) (
+	interface{},
+	error) {
+	var err error
+	var result interface{}
+	const defaultRetryInterval = 2 * time.Second
+	if retryInterval == 0 {
+		retryInterval = defaultRetryInterval
+	}
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		result, err = fn()
+		if err == nil {
+			return result, nil
+		}
+		time.Sleep(retryInterval)
+	}
+	return nil, fmt.Errorf("maximum retry attempts reached: %w", err)
+}
+
 // TimedFunction is a function that executes the given function `f` within a specified timeout duration.
 func TimedFunction(
 	f func() (interface{}, error),
@@ -214,6 +234,19 @@ func TimedFunction(
 	case <-ch:
 	}
 	return ret, err
+}
+
+// TimedFunctionWithRetry is a function that executes the given function `f` within a specified timeout duration.
+func TimedFunctionWithRetry(
+	f func() (interface{}, error),
+	name string,
+	timeout time.Duration,
+	maxAttempts int,
+	retryInterval time.Duration,
+) (interface{}, error) {
+	return RetryFunction(func() (interface{}, error) {
+		return TimedFunction(f, name, timeout)
+	}, maxAttempts, retryInterval)
 }
 
 func SortUint32(arr []uint32) {
