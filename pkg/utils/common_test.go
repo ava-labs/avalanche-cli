@@ -245,6 +245,7 @@ func mockFunction() (interface{}, error) {
 
 // TestRetryFunction tests the RetryFunction.
 func TestRetryFunction(t *testing.T) {
+	success := "success"
 	// Test with a function that always returns an error.
 	result, err := RetryFunction(mockFunction, 3, 100*time.Millisecond)
 	if err == nil {
@@ -256,13 +257,13 @@ func TestRetryFunction(t *testing.T) {
 
 	// Test with a function that succeeds on the first attempt.
 	fn := func() (interface{}, error) {
-		return "success", nil
+		return success, nil
 	}
 	result, err = RetryFunction(fn, 3, 100*time.Millisecond)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	if result != "success" {
+	if result != success {
 		t.Errorf("Expected 'success' result, got %v", result)
 	}
 
@@ -273,13 +274,13 @@ func TestRetryFunction(t *testing.T) {
 		if count < 3 {
 			return nil, errors.New("error occurred")
 		}
-		return "success", nil
+		return success, nil
 	}
 	result, err = RetryFunction(fn, 5, 100*time.Millisecond)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	if result != "success" {
+	if result != success {
 		t.Errorf("Expected 'success' result, got %v", result)
 	}
 
