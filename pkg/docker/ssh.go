@@ -39,7 +39,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 	}
 
 	avagoDockerImage := fmt.Sprintf("%s:%s", constants.AvalancheGoDockerImage, avalancheGoVersion)
-	ux.Logger.Info("Preparing AvalancheGo Docker image %s", avagoDockerImage)
+	ux.Logger.Info("Preparing AvalancheGo Docker image %s on %s[%s]", avagoDockerImage, host.NodeID, host.IP)
 	if err := PrepareDockerImageWithRepo(host, avagoDockerImage, constants.AvalancheGoGitRepo, avalancheGoVersion); err != nil {
 		return err
 	}

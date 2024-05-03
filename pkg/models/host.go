@@ -193,6 +193,7 @@ func (h *Host) UntimedMkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
+	// ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s", script))
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
