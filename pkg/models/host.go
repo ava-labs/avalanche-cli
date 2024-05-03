@@ -299,7 +299,7 @@ func (h *Host) FileExists(path string) (bool, error) {
 }
 
 // CreateTemp creates a temporary file on the remote server.
-func (h *Host) CreateTemp() (string, error) {
+func (h *Host) CreateTempFile() (string, error) {
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return "", err
@@ -316,6 +316,26 @@ func (h *Host) CreateTemp() (string, error) {
 		return "", err
 	}
 	return tmpFileName, nil
+}
+
+// CreateTempDir creates a temporary directory on the remote server.
+func (h *Host) CreateTempDir() (string, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return "", err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return "", err
+	}
+	defer sftp.Close()
+	tmpDirName := filepath.Join("/tmp", utils.RandomString(10))
+	err = sftp.Mkdir(tmpDirName)
+	if err != nil {
+		return "", err
+	}
+	return tmpDirName, nil
 }
 
 // Remove removes a file on the remote server.
