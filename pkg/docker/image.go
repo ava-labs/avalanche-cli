@@ -42,7 +42,7 @@ func parseDockerImageListOutput(output []byte) []string {
 func BuildDockerImage(host *models.Host, image string, path string, dockerfile string) error {
 	if dockerfileFound, err := host.FileExists(filepath.Join(path, dockerfile)); err != nil || !dockerfileFound {
 		ux.Logger.Error("Dockerfile %s not found in %s", dockerfile, path)
-		return fmt.Errorf("Dockerfile %s not found in %s", dockerfile, path)
+		return fmt.Errorf("dockerfile %s not found in %s", dockerfile, path)
 	}
 	_, err := host.Command(fmt.Sprintf("cd %s && docker build -t %s -f %s .", path, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
 	return err
