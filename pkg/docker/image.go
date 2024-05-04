@@ -57,20 +57,14 @@ func BuildDockerImageFromGitRepo(host *models.Host, image string, gitRepo string
 			ux.Logger.Error("Error removing temporary directory %s: %s", tmpDir, err)
 		}
 	}()
-	// clone the repo
-	if _, err := host.Command(fmt.Sprintf("git clone %s %s ", gitRepo, tmpDir), nil, constants.SSHLongRunningScriptTimeout); err != nil {
-		return err
-	}
-	// checkout the commit
-	if _, err := host.Command(fmt.Sprintf("cd %s && git checkout %s", tmpDir, commit), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+	// clone the repo and checkout commit
+	if _, err := host.Command(fmt.Sprintf("git clone %s %s && cd %s && git checkout %s ", gitRepo, tmpDir, tmpDir, commit), nil, constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
 	// build the image
-	ux.Logger.Info("BuildDockerImage started")
 	if err := BuildDockerImage(host, image, tmpDir, "Dockerfile"); err != nil {
 		return err
 	}
-	ux.Logger.Info("BuildDockerImage is done")
 	ux.Logger.Info("Docker image %s built from %s using %s commit/branch/tag", image, gitRepo, commit)
 	return nil
 }
