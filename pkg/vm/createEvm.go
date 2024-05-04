@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -208,6 +209,7 @@ func createEvmGenesis(
 
 	conf.ChainID = chainID
 
+	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())
 	genesis.Alloc = allocation
 	genesis.Config = conf
 	genesis.Difficulty = Difficulty

@@ -8,7 +8,8 @@
     "eip158Block": 0,
     "byzantiumBlock": 0,
     "constantinopleBlock": 0,
-    "durangoTimestamp": 0,
+    "durangoTimestamp": 1607144400,
+    "eUpgradeTimestamp": 1607144400,
     "petersburgBlock": 0,
     "istanbulBlock": 0,
     "muirGlacierBlock": 0,
@@ -37,6 +38,7 @@
     }
   },
   "nonce": "0x0",
+  "timestamp": 1607144400,
   "timestamp": "0x0",
   "extraData": "0x",
   "gasLimit": "0x7a1200",
