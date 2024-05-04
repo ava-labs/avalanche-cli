@@ -28,10 +28,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	"github.com/ava-labs/subnet-evm/params"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -884,31 +882,16 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
 		return false, nil, err
 	}
 	// from here, we are sure to have a genesis file
-	genesis, err := app.LoadEvmGenesis(subnetName)
+	_, err := app.LoadEvmGenesis(subnetName)
 	if err != nil {
-		return false, err, nil
-	}
-	genesis.Config.AvalancheContext = params.AvalancheContext{
-		SnowCtx: &snow.Context{},
-	}
-	if err := genesis.Verify(); err != nil {
 		return false, err, nil
 	}
 	return true, nil, nil
 }
 
 func jsonIsSubnetEVMGenesis(jsonBytes []byte) bool {
-	genesis, err := app.LoadEvmGenesisFromJSON(jsonBytes)
-	if err != nil {
-		return false
-	}
-	genesis.Config.AvalancheContext = params.AvalancheContext{
-		SnowCtx: &snow.Context{},
-	}
-	if err := genesis.Verify(); err != nil {
-		return false
-	}
-	return true
+	_, err := app.LoadEvmGenesisFromJSON(jsonBytes)
+	return err == nil
 }
 
 func promptOwners(

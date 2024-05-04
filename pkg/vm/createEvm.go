@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -19,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/snow"
+	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
@@ -117,7 +117,8 @@ func createEvmGenesis(
 
 	conf.NetworkUpgrades = params.NetworkUpgrades{
 		SubnetEVMTimestamp: utils.NewUint64(0),
-		DurangoTimestamp:   utils.NewUint64(uint64(time.Now().Unix())),
+		DurangoTimestamp:   utils.TimeToNewUint64(version.GetDurangoTime(0)),
+		EUpgradeTimestamp:  utils.TimeToNewUint64(version.GetEUpgradeTime(0)),
 	}
 	conf.AvalancheContext = params.AvalancheContext{
 		SnowCtx: &snow.Context{},
