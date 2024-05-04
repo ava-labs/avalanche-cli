@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -193,7 +194,7 @@ func (h *Host) UntimedMkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
-	// ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s", script))
+	startTime := time.Now()
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
@@ -208,13 +209,13 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 	if env != nil {
 		cmd.Env = env
 	}
-	return cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s [%s]", script, time.Since(startTime)))
+	return output, err
 }
 
 // Forward forwards the TCP connection to a remote address.
 func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error) {
-	maxAttempts := 3
-
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
@@ -226,7 +227,7 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error
 		},
 		"post over ssh",
 		timeout,
-		maxAttempts,
+		3,
 		2*time.Second,
 	)
 	if err != nil {
@@ -352,7 +353,9 @@ func (h *Host) Remove(path string, recursive bool) error {
 	}
 	defer sftp.Close()
 	if recursive {
-		return sftp.RemoveAll(path)
+		// return sftp.RemoveAll(path) is very slow
+		_, err := h.Command(fmt.Sprintf("rm -rf %s", path), nil, constants.SSHLongRunningScriptTimeout)
+		return err
 	} else {
 		return sftp.Remove(path)
 	}

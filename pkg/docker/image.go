@@ -5,7 +5,6 @@ package docker
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -40,11 +39,7 @@ func parseDockerImageListOutput(output []byte) []string {
 
 // BuildDockerImage builds a docker image on a remote host.
 func BuildDockerImage(host *models.Host, image string, path string, dockerfile string) error {
-	if dockerfileFound, err := host.FileExists(filepath.Join(path, dockerfile)); err != nil || !dockerfileFound {
-		ux.Logger.Error("Dockerfile %s not found in %s", dockerfile, path)
-		return fmt.Errorf("dockerfile %s not found in %s", dockerfile, path)
-	}
-	_, err := host.Command(fmt.Sprintf("cd %s && docker build -t %s -f %s .", path, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
+	_, err := host.Command(fmt.Sprintf("cd %s && docker build -q -t %s -f %s .", path, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
 	return err
 }
 
@@ -63,7 +58,7 @@ func BuildDockerImageFromGitRepo(host *models.Host, image string, gitRepo string
 		}
 	}()
 	// clone the repo
-	if _, err := host.Command(fmt.Sprintf("git clone %s %s", gitRepo, tmpDir), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+	if _, err := host.Command(fmt.Sprintf("git clone %s %s ", gitRepo, tmpDir), nil, constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
 	// checkout the commit
@@ -71,27 +66,30 @@ func BuildDockerImageFromGitRepo(host *models.Host, image string, gitRepo string
 		return err
 	}
 	// build the image
+	ux.Logger.Info("BuildDockerImage started")
 	if err := BuildDockerImage(host, image, tmpDir, "Dockerfile"); err != nil {
 		return err
 	}
+	ux.Logger.Info("BuildDockerImage is done")
+	ux.Logger.Info("Docker image %s built from %s using %s commit/branch/tag", image, gitRepo, commit)
 	return nil
 }
 
 func PrepareDockerImageWithRepo(host *models.Host, image string, gitRepo string, commit string) error {
 	localImageExists, _ := DockerLocalImageExists(host, image)
 	if localImageExists {
-		ux.Logger.Info("Docker image %s found on %s", image, host.NodeID)
+		ux.Logger.Info("Docker image %s is FOUND on %s", image, host.NodeID)
 		return nil
 	} else {
-		// try to pull it and if it fails build it
+		ux.Logger.Info("Docker image %s not found on %s, pulling it", image, host.NodeID)
 		if err := PullDockerImage(host, image); err != nil {
 			ux.Logger.Info("Docker image %s not found on %s, building it from %s using %s commit/branch/tag", image, host.NodeID, gitRepo, commit)
 			if err := BuildDockerImageFromGitRepo(host, image, gitRepo, commit); err != nil {
 				return err
 			}
-		} else {
-			ux.Logger.Info("Docker image %s successfully pulled on %s", image, host.NodeID)
+			return nil
 		}
 	}
+	ux.Logger.Info("Docker image %s is READY on %s", image, host.NodeID)
 	return nil
 }

@@ -26,12 +26,13 @@ func ValidateComposeFile(host *models.Host, composeFile string, timeout time.Dur
 
 // ComposeSSHSetupNode sets up an AvalancheGo node and dependencies on a remote host over SSH.
 func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool) error {
+	startTime := time.Now()
 	for _, dir := range remoteconfig.RemoteFoldersToCreateAvalanchego() {
 		if err := host.MkdirAll(dir, constants.SSHFileOpsTimeout); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
-	ux.Logger.Info("avalancheCLI folder structure created on remote host %s", remoteconfig.RemoteFoldersToCreateAvalanchego())
+	ux.Logger.Info("avalancheCLI folder structure created on remote host %s after %s", remoteconfig.RemoteFoldersToCreateAvalanchego(), time.Since(startTime))
 	// configs
 	networkID := network.NetworkIDFlagValue()
 	if network.Kind == models.Local || network.Kind == models.Devnet {
@@ -43,7 +44,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 	if err := PrepareDockerImageWithRepo(host, avagoDockerImage, constants.AvalancheGoGitRepo, avalancheGoVersion); err != nil {
 		return err
 	}
-
+	ux.Logger.Info("AvalancheGo Docker image %s ready on %s[%s] after %s", avagoDockerImage, host.NodeID, host.IP, time.Since(startTime))
 	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(host, networkID)
 	if err != nil {
 		return err
@@ -63,6 +64,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 	if err := host.Upload(cChainConfFile, remoteconfig.GetRemoteAvalancheCChainConfig(), constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
+	ux.Logger.Info("AvalancheGo configs uploaded to %s[%s] after %s", host.NodeID, host.IP, time.Since(startTime))
 	return ComposeOverSSH("Compose Node",
 		host,
 		constants.SSHScriptTimeout,
