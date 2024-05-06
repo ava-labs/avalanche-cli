@@ -39,7 +39,7 @@ func parseDockerImageListOutput(output []byte) []string {
 
 // BuildDockerImage builds a docker image on a remote host.
 func BuildDockerImage(host *models.Host, image string, path string, dockerfile string) error {
-	_, err := host.Command(fmt.Sprintf("cd %s && docker build -q -t %s -f %s .", path, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
+	_, err := host.Command(fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, constants.BuildEnvGolangVersion, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
 	return err
 }
 
