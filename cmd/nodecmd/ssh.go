@@ -70,42 +70,18 @@ func sshNode(_ *cobra.Command, args []string) error {
 			if len(args[1:]) == 0 {
 				return printClusterConnectionString(clusterNameOrNodeID, clustersConfig.Clusters[clusterNameOrNodeID].Network.Kind.String())
 			} else {
-				clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterNameOrNodeID))
+				clusterHosts, err := GetAllClusterHosts(clusterNameOrNodeID)
 				if err != nil {
 					return err
-				}
-				monitoringInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterNameOrNodeID), constants.MonitoringDir)
-				if utils.DirectoryExists(monitoringInventoryPath) {
-					monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
-					if err != nil {
-						return err
-					}
-					clusterHosts = append(clusterHosts, monitoringHosts...)
-				}
-				loadTestInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterNameOrNodeID), constants.LoadTestDir)
-				if utils.DirectoryExists(loadTestInventoryPath) {
-					loadTestHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryPath)
-					if err != nil {
-						return err
-					}
-					clusterHosts = append(clusterHosts, loadTestHosts...)
 				}
 				return sshHosts(clusterHosts, cmd, clustersConfig.Clusters[clusterNameOrNodeID])
 			}
 		} else {
 			// try to detect nodeID
 			for clusterName := range clustersConfig.Clusters {
-				clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+				clusterHosts, err := GetAllClusterHosts(clusterName)
 				if err != nil {
 					return err
-				}
-				monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-				if utils.DirectoryExists(monitoringInventoryPath) {
-					monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
-					if err != nil {
-						return err
-					}
-					clusterHosts = append(clusterHosts, monitoringHosts...)
 				}
 				selectedHost := utils.Filter(clusterHosts, func(h *models.Host) bool {
 					_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
@@ -250,4 +226,32 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 	}
 	ux.Logger.PrintToUser("")
 	return nil
+}
+
+// GetAllClusterHosts returns all hosts in a cluster including loadtest and monitoring hosts
+func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
+	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
+		return nil, fmt.Errorf("cluster %s not found", clusterName)
+	}
+	clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return nil, err
+	}
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	if utils.DirectoryExists(monitoringInventoryPath) {
+		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+		if err != nil {
+			return nil, err
+		}
+		clusterHosts = append(clusterHosts, monitoringHosts...)
+	}
+	loadTestInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
+	if utils.DirectoryExists(loadTestInventoryPath) {
+		loadTestHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryPath)
+		if err != nil {
+			return nil, err
+		}
+		clusterHosts = append(clusterHosts, loadTestHosts...)
+	}
+	return clusterHosts, nil
 }

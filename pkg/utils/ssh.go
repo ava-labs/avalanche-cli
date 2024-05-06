@@ -18,10 +18,45 @@ import (
 // GetSSHConnectionString returns the SSH connection string for the given public IP and certificate file path.
 func GetSSHConnectionString(publicIP, certFilePath string) string {
 	if certFilePath != "" {
-		return fmt.Sprintf("ssh %s %s@%s -i %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
-	} else {
-		return fmt.Sprintf("ssh %s %s@%s", constants.AnsibleSSHUseAgentParams, constants.AnsibleSSHUser, publicIP)
+		certFilePath = fmt.Sprintf("-i %s", certFilePath)
 	}
+	return fmt.Sprintf("ssh %s %s@%s %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
+
+}
+
+// GetSCPCommandString returns the SCP command string for the given source and destination paths.
+func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destIP, destPath string) (string, error) {
+	scpParams := constants.AnsibleSSHShellParams
+	if sourceIP == "" && destIP == "" {
+		return "", fmt.Errorf("source or destination should be remote")
+	}
+	if sourceIP == "" && destPath == "" {
+		return "", fmt.Errorf("source and destination path is required")
+	}
+	// end of checks
+	if certFilePath != "" {
+		scpParams = scpParams + fmt.Sprintf("-i %s ", certFilePath)
+	}
+	if sourceIP != "" && destIP != "" {
+		scpParams = scpParams + "-3 "
+	}
+	if sourceIP != "" {
+		sourcePath = fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, sourceIP, sourcePath)
+	}
+	if destIP != "" {
+		destPath = fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, destIP, destPath)
+	}
+
+	return fmt.Sprintf("scp %s %s %s", scpParams, sourcePath, destPath), nil
+}
+
+// SplitScpPath splits the given path into host and path.
+func SplitScpPath(path string) (string, string) {
+	if !strings.Contains(path, ":") {
+		return "", path
+	}
+	parts := strings.Split(path, ":")
+	return parts[0], parts[1]
 }
 
 // isSSHAgentAvailable checks if the SSH agent is available.
