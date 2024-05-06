@@ -29,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -838,6 +837,9 @@ func FundLedgerAddress(amount uint64) error {
 		return fmt.Errorf("no ledger addresses available")
 	}
 	ledgerAddr := ledgerAddrs[0]
+	if err := ledgerDev.Disconnect(); err != nil {
+		return err
+	}
 
 	// get genesis funded wallet
 	sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
@@ -858,47 +860,20 @@ func FundLedgerAddress(amount uint64) error {
 		return err
 	}
 
-	// export X-Chain genesis addr to P-Chain ledger addr
+	// transfer from P-Chain genesis addr to P-Chain ledger addr
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
 		Addrs:     []ids.ShortID{ledgerAddr},
 	}
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.X().Builder().Context().AVAXAssetID},
+		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
 		},
 	}
 	outputs := []*avax.TransferableOutput{output}
-	if _, err := wallet.X().IssueExportTx(avagoconstants.PlatformChainID, outputs); err != nil {
-		return err
-	}
-
-	// get ledger funded wallet
-	kc, err = keychain.NewLedgerKeychain(ledgerDev, 1)
-	if err != nil {
-		return err
-	}
-	wallet, err = primary.MakeWallet(
-		context.Background(),
-		&primary.WalletConfig{
-			URI:          constants.LocalAPIEndpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  secp256k1fx.NewKeychain(),
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	// import X-Chain genesis addr to P-Chain ledger addr
-	fmt.Println("*** Please sign import hash on the ledger device *** ")
-	if _, err = wallet.P().IssueImportTx(wallet.X().Builder().Context().BlockchainID, &to); err != nil {
-		return err
-	}
-
-	if err := ledgerDev.Disconnect(); err != nil {
+	if _, err := wallet.P().IssueBaseTx(outputs); err != nil {
 		return err
 	}
 
