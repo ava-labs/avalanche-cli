@@ -276,6 +276,9 @@ const (
 	GitRepoCommitEmail = "info@avax.network"
 	AvaLabsMaintainers = "ava-labs"
 
+	AvalancheGoDockerImage = "avaplatform/avalanchego"
+	AvalancheGoGitRepo     = "https://github.com/ava-labs/avalanchego"
+
 	UpgradeBytesFileName      = "upgrade.json"
 	UpgradeBytesLockExtension = ".lock"
 	NotAvailableLabel         = "Not available"

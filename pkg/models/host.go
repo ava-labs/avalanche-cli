@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -193,6 +194,7 @@ func (h *Host) UntimedMkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
+	startTime := time.Now()
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
@@ -207,13 +209,13 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 	if env != nil {
 		cmd.Env = env
 	}
-	return cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s [%s]", script, time.Since(startTime)))
+	return output, err
 }
 
 // Forward forwards the TCP connection to a remote address.
 func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error) {
-	maxAttempts := 3
-
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
@@ -225,7 +227,7 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error
 		},
 		"post over ssh",
 		timeout,
-		maxAttempts,
+		3,
 		2*time.Second,
 	)
 	if err != nil {
@@ -299,7 +301,7 @@ func (h *Host) FileExists(path string) (bool, error) {
 }
 
 // CreateTemp creates a temporary file on the remote server.
-func (h *Host) CreateTemp() (string, error) {
+func (h *Host) CreateTempFile() (string, error) {
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return "", err
@@ -318,6 +320,26 @@ func (h *Host) CreateTemp() (string, error) {
 	return tmpFileName, nil
 }
 
+// CreateTempDir creates a temporary directory on the remote server.
+func (h *Host) CreateTempDir() (string, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return "", err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return "", err
+	}
+	defer sftp.Close()
+	tmpDirName := filepath.Join("/tmp", utils.RandomString(10))
+	err = sftp.Mkdir(tmpDirName)
+	if err != nil {
+		return "", err
+	}
+	return tmpDirName, nil
+}
+
 // Remove removes a file on the remote server.
 func (h *Host) Remove(path string, recursive bool) error {
 	if !h.Connected() {
@@ -331,7 +353,9 @@ func (h *Host) Remove(path string, recursive bool) error {
 	}
 	defer sftp.Close()
 	if recursive {
-		return sftp.RemoveAll(path)
+		// return sftp.RemoveAll(path) is very slow
+		_, err := h.Command(fmt.Sprintf("rm -rf %s", path), nil, constants.SSHLongRunningScriptTimeout)
+		return err
 	} else {
 		return sftp.Remove(path)
 	}
