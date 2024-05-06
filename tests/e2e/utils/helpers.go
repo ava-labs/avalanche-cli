@@ -29,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -846,8 +845,7 @@ func FundLedgerAddress(amount uint64) error {
 	if err != nil {
 		return err
 	}
-	var kc keychain.Keychain
-	kc = sk.KeyChain()
+	kc := sk.KeyChain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
 		&primary.WalletConfig{
