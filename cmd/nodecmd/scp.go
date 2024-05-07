@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	toRemote   = true
+	fromRemote = false
+)
+
 func newSCPCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "scp SOURCE DEST",
@@ -73,7 +78,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		return scpHosts(clusterHosts, sourcePath, destPath, clusterName)
+		return scpHosts(clusterHosts, sourcePath, destPath, clusterName, toRemote)
 	}
 	if err := checkCluster(destClusterNameOrNodeID); err == nil {
 		// destination is a cluster
@@ -82,12 +87,12 @@ func scpNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		return scpHosts(clusterHosts, destPath, sourcePath, clusterName)
+		return scpHosts(clusterHosts, destPath, sourcePath, clusterName, fromRemote)
 	}
 	return nil
 }
 
-func scpHosts(hosts []*models.Host, sourcePath, destPath string, clusterName string) error {
+func scpHosts(hosts []*models.Host, sourcePath, destPath string, clusterName string, toRemote bool) error {
 	// get source and destination
 	source, err := prepareSCPDestination(clusterName, sourcePath)
 	if err != nil {
@@ -103,7 +108,7 @@ func scpHosts(hosts []*models.Host, sourcePath, destPath string, clusterName str
 		wg.Add(1)
 		go func(nodeResults models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			nodeConf, err := app.LoadClusterNodeConfig(nodeName)
+			nodeConf, err := app.LoadClusterNodeConfig(host.GetCloudID())
 			if err != nil {
 				nodeResults.AddResult(host.NodeID, "", err)
 				return
