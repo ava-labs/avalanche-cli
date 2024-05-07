@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # run load test command
-install -g ubuntu  -o ubuntu -d `dirname {{ .LoadTestResultFile }}`
+mkdir -p `dirname {{ .LoadTestResultFile }}`
+chown -R ubuntu:ubuntu `dirname {{ .LoadTestResultFile }}`
 if [ -e {{ .LoadTestResultFile }} ]; then
   rm {{ .LoadTestResultFile }}
 fi
