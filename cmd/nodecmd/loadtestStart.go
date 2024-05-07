@@ -320,6 +320,9 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupPromtailConfig(currentLoadTestHost[0], monitoringHosts[0].IP, constants.AvalanchegoLokiPort, currentLoadTestHost[0].GetCloudID(), "NodeID-Loadtest", ""); err != nil {
 			return err
 		}
+		if err := ssh.RunSSHSetupDockerService(currentLoadTestHost[0]); err != nil {
+			return err
+		}
 		if err := docker.ComposeSSHSetupLoadTest(currentLoadTestHost[0]); err != nil {
 			return err
 		}
