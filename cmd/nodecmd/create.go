@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"io"
 	"math"
 	"os"
@@ -1486,6 +1487,31 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 		return usr.Username + constants.AvalancheCLISuffix, nil
 	}
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
+}
+
+func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[string]NumNodes) error {
+	flags := make(map[string]string)
+	totalValidatorNodes := 0
+	totalAPINodes := 0
+	for region := range nodes {
+		totalValidatorNodes += nodes[region].numValidators
+		totalAPINodes += nodes[region].numAPI
+		flags[region] = strconv.Itoa(nodes[region].numValidators)
+	}
+	flags[constants.CloudService] = cloudService
+	flags[constants.NodeType] = nodeType
+	flags[constants.UseStaticIP] = strconv.FormatBool(useStaticIP)
+	flags[constants.Network] = network
+	flags[constants.Network] = nodeType
+	flags[constants.ValidatorCount] = strconv.Itoa(totalValidatorNodes)
+	flags[constants.APICount] = strconv.Itoa(totalAPINodes)
+	if cloudService == constants.AWSCloudService {
+		flags[constants.AWSVolumeType] = volumeType
+		flags[constants.AWSVolumeSize] = strconv.Itoa(volumeSize)
+	}
+	flags[enableMonitoringFlag] = strconv.FormatBool(addMonitoring)
+	metrics.HandleTracking(cmd, flags)
+	return nil
 }
 
 func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {
