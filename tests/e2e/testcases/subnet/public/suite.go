@@ -101,7 +101,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	ginkgo.It("deploy subnet to mainnet", func() {
 		var interactionEndCh, ledgerSimEndCh chan struct{}
 		if os.Getenv("LEDGER_SIM") != "" {
-			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(8, ledger1Seed, true)
+			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(7, ledger1Seed, true)
 		}
 		// fund ledger address
 		genesisParams := genesis.MainnetParams
@@ -124,8 +124,10 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			_ = commands.SimulateMainnetAddValidator(subnetName, nodeInfo.ID, start, "24h", "20")
 			nodeIdx++
 		}
-		close(interactionEndCh)
-		<-ledgerSimEndCh
+		if os.Getenv("LEDGER_SIM") != "" {
+			close(interactionEndCh)
+			<-ledgerSimEndCh
+		}
 		fmt.Println(logging.LightBlue.Wrap("EXECUTING NON INTERACTIVE PART OF THE TEST: JOIN/WHITELIST/WAIT/HARDHAT"))
 		// join to copy vm binary and update config file
 		for _, nodeInfo := range nodeInfos {
@@ -277,7 +279,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		ledger4Addr := "P-custom18g2tekxzt60j3sn8ymjx6qvk96xunhctkyzckt"
 
 		// start the deploy process with ledger1
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(3, ledger1Seed, true)
+		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(2, ledger1Seed, true)
 
 		// obtain ledger1 addr
 		ledger1Addr, err := utils.GetLedgerAddress(models.NewLocalNetwork(), 0)

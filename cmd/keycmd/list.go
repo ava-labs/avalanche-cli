@@ -35,6 +35,7 @@ const (
 	chainsFlag        = "chains"
 	ledgerIndicesFlag = "ledger"
 	useNanoAvaxFlag   = "use-nano-avax"
+	keysFlag          = "keys"
 )
 
 var (
@@ -48,6 +49,7 @@ var (
 	useNanoAvax                 bool
 	ledgerIndices               []uint
 	subnetName                  string
+	keys                        []string
 )
 
 // avalanche subnet list
@@ -99,6 +101,12 @@ keys or for the ledger addresses associated to certain indices.`,
 		"g",
 		[]uint{},
 		"list ledger addresses for the given indices",
+	)
+	cmd.Flags().StringSliceVar(
+		&keys,
+		keysFlag,
+		[]string{},
+		"list addresses for the given keys",
 	)
 	cmd.Flags().StringVar(
 		&subnetName,
@@ -260,7 +268,14 @@ func getStoredKeysInfo(
 	keyPaths := []string{}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
+			doAppend := true
+			if len(keys) > 0 {
+				keyName := strings.TrimSuffix(f.Name(), constants.KeySuffix)
+				doAppend = utils.Belongs(keys, keyName)
+			}
+			if doAppend {
+				keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
+			}
 		}
 	}
 	addrInfos := []addressInfo{}
