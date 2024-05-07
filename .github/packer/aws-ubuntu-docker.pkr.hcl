@@ -23,22 +23,22 @@ packer {
 
 source "googlecompute" "ubuntu_gcp" {
   project_id      = "avalabs-experimental"
-  source_image_family = "ubuntu-2204-lts"
+  source_image_family = "ubuntu-2004-lts"
   zone            = "us-central1-a"
   ssh_username    = "ubuntu"
-  image_name     = "public-avalanchecli-ubuntu-jammy-2204-docker"
-  image_family   = "avalanchecli-ubuntu-2204"
-  tags = ["public-avalanchecli","ubuntu-2204", "avaplatform"]
+  image_name     = "public-avalanchecli-ubuntu-focal-2004-docker"
+  image_family   = "avalanchecli-ubuntu-2004"
+  tags = ["public-avalanchecli","ubuntu-2004", "avaplatform"]
 }
 
 source "amazon-ebs" "ubuntu_amd64" {
-  ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-{{timestamp}}"
-  ami_description = "Avalanche-CLI Ubuntu 22.04 Docker"
+  ami_name      = "public-avalanchecli-ubuntu-focal-20.04-docker-{{timestamp}}"
+  ami_description = "Avalanche-CLI Ubuntu 20.04 Docker"
   instance_type = "t3.xlarge"
   region        = "us-east-1"
   source_ami_filter {
     filters = {
-      name                = "ubuntu/images/*ubuntu-jammy-22.04-amd64-server-*"
+      name                = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -50,8 +50,8 @@ source "amazon-ebs" "ubuntu_amd64" {
   ami_regions = local.all_regions
   
   tags = {
-    Name = "public-avalanchecli-ubuntu-jammy-22.04-docker"
-    Release = "ubuntu-22.04"
+    Name = "public-avalanchecli-ubuntu-focal-20.04-docker"
+    Release = "ubuntu-20.04"
     Org = "avaplatform"
     Base_AMI_ID = "{{ .SourceAMI }}"
     Base_AMI_Name = "{{ .SourceAMIName }}"
@@ -59,13 +59,13 @@ source "amazon-ebs" "ubuntu_amd64" {
 }
 
 source "amazon-ebs" "ubuntu_arm64" {
-  ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-arm64-{{timestamp}}"
-  ami_description = "Avalanche-CLI Ubuntu 22.04 Docker"
+  ami_name      = "public-avalanchecli-ubuntu-focal-20.04-docker-arm64-{{timestamp}}"
+  ami_description = "Avalanche-CLI Ubuntu 20.04 Docker"
   instance_type = "t4g.xlarge"  # Adjust the instance type for arm64
   region        = "us-east-1"
   source_ami_filter {
     filters = {
-      name                = "ubuntu/images/*ubuntu-jammy-22.04-arm64-server-*"  # Filter for arm64 AMIs
+      name                = "ubuntu/images/*ubuntu-focal-20.04-arm64-server-*"  # Filter for arm64 AMIs
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -76,8 +76,8 @@ source "amazon-ebs" "ubuntu_arm64" {
   ami_users = []
   ami_regions = local.all_regions
   tags = {
-    Name = "public-avalanchecli-ubuntu-jammy-22.04-docker-arm64"
-    Release = "ubuntu-22.04"
+    Name = "public-avalanchecli-ubuntu-focal-20.04-docker-arm64"
+    Release = "ubuntu-20.04"
     Org = "avaplatform"
     Base_AMI_ID = "{{ .SourceAMI }}"
     Base_AMI_Name = "{{ .SourceAMIName }}"
