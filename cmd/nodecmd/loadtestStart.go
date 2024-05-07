@@ -333,6 +333,9 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupPrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
 			return err
 		}
+		if err := docker.RestartDockerComposeService(monitoringHosts[0], utils.GetRemoteComposeFile(), "prometheus", constants.SSHLongRunningScriptTimeout); err != nil {
+			return err
+		}
 	}
 
 	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)

@@ -104,6 +104,7 @@ func trackSubnet(
 			if err := ssh.RunSSHUploadClustersConfig(host, app.GetClustersConfigPath()); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
+
 			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetExportPath, networkFlag); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return

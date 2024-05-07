@@ -14,6 +14,7 @@ import (
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -310,6 +311,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
+	}
+	// update logging
+	if addMonitoring {
+		// set up subnet logs in Loki
+		if err = setUpSubnetLogging(clusterName, subnetName); err != nil {
+			return err
+		}
 	}
 	if err := waitForClusterSubnetStatus(clusterName, subnetName, blockchainID, status.Validating, validateCheckTimeout, validateCheckPoolTime); err != nil {
 		return err
@@ -830,5 +838,61 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 			return err
 		}
 	}
+	return nil
+}
+
+// setUPSubnetLogging sets up the subnet logging for the subnet
+func setUpSubnetLogging(clusterName, subnetName string) error {
+	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	if err != nil {
+		return err
+	}
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	spinSession := ux.NewUserSpinner()
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
+	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
+	if err != nil {
+		return err
+	}
+	for _, host := range hosts {
+		if !addMonitoring {
+			continue
+		}
+		wg.Add(1)
+		go func(host *models.Host) {
+			defer wg.Done()
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
+			cloudID := host.GetCloudID()
+			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+			if err != nil {
+				wgResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+				wgResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			if err := docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "promtail", constants.SSHLongRunningScriptTimeout); err != nil {
+				wgResults.AddResult(host.NodeID, nil, err)
+				ux.SpinFailWithError(spinner, "", err)
+				return
+			}
+			ux.SpinComplete(spinner)
+		}(host)
+	}
+	wg.Wait()
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.NodeID) {
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		}
+	}
+	spinSession.Stop()
 	return nil
 }

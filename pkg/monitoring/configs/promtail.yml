@@ -52,7 +52,7 @@ scrape_configs:
         job: subnet
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
-        __path__: {{ .ChainID }}
+        __path__: /logs/{{ .ChainID }}.log
 {{ end }}
   - job_name: avalanchego-loadtest
     static_configs:
@@ -62,4 +62,4 @@ scrape_configs:
         job: loadtest
         host: {{ .Host }}
         nodeID: {{ .NodeID }}
-        __path__: /home/ubuntu/loadtest_*.txt
+        __path__: /logs/loadtest_*.txt
