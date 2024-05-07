@@ -122,14 +122,6 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
 	}
-	if utils.IsE2E() && !app.Conf.ConfigFileExists() &&
-		!utils.FileExists(utils.UserHomePath(constants.OldMetricsConfigFileName)) &&
-		metrics.CheckCommandIsNotCompletion(cmd) {
-		err = metrics.HandleUserMetricsPreference(app)
-		if err != nil {
-			return err
-		}
-	}
 	if err := checkForUpdates(cmd, app); err != nil {
 		return err
 	}
@@ -212,7 +204,7 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 }
 
 func handleTracking(cmd *cobra.Command, _ []string) {
-	metrics.HandleTracking(cmd, app, nil)
+	metrics.HandleTracking(cmd, nil)
 }
 
 func setupEnv() (string, error) {
