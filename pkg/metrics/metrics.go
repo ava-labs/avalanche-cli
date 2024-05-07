@@ -12,11 +12,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
@@ -41,53 +37,9 @@ func GetCLIVersion() string {
 	return string(content)
 }
 
-func PrintMetricsOptOutPrompt() {
-	ux.Logger.PrintToUser(
-		"Avalanche-CLI (the \"software\") may collect statistical data on how the software is used on an anonymous " +
-			"basis for purposes of product improvement.  This data will not (i) include any passwords, scripts, or data " +
-			"files, (ii) be associated with any particular user or entity, or (iii) include any personally identifiable " +
-			"information or be used to identify individuals or entities using the software.  You can disable such data " +
-			"collection with `avalanche config metrics disable` command, which will result in no data being collected; " +
-			"by using the software without so disabling such data collection you expressly consent to the collection of " +
-			"such data.  You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more. \n")
-	ux.Logger.PrintToUser("You can disable data collection with `avalanche config metrics disable` command. " +
-		"You can also read our privacy statement <https://www.avalabs.org/privacy-policy> to learn more.\n")
-}
-
-func saveMetricsConfig(app *application.Avalanche, metricsEnabled bool) error {
-	return app.Conf.SetConfigValue(constants.ConfigMetricsEnabledKey, metricsEnabled)
-}
-
-func HandleUserMetricsPreference(app *application.Avalanche) error {
-	if utils.IsE2E() {
-		return saveMetricsConfig(app, false)
-	}
-	PrintMetricsOptOutPrompt()
-	txt := "Press [Enter] to opt-in, or opt out by choosing 'No'"
-	yes, err := app.Prompt.CaptureYesNo(txt)
-	if err != nil {
-		return err
-	}
-	if !yes {
-		ux.Logger.PrintToUser("Avalanche CLI usage metrics will not be collected")
-	} else {
-		ux.Logger.PrintToUser("Thank you for opting in Avalanche CLI usage metrics collection")
-	}
-	if err = saveMetricsConfig(app, yes); err != nil {
-		return err
-	}
-	return nil
-}
-
-func userIsOptedIn(app *application.Avalanche) bool {
-	return app.Conf.GetConfigBoolValue(constants.ConfigMetricsEnabledKey)
-}
-
-func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
-	if userIsOptedIn(app) {
-		if !cmd.HasSubCommands() && CheckCommandIsNotCompletion(cmd) {
-			TrackMetrics(cmd, flags)
-		}
+func HandleTracking(cmd *cobra.Command, flags map[string]string) {
+	if !cmd.HasSubCommands() && CheckCommandIsNotCompletion(cmd) {
+		TrackMetrics(cmd, flags)
 	}
 }
 
@@ -103,7 +55,6 @@ func TrackMetrics(command *cobra.Command, flags map[string]string) {
 	if telemetryToken == "" || utils.IsE2E() {
 		return
 	}
-
 	client, _ := posthog.NewWithConfig(telemetryToken, posthog.Config{Endpoint: telemetryInstance})
 
 	defer client.Close()
