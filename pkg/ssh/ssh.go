@@ -571,9 +571,11 @@ func RunSSHRunLoadTest(host *models.Host, loadTestCommand, loadTestName string) 
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/runLoadTest.sh",
-		scriptInputs{GoVersion: constants.BuildEnvGolangVersion,
+		scriptInputs{
+			GoVersion:          constants.BuildEnvGolangVersion,
 			LoadTestCommand:    loadTestCommand,
-			LoadTestResultFile: fmt.Sprintf("/home/ubuntu/.avalanchego/logs/loadtest_%s.txt", loadTestName)},
+			LoadTestResultFile: fmt.Sprintf("/home/ubuntu/.avalanchego/logs/loadtest_%s.txt", loadTestName),
+		},
 	)
 }
 
