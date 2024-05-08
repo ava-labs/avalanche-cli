@@ -276,9 +276,13 @@ func GetNetworkFromCmdLineFlags(
 		}
 		networkOption = networkOptionFromString(networkOptionStr)
 		if networkOption == Devnet && !onlyEndpointBasedDevnets {
-			if yes, err := app.Prompt.CaptureYesNo("Do you have a CLI Cluster associated with the Dev Net?"); err != nil {
+			endpointOptions := []string{
+				"Grab it from a CLI Cluster",
+				"I will provide a Custom one",
+			}
+			if endpointOption, err := app.Prompt.CaptureList("Which is the Devnet Endpoint?", endpointOptions); err != nil {
 				return models.UndefinedNetwork, err
-			} else if yes {
+			} else if endpointOption == endpointOptions[0] {
 				networkOption = Cluster
 			}
 		}
@@ -303,7 +307,7 @@ func GetNetworkFromCmdLineFlags(
 				return models.UndefinedNetwork, err
 			}
 		} else {
-			networkFlags.Endpoint, err = app.Prompt.CaptureURL(fmt.Sprintf("%s Network Endpoint", networkOption.String()), false)
+			networkFlags.Endpoint, err = app.Prompt.CaptureURL(fmt.Sprintf("%s Endpoint", networkOption.String()), false)
 			if err != nil {
 				return models.UndefinedNetwork, err
 			}
