@@ -434,8 +434,9 @@ func AppendSlices[T any](slices ...[]T) []T {
 func ExtractPlaceholderValue(pattern, text string) (string, error) {
 	re := regexp.MustCompile(pattern)
 	matches := re.FindStringSubmatch(text)
-	if len(matches) == 0 {
-		return "", fmt.Errorf("placeholder value not found in text")
+	if len(matches) == 2 {
+		return matches[1], nil
+	} else {
+		return "", fmt.Errorf("no match found")
 	}
-	return matches[1], nil
 }

@@ -51,11 +51,6 @@ func AddSingleQuotes(s []string) []string {
 	})
 }
 
-// SplitSeparatedBytesToString splits a byte slice into a slice of strings using the given separator.
-func SplitSeparatedBytesToString(s []byte, separator string) []string {
-	return strings.Split(string(s), separator)
-}
-
 // Cleeans up a string by trimming \r and \n characters.
 func CleanupString(s string) string {
 	return strings.Trim(strings.Trim(s, "\n"), "\r")

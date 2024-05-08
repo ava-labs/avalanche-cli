@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -218,7 +219,7 @@ func ListRemoteComposeServices(host *models.Host, composeFile string, timeout ti
 	if err != nil {
 		return nil, err
 	}
-	return utils.CleanupStrings(utils.SplitSeparatedBytesToString(output, "\n")), nil
+	return utils.CleanupStrings(strings.Split(string(output), "\n")), nil
 }
 
 // GetRemoteComposeContent gets the content of a remote docker-compose file.

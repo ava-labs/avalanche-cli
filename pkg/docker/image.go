@@ -5,10 +5,10 @@ package docker
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -34,7 +34,7 @@ func DockerLocalImageExists(host *models.Host, image string) (bool, error) {
 
 // parseDockerImageListOutput parses the output of a docker images command.
 func parseDockerImageListOutput(output []byte) []string {
-	return utils.SplitSeparatedBytesToString(output, string('\n'))
+	return strings.Split(string(output), "\n")
 }
 
 // BuildDockerImage builds a docker image on a remote host.
