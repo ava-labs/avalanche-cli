@@ -61,15 +61,19 @@ func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
 		if yes, err := app.Prompt.CaptureYesNo("Do you have a CLI Subnet associated with the Blockchain?"); err != nil {
 			return err
 		} else if yes {
-			fmt.Println(app.GetSubnetNames())
+			subnetNames, err := app.GetSubnetNames()
+			if err != nil {
+				return err
+			}
+			subnetName, err = app.Prompt.CaptureList(
+				"Choose a Subnet",
+				subnetNames,
+			)
+			if err != nil {
+				return err
+			}
 		}
-		// ask for either subnet name or subnet chain id
-		// if subnet name, everything ok, except key
-		// if not:
-		// get genesis from chain id and validate
-		// ask for a key to do operations if not already given
 	}
-	return nil
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
