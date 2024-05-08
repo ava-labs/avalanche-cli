@@ -891,11 +891,6 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
 	return true, nil, nil
 }
 
-func jsonIsSubnetEVMGenesis(jsonBytes []byte) bool {
-	_, err := app.LoadEvmGenesisFromJSON(jsonBytes)
-	return err == nil
-}
-
 func promptOwners(
 	kc *keychain.Keychain,
 	controlKeys []string,

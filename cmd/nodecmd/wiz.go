@@ -338,8 +338,10 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
 		ux.Logger.PrintToUser("")
-		flags := networkoptions.NetworkFlags{
-			ClusterName: clusterName,
+		flags := teleportercmd.DeployFlags{
+			Network: networkoptions.NetworkFlags{
+				ClusterName: clusterName,
+			},
 		}
 		if err := teleportercmd.CallDeploy([]string{subnetName}, flags); err != nil {
 			return err

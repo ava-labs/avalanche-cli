@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -22,6 +23,10 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/subnet-evm/core"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
 )
@@ -423,4 +428,42 @@ func GetCodespaceURL(url string) (string, error) {
 
 func InsideCodespace() bool {
 	return os.Getenv(constants.CodespaceNameEnvVar) != ""
+}
+
+func GetBlockchainTx(endpoint string, blockchainID ids.ID) (*txs.CreateChainTx, error) {
+	pClient := platformvm.NewClient(endpoint)
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	txBytes, err := pClient.GetTx(ctx, blockchainID)
+	if err != nil {
+		return nil, err
+	}
+	var tx txs.Tx
+	if _, err = txs.Codec.Unmarshal(txBytes, &tx); err != nil {
+		return nil, fmt.Errorf("failed unmarshaling the createChainTx: %w", err)
+	}
+	createChainTx, ok := tx.Unsigned.(*txs.CreateChainTx)
+	if !ok {
+		return nil, fmt.Errorf("expected a CreateChainTx, got %T", tx.Unsigned)
+	}
+	return createChainTx, nil
+}
+
+func ByteSliceToSubnetEvmGenesis(bs []byte) (core.Genesis, error) {
+	var gen core.Genesis
+	err := json.Unmarshal(bs, &gen)
+	return gen, err
+}
+
+func ByteSliceIsSubnetEvmGenesis(bs []byte) bool {
+	_, err := ByteSliceToSubnetEvmGenesis(bs)
+	return err == nil
+}
+
+func PathIsSubnetEVMGenesis(genesisPath string) (bool, error) {
+	genesisBytes, err := os.ReadFile(genesisPath)
+	if err != nil {
+		return false, err
+	}
+	return ByteSliceIsSubnetEvmGenesis(genesisBytes), nil
 }

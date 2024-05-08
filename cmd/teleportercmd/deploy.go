@@ -7,21 +7,32 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/spf13/cobra"
 )
 
-var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
+type DeployFlags struct {
+	Network      networkoptions.NetworkFlags
+	BlockchainID string
+	PrivateKey   string
 }
+
+var (
+	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Devnet,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+	}
+	deployFlags DeployFlags
+)
 
 // avalanche teleporter deploy
 func newDeployCmd() *cobra.Command {
@@ -32,15 +43,17 @@ func newDeployCmd() *cobra.Command {
 		RunE:  deploy,
 		Args:  cobrautils.MaximumNArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	cmd.Flags().StringVar(&deployFlags.BlockchainID, "blockchain-id", "", "blockchain ID to deploy teleporter into (if not providing subnetName)")
+	cmd.Flags().StringVar(&deployFlags.PrivateKey, "private-key", "", "private key to use to fund teleporter deploy)")
 	return cmd
 }
 
 func deploy(_ *cobra.Command, args []string) error {
-	return CallDeploy(args, globalNetworkFlags)
+	return CallDeploy(args, deployFlags)
 }
 
-func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
+func CallDeploy(args []string, flags DeployFlags) error {
 	var subnetName string
 	if len(args) == 1 {
 		subnetName = args[0]
@@ -48,7 +61,7 @@ func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Teleporter Messenger?",
-		flags,
+		flags.Network,
 		true,
 		false,
 		deploySupportedNetworkOptions,
@@ -57,10 +70,27 @@ func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
 	if err != nil {
 		return err
 	}
-	if subnetName == "" {
-		if yes, err := app.Prompt.CaptureYesNo("Do you have a CLI Subnet associated with the Blockchain?"); err != nil {
+	if subnetName != "" && flags.BlockchainID != "" {
+		return fmt.Errorf("subnetName and blockchainID are mutually exclusive cmdline options")
+	}
+	var (
+		blockchainID ids.ID
+		privateKey   = flags.PrivateKey
+	)
+	if flags.BlockchainID != "" {
+		blockchainID, err = ids.FromString(flags.BlockchainID)
+		if err != nil {
+			return fmt.Errorf("invalid blockchain id %s: %w", flags.BlockchainID, err)
+		}
+	}
+	if subnetName == "" && flags.BlockchainID == "" {
+		blockchainIDOptions := []string{
+			"Take it from a CLI Subnet configuration",
+			"I will provide a Custom one",
+		}
+		if blockchainIDOption, err := app.Prompt.CaptureList("Which is the Blockchain ID to deploy into?", blockchainIDOptions); err != nil {
 			return err
-		} else if yes {
+		} else if blockchainIDOption == blockchainIDOptions[0] {
 			subnetNames, err := app.GetSubnetNames()
 			if err != nil {
 				return err
@@ -72,39 +102,71 @@ func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
 			if err != nil {
 				return err
 			}
+		} else {
+			blockchainID, err = app.Prompt.CaptureID("Blockchain ID")
+			if err != nil {
+				return err
+			}
 		}
 	}
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
+	var teleporterVersion string
+	if subnetName != "" {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		// checks
+		if b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName); err != nil {
+			return err
+		} else if !b {
+			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")
+		}
+		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+			return fmt.Errorf("subnet has not been deployed to %s", network.Name())
+		}
+		blockchainID = sc.Networks[network.Name()].BlockchainID
+		if sc.TeleporterVersion != "" {
+			teleporterVersion = sc.TeleporterVersion
+		}
+		if sc.TeleporterKey != "" {
+			k, err := key.LoadSoftOrCreate(network.ID, app.GetKeyPath(sc.TeleporterKey))
+			if err != nil {
+				return nil
+			}
+			privateKey = k.Hex()
+		}
+	} else {
+		createChainTx, err := utils.GetBlockchainTx(network.Endpoint, blockchainID)
+		if err != nil {
+			return err
+		}
+		if !utils.ByteSliceIsSubnetEvmGenesis(createChainTx.GenesisData) {
+			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter, blockchain genesis is not")
+		}
 	}
-	// checks
-	if b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName); err != nil {
-		return err
-	} else if !b {
-		return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")
+	if privateKey == "" {
 	}
-	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-		return fmt.Errorf("subnet has not been deployed to %s", network.Name())
-	}
-	if !sc.TeleporterReady {
-		return fmt.Errorf("subnet is not configured for teleporter")
-	}
+	fmt.Println(blockchainID)
+	fmt.Println(privateKey)
+	return nil
 	// deploy to subnet
-	blockchainID := sc.Networks[network.Name()].BlockchainID.String()
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
 		app,
-		sc.TeleporterVersion,
+		teleporterVersion,
 		network,
 		subnetName,
-		blockchainID,
-		sc.TeleporterKey,
+		blockchainID.String(),
+		privateKey,
 	)
 	if err != nil {
 		return err
 	}
-	if !alreadyDeployed {
+	if subnetName != "" && !alreadyDeployed {
 		// update sidecar
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
 		networkInfo := sc.Networks[network.Name()]
 		networkInfo.TeleporterMessengerAddress = teleporterMessengerAddress
 		networkInfo.TeleporterRegistryAddress = teleporterRegistryAddress
@@ -118,7 +180,7 @@ func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
 		blockchainID := "C"
 		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
 			app,
-			sc.TeleporterVersion,
+			teleporterVersion,
 			network,
 			"c-chain",
 			blockchainID,

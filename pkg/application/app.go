@@ -423,17 +423,11 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 
 func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	genesisPath := app.GetGenesisPath(subnetName)
-	jsonBytes, err := os.ReadFile(genesisPath)
+	bs, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return core.Genesis{}, err
 	}
-	return app.LoadEvmGenesisFromJSON(jsonBytes)
-}
-
-func (*Avalanche) LoadEvmGenesisFromJSON(jsonBytes []byte) (core.Genesis, error) {
-	var gen core.Genesis
-	err := json.Unmarshal(jsonBytes, &gen)
-	return gen, err
+	return utils.ByteSliceToSubnetEvmGenesis(bs)
 }
 
 func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {

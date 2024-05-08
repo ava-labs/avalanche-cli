@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/spf13/cobra"
@@ -224,9 +224,12 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	genesisFileIsEVM, err := pathIsSubnetEVMGenesis(genesisFile)
-	if err != nil {
-		return err
+	genesisFileIsEVM := false
+	if genesisFile != "" {
+		genesisFileIsEVM, err = utils.PathIsSubnetEVMGenesis(genesisFile)
+		if err != nil {
+			return err
+		}
 	}
 
 	if subnetType == models.SubnetEvm && genesisFile != "" && !genesisFileIsEVM {
@@ -399,17 +402,5 @@ func checkInvalidSubnetNames(name string) error {
 			return errIllegalNameCharacter
 		}
 	}
-
 	return nil
-}
-
-func pathIsSubnetEVMGenesis(genesisPath string) (bool, error) {
-	if genesisPath == "" {
-		return false, nil
-	}
-	genesisBytes, err := os.ReadFile(genesisPath)
-	if err != nil {
-		return false, err
-	}
-	return jsonIsSubnetEVMGenesis(genesisBytes), nil
 }
