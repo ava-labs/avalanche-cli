@@ -21,7 +21,6 @@ func GetSSHConnectionString(publicIP, certFilePath string) string {
 		certFilePath = fmt.Sprintf("-i %s", certFilePath)
 	}
 	return fmt.Sprintf("ssh %s %s@%s %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
-
 }
 
 // GetSCPCommandString returns the SCP command string for the given source and destination paths.
