@@ -119,7 +119,9 @@ func joinCmd(_ *cobra.Command, args []string) error {
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
+		false,
 		false,
 		supportedNetworkOptions,
 		subnetName,

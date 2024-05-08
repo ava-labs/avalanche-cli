@@ -55,7 +55,9 @@ func removeValidator(_ *cobra.Command, args []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
+		false,
 		false,
 		removeValidatorSupportedNetworkOptions,
 		"",

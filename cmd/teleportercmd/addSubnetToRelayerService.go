@@ -46,8 +46,10 @@ func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
 func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerServiceFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		flags.Network,
 		true,
+		false,
 		addSubnetToRelayerServiceSupportedNetworkOptions,
 		subnetName,
 	)

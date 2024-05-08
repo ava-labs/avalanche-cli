@@ -74,8 +74,10 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
 		true,
+		false,
 		addPermissionlessDelegatorSupportedNetworkOptions,
 		"",
 	)

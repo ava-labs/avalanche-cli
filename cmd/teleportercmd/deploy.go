@@ -16,30 +16,41 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
+var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 // avalanche teleporter deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [subnetName]",
-		Short: "Deploys Teleporter into the given Subnet",
-		Long:  `Deploys Teleporter into the given Subnet.`,
+		Short: "Deploys Teleporter into a given Network and Subnet",
+		Long:  `Deploys Teleporter into a given Network and Subnet.`,
 		RunE:  deploy,
-		Args:  cobrautils.ExactArgs(1),
+		Args:  cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
 	return cmd
 }
 
 func deploy(_ *cobra.Command, args []string) error {
-	return CallDeploy(args[0], globalNetworkFlags)
+	return CallDeploy(args, globalNetworkFlags)
 }
 
-func CallDeploy(subnetName string, flags networkoptions.NetworkFlags) error {
+func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
+	var subnetName string
+	if len(args) == 1 {
+		subnetName = args[0]
+	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"On what Network do you want to deploy the Teleporter Messenger?",
 		flags,
 		true,
+		false,
 		deploySupportedNetworkOptions,
 		subnetName,
 	)
@@ -51,9 +62,6 @@ func CallDeploy(subnetName string, flags networkoptions.NetworkFlags) error {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
 	// checks
-	if !sc.TeleporterReady {
-		return fmt.Errorf("subnet is not configured for teleporter")
-	}
 	if b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName); err != nil {
 		return err
 	} else if !b {
@@ -61,6 +69,9 @@ func CallDeploy(subnetName string, flags networkoptions.NetworkFlags) error {
 	}
 	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
 		return fmt.Errorf("subnet has not been deployed to %s", network.Name())
+	}
+	if !sc.TeleporterReady {
+		return fmt.Errorf("subnet is not configured for teleporter")
 	}
 	// deploy to subnet
 	blockchainID := sc.Networks[network.Name()].BlockchainID.String()

@@ -156,8 +156,10 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
 		true,
+		false,
 		elasticSupportedNetworkOptions,
 		subnetName,
 	)

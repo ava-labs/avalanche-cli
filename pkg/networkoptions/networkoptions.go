@@ -34,11 +34,11 @@ func (n NetworkOption) String() string {
 	case Mainnet:
 		return "Mainnet"
 	case Fuji:
-		return "Fuji"
+		return "Fuji Testnet"
 	case Local:
 		return "Local Network"
 	case Devnet:
-		return "Devnet"
+		return "Dev Net"
 	case Cluster:
 		return "Cluster"
 	}
@@ -49,11 +49,11 @@ func networkOptionFromString(s string) NetworkOption {
 	switch s {
 	case "Mainnet":
 		return Mainnet
-	case "Fuji":
+	case "Fuji Testnet":
 		return Fuji
 	case "Local Network":
 		return Local
-	case "Devnet":
+	case "Dev Net":
 		return Devnet
 	case "Cluster":
 		return Cluster
@@ -176,8 +176,10 @@ func GetSupportedNetworkOptionsForSubnet(
 
 func GetNetworkFromCmdLineFlags(
 	app *application.Avalanche,
+	promptStr string,
 	networkFlags NetworkFlags,
 	requireDevnetEndpointSpecification bool,
+	onlyEndpointBasedDevnets bool,
 	supportedNetworkOptions []NetworkOption,
 	subnetName string,
 ) (models.Network, error) {
@@ -262,17 +264,27 @@ func GetNetworkFromCmdLineFlags(
 				supportedNetworkOptions = append(supportedNetworkOptions[:index], supportedNetworkOptions[index+1:]...)
 			}
 		}
+		if promptStr == "" {
+			promptStr = "Choose a network for the operation"
+		}
 		networkOptionStr, err := app.Prompt.CaptureList(
-			"Choose a network for the operation",
+			promptStr,
 			utils.Map(supportedNetworkOptions, func(n NetworkOption) string { return n.String() }),
 		)
 		if err != nil {
 			return models.UndefinedNetwork, err
 		}
 		networkOption = networkOptionFromString(networkOptionStr)
+		if networkOption == Devnet && !onlyEndpointBasedDevnets {
+			if yes, err := app.Prompt.CaptureYesNo("Do you have a CLI Cluster associated with the Dev Net?"); err != nil {
+				return models.UndefinedNetwork, err
+			} else if yes {
+				networkOption = Cluster
+			}
+		}
 		if networkOption == Cluster {
 			networkFlags.ClusterName, err = app.Prompt.CaptureList(
-				"Choose a cluster",
+				"Choose the Cluster",
 				clusterNames,
 			)
 			if err != nil {

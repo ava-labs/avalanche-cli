@@ -40,7 +40,9 @@ func newStatsCmd() *cobra.Command {
 func stats(_ *cobra.Command, args []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
+		false,
 		false,
 		statsSupportedNetworkOptions,
 		"",
