@@ -38,7 +38,7 @@ func (n NetworkOption) String() string {
 	case Local:
 		return "Local Network"
 	case Devnet:
-		return "Dev Net"
+		return "Devnet"
 	case Cluster:
 		return "Cluster"
 	}
@@ -53,7 +53,7 @@ func networkOptionFromString(s string) NetworkOption {
 		return Fuji
 	case "Local Network":
 		return Local
-	case "Dev Net":
+	case "Devnet":
 		return Devnet
 	case "Cluster":
 		return Cluster
