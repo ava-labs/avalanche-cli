@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -274,6 +275,18 @@ func (app *Avalanche) GetAPMPluginDir() string {
 
 func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
+}
+
+func (app *Avalanche) GetKey(keyName string, network models.Network, createIfMissing bool) (*key.SoftKey, error) {
+	if keyName == "ewoq" {
+		return key.LoadEwoq(network.ID)
+	} else {
+		if createIfMissing {
+			return key.LoadSoftOrCreate(network.ID, app.GetKeyPath(keyName))
+		} else {
+			return key.LoadSoft(network.ID, app.GetKeyPath(keyName))
+		}
+	}
 }
 
 func (app *Avalanche) GetUpgradeBytesFilePath(subnetName string) string {

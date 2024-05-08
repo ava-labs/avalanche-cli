@@ -813,7 +813,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := captureKeyName(prompt, goal, keyDir)
+	keyName, err := CaptureKeyName(prompt, goal, keyDir)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Create a new one with `avalanche key create`")
@@ -823,7 +823,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	return false, keyName, nil
 }
 
-func captureKeyName(prompt Prompter, goal string, keyDir string) (string, error) {
+func CaptureKeyName(prompt Prompter, goal string, keyDir string) (string, error) {
 	files, err := os.ReadDir(keyDir)
 	if err != nil {
 		return "", err
@@ -833,14 +833,31 @@ func captureKeyName(prompt Prompter, goal string, keyDir string) (string, error)
 		return "", errNoKeys
 	}
 
-	keys := []string{}
+	userKeys := []string{}
+	cliKeys := []string{}
+	subnetKeys := []string{}
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keys = append(keys, strings.TrimSuffix(f.Name(), constants.KeySuffix))
+			keyName := strings.TrimSuffix(f.Name(), constants.KeySuffix)
+			if strings.HasPrefix(f.Name(), "cli-") {
+				cliKeys = append(cliKeys, keyName)
+			} else if strings.HasPrefix(f.Name(), "subnet_") {
+				subnetKeys = append(subnetKeys, keyName)
+			} else {
+				userKeys = append(userKeys, keyName)
+			}
 		}
 	}
 
-	keyName, err := prompt.CaptureList(fmt.Sprintf("Which stored key should be used to %s?", goal), keys)
+	userKeys = append(userKeys, "ewoq")
+
+	keys := append(append(userKeys, subnetKeys...), cliKeys...)
+
+	size := len(keys)
+	if size > 10 {
+		size = 10
+	}
+	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keys, size)
 	if err != nil {
 		return "", err
 	}

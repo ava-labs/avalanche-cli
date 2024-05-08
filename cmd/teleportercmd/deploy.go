@@ -7,9 +7,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -129,7 +129,7 @@ func CallDeploy(args []string, flags DeployFlags) error {
 			teleporterVersion = sc.TeleporterVersion
 		}
 		if sc.TeleporterKey != "" {
-			k, err := key.LoadSoftOrCreate(network.ID, app.GetKeyPath(sc.TeleporterKey))
+			k, err := app.GetKey(sc.TeleporterKey, network, true)
 			if err != nil {
 				return nil
 			}
@@ -145,6 +145,28 @@ func CallDeploy(args []string, flags DeployFlags) error {
 		}
 	}
 	if privateKey == "" {
+		keyOptions := []string{
+			"Grab it from a CLI Stored Key",
+			"I will provide a Custom one",
+		}
+		if keyOption, err := app.Prompt.CaptureList("Which Private Key to use to pay fees?", keyOptions); err != nil {
+			return err
+		} else if keyOption == keyOptions[0] {
+			keyName, err := prompts.CaptureKeyName(app.Prompt, "pay fees", app.GetKeyDir())
+			if err != nil {
+				return err
+			}
+			k, err := app.GetKey(keyName, network, false)
+			if err != nil {
+				return nil
+			}
+			privateKey = k.Hex()
+		} else {
+			privateKey, err = app.Prompt.CaptureString("Private Key")
+			if err != nil {
+				return err
+			}
+		}
 	}
 	fmt.Println(blockchainID)
 	fmt.Println(privateKey)
