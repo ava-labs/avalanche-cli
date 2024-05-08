@@ -18,8 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/snow"
-	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
@@ -114,16 +112,10 @@ func createEvmGenesis(
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
 	genesis := core.Genesis{}
-	conf := params.SubnetEVMDefaultChainConfig
+	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())
 
-	conf.NetworkUpgrades = params.NetworkUpgrades{
-		SubnetEVMTimestamp: utils.NewUint64(0),
-		DurangoTimestamp:   utils.TimeToNewUint64(version.GetDurangoTime(0)),
-		EUpgradeTimestamp:  utils.TimeToNewUint64(version.GetEUpgradeTime(0)),
-	}
-	conf.AvalancheContext = params.AvalancheContext{
-		SnowCtx: &snow.Context{},
-	}
+	conf := params.SubnetEVMDefaultChainConfig
+	conf.NetworkUpgrades = params.NetworkUpgrades{}
 
 	const (
 		descriptorsState = "descriptors"
@@ -173,7 +165,7 @@ func createEvmGenesis(
 				)
 			}
 		case precompilesState:
-			*conf, direction, err = getPrecompiles(*conf, app, useSubnetEVMDefaults, useWarp)
+			*conf, direction, err = getPrecompiles(*conf, app, &genesis.Timestamp, useSubnetEVMDefaults, useWarp)
 			if teleporterInfo != nil {
 				*conf = addTeleporterAddressesToAllowLists(
 					*conf,
@@ -209,15 +201,10 @@ func createEvmGenesis(
 
 	conf.ChainID = chainID
 
-	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())
 	genesis.Alloc = allocation
 	genesis.Config = conf
 	genesis.Difficulty = Difficulty
 	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()
-
-	if err := genesis.Verify(); err != nil {
-		return nil, nil, err
-	}
 
 	jsonBytes, err := genesis.MarshalJSON()
 	if err != nil {
