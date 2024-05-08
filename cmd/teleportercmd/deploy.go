@@ -152,7 +152,7 @@ func CallDeploy(args []string, flags DeployFlags) error {
 		if keyOption, err := app.Prompt.CaptureList("Which Private Key to use to pay fees?", keyOptions); err != nil {
 			return err
 		} else if keyOption == keyOptions[0] {
-			keyName, err := prompts.CaptureKeyName(app.Prompt, "pay fees", app.GetKeyDir())
+			keyName, err := prompts.CaptureKeyName(app.Prompt, "pay fees", app.GetKeyDir(), true)
 			if err != nil {
 				return err
 			}

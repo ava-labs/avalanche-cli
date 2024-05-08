@@ -813,7 +813,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := CaptureKeyName(prompt, goal, keyDir)
+	keyName, err := CaptureKeyName(prompt, goal, keyDir, false)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Create a new one with `avalanche key create`")
@@ -823,7 +823,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	return false, keyName, nil
 }
 
-func CaptureKeyName(prompt Prompter, goal string, keyDir string) (string, error) {
+func CaptureKeyName(prompt Prompter, goal string, keyDir string, addEwoq bool) (string, error) {
 	files, err := os.ReadDir(keyDir)
 	if err != nil {
 		return "", err
@@ -849,7 +849,9 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string) (string, error)
 		}
 	}
 
-	userKeys = append(userKeys, "ewoq")
+	if addEwoq {
+		userKeys = append(userKeys, "ewoq")
+	}
 
 	keys := append(append(userKeys, subnetKeys...), cliKeys...)
 
