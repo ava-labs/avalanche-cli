@@ -4,6 +4,8 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 
@@ -55,8 +57,8 @@ func scpNode(_ *cobra.Command, args []string) error {
 	}
 
 	sourcePath, destPath := args[0], args[1]
-	sourceClusterNameOrNodeID, sourcePath := utils.SplitScpPath(sourcePath)
-	destClusterNameOrNodeID, destPath := utils.SplitScpPath(destPath)
+	sourceClusterNameOrNodeID, sourcePath := utils.SplitSCPPath(sourcePath)
+	destClusterNameOrNodeID, destPath := utils.SplitSCPPath(destPath)
 
 	// check if source and destination are both clusters
 	sourceClusterExists, err := checkClusterExists(sourceClusterNameOrNodeID)
@@ -71,7 +73,8 @@ func scpNode(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("both source and destination cannot be clusters")
 	}
 
-	if err := checkCluster(sourceClusterNameOrNodeID); err == nil {
+	switch {
+	case sourceClusterExists:
 		// source is a cluster
 		clusterName := sourceClusterNameOrNodeID
 		clusterHosts, err := GetAllClusterHosts(clusterName)
@@ -79,8 +82,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 		return scpHosts(clusterHosts, sourcePath, destPath, clusterName, toRemote)
-	}
-	if err := checkCluster(destClusterNameOrNodeID); err == nil {
+	case destClusterExists:
 		// destination is a cluster
 		clusterName := destClusterNameOrNodeID
 		clusterHosts, err := GetAllClusterHosts(clusterName)
@@ -88,17 +90,30 @@ func scpNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 		return scpHosts(clusterHosts, destPath, sourcePath, clusterName, fromRemote)
+	default:
+		// source is remote
+		if sourceClusterNameOrNodeID != "" {
+			selectedHost, clusterName := getHostClusterPair(sourceClusterNameOrNodeID)
+			if selectedHost != nil && clusterName != "" {
+				return scpHosts([]*models.Host{selectedHost}, sourcePath, destPath, clusterName, fromRemote)
+			}
+		} else if destClusterNameOrNodeID != "" {
+			selectedHost, clusterName := getHostClusterPair(destClusterNameOrNodeID)
+			if selectedHost != nil && clusterName != "" {
+				return scpHosts([]*models.Host{selectedHost}, destPath, sourcePath, clusterName, toRemote)
+			}
+		}
+		return fmt.Errorf("source or destination not found")
 	}
-	return nil
 }
 
 func scpHosts(hosts []*models.Host, sourcePath, destPath string, clusterName string, toRemote bool) error {
-	// get source and destination
-	source, err := prepareSCPDestination(clusterName, sourcePath)
+	// prepare both source and destination for scp command
+	scpPrefix, err := prepareSCPTarget(clusterName, sourcePath)
 	if err != nil {
 		return err
 	}
-	dest, err := prepareSCPDestination(clusterName, destPath)
+	scpSuffix, err := prepareSCPTarget(clusterName, destPath)
 	if err != nil {
 		return err
 	}
@@ -106,36 +121,57 @@ func scpHosts(hosts []*models.Host, sourcePath, destPath string, clusterName str
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			nodeConf, err := app.LoadClusterNodeConfig(host.GetCloudID())
-			if err != nil {
+			scpCmd := ""
+			if toRemote {
+				scpCmd, err = utils.GetSCPCommandString(host.SSHPrivateKeyPath, "", scpPrefix, host.IP, scpSuffix)
+				if err != nil {
+					nodeResults.AddResult(host.NodeID, "", err)
+					return
+				}
+			} else {
+				scpCmd, err = utils.GetSCPCommandString(host.SSHPrivateKeyPath, host.IP, scpPrefix, "", scpSuffix)
+				if err != nil {
+					nodeResults.AddResult(host.NodeID, "", err)
+					return
+				}
+			}
+			ux.Logger.Info("About to execute scp command: ", scpCmd)
+			cmd := exec.Command(scpCmd)
+			cmd.Env = os.Environ()
+			if err := cmd.Run(); err != nil {
 				nodeResults.AddResult(host.NodeID, "", err)
 				return
+			} else {
+				nodeResults.AddResult(host.NodeID, "", nil)
 			}
-			scpCmd := utils.GetSCPCommandString(nodeConf.CertPath)
+		}(&wgResults, host)
 
-		}(wgResults, host)
 	}
-
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to scp for node(s) %s", wgResults.GetErrorHostMap())
+	}
+	return nil
 }
 
-// prepareSCPDestination prepares the destination for scp command
-func prepareSCPDestination(clusterName string, dest string) (string, error) {
-	//valid clusterName - is already checked
+// prepareSCPTarget prepares the target for scp command
+func prepareSCPTarget(clusterName string, dest string) (string, error) {
+	// valid clusterName - is already checked
 	if !strings.Contains(dest, ":") {
-		//destination is local, ready to go
+		// destination is local, ready to go
 		return dest, nil
 	}
-	//destination is remote
+	// destination is remote
 	splitDest := strings.Split(dest, ":")
 	node := splitDest[0]
 	path := splitDest[1]
 	if utils.IsValidIP(node) {
-		//destination is IP, ready to go
+		// destination is IP, ready to go
 		return dest, nil
 	}
-	//destination is cloudID or NodeID. clusterName is already checked and valid
+	// destination is cloudID or NodeID. clusterName is already checked and valid
 	clusterHosts, err := GetAllClusterHosts(clusterName)
 	if err != nil {
 		return "", err
@@ -153,4 +189,36 @@ func prepareSCPDestination(clusterName string, dest string) (string, error) {
 	default:
 		return fmt.Sprintf("%s:%s", selectedHost[0].IP, path), nil
 	}
+}
+
+// getHostClusterPair returns the host and cluster name for the given node or cloudID
+func getHostClusterPair(nodeOrCloudID string) (*models.Host, string) {
+	var err error
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return nil, ""
+		}
+	}
+	for clusterName := range clustersConfig.Clusters {
+		clusterHosts, err := GetAllClusterHosts(clusterName)
+		if err != nil {
+			return nil, ""
+		}
+		selectedHost := utils.Filter(clusterHosts, func(h *models.Host) bool {
+			_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
+			hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
+			return h.GetCloudID() == nodeOrCloudID || hostNodeID.String() == nodeOrCloudID
+		})
+		switch {
+		case len(selectedHost) == 0:
+			continue
+		case len(selectedHost) > 2:
+			return nil, ""
+		default:
+			return selectedHost[0], clusterName
+		}
+	}
+	return nil, ""
 }

@@ -50,8 +50,8 @@ func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destI
 	return fmt.Sprintf("scp %s %s %s", scpParams, sourcePath, destPath), nil
 }
 
-// SplitScpPath splits the given path into host and path.
-func SplitScpPath(path string) (string, string) {
+// SplitSCPPath splits the given path into host and path.
+func SplitSCPPath(path string) (string, string) {
 	if !strings.Contains(path, ":") {
 		return "", path
 	}

@@ -78,24 +78,9 @@ func sshNode(_ *cobra.Command, args []string) error {
 			}
 		} else {
 			// try to detect nodeID
-			for clusterName := range clustersConfig.Clusters {
-				clusterHosts, err := GetAllClusterHosts(clusterName)
-				if err != nil {
-					return err
-				}
-				selectedHost := utils.Filter(clusterHosts, func(h *models.Host) bool {
-					_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
-					hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
-					return h.GetCloudID() == clusterNameOrNodeID || hostNodeID.String() == clusterNameOrNodeID || h.IP == clusterNameOrNodeID
-				})
-				switch {
-				case len(selectedHost) == 0:
-					continue
-				case len(selectedHost) > 2:
-					return fmt.Errorf("more then 1 node found for %s", clusterNameOrNodeID)
-				default:
-					return sshHosts(selectedHost, cmd, clustersConfig.Clusters[clusterName])
-				}
+			selectedHost, clusterName := getHostClusterPair(clusterNameOrNodeID)
+			if selectedHost != nil && clusterName != "" {
+				return sshHosts([]*models.Host{selectedHost}, cmd, clustersConfig.Clusters[clusterName])
 			}
 		}
 		return fmt.Errorf("cluster or node %s not found", clusterNameOrNodeID)
