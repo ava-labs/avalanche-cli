@@ -6,8 +6,8 @@ package remoteconfig
 import "github.com/ava-labs/avalanche-cli/pkg/utils"
 
 func PromtailFoldersToCreate() []string {
-	return []string{utils.GetRemoteComposeServicePath("promtail"),
+	return []string{
+		utils.GetRemoteComposeServicePath("promtail"),
 		"/home/ubuntu/.avalanchego/logs",
 	}
-
 }
