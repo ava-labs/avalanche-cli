@@ -618,7 +618,7 @@ func (app *Avalanche) GetTokenSymbol(subnetName string) string {
 	return sidecar.TokenSymbol
 }
 
-func (app *Avalanche) GetSidecarNames() ([]string, error) {
+func (app *Avalanche) GetSubnetNames() ([]string, error) {
 	matches, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, err

@@ -27,8 +27,8 @@ var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy [subnetName]",
-		Short: "Deploys Teleporter into a given Network and Subnet",
-		Long:  `Deploys Teleporter into a given Network and Subnet.`,
+		Short: "Deploys Teleporter into a given Network and Blockchain",
+		Long:  `Deploys Teleporter into a given Network and Blockchain.`,
 		RunE:  deploy,
 		Args:  cobrautils.MaximumNArgs(1),
 	}
@@ -57,6 +57,19 @@ func CallDeploy(args []string, flags networkoptions.NetworkFlags) error {
 	if err != nil {
 		return err
 	}
+	if subnetName == "" {
+		if yes, err := app.Prompt.CaptureYesNo("Do you have a CLI Subnet associated with the Blockchain?"); err != nil {
+			return err
+		} else if yes {
+			fmt.Println(app.GetSubnetNames())
+		}
+		// ask for either subnet name or subnet chain id
+		// if subnet name, everything ok, except key
+		// if not:
+		// get genesis from chain id and validate
+		// ask for a key to do operations if not already given
+	}
+	return nil
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
