@@ -85,10 +85,10 @@ func CallDeploy(args []string, flags DeployFlags) error {
 	}
 	if subnetName == "" && flags.BlockchainID == "" {
 		blockchainIDOptions := []string{
-			"Take it from a CLI Subnet configuration",
+			"Grab it from a CLI Subnet",
 			"I will provide a Custom one",
 		}
-		if blockchainIDOption, err := app.Prompt.CaptureList("Which is the Blockchain ID to deploy into?", blockchainIDOptions); err != nil {
+		if blockchainIDOption, err := app.Prompt.CaptureList("Which is the Blockchain ID?", blockchainIDOptions); err != nil {
 			return err
 		} else if blockchainIDOption == blockchainIDOptions[0] {
 			subnetNames, err := app.GetSubnetNames()
