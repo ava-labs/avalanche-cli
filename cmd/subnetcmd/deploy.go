@@ -366,7 +366,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		flags := make(map[string]string)
-		flags[constants.Network] = network.Name()
+		flags[constants.MetricsNetwork] = network.Name()
 		metrics.HandleTracking(cmd, flags)
 		return app.UpdateSidecarNetworks(
 			&sidecar,
@@ -546,7 +546,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	flags := make(map[string]string)
-	flags[constants.Network] = network.Name()
+	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, flags)
 
 	// update sidecar

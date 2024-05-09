@@ -1507,17 +1507,17 @@ func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[str
 		totalAPINodes += nodes[region].numAPI
 		flags[region] = strconv.Itoa(nodes[region].numValidators)
 	}
-	flags[constants.CloudService] = cloudService
-	flags[constants.NodeType] = nodeType
-	flags[constants.UseStaticIP] = strconv.FormatBool(useStaticIP)
-	flags[constants.Network] = network
-	flags[constants.ValidatorCount] = strconv.Itoa(totalValidatorNodes)
-	flags[constants.APICount] = strconv.Itoa(totalAPINodes)
+	flags[constants.MetricsCloudService] = cloudService
+	flags[constants.MetricsNodeType] = nodeType
+	flags[constants.MetricsUseStaticIP] = strconv.FormatBool(useStaticIP)
+	flags[constants.MetricsNetwork] = network
+	flags[constants.MetricsValidatorCount] = strconv.Itoa(totalValidatorNodes)
+	flags[constants.MetricsAPICount] = strconv.Itoa(totalAPINodes)
 	if cloudService == constants.AWSCloudService {
-		flags[constants.AWSVolumeType] = volumeType
-		flags[constants.AWSVolumeSize] = strconv.Itoa(volumeSize)
+		flags[constants.MetricsAWSVolumeType] = volumeType
+		flags[constants.MetricsAWSVolumeSize] = strconv.Itoa(volumeSize)
 	}
-	flags[enableMonitoringFlag] = strconv.FormatBool(addMonitoring)
+	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
 	metrics.HandleTracking(cmd, flags)
 }
 
