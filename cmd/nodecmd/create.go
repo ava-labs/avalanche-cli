@@ -1518,7 +1518,7 @@ func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[str
 		flags[constants.MetricsAWSVolumeSize] = strconv.Itoa(volumeSize)
 	}
 	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
-	metrics.HandleTracking(cmd, flags)
+	metrics.HandleTracking(cmd, app, flags)
 }
 
 func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {
