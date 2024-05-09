@@ -5,6 +5,7 @@ package teleportercmd
 import (
 	"fmt"
 
+	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -20,7 +21,9 @@ import (
 
 type DeployFlags struct {
 	Network      networkoptions.NetworkFlags
+	SubnetName   string
 	BlockchainID string
+	CChain       bool
 	PrivateKey   string
 }
 
@@ -37,14 +40,16 @@ var (
 // avalanche teleporter deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deploy [subnetName]",
+		Use:   "deploy",
 		Short: "Deploys Teleporter into a given Network and Blockchain",
 		Long:  `Deploys Teleporter into a given Network and Blockchain.`,
 		RunE:  deploy,
-		Args:  cobrautils.MaximumNArgs(1),
+		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	cmd.Flags().StringVar(&deployFlags.BlockchainID, "blockchain-id", "", "blockchain ID to deploy teleporter into (if not providing subnetName)")
+	cmd.Flags().StringVar(&deployFlags.SubnetName, "subnet", "", "deploy teleporter into the given CLI subnet")
+	cmd.Flags().StringVar(&deployFlags.BlockchainID, "blockchain-id", "", "deploy teleporter into the given blockchain ID")
+	cmd.Flags().BoolVar(&deployFlags.CChain, "c-chain", false, "deploy teleporter into C-Chain")
 	cmd.Flags().StringVar(&deployFlags.PrivateKey, "private-key", "", "private key to use to fund teleporter deploy)")
 	return cmd
 }
@@ -53,11 +58,7 @@ func deploy(_ *cobra.Command, args []string) error {
 	return CallDeploy(args, deployFlags)
 }
 
-func CallDeploy(args []string, flags DeployFlags) error {
-	var subnetName string
-	if len(args) == 1 {
-		subnetName = args[0]
-	}
+func CallDeploy(_ []string, flags DeployFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Teleporter Messenger?",
@@ -65,28 +66,34 @@ func CallDeploy(args []string, flags DeployFlags) error {
 		true,
 		false,
 		deploySupportedNetworkOptions,
-		subnetName,
+		flags.SubnetName,
 	)
 	if err != nil {
 		return err
 	}
-	if subnetName != "" && flags.BlockchainID != "" {
-		return fmt.Errorf("subnetName and blockchainID are mutually exclusive cmdline options")
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.SubnetName != "", flags.BlockchainID != "", flags.CChain}) {
+		return fmt.Errorf("--subnet, --blockchain-id and --cchain are mutually exclusive flags")
 	}
 	var (
-		blockchainID ids.ID
-		privateKey   = flags.PrivateKey
+		blockchainAlias string
+		blockchainID    ids.ID
+		subnetName      = flags.SubnetName
+		privateKey      = flags.PrivateKey
 	)
+	if flags.CChain {
+		blockchainAlias = "C"
+	}
 	if flags.BlockchainID != "" {
 		blockchainID, err = ids.FromString(flags.BlockchainID)
 		if err != nil {
 			return fmt.Errorf("invalid blockchain id %s: %w", flags.BlockchainID, err)
 		}
 	}
-	if subnetName == "" && flags.BlockchainID == "" {
+	if subnetName == "" && flags.BlockchainID == "" && !flags.CChain {
 		blockchainIDOptions := []string{
-			"Grab it from a CLI Subnet",
-			"I will provide a Custom one",
+			"Get it from a CLI Subnet",
+			"Use C-Chain",
+			"Will provide a Custom one",
 		}
 		if blockchainIDOption, err := app.Prompt.CaptureList("Which is the Blockchain ID?", blockchainIDOptions); err != nil {
 			return err
@@ -102,6 +109,8 @@ func CallDeploy(args []string, flags DeployFlags) error {
 			if err != nil {
 				return err
 			}
+		} else if blockchainIDOption == blockchainIDOptions[1] {
+			blockchainAlias = "C"
 		} else {
 			blockchainID, err = app.Prompt.CaptureID("Blockchain ID")
 			if err != nil {
@@ -135,7 +144,7 @@ func CallDeploy(args []string, flags DeployFlags) error {
 			}
 			privateKey = k.Hex()
 		}
-	} else {
+	} else if flags.BlockchainID != "" {
 		createChainTx, err := utils.GetBlockchainTx(network.Endpoint, blockchainID)
 		if err != nil {
 			return err
@@ -143,6 +152,9 @@ func CallDeploy(args []string, flags DeployFlags) error {
 		if !utils.ByteSliceIsSubnetEvmGenesis(createChainTx.GenesisData) {
 			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter, blockchain genesis is not")
 		}
+	}
+	if blockchainAlias == "" {
+		blockchainAlias = blockchainID.String()
 	}
 	if privateKey == "" {
 		keyOptions := []string{
@@ -168,7 +180,7 @@ func CallDeploy(args []string, flags DeployFlags) error {
 			}
 		}
 	}
-	fmt.Println(blockchainID)
+	fmt.Println(blockchainAlias)
 	fmt.Println(privateKey)
 	return nil
 	// deploy to subnet
@@ -177,7 +189,7 @@ func CallDeploy(args []string, flags DeployFlags) error {
 		teleporterVersion,
 		network,
 		subnetName,
-		blockchainID.String(),
+		blockchainAlias,
 		privateKey,
 	)
 	if err != nil {
