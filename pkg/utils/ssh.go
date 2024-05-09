@@ -34,10 +34,10 @@ func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destI
 	}
 	// end of checks
 	if certFilePath != "" {
-		scpParams = scpParams + fmt.Sprintf("-i %s ", certFilePath)
+		scpParams += fmt.Sprintf("-i %s ", certFilePath)
 	}
 	if sourceIP != "" && destIP != "" {
-		scpParams = scpParams + "-3 "
+		scpParams += "-3 "
 	}
 	if sourceIP != "" {
 		sourcePath = fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, sourceIP, sourcePath)

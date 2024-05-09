@@ -28,7 +28,7 @@ func newSCPCmd() *cobra.Command {
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
 The node scp command securely copies files to and from nodes. Remote source or destionation can be specified using the following format:
-[clusterName|nodeID|instanceID|IP]:/path/to/file. Regular experssions are supported for the source files like /tmp/*.txt.
+[clusterName|nodeID|instanceID|IP]:/path/to/file. Regular expressions are supported for the source files like /tmp/*.txt.
 File transfer to the nodes are parallelized. IF source or destination is cluster, the other should be a local file path. 
 If both destinations are remote, they must be nodes for the same cluster and not clusters themselves.
 For example:
@@ -137,7 +137,7 @@ func scpHosts(hosts []*models.Host, sourcePath, destPath string, clusterName str
 					return
 				}
 			}
-			ux.Logger.Info("About to execute scp command: ", scpCmd)
+			ux.Logger.Info("About to execute scp command: %s", scpCmd)
 			cmd := exec.Command(scpCmd)
 			cmd.Env = os.Environ()
 			if err := cmd.Run(); err != nil {
@@ -147,7 +147,6 @@ func scpHosts(hosts []*models.Host, sourcePath, destPath string, clusterName str
 				nodeResults.AddResult(host.NodeID, "", nil)
 			}
 		}(&wgResults, host)
-
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
