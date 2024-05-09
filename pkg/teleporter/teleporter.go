@@ -157,25 +157,30 @@ func (t *Deployer) Deploy(
 	subnetName string,
 	rpcURL string,
 	prefundedPrivateKey string,
+	deployMessenger bool,
+	deployRegistry bool,
 ) (bool, string, string, error) {
-	alreadyDeployed, messengerAddress, err := t.DeployMessenger(
-		teleporterInstallDir,
-		version,
-		subnetName,
-		rpcURL,
-		prefundedPrivateKey,
+	var (
+		messengerAddress string
+		registryAddress  string
+		alreadyDeployed  bool
+		err              error
 	)
-	if err != nil {
-		return false, "", "", err
+	if deployMessenger {
+		alreadyDeployed, messengerAddress, err = t.DeployMessenger(
+			teleporterInstallDir,
+			version,
+			subnetName,
+			rpcURL,
+			prefundedPrivateKey,
+		)
 	}
-	if alreadyDeployed {
-		return true, messengerAddress, "", nil
+	if err == nil && deployRegistry {
+		if !deployMessenger || !alreadyDeployed {
+			registryAddress, err = t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey)
+		}
 	}
-	if registryAddress, err := t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey); err != nil {
-		return false, "", "", err
-	} else {
-		return false, messengerAddress, registryAddress, nil
-	}
+	return alreadyDeployed, messengerAddress, registryAddress, err
 }
 
 func (t *Deployer) DeployMessenger(
@@ -367,6 +372,8 @@ func DeployAndFundRelayer(
 		subnetName,
 		endpoint,
 		privKeyStr,
+		true,
+		true,
 	)
 	if err != nil {
 		return false, "", "", err

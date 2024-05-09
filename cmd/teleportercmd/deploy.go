@@ -20,13 +20,16 @@ import (
 )
 
 type DeployFlags struct {
-	Network      networkoptions.NetworkFlags
-	SubnetName   string
-	BlockchainID string
-	CChain       bool
-	PrivateKey   string
-	KeyName      string
-	GenesisKey   bool
+	Network           networkoptions.NetworkFlags
+	SubnetName        string
+	BlockchainID      string
+	CChain            bool
+	PrivateKey        string
+	KeyName           string
+	GenesisKey        bool
+	DeployMessenger   bool
+	DeployRegistry    bool
+	TeleporterVersion string
 }
 
 var (
@@ -55,6 +58,9 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.PrivateKey, "private-key", "", "private key to use to fund teleporter deploy)")
 	cmd.Flags().StringVar(&deployFlags.KeyName, "key", "", "CLI stored key to use to fund teleporter deploy)")
 	cmd.Flags().BoolVar(&deployFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to fund teleporter deploy")
+	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
+	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
+	cmd.Flags().StringVar(&deployFlags.TeleporterVersion, "version", "latest", "version to deploy")
 	return cmd
 }
 
@@ -116,10 +122,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	var (
-		teleporterVersion    string
 		blockchainID         string
 		teleporterSubnetDesc string
 		privateKey           = flags.PrivateKey
+		teleporterVersion    string
 	)
 	switch {
 	case flags.SubnetName != "":
@@ -211,26 +217,25 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			privateKey = genesisPrivateKey
 		}
 	}
-	teleporterInfo, err := teleporter.GetInfo(app)
-	if err != nil {
-		return err
-	}
-	if teleporterVersion == "" {
+	if flags.TeleporterVersion != "latest" {
+		teleporterVersion = flags.TeleporterVersion
+	} else if teleporterVersion == "" {
+		teleporterInfo, err := teleporter.GetInfo(app)
+		if err != nil {
+			return err
+		}
 		teleporterVersion = teleporterInfo.Version
 	}
-	fmt.Println(blockchainID)
-	fmt.Println(privateKey)
-	fmt.Println(teleporterVersion)
 	// deploy to subnet
-	fmt.Println(teleporterSubnetDesc)
-	return nil
-	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
-		app,
+	td := teleporter.Deployer{}
+	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
+		app.GetTeleporterBinDir(),
 		teleporterVersion,
-		network,
 		teleporterSubnetDesc,
-		blockchainID,
+		network.BlockchainEndpoint(blockchainID),
 		privateKey,
+		flags.DeployMessenger,
+		flags.DeployRegistry,
 	)
 	if err != nil {
 		return err
@@ -241,6 +246,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
+		sc.TeleporterReady = true
+		sc.TeleporterVersion = teleporterVersion
 		networkInfo := sc.Networks[network.Name()]
 		networkInfo.TeleporterMessengerAddress = teleporterMessengerAddress
 		networkInfo.TeleporterRegistryAddress = teleporterRegistryAddress
@@ -249,16 +256,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
-	// deploy to cchain for local
+	// automatic deploy to cchain for local/devnet
 	if !flags.CChain && (network.Kind == models.Local || network.Kind == models.Devnet) {
-		blockchainID := "C"
-		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
-			app,
+		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
+			app.GetTeleporterBinDir(),
 			teleporterVersion,
-			network,
 			"c-chain",
-			blockchainID,
-			"",
+			network.BlockchainEndpoint("C"),
+			privateKey,
+			flags.DeployMessenger,
+			flags.DeployRegistry,
 		)
 		if err != nil {
 			return err
