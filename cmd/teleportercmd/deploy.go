@@ -25,6 +25,7 @@ type DeployFlags struct {
 	BlockchainID string
 	CChain       bool
 	PrivateKey   string
+	KeyName      string
 }
 
 var (
@@ -51,6 +52,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.BlockchainID, "blockchain-id", "", "deploy teleporter into the given blockchain ID/Alias")
 	cmd.Flags().BoolVar(&deployFlags.CChain, "c-chain", false, "deploy teleporter into C-Chain")
 	cmd.Flags().StringVar(&deployFlags.PrivateKey, "private-key", "", "private key to use to fund teleporter deploy)")
+	cmd.Flags().StringVar(&deployFlags.KeyName, "key", "", "CLI stored key to use to fund teleporter deploy)")
 	return cmd
 }
 
@@ -150,6 +152,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		blockchainID = flags.BlockchainID
 	case flags.CChain:
 		blockchainID = "C"
+	}
+	if flags.KeyName != "" {
+		k, err := app.GetKey(flags.KeyName, network, false)
+		if err != nil {
+			return nil
+		}
+		privateKey = k.Hex()
 	}
 	if privateKey == "" {
 		keyOptions := []string{
