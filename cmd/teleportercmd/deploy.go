@@ -74,22 +74,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.SubnetName != "", flags.BlockchainID != "", flags.CChain}) {
 		return fmt.Errorf("--subnet, --blockchain-id and --cchain are mutually exclusive flags")
 	}
-	/*
-		var (
-			blockchainAlias string
-			blockchainID    ids.ID
-			subnetName      = flags.SubnetName
-		)
-		if flags.CChain {
-			blockchainAlias = "C"
-		}
-		if flags.BlockchainID != "" {
-			blockchainID, err = ids.FromString(flags.BlockchainID)
-			if err != nil {
-				return fmt.Errorf("invalid blockchain id %s: %w", flags.BlockchainID, err)
-			}
-		}
-	*/
 	if flags.SubnetName == "" && flags.BlockchainID == "" && !flags.CChain {
 		// fill flags based on user prompts
 		blockchainIDOptions := []string{
@@ -126,13 +110,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		blockchainID      string
 		privateKey        = flags.PrivateKey
 	)
-
-	if flags.SubnetName != "" {
+	switch {
+	case flags.SubnetName != "":
 		sc, err := app.LoadSidecar(flags.SubnetName)
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
-		// checks
 		if b, _, err := subnetcmd.HasSubnetEVMGenesis(flags.SubnetName); err != nil {
 			return err
 		} else if !b {
@@ -152,7 +135,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			}
 			privateKey = k.Hex()
 		}
-	} else if flags.BlockchainID != "" {
+	case flags.BlockchainID != "":
 		chainID, err := subnet.GetChainID(network, flags.BlockchainID)
 		if err != nil {
 			return err
@@ -165,7 +148,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter, blockchain genesis is not")
 		}
 		blockchainID = flags.BlockchainID
-	} else {
+	case flags.CChain:
 		blockchainID = "C"
 	}
 	if privateKey == "" {
