@@ -258,12 +258,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	// automatic deploy to cchain for local/devnet
 	if !flags.CChain && (network.Kind == models.Local || network.Kind == models.Devnet) {
+		ewoq, err := app.GetKey("ewoq", network, false)
+		if err != nil {
+			return err
+		}
 		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
 			app.GetTeleporterBinDir(),
 			teleporterVersion,
 			"c-chain",
 			network.BlockchainEndpoint("C"),
-			privateKey,
+			ewoq.PrivKeyHex(),
 			flags.DeployMessenger,
 			flags.DeployRegistry,
 		)
