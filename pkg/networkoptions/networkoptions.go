@@ -38,7 +38,7 @@ func (n NetworkOption) String() string {
 	case Local:
 		return "Local Network"
 	case Devnet:
-		return "Dev Net"
+		return "Devnet"
 	case Cluster:
 		return "Cluster"
 	}
@@ -53,7 +53,7 @@ func networkOptionFromString(s string) NetworkOption {
 		return Fuji
 	case "Local Network":
 		return Local
-	case "Dev Net":
+	case "Devnet":
 		return Devnet
 	case "Cluster":
 		return Cluster
@@ -72,6 +72,7 @@ type NetworkFlags struct {
 
 func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, alwaysAddEndpoint bool, supportedNetworkOptions []NetworkOption) {
 	addEndpoint := alwaysAddEndpoint
+	addCluster := false
 	for _, networkOption := range supportedNetworkOptions {
 		switch networkOption {
 		case Local:
@@ -79,14 +80,18 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, always
 		case Devnet:
 			cmd.Flags().BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
 			addEndpoint = true
+			addCluster = true
 		case Fuji:
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "testnet", "t", false, "operate on testnet (alias to `fuji`)")
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "fuji", "f", false, "operate on fuji (alias to `testnet`")
 		case Mainnet:
 			cmd.Flags().BoolVarP(&networkFlags.UseMainnet, "mainnet", "m", false, "operate on mainnet")
 		case Cluster:
-			cmd.Flags().StringVar(&networkFlags.ClusterName, "cluster", "", "operate on the given cluster")
+			addCluster = true
 		}
+	}
+	if addCluster {
+		cmd.Flags().StringVar(&networkFlags.ClusterName, "cluster", "", "operate on the given cluster")
 	}
 	if addEndpoint {
 		cmd.Flags().StringVar(&networkFlags.Endpoint, "endpoint", "", "use the given endpoint for network operations")
@@ -183,6 +188,10 @@ func GetNetworkFromCmdLineFlags(
 	supportedNetworkOptions []NetworkOption,
 	subnetName string,
 ) (models.Network, error) {
+	supportedNetworkOptionsToPrompt := supportedNetworkOptions
+	if slices.Contains(supportedNetworkOptions, Devnet) && !slices.Contains(supportedNetworkOptions, Cluster) {
+		supportedNetworkOptions = append(supportedNetworkOptions, Cluster)
+	}
 	var err error
 	supportedNetworkOptionsStrs := ""
 	filteredSupportedNetworkOptionsStrs := ""
@@ -260,8 +269,8 @@ func GetNetworkFromCmdLineFlags(
 			clusterNames = scClusterNames
 		}
 		if len(clusterNames) == 0 {
-			if index, err := utils.GetIndexInSlice(supportedNetworkOptions, Cluster); err == nil {
-				supportedNetworkOptions = append(supportedNetworkOptions[:index], supportedNetworkOptions[index+1:]...)
+			if index, err := utils.GetIndexInSlice(supportedNetworkOptionsToPrompt, Cluster); err == nil {
+				supportedNetworkOptionsToPrompt = append(supportedNetworkOptionsToPrompt[:index], supportedNetworkOptionsToPrompt[index+1:]...)
 			}
 		}
 		if promptStr == "" {
@@ -269,16 +278,20 @@ func GetNetworkFromCmdLineFlags(
 		}
 		networkOptionStr, err := app.Prompt.CaptureList(
 			promptStr,
-			utils.Map(supportedNetworkOptions, func(n NetworkOption) string { return n.String() }),
+			utils.Map(supportedNetworkOptionsToPrompt, func(n NetworkOption) string { return n.String() }),
 		)
 		if err != nil {
 			return models.UndefinedNetwork, err
 		}
 		networkOption = networkOptionFromString(networkOptionStr)
-		if networkOption == Devnet && !onlyEndpointBasedDevnets {
-			if yes, err := app.Prompt.CaptureYesNo("Do you have a CLI Cluster associated with the Dev Net?"); err != nil {
+		if networkOption == Devnet && !onlyEndpointBasedDevnets && len(clusterNames) != 0 {
+			endpointOptions := []string{
+				"Get it from a CLI Cluster",
+				"Will provide a Custom one",
+			}
+			if endpointOption, err := app.Prompt.CaptureList("Which is the Devnet Endpoint?", endpointOptions); err != nil {
 				return models.UndefinedNetwork, err
-			} else if yes {
+			} else if endpointOption == endpointOptions[0] {
 				networkOption = Cluster
 			}
 		}
@@ -303,7 +316,7 @@ func GetNetworkFromCmdLineFlags(
 				return models.UndefinedNetwork, err
 			}
 		} else {
-			networkFlags.Endpoint, err = app.Prompt.CaptureURL(fmt.Sprintf("%s Network Endpoint", networkOption.String()), false)
+			networkFlags.Endpoint, err = app.Prompt.CaptureURL(fmt.Sprintf("%s Endpoint", networkOption.String()), false)
 			if err != nil {
 				return models.UndefinedNetwork, err
 			}
