@@ -12,6 +12,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/posthog/posthog-go"
@@ -37,7 +40,17 @@ func GetCLIVersion() string {
 	return string(content)
 }
 
-func HandleTracking(cmd *cobra.Command, flags map[string]string) {
+func userIsOptedIn(app *application.Avalanche) bool {
+	if app.Conf.ConfigFileExists() && app.Conf.GetConfigBoolValue(constants.ConfigMetricsEnabledKey) {
+		return true
+	}
+	return false
+}
+
+func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
+	if !userIsOptedIn(app) {
+		return
+	}
 	if !cmd.HasSubCommands() && CheckCommandIsNotCompletion(cmd) {
 		TrackMetrics(cmd, flags)
 	}

@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -93,8 +95,9 @@ status by running avalanche node status
 The created node will be part of group of validators called <clusterName> 
 and users can call node commands with <clusterName> so that the command
 will apply to all nodes in the cluster`,
-		Args: cobrautils.ExactArgs(1),
-		RunE: createNodes,
+		Args:              cobrautils.ExactArgs(1),
+		RunE:              createNodes,
+		PersistentPostRun: handlePostRun,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
@@ -125,6 +128,9 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	return cmd
 }
+
+// override postrun function from root.go, so that we don't double send metrics for the same command
+func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func preCreateChecks(clusterName string) error {
 	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
@@ -279,6 +285,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	cloudConfigMap := models.CloudConfig{}
 	publicIPMap := map[string]string{}
 	apiNodeIPMap := map[string]string{}
+	numNodesMetricsMap := map[string]NumNodes{}
 	gcpProjectName := ""
 	gcpCredentialFilepath := ""
 	// set ssh-Key
@@ -393,10 +400,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("cloud access is required")
 			}
 			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil, nodeType)
-			regions := maps.Keys(ec2SvcMap)
 			if err != nil {
 				return err
 			}
+			numNodesMetricsMap = numNodesMap
+			regions := maps.Keys(ec2SvcMap)
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = regions[0]
 			}
@@ -468,6 +476,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+			numNodesMetricsMap = numNodesMap
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = maps.Keys(numNodesMap)[0]
 			}
@@ -802,6 +811,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
+	sendMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
 	return nil
 }
 
@@ -1488,6 +1498,29 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 		return usr.Username + constants.AvalancheCLISuffix, nil
 	}
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
+}
+
+func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[string]NumNodes) {
+	flags := make(map[string]string)
+	totalValidatorNodes := 0
+	totalAPINodes := 0
+	for region := range nodes {
+		totalValidatorNodes += nodes[region].numValidators
+		totalAPINodes += nodes[region].numAPI
+		flags[region] = strconv.Itoa(nodes[region].numValidators)
+	}
+	flags[constants.MetricsCloudService] = cloudService
+	flags[constants.MetricsNodeType] = nodeType
+	flags[constants.MetricsUseStaticIP] = strconv.FormatBool(useStaticIP)
+	flags[constants.MetricsNetwork] = network
+	flags[constants.MetricsValidatorCount] = strconv.Itoa(totalValidatorNodes)
+	flags[constants.MetricsAPICount] = strconv.Itoa(totalAPINodes)
+	if cloudService == constants.AWSCloudService {
+		flags[constants.MetricsAWSVolumeType] = volumeType
+		flags[constants.MetricsAWSVolumeSize] = strconv.Itoa(volumeSize)
+	}
+	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
+	metrics.HandleTracking(cmd, app, flags)
 }
 
 func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {
