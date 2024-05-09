@@ -34,7 +34,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -590,7 +589,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return nil, err
 		}
 		if !alreadyDeployed {
-			subnetID, blockchainID, err := GetChainIDs(network, "C-Chain")
+			subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, "C-Chain")
 			if err != nil {
 				return nil, err
 			}
@@ -613,7 +612,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		// deploy current blockchain
 		ux.Logger.PrintToUser("")
-		subnetID, blockchainID, err := GetChainIDs(network, chain)
+		subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, chain)
 		if err != nil {
 			return nil, err
 		}
@@ -1139,27 +1138,6 @@ func WriteExtraLocalNetworkData(app *application.Avalanche, cchainTeleporterMess
 		return err
 	}
 	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
-}
-
-func GetChainID(network models.Network, chainName string) (ids.ID, error) {
-	client := info.NewClient(network.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	return client.GetBlockchainID(ctx, chainName)
-}
-
-func GetChainIDs(network models.Network, chainName string) (string, string, error) {
-	pClient := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	blockChains, err := pClient.GetBlockchains(ctx)
-	if err != nil {
-		return "", "", err
-	}
-	if chain := utils.Find(blockChains, func(e platformvm.APIBlockchain) bool { return e.Name == chainName }); chain != nil {
-		return chain.SubnetID.String(), chain.ID.String(), nil
-	}
-	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
 }
 
 func GetSubnetAirdropKeyInfo(app *application.Avalanche, subnetName string) (string, string, string, error) {

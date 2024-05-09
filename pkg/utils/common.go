@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -428,6 +429,27 @@ func GetCodespaceURL(url string) (string, error) {
 
 func InsideCodespace() bool {
 	return os.Getenv(constants.CodespaceNameEnvVar) != ""
+}
+
+func GetChainID(endpoint string, chainName string) (ids.ID, error) {
+	client := info.NewClient(endpoint)
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	return client.GetBlockchainID(ctx, chainName)
+}
+
+func GetChainIDs(endpoint string, chainName string) (string, string, error) {
+	pClient := platformvm.NewClient(endpoint)
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	blockChains, err := pClient.GetBlockchains(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	if chain := Find(blockChains, func(e platformvm.APIBlockchain) bool { return e.Name == chainName }); chain != nil {
+		return chain.SubnetID.String(), chain.ID.String(), nil
+	}
+	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
 }
 
 func GetBlockchainTx(endpoint string, blockchainID ids.ID) (*txs.CreateChainTx, error) {

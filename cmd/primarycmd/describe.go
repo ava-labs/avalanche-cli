@@ -83,7 +83,7 @@ func describe(_ *cobra.Command, _ []string) error {
 			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
 		}
 	}
-	blockchainID, err := subnet.GetChainID(network, "C")
+	blockchainID, err := utils.GetChainID(network.Endpoint, "C")
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
 			networkUpMsg := ""

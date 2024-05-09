@@ -26,6 +26,7 @@ type DeployFlags struct {
 	CChain       bool
 	PrivateKey   string
 	KeyName      string
+	GenesisKey   bool
 }
 
 var (
@@ -53,6 +54,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&deployFlags.CChain, "c-chain", false, "deploy teleporter into C-Chain")
 	cmd.Flags().StringVar(&deployFlags.PrivateKey, "private-key", "", "private key to use to fund teleporter deploy)")
 	cmd.Flags().StringVar(&deployFlags.KeyName, "key", "", "CLI stored key to use to fund teleporter deploy)")
+	cmd.Flags().BoolVar(&deployFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to fund teleporter deploy")
 	return cmd
 }
 
@@ -138,20 +140,20 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			privateKey = k.Hex()
 		}
 	case flags.BlockchainID != "":
-		chainID, err := subnet.GetChainID(network, flags.BlockchainID)
-		if err != nil {
-			return err
-		}
-		createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
-		if err != nil {
-			return err
-		}
-		if !utils.ByteSliceIsSubnetEvmGenesis(createChainTx.GenesisData) {
-			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter, blockchain genesis is not")
-		}
 		blockchainID = flags.BlockchainID
 	case flags.CChain:
 		blockchainID = "C"
+	}
+	chainID, err := utils.GetChainID(network.Endpoint, blockchainID)
+	if err != nil {
+		return err
+	}
+	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
+	if err != nil {
+		return err
+	}
+	if !utils.ByteSliceIsSubnetEvmGenesis(createChainTx.GenesisData) {
+		return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter, blockchain genesis is not")
 	}
 	if flags.KeyName != "" {
 		k, err := app.GetKey(flags.KeyName, network, false)
@@ -159,6 +161,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return nil
 		}
 		privateKey = k.Hex()
+	}
+	if flags.GenesisKey {
+		fmt.Println(string(createChainTx.GenesisData))
+		return nil
 	}
 	if privateKey == "" {
 		keyOptions := []string{
