@@ -4,6 +4,8 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -70,8 +72,9 @@ func newWizCmd() *cobra.Command {
 
 The node wiz command creates a devnet and deploys, sync and validate a subnet into it. It creates the subnet if so needed.
 `,
-		Args: cobrautils.RangeArgs(1, 2),
-		RunE: wiz,
+		Args:              cobrautils.RangeArgs(1, 2),
+		RunE:              wiz,
+		PersistentPostRun: handlePostRun,
 	}
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
@@ -184,6 +187,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the devnet..."))
 		ux.Logger.PrintToUser("")
+		// wizSubnet is used to get more metrics sent from node create command on whether if vm is custom or subnetEVM
+		wizSubnet = subnetName
 		if err := createNodes(cmd, []string{clusterName}); err != nil {
 			return err
 		}
@@ -379,6 +384,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
+	sendNodeWizMetrics(cmd)
 	return nil
 }
 
@@ -899,4 +905,26 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 		}
 	}
 	return nil
+}
+
+func sendNodeWizMetrics(cmd *cobra.Command) {
+	flags := make(map[string]string)
+	populateSubnetVMMetrics(flags, subnetName)
+	metrics.HandleTracking(cmd, app, flags)
+}
+
+func populateSubnetVMMetrics(flags map[string]string, subnetName string) {
+	sc, err := app.LoadSidecar(subnetName)
+	if err == nil {
+		switch sc.VM {
+		case models.SubnetEvm:
+			flags[constants.MetricsSubnetVM] = "Subnet-EVM"
+		case models.CustomVM:
+			flags[constants.MetricsSubnetVM] = "CustomVM"
+			flags[constants.MetricsCustomVMRepoURL] = sc.CustomVMRepoURL
+			flags[constants.MetricsCustomVMBranch] = sc.CustomVMBranch
+			flags[constants.MetricsCustomVMBuildScript] = sc.CustomVMBuildScript
+		}
+	}
+	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
 }

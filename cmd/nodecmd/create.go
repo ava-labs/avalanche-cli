@@ -75,6 +75,7 @@ var (
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
 	grafanaPkg string
+	wizSubnet  string
 )
 
 func newCreateCmd() *cobra.Command {
@@ -243,6 +244,7 @@ func stringToAWSVolumeType(input string) types.VolumeType {
 }
 
 func createNodes(cmd *cobra.Command, args []string) error {
+	fmt.Printf("current wizSubnet value %s \n", wizSubnet)
 	clusterName := args[0]
 	if err := preCreateChecks(clusterName); err != nil {
 		return err
@@ -809,7 +811,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
-	sendMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
+	sendNodeCreateMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
 	return nil
 }
 
@@ -1498,7 +1500,7 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
 }
 
-func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[string]NumNodes) {
+func sendNodeCreateMetrics(cmd *cobra.Command, cloudService, network string, nodes map[string]NumNodes) {
 	flags := make(map[string]string)
 	totalValidatorNodes := 0
 	totalAPINodes := 0
@@ -1518,6 +1520,10 @@ func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[str
 		flags[constants.MetricsAWSVolumeSize] = strconv.Itoa(volumeSize)
 	}
 	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
+	if wizSubnet != "" {
+		populateSubnetVMMetrics(flags, subnetName)
+		flags[constants.MetricsCalledFromWiz] = strconv.FormatBool(true)
+	}
 	metrics.HandleTracking(cmd, app, flags)
 }
 
