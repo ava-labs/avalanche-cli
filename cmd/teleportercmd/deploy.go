@@ -90,11 +90,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if flags.SubnetName == "" && flags.BlockchainID == "" && !flags.CChain {
 		// fill flags based on user prompts
 		blockchainIDOptions := []string{
-			"Get it from a CLI Subnet",
-			"Use C-Chain",
-			"Will provide a Custom one",
+			"Get Blockchain ID from an existing subnet (deployed with avalanche subnet deploy)",
+			"Use C-Chain Blockchain ID",
+			"Custom",
 		}
-		blockchainIDOption, err := app.Prompt.CaptureList("Which is the Blockchain ID?", blockchainIDOptions)
+		blockchainIDOption, err := app.Prompt.CaptureList("What is the Blockchain ID?", blockchainIDOptions)
 		if err != nil {
 			return err
 		}
@@ -186,14 +186,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		privateKey = genesisPrivateKey
 	}
 	if privateKey == "" {
-		cliKeyOpt := "Get it from a CLI Key"
-		customKeyOpt := "Will provide a Custom one"
-		genesisKeyOpt := fmt.Sprintf("Use Genesis Airdrop: %s %s", genesisKeyName, genesisAddress)
+		cliKeyOpt := "Get Private Key from an existing stored key (created from avalanche key create or avalanche key import)"
+		customKeyOpt := "Custom"
+		genesisKeyOpt := fmt.Sprintf("Use the Private Key of the Genesis Aidrop address %s", genesisAddress)
 		keyOptions := []string{cliKeyOpt, customKeyOpt}
 		if genesisPrivateKey != "" {
 			keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
 		}
-		keyOption, err := app.Prompt.CaptureList("Which Private Key to use to pay fees?", keyOptions)
+		keyOption, err := app.Prompt.CaptureList("What Private Key to use to pay fees?", keyOptions)
 		if err != nil {
 			return err
 		}
