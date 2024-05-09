@@ -116,12 +116,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	var (
-		teleporterVersion string
-		blockchainID      string
-		privateKey        = flags.PrivateKey
+		teleporterVersion    string
+		blockchainID         string
+		teleporterSubnetDesc string
+		privateKey           = flags.PrivateKey
 	)
 	switch {
 	case flags.SubnetName != "":
+		teleporterSubnetDesc = flags.SubnetName
 		sc, err := app.LoadSidecar(flags.SubnetName)
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar: %w", err)
@@ -146,8 +148,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			privateKey = k.PrivKeyHex()
 		}
 	case flags.BlockchainID != "":
+		teleporterSubnetDesc = flags.BlockchainID
 		blockchainID = flags.BlockchainID
 	case flags.CChain:
+		teleporterSubnetDesc = "c-chain"
 		blockchainID = "C"
 	}
 	chainID, err := utils.GetChainID(network.Endpoint, blockchainID)
@@ -207,15 +211,24 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			privateKey = genesisPrivateKey
 		}
 	}
+	teleporterInfo, err := teleporter.GetInfo(app)
+	if err != nil {
+		return err
+	}
+	if teleporterVersion == "" {
+		teleporterVersion = teleporterInfo.Version
+	}
 	fmt.Println(blockchainID)
 	fmt.Println(privateKey)
-	return nil
+	fmt.Println(teleporterVersion)
 	// deploy to subnet
+	fmt.Println(teleporterSubnetDesc)
+	return nil
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
 		app,
 		teleporterVersion,
 		network,
-		flags.SubnetName,
+		teleporterSubnetDesc,
 		blockchainID,
 		privateKey,
 	)
@@ -237,7 +250,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 	// deploy to cchain for local
-	if network.Kind == models.Local || network.Kind == models.Devnet {
+	if !flags.CChain && (network.Kind == models.Local || network.Kind == models.Devnet) {
 		blockchainID := "C"
 		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
 			app,

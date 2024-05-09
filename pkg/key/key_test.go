@@ -43,8 +43,8 @@ func TestNewKeyEwoq(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !bytes.Equal(m.Raw(), m2.Raw()) {
-		t.Fatalf("loaded key unexpected %v, expected %v", m2.Raw(), m.Raw())
+	if !bytes.Equal(m.PrivKeyRaw(), m2.PrivKeyRaw()) {
+		t.Fatalf("loaded key unexpected %v, expected %v", m2.PrivKeyRaw(), m.PrivKeyRaw())
 	}
 }
 
