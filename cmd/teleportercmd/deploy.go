@@ -8,7 +8,6 @@ import (
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -79,6 +78,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.SubnetName != "", flags.BlockchainID != "", flags.CChain}) {
 		return fmt.Errorf("--subnet, --blockchain-id and --cchain are mutually exclusive flags")
 	}
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.PrivateKey != "", flags.KeyName != "", flags.GenesisKey}) {
+		return fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
+	}
 	if flags.SubnetName == "" && flags.BlockchainID == "" && !flags.CChain {
 		// fill flags based on user prompts
 		blockchainIDOptions := []string{
@@ -86,9 +88,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			"Use C-Chain",
 			"Will provide a Custom one",
 		}
-		if blockchainIDOption, err := app.Prompt.CaptureList("Which is the Blockchain ID?", blockchainIDOptions); err != nil {
+		blockchainIDOption, err := app.Prompt.CaptureList("Which is the Blockchain ID?", blockchainIDOptions)
+		if err != nil {
 			return err
-		} else if blockchainIDOption == blockchainIDOptions[0] {
+		}
+		switch blockchainIDOption {
+		case blockchainIDOptions[0]:
 			subnetNames, err := app.GetSubnetNames()
 			if err != nil {
 				return err
@@ -100,9 +105,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			if err != nil {
 				return err
 			}
-		} else if blockchainIDOption == blockchainIDOptions[1] {
+		case blockchainIDOptions[1]:
 			flags.CChain = true
-		} else {
+		default:
 			flags.BlockchainID, err = app.Prompt.CaptureString("Blockchain ID/Alias")
 			if err != nil {
 				return err
@@ -163,65 +168,27 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		privateKey = k.PrivKeyHex()
 	}
-	genesisAddress := ""
-	genesisPrivateKey := ""
-	if flags.GenesisKey {
-		genesis, err := utils.ByteSliceToSubnetEvmGenesis(createChainTx.GenesisData)
-		if err != nil {
-			return err
-		}
-		ewoq, err := key.LoadEwoq(network.ID)
-		if err != nil {
-			return err
-		}
-		if flags.SubnetName != "" {
-			_, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetSubnetAirdropKeyInfo(app, flags.SubnetName)
-			if err != nil {
-				return err
-			}
-			for address := range genesis.Alloc {
-				if address.Hex() == subnetAirdropAddress {
-					genesisPrivateKey = subnetAirdropPrivKey
-					genesisAddress = subnetAirdropAddress
-				}
-			}
-		}
-		if genesisPrivateKey == "" {
-			for address := range genesis.Alloc {
-				if address.Hex() == ewoq.C() {
-					genesisPrivateKey = ewoq.PrivKeyHex()
-					genesisAddress = ewoq.C()
-				}
-			}
-		}
-		if genesisPrivateKey == "" {
-			for address := range genesis.Alloc {
-				keyNames, err := app.GetKeyNames()
-				if err != nil {
-					return err
-				}
-				for _, keyName := range keyNames {
-					if k, err := app.GetKey(keyName, network, false); err != nil {
-						return err
-					} else if address.Hex() == k.C() {
-						genesisPrivateKey = k.PrivKeyHex()
-						genesisAddress = k.C()
-					}
-				}
-			}
-		}
+	genesisKeyName, genesisAddress, genesisPrivateKey, err := subnet.GetSubnetAirdropKeyInfo(app, network, flags.SubnetName, createChainTx.GenesisData)
+	if err != nil {
+		return err
 	}
-	fmt.Println(genesisAddress)
-	fmt.Println(genesisPrivateKey)
-	return nil
+	if flags.GenesisKey {
+		privateKey = genesisPrivateKey
+	}
 	if privateKey == "" {
-		keyOptions := []string{
-			"Get it from a CLI Key",
-			"Will provide a Custom one",
+		cliKeyOpt := "Get it from a CLI Key"
+		customKeyOpt := "Will provide a Custom one"
+		genesisKeyOpt := fmt.Sprintf("Use Genesis Airdrop: %s %s", genesisKeyName, genesisAddress)
+		keyOptions := []string{cliKeyOpt, customKeyOpt}
+		if genesisPrivateKey != "" {
+			keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
 		}
-		if keyOption, err := app.Prompt.CaptureList("Which Private Key to use to pay fees?", keyOptions); err != nil {
+		keyOption, err := app.Prompt.CaptureList("Which Private Key to use to pay fees?", keyOptions)
+		if err != nil {
 			return err
-		} else if keyOption == keyOptions[0] {
+		}
+		switch keyOption {
+		case cliKeyOpt:
 			keyName, err := prompts.CaptureKeyName(app.Prompt, "pay fees", app.GetKeyDir(), true)
 			if err != nil {
 				return err
@@ -231,11 +198,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				return nil
 			}
 			privateKey = k.PrivKeyHex()
-		} else {
+		case customKeyOpt:
 			privateKey, err = app.Prompt.CaptureString("Private Key")
 			if err != nil {
 				return err
 			}
+		case genesisKeyOpt:
+			privateKey = genesisPrivateKey
 		}
 	}
 	fmt.Println(blockchainID)

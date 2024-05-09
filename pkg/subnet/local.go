@@ -22,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -673,7 +672,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	if sc.VM == models.SubnetEvm {
-		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetSubnetAirdropKeyInfo(d.app, chain)
+		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetDefaultSubnetAirdropKeyInfo(d.app, chain)
 		if err != nil {
 			ux.Logger.PrintToUser("failure loading subnet airdrop info: %s", err)
 		}
@@ -1137,17 +1136,4 @@ func WriteExtraLocalNetworkData(app *application.Avalanche, cchainTeleporterMess
 		return err
 	}
 	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
-}
-
-func GetSubnetAirdropKeyInfo(app *application.Avalanche, subnetName string) (string, string, string, error) {
-	keyName := vm.GetSubnetAirdropKeyName(subnetName)
-	keyPath := app.GetKeyPath(keyName)
-	if utils.FileExists(keyPath) {
-		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
-		if err != nil {
-			return "", "", "", err
-		}
-		return keyName, k.C(), k.PrivKeyHex(), nil
-	}
-	return "", "", "", nil
 }

@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -813,7 +811,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := CaptureKeyName(prompt, goal, keyDir, false)
+	keyName, err := CaptureKeyName(prompt, goal, keyDir, true)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Create a new one with `avalanche key create`")
@@ -824,47 +822,21 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 }
 
 func CaptureKeyName(prompt Prompter, goal string, keyDir string, addEwoq bool) (string, error) {
-	files, err := os.ReadDir(keyDir)
+	keyNames, err := utils.GetKeyNames(keyDir, addEwoq)
 	if err != nil {
 		return "", err
 	}
-
-	if len(files) < 1 {
+	if len(keyNames) == 0 {
 		return "", errNoKeys
 	}
-
-	userKeys := []string{}
-	cliKeys := []string{}
-	subnetKeys := []string{}
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keyName := strings.TrimSuffix(f.Name(), constants.KeySuffix)
-			switch {
-			case strings.HasPrefix(f.Name(), "cli-"):
-				cliKeys = append(cliKeys, keyName)
-			case strings.HasPrefix(f.Name(), "subnet_"):
-				subnetKeys = append(subnetKeys, keyName)
-			default:
-				userKeys = append(userKeys, keyName)
-			}
-		}
-	}
-
-	if addEwoq {
-		userKeys = append(userKeys, "ewoq")
-	}
-
-	keys := append(append(userKeys, subnetKeys...), cliKeys...)
-
-	size := len(keys)
+	size := len(keyNames)
 	if size > 10 {
 		size = 10
 	}
-	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keys, size)
+	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keyNames, size)
 	if err != nil {
 		return "", err
 	}
-
 	return keyName, nil
 }
 

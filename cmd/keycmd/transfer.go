@@ -229,8 +229,7 @@ func transferF(*cobra.Command, []string) error {
 
 	var kc keychain.Keychain
 	if keyName != "" {
-		keyPath := app.GetKeyPath(keyName)
-		sk, err := key.LoadSoft(network.ID, keyPath)
+		sk, err := app.GetKey(keyName, network, false)
 		if err != nil {
 			return err
 		}

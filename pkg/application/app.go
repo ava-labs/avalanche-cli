@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
@@ -640,20 +639,6 @@ func (app *Avalanche) GetSubnetNames() ([]string, error) {
 		// a subnet dir could theoretically exist without a sidecar yet...
 		if _, err := os.Stat(filepath.Join(app.GetSubnetDir(), m.Name(), constants.SidecarFileName)); err == nil {
 			names = append(names, m.Name())
-		}
-	}
-	return names, nil
-}
-
-func (app *Avalanche) GetKeyNames() ([]string, error) {
-	matches, err := os.ReadDir(app.GetKeyDir())
-	if err != nil {
-		return nil, err
-	}
-	var names []string
-	for _, m := range matches {
-		if strings.HasSuffix(m.Name(), constants.KeySuffix) {
-			names = append(names, strings.TrimSuffix(m.Name(), constants.KeySuffix))
 		}
 	}
 	return names, nil

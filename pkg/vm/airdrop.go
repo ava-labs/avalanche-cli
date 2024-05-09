@@ -8,7 +8,6 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -24,10 +23,6 @@ const (
 	extendAirdrop = "Would you like to airdrop more tokens?"
 )
 
-func GetSubnetAirdropKeyName(subnetName string) string {
-	return "subnet_" + subnetName + "_airdrop"
-}
-
 func addAllocation(alloc core.GenesisAlloc, address string, amount *big.Int) {
 	alloc[common.HexToAddress(address)] = core.GenesisAccount{
 		Balance: amount,
@@ -35,25 +30,10 @@ func addAllocation(alloc core.GenesisAlloc, address string, amount *big.Int) {
 }
 
 func getNewAllocation(app *application.Avalanche, subnetName string, defaultAirdropAmount string) (core.GenesisAlloc, error) {
-	keyName := GetSubnetAirdropKeyName(subnetName)
-	keyPath := app.GetKeyPath(keyName)
-	var (
-		k   *key.SoftKey
-		err error
-	)
-	if utils.FileExists(keyPath) {
-		k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
-		if err != nil {
-			return core.GenesisAlloc{}, err
-		}
-	} else {
-		k, err = key.NewSoft(0)
-		if err != nil {
-			return core.GenesisAlloc{}, err
-		}
-		if err := k.Save(keyPath); err != nil {
-			return core.GenesisAlloc{}, err
-		}
+	keyName := utils.GetDefaultSubnetAirdropKeyName(subnetName)
+	k, err := app.GetKey(keyName, models.NewLocalNetwork(), true)
+	if err != nil {
+		return core.GenesisAlloc{}, err
 	}
 	ux.Logger.PrintToUser("prefunding address %s with balance %s", k.C(), defaultAirdropAmount)
 	allocation := core.GenesisAlloc{}
