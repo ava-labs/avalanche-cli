@@ -4,7 +4,6 @@ package subnet
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1148,7 +1147,7 @@ func GetSubnetAirdropKeyInfo(app *application.Avalanche, subnetName string) (str
 		if err != nil {
 			return "", "", "", err
 		}
-		return keyName, k.C(), hex.EncodeToString(k.Raw()), nil
+		return keyName, k.C(), k.PrivKeyHex(), nil
 	}
 	return "", "", "", nil
 }

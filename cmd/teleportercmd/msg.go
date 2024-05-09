@@ -120,7 +120,7 @@ func msg(_ *cobra.Command, args []string) error {
 		Message:                 []byte(message),
 	}
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceChainID)
-	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, hex.EncodeToString(sourceKey.Raw()))
+	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, sourceKey.PrivKeyHex())
 	if err != nil {
 		return err
 	}

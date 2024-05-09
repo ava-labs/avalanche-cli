@@ -111,7 +111,7 @@ func describe(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	address := k.C()
-	privKey := hex.EncodeToString(k.Raw())
+	privKey := k.PrivKeyHex()
 	balance, err := evm.GetAddressBalance(client, address)
 	if err != nil {
 		return err

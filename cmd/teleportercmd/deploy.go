@@ -8,6 +8,7 @@ import (
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -137,7 +138,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			if err != nil {
 				return nil
 			}
-			privateKey = k.Hex()
+			privateKey = k.PrivKeyHex()
 		}
 	case flags.BlockchainID != "":
 		blockchainID = flags.BlockchainID
@@ -160,12 +161,59 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return nil
 		}
-		privateKey = k.Hex()
+		privateKey = k.PrivKeyHex()
 	}
+	genesisAddress := ""
+	genesisPrivateKey := ""
 	if flags.GenesisKey {
-		fmt.Println(string(createChainTx.GenesisData))
-		return nil
+		genesis, err := utils.ByteSliceToSubnetEvmGenesis(createChainTx.GenesisData)
+		if err != nil {
+			return err
+		}
+		ewoq, err := key.LoadEwoq(network.ID)
+		if err != nil {
+			return err
+		}
+		if flags.SubnetName != "" {
+			_, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetSubnetAirdropKeyInfo(app, flags.SubnetName)
+			if err != nil {
+				return err
+			}
+			for address := range genesis.Alloc {
+				if address.Hex() == subnetAirdropAddress {
+					genesisPrivateKey = subnetAirdropPrivKey
+					genesisAddress = subnetAirdropAddress
+				}
+			}
+		}
+		if genesisPrivateKey == "" {
+			for address := range genesis.Alloc {
+				if address.Hex() == ewoq.C() {
+					genesisPrivateKey = ewoq.PrivKeyHex()
+					genesisAddress = ewoq.C()
+				}
+			}
+		}
+		if genesisPrivateKey == "" {
+			for address := range genesis.Alloc {
+				keyNames, err := app.GetKeyNames()
+				if err != nil {
+					return err
+				}
+				for _, keyName := range keyNames {
+					if k, err := app.GetKey(keyName, network, false); err != nil {
+						return err
+					} else if address.Hex() == k.C() {
+						genesisPrivateKey = k.PrivKeyHex()
+						genesisAddress = k.C()
+					}
+				}
+			}
+		}
 	}
+	fmt.Println(genesisAddress)
+	fmt.Println(genesisPrivateKey)
+	return nil
 	if privateKey == "" {
 		keyOptions := []string{
 			"Get it from a CLI Key",
@@ -182,7 +230,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			if err != nil {
 				return nil
 			}
-			privateKey = k.Hex()
+			privateKey = k.PrivKeyHex()
 		} else {
 			privateKey, err = app.Prompt.CaptureString("Private Key")
 			if err != nil {

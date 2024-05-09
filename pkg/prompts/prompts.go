@@ -839,11 +839,12 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string, addEwoq bool) (
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
 			keyName := strings.TrimSuffix(f.Name(), constants.KeySuffix)
-			if strings.HasPrefix(f.Name(), "cli-") {
+			switch {
+			case strings.HasPrefix(f.Name(), "cli-"):
 				cliKeys = append(cliKeys, keyName)
-			} else if strings.HasPrefix(f.Name(), "subnet_") {
+			case strings.HasPrefix(f.Name(), "subnet_"):
 				subnetKeys = append(subnetKeys, keyName)
-			} else {
+			default:
 				userKeys = append(userKeys, keyName)
 			}
 		}

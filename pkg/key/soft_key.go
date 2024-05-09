@@ -278,28 +278,28 @@ func (m *SoftKey) KeyChain() *secp256k1fx.Keychain {
 }
 
 // Returns the private key.
-func (m *SoftKey) Key() *secp256k1.PrivateKey {
+func (m *SoftKey) PrivKey() *secp256k1.PrivateKey {
 	return m.privKey
 }
 
 // Returns the private key in raw bytes.
-func (m *SoftKey) Raw() []byte {
+func (m *SoftKey) PrivKeyRaw() []byte {
 	return m.privKeyRaw
 }
 
 // Returns the private key encoded in CB58 and "PrivateKey-" prefix.
-func (m *SoftKey) Encode() string {
+func (m *SoftKey) PrivKeyCB58() string {
 	return m.privKeyEncoded
 }
 
 // Returns the private key encoded hex
-func (m *SoftKey) Hex() string {
+func (m *SoftKey) PrivKeyHex() string {
 	return hex.EncodeToString(m.privKeyRaw)
 }
 
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
-	return os.WriteFile(p, []byte(m.Hex()), constants.WriteReadUserOnlyPerms)
+	return os.WriteFile(p, []byte(m.PrivKeyHex()), constants.WriteReadUserOnlyPerms)
 }
 
 func (m *SoftKey) P() []string {

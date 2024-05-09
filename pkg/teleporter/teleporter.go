@@ -3,7 +3,6 @@
 package teleporter
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -331,7 +330,7 @@ func getPrivateKey(
 			return "", err
 		}
 	}
-	return hex.EncodeToString(k.Raw()), nil
+	return k.PrivKeyHex(), nil
 }
 
 func SetProposerVM(
@@ -398,7 +397,7 @@ func getTeleporterKeyInfo(
 	if err != nil {
 		return "", "", nil, err
 	}
-	return k.C(), k.Hex(), TeleporterPrefundedAddressBalance, nil
+	return k.C(), k.PrivKeyHex(), TeleporterPrefundedAddressBalance, nil
 }
 
 type Info struct {
