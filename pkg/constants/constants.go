@@ -262,6 +262,14 @@ const (
 	AVMKeyName                 = "avm"
 	EVMKeyName                 = "evm"
 	PlatformKeyName            = "platform"
+	MetricsCloudService        = "cloud-service"
+	MetricsNodeType            = "node-type"
+	MetricsAWSVolumeType       = "aws-volume-type"
+	MetricsAWSVolumeSize       = "aws-volume-size"
+	MetricsUseStaticIP         = "use-static-ip"
+	MetricsValidatorCount      = "num-validator-nodes"
+	MetricsAPICount            = "num-api-nodes"
+	MetricsEnableMonitoring    = "enable-monitoring"
 	SubnetType                 = "subnet type"
 	PrecompileType             = "precompile type"
 	CustomAirdrop              = "custom-airdrop"
@@ -293,7 +301,7 @@ const (
 
 	PluginDir = "plugins"
 
-	Network                      = "network"
+	MetricsNetwork               = "network"
 	MultiSig                     = "multi-sig"
 	SkipUpdateFlag               = "skip-update-check"
 	LastFileName                 = ".last_actions.json"

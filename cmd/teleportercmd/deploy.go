@@ -226,6 +226,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		teleporterVersion = teleporterInfo.Version
 	}
+	if !sc.TeleporterReady {
+		return fmt.Errorf("subnet is not configured for teleporter")
+	}
 	// deploy to subnet
 	td := teleporter.Deployer{}
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
