@@ -4,11 +4,12 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
@@ -909,8 +910,8 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 
 func sendNodeWizMetrics(cmd *cobra.Command) {
 	flags := make(map[string]string)
-	populateSubnetVMMetrics(flags, subnetName)
-	metrics.HandleTracking(cmd, app, flags)
+	populateSubnetVMMetrics(flags, wizSubnet)
+	metrics.HandleTracking(cmd, constants.MetricsNodeDevnetWizCommand, app, flags)
 }
 
 func populateSubnetVMMetrics(flags map[string]string, subnetName string) {

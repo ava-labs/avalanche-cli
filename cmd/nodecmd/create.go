@@ -244,7 +244,6 @@ func stringToAWSVolumeType(input string) types.VolumeType {
 }
 
 func createNodes(cmd *cobra.Command, args []string) error {
-	fmt.Printf("current wizSubnet value %s \n", wizSubnet)
 	clusterName := args[0]
 	if err := preCreateChecks(clusterName); err != nil {
 		return err
@@ -811,7 +810,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
-	sendNodeCreateMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
+	sendNodeCreateMetrics(newCreateCmd(), cloudService, network.Name(), numNodesMetricsMap)
 	return nil
 }
 
@@ -1507,8 +1506,9 @@ func sendNodeCreateMetrics(cmd *cobra.Command, cloudService, network string, nod
 	for region := range nodes {
 		totalValidatorNodes += nodes[region].numValidators
 		totalAPINodes += nodes[region].numAPI
-		flags[region] = strconv.Itoa(nodes[region].numValidators)
+		flags["region-"+region] = strconv.Itoa(nodes[region].numValidators)
 	}
+	flags[constants.MetricsNumRegions] = strconv.Itoa(len(maps.Keys(nodes)))
 	flags[constants.MetricsCloudService] = cloudService
 	flags[constants.MetricsNodeType] = nodeType
 	flags[constants.MetricsUseStaticIP] = strconv.FormatBool(useStaticIP)
@@ -1521,10 +1521,10 @@ func sendNodeCreateMetrics(cmd *cobra.Command, cloudService, network string, nod
 	}
 	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
 	if wizSubnet != "" {
-		populateSubnetVMMetrics(flags, subnetName)
+		populateSubnetVMMetrics(flags, wizSubnet)
 		flags[constants.MetricsCalledFromWiz] = strconv.FormatBool(true)
 	}
-	metrics.HandleTracking(cmd, app, flags)
+	metrics.HandleTracking(cmd, constants.MetricsNodeCreateCommand, app, flags)
 }
 
 func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {
