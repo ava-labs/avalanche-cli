@@ -921,7 +921,7 @@ func populateSubnetVMMetrics(flags map[string]string, subnetName string) {
 		case models.SubnetEvm:
 			flags[constants.MetricsSubnetVM] = "Subnet-EVM"
 		case models.CustomVM:
-			flags[constants.MetricsSubnetVM] = "CustomVM"
+			flags[constants.MetricsSubnetVM] = "Custom-VM"
 			flags[constants.MetricsCustomVMRepoURL] = sc.CustomVMRepoURL
 			flags[constants.MetricsCustomVMBranch] = sc.CustomVMBranch
 			flags[constants.MetricsCustomVMBuildScript] = sc.CustomVMBuildScript
