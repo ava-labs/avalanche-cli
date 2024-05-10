@@ -178,7 +178,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		privateKey = k.PrivKeyHex()
 	}
-	genesisKeyName, genesisAddress, genesisPrivateKey, err := subnet.GetSubnetAirdropKeyInfo(app, network, flags.SubnetName, createChainTx.GenesisData)
+	_, genesisAddress, genesisPrivateKey, err := subnet.GetSubnetAirdropKeyInfo(app, network, flags.SubnetName, createChainTx.GenesisData)
 	if err != nil {
 		return err
 	}
@@ -225,9 +225,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		teleporterVersion = teleporterInfo.Version
-	}
-	if !sc.TeleporterReady {
-		return fmt.Errorf("subnet is not configured for teleporter")
 	}
 	// deploy to subnet
 	td := teleporter.Deployer{}
