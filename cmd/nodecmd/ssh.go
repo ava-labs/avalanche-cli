@@ -37,6 +37,7 @@ If no [cmd] is provided for the node, it will open ssh shell there.
 		RunE: sshNode,
 	}
 	cmd.Flags().BoolVar(&isParallel, "parallel", false, "run ssh command on all nodes in parallel")
+
 	return cmd
 }
 
@@ -126,10 +127,7 @@ func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig
 					}
 				}
 				defer wg.Done()
-				splitCmdLine := strings.Split(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), " ")
-				splitCmdLine = append(splitCmdLine, cmd)
-				cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...)
-				cmd.Env = os.Environ()
+				cmd := utils.Command(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), cmd)
 				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
 				if !isParallel {
 					_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)

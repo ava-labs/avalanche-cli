@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -24,8 +25,8 @@ func GetSSHConnectionString(publicIP, certFilePath string) string {
 }
 
 // GetSCPCommandString returns the SCP command string for the given source and destination paths.
-func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destIP, destPath string) (string, error) {
-	scpParams := constants.AnsibleSSHShellParams
+func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destIP, destPath string, recursive, withCompression bool) (string, error) {
+	scpParams := constants.AnsibleSSHShellParams + " -B"
 	if sourceIP == "" && destIP == "" {
 		return "", fmt.Errorf("source or destination should be remote")
 	}
@@ -33,11 +34,17 @@ func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destI
 		return "", fmt.Errorf("source and destination path is required")
 	}
 	// end of checks
+	if recursive {
+		scpParams += " -r"
+	}
+	if withCompression {
+		scpParams += " -C"
+	}
 	if certFilePath != "" {
-		scpParams += fmt.Sprintf("-i %s ", certFilePath)
+		scpParams += fmt.Sprintf(" -i %s", certFilePath)
 	}
 	if sourceIP != "" && destIP != "" {
-		scpParams += "-3 "
+		scpParams += " -3"
 	}
 	if sourceIP != "" {
 		sourcePath = fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, sourceIP, sourcePath)
@@ -49,6 +56,15 @@ func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destI
 	return fmt.Sprintf("scp %s %s %s", scpParams, sourcePath, destPath), nil
 }
 
+// Command returns an exec.Cmd for the given command line.
+func Command(cmdLine string, params ...string) *exec.Cmd {
+	cmd := strings.Split(cmdLine, " ")
+	cmd = append(cmd, params...)
+	c := exec.Command(cmd[0], cmd[1:]...)
+	c.Env = os.Environ()
+	return c
+}
+
 // SplitSCPPath splits the given path into host and path.
 func SplitSCPPath(path string) (string, string) {
 	if !strings.Contains(path, ":") {
@@ -56,6 +72,14 @@ func SplitSCPPath(path string) (string, string) {
 	}
 	parts := strings.Split(path, ":")
 	return parts[0], parts[1]
+}
+
+// CombineScpPath combines the given host and path into a single item for scp.
+func CombineScpPath(host, path string) string {
+	if host != "" {
+		return fmt.Sprintf("%s:%s", host, path)
+	}
+	return path
 }
 
 // isSSHAgentAvailable checks if the SSH agent is available.

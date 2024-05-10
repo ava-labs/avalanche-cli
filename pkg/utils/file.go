@@ -86,3 +86,18 @@ func WriteStringToFile(filePath string, data string) error {
 	filePath = ExpandHome(filePath)
 	return os.WriteFile(filePath, []byte(data), constants.WriteReadReadPerms)
 }
+
+// Size returns the size of a file or directory.
+func SizeInKB(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
+}
