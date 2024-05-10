@@ -20,7 +20,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var isParallel bool
+var (
+	isParallel      bool
+	includeMonitor  bool
+	includeLoadTest bool
+)
 
 func newSSHCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -37,6 +41,8 @@ If no [cmd] is provided for the node, it will open ssh shell there.
 		RunE: sshNode,
 	}
 	cmd.Flags().BoolVar(&isParallel, "parallel", false, "run ssh command on all nodes in parallel")
+	cmd.Flags().BoolVar(&includeMonitor, "with-monitor", false, "include monitoring node for ssh cluster operations")
+	cmd.Flags().BoolVar(&includeLoadTest, "with-loadtest", false, "include loadtest node for ssh cluster operations")
 
 	return cmd
 }
@@ -221,7 +227,7 @@ func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
 		return nil, err
 	}
 	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-	if utils.DirectoryExists(monitoringInventoryPath) {
+	if includeMonitor && utils.DirectoryExists(monitoringInventoryPath) {
 		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 		if err != nil {
 			return nil, err
@@ -229,7 +235,7 @@ func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
 		clusterHosts = append(clusterHosts, monitoringHosts...)
 	}
 	loadTestInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
-	if utils.DirectoryExists(loadTestInventoryPath) {
+	if includeLoadTest && utils.DirectoryExists(loadTestInventoryPath) {
 		loadTestHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryPath)
 		if err != nil {
 			return nil, err

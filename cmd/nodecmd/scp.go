@@ -47,6 +47,8 @@ $ avalanche node scp node1:/tmp/file.txt NodeID-XXXX:/tmp/file.txt
 	}
 	cmd.Flags().BoolVar(&isRecursive, "recursive", false, "copy directories recursively")
 	cmd.Flags().BoolVar(&withCompression, "compress", false, "use compression for ssh")
+	cmd.Flags().BoolVar(&includeMonitor, "with-monitor", false, "include monitoring node for scp cluster operations")
+	cmd.Flags().BoolVar(&includeLoadTest, "with-loadtest", false, "include loadtest node for scp cluster operations")
 	return cmd
 }
 
@@ -89,9 +91,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.Info("scp src cluster %s", clusterName)
-		// modify destPath to include host marker
-		return scpHosts(srcCluster, clusterHosts, sourcePath, destPath, clusterName, true)
+		return scpHosts(srcCluster, clusterHosts, sourcePath, utils.CombineScpPath(destClusterNameOrNodeID, destPath), clusterName, true)
 	case destClusterExists:
 		// destination is a cluster
 		clusterName := destClusterNameOrNodeID
@@ -99,8 +99,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.Info("scp dst cluster %s", clusterName)
-		return scpHosts(dstCluster, clusterHosts, destPath, sourcePath, clusterName, false)
+		return scpHosts(dstCluster, clusterHosts, utils.CombineScpPath(sourceClusterNameOrNodeID, sourcePath), destPath, clusterName, false)
 	default:
 		if sourceClusterNameOrNodeID == destClusterNameOrNodeID {
 			return fmt.Errorf("source and destination cannot be the same node")
@@ -126,40 +125,51 @@ func scpNode(_ *cobra.Command, args []string) error {
 
 // scpHosts securely copies files to and from nodes.
 func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, clusterName string, addNodeMarker bool) error {
-	// prepare both source and destination for scp command
-	scpPrefix, err := prepareSCPTarget(clusterName, sourcePath)
-	if err != nil {
-		return err
-	}
-	scpSuffix, err := prepareSCPTarget(clusterName, destPath)
-	if err != nil {
-		return err
-	}
+	ux.Logger.Info("scpHosts %d %s %s %s %s %t", op, hosts, sourcePath, destPath, clusterName, addNodeMarker)
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
 	for _, host := range hosts {
 		wg.Add(1)
+		// prepare both source and destination for scp command
+		scpPrefix, err := prepareSCPTarget(op, host, clusterName, sourcePath, true)
+		if err != nil {
+			return err
+		}
+		scpSuffix, err := prepareSCPTarget(op, host, clusterName, destPath, false)
+		if err != nil {
+			return err
+		}
 		prefixIP, prefixPath := utils.SplitSCPPath(scpPrefix)
 		suffixIP, suffixPath := utils.SplitSCPPath(scpSuffix)
 		switch op {
 		case srcCluster:
 			prefixIP = host.IP
+			//skip the same host
+			if suffixIP == host.IP {
+				ux.Logger.Info("Skipping the same host %s for %s", host.GetCloudID(), srcCluster)
+				continue
+			}
 		case dstCluster:
 			suffixIP = host.IP
+			// skip the same host
+			if prefixIP == host.IP {
+				ux.Logger.Info("Skipping the same host %s for %s", host.GetCloudID(), dstCluster)
+				continue
+			}
 		default:
 			// noCluster
 		}
-		ux.Logger.Info("SCP prefix %s suffix %s", scpPrefix, scpSuffix)
 		if addNodeMarker {
 			// add nodeID and clusterName to destination path if source is cluster, i.e. multiple nodes
 			suffixPath = fmt.Sprintf("%s.%s_%s", suffixPath, clusterName, host.NodeID)
 		}
+		ux.Logger.Info("DEBUG1 %s %s %s %s", prefixIP, prefixPath, suffixIP, suffixPath)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			spinner := spinSession.SpinToUser(fmt.Sprintf("[%s] transfering file(s)", host.GetCloudID()))
 			scpCmd := ""
-			ux.Logger.Info("DEBUG %s %s %s %s", prefixIP, prefixPath, suffixIP, suffixPath)
+			ux.Logger.Info("DEBUG2 %s %s %s %s", prefixIP, prefixPath, suffixIP, suffixPath)
 			scpCmd, err = utils.GetSCPCommandString(
 				host.SSHPrivateKeyPath,
 				prefixIP,
@@ -194,7 +204,7 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 }
 
 // prepareSCPTarget prepares the target for scp command
-func prepareSCPTarget(clusterName string, dest string) (string, error) {
+func prepareSCPTarget(op ClusterOp, host *models.Host, clusterName string, dest string, isSrc bool) (string, error) {
 	// valid clusterName - is already checked
 	if !strings.Contains(dest, ":") {
 		// destination is local, ready to go
@@ -216,13 +226,15 @@ func prepareSCPTarget(clusterName string, dest string) (string, error) {
 	selectedHost := utils.Filter(clusterHosts, func(h *models.Host) bool {
 		_, cloudHostID, _ := models.HostAnsibleIDToCloudID(h.NodeID)
 		hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
-		return h.GetCloudID() == node || hostNodeID.String() == node
+		return h.GetCloudID() == node || hostNodeID.String() == node || h.IP == node
 	})
 	switch {
 	case len(selectedHost) == 0:
 		return "", fmt.Errorf("node %s not found in cluster %s", node, clusterName)
 	case len(selectedHost) > 2:
 		return "", fmt.Errorf("more then 1 node found for %s in cluster %s", node, clusterName)
+	case (op == srcCluster && isSrc) || (op == dstCluster && !isSrc):
+		return fmt.Sprintf("%s:%s", host.IP, path), nil
 	default:
 		return fmt.Sprintf("%s:%s", selectedHost[0].IP, path), nil
 	}
