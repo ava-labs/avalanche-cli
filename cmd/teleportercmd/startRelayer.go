@@ -34,7 +34,9 @@ func newStartRelayerCmd() *cobra.Command {
 func startRelayer(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
+		false,
 		false,
 		startRelayerNetworkOptions,
 		"",

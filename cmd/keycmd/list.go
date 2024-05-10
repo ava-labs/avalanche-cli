@@ -206,7 +206,9 @@ func listKeys(*cobra.Command, []string) error {
 	if len(networks) == 0 {
 		network, err := networkoptions.GetNetworkFromCmdLineFlags(
 			app,
+			"",
 			networkoptions.NetworkFlags{},
+			false,
 			false,
 			listSupportedNetworkOptions,
 			subnetName,
