@@ -41,7 +41,6 @@ func GetCLIVersion() string {
 }
 
 func userIsOptedIn(app *application.Avalanche) bool {
-	fmt.Printf("path to config %s \n", app.Conf.GetConfigPath())
 	if app.Conf.ConfigFileExists() && app.Conf.GetConfigBoolValue(constants.ConfigMetricsEnabledKey) {
 		return true
 	}
