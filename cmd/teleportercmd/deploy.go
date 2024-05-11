@@ -87,6 +87,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.PrivateKey != "", flags.KeyName != "", flags.GenesisKey}) {
 		return fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
 	}
+	if !flags.DeployMessenger && !flags.DeployRegistry {
+		return fmt.Errorf("you should set at least one of --deploy-messenger/--deploy-registry to true")
+	}
 	if flags.SubnetName == "" && flags.BlockchainID == "" && !flags.CChain {
 		// fill flags based on user prompts
 		blockchainIDOptions := []string{
@@ -217,7 +220,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			privateKey = genesisPrivateKey
 		}
 	}
-	if flags.TeleporterVersion != "latest" {
+	if flags.TeleporterVersion != "" && flags.TeleporterVersion != "latest" {
 		teleporterVersion = flags.TeleporterVersion
 	} else if teleporterVersion == "" {
 		teleporterInfo, err := teleporter.GetInfo(app)
@@ -249,8 +252,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		sc.TeleporterReady = true
 		sc.TeleporterVersion = teleporterVersion
 		networkInfo := sc.Networks[network.Name()]
-		networkInfo.TeleporterMessengerAddress = teleporterMessengerAddress
-		networkInfo.TeleporterRegistryAddress = teleporterRegistryAddress
+		if teleporterMessengerAddress != "" {
+			networkInfo.TeleporterMessengerAddress = teleporterMessengerAddress
+		}
+		if teleporterRegistryAddress != "" {
+			networkInfo.TeleporterRegistryAddress = teleporterRegistryAddress
+		}
 		sc.Networks[network.Name()] = networkInfo
 		if err := app.UpdateSidecar(&sc); err != nil {
 			return err
@@ -285,9 +292,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				if err != nil {
 					return err
 				}
-				clusterConfig.ExtraNetworkData = models.ExtraNetworkData{
-					CChainTeleporterMessengerAddress: teleporterMessengerAddress,
-					CChainTeleporterRegistryAddress:  teleporterRegistryAddress,
+				if teleporterMessengerAddress != "" {
+					clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress = teleporterMessengerAddress
+				}
+				if teleporterRegistryAddress != "" {
+					clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress = teleporterRegistryAddress
 				}
 				if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
 					return err

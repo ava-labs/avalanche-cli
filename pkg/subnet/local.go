@@ -1113,23 +1113,33 @@ type ExtraLocalNetworkData struct {
 	CChainTeleporterRegistryAddress  string
 }
 
-func GetExtraLocalNetworkData(app *application.Avalanche) (*ExtraLocalNetworkData, error) {
+func GetExtraLocalNetworkData(app *application.Avalanche) (ExtraLocalNetworkData, error) {
+	extraLocalNetworkData := ExtraLocalNetworkData{}
 	bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
 	if err != nil {
-		return nil, err
+		return extraLocalNetworkData, err
 	}
-	extraLocalNetworkData := ExtraLocalNetworkData{}
 	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return nil, err
+		return extraLocalNetworkData, err
 	}
-	return &extraLocalNetworkData, nil
+	return extraLocalNetworkData, nil
 }
 
 func WriteExtraLocalNetworkData(app *application.Avalanche, cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
 	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-	extraLocalNetworkData := ExtraLocalNetworkData{
-		CChainTeleporterMessengerAddress: cchainTeleporterMessengerAddress,
-		CChainTeleporterRegistryAddress:  cchainTeleporterRegistryAddress,
+	extraLocalNetworkData := ExtraLocalNetworkData{}
+	if utils.FileExists(extraLocalNetworkDataPath) {
+		var err error
+		extraLocalNetworkData, err = GetExtraLocalNetworkData(app)
+		if err != nil {
+			return err
+		}
+	}
+	if cchainTeleporterMessengerAddress != "" {
+		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainTeleporterMessengerAddress
+	}
+	if cchainTeleporterRegistryAddress != "" {
+		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainTeleporterRegistryAddress
 	}
 	bs, err := json.Marshal(&extraLocalNetworkData)
 	if err != nil {
