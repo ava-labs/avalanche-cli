@@ -30,6 +30,7 @@ type DeployFlags struct {
 	DeployMessenger   bool
 	DeployRegistry    bool
 	TeleporterVersion string
+	RPCURL            string
 }
 
 var (
@@ -61,6 +62,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
 	cmd.Flags().StringVar(&deployFlags.TeleporterVersion, "version", "latest", "version to deploy")
+	cmd.Flags().StringVar(&deployFlags.RPCURL, "rpc-url", "", "use the given RPC URL to connect to the subnet")
 	return cmd
 }
 
@@ -163,9 +165,17 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		teleporterSubnetDesc = "c-chain"
 		blockchainID = "C"
 	}
-	chainID, err := utils.GetChainID(network.Endpoint, blockchainID)
-	if err != nil {
-		return err
+	var chainID ids.ID
+	if flags.CChain || !network.StandardPublicEndpoint() {
+		chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
+		if err != nil {
+			return err
+		}
+	} else {
+		chainID, err = ids.FromString(blockchainID)
+		if err != nil {
+			return err
+		}
 	}
 	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
 	if err != nil {
@@ -230,12 +240,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		teleporterVersion = teleporterInfo.Version
 	}
 	// deploy to subnet
+	rpcURL := network.BlockchainEndpoint(blockchainID)
+	if flags.RPCURL != "" {
+		rpcURL = flags.RPCURL
+	}
 	td := teleporter.Deployer{}
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
 		app.GetTeleporterBinDir(),
 		teleporterVersion,
 		teleporterSubnetDesc,
-		network.BlockchainEndpoint(blockchainID),
+		rpcURL,
 		privateKey,
 		flags.DeployMessenger,
 		flags.DeployRegistry,

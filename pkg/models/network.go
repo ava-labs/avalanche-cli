@@ -92,6 +92,10 @@ func NetworkFromNetworkID(networkID uint32) Network {
 	return UndefinedNetwork
 }
 
+func (n Network) StandardPublicEndpoint() bool {
+	return n.Endpoint == constants.FujiAPIEndpoint || n.Endpoint == constants.MainnetAPIEndpoint
+}
+
 func (n Network) Name() string {
 	if n.ClusterName != "" && n.Kind == Devnet {
 		return "Cluster " + n.ClusterName
