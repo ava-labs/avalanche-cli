@@ -350,6 +350,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
 		ux.Logger.PrintToUser("")
+		if err := updateAWMRelayerFunds(network, sc, blockchainID); err != nil {
+			return err
+		}
 		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
 			return err
 		}
@@ -383,6 +386,33 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
+}
+
+func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
+	relayerKey, err := app.GetKey(constants.AWMRelayerKeyName, network, true)
+	if err != nil {
+		return err
+	}
+	teleporterKey, err := app.GetKey(sc.TeleporterKey, network, true)
+	if err != nil {
+		return err
+	}
+	if err := teleporter.FundRelayer(
+		network.BlockchainEndpoint(blockchainID.String()),
+		teleporterKey.PrivKeyHex(),
+		relayerKey.C(),
+	); err != nil {
+		return nil
+	}
+	ewoqKey, err := app.GetKey("ewoq", network, true)
+	if err != nil {
+		return err
+	}
+	return teleporter.FundRelayer(
+		network.BlockchainEndpoint("C"),
+		ewoqKey.PrivKeyHex(),
+		relayerKey.C(),
+	)
 }
 
 func setUpSubnetLogging(clusterName, subnetName string) error {
