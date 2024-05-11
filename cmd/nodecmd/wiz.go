@@ -343,6 +343,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 			Network: networkoptions.NetworkFlags{
 				ClusterName: clusterName,
 			},
+			DeployMessenger: true,
+			DeployRegistry:  true,
 		}
 		if err := teleportercmd.CallDeploy([]string{}, flags); err != nil {
 			return err
