@@ -125,7 +125,6 @@ func scpNode(_ *cobra.Command, args []string) error {
 
 // scpHosts securely copies files to and from nodes.
 func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, clusterName string, addNodeMarker bool) error {
-	ux.Logger.Info("scpHosts %d %s %s %s %s %t", op, hosts, sourcePath, destPath, clusterName, addNodeMarker)
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
@@ -144,16 +143,14 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 		switch op {
 		case srcCluster:
 			prefixIP = host.IP
-			//skip the same host
+			// skip the same host
 			if suffixIP == host.IP {
-				ux.Logger.Info("Skipping the same host %s for %s", host.GetCloudID(), srcCluster)
 				continue
 			}
 		case dstCluster:
 			suffixIP = host.IP
 			// skip the same host
 			if prefixIP == host.IP {
-				ux.Logger.Info("Skipping the same host %s for %s", host.GetCloudID(), dstCluster)
 				continue
 			}
 		default:
@@ -166,7 +163,7 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			spinner := spinSession.SpinToUser(fmt.Sprintf("[%s] transfering file(s)", host.GetCloudID()))
+			spinner := spinSession.SpinToUser(fmt.Sprintf("[%s] transferring file(s)", host.GetCloudID()))
 			scpCmd := ""
 			scpCmd, err = utils.GetSCPCommandString(
 				host.SSHPrivateKeyPath,
