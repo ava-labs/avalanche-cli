@@ -149,8 +149,9 @@ func StartNetwork(*cobra.Command, []string) error {
 
 	if subnet.HasEndpoints(resp.ClusterInfo) {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Local network node endpoints:")
-		if err := ux.PrintEndpointTables(resp.ClusterInfo); err != nil {
+		ux.Logger.PrintToUser("Local Network Endpoints:")
+		ux.Logger.PrintToUser("")
+		if err := ux.PrintLocalNetworkEndpointsInfo(resp.ClusterInfo); err != nil {
 			return err
 		}
 	}

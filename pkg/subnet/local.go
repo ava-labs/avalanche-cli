@@ -664,8 +664,9 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Blockchain ready to use. Local network node endpoints:")
-	if err := ux.PrintEndpointTables(clusterInfo); err != nil {
+	ux.Logger.PrintToUser("Blockchain ready to use. Local Network Endpoints:")
+	ux.Logger.PrintToUser("")
+	if err := ux.PrintLocalNetworkEndpointsInfo(clusterInfo); err != nil {
 		return nil, err
 	}
 

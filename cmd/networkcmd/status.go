@@ -45,23 +45,15 @@ func networkStatus(*cobra.Command, []string) error {
 		return err
 	}
 
-	// TODO: This layout may break some screens, is there a "failsafe" way?
 	if status != nil && status.ClusterInfo != nil {
-		ux.Logger.PrintToUser("Network is Up. Network information:")
-		ux.Logger.PrintToUser("==================================================================================================")
-		ux.Logger.PrintToUser("Healthy: %t", status.ClusterInfo.Healthy)
-		ux.Logger.PrintToUser("Custom VMs healthy: %t", status.ClusterInfo.CustomChainsHealthy)
-		ux.Logger.PrintToUser("Number of nodes: %d", len(status.ClusterInfo.NodeNames))
-		ux.Logger.PrintToUser("Number of custom VMs: %d", len(status.ClusterInfo.CustomChains))
-		ux.Logger.PrintToUser("======================================== Node information ========================================")
-		for n, nodeInfo := range status.ClusterInfo.NodeInfos {
-			ux.Logger.PrintToUser("%s has ID %s and endpoint %s ", n, nodeInfo.Id, nodeInfo.Uri)
-		}
-		ux.Logger.PrintToUser("==================================== Custom VM information =======================================")
-		for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-			for blockchainID := range status.ClusterInfo.CustomChains {
-				ux.Logger.PrintToUser("Endpoint at %s for blockchain %q: %s/ext/bc/%s/rpc", nodeInfo.Name, blockchainID, nodeInfo.GetUri(), blockchainID)
-			}
+		ux.Logger.PrintToUser("Network is Up:")
+		ux.Logger.PrintToUser("  Number of Nodes: %d", len(status.ClusterInfo.NodeNames))
+		ux.Logger.PrintToUser("  Number of Custom VMs: %d", len(status.ClusterInfo.CustomChains))
+		ux.Logger.PrintToUser("  Network Healthy: %t", status.ClusterInfo.Healthy)
+		ux.Logger.PrintToUser("  Custom VMs Healthy: %t", status.ClusterInfo.CustomChainsHealthy)
+		ux.Logger.PrintToUser("")
+		if err := ux.PrintLocalNetworkEndpointsInfo(status.ClusterInfo); err != nil {
+			return err
 		}
 	} else {
 		ux.Logger.PrintToUser("No local network running")

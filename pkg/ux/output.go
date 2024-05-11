@@ -82,8 +82,8 @@ func PrintWait(cancel chan struct{}) {
 	}
 }
 
-// PrintEndpointTables prints the endpoints coming from the healthy call
-func PrintEndpointTables(clusterInfo *rpcpb.ClusterInfo) error {
+// PrintLocalNetworkEndpointsInfo prints the endpoints coming from the status call
+func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
 	if err := PrintTableEndpoints(clusterInfo, false); err != nil {
 		return err
 	}
