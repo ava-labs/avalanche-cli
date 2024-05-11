@@ -84,6 +84,10 @@ func PrintWait(cancel chan struct{}) {
 
 // PrintLocalNetworkEndpointsInfo prints the endpoints coming from the status call
 func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
+	if err := PrintSubnetEndpoints(clusterInfo, utils.InsideCodespace()); err != nil {
+		return err
+	}
+	return nil
 	if err := PrintTableEndpoints(clusterInfo, false); err != nil {
 		return err
 	}
@@ -95,6 +99,46 @@ func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
 		}
 		Logger.PrintToUser("")
 	}
+	return nil
+}
+
+func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
+	nodeInfos := map[string]*rpcpb.NodeInfo{}
+	for _, nodeInfo := range clusterInfo.NodeInfos {
+		if nodeInfo.Name == "node1" {
+			fmt.Println(nodeInfo)
+		}
+	}
+	return nil
+	table := tablewriter.NewWriter(os.Stdout)
+	header := []string{"node", "VM", "URL", "ALIAS_URL"}
+	table.SetHeader(header)
+	table.SetRowLine(true)
+
+	nodeInfos = map[string]*rpcpb.NodeInfo{}
+	for _, nodeInfo := range clusterInfo.NodeInfos {
+		nodeInfos[nodeInfo.Name] = nodeInfo
+	}
+	for _, nodeName := range clusterInfo.NodeNames {
+		nodeInfo := nodeInfos[nodeName]
+		for blockchainID, chainInfo := range clusterInfo.CustomChains {
+			blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)
+			aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), chainInfo.ChainName)
+			if codespaceURLs {
+				var err error
+				blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
+				if err != nil {
+					return err
+				}
+				aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
+				if err != nil {
+					return err
+				}
+			}
+			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, blockchainIDURL, aliasedURL})
+		}
+	}
+	table.Render()
 	return nil
 }
 
