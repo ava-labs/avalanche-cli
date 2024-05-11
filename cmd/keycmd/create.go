@@ -52,7 +52,6 @@ func createKey(_ *cobra.Command, args []string) error {
 		if err := app.CopyKeyFile(filename, keyName); err != nil {
 			return err
 		}
-		keyPath := app.GetKeyPath(keyName)
 		ux.Logger.PrintToUser("Key loaded")
 		networks := []models.Network{models.NewFujiNetwork(), models.NewMainnetNetwork()}
 		pchain := true
@@ -62,7 +61,7 @@ func createKey(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		addrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyPath)
+		addrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyName)
 		if err != nil {
 			return err
 		}
