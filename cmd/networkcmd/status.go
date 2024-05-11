@@ -25,8 +25,6 @@ network is running and some basic stats about the network.`,
 }
 
 func networkStatus(*cobra.Command, []string) error {
-	ux.Logger.PrintToUser("Requesting network status...")
-
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
 	)

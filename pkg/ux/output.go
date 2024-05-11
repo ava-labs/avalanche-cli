@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
+	"golang.org/x/exp/maps"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
@@ -103,42 +105,18 @@ func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
 }
 
 func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
-	nodeInfos := map[string]*rpcpb.NodeInfo{}
-	for _, nodeInfo := range clusterInfo.NodeInfos {
-		if nodeInfo.Name == "node1" {
-			fmt.Println(nodeInfo)
-		}
+	nodeInfos := maps.Values(clusterInfo.NodeInfos)
+	nodeUris := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
+	if len(nodeUris) == 0 {
+		return fmt.Errorf("network has no nodes")
 	}
-	return nil
-	table := tablewriter.NewWriter(os.Stdout)
-	header := []string{"node", "VM", "URL", "ALIAS_URL"}
-	table.SetHeader(header)
-	table.SetRowLine(true)
-
-	nodeInfos = map[string]*rpcpb.NodeInfo{}
-	for _, nodeInfo := range clusterInfo.NodeInfos {
-		nodeInfos[nodeInfo.Name] = nodeInfo
+	sort.Strings(nodeUris)
+	refNodeUri := nodeUris[0]
+	nodeInfo := utils.Find(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) bool { return nodeInfo.GetUri() == refNodeUri })
+	if nodeInfo == nil {
+		return fmt.Errorf("unexpected nil nodeInfo")
 	}
-	for _, nodeName := range clusterInfo.NodeNames {
-		nodeInfo := nodeInfos[nodeName]
-		for blockchainID, chainInfo := range clusterInfo.CustomChains {
-			blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)
-			aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), chainInfo.ChainName)
-			if codespaceURLs {
-				var err error
-				blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
-				if err != nil {
-					return err
-				}
-				aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
-				if err != nil {
-					return err
-				}
-			}
-			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, blockchainIDURL, aliasedURL})
-		}
-	}
-	table.Render()
+	fmt.Println(*nodeInfo)
 	return nil
 }
 
