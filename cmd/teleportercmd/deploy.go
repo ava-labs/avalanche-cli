@@ -76,7 +76,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		true,
 		false,
 		deploySupportedNetworkOptions,
-		flags.SubnetName,
+		"",
 	)
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if sc.TeleporterKey != "" {
 			k, err := app.GetKey(sc.TeleporterKey, network, true)
 			if err != nil {
-				return nil
+				return err
 			}
 			privateKey = k.PrivKeyHex()
 		}
@@ -177,7 +177,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if flags.KeyName != "" {
 		k, err := app.GetKey(flags.KeyName, network, false)
 		if err != nil {
-			return nil
+			return err
 		}
 		privateKey = k.PrivKeyHex()
 	}
@@ -208,7 +208,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			}
 			k, err := app.GetKey(keyName, network, false)
 			if err != nil {
-				return nil
+				return err
 			}
 			privateKey = k.PrivKeyHex()
 		case customKeyOpt:
