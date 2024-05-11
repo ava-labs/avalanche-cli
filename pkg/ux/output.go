@@ -86,8 +86,11 @@ func PrintWait(cancel chan struct{}) {
 
 // PrintLocalNetworkEndpointsInfo prints the endpoints coming from the status call
 func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
-	if err := PrintSubnetEndpoints(clusterInfo, utils.InsideCodespace()); err != nil {
-		return err
+	for _, chainInfo := range clusterInfo.CustomChains {
+		if err := PrintSubnetEndpoints(clusterInfo, chainInfo, utils.InsideCodespace()); err != nil {
+			return err
+		}
+		Logger.PrintToUser("")
 	}
 	return nil
 	if err := PrintTableEndpoints(clusterInfo, false); err != nil {
@@ -104,19 +107,41 @@ func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
 	return nil
 }
 
-func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
+func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, chainInfo *rpcpb.CustomChainInfo, codespaceURLs bool) error {
 	nodeInfos := maps.Values(clusterInfo.NodeInfos)
 	nodeUris := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
 	if len(nodeUris) == 0 {
 		return fmt.Errorf("network has no nodes")
 	}
 	sort.Strings(nodeUris)
-	refNodeUri := nodeUris[0]
-	nodeInfo := utils.Find(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) bool { return nodeInfo.GetUri() == refNodeUri })
+	refNodeURI := nodeUris[0]
+	nodeInfo := utils.Find(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) bool { return nodeInfo.GetUri() == refNodeURI })
 	if nodeInfo == nil {
 		return fmt.Errorf("unexpected nil nodeInfo")
 	}
-	fmt.Println(*nodeInfo)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetRowLine(true)
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainName)
+	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
+	table.Append([]string{fmt.Sprintf("%s RPC URLs", chainInfo.ChainName)})
+	table.ClearRows()
+	table.Append([]string{"Localhost", aliasedURL})
+	table.Append([]string{"Localhost", blockchainIDURL})
+	if codespaceURLs {
+		var err error
+		blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
+		if err != nil {
+			return err
+		}
+		aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
+		if err != nil {
+			return err
+		}
+		table.Append([]string{"Codespace", aliasedURL})
+		table.Append([]string{"Codespace", blockchainIDURL})
+	}
+	table.Render()
 	return nil
 }
 
