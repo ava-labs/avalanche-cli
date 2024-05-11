@@ -130,7 +130,6 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
 	for _, host := range hosts {
-		wg.Add(1)
 		// prepare both source and destination for scp command
 		scpPrefix, err := prepareSCPTarget(op, host, clusterName, sourcePath, true)
 		if err != nil {
@@ -164,12 +163,11 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 			// add nodeID and clusterName to destination path if source is cluster, i.e. multiple nodes
 			suffixPath = fmt.Sprintf("%s.%s_%s", suffixPath, clusterName, host.NodeID)
 		}
-		ux.Logger.Info("DEBUG1 %s %s %s %s", prefixIP, prefixPath, suffixIP, suffixPath)
+		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			spinner := spinSession.SpinToUser(fmt.Sprintf("[%s] transfering file(s)", host.GetCloudID()))
 			scpCmd := ""
-			ux.Logger.Info("DEBUG2 %s %s %s %s", prefixIP, prefixPath, suffixIP, suffixPath)
 			scpCmd, err = utils.GetSCPCommandString(
 				host.SSHPrivateKeyPath,
 				prefixIP,
