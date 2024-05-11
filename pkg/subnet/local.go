@@ -614,13 +614,24 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if err != nil {
 			return nil, err
 		}
+		teleporterKeyName := sc.TeleporterKey
+		if teleporterKeyName == "" {
+			genesisData, err := d.app.LoadRawGenesis(chain)
+			if err != nil {
+				return nil, err
+			}
+			teleporterKeyName, _, _, err = GetSubnetAirdropKeyInfo(d.app, network, chain, genesisData)
+			if err != nil {
+				return nil, err
+			}
+		}
 		_, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
 			d.app,
 			sc.TeleporterVersion,
 			network,
 			chain,
 			blockchainID,
-			sc.TeleporterKey,
+			teleporterKeyName,
 		)
 		if err != nil {
 			return nil, err
