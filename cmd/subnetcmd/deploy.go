@@ -284,8 +284,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
 		true,
+		false,
 		deploySupportedNetworkOptions,
 		"",
 	)
@@ -366,8 +368,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		flags := make(map[string]string)
-		flags[constants.Network] = network.Name()
-		metrics.HandleTracking(cmd, app, flags)
+		flags[constants.MetricsNetwork] = network.Name()
+		metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 		return app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
@@ -546,8 +548,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	}
 
 	flags := make(map[string]string)
-	flags[constants.Network] = network.Name()
-	metrics.HandleTracking(cmd, app, flags)
+	flags[constants.MetricsNetwork] = network.Name()
+	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?

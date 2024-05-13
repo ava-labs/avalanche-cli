@@ -156,8 +156,10 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
 		true,
+		false,
 		elasticSupportedNetworkOptions,
 		subnetName,
 	)
@@ -353,13 +355,13 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	flags := make(map[string]string)
-	flags[constants.Network] = network.Name()
+	flags[constants.MetricsNetwork] = network.Name()
 	if !isFullySigned {
 		flags[constants.MultiSig] = "multi-sig"
 	} else {
 		flags[constants.MultiSig] = "non-multi-sig"
 	}
-	metrics.HandleTracking(cmd, app, flags)
+	metrics.HandleTracking(cmd, constants.MetricsSubnetElasticCommand, app, flags)
 	if !isFullySigned {
 		if err := SaveNotFullySignedTx(
 			"Transform Subnet",
@@ -450,8 +452,8 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 
 	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	flags := make(map[string]string)
-	flags[constants.Network] = models.Local.String()
-	metrics.HandleTracking(cmd, app, flags)
+	flags[constants.MetricsNetwork] = models.Local.String()
+	metrics.HandleTracking(cmd, constants.MetricsSubnetElasticCommand, app, flags)
 	return nil
 }
 

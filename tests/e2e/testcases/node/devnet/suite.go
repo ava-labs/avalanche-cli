@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName
 		// Parse validator node
-		re := regexp.MustCompile(`Cloud Instance ID: (\S+) \| Public IP:(\S+) \| NodeID-(\S+)`)
+		re := regexp.MustCompile(`Cloud Instance ID: (\S+) \| Public IP: (\S+) \| NodeID-(\S+)`)
 		match := re.FindStringSubmatch(output)
 		if len(match) >= 3 {
 			hostName = match[1]
@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		}
 
 		// Parse API node
-		apiRe := regexp.MustCompile(`\[API\] Cloud Instance ID: (\S+) \| Public IP:(\S+) \| NodeID-(\S+)`)
+		apiRe := regexp.MustCompile(`\[API\] Cloud Instance ID: (\S+) \| Public IP: (\S+) \| NodeID-(\S+)`)
 		apiMatch := apiRe.FindStringSubmatch(output)
 		if len(apiMatch) >= 3 {
 			apiHostName = apiMatch[1]

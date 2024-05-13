@@ -87,8 +87,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
 		true,
+		false,
 		addValidatorSupportedNetworkOptions,
 		"",
 	)

@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	newAirdrop    = "Airdrop 1 million tokens to a newly generate address (stored key)"
+	newAirdrop    = "Airdrop 1 million tokens to a new address (stored key)"
 	ewoqAirdrop   = "Airdrop 1 million tokens to the default ewoq address (do not use in production)"
 	customAirdrop = "Customize your airdrop"
 	extendAirdrop = "Would you like to airdrop more tokens?"

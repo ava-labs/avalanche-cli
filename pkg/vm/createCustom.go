@@ -170,7 +170,6 @@ func BuildCustomVM(
 	if err := os.MkdirAll(repoDir, constants.DefaultPerms755); err != nil {
 		return err
 	}
-
 	// get branch from repo
 	cmd := exec.Command("git", "init", "-q")
 	cmd.Dir = repoDir
