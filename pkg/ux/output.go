@@ -119,7 +119,8 @@ func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, chainInfo *rpcpb.Custo
 	if nodeInfo == nil {
 		return fmt.Errorf("unexpected nil nodeInfo")
 	}
-	table := tablewriter.NewWriter(os.Stdout)
+	strBuilder := strings.Builder{}
+	table := tablewriter.NewWriter(&strBuilder)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
 	aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainName)
@@ -142,7 +143,31 @@ func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, chainInfo *rpcpb.Custo
 		table.Append([]string{"Codespace", blockchainIDURL})
 	}
 	table.Render()
+	tableStr := strBuilder.String()
+	var err error
+	tableStr, err = addTitleToTable(tableStr, fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
+	if err != nil {
+		return err
+	}
+	Logger.PrintToUser(tableStr)
 	return nil
+}
+
+func addTitleToTable(tableStr string, title string) (string, error) {
+	newLineIdx := strings.Index(tableStr, "\n")
+	if newLineIdx == -1 {
+		return "", fmt.Errorf("expected to found newline in table output")
+	}
+	titleStr := tableStr[:newLineIdx] + "\n"
+	availableLen := newLineIdx - 2
+	if availableLen < len(title) {
+		title = title[:availableLen-1]
+	}
+	spacesCount := availableLen - len(title)
+	spaces1 := spacesCount / 2
+	spaces2 := spacesCount - spaces1
+	titleStr = titleStr + "|" + strings.Repeat(" ", spaces1) + title + strings.Repeat(" ", spaces2) + "|" + "\n"
+	return titleStr + tableStr, nil
 }
 
 func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
