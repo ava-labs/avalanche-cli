@@ -657,11 +657,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Blockchain ready to use. Local Network Endpoints:")
+	ux.Logger.PrintToUser("Blockchain ready to use")
 	ux.Logger.PrintToUser("")
 	if err := ux.PrintLocalNetworkEndpointsInfo(clusterInfo); err != nil {
 		return nil, err
 	}
+	ux.Logger.PrintToUser("")
 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")

@@ -39,12 +39,16 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
-	formattedMsg := fmt.Sprintf(msg, args...)
+	formattedMsg := fmt.Sprintf(msg, args...) + "\n"
+	ul.print(formattedMsg)
+}
+
+func (ul *UserLog) print(msg string) {
 	if ul != nil {
-		fmt.Fprintln(ul.Writer, formattedMsg)
-		ul.log.Info(formattedMsg)
+		fmt.Fprint(ul.Writer, msg)
+		ul.log.Info(msg)
 	} else {
-		fmt.Println(formattedMsg)
+		fmt.Print(msg)
 	}
 }
 
@@ -139,7 +143,7 @@ func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, chainInfo *rpcpb.Custo
 	if err != nil {
 		return err
 	}
-	Logger.PrintToUser(tableStr)
+	Logger.print(tableStr)
 	return nil
 }
 
@@ -195,7 +199,7 @@ func PrintNetworkEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) e
 	if err != nil {
 		return err
 	}
-	Logger.PrintToUser(tableStr)
+	Logger.print(tableStr)
 	return nil
 }
 
