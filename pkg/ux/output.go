@@ -39,8 +39,12 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
 	formattedMsg := fmt.Sprintf(msg, args...)
-	fmt.Fprintln(ul.Writer, formattedMsg)
-	ul.log.Info(formattedMsg)
+	if ul != nil {
+		fmt.Fprintln(ul.Writer, formattedMsg)
+		ul.log.Info(formattedMsg)
+	} else {
+		fmt.Println(formattedMsg)
+	}
 }
 
 // Info prints to the log file

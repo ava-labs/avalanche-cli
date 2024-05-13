@@ -34,7 +34,7 @@ func (n NetworkOption) String() string {
 	case Mainnet:
 		return "Mainnet"
 	case Fuji:
-		return "Fuji"
+		return "Fuji Testnet"
 	case Local:
 		return "Local Network"
 	case Devnet:
@@ -49,7 +49,7 @@ func networkOptionFromString(s string) NetworkOption {
 	switch s {
 	case "Mainnet":
 		return Mainnet
-	case "Fuji":
+	case "Fuji Testnet":
 		return Fuji
 	case "Local Network":
 		return Local
@@ -72,6 +72,7 @@ type NetworkFlags struct {
 
 func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, alwaysAddEndpoint bool, supportedNetworkOptions []NetworkOption) {
 	addEndpoint := alwaysAddEndpoint
+	addCluster := false
 	for _, networkOption := range supportedNetworkOptions {
 		switch networkOption {
 		case Local:
@@ -79,14 +80,18 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, always
 		case Devnet:
 			cmd.Flags().BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
 			addEndpoint = true
+			addCluster = true
 		case Fuji:
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "testnet", "t", false, "operate on testnet (alias to `fuji`)")
 			cmd.Flags().BoolVarP(&networkFlags.UseFuji, "fuji", "f", false, "operate on fuji (alias to `testnet`")
 		case Mainnet:
 			cmd.Flags().BoolVarP(&networkFlags.UseMainnet, "mainnet", "m", false, "operate on mainnet")
 		case Cluster:
-			cmd.Flags().StringVar(&networkFlags.ClusterName, "cluster", "", "operate on the given cluster")
+			addCluster = true
 		}
+	}
+	if addCluster {
+		cmd.Flags().StringVar(&networkFlags.ClusterName, "cluster", "", "operate on the given cluster")
 	}
 	if addEndpoint {
 		cmd.Flags().StringVar(&networkFlags.Endpoint, "endpoint", "", "use the given endpoint for network operations")
@@ -176,11 +181,17 @@ func GetSupportedNetworkOptionsForSubnet(
 
 func GetNetworkFromCmdLineFlags(
 	app *application.Avalanche,
+	promptStr string,
 	networkFlags NetworkFlags,
 	requireDevnetEndpointSpecification bool,
+	onlyEndpointBasedDevnets bool,
 	supportedNetworkOptions []NetworkOption,
 	subnetName string,
 ) (models.Network, error) {
+	supportedNetworkOptionsToPrompt := supportedNetworkOptions
+	if slices.Contains(supportedNetworkOptions, Devnet) && !slices.Contains(supportedNetworkOptions, Cluster) {
+		supportedNetworkOptions = append(supportedNetworkOptions, Cluster)
+	}
 	var err error
 	supportedNetworkOptionsStrs := ""
 	filteredSupportedNetworkOptionsStrs := ""
@@ -258,21 +269,35 @@ func GetNetworkFromCmdLineFlags(
 			clusterNames = scClusterNames
 		}
 		if len(clusterNames) == 0 {
-			if index, err := utils.GetIndexInSlice(supportedNetworkOptions, Cluster); err == nil {
-				supportedNetworkOptions = append(supportedNetworkOptions[:index], supportedNetworkOptions[index+1:]...)
+			if index, err := utils.GetIndexInSlice(supportedNetworkOptionsToPrompt, Cluster); err == nil {
+				supportedNetworkOptionsToPrompt = append(supportedNetworkOptionsToPrompt[:index], supportedNetworkOptionsToPrompt[index+1:]...)
 			}
 		}
+		if promptStr == "" {
+			promptStr = "Choose a network for the operation"
+		}
 		networkOptionStr, err := app.Prompt.CaptureList(
-			"Choose a network for the operation",
-			utils.Map(supportedNetworkOptions, func(n NetworkOption) string { return n.String() }),
+			promptStr,
+			utils.Map(supportedNetworkOptionsToPrompt, func(n NetworkOption) string { return n.String() }),
 		)
 		if err != nil {
 			return models.UndefinedNetwork, err
 		}
 		networkOption = networkOptionFromString(networkOptionStr)
+		if networkOption == Devnet && !onlyEndpointBasedDevnets && len(clusterNames) != 0 {
+			endpointOptions := []string{
+				"Get Devnet RPC endpoint from an existing node cluster (created from avalanche node create or avalanche devnet wiz)",
+				"Custom",
+			}
+			if endpointOption, err := app.Prompt.CaptureList("What is the Devnet rpc Endpoint?", endpointOptions); err != nil {
+				return models.UndefinedNetwork, err
+			} else if endpointOption == endpointOptions[0] {
+				networkOption = Cluster
+			}
+		}
 		if networkOption == Cluster {
 			networkFlags.ClusterName, err = app.Prompt.CaptureList(
-				"Choose a cluster",
+				"Which cluster would you like to use?",
 				clusterNames,
 			)
 			if err != nil {
@@ -291,7 +316,7 @@ func GetNetworkFromCmdLineFlags(
 				return models.UndefinedNetwork, err
 			}
 		} else {
-			networkFlags.Endpoint, err = app.Prompt.CaptureURL(fmt.Sprintf("%s Network Endpoint", networkOption.String()), false)
+			networkFlags.Endpoint, err = app.Prompt.CaptureURL(fmt.Sprintf("%s Endpoint", networkOption.String()), false)
 			if err != nil {
 				return models.UndefinedNetwork, err
 			}

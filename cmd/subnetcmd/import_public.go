@@ -66,7 +66,9 @@ flag.`,
 func importPublic(*cobra.Command, []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
+		false,
 		false,
 		importPublicSupportedNetworkOptions,
 		"",

@@ -6,7 +6,6 @@ package vm
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -290,12 +289,12 @@ func configureMinterList(app *application.Avalanche) (nativeminter.Config, bool,
 	return config, cancelled, nil
 }
 
-func configureWarp() warp.Config {
+func configureWarp(timestamp *uint64) warp.Config {
 	config := warp.Config{
 		QuorumNumerator: warp.WarpDefaultQuorumNumerator,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: subnetevmutils.NewUint64(uint64(time.Now().Unix())),
+		BlockTimestamp: timestamp,
 	}
 	return config
 }
@@ -417,6 +416,7 @@ func addAddressToAllowed(
 func getPrecompiles(
 	config params.ChainConfig,
 	app *application.Avalanche,
+	genesisTimestamp *uint64,
 	useDefaults bool,
 	useWarp bool,
 ) (
@@ -425,7 +425,7 @@ func getPrecompiles(
 	error,
 ) {
 	if useDefaults || useWarp {
-		warpConfig := configureWarp()
+		warpConfig := configureWarp(genesisTimestamp)
 		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
 	}
 
@@ -556,7 +556,7 @@ func getPrecompiles(
 				}
 			}
 		case Warp:
-			warpConfig := configureWarp()
+			warpConfig := configureWarp(genesisTimestamp)
 			config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
 			remainingPrecompiles, err = removePrecompile(remainingPrecompiles, Warp)
 			if err != nil {

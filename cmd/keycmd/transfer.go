@@ -145,7 +145,9 @@ func transferF(*cobra.Command, []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
+		"",
 		globalNetworkFlags,
+		false,
 		false,
 		transferSupportedNetworkOptions,
 		"",
