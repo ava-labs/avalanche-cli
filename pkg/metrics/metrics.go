@@ -47,12 +47,12 @@ func userIsOptedIn(app *application.Avalanche) bool {
 	return false
 }
 
-func HandleTracking(cmd *cobra.Command, app *application.Avalanche, flags map[string]string) {
+func HandleTracking(cmd *cobra.Command, commandPath string, app *application.Avalanche, flags map[string]string) {
 	if !userIsOptedIn(app) {
 		return
 	}
 	if !cmd.HasSubCommands() && CheckCommandIsNotCompletion(cmd) {
-		TrackMetrics(cmd, flags)
+		TrackMetrics(commandPath, flags)
 	}
 }
 
@@ -64,7 +64,7 @@ func CheckCommandIsNotCompletion(cmd *cobra.Command) bool {
 	return true
 }
 
-func TrackMetrics(command *cobra.Command, flags map[string]string) {
+func TrackMetrics(commandPath string, flags map[string]string) {
 	if telemetryToken == "" || utils.IsE2E() {
 		return
 	}
@@ -76,7 +76,7 @@ func TrackMetrics(command *cobra.Command, flags map[string]string) {
 	hash := sha256.Sum256([]byte(fmt.Sprintf("%s%s", usr.Username, usr.Uid)))
 	userID := base64.StdEncoding.EncodeToString(hash[:])
 	telemetryProperties := make(map[string]interface{})
-	telemetryProperties["command"] = command.CommandPath()
+	telemetryProperties["command"] = commandPath
 	telemetryProperties["version"] = GetCLIVersion()
 	telemetryProperties["os"] = runtime.GOOS
 	for propertyKey, propertyValue := range flags {

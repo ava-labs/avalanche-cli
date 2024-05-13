@@ -75,6 +75,7 @@ var (
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
 	grafanaPkg string
+	wizSubnet  string
 )
 
 func newCreateCmd() *cobra.Command {
@@ -811,7 +812,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
-	sendMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
+	sendNodeCreateMetrics(newCreateCmd(), cloudService, network.Name(), numNodesMetricsMap)
 	return nil
 }
 
@@ -1500,15 +1501,16 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
 }
 
-func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[string]NumNodes) {
+func sendNodeCreateMetrics(cmd *cobra.Command, cloudService, network string, nodes map[string]NumNodes) {
 	flags := make(map[string]string)
 	totalValidatorNodes := 0
 	totalAPINodes := 0
 	for region := range nodes {
 		totalValidatorNodes += nodes[region].numValidators
 		totalAPINodes += nodes[region].numAPI
-		flags[region] = strconv.Itoa(nodes[region].numValidators)
+		flags["region-"+region] = strconv.Itoa(nodes[region].numValidators)
 	}
+	flags[constants.MetricsNumRegions] = strconv.Itoa(len(maps.Keys(nodes)))
 	flags[constants.MetricsCloudService] = cloudService
 	flags[constants.MetricsNodeType] = nodeType
 	flags[constants.MetricsUseStaticIP] = strconv.FormatBool(useStaticIP)
@@ -1520,7 +1522,11 @@ func sendMetrics(cmd *cobra.Command, cloudService, network string, nodes map[str
 		flags[constants.MetricsAWSVolumeSize] = strconv.Itoa(volumeSize)
 	}
 	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
-	metrics.HandleTracking(cmd, app, flags)
+	if wizSubnet != "" {
+		populateSubnetVMMetrics(flags, wizSubnet)
+		flags[constants.MetricsCalledFromWiz] = strconv.FormatBool(true)
+	}
+	metrics.HandleTracking(cmd, constants.MetricsNodeCreateCommand, app, flags)
 }
 
 func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {

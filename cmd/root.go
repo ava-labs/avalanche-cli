@@ -204,7 +204,7 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 }
 
 func handleTracking(cmd *cobra.Command, _ []string) {
-	metrics.HandleTracking(cmd, app, nil)
+	metrics.HandleTracking(cmd, cmd.CommandPath(), app, nil)
 }
 
 func setupEnv() (string, error) {
