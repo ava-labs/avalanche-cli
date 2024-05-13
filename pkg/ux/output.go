@@ -5,7 +5,6 @@ package ux
 import (
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -92,17 +91,8 @@ func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
 		}
 		Logger.PrintToUser("")
 	}
-	return nil
-	if err := PrintTableEndpoints(clusterInfo, false); err != nil {
+	if err := PrintNetworkEndpoints(clusterInfo, utils.InsideCodespace()); err != nil {
 		return err
-	}
-	Logger.PrintToUser("")
-	if utils.InsideCodespace() {
-		Logger.PrintToUser("Codespace node endpoints:")
-		if err := PrintTableEndpoints(clusterInfo, true); err != nil {
-			return err
-		}
-		Logger.PrintToUser("")
 	}
 	return nil
 }
@@ -170,36 +160,42 @@ func addTitleToTable(tableStr string, title string) (string, error) {
 	return titleStr + tableStr, nil
 }
 
-func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
-	table := tablewriter.NewWriter(os.Stdout)
-	header := []string{"node", "VM", "URL", "ALIAS_URL"}
-	table.SetHeader(header)
+func PrintNetworkEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
+	strBuilder := strings.Builder{}
+	table := tablewriter.NewWriter(&strBuilder)
 	table.SetRowLine(true)
-
+	header := []string{"Name", "Node ID", "Localhost Endpoint"}
+	if codespaceURLs {
+		header = append(header, "Codespace Endpoint")
+	}
+	table.Append(header)
+	nodeNames := clusterInfo.NodeNames
+	sort.Strings(nodeNames)
 	nodeInfos := map[string]*rpcpb.NodeInfo{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
 		nodeInfos[nodeInfo.Name] = nodeInfo
 	}
-	for _, nodeName := range clusterInfo.NodeNames {
+	var err error
+	for _, nodeName := range nodeNames {
 		nodeInfo := nodeInfos[nodeName]
-		for blockchainID, chainInfo := range clusterInfo.CustomChains {
-			blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)
-			aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), chainInfo.ChainName)
-			if codespaceURLs {
-				var err error
-				blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
-				if err != nil {
-					return err
-				}
-				aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
-				if err != nil {
-					return err
-				}
+		nodeURL := nodeInfo.GetUri()
+		row := []string{nodeInfo.Name, nodeInfo.Id, nodeURL}
+		if codespaceURLs {
+			nodeURL, err = utils.GetCodespaceURL(nodeURL)
+			if err != nil {
+				return err
 			}
-			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, blockchainIDURL, aliasedURL})
+			row = append(row, nodeURL)
 		}
+		table.Append(row)
 	}
 	table.Render()
+	tableStr := strBuilder.String()
+	tableStr, err = addTitleToTable(tableStr, "Nodes")
+	if err != nil {
+		return err
+	}
+	Logger.PrintToUser(tableStr)
 	return nil
 }
 
