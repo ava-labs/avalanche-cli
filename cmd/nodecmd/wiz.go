@@ -848,7 +848,28 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 	return nil
 }
 
-<<<<<<< HEAD
+func sendNodeWizMetrics(cmd *cobra.Command) {
+	flags := make(map[string]string)
+	populateSubnetVMMetrics(flags, wizSubnet)
+	metrics.HandleTracking(cmd, constants.MetricsNodeDevnetWizCommand, app, flags)
+}
+
+func populateSubnetVMMetrics(flags map[string]string, subnetName string) {
+	sc, err := app.LoadSidecar(subnetName)
+	if err == nil {
+		switch sc.VM {
+		case models.SubnetEvm:
+			flags[constants.MetricsSubnetVM] = "Subnet-EVM"
+		case models.CustomVM:
+			flags[constants.MetricsSubnetVM] = "Custom-VM"
+			flags[constants.MetricsCustomVMRepoURL] = sc.CustomVMRepoURL
+			flags[constants.MetricsCustomVMBranch] = sc.CustomVMBranch
+			flags[constants.MetricsCustomVMBuildScript] = sc.CustomVMBuildScript
+		}
+	}
+	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
+}
+
 // setUPSubnetLogging sets up the subnet logging for the subnet
 func setUpSubnetLogging(clusterName, subnetName string) error {
 	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
@@ -903,26 +924,4 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 	}
 	spinSession.Stop()
 	return nil
-=======
-func sendNodeWizMetrics(cmd *cobra.Command) {
-	flags := make(map[string]string)
-	populateSubnetVMMetrics(flags, wizSubnet)
-	metrics.HandleTracking(cmd, constants.MetricsNodeDevnetWizCommand, app, flags)
-}
-
-func populateSubnetVMMetrics(flags map[string]string, subnetName string) {
-	sc, err := app.LoadSidecar(subnetName)
-	if err == nil {
-		switch sc.VM {
-		case models.SubnetEvm:
-			flags[constants.MetricsSubnetVM] = "Subnet-EVM"
-		case models.CustomVM:
-			flags[constants.MetricsSubnetVM] = "Custom-VM"
-			flags[constants.MetricsCustomVMRepoURL] = sc.CustomVMRepoURL
-			flags[constants.MetricsCustomVMBranch] = sc.CustomVMBranch
-			flags[constants.MetricsCustomVMBuildScript] = sc.CustomVMBuildScript
-		}
-	}
-	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
->>>>>>> main
 }
