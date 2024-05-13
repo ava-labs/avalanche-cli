@@ -151,8 +151,8 @@ const (
 	AWSCloudServerRunningState                   = "running"
 	AvalancheCLISuffix                           = "-avalanche-cli"
 	AWSDefaultCredential                         = "default"
-	GCPDefaultImageProvider                      = "ubuntu-os-cloud"
-	GCPImageFilter                               = "family=ubuntu-2004* AND architecture=x86_64"
+	GCPDefaultImageProvider                      = "avalabs-experimental"
+	GCPImageFilter                               = "family=avalanchecli-ubuntu-2204 AND architecture=x86_64"
 	GCPEnvVar                                    = "GOOGLE_APPLICATION_CREDENTIALS"
 	GCPDefaultAuthKeyPath                        = "~/.config/gcloud/application_default_credentials.json"
 	CertSuffix                                   = "-kp.pem"
@@ -216,6 +216,7 @@ const (
 	CloudNodeSubnetEvmBinaryPath  = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath          = "/home/ubuntu/.avalanchego/staking/"
 	CloudNodeConfigPath           = "/home/ubuntu/.avalanchego/configs/"
+	DockerNodeConfigPath          = "/.avalanchego/configs/"
 	CloudNodePrometheusConfigPath = "/etc/prometheus/prometheus.yml"
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
 	AvalanchegoMonitoringPort     = 9090
@@ -294,6 +295,9 @@ const (
 	GitRepoCommitEmail = "info@avax.network"
 	AvaLabsMaintainers = "ava-labs"
 
+	AvalancheGoDockerImage = "avaplatform/avalanchego"
+	AvalancheGoGitRepo     = "https://github.com/ava-labs/avalanchego"
+
 	UpgradeBytesFileName      = "upgrade.json"
 	UpgradeBytesLockExtension = ".lock"
 	NotAvailableLabel         = "Not available"
@@ -336,4 +340,7 @@ const (
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
 	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
 	GitExtension            = ".git"
+
+	// Docker
+	RemoteDockeSocketPath = "/var/run/docker.sock"
 )

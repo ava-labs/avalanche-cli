@@ -216,7 +216,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		confMap[config.NetworkNameKey] = fmt.Sprintf("network-%d", network.ID)
 		confMap[config.BootstrapIDsKey] = strings.Join(bootstrapIDs, ",")
 		confMap[config.BootstrapIPsKey] = strings.Join(bootstrapIPs, ",")
-		confMap[config.GenesisFileKey] = filepath.Join(constants.CloudNodeConfigPath, "genesis.json")
+		confMap[config.GenesisFileKey] = filepath.Join(constants.DockerNodeConfigPath, "genesis.json")
 		confBytes, err := json.MarshalIndent(confMap, "", " ")
 		if err != nil {
 			return err
