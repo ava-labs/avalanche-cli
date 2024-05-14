@@ -319,8 +319,10 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return ErrNoBlockchainID
 	}
 	// update logging
+	ux.Logger.PrintToUser("DEBUG: adding monitoring: %v", addMonitoring)
 	if addMonitoring {
 		// set up subnet logs in Loki
+		ux.Logger.Info("Setting up subnet logging")
 		if err = setUpSubnetLogging(clusterName, subnetName); err != nil {
 			return err
 		}
@@ -372,6 +374,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 
 	if addMonitoring {
 		if customGrafanaDashboardPath != "" {
+			ux.Logger.Info("Adding custom dashboard to monitoring")
 			if err = addCustomDashboard(clusterName, subnetName); err != nil {
 				return err
 			}
