@@ -758,7 +758,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
-	sendNodeCreateMetrics(newCreateCmd(), cloudService, network.Name(), numNodesMetricsMap)
+	sendNodeCreateMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
 	return nil
 }
 
