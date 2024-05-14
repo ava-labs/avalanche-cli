@@ -1,6 +1,6 @@
 services:
   awm-relayer:
-    image: avaplatform/awm-relayer:v1.1.0
+    image: avaplatform/awm-relayer
     container_name: awm-relayer
     restart: unless-stopped
     user: "1000:1000"  # ubuntu user
