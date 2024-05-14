@@ -198,6 +198,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Adding subnet into existing devnet %s..."), clusterName)
 	}
+	fmt.Printf("wiz checking  after createNodes if addMonitoring %s \n", addMonitoring)
 
 	// check all validators are found
 	if len(validators) != 0 {
@@ -305,6 +306,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	fmt.Printf("wiz checking  before sync if addMonitoring %s \n", addMonitoring)
+
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(logging.Green.Wrap("Setting the nodes as subnet trackers"))
 	ux.Logger.PrintToUser("")
@@ -318,8 +321,10 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if blockchainID == ids.Empty {
 		return ErrNoBlockchainID
 	}
+	fmt.Printf("wiz checking if addMonitoring %s \n", addMonitoring)
 	// update logging
 	if addMonitoring {
+		fmt.Printf("we are wiz addMonitoring %s \n", addMonitoring)
 		// set up subnet logs in Loki
 		if err = setUpSubnetLogging(clusterName, subnetName); err != nil {
 			return err
