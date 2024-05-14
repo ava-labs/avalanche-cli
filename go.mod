@@ -9,7 +9,7 @@ require (
 	github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240411154734-7523771903c1
 	github.com/ava-labs/avalanchego v1.11.5
 	github.com/ava-labs/awm-relayer v1.3.0
-	github.com/ava-labs/coreth v0.13.3-rc.2
+	github.com/ava-labs/coreth v0.13.4-connect-self
 	github.com/ava-labs/subnet-evm v0.6.4
 	github.com/ava-labs/teleporter v1.0.0
 	github.com/aws/aws-sdk-go-v2 v1.26.1
