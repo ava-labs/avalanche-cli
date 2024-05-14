@@ -58,7 +58,7 @@ jobs:
       - name: install nodejs
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '16'
 
       - name: install npx aws-amicleaner
         run: npm install -g aws-amicleaner
