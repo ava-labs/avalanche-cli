@@ -230,6 +230,7 @@ const (
 	SubnetEVMInstallDir           = "subnet-evm"
 	AWMRelayerInstallDir          = "awm-relayer"
 	TeleporterInstallDir          = "teleporter"
+	AWMRelayerVersion             = "v1.3.0"
 	AWMRelayerBin                 = "awm-relayer"
 	AWMRelayerConfigFilename      = "awm-relayer-config.json"
 	AWMRelayerStorageDir          = "awm-relayer-storage"
