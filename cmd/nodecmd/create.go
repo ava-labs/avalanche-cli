@@ -760,7 +760,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
 	fmt.Printf("wiz checking  before sendNodeCreateMetrics if addMonitoring %s \n", addMonitoring)
-	//sendNodeCreateMetrics(newCreateCmd(), cloudService, network.Name(), numNodesMetricsMap)
+	sendNodeCreateMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
 	fmt.Printf("wiz checking  after sendNodeCreateMetrics if addMonitoring %s \n", addMonitoring)
 	return nil
 }
