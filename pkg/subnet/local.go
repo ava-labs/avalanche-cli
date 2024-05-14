@@ -4,7 +4,6 @@ package subnet
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -34,7 +32,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -590,7 +587,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return nil, err
 		}
 		if !alreadyDeployed {
-			subnetID, blockchainID, err := GetChainIDs(network, "C-Chain")
+			subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, "C-Chain")
 			if err != nil {
 				return nil, err
 			}
@@ -613,9 +610,20 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		// deploy current blockchain
 		ux.Logger.PrintToUser("")
-		subnetID, blockchainID, err := GetChainIDs(network, chain)
+		subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, chain)
 		if err != nil {
 			return nil, err
+		}
+		teleporterKeyName := sc.TeleporterKey
+		if teleporterKeyName == "" {
+			genesisData, err := d.app.LoadRawGenesis(chain)
+			if err != nil {
+				return nil, err
+			}
+			teleporterKeyName, _, _, err = GetSubnetAirdropKeyInfo(d.app, network, chain, genesisData)
+			if err != nil {
+				return nil, err
+			}
 		}
 		_, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
 			d.app,
@@ -623,7 +631,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			network,
 			chain,
 			blockchainID,
-			sc.TeleporterKey,
+			teleporterKeyName,
 		)
 		if err != nil {
 			return nil, err
@@ -677,7 +685,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	if sc.VM == models.SubnetEvm {
-		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetSubnetAirdropKeyInfo(d.app, chain)
+		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetDefaultSubnetAirdropKeyInfo(d.app, chain)
 		if err != nil {
 			ux.Logger.PrintToUser("failure loading subnet airdrop info: %s", err)
 		}
@@ -1118,61 +1126,37 @@ type ExtraLocalNetworkData struct {
 	CChainTeleporterRegistryAddress  string
 }
 
-func GetExtraLocalNetworkData(app *application.Avalanche) (*ExtraLocalNetworkData, error) {
+func GetExtraLocalNetworkData(app *application.Avalanche) (ExtraLocalNetworkData, error) {
+	extraLocalNetworkData := ExtraLocalNetworkData{}
 	bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
 	if err != nil {
-		return nil, err
+		return extraLocalNetworkData, err
 	}
-	extraLocalNetworkData := ExtraLocalNetworkData{}
 	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return nil, err
+		return extraLocalNetworkData, err
 	}
-	return &extraLocalNetworkData, nil
+	return extraLocalNetworkData, nil
 }
 
 func WriteExtraLocalNetworkData(app *application.Avalanche, cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
 	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-	extraLocalNetworkData := ExtraLocalNetworkData{
-		CChainTeleporterMessengerAddress: cchainTeleporterMessengerAddress,
-		CChainTeleporterRegistryAddress:  cchainTeleporterRegistryAddress,
+	extraLocalNetworkData := ExtraLocalNetworkData{}
+	if utils.FileExists(extraLocalNetworkDataPath) {
+		var err error
+		extraLocalNetworkData, err = GetExtraLocalNetworkData(app)
+		if err != nil {
+			return err
+		}
+	}
+	if cchainTeleporterMessengerAddress != "" {
+		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainTeleporterMessengerAddress
+	}
+	if cchainTeleporterRegistryAddress != "" {
+		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainTeleporterRegistryAddress
 	}
 	bs, err := json.Marshal(&extraLocalNetworkData)
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
-}
-
-func GetChainID(network models.Network, chainName string) (ids.ID, error) {
-	client := info.NewClient(network.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	return client.GetBlockchainID(ctx, chainName)
-}
-
-func GetChainIDs(network models.Network, chainName string) (string, string, error) {
-	pClient := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	blockChains, err := pClient.GetBlockchains(ctx)
-	if err != nil {
-		return "", "", err
-	}
-	if chain := utils.Find(blockChains, func(e platformvm.APIBlockchain) bool { return e.Name == chainName }); chain != nil {
-		return chain.SubnetID.String(), chain.ID.String(), nil
-	}
-	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
-}
-
-func GetSubnetAirdropKeyInfo(app *application.Avalanche, subnetName string) (string, string, string, error) {
-	keyName := vm.GetSubnetAirdropKeyName(subnetName)
-	keyPath := app.GetKeyPath(keyName)
-	if utils.FileExists(keyPath) {
-		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
-		if err != nil {
-			return "", "", "", err
-		}
-		return keyName, k.C(), hex.EncodeToString(k.Raw()), nil
-	}
-	return "", "", "", nil
 }

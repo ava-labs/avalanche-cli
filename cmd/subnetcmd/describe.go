@@ -194,9 +194,9 @@ func printAirdropTable(genesis core.Genesis, sc models.Sidecar) error {
 			return err
 		}
 		teleporterKeyAddress = k.C()
-		teleporterPrivKey = hex.EncodeToString(k.Raw())
+		teleporterPrivKey = k.PrivKeyHex()
 	}
-	subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetSubnetAirdropKeyInfo(app, sc.Name)
+	subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, sc.Name)
 	if err != nil {
 		return err
 	}

@@ -204,14 +204,14 @@ func GetKeychain(
 		return NewKeychain(network, kc, ledgerDevice, ledgerIndices), nil
 	}
 	if useEwoq {
-		sf, err := key.LoadEwoq(network.ID)
+		sf, err := app.GetKey("ewoq", network, false)
 		if err != nil {
 			return nil, err
 		}
 		kc := sf.KeyChain()
 		return NewKeychain(network, kc, nil, nil), nil
 	}
-	sf, err := key.LoadSoft(network.ID, app.GetKeyPath(keyName))
+	sf, err := app.GetKey(keyName, network, false)
 	if err != nil {
 		return nil, err
 	}

@@ -35,8 +35,8 @@ import (
 const ewoqPChainAddr = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 
 var (
-	joinAllSupportedNetworkOptions        = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet, networkoptions.Cluster}
-	joinNonElasticSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet, networkoptions.Cluster}
+	joinAllSupportedNetworkOptions        = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+	joinNonElasticSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
 	joinElasticSupportedNetworkOptions    = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji}
 
 	// path to avalanchego config file
@@ -124,7 +124,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		false,
 		false,
 		supportedNetworkOptions,
-		subnetName,
+		"",
 	)
 	if err != nil {
 		return err

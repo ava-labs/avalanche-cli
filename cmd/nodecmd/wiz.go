@@ -345,15 +345,23 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
 		ux.Logger.PrintToUser("")
-		flags := networkoptions.NetworkFlags{
-			ClusterName: clusterName,
+		flags := teleportercmd.DeployFlags{
+			SubnetName: subnetName,
+			Network: networkoptions.NetworkFlags{
+				ClusterName: clusterName,
+			},
+			DeployMessenger: true,
+			DeployRegistry:  true,
 		}
-		if err := teleportercmd.CallDeploy([]string{subnetName}, flags); err != nil {
+		if err := teleportercmd.CallDeploy([]string{}, flags); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
 		ux.Logger.PrintToUser("")
+		if err := updateAWMRelayerFunds(network, sc, blockchainID); err != nil {
+			return err
+		}
 		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
 			return err
 		}
@@ -501,6 +509,33 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 		return node.GetHostWithCloudID(app, clusterName, clusterConfig.Nodes[0])
 	}
 	return nil, fmt.Errorf("no hosts found on cluster")
+}
+
+func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
+	relayerKey, err := app.GetKey(constants.AWMRelayerKeyName, network, true)
+	if err != nil {
+		return err
+	}
+	teleporterKey, err := app.GetKey(sc.TeleporterKey, network, true)
+	if err != nil {
+		return err
+	}
+	if err := teleporter.FundRelayer(
+		network.BlockchainEndpoint(blockchainID.String()),
+		teleporterKey.PrivKeyHex(),
+		relayerKey.C(),
+	); err != nil {
+		return nil
+	}
+	ewoqKey, err := app.GetKey("ewoq", network, true)
+	if err != nil {
+		return err
+	}
+	return teleporter.FundRelayer(
+		network.BlockchainEndpoint("C"),
+		ewoqKey.PrivKeyHex(),
+		relayerKey.C(),
+	)
 }
 
 func deployClusterYAMLFile(clusterName, subnetName string) error {

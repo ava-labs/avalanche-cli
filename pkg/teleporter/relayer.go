@@ -4,7 +4,6 @@ package teleporter
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,7 +55,7 @@ func GetRelayerKeyInfo(keyPath string) (string, string, error) {
 			return "", "", err
 		}
 	}
-	return k.C(), hex.EncodeToString(k.Raw()), nil
+	return k.C(), k.PrivKeyHex(), nil
 }
 
 func FundRelayer(
