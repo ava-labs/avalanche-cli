@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -202,7 +203,11 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 }
 
 func InstallRelayer(binDir string) (string, error) {
-	version := constants.AWMRelayerVersion
+	downloader := application.NewDownloader()
+	version, err := downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+	if err != nil {
+		return "", err
+	}
 	ux.Logger.PrintToUser("using awm-relayer version (%s)", version)
 	versionBinDir := filepath.Join(binDir, version)
 	return installRelayer(versionBinDir, version)
