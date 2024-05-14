@@ -260,6 +260,7 @@ func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath
 	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
+	ux.Logger.Info("Uploading dashboards from %s to server %s: %s", monitoringDashboardPath, host.NodeID, remoteDashboardsPath)
 	if err := host.Upload(
 		filepath.Join(monitoringDashboardPath, constants.CustomGrafanaDashboardJSON),
 		filepath.Join(remoteDashboardsPath, constants.CustomGrafanaDashboardJSON),

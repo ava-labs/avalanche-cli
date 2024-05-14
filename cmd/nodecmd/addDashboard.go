@@ -6,6 +6,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
@@ -46,5 +47,11 @@ func addCustomDashboard(clusterName, subnetName string) error {
 	if err != nil {
 		return err
 	}
+	ux.Logger.Info("Adding custom dashboard to monitoring. About to RunSSHUpdateMonitoringDashboards with monitoringHosts[0]: %s, app.GetMonitoringDashboardDir(): %s, customGrafanaDashboardPath: %s, chainID: %s",
+		monitoringHosts[0],
+		app.GetMonitoringDashboardDir(),
+		customGrafanaDashboardPath,
+		chainID,
+	)
 	return ssh.RunSSHUpdateMonitoringDashboards(monitoringHosts[0], app.GetMonitoringDashboardDir()+"/", customGrafanaDashboardPath, chainID)
 }
