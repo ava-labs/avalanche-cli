@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 type configInputs struct {
@@ -113,5 +114,6 @@ func WritePromtailConfig(filePath string, lokiIP string, lokiPort string, host s
 	if err != nil {
 		return err
 	}
+	ux.Logger.Info("Writing Promtail config to %s with %s", filePath, config)
 	return os.WriteFile(filePath, []byte(config), constants.WriteReadReadPerms)
 }

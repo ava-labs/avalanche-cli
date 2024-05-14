@@ -380,6 +380,7 @@ func RunSSHSetupPromtailConfig(host *models.Host, lokiIP string, lokiPort int, c
 	if err := monitoring.WritePromtailConfig(promtailConfig.Name(), lokiIP, strconv.Itoa(lokiPort), cloudID, nodeID, chainID); err != nil {
 		return err
 	}
+	ux.Logger.Info("Uploading promtail config %s to server %s: %s", promtailConfig.Name(), host.NodeID, cloudNodePromtailConfigTemp)
 	return host.Upload(
 		promtailConfig.Name(),
 		cloudNodePromtailConfigTemp,
