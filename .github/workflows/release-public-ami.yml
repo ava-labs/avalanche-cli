@@ -12,6 +12,7 @@ env:
 
 jobs:
   build-public-ami-and-upload:
+    name: Build Public AMIs for AWS and GCP
     runs-on: ubuntu-20.04
     timeout-minutes: 45
 
@@ -32,7 +33,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Configure GCP credentials
-        uses: google-github-actions/auth@v0
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.EXPERIMENTAL_GCP_SA_KEY_PACKER }}
 
@@ -57,7 +58,7 @@ jobs:
       - name: install nodejs
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '16'
 
       - name: install npx aws-amicleaner
         run: npm install -g aws-amicleaner
