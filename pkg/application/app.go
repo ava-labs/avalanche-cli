@@ -143,7 +143,10 @@ func (app *Avalanche) GetAWMRelayerServiceConfigPath(baseDir string) string {
 }
 
 func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
-	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerStorageDir)
+	if baseDir != "" {
+		return filepath.Join(baseDir, constants.AWMRelayerStorageDir)
+	}
+	return filepath.Join(app.GetAWMRelayerServiceDir(""), constants.AWMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetExtraLocalNetworkDataPath() string {

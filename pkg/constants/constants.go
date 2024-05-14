@@ -235,6 +235,7 @@ const (
 	AWMRelayerStorageDir          = "awm-relayer-storage"
 	AWMRelayerLogFilename         = "awm-relayer.log"
 	AWMRelayerRunFilename         = "awm-relayer-process.json"
+	AWMRelayerDockerDir           = "/.awm-relayer"
 
 	AWMRelayerSnapshotConfsDir = "relayer-confs"
 
