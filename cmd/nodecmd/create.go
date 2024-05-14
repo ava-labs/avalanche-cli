@@ -415,7 +415,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
-			fmt.Printf("creating nodes addMonitoring %s \n", addMonitoring)
 			if addMonitoring && existingMonitoringInstance == "" {
 				monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
 				monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, []string{monitoringHostRegion}, ami, true)
@@ -760,7 +759,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
-	sendNodeCreateMetrics(newCreateCmd(), cloudService, network.Name(), numNodesMetricsMap)
+	fmt.Printf("wiz checking  before sendNodeCreateMetrics if addMonitoring %s \n", addMonitoring)
+	//sendNodeCreateMetrics(newCreateCmd(), cloudService, network.Name(), numNodesMetricsMap)
+	fmt.Printf("wiz checking  after sendNodeCreateMetrics if addMonitoring %s \n", addMonitoring)
 	return nil
 }
 

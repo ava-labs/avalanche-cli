@@ -399,7 +399,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
-	sendNodeWizMetrics(cmd)
+	//sendNodeWizMetrics(cmd)
 	return nil
 }
 
