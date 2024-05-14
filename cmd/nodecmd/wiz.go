@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -870,7 +869,7 @@ func populateSubnetVMMetrics(flags map[string]string, subnetName string) {
 			flags[constants.MetricsCustomVMBuildScript] = sc.CustomVMBuildScript
 		}
 	}
-	flags[constants.MetricsEnableMonitoring] = strconv.FormatBool(addMonitoring)
+	flags[constants.MetricsEnableMonitoring] = fmt.Sprintf("%t", addMonitoring)
 }
 
 // setUPSubnetLogging sets up the subnet logging for the subnet

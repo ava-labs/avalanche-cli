@@ -308,6 +308,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	ux.Logger.Info("DEBUG:  after PROMPT addMonitoring: %v", addMonitoring)
 	if utils.IsE2E() {
 		usr, err := user.Current()
 		if err != nil {
