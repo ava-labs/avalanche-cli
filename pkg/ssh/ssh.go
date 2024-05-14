@@ -365,6 +365,7 @@ func RunSSHSetupLokiConfig(host *models.Host, port int) error {
 }
 
 func RunSSHSetupPromtailConfig(host *models.Host, lokiIP string, lokiPort int, cloudID string, nodeID string, chainID string) error {
+	fmt.Printf("we are RunSSHSetupPromtailConfig %s for chainID %s \n", host.NodeID, chainID)
 	for _, folder := range remoteconfig.PromtailFoldersToCreate() {
 		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
 			return err

@@ -907,6 +907,7 @@ func populateSubnetVMMetrics(flags map[string]string, subnetName string) {
 
 // setUPSubnetLogging sets up the subnet logging for the subnet
 func setUpSubnetLogging(clusterName, subnetName string) error {
+	fmt.Printf("we are setUpSubnetLogging %s \n", subnetName)
 	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
 	if err != nil {
 		return err
@@ -939,6 +940,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 				return
 			}
 			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+				fmt.Printf("we have error RunSSHSetupPromtailConfig %s \n", err.Error())
 				wgResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

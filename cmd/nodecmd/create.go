@@ -415,6 +415,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
+			fmt.Printf("creating nodes addMonitoring %s \n", addMonitoring)
 			if addMonitoring && existingMonitoringInstance == "" {
 				monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
 				monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, []string{monitoringHostRegion}, ami, true)
@@ -704,6 +705,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			}
 			ux.SpinComplete(spinner)
 			if addMonitoring {
+				fmt.Printf("we are adding monitoring %s \n", addMonitoring)
 				cloudID := host.GetCloudID()
 				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
 				if err != nil {

@@ -271,7 +271,7 @@ const (
 	MetricsUseStaticIP          = "use-static-ip"
 	MetricsValidatorCount       = "num-validator-nodes"
 	MetricsAPICount             = "num-api-nodes"
-	MetricsEnableMonitoring     = "enable-monitoring"
+	MetricsEnableMonitoring     = "add-monitoring"
 	MetricsSubnetVM             = "subnet-vm"
 	MetricsCustomVMRepoURL      = "custom-vm-repo-url"
 	MetricsCustomVMBranch       = "custom-vm-branch"
