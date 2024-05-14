@@ -108,7 +108,7 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{CLIVersion: cliVersion},
+		scriptInputs{CLIVersion: cliVersion, IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
