@@ -50,6 +50,11 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	network := clusterConfig.Network
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
@@ -63,7 +68,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 	for host, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading avalanchego to version %s...", upgradeInfo.AvalancheGoVersion)))
-			if err := upgradeAvalancheGo(host, upgradeInfo.AvalancheGoVersion); err != nil {
+			if err := upgradeAvalancheGo(host, network, upgradeInfo.AvalancheGoVersion); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -209,9 +214,10 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 
 func upgradeAvalancheGo(
 	host *models.Host,
+	network models.Network,
 	avaGoVersionToUpdateTo string,
 ) error {
-	if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
+	if err := ssh.RunSSHUpgradeAvalanchego(host, network, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
 	return nil

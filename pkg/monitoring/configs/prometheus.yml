@@ -33,7 +33,7 @@ scrape_configs:
     # metrics_path defaults to '/metrics'
     # scheme defaults to 'http'.
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["prometheus:9090"]
   - job_name: 'avalanchego'
     metrics_path: '/ext/metrics'
     static_configs:

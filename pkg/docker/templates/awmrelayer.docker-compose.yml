@@ -1,0 +1,13 @@
+services:
+  awm-relayer:
+    image: avaplatform/awm-relayer
+    container_name: awm-relayer
+    restart: unless-stopped
+    user: "1000:1000"  # ubuntu user
+    networks:
+      - avalanchego_net
+    volumes:
+      - /home/ubuntu/.avalanche-cli/services/awm-relayer:/.awm-relayer:rw
+    command: 'awm-relayer --config-file /.awm-relayer/awm-relayer-config.json'
+networks:
+  avalanchego_net:

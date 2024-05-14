@@ -1,6 +1,6 @@
 module github.com/ava-labs/avalanche-cli
 
-go 1.21.9
+go 1.21.10
 
 toolchain go1.22.1
 
@@ -8,7 +8,7 @@ require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240411154734-7523771903c1
 	github.com/ava-labs/avalanchego v1.11.5
-	github.com/ava-labs/awm-relayer v1.2.0
+	github.com/ava-labs/awm-relayer v1.3.0
 	github.com/ava-labs/coreth v0.13.3-rc.2
 	github.com/ava-labs/subnet-evm v0.6.4
 	github.com/ava-labs/teleporter v1.0.0
@@ -16,7 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.9
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.160.0
 	github.com/chelnak/ysmrr v0.4.0
-	github.com/docker/docker v26.0.2+incompatible
+	github.com/docker/docker v26.1.2+incompatible
 	github.com/ethereum/go-ethereum v1.13.2
 	github.com/fatih/color v1.16.0
 	github.com/go-git/go-git/v5 v5.11.0
@@ -25,8 +25,8 @@ require (
 	github.com/melbahja/goph v1.4.0
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.17.1
-	github.com/onsi/gomega v1.33.0
+	github.com/onsi/ginkgo/v2 v2.17.3
+	github.com/onsi/gomega v1.33.1
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
 	github.com/posthog/posthog-go v0.0.0-20221221115252-24dfed35d71a
@@ -82,7 +82,7 @@ require (
 	github.com/cavaliergopher/grab/v3 v3.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/chzyer/readline v1.5.0 // indirect
+	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
@@ -115,7 +115,7 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
+	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
@@ -123,7 +123,7 @@ require (
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
+	github.com/google/pprof v0.0.0-20240424215950-a892ee059fd6 // indirect
 	github.com/google/renameio/v2 v2.0.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
@@ -167,7 +167,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/sftp v1.13.6 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.19.0 // indirect
+	github.com/prometheus/client_golang v1.19.1 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
@@ -213,7 +213,7 @@ require (
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.17.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240314234333-6e1732d8331c // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240429193739-8cf5692501f6 // indirect

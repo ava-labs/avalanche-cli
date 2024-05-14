@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -148,8 +149,15 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 	return err
 }
 
+// ExpandHome expands the ~ symbol to the home directory.
+func (h *Host) ExpandHome(path string) string {
+	userHome := filepath.Join("/home", h.SSHUser)
+	return strings.Replace(path, "~/", userHome, 1)
+}
+
 // MkdirAll creates a folder on the remote server.
 func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
+	remoteDir = h.ExpandHome(remoteDir)
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return err
@@ -186,6 +194,7 @@ func (h *Host) UntimedMkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
+	startTime := time.Now()
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
@@ -200,7 +209,9 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 	if env != nil {
 		cmd.Env = env
 	}
-	return cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
+	ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s [%s]", script, time.Since(startTime)))
+	return output, err
 }
 
 // Forward forwards the TCP connection to a remote address.
@@ -210,12 +221,14 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error
 			return nil, err
 		}
 	}
-	retI, err := utils.TimedFunction(
+	retI, err := utils.TimedFunctionWithRetry(
 		func() (interface{}, error) {
 			return h.UntimedForward(httpRequest)
 		},
 		"post over ssh",
 		timeout,
+		3,
+		2*time.Second,
 	)
 	if err != nil {
 		err = fmt.Errorf("%w for host %s", err, h.IP)
@@ -267,6 +280,87 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+// FileExists checks if a file exists on the remote server.
+func (h *Host) FileExists(path string) (bool, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return false, err
+		}
+	}
+
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return false, nil
+	}
+	defer sftp.Close()
+	_, err = sftp.Stat(path)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+// CreateTemp creates a temporary file on the remote server.
+func (h *Host) CreateTempFile() (string, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return "", err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return "", err
+	}
+	defer sftp.Close()
+	tmpFileName := filepath.Join("/tmp", utils.RandomString(10))
+	_, err = sftp.Create(tmpFileName)
+	if err != nil {
+		return "", err
+	}
+	return tmpFileName, nil
+}
+
+// CreateTempDir creates a temporary directory on the remote server.
+func (h *Host) CreateTempDir() (string, error) {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return "", err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return "", err
+	}
+	defer sftp.Close()
+	tmpDirName := filepath.Join("/tmp", utils.RandomString(10))
+	err = sftp.Mkdir(tmpDirName)
+	if err != nil {
+		return "", err
+	}
+	return tmpDirName, nil
+}
+
+// Remove removes a file on the remote server.
+func (h *Host) Remove(path string, recursive bool) error {
+	if !h.Connected() {
+		if err := h.Connect(0); err != nil {
+			return err
+		}
+	}
+	sftp, err := h.Connection.NewSftp()
+	if err != nil {
+		return err
+	}
+	defer sftp.Close()
+	if recursive {
+		// return sftp.RemoveAll(path) is very slow
+		_, err := h.Command(fmt.Sprintf("rm -rf %s", path), nil, constants.SSHLongRunningScriptTimeout)
+		return err
+	} else {
+		return sftp.Remove(path)
+	}
+}
+
 func (h *Host) GetAnsibleInventoryRecord() string {
 	return strings.Join([]string{
 		h.NodeID,
@@ -308,8 +402,8 @@ func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
 	return cloudService, cloudIDPrefix, nil
 }
 
-// WaitForSSHPort waits for the SSH port to become available on the host.
-func (h *Host) WaitForSSHPort(port uint, timeout time.Duration) error {
+// WaitForPort waits for the SSH port to become available on the host.
+func (h *Host) WaitForPort(port uint, timeout time.Duration) error {
 	if port == 0 {
 		port = constants.SSHTCPPort
 	}
@@ -332,7 +426,7 @@ func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 		return fmt.Errorf("host IP is empty")
 	}
 	start := time.Now()
-	if err := h.WaitForSSHPort(constants.SSHTCPPort, timeout); err != nil {
+	if err := h.WaitForPort(constants.SSHTCPPort, timeout); err != nil {
 		return err
 	}
 
