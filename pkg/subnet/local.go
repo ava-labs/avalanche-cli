@@ -566,18 +566,11 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	var (
-		teleporterKeyAddress       string
 		teleporterMessengerAddress string
 		teleporterRegistryAddress  string
 	)
 	if sc.TeleporterReady && !skipTeleporter {
 		network := models.NewLocalNetwork()
-		// get teleporter key address for ui
-		k, err := key.LoadSoft(network.ID, d.app.GetKeyPath(sc.TeleporterKey))
-		if err != nil {
-			return nil, err
-		}
-		teleporterKeyAddress = k.C()
 		// get relayer address
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
 		if err != nil {
@@ -664,10 +657,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Blockchain ready to use. Local network node endpoints:")
-	if err := ux.PrintEndpointTables(clusterInfo); err != nil {
+	ux.Logger.PrintToUser("Blockchain ready to use")
+	ux.Logger.PrintToUser("")
+	if err := ux.PrintLocalNetworkEndpointsInfo(clusterInfo); err != nil {
 		return nil, err
 	}
+	ux.Logger.PrintToUser("")
 
 	endpoint := GetFirstEndpoint(clusterInfo, chain)
 	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
@@ -686,7 +681,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if err != nil {
 			ux.Logger.PrintToUser("failure loading subnet airdrop info: %s", err)
 		}
-		if err := d.printExtraEvmInfo(chain, chainGenesis, teleporterKeyAddress, subnetAirdropAddress, subnetAirdropPrivKey); err != nil {
+		if err := d.printExtraEvmInfo(chain, chainGenesis, subnetAirdropAddress, subnetAirdropPrivKey); err != nil {
 			// not supposed to happen due to genesis pre validation
 			return nil, nil
 		}
@@ -711,7 +706,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 func (d *LocalDeployer) printExtraEvmInfo(
 	chain string,
 	chainGenesis []byte,
-	teleporterKeyAddress string,
 	subnetAirdropAddress string,
 	subnetAirdropPrivKey string,
 ) error {
@@ -727,8 +721,8 @@ func (d *LocalDeployer) printExtraEvmInfo(
 			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
 		case subnetAirdropAddress:
 			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18) - private key: %s", address, formattedAmount.String(), subnetAirdropPrivKey)
-		case teleporterKeyAddress:
-			ux.Logger.PrintToUser("Funded address:    %s with %s", address, formattedAmount.String())
+		default:
+			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18)", address, formattedAmount.String())
 		}
 	}
 	ux.Logger.PrintToUser("Network name:      %s", chain)
