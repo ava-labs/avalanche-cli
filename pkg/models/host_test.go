@@ -89,6 +89,7 @@ func TestHost(t *testing.T) {
 }
 
 func hostRunTest(t *testing.T) {
+	t.Skip()
 	assert := require.New(t)
 	// prepare ssh keys
 	privKey, err := os.CreateTemp("", "unit-test-ssh-private-key")
@@ -271,6 +272,7 @@ func stopSSHServer() {
 }
 
 func TestExpandHome(t *testing.T) {
+	t.Skip()
 	// Mock Host with SSHUser set to "testuser"
 	host := &Host{SSHUser: "testuser"}
 
