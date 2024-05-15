@@ -18,7 +18,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -194,7 +193,6 @@ func (h *Host) UntimedMkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
-	startTime := time.Now()
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
@@ -210,7 +208,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 		cmd.Env = env
 	}
 	output, err := cmd.CombinedOutput()
-	ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s [%s]", script, time.Since(startTime)))
+	//ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s [%s]", script, time.Since(startTime)))
 	return output, err
 }
 
