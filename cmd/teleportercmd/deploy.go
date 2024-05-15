@@ -33,12 +33,16 @@ type DeployFlags struct {
 	RPCURL            string
 }
 
+const (
+	cChainAlias = "C"
+	cChainName  = "c-chain"
+)
+
 var (
 	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
 		networkoptions.Fuji,
-		networkoptions.Mainnet,
 	}
 	deployFlags DeployFlags
 )
@@ -47,8 +51,8 @@ var (
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
-		Short: "Deploys Teleporter into a given Network and Blockchain",
-		Long:  `Deploys Teleporter into a given Network and Blockchain.`,
+		Short: "Deploys Teleporter into a given Network and Subnet",
+		Long:  `Deploys Teleporter into a given Network and Subnet.`,
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
@@ -99,7 +103,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			"Use C-Chain Blockchain ID",
 			"Custom",
 		}
-		blockchainIDOption, err := app.Prompt.CaptureList("What is the Blockchain ID?", blockchainIDOptions)
+		blockchainIDOption, err := app.Prompt.CaptureList("Which Blockchain ID would you like to deploy Teleporter to?", blockchainIDOptions)
 		if err != nil {
 			return err
 		}
@@ -162,8 +166,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		teleporterSubnetDesc = flags.BlockchainID
 		blockchainID = flags.BlockchainID
 	case flags.CChain:
-		teleporterSubnetDesc = "c-chain"
-		blockchainID = "C"
+		teleporterSubnetDesc = cChainName
+		blockchainID = cChainAlias
 	}
 	var chainID ids.ID
 	if flags.CChain || !network.StandardPublicEndpoint() {
@@ -182,7 +186,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(createChainTx.GenesisData) {
-		return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter, blockchain genesis is not")
+		return fmt.Errorf("teleporter can only be deployed to Subnet-EVM based vms")
 	}
 	if flags.KeyName != "" {
 		k, err := app.GetKey(flags.KeyName, network, false)
@@ -199,14 +203,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		privateKey = genesisPrivateKey
 	}
 	if privateKey == "" {
-		cliKeyOpt := "Get Private Key from an existing stored key (created from avalanche key create or avalanche key import)"
+		cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
 		customKeyOpt := "Custom"
-		genesisKeyOpt := fmt.Sprintf("Use the Private Key of the Genesis Aidrop address %s", genesisAddress)
+		genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Aidrop address %s", genesisAddress)
 		keyOptions := []string{cliKeyOpt, customKeyOpt}
 		if genesisPrivateKey != "" {
 			keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
 		}
-		keyOption, err := app.Prompt.CaptureList("What Private Key to use to pay fees?", keyOptions)
+		keyOption, err := app.Prompt.CaptureList("Which private key do you want to use to pay fees?", keyOptions)
 		if err != nil {
 			return err
 		}
@@ -286,8 +290,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
 			app.GetTeleporterBinDir(),
 			teleporterVersion,
-			"c-chain",
-			network.BlockchainEndpoint("C"),
+			cChainName,
+			network.BlockchainEndpoint(cChainAlias),
 			ewoq.PrivKeyHex(),
 			flags.DeployMessenger,
 			flags.DeployRegistry,
