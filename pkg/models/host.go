@@ -208,7 +208,6 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 		cmd.Env = env
 	}
 	output, err := cmd.CombinedOutput()
-	//ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s [%s]", script, time.Since(startTime)))
 	return output, err
 }
 
