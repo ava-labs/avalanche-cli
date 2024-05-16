@@ -151,7 +151,13 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 // ExpandHome expands the ~ symbol to the home directory.
 func (h *Host) ExpandHome(path string) string {
 	userHome := filepath.Join("/home", h.SSHUser)
-	return strings.Replace(path, "~", userHome, 1)
+	if path == "" {
+		return userHome
+	}
+	if len(path) > 0 && path[0] == '~' {
+		path = filepath.Join(userHome, path[1:])
+	}
+	return path
 }
 
 // MkdirAll creates a folder on the remote server.

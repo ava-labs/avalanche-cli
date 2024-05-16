@@ -283,7 +283,7 @@ func TestExpandHome(t *testing.T) {
 	}
 
 	// Test case 2: path starts with "~/" but with no following directory
-	input2 := "~/"
+	input2 := "~"
 	expected2 := filepath.Join("/home", "testuser")
 	result2 := host.ExpandHome(input2)
 	if result2 != expected2 {
@@ -300,7 +300,7 @@ func TestExpandHome(t *testing.T) {
 
 	// Test case 4: empty input
 	input4 := ""
-	expected4 := ""
+	expected4 := "/home/testuser"
 	result4 := host.ExpandHome(input4)
 	if result4 != expected4 {
 		t.Errorf("Expected: %s, Got: %s", expected4, result4)
