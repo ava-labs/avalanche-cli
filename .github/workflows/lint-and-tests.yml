@@ -67,8 +67,6 @@ jobs:
             "\\[Upgrade expect network failure\\]",
             "\\[Upgrade public network\\]",
             "\\[Upgrade local network\\]",
-            "\\[Node create\\]",
-            "\\[Node devnet\\]",
             "\\[Docker\\]",
           ]
         os: [ubuntu-latest, macos-13]
