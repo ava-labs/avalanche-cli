@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -263,26 +261,16 @@ func getStoredKeysInfo(
 	evmClients map[models.Network]ethclient.Client,
 	networks []models.Network,
 ) ([]addressInfo, error) {
-	files, err := os.ReadDir(app.GetKeyDir())
+	keyNames, err := utils.GetKeyNames(app.GetKeyDir(), true)
 	if err != nil {
 		return nil, err
 	}
-	keyPaths := []string{}
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			doAppend := true
-			if len(keys) > 0 {
-				keyName := strings.TrimSuffix(f.Name(), constants.KeySuffix)
-				doAppend = utils.Belongs(keys, keyName)
-			}
-			if doAppend {
-				keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
-			}
-		}
+	if len(keys) != 0 {
+		keyNames = utils.Filter(keyNames, func(keyName string) bool { return utils.Belongs(keys, keyName) })
 	}
 	addrInfos := []addressInfo{}
-	for _, keyPath := range keyPaths {
-		keyAddrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyPath)
+	for _, keyName := range keyNames {
+		keyAddrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyName)
 		if err != nil {
 			return nil, err
 		}
@@ -297,12 +285,11 @@ func getStoredKeyInfo(
 	cClients map[models.Network]ethclient.Client,
 	evmClients map[models.Network]ethclient.Client,
 	networks []models.Network,
-	keyPath string,
+	keyName string,
 ) ([]addressInfo, error) {
 	addrInfos := []addressInfo{}
 	for _, network := range networks {
-		keyName := strings.TrimSuffix(filepath.Base(keyPath), constants.KeySuffix)
-		sk, err := key.LoadSoft(network.ID, keyPath)
+		sk, err := app.GetKey(keyName, network, false)
 		if err != nil {
 			return nil, err
 		}

@@ -66,7 +66,7 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	// rm airdrop key if exists
-	airdropKeyName, _, _, err := subnet.GetSubnetAirdropKeyInfo(app, subnetName)
+	airdropKeyName, _, _, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, subnetName)
 	if err != nil {
 		return err
 	}

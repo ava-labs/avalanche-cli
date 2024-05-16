@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
@@ -155,6 +156,21 @@ func LoadSoft(networkID uint32, keyPath string) (*SoftKey, error) {
 	return LoadSoftFromBytes(networkID, kb)
 }
 
+func LoadSoftOrCreate(networkID uint32, keyPath string) (*SoftKey, error) {
+	if utils.FileExists(keyPath) {
+		return LoadSoft(networkID, keyPath)
+	} else {
+		k, err := NewSoft(networkID)
+		if err != nil {
+			return nil, err
+		}
+		if err := k.Save(keyPath); err != nil {
+			return nil, err
+		}
+		return k, nil
+	}
+}
+
 func LoadEwoq(networkID uint32) (*SoftKey, error) {
 	return LoadSoftFromBytes(networkID, ewoqKeyBytes)
 }
@@ -262,24 +278,28 @@ func (m *SoftKey) KeyChain() *secp256k1fx.Keychain {
 }
 
 // Returns the private key.
-func (m *SoftKey) Key() *secp256k1.PrivateKey {
+func (m *SoftKey) PrivKey() *secp256k1.PrivateKey {
 	return m.privKey
 }
 
 // Returns the private key in raw bytes.
-func (m *SoftKey) Raw() []byte {
+func (m *SoftKey) PrivKeyRaw() []byte {
 	return m.privKeyRaw
 }
 
 // Returns the private key encoded in CB58 and "PrivateKey-" prefix.
-func (m *SoftKey) Encode() string {
+func (m *SoftKey) PrivKeyCB58() string {
 	return m.privKeyEncoded
+}
+
+// Returns the private key encoded hex
+func (m *SoftKey) PrivKeyHex() string {
+	return hex.EncodeToString(m.privKeyRaw)
 }
 
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
-	k := hex.EncodeToString(m.privKeyRaw)
-	return os.WriteFile(p, []byte(k), constants.WriteReadUserOnlyPerms)
+	return os.WriteFile(p, []byte(m.PrivKeyHex()), constants.WriteReadUserOnlyPerms)
 }
 
 func (m *SoftKey) P() []string {

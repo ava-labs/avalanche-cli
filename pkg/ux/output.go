@@ -5,10 +5,11 @@ package ux
 import (
 	"fmt"
 	"io"
-	"os"
+	"sort"
 	"strings"
 	"time"
 
+	"golang.org/x/exp/maps"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
@@ -38,12 +39,16 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
-	formattedMsg := fmt.Sprintf(msg, args...)
+	formattedMsg := fmt.Sprintf(msg, args...) + "\n"
+	ul.print(formattedMsg)
+}
+
+func (ul *UserLog) print(msg string) {
 	if ul != nil {
-		fmt.Fprintln(ul.Writer, formattedMsg)
-		ul.log.Info(formattedMsg)
+		fmt.Fprint(ul.Writer, msg)
+		ul.log.Info(msg)
 	} else {
-		fmt.Println(formattedMsg)
+		fmt.Print(msg)
 	}
 }
 
@@ -88,52 +93,119 @@ func PrintWait(cancel chan struct{}) {
 	}
 }
 
-// PrintEndpointTables prints the endpoints coming from the healthy call
-func PrintEndpointTables(clusterInfo *rpcpb.ClusterInfo) error {
-	if err := PrintTableEndpoints(clusterInfo, false); err != nil {
-		return err
-	}
-	Logger.PrintToUser("")
-	if utils.InsideCodespace() {
-		Logger.PrintToUser("Codespace node endpoints:")
-		if err := PrintTableEndpoints(clusterInfo, true); err != nil {
+// PrintLocalNetworkEndpointsInfo prints the endpoints coming from the status call
+func PrintLocalNetworkEndpointsInfo(clusterInfo *rpcpb.ClusterInfo) error {
+	for _, chainInfo := range clusterInfo.CustomChains {
+		if err := PrintSubnetEndpoints(clusterInfo, chainInfo, utils.InsideCodespace()); err != nil {
 			return err
 		}
 		Logger.PrintToUser("")
 	}
+	if err := PrintNetworkEndpoints(clusterInfo, utils.InsideCodespace()); err != nil {
+		return err
+	}
 	return nil
 }
 
-func PrintTableEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
-	table := tablewriter.NewWriter(os.Stdout)
-	header := []string{"node", "VM", "URL", "ALIAS_URL"}
-	table.SetHeader(header)
+func PrintSubnetEndpoints(clusterInfo *rpcpb.ClusterInfo, chainInfo *rpcpb.CustomChainInfo, codespaceURLs bool) error {
+	nodeInfos := maps.Values(clusterInfo.NodeInfos)
+	nodeUris := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
+	if len(nodeUris) == 0 {
+		return fmt.Errorf("network has no nodes")
+	}
+	sort.Strings(nodeUris)
+	refNodeURI := nodeUris[0]
+	nodeInfo := utils.Find(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) bool { return nodeInfo.GetUri() == refNodeURI })
+	if nodeInfo == nil {
+		return fmt.Errorf("unexpected nil nodeInfo")
+	}
+	strBuilder := strings.Builder{}
+	table := tablewriter.NewWriter(&strBuilder)
 	table.SetRowLine(true)
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainName)
+	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
+	table.Append([]string{fmt.Sprintf("%s RPC URLs", chainInfo.ChainName)})
+	table.ClearRows()
+	table.Append([]string{"Localhost", aliasedURL})
+	table.Append([]string{"Localhost", blockchainIDURL})
+	if codespaceURLs {
+		var err error
+		blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
+		if err != nil {
+			return err
+		}
+		aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
+		if err != nil {
+			return err
+		}
+		table.Append([]string{"Codespace", aliasedURL})
+		table.Append([]string{"Codespace", blockchainIDURL})
+	}
+	table.Render()
+	tableStr := strBuilder.String()
+	var err error
+	tableStr, err = addTitleToTable(tableStr, fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
+	if err != nil {
+		return err
+	}
+	Logger.print(tableStr)
+	return nil
+}
 
+func addTitleToTable(tableStr string, title string) (string, error) {
+	newLineIdx := strings.Index(tableStr, "\n")
+	if newLineIdx == -1 {
+		return "", fmt.Errorf("expected to found newline in table output")
+	}
+	titleStr := tableStr[:newLineIdx] + "\n"
+	availableLen := newLineIdx - 2
+	if availableLen < len(title) {
+		title = title[:availableLen-1]
+	}
+	spacesCount := availableLen - len(title)
+	spaces1 := spacesCount / 2
+	spaces2 := spacesCount - spaces1
+	titleStr = titleStr + "|" + strings.Repeat(" ", spaces1) + title + strings.Repeat(" ", spaces2) + "|" + "\n"
+	return titleStr + tableStr, nil
+}
+
+func PrintNetworkEndpoints(clusterInfo *rpcpb.ClusterInfo, codespaceURLs bool) error {
+	strBuilder := strings.Builder{}
+	table := tablewriter.NewWriter(&strBuilder)
+	table.SetRowLine(true)
+	header := []string{"Name", "Node ID", "Localhost Endpoint"}
+	if codespaceURLs {
+		header = append(header, "Codespace Endpoint")
+	}
+	table.Append(header)
+	nodeNames := clusterInfo.NodeNames
+	sort.Strings(nodeNames)
 	nodeInfos := map[string]*rpcpb.NodeInfo{}
 	for _, nodeInfo := range clusterInfo.NodeInfos {
 		nodeInfos[nodeInfo.Name] = nodeInfo
 	}
-	for _, nodeName := range clusterInfo.NodeNames {
+	var err error
+	for _, nodeName := range nodeNames {
 		nodeInfo := nodeInfos[nodeName]
-		for blockchainID, chainInfo := range clusterInfo.CustomChains {
-			blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), blockchainID)
-			aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", nodeInfo.GetUri(), chainInfo.ChainName)
-			if codespaceURLs {
-				var err error
-				blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
-				if err != nil {
-					return err
-				}
-				aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
-				if err != nil {
-					return err
-				}
+		nodeURL := nodeInfo.GetUri()
+		row := []string{nodeInfo.Name, nodeInfo.Id, nodeURL}
+		if codespaceURLs {
+			nodeURL, err = utils.GetCodespaceURL(nodeURL)
+			if err != nil {
+				return err
 			}
-			table.Append([]string{nodeInfo.Name, chainInfo.ChainName, blockchainIDURL, aliasedURL})
+			row = append(row, nodeURL)
 		}
+		table.Append(row)
 	}
 	table.Render()
+	tableStr := strBuilder.String()
+	tableStr, err = addTitleToTable(tableStr, "Nodes")
+	if err != nil {
+		return err
+	}
+	Logger.print(tableStr)
 	return nil
 }
 
