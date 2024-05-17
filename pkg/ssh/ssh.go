@@ -126,13 +126,18 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 
 // RunSSHSetupDockerService runs script to setup docker compose service for CLI
 func RunSSHSetupDockerService(host *models.Host) error {
-	return RunOverSSH(
-		"Setup Docker Service",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupDockerService.sh",
-		scriptInputs{},
-	)
+	if host.IsSystemD() {
+		return RunOverSSH(
+			"Setup Docker Service",
+			host,
+			constants.SSHLongRunningScriptTimeout,
+			"shell/setupDockerService.sh",
+			scriptInputs{},
+		)
+	} else {
+		// no need to setup docker service
+		return nil
+	}
 }
 
 // RunSSHRestartNode runs script to restart avalanchego

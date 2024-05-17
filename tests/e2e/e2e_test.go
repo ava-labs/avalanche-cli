@@ -42,4 +42,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	out, err := cmd.CombinedOutput()
 	fmt.Println(string(out))
 	gomega.Expect(err).Should(gomega.BeNil())
+	// make sure metrics are not collected for E2e
+	metricsCmd := exec.Command("./bin/avalanche", "config", "metrics", "disable")
+	out, err = metricsCmd.CombinedOutput()
+	fmt.Println(string(out))
+	gomega.Expect(err).Should(gomega.BeNil())
 })
