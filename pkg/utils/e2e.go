@@ -23,8 +23,8 @@ services:
   ubuntu{{$i}}:
     image: ubuntu:{{$version}}
     container_name: ubuntu_container{{$i}}
-	volumes:
-     - /var/run/docker.sock:/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
     networks:
       e2e:
         ipv4_address: {{$ip}}
@@ -107,6 +107,7 @@ func SaveDockerComposeFile(fileName string, nodes int, ubuntuVersion string, ssh
 		}
 	}
 	composeFile, err := GenDockerComposeFile(nodes, ubuntuVersion, constants.E2ENetworkPrefix, sshPubKey)
+	fmt.Println("Generated Docker Compose file:", composeFile)
 	if err != nil {
 		return "", fmt.Errorf("error generating Docker Compose file: %w", err)
 	}
