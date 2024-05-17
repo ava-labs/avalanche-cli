@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	healthCheckPoolTime   = 10 * time.Second
+	healthCheckPoolTime   = 60 * time.Second
 	healthCheckTimeout    = 3 * time.Minute
 	syncCheckPoolTime     = 10 * time.Second
 	syncCheckTimeout      = 1 * time.Minute
