@@ -21,6 +21,7 @@ services:
 {{- $pubkey := .SSHPubKey }}
 {{- range $i, $ip := .IPs }}
   ubuntu{{$i}}:
+    privileged: true
     image: ubuntu:{{$version}}
     container_name: ubuntu_container{{$i}}
     volumes:

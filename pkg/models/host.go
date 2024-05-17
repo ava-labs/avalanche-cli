@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -214,6 +215,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 		cmd.Env = env
 	}
 	output, err := cmd.CombinedOutput()
+	ux.Logger.Info("DEBUG Command %s on %s returned %s", script, h.IP, string(output))
 	return output, err
 }
 
@@ -523,4 +525,26 @@ func consumeOutput(ctx context.Context, output io.Reader) error {
 		}
 	}
 	return scanner.Err()
+}
+
+// HasSystemDAvaliable checks if systemd is available on a remote host.
+func (h *Host) IsSystemD() bool {
+	//check for the folder
+	if _, err := h.FileExists("/run/systemd/system"); err != nil {
+		return false
+	}
+	tmpFile, err := os.CreateTemp("", "avalanchecli-proc-systemd-*.txt")
+	if err != nil {
+		return false
+	}
+	defer os.Remove(tmpFile.Name())
+	//check for the service
+	if err := h.Download("/proc/1/comm", tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
+		return false
+	}
+	data, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(data)) == "systemd"
 }

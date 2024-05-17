@@ -121,24 +121,49 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 }
 
 func StartDockerCompose(host *models.Host, timeout time.Duration) error {
-	if output, err := host.Command("sudo systemctl start avalanche-cli-docker", nil, timeout); err != nil {
-		return fmt.Errorf("%w: %s", err, string(output))
+	if host.IsSystemD() {
+		if output, err := host.Command("sudo systemctl start avalanche-cli-docker", nil, timeout); err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
+	} else {
+		composeFile := utils.GetRemoteComposeFile()
+		output, err := host.Command(fmt.Sprintf("docker compose -f %s up -d", composeFile), nil, constants.SSHScriptTimeout)
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
 	}
-	return nil
+	return nil // no error
 }
 
 func StopDockerCompose(host *models.Host, timeout time.Duration) error {
-	if output, err := host.Command("sudo systemctl stop avalanche-cli-docker", nil, timeout); err != nil {
-		return fmt.Errorf("%w: %s", err, string(output))
+	if host.IsSystemD() {
+		if output, err := host.Command("sudo systemctl stop avalanche-cli-docker", nil, timeout); err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
+	} else {
+		composeFile := utils.GetRemoteComposeFile()
+		output, err := host.Command(fmt.Sprintf("docker compose -f %s down", composeFile), nil, constants.SSHScriptTimeout)
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
 	}
-	return nil
+	return nil // no error
 }
 
 func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
-	if output, err := host.Command("sudo systemctl restart avalanche-cli-docker", nil, timeout); err != nil {
-		return fmt.Errorf("%w: %s", err, string(output))
+	if host.IsSystemD() {
+
+		if output, err := host.Command("sudo systemctl restart avalanche-cli-docker", nil, timeout); err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
+	} else {
+		composeFile := utils.GetRemoteComposeFile()
+		output, err := host.Command(fmt.Sprintf("docker compose -f %s restart", composeFile), nil, constants.SSHScriptTimeout)
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
 	}
-	return nil
+	return nil // no error
 }
 
 func StartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
