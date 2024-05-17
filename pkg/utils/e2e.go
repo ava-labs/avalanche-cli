@@ -23,6 +23,8 @@ services:
   ubuntu{{$i}}:
     image: ubuntu:{{$version}}
     container_name: ubuntu_container{{$i}}
+	volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
     networks:
       e2e:
         ipv4_address: {{$ip}}
