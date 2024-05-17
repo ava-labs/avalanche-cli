@@ -152,7 +152,6 @@ func StopDockerCompose(host *models.Host, timeout time.Duration) error {
 
 func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
 	if host.IsSystemD() {
-
 		if output, err := host.Command("sudo systemctl restart avalanche-cli-docker", nil, timeout); err != nil {
 			return fmt.Errorf("%w: %s", err, string(output))
 		}

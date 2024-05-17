@@ -529,7 +529,7 @@ func consumeOutput(ctx context.Context, output io.Reader) error {
 
 // HasSystemDAvaliable checks if systemd is available on a remote host.
 func (h *Host) IsSystemD() bool {
-	//check for the folder
+	// check for the folder
 	if _, err := h.FileExists("/run/systemd/system"); err != nil {
 		return false
 	}
@@ -538,7 +538,7 @@ func (h *Host) IsSystemD() bool {
 		return false
 	}
 	defer os.Remove(tmpFile.Name())
-	//check for the service
+	// check for the service
 	if err := h.Download("/proc/1/comm", tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
 		return false
 	}
