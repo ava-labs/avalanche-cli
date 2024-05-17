@@ -32,4 +32,4 @@ then
 	extra_build_args="-tags ledger_zemu"
 fi
 
-go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION' -X github.com/ava-labs/avalanche-cli/pkg/utils.telemetryToken=$TELEMETRY_TOKEN" $extra_build_args -o $BIN
+go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION' -X github.com/ava-labs/avalanche-cli/pkg/metrics.telemetryToken=$TELEMETRY_TOKEN" $extra_build_args -o $BIN
