@@ -18,7 +18,7 @@ require (
 	github.com/chelnak/ysmrr v0.4.0
 	github.com/docker/docker v26.1.2+incompatible
 	github.com/ethereum/go-ethereum v1.13.2
-	github.com/fatih/color v1.16.0
+	github.com/fatih/color v1.17.0
 	github.com/go-git/go-git/v5 v5.11.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/manifoldco/promptui v0.9.0
