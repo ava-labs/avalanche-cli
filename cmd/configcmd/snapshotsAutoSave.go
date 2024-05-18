@@ -14,10 +14,10 @@ func newSnapshotsAutoSaveCmd() *cobra.Command {
 		Use:   "snapshotsAutoSave [enable | disable]",
 		Short: "opt in or out of auto saving local network snapshots",
 		Long:  "set user preference between auto saving local network snapshots or not",
-		RunE: func(_ *cobra.Command, args []string) error {
-			return handleBooleanSetting(constants.ConfigSnapshotsAutoSaveKey, args)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return handleBooleanSetting(cmd, constants.ConfigSnapshotsAutoSaveKey, args)
 		},
-		Args: cobrautils.ExactArgs(1),
+		Args: cobrautils.MaximumNArgs(1),
 	}
 
 	return cmd

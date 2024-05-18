@@ -14,8 +14,8 @@ func newSingleNodeCmd() *cobra.Command {
 		Use:   "singleNode [enable | disable]",
 		Short: "opt in or out of single node local network",
 		Long:  "set user preference between single node and five nodes local network",
-		RunE: func(_ *cobra.Command, args []string) error {
-			return handleBooleanSetting(constants.ConfigSingleNodeEnabledKey, args)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return handleBooleanSetting(cmd, constants.ConfigSingleNodeEnabledKey, args)
 		},
 		Args: cobrautils.ExactArgs(1),
 	}
