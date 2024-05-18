@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -97,21 +96,12 @@ func saveNetwork() error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	_, err = cli.RemoveSnapshot(ctx, snapshotName)
+	_, err = cli.SaveSnapshot(ctx, snapshotName, true)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("Network already stopped.")
 			return nil
 		}
-		// it we try to stop a network with a new snapshot name, remove snapshot
-		// will fail, so we cover here that expected case
-		if !server.IsServerError(err, local.ErrSnapshotNotFound) {
-			return fmt.Errorf("failed stop network with a snapshot: %w", err)
-		}
-	}
-
-	_, err = cli.SaveSnapshot(ctx, snapshotName)
-	if err != nil {
 		return fmt.Errorf("failed to stop network with a snapshot: %w", err)
 	}
 	ux.Logger.PrintToUser("Network stopped successfully.")

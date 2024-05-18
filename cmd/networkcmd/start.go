@@ -138,6 +138,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	resp, err := cli.LoadSnapshot(
 		ctx,
 		snapshotName,
+		app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey),
 		loadSnapshotOpts...,
 	)
 	if err != nil {

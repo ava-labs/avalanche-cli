@@ -190,6 +190,7 @@ const (
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
 	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
 	ConfigSingleNodeEnabledKey    = "SingleNodeEnabled"
+	ConfigSnapshotsAutoSaveKey    = "SnapshotsAutoSaveEnabled"
 	OldConfigFileName             = ".avalanche-cli.json"
 	OldMetricsConfigFileName      = ".avalanche-cli/config"
 	DefaultConfigFileName         = ".avalanche-cli/config.json"

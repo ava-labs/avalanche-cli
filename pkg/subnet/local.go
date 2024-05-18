@@ -1040,6 +1040,7 @@ func (d *LocalDeployer) startNetwork(
 	resp, err := cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
+		d.app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey),
 		loadSnapshotOpts...,
 	)
 	if err != nil {
