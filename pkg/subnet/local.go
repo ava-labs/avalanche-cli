@@ -1019,9 +1019,15 @@ func (d *LocalDeployer) startNetwork(
 	avalancheGoBinPath string,
 	runDir string,
 ) error {
+	outputDirPrefix := filepath.Join(runDir, "network")
+	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
+	if err != nil {
+		return err
+	}
+
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(runDir),
+		client.WithRootDataDir(outputDir),
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(d.app.GetPluginsDir()),
 	}

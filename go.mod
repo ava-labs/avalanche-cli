@@ -6,7 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240518181149-bdc6ca375c5a
+	github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240518201606-5cba43ad0190
 	github.com/ava-labs/avalanchego v1.11.5
 	github.com/ava-labs/awm-relayer v1.3.0
 	github.com/ava-labs/coreth v0.13.3-rc.2

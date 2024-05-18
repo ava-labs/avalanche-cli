@@ -41,10 +41,8 @@ github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPd
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/ava-labs/apm v0.0.4 h1:0IUwxCyvqwr2sbbEKhSI7VzpPG3Z+e180ulJwNiKkBk=
 github.com/ava-labs/apm v0.0.4/go.mod h1:4MNcyEvWajJm2JnezC7vgHuA220ppoQYOMh5vM+iH4Q=
-github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240411154734-7523771903c1 h1:nY01QgbcJYaDhwjpVkHN3+ggt1UHouMDcZNxKzJ014s=
-github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240411154734-7523771903c1/go.mod h1:exAb5aG32vslXT14LLGPtQnI87Asyqso7FbET4PCeoU=
-github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240518181149-bdc6ca375c5a h1:Txldt57/jrnvTXtued3hrZXFrQYMskn4K2sV8hJnO4Q=
-github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240518181149-bdc6ca375c5a/go.mod h1:owK9qqTQWd+dwo9wClLV50NXjEMlAJoXF26u6s7Fmjw=
+github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240518201606-5cba43ad0190 h1:3b5znlufDDVEM9i0JkV+TmV21ARdGrxVHneFhKTWkK8=
+github.com/ava-labs/avalanche-network-runner v1.7.8-0.20240518201606-5cba43ad0190/go.mod h1:owK9qqTQWd+dwo9wClLV50NXjEMlAJoXF26u6s7Fmjw=
 github.com/ava-labs/avalanchego v1.11.5 h1:3HCE6I1/9BOSrIvwXXuOhVuMGMi926jKhQ+sgU3LEX8=
 github.com/ava-labs/avalanchego v1.11.5/go.mod h1:XPNUEh0ezPEW1IV6yo6AwvqjTZSG1twGskDb7dVcIRA=
 github.com/ava-labs/awm-relayer v1.3.0 h1:aI90Daoq7bs9SnfZpyjXajj7YLcdZoFgEkyCd52fOHE=
@@ -905,8 +903,6 @@ google.golang.org/grpc v1.25.1/go.mod h1:c3i+UQWmh7LiEpx4sFZnkU36qjEYZ0imhYfXVyQ
 google.golang.org/grpc v1.27.0/go.mod h1:qbnxyOmOxrQa7FizSgH+ReBfzJrCY1pSN7KXBS8abTk=
 google.golang.org/grpc v1.33.2/go.mod h1:JMHMWHQWaTccqQQlmk3MJZS+GWXOdAesneDmEnv2fbc=
 google.golang.org/grpc v1.38.0/go.mod h1:NREThFqKR1f3iQ6oBuvc5LadQuXVGo9rkm5ZGrQdJfM=
-google.golang.org/grpc v1.63.2 h1:MUeiw1B2maTVZthpU5xvASfTh3LDbxHd6IJ6QQVU+xM=
-google.golang.org/grpc v1.63.2/go.mod h1:WAX/8DgncnokcFUldAxq7GeB5DXHDbMF+lLvDomNkRA=
 google.golang.org/grpc v1.64.0 h1:KH3VH9y/MgNQg1dE7b3XfVK0GsPSIzJwdF617gUSbvY=
 google.golang.org/grpc v1.64.0/go.mod h1:oxjF8E3FBnjp+/gVFYdWacaLDx9na1aqy9oovLpxQYg=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
