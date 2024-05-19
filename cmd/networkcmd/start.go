@@ -177,14 +177,6 @@ func StartNetwork(*cobra.Command, []string) error {
 		}
 	}
 
-	storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
-	if utils.FileExists(storedExtraLocalNetowkrDataPath) {
-		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-		if err := binutils.CopyFile(storedExtraLocalNetowkrDataPath, extraLocalNetworkDataPath); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
