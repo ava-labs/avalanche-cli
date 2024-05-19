@@ -573,6 +573,8 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		if err != nil {
 			return nil, err
 		}
+		// relayer config file
+		relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
 		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
@@ -592,7 +594,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 				return nil, err
 			}
 			if err = teleporter.UpdateRelayerConfig(
-				d.app.GetAWMRelayerConfigPath(),
+				relayerConfigPath,
 				d.app.GetAWMRelayerStorageDir(),
 				relayerAddress,
 				relayerPrivateKey,
@@ -637,7 +639,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return nil, err
 		}
 		if err = teleporter.UpdateRelayerConfig(
-			d.app.GetAWMRelayerConfigPath(),
+			relayerConfigPath,
 			d.app.GetAWMRelayerStorageDir(),
 			relayerAddress,
 			relayerPrivateKey,
@@ -654,7 +656,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			// start relayer
 			if err := teleporter.DeployRelayer(
 				d.app.GetAWMRelayerBinDir(),
-				d.app.GetAWMRelayerConfigPath(),
+				relayerConfigPath,
 				d.app.GetAWMRelayerLogPath(),
 				d.app.GetAWMRelayerRunPath(),
 				d.app.GetAWMRelayerStorageDir(),
