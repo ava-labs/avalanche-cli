@@ -29,7 +29,7 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID,
 			return ids.Empty, ids.Empty, "", "", nil, err
 		}
 		if network.Kind == models.Local {
-			extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app)
+			extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData()
 			if err != nil {
 				return ids.Empty, ids.Empty, "", "", nil, err
 			}

@@ -301,7 +301,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		if !alreadyDeployed {
 			if network.Kind == models.Local {
-				if err := subnet.WriteExtraLocalNetworkData(app, teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
+				if err := subnet.WriteExtraLocalNetworkData(teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
 					return err
 				}
 			}

@@ -68,7 +68,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if network.Kind == models.Local {
 		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
 		if utils.FileExists(extraLocalNetworkDataPath) {
-			if extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app); err != nil {
+			if extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(); err != nil {
 				return err
 			} else {
 				teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress

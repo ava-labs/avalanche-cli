@@ -606,7 +606,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			); err != nil {
 				return nil, err
 			}
-			if err := WriteExtraLocalNetworkData(d.app, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
+			if err := WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
 				return nil, err
 			}
 		}
@@ -1093,6 +1093,20 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 	return deployedNames, nil
 }
 
+func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	resp, err := cli.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetClusterInfo(), nil
+}
+
 func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID ids.NodeID) (ids.ID, error) {
 	ctx := context.Background()
 	api := constants.LocalAPIEndpoint
@@ -1145,9 +1159,14 @@ type ExtraLocalNetworkData struct {
 	CChainTeleporterRegistryAddress  string
 }
 
-func GetExtraLocalNetworkData(app *application.Avalanche) (ExtraLocalNetworkData, error) {
+func GetExtraLocalNetworkData() (ExtraLocalNetworkData, error) {
 	extraLocalNetworkData := ExtraLocalNetworkData{}
-	bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
+	clusterInfo, err := GetClusterInfo()
+	if err != nil {
+		return extraLocalNetworkData, err
+	}
+	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
+	bs, err := os.ReadFile(extraLocalNetworkDataPath)
 	if err != nil {
 		return extraLocalNetworkData, err
 	}
@@ -1157,12 +1176,16 @@ func GetExtraLocalNetworkData(app *application.Avalanche) (ExtraLocalNetworkData
 	return extraLocalNetworkData, nil
 }
 
-func WriteExtraLocalNetworkData(app *application.Avalanche, cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
-	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
+func WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
+	clusterInfo, err := GetClusterInfo()
+	if err != nil {
+		return err
+	}
+	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
 	extraLocalNetworkData := ExtraLocalNetworkData{}
 	if utils.FileExists(extraLocalNetworkDataPath) {
 		var err error
-		extraLocalNetworkData, err = GetExtraLocalNetworkData(app)
+		extraLocalNetworkData, err = GetExtraLocalNetworkData()
 		if err != nil {
 			return err
 		}
