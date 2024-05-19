@@ -389,8 +389,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	defer cli.Close()
 
-	runDir := d.app.GetRunDir()
-
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
@@ -439,7 +437,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	if !networkBooted {
-		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath); err != nil {
 			FindErrorLogs(logRootDir, backendLogDir)
 			return nil, err
 		}
@@ -1022,7 +1020,6 @@ func (d *LocalDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
 	avalancheGoBinPath string,
-	runDir string,
 ) error {
 	autoSave := d.app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
 

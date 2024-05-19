@@ -127,10 +127,6 @@ func (app *Avalanche) GetAWMRelayerRunPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerRunFilename)
 }
 
-func (app *Avalanche) GetAWMRelayerSnapshotConfsDir() string {
-	return filepath.Join(app.GetSnapshotsDir(), constants.AWMRelayerSnapshotConfsDir)
-}
-
 func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
 	return filepath.Join(app.GetServicesDir(baseDir), constants.AWMRelayerInstallDir)
 }
