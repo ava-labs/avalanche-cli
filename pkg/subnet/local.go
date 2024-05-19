@@ -574,7 +574,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return nil, err
 		}
 		// relayer config file
-		relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
+		_, relayerConfigPath, err := GetAWMRelayerConfigPath()
+		if err != nil {
+			return nil, err
+		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
 		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
@@ -1157,6 +1160,15 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 type ExtraLocalNetworkData struct {
 	CChainTeleporterMessengerAddress string
 	CChainTeleporterRegistryAddress  string
+}
+
+func GetAWMRelayerConfigPath() (bool, string, error) {
+	clusterInfo, err := GetClusterInfo()
+	if err != nil {
+		return false, "", err
+	}
+	relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
+	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }
 
 func GetExtraLocalNetworkData() (bool, ExtraLocalNetworkData, error) {

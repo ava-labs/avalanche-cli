@@ -163,8 +163,9 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	relayerConfigPath := filepath.Join(resp.ClusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
-	if utils.FileExists(relayerConfigPath) {
+	if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+		return err
+	} else if b {
 		ux.Logger.PrintToUser("")
 		if err := teleporter.DeployRelayer(
 			app.GetAWMRelayerBinDir(),
