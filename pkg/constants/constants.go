@@ -118,8 +118,7 @@ const (
 	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
 	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
 
-	ExtraLocalNetworkDataFilename     = "extra-local-network-data.json"
-	ExtraLocalNetworkDataSnapshotsDir = "extra-local-network-data"
+	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
 	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr      = "resource temporarily unavailable"
