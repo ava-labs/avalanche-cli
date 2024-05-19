@@ -77,7 +77,7 @@ func whitelist(_ *cobra.Command, args []string) error {
 	}
 	if userIPAddress == "" && userPubKey == "" {
 		// prompt for ssh key
-		userPubKey, err = utils.ReadLongString("Enter SSH public key to whitelist (leave empty to skip):")
+		userPubKey, err = utils.ReadLongString("Enter SSH public key to whitelist (leave empty to skip):\n")
 		if err != nil {
 			return err
 		}
