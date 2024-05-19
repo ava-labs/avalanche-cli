@@ -1159,21 +1159,24 @@ type ExtraLocalNetworkData struct {
 	CChainTeleporterRegistryAddress  string
 }
 
-func GetExtraLocalNetworkData() (ExtraLocalNetworkData, error) {
+func GetExtraLocalNetworkData() (bool, ExtraLocalNetworkData, error) {
 	extraLocalNetworkData := ExtraLocalNetworkData{}
 	clusterInfo, err := GetClusterInfo()
 	if err != nil {
-		return extraLocalNetworkData, err
+		return false, extraLocalNetworkData, err
 	}
 	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
+	if !utils.FileExists(extraLocalNetworkDataPath) {
+		return false, extraLocalNetworkData, nil
+	}
 	bs, err := os.ReadFile(extraLocalNetworkDataPath)
 	if err != nil {
-		return extraLocalNetworkData, err
+		return false, extraLocalNetworkData, err
 	}
 	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return extraLocalNetworkData, err
+		return false, extraLocalNetworkData, err
 	}
-	return extraLocalNetworkData, nil
+	return true, extraLocalNetworkData, nil
 }
 
 func WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
@@ -1185,7 +1188,7 @@ func WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress string, cchainT
 	extraLocalNetworkData := ExtraLocalNetworkData{}
 	if utils.FileExists(extraLocalNetworkDataPath) {
 		var err error
-		extraLocalNetworkData, err = GetExtraLocalNetworkData()
+		_, extraLocalNetworkData, err = GetExtraLocalNetworkData()
 		if err != nil {
 			return err
 		}

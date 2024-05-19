@@ -70,14 +70,6 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	if err := os.RemoveAll(app.GetAWMRelayerConfigPath()); err != nil {
-		return err
-	}
-
-	if err := os.RemoveAll(app.GetExtraLocalNetworkDataPath()); err != nil {
-		return err
-	}
-
 	if hard {
 		ux.Logger.PrintToUser("hard clean requested via flag, removing all downloaded avalanchego and plugin binaries")
 		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
