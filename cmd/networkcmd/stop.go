@@ -19,6 +19,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var dontSave bool
+
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",
@@ -35,35 +37,14 @@ default snapshot with network start.`,
 		Args: cobrautils.ExactArgs(0),
 	}
 	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
+	cmd.Flags().BoolVar(&dontSave, "dont-save", false, "do not save snapshot, just stop the network")
 	return cmd
 }
 
 func StopNetwork(*cobra.Command, []string) error {
-	if err := saveNetwork(); errors.Is(err, binutils.ErrGRPCTimeout) {
+	if err := stopAndSaveNetwork(dontSave); errors.Is(err, binutils.ErrGRPCTimeout) {
 		// no server to kill
 		return nil
-	}
-
-	relayerConfigPath := app.GetAWMRelayerConfigPath()
-	if utils.FileExists(relayerConfigPath) {
-		relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)
-		if err := os.MkdirAll(filepath.Dir(relayerStoredConfigPath), constants.DefaultPerms755); err != nil {
-			return err
-		}
-		if err := os.Rename(relayerConfigPath, relayerStoredConfigPath); err != nil {
-			return fmt.Errorf("couldn't store relayer conf from %s into %s", relayerConfigPath, relayerStoredConfigPath)
-		}
-	}
-
-	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-	if utils.FileExists(extraLocalNetworkDataPath) {
-		storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
-		if err := os.MkdirAll(filepath.Dir(storedExtraLocalNetowkrDataPath), constants.DefaultPerms755); err != nil {
-			return err
-		}
-		if err := os.Rename(extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath); err != nil {
-			return fmt.Errorf("couldn't store extra local network data from %s into %s", extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath)
-		}
 	}
 
 	var err error
@@ -84,7 +65,7 @@ func StopNetwork(*cobra.Command, []string) error {
 	return nil
 }
 
-func saveNetwork() error {
+func stopAndSaveNetwork(dontSave bool) error {
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
@@ -96,15 +77,42 @@ func saveNetwork() error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	_, err = cli.SaveSnapshot(ctx, snapshotName, true)
+	if dontSave {
+		_, err = cli.Stop(ctx)
+	} else {
+		_, err = cli.SaveSnapshot(ctx, snapshotName, true)
+	}
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("Network already stopped.")
 			return nil
 		}
-		return fmt.Errorf("failed to stop network with a snapshot: %w", err)
+		return fmt.Errorf("failed to stop network: %w", err)
 	}
 	ux.Logger.PrintToUser("Network stopped successfully.")
+
+	if !dontSave {
+		relayerConfigPath := app.GetAWMRelayerConfigPath()
+		if utils.FileExists(relayerConfigPath) {
+			relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)
+			if err := os.MkdirAll(filepath.Dir(relayerStoredConfigPath), constants.DefaultPerms755); err != nil {
+				return err
+			}
+			if err := os.Rename(relayerConfigPath, relayerStoredConfigPath); err != nil {
+				return fmt.Errorf("couldn't store relayer conf from %s into %s", relayerConfigPath, relayerStoredConfigPath)
+			}
+		}
+		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
+		if utils.FileExists(extraLocalNetworkDataPath) {
+			storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
+			if err := os.MkdirAll(filepath.Dir(storedExtraLocalNetowkrDataPath), constants.DefaultPerms755); err != nil {
+				return err
+			}
+			if err := os.Rename(extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath); err != nil {
+				return fmt.Errorf("couldn't store extra local network data from %s into %s", extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath)
+			}
+		}
+	}
 
 	return nil
 }

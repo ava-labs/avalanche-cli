@@ -403,10 +403,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// check for network status
 	networkBooted := true
 	clusterInfo, err := WaitForHealthy(ctx, cli)
-	rootDir := clusterInfo.GetRootDataDir()
+	logRootDir := clusterInfo.GetLogRootDir()
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
-			FindErrorLogs(rootDir, backendLogDir)
+			FindErrorLogs(logRootDir, backendLogDir)
 			return nil, fmt.Errorf("failed to query network health: %w", err)
 		} else {
 			networkBooted = false
@@ -440,7 +440,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 
 	if !networkBooted {
 		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
-			FindErrorLogs(rootDir, backendLogDir)
+			FindErrorLogs(logRootDir, backendLogDir)
 			return nil, err
 		}
 	}
@@ -465,10 +465,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// get VM info
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
+		FindErrorLogs(clusterInfo.GetLogRootDir(), backendLogDir)
 		return nil, fmt.Errorf("failed to query network health: %w", err)
 	}
-	rootDir = clusterInfo.GetRootDataDir()
+	logRootDir = clusterInfo.GetLogRootDir()
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
 		return nil, fmt.Errorf("subnet %s has already been deployed", chain)
@@ -541,20 +541,20 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
-		FindErrorLogs(rootDir, backendLogDir)
+		FindErrorLogs(logRootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
 		}
 		return nil, fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
-	rootDir = clusterInfo.GetRootDataDir()
+	logRootDir = clusterInfo.GetLogRootDir()
 
 	d.app.Log.Debug(deployBlockchainsInfo.String())
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		FindErrorLogs(rootDir, backendLogDir)
+		FindErrorLogs(logRootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
@@ -1019,15 +1019,25 @@ func (d *LocalDeployer) startNetwork(
 	avalancheGoBinPath string,
 	runDir string,
 ) error {
-	outputDirPrefix := filepath.Join(runDir, "network")
-	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
+	autoSave := d.app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
+
+	tmpDir, err := anrutils.MkDirWithTimestamp(filepath.Join(d.app.GetRunDir(), "network"))
 	if err != nil {
 		return err
 	}
 
+	rootDir := ""
+	logDir := ""
+	if !autoSave {
+		rootDir = tmpDir
+	} else {
+		logDir = tmpDir
+	}
+
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(outputDir),
+		client.WithRootDataDir(rootDir),
+		client.WithLogRootDir(logDir),
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(d.app.GetPluginsDir()),
 	}
@@ -1052,7 +1062,7 @@ func (d *LocalDeployer) startNetwork(
 	if err != nil {
 		return fmt.Errorf("failed to start network :%w", err)
 	}
-	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.LogRootDir)
 	ux.Logger.PrintToUser("Network ready to use.")
 	return nil
 }

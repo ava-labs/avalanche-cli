@@ -110,17 +110,27 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := filepath.Join(app.GetRunDir(), "network")
-	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
+	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
+
+	tmpDir, err := anrutils.MkDirWithTimestamp(filepath.Join(app.GetRunDir(), "network"))
 	if err != nil {
 		return err
+	}
+
+	rootDir := ""
+	logDir := ""
+	if !autoSave {
+		rootDir = tmpDir
+	} else {
+		logDir = tmpDir
 	}
 
 	pluginDir := app.GetPluginsDir()
 
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(outputDir),
+		client.WithRootDataDir(rootDir),
+		client.WithLogRootDir(logDir),
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(pluginDir),
 	}
@@ -145,7 +155,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
 	}
 
-	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.LogRootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
