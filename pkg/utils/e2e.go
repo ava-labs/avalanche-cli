@@ -40,7 +40,7 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: {{.NetworkPrefix}}.0/16
+        - subnet: {{.NetworkPrefix}}.0/24
 `
 
 // Config holds the information needed for the template
