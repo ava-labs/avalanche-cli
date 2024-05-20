@@ -58,12 +58,33 @@ func addRoleToPreviewTable(table *tablewriter.Table, name string, addresses []co
 	} else {
 		addressesStr := strings.Join(utils.Map(addresses, func(a common.Address) string { return a.Hex() }), "\n")
 		table.Append([]string{name, addressesStr})
-		/*
-			for _, address := range addresses {
-				table.Append([]string{name, address.Hex()})
-			}
-		*/
 	}
+}
+
+func getNewAddresses(
+	app *application.Avalanche,
+	adminAddresses []common.Address,
+	managerAddresses []common.Address,
+	enabledAddresses []common.Address,
+) ([]common.Address, error) {
+	newAddresses := []common.Address{}
+	addresses, err := app.Prompt.CaptureAddresses("Enter the address of the account (or multiple comma separated):")
+	if err != nil {
+		return nil, err
+	}
+	for _, address := range addresses {
+		switch {
+		case utils.Belongs(adminAddresses, address):
+			fmt.Println(address.Hex() + " is already allowed as admin role")
+		case utils.Belongs(managerAddresses, address):
+			fmt.Println(address.Hex() + " is already allowed as manager role")
+		case utils.Belongs(enabledAddresses, address):
+			fmt.Println(address.Hex() + " is already allowed as enabled role")
+		default:
+			newAddresses = append(newAddresses, address)
+		}
+	}
+	return newAddresses, nil
 }
 
 func ConfigureTransactionAllowList(app *application.Avalanche) (txallowlist.Config, bool, error) {
@@ -97,38 +118,56 @@ func ConfigureTransactionAllowList(app *application.Avalanche) (txallowlist.Conf
 			managerOption := "Manager"
 			enabledOption := "Enabled"
 			explainOption := "Explain the difference"
-			keepPrompting := true
-			for keepPrompting {
-				keepPrompting = false
+			for {
 				roleOption, err := app.Prompt.CaptureList(
 					addPrompt, []string{adminOption, managerOption, enabledOption, explainOption, cancelOption},
 				)
-				switch roleOption {
-				case adminOption:
-					addresses, err := app.Prompt.CaptureAddresses("Enter the address of the account (or multiple comma separated):")
-					if err != nil {
-						return config, false, err
-					}
-					for _, address := range addresses {
-						if utils.Belongs(adminAddresses, address) {
-							fmt.Println(address.Hex() + " is already allowed")
-						} else {
-							adminAddresses = append(adminAddresses, address)
-						}
-					}
-				case explainOption:
-					fmt.Println("The difference is...")
-					keepPrompting = true
-				case cancelOption:
-				}
 				if err != nil {
 					return config, false, err
 				}
+				switch roleOption {
+				case adminOption:
+					addresses, err := getNewAddresses(app, adminAddresses, managerAddresses, enabledAddresses)
+					if err != nil {
+						return config, false, err
+					}
+					adminAddresses = append(adminAddresses, addresses...)
+				case managerOption:
+					addresses, err := getNewAddresses(app, adminAddresses, managerAddresses, enabledAddresses)
+					if err != nil {
+						return config, false, err
+					}
+					managerAddresses = append(managerAddresses, addresses...)
+				case enabledOption:
+					addresses, err := getNewAddresses(app, adminAddresses, managerAddresses, enabledAddresses)
+					if err != nil {
+						return config, false, err
+					}
+					enabledAddresses = append(enabledAddresses, addresses...)
+				case explainOption:
+					fmt.Println("The difference to be given by devrel people")
+					fmt.Println()
+					continue
+				case cancelOption:
+				}
+				break
 			}
 		case previewOption:
 			preview(adminAddresses, managerAddresses, enabledAddresses)
 		case confirmOption:
 			preview(adminAddresses, managerAddresses, enabledAddresses)
+			confirmPrompt := "Confirm?"
+			yesOption := "Yes"
+			noOption := "No, keep editing"
+			confirmOption, err := app.Prompt.CaptureList(
+				confirmPrompt, []string{yesOption, noOption},
+			)
+			if err != nil {
+				return config, false, err
+			}
+			if confirmOption == yesOption {
+				return config, false, nil
+			}
 		case cancelOption:
 			return config, true, nil
 		}

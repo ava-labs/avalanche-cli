@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/fatih/color"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -452,13 +451,11 @@ func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 }
 
 func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error) {
-	green := color.New(color.FgHiGreen).SprintFunc()
-	checkmark := green("✔")
 	addressesStr := ""
 	validated := false
 	for !validated {
 		var err error
-		addressesStr, err = utils.ReadLongString(checkmark + " " + promptStr + " ")
+		addressesStr, err = utils.ReadLongString(promptui.IconGood + " " + promptStr + " ")
 		if err != nil {
 			return nil, err
 		}
