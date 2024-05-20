@@ -4,7 +4,9 @@ package contractcmd
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
+	"strings"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -49,22 +51,50 @@ var (
 	deployFlags DeployFlags
 )
 
-// ~/.foundry/bin/forge
-// make a first install just using this two commands and assuming bash
-// curl -L https://foundry.paradigm.xyz | bash
-// foundryup (~/.foundry/bin/foundryup)
-// don't forget this
 // inside avalanche-starter-kit repo
 // git submodule update --init --recursive
-// forge create --rpc-url http://127.0.0.1:9650/ext/bc/2tvKVYuMmKg2NwGWKtaHUgnS8Wc35RaAXyTNm9riDP622DEYgy/rpc --private-key 6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb src/5-native-token-bridge/ExampleWNATV.sol:WNATV
-// deployer to 0x3058749395527bF64e687A05d23d38cfeC9e7682
+
 func foundryIsInstalled() bool {
 	return utils.IsExecutable(utils.ExpandHome("~/.foundry/bin/forge"))
 }
 
 func installFoundry() error {
 	ux.Logger.PrintToUser("Installing Foundry")
-	ux.Logger.PrintToUser("")
+	downloadCmd := exec.Command("curl", "-L", "https://foundry.paradigm.xyz")
+	installCmd := exec.Command("sh")
+	var downloadOutbuf, downloadErrbuf strings.Builder
+	downloadCmdStdoutPipe, err := downloadCmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	downloadCmd.Stderr = &downloadErrbuf
+	installCmd.Stdin = io.TeeReader(downloadCmdStdoutPipe, &downloadOutbuf)
+	var installOutbuf, installErrbuf strings.Builder
+	installCmd.Stdout = &installOutbuf
+	installCmd.Stderr = &installErrbuf
+	if err := installCmd.Start(); err != nil {
+		return err
+	}
+	if err := downloadCmd.Run(); err != nil {
+		if downloadOutbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(downloadOutbuf.String(), "\n"))
+		}
+		if downloadErrbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(downloadErrbuf.String(), "\n"))
+		}
+		return err
+	}
+	if err := installCmd.Wait(); err != nil {
+		if installOutbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
+		}
+		if installErrbuf.String() != "" {
+			ux.Logger.PrintToUser(strings.TrimSuffix(installErrbuf.String(), "\n"))
+		}
+		ux.Logger.PrintToUser("installation failed: %s", err.Error())
+		return err
+	}
+	ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
 	out, err := exec.Command(utils.ExpandHome("~/.foundry/bin/foundryup")).Output()
 	ux.Logger.PrintToUser(string(out))
 	if err != nil {
