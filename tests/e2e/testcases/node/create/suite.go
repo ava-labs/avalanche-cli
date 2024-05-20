@@ -113,6 +113,11 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
 	})
 	ginkgo.It("logged operations", func() {
+		ls := commands.NodeSSH(constants.E2EClusterName, "ls -l /home/ubuntu/.avalanchego")
+		fmt.Println(ls)
+		gomega.Expect(ls).To(gomega.ContainSubstring("db"))
+		gomega.Expect(ls).To(gomega.ContainSubstring("logs"))
+		gomega.Expect(ls).To(gomega.ContainSubstring("configs"))
 		logs := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/logs/main.log")
 		gomega.Expect(logs).To(gomega.ContainSubstring("initializing node"))
 		gomega.Expect(logs).To(gomega.ContainSubstring("initializing API server"))
