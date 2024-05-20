@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -97,6 +98,9 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add teleporter command
 	rootCmd.AddCommand(teleportercmd.NewCmd(app))
+
+	// add contract command
+	rootCmd.AddCommand(contractcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 
