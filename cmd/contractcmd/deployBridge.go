@@ -3,7 +3,9 @@
 package contractcmd
 
 import (
+	"errors"
 	"fmt"
+	"os/exec"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
@@ -14,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/spf13/cobra"
@@ -47,6 +50,21 @@ var (
 	deployFlags DeployFlags
 )
 
+// ~/.foundry/bin/forge
+// make a first install just using this two commands and assuming bash
+// curl -L https://foundry.paradigm.xyz | bash
+// foundryup (~/.foundry/bin/foundryup)
+func checkForgeIsInstalled() error {
+	if err := exec.Command("~/.foundry/bin/forge").Run(); errors.Is(err, exec.ErrNotFound) {
+		ux.Logger.PrintToUser("Forge tool (from foundry toolset) is not available. It is a necessary dependency for CLI to compile smart contracts.")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Please follow install instructions at https://book.getfoundry.sh/getting-started/installation and try again")
+		ux.Logger.PrintToUser("")
+		return err
+	}
+	return nil
+}
+
 // avalanche contract deploy bridge
 func newDeployBridgeCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -75,6 +93,9 @@ func deployBridge(_ *cobra.Command, args []string) error {
 }
 
 func CallDeployBridge(_ []string, flags DeployFlags) error {
+	if err := checkForgeIsInstalled(); err != nil {
+		return err
+	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Teleporter Messenger?",
