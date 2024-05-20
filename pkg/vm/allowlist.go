@@ -88,6 +88,12 @@ func GenerateAllowList(
 	previewOption := "Preview Allow List"
 	confirmOption := "Confirm Allow List"
 	cancelOption := "Cancel"
+
+	adminOption := "Admin"
+	managerOption := "Manager"
+	enabledOption := "Enabled"
+	explainOption := "Explain the difference"
+
 	for {
 		option, err := app.Prompt.CaptureList(
 			prompt, []string{addOption, removeOption, previewOption, confirmOption, cancelOption},
@@ -98,10 +104,6 @@ func GenerateAllowList(
 		switch option {
 		case addOption:
 			addPrompt := "What role should the address have?"
-			adminOption := "Admin"
-			managerOption := "Manager"
-			enabledOption := "Enabled"
-			explainOption := "Explain the difference"
 			for {
 				options := []string{adminOption, managerOption, enabledOption, explainOption, cancelOption}
 				if !managerRoleEnabled {
@@ -137,6 +139,32 @@ func GenerateAllowList(
 				case cancelOption:
 				}
 				break
+			}
+		case removeOption:
+			removePrompt := "What role does the address that should be removed have?"
+			options := []string{adminOption, managerOption, enabledOption, cancelOption}
+			if !managerRoleEnabled {
+				options = []string{adminOption, enabledOption, cancelOption}
+			}
+			roleOption, err := app.Prompt.CaptureList(removePrompt, options)
+			if err != nil {
+				return nil, nil, nil, false, err
+			}
+			switch roleOption {
+			case adminOption:
+				prompt := "Select the address you want to remove"
+				options := utils.Map(adminAddresses, func(a common.Address) string { return a.Hex() })
+				options = append(options, cancelOption)
+				opt, err := app.Prompt.CaptureList(prompt, options)
+				if err != nil {
+					return nil, nil, nil, false, err
+				}
+				if opt != cancelOption {
+
+				}
+			case managerOption:
+			case enabledOption:
+			case cancelOption:
 			}
 		case previewOption:
 			preview(adminAddresses, managerAddresses, enabledAddresses)
