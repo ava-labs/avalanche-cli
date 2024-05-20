@@ -3,7 +3,6 @@
 package contractcmd
 
 import (
-	"errors"
 	"fmt"
 	"os/exec"
 
@@ -59,15 +58,23 @@ var (
 // git submodule update --init --recursive
 // forge create --rpc-url http://127.0.0.1:9650/ext/bc/2tvKVYuMmKg2NwGWKtaHUgnS8Wc35RaAXyTNm9riDP622DEYgy/rpc --private-key 6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb src/5-native-token-bridge/ExampleWNATV.sol:WNATV
 // deployer to 0x3058749395527bF64e687A05d23d38cfeC9e7682
-func checkForgeIsInstalled() error {
-	if err := exec.Command("~/.foundry/bin/forge").Run(); errors.Is(err, exec.ErrNotFound) {
-		ux.Logger.PrintToUser("Forge tool (from foundry toolset) is not available. It is a necessary dependency for CLI to compile smart contracts.")
+func foundryIsInstalled() bool {
+	return utils.IsExecutable(utils.ExpandHome("~/.foundry/bin/forge"))
+}
+
+func installFoundry() error {
+	ux.Logger.PrintToUser("Installing Foundry")
+	ux.Logger.PrintToUser("")
+	out, err := exec.Command(utils.ExpandHome("~/.foundry/bin/foundryup")).Output()
+	ux.Logger.PrintToUser(string(out))
+	if err != nil {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Foundry toolset is not available and couldn't automatically be installed. It is a necessary dependency for CLI to compile smart contracts.")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Please follow install instructions at https://book.getfoundry.sh/getting-started/installation and try again")
 		ux.Logger.PrintToUser("")
-		return err
 	}
-	return nil
+	return err
 }
 
 // avalanche contract deploy bridge
@@ -98,9 +105,11 @@ func deployBridge(_ *cobra.Command, args []string) error {
 }
 
 func CallDeployBridge(_ []string, flags DeployFlags) error {
-	if err := checkForgeIsInstalled(); err != nil {
-		return err
+	if !foundryIsInstalled() {
+		return installFoundry()
 	}
+	return installFoundry()
+	return nil
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Teleporter Messenger?",
