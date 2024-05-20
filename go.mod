@@ -16,7 +16,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.15
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.161.3
 	github.com/chelnak/ysmrr v0.4.0
-	github.com/docker/docker v26.1.2+incompatible
+	github.com/docker/docker v26.1.3+incompatible
 	github.com/ethereum/go-ethereum v1.13.2
 	github.com/fatih/color v1.17.0
 	github.com/go-git/go-git/v5 v5.12.0
