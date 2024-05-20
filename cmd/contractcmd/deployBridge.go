@@ -54,6 +54,11 @@ var (
 // make a first install just using this two commands and assuming bash
 // curl -L https://foundry.paradigm.xyz | bash
 // foundryup (~/.foundry/bin/foundryup)
+// don't forget this
+// inside avalanche-starter-kit repo
+// git submodule update --init --recursive
+// forge create --rpc-url http://127.0.0.1:9650/ext/bc/2tvKVYuMmKg2NwGWKtaHUgnS8Wc35RaAXyTNm9riDP622DEYgy/rpc --private-key 6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb src/5-native-token-bridge/ExampleWNATV.sol:WNATV
+// deployer to 0x3058749395527bF64e687A05d23d38cfeC9e7682
 func checkForgeIsInstalled() error {
 	if err := exec.Command("~/.foundry/bin/forge").Run(); errors.Is(err, exec.ErrNotFound) {
 		ux.Logger.PrintToUser("Forge tool (from foundry toolset) is not available. It is a necessary dependency for CLI to compile smart contracts.")
