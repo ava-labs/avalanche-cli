@@ -120,7 +120,7 @@ func SaveDockerComposeFile(fileName string, nodes int, ubuntuVersion string, ssh
 
 // StartDockerCompose is a function that starts Docker Compose.
 func StartDockerCompose(filePath string) error {
-	cmd := exec.Command("docker-compose", "-f", filePath, "up", "--detach", "--remove-orphans")
+	cmd := exec.Command("docker", "compose", "-f", filePath, "up", "--detach", "--remove-orphans")
 	fmt.Println("Starting Docker Compose... with command:", cmd.String())
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
