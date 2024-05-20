@@ -79,7 +79,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(nodeCloudConfig.CertPath).To(gomega.ContainSubstring(homeDir))
 		gomega.Expect(nodeCloudConfig.UseStaticIP).To(gomega.Equal(false))
 	})
-	ginkgßßo.It("can wait for 10 seconds for avago to startup", func() {
+	ginkgo.It("can wait for 10 seconds for avago to startup", func() {
 		time.Sleep(10 * time.Second)
 	})
 	ginkgo.It("installs and runs avalanchego", func() {
@@ -224,5 +224,8 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		commands.DeleteE2EInventory()
 		commands.DeleteE2ECluster()
 		commands.DeleteNode(hostName)
+		if err := os.Remove(exportFileName); err != nil {
+			fmt.Println("[IGNORED] failed to remove export file %s. Error: %s", exportFileName, err)
+		}
 	})
 })
