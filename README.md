@@ -189,7 +189,7 @@ continue saving/restoring to it, if not, `default snapshot will be used`.
 
 ### Snapshots dir
 
-- `~/.avalanche-cli/snapshot` will contain all saved snapshots, which can for example be used to pass work around.
+- `~/.avalanche-cli/snapshot` will contain all saved snapshots, which can for example be used to pass work around
 
 ## Detailed Usage
 
