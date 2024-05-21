@@ -124,7 +124,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 }
 
 // scpHosts securely copies files to and from nodes.
-func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, clusterName string, addNodeMarker bool) error {
+func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, clusterName string, separateNodeFolder bool) error {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
@@ -156,9 +156,9 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 		default:
 			// noCluster
 		}
-		if addNodeMarker {
+		if separateNodeFolder {
 			// add nodeID and clusterName to destination path if source is cluster, i.e. multiple nodes
-			suffixPath = fmt.Sprintf("%s.%s_%s", suffixPath, clusterName, host.NodeID)
+			suffixPath = fmt.Sprintf("%s/%s_%s/", suffixPath, clusterName, host.NodeID)
 		}
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
