@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -23,6 +24,11 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/subnet-evm/core"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
 )
@@ -415,6 +421,100 @@ func GetCodespaceURL(url string) (string, error) {
 
 func InsideCodespace() bool {
 	return os.Getenv(constants.CodespaceNameEnvVar) != ""
+}
+
+func GetChainID(endpoint string, chainName string) (ids.ID, error) {
+	client := info.NewClient(endpoint)
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	return client.GetBlockchainID(ctx, chainName)
+}
+
+func GetChainIDs(endpoint string, chainName string) (string, string, error) {
+	pClient := platformvm.NewClient(endpoint)
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	blockChains, err := pClient.GetBlockchains(ctx)
+	if err != nil {
+		return "", "", err
+	}
+	if chain := Find(blockChains, func(e platformvm.APIBlockchain) bool { return e.Name == chainName }); chain != nil {
+		return chain.SubnetID.String(), chain.ID.String(), nil
+	}
+	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
+}
+
+func GetBlockchainTx(endpoint string, blockchainID ids.ID) (*txs.CreateChainTx, error) {
+	pClient := platformvm.NewClient(endpoint)
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	txBytes, err := pClient.GetTx(ctx, blockchainID)
+	if err != nil {
+		return nil, err
+	}
+	var tx txs.Tx
+	if _, err = txs.Codec.Unmarshal(txBytes, &tx); err != nil {
+		return nil, fmt.Errorf("failed unmarshaling the createChainTx: %w", err)
+	}
+	createChainTx, ok := tx.Unsigned.(*txs.CreateChainTx)
+	if !ok {
+		return nil, fmt.Errorf("expected a CreateChainTx, got %T", tx.Unsigned)
+	}
+	return createChainTx, nil
+}
+
+func ByteSliceToSubnetEvmGenesis(bs []byte) (core.Genesis, error) {
+	var gen core.Genesis
+	err := json.Unmarshal(bs, &gen)
+	return gen, err
+}
+
+func ByteSliceIsSubnetEvmGenesis(bs []byte) bool {
+	_, err := ByteSliceToSubnetEvmGenesis(bs)
+	return err == nil
+}
+
+func PathIsSubnetEVMGenesis(genesisPath string) (bool, error) {
+	genesisBytes, err := os.ReadFile(genesisPath)
+	if err != nil {
+		return false, err
+	}
+	return ByteSliceIsSubnetEvmGenesis(genesisBytes), nil
+}
+
+func GetKeyNames(keyDir string, addEwoq bool) ([]string, error) {
+	matches, err := os.ReadDir(keyDir)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, m := range matches {
+		if strings.HasSuffix(m.Name(), constants.KeySuffix) {
+			names = append(names, strings.TrimSuffix(m.Name(), constants.KeySuffix))
+		}
+	}
+	userKeys := []string{}
+	cliKeys := []string{}
+	subnetKeys := []string{}
+	for _, keyName := range names {
+		switch {
+		case strings.HasPrefix(keyName, "cli-"):
+			cliKeys = append(cliKeys, keyName)
+		case strings.HasPrefix(keyName, "subnet_"):
+			subnetKeys = append(subnetKeys, keyName)
+		default:
+			userKeys = append(userKeys, keyName)
+		}
+	}
+	if addEwoq {
+		userKeys = append(userKeys, "ewoq")
+	}
+	names = append(append(userKeys, subnetKeys...), cliKeys...)
+	return names, nil
+}
+
+func GetDefaultSubnetAirdropKeyName(subnetName string) string {
+	return "subnet_" + subnetName + "_airdrop"
 }
 
 // AppendSlices appends multiple slices into a single slice.

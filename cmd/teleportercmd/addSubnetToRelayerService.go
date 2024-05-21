@@ -70,7 +70,7 @@ func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerSe
 	configBasePath := ""
 	storageBasePath := ""
 	if flags.CloudNodeID != "" {
-		storageBasePath = constants.CloudNodeCLIConfigBasePath
+		storageBasePath = constants.AWMRelayerDockerDir
 		configBasePath = app.GetNodeInstanceDirPath(flags.CloudNodeID)
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -143,7 +144,10 @@ func (app *Avalanche) GetAWMRelayerServiceConfigPath(baseDir string) string {
 }
 
 func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
-	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerStorageDir)
+	if baseDir != "" {
+		return filepath.Join(baseDir, constants.AWMRelayerStorageDir)
+	}
+	return filepath.Join(app.GetAWMRelayerServiceDir(""), constants.AWMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetExtraLocalNetworkDataPath() string {
@@ -274,6 +278,18 @@ func (app *Avalanche) GetAPMPluginDir() string {
 
 func (app *Avalanche) GetKeyPath(keyName string) string {
 	return filepath.Join(app.baseDir, constants.KeyDir, keyName+constants.KeySuffix)
+}
+
+func (app *Avalanche) GetKey(keyName string, network models.Network, createIfMissing bool) (*key.SoftKey, error) {
+	if keyName == "ewoq" {
+		return key.LoadEwoq(network.ID)
+	} else {
+		if createIfMissing {
+			return key.LoadSoftOrCreate(network.ID, app.GetKeyPath(keyName))
+		} else {
+			return key.LoadSoft(network.ID, app.GetKeyPath(keyName))
+		}
+	}
 }
 
 func (app *Avalanche) GetUpgradeBytesFilePath(subnetName string) string {
@@ -423,17 +439,11 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 
 func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	genesisPath := app.GetGenesisPath(subnetName)
-	jsonBytes, err := os.ReadFile(genesisPath)
+	bs, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return core.Genesis{}, err
 	}
-	return app.LoadEvmGenesisFromJSON(jsonBytes)
-}
-
-func (*Avalanche) LoadEvmGenesisFromJSON(jsonBytes []byte) (core.Genesis, error) {
-	var gen core.Genesis
-	err := json.Unmarshal(jsonBytes, &gen)
-	return gen, err
+	return utils.ByteSliceToSubnetEvmGenesis(bs)
 }
 
 func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
@@ -618,7 +628,7 @@ func (app *Avalanche) GetTokenSymbol(subnetName string) string {
 	return sidecar.TokenSymbol
 }
 
-func (app *Avalanche) GetSidecarNames() ([]string, error) {
+func (app *Avalanche) GetSubnetNames() ([]string, error) {
 	matches, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, err

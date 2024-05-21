@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/url"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -813,7 +811,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := captureKeyName(prompt, goal, keyDir)
+	keyName, err := CaptureKeyName(prompt, goal, keyDir, true)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Create a new one with `avalanche key create`")
@@ -823,28 +821,22 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	return false, keyName, nil
 }
 
-func captureKeyName(prompt Prompter, goal string, keyDir string) (string, error) {
-	files, err := os.ReadDir(keyDir)
+func CaptureKeyName(prompt Prompter, goal string, keyDir string, addEwoq bool) (string, error) {
+	keyNames, err := utils.GetKeyNames(keyDir, addEwoq)
 	if err != nil {
 		return "", err
 	}
-
-	if len(files) < 1 {
+	if len(keyNames) == 0 {
 		return "", errNoKeys
 	}
-
-	keys := []string{}
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keys = append(keys, strings.TrimSuffix(f.Name(), constants.KeySuffix))
-		}
+	size := len(keyNames)
+	if size > 10 {
+		size = 10
 	}
-
-	keyName, err := prompt.CaptureList(fmt.Sprintf("Which stored key should be used to %s?", goal), keys)
+	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keyNames, size)
 	if err != nil {
 		return "", err
 	}
-
 	return keyName, nil
 }
 

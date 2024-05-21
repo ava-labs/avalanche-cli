@@ -18,7 +18,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -152,7 +151,13 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 // ExpandHome expands the ~ symbol to the home directory.
 func (h *Host) ExpandHome(path string) string {
 	userHome := filepath.Join("/home", h.SSHUser)
-	return strings.Replace(path, "~/", userHome, 1)
+	if path == "" {
+		return userHome
+	}
+	if len(path) > 0 && path[0] == '~' {
+		path = filepath.Join(userHome, path[1:])
+	}
+	return path
 }
 
 // MkdirAll creates a folder on the remote server.
@@ -194,7 +199,6 @@ func (h *Host) UntimedMkdirAll(remoteDir string) error {
 
 // Command executes a shell command on a remote host.
 func (h *Host) Command(script string, env []string, timeout time.Duration) ([]byte, error) {
-	startTime := time.Now()
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
 			return nil, err
@@ -210,7 +214,6 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 		cmd.Env = env
 	}
 	output, err := cmd.CombinedOutput()
-	ux.Logger.Info(utils.ScriptLog(h.NodeID, "DEBUG host.Command: %s [%s]", script, time.Since(startTime)))
 	return output, err
 }
 

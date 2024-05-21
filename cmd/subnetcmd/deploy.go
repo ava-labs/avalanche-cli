@@ -36,7 +36,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
+var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
 
 var (
 	sameControlKey           bool
@@ -889,11 +889,6 @@ func HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
 		return false, err, nil
 	}
 	return true, nil, nil
-}
-
-func jsonIsSubnetEVMGenesis(jsonBytes []byte) bool {
-	_, err := app.LoadEvmGenesisFromJSON(jsonBytes)
-	return err == nil
 }
 
 func promptOwners(

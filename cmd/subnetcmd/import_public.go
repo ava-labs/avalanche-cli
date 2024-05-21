@@ -16,8 +16,6 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/coreth/core"
 	"github.com/spf13/cobra"
 )
@@ -114,37 +112,16 @@ func importPublic(*cobra.Command, []string) error {
 		}
 	}
 
-	client := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	options := []rpc.Option{}
-
 	ux.Logger.PrintToUser("Getting information from the %s network...", network.Name())
 
-	txBytes, err := client.GetTx(ctx, blockchainID, options...)
+	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, blockchainID)
 	if err != nil {
 		return err
 	}
 
-	var (
-		vmID, subnetID ids.ID
-		tx             txs.Tx
-		subnetName     string
-	)
-
-	_, err = txs.Codec.Unmarshal(txBytes, &tx)
-	if err != nil {
-		return fmt.Errorf("failed unmarshaling the createChainTx: %w", err)
-	}
-
-	createChainTx, ok := tx.Unsigned.(*txs.CreateChainTx)
-	if !ok {
-		return fmt.Errorf("expected a CreateChainTx, got %T", tx.Unsigned)
-	}
-
-	vmID = createChainTx.VMID
-	subnetID = createChainTx.SubnetID
-	subnetName = createChainTx.ChainName
+	vmID := createChainTx.VMID
+	subnetID := createChainTx.SubnetID
+	subnetName := createChainTx.ChainName
 	genBytes := createChainTx.GenesisData
 
 	ux.Logger.PrintToUser("Retrieved information. BlockchainID: %s, SubnetID: %s, Name: %s, VMID: %s",

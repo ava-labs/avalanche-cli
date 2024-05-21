@@ -3,7 +3,6 @@
 package teleporter
 
 import (
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -158,25 +157,30 @@ func (t *Deployer) Deploy(
 	subnetName string,
 	rpcURL string,
 	prefundedPrivateKey string,
+	deployMessenger bool,
+	deployRegistry bool,
 ) (bool, string, string, error) {
-	alreadyDeployed, messengerAddress, err := t.DeployMessenger(
-		teleporterInstallDir,
-		version,
-		subnetName,
-		rpcURL,
-		prefundedPrivateKey,
+	var (
+		messengerAddress string
+		registryAddress  string
+		alreadyDeployed  bool
+		err              error
 	)
-	if err != nil {
-		return false, "", "", err
+	if deployMessenger {
+		alreadyDeployed, messengerAddress, err = t.DeployMessenger(
+			teleporterInstallDir,
+			version,
+			subnetName,
+			rpcURL,
+			prefundedPrivateKey,
+		)
 	}
-	if alreadyDeployed {
-		return true, messengerAddress, "", nil
+	if err == nil && deployRegistry {
+		if !deployMessenger || !alreadyDeployed {
+			registryAddress, err = t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey)
+		}
 	}
-	if registryAddress, err := t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey); err != nil {
-		return false, "", "", err
-	} else {
-		return false, messengerAddress, registryAddress, nil
-	}
+	return alreadyDeployed, messengerAddress, registryAddress, err
 }
 
 func (t *Deployer) DeployMessenger(
@@ -331,7 +335,7 @@ func getPrivateKey(
 			return "", err
 		}
 	}
-	return hex.EncodeToString(k.Raw()), nil
+	return k.PrivKeyHex(), nil
 }
 
 func SetProposerVM(
@@ -368,6 +372,8 @@ func DeployAndFundRelayer(
 		subnetName,
 		endpoint,
 		privKeyStr,
+		true,
+		true,
 	)
 	if err != nil {
 		return false, "", "", err
@@ -394,26 +400,11 @@ func getTeleporterKeyInfo(
 	app *application.Avalanche,
 	keyName string,
 ) (string, string, *big.Int, error) {
-	keyPath := app.GetKeyPath(keyName)
-	var (
-		k   *key.SoftKey
-		err error
-	)
-	if utils.FileExists(keyPath) {
-		k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
-		if err != nil {
-			return "", "", nil, err
-		}
-	} else {
-		k, err = key.NewSoft(0)
-		if err != nil {
-			return "", "", nil, err
-		}
-		if err := k.Save(keyPath); err != nil {
-			return "", "", nil, err
-		}
+	k, err := key.LoadSoftOrCreate(models.NewLocalNetwork().ID, app.GetKeyPath(keyName))
+	if err != nil {
+		return "", "", nil, err
 	}
-	return k.C(), hex.EncodeToString(k.Raw()), TeleporterPrefundedAddressBalance, nil
+	return k.C(), k.PrivKeyHex(), TeleporterPrefundedAddressBalance, nil
 }
 
 type Info struct {

@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 )
 
@@ -23,7 +24,7 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID,
 	)
 	if isCChain(subnetName) {
 		subnetID = ids.Empty
-		chainID, err = subnet.GetChainID(network, "C")
+		chainID, err = utils.GetChainID(network.Endpoint, "C")
 		if err != nil {
 			return ids.Empty, ids.Empty, "", "", nil, err
 		}
