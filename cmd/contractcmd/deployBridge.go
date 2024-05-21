@@ -139,20 +139,22 @@ func deployBridge(_ *cobra.Command, args []string) error {
 	return CallDeployBridge(args, deployFlags)
 }
 
-func test(
+func deployWrappedNativeToken(
+	srcDir string,
 	rpcURL string,
 	prefundedPrivateKey string,
-) error {
-	srcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+	tokenName string,
+) (common.Address, error) {
+	srcDir = utils.ExpandHome(srcDir)
 	abiPath := filepath.Join(srcDir, "contracts/out/WrappedNativeToken.sol/WrappedNativeToken.abi.json")
 	binPath := filepath.Join(srcDir, "contracts/out/WrappedNativeToken.sol/WrappedNativeToken.bin")
 	abiBytes, err := os.ReadFile(abiPath)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	metadata := &bind.MetaData{
 		ABI: string(abiBytes),
@@ -160,29 +162,143 @@ func test(
 	}
 	abi, err := metadata.GetAbi()
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	bin := common.FromHex(metadata.Bin)
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	defer client.Close()
 	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
-	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, "Al fin", "ALFIN")
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, tokenName)
 	if err != nil {
-		return err
+		return common.Address{}, err
 	}
 	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
-		return err
+		return common.Address{}, err
 	} else if !success {
-		return fmt.Errorf("failed receipt status deploying contract")
+		return common.Address{}, fmt.Errorf("failed receipt status deploying contract")
 	}
-	fmt.Println(address)
-	return nil
+	return address, nil
+}
+
+func deployNativeTokenSource(
+	srcDir string,
+	rpcURL string,
+	prefundedPrivateKey string,
+	teleporterRegistryAddress common.Address,
+	teleporterManagerAddress common.Address,
+	wrappedNativeTokenAddress common.Address,
+) (common.Address, error) {
+	srcDir = utils.ExpandHome(srcDir)
+	abiPath := filepath.Join(srcDir, "contracts/out/NativeTokenSource.sol/NativeTokenSource.abi.json")
+	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenSource.sol/NativeTokenSource.bin")
+	abiBytes, err := os.ReadFile(abiPath)
+	if err != nil {
+		return common.Address{}, err
+	}
+	binBytes, err := os.ReadFile(binPath)
+	if err != nil {
+		return common.Address{}, err
+	}
+	metadata := &bind.MetaData{
+		ABI: string(abiBytes),
+		Bin: string(binBytes),
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return common.Address{}, err
+	}
+	bin := common.FromHex(metadata.Bin)
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return common.Address{}, err
+	}
+	defer client.Close()
+	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, teleporterRegistryAddress, teleporterManagerAddress, wrappedNativeTokenAddress)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+		return common.Address{}, err
+	} else if !success {
+		return common.Address{}, fmt.Errorf("failed receipt status deploying contract")
+	}
+	return address, nil
+}
+
+type TeleporterTokenDestinationSettings struct {
+	TeleporterRegistryAddress common.Address
+	TeleporterManager         common.Address
+	SourceBlockchainID        [32]byte
+	TokenSourceAddress        common.Address
+}
+
+func deployERC20Destination(
+	srcDir string,
+	rpcURL string,
+	prefundedPrivateKey string,
+	teleporterTokenDestinationSettings TeleporterTokenDestinationSettings,
+	tokenName string,
+	tokenSymbol string,
+	tokenDecimals uint8,
+) (common.Address, error) {
+	srcDir = utils.ExpandHome(srcDir)
+	abiPath := filepath.Join(srcDir, "contracts/out/ERC20Destination.sol/ERC20Destination.abi.json")
+	binPath := filepath.Join(srcDir, "contracts/out/ERC20Destination.sol/ERC20Destination.bin")
+	abiBytes, err := os.ReadFile(abiPath)
+	if err != nil {
+		return common.Address{}, err
+	}
+	binBytes, err := os.ReadFile(binPath)
+	if err != nil {
+		return common.Address{}, err
+	}
+	metadata := &bind.MetaData{
+		ABI: string(abiBytes),
+		Bin: string(binBytes),
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return common.Address{}, err
+	}
+	bin := common.FromHex(metadata.Bin)
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return common.Address{}, err
+	}
+	defer client.Close()
+	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	address, tx, _, err := bind.DeployContract(
+		txOpts,
+		*abi,
+		bin,
+		client,
+		teleporterTokenDestinationSettings,
+		tokenName,
+		tokenSymbol,
+		tokenDecimals,
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+		return common.Address{}, err
+	} else if !success {
+		return common.Address{}, fmt.Errorf("failed receipt status deploying contract")
+	}
+	return address, nil
 }
 
 func CallDeployBridge(_ []string, flags DeployFlags) error {
@@ -204,11 +320,57 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	return test(
+	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+	wrappedNativeTokenAddress, err := deployWrappedNativeToken(
+		bridgeSrcDir,
 		network.BlockchainEndpoint("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL"),
 		"6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb",
+		"TOK",
 	)
-	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+	if err != nil {
+		return err
+	}
+	teleporterRegistryAddress := common.HexToAddress("0xbD9e8eC38E43d34CAB4194881B9BF39d639D7Bd3")
+	teleporterManagerAddress := common.HexToAddress("0x13D42261c6970023fBD486A24AB57c7c8e5DfcB9")
+	nativeTokenSourceAddress, err := deployNativeTokenSource(
+		bridgeSrcDir,
+		network.BlockchainEndpoint("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL"),
+		"6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb",
+		teleporterRegistryAddress,
+		teleporterManagerAddress,
+		wrappedNativeTokenAddress,
+	)
+	if err != nil {
+		return err
+	}
+	teleporterRegistryAddress = common.HexToAddress("0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25")
+	teleporterManagerAddress = common.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC")
+	sourceBlockchainID, err := ids.FromString("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL")
+	if err != nil {
+		return err
+	}
+	teleporterTokenDestinationSettings := TeleporterTokenDestinationSettings{
+		TeleporterRegistryAddress: teleporterRegistryAddress,
+		TeleporterManager:         teleporterManagerAddress,
+		SourceBlockchainID:        sourceBlockchainID,
+		TokenSourceAddress:        wrappedNativeTokenAddress,
+	}
+	erc20DestinationAddress, err := deployERC20Destination(
+		bridgeSrcDir,
+		network.BlockchainEndpoint("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL"),
+		"6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb",
+		teleporterTokenDestinationSettings,
+		"Wrapped Token",
+		"WTOK",
+		18,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(wrappedNativeTokenAddress)
+	fmt.Println(nativeTokenSourceAddress)
+	fmt.Println(erc20DestinationAddress)
+	return nil
 	// install bridge src dependencies
 	cmd := exec.Command(
 		"git",
@@ -237,33 +399,6 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		ux.Logger.PrintToUser(string(out))
 		return err
 	}
-	return nil
-	cmd = exec.Command(
-		forgePath,
-		"install",
-		"openzeppelin/openzeppelin-contracts@v4.8.1",
-		"--no-commit",
-	)
-	cmd.Dir = utils.ExpandHome("~/Workspace/projects/avalanche-cli/")
-	out, err = cmd.CombinedOutput()
-	fmt.Println(string(out))
-	fmt.Println(err)
-	createCmd := exec.Command(
-		forgePath,
-		"create",
-		"--rpc-url",
-		network.BlockchainEndpoint("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL"),
-		"--private-key",
-		"6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb",
-		"src/5-native-token-bridge/WrappedNativeToken.sol:WrappedNativeToken",
-		"--constructor-args",
-		"Wrapped TOK Name",
-		"WTOK",
-	)
-	createCmd.Dir = utils.ExpandHome("~/Workspace/projects/avalanche-cli/")
-	out, err = createCmd.CombinedOutput()
-	fmt.Println(string(out))
-	fmt.Println(err)
 	return nil
 	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.SubnetName != "", flags.BlockchainID != "", flags.CChain}) {
 		return fmt.Errorf("--subnet, --blockchain-id and --cchain are mutually exclusive flags")
@@ -427,7 +562,7 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		rpcURL = flags.RPCURL
 	}
 	td := teleporter.Deployer{}
-	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
+	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddressStr, err := td.Deploy(
 		app.GetTeleporterBinDir(),
 		teleporterVersion,
 		teleporterSubnetDesc,
@@ -451,8 +586,8 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		if teleporterMessengerAddress != "" {
 			networkInfo.TeleporterMessengerAddress = teleporterMessengerAddress
 		}
-		if teleporterRegistryAddress != "" {
-			networkInfo.TeleporterRegistryAddress = teleporterRegistryAddress
+		if teleporterRegistryAddressStr != "" {
+			networkInfo.TeleporterRegistryAddress = teleporterRegistryAddressStr
 		}
 		sc.Networks[network.Name()] = networkInfo
 		if err := app.UpdateSidecar(&sc); err != nil {
@@ -465,7 +600,7 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
+		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddressStr, err := td.Deploy(
 			app.GetTeleporterBinDir(),
 			teleporterVersion,
 			cChainName,
@@ -479,7 +614,7 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		}
 		if !alreadyDeployed {
 			if network.Kind == models.Local {
-				if err := subnet.WriteExtraLocalNetworkData(app, teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
+				if err := subnet.WriteExtraLocalNetworkData(app, teleporterMessengerAddress, teleporterRegistryAddressStr); err != nil {
 					return err
 				}
 			}
@@ -491,8 +626,8 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 				if teleporterMessengerAddress != "" {
 					clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress = teleporterMessengerAddress
 				}
-				if teleporterRegistryAddress != "" {
-					clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress = teleporterRegistryAddress
+				if teleporterRegistryAddressStr != "" {
+					clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress = teleporterRegistryAddressStr
 				}
 				if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
 					return err
