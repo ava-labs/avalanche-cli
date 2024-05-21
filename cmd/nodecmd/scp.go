@@ -4,6 +4,8 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -158,12 +160,20 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 		}
 		if separateNodeFolder {
 			// add nodeID and clusterName to destination path if source is cluster, i.e. multiple nodes
-			suffixPath = fmt.Sprintf("%s/%s_%s/", suffixPath, clusterName, host.NodeID)
+			suffixPath = fmt.Sprintf("%s/%s_%s/", suffixPath, clusterName, host.GetCloudID())
 		}
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			spinner := spinSession.SpinToUser(fmt.Sprintf("[%s] transferring file(s)", host.GetCloudID()))
+			// make sure that destination folder exists for generated path
+			if separateNodeFolder {
+				if err := os.MkdirAll(filepath.Dir(suffixPath), 0755); err != nil {
+					ux.SpinFailWithError(spinner, "", err)
+					nodeResults.AddResult(host.NodeID, "", err)
+					return
+				}
+			}
 			scpCmd := ""
 			scpCmd, err = utils.GetSCPCommandString(
 				host.SSHPrivateKeyPath,
@@ -181,7 +191,7 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 			ux.Logger.Info("About to execute scp command: %s", scpCmd)
 			cmd := utils.Command(scpCmd)
 
-			if cmdOut, err := cmd.Output(); err != nil {
+			if cmdOut, err := cmd.CombinedOutput(); err != nil {
 				ux.SpinFailWithError(spinner, string(cmdOut), err)
 				nodeResults.AddResult(host.NodeID, string(cmdOut), err)
 			} else {

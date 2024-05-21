@@ -26,7 +26,7 @@ func GetSSHConnectionString(publicIP, certFilePath string) string {
 
 // GetSCPCommandString returns the SCP command string for the given source and destination paths.
 func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destIP, destPath string, recursive, withCompression bool) (string, error) {
-	scpParams := constants.AnsibleSSHShellParams + " -B"
+	scpParams := constants.AnsibleSSHShellParams + " -B -o LogLevel=Error"
 	if sourceIP == "" && destIP == "" {
 		return "", fmt.Errorf("source or destination should be remote")
 	}
