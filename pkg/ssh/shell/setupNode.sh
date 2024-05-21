@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-export PATH=$PATH:~/go/bin
-mkdir -p ~/.avalanche-cli
 {{ if .IsE2E }}
 echo "E2E detected"
 echo "CLI Version: {{ .CLIVersion }}"
+sudo mkdir -p /home/ubuntu/ && sudo chown -R ubuntu:ubuntu /home/ubuntu
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get -y update && sudo apt-get -y install busybox-static software-properties-common 
 sudo add-apt-repository -y ppa:longsleep/golang-backports
@@ -15,7 +14,8 @@ sudo usermod -aG docker ubuntu
 sudo chgrp ubuntu /var/run/docker.sock
 sudo chmod +rw /var/run/docker.sock
 {{ end }}
-cd /tmp
+export PATH=$PATH:~/go/bin
+mkdir -p ~/.avalanche-cli
 rm -vf install.sh &&  busybox wget -q -nd https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh
 #name:TASK [modify permissions]
 chmod 755 install.sh
