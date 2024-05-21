@@ -396,7 +396,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		if err := os.MkdirAll(constants.CloudNodeConfigBasePath, constants.DefaultPerms755); err != nil {
 			return err
 		}
-		//use ubuntu user
+		// use ubuntu user
 		if err := os.Chown(constants.CloudNodeConfigBasePath, 1000, 1000); err != nil {
 			return err
 		}
