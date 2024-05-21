@@ -15,6 +15,7 @@ sudo usermod -aG docker ubuntu
 sudo chgrp ubuntu /var/run/docker.sock
 sudo chmod +rw /var/run/docker.sock
 {{ end }}
+cd /tmp
 rm -vf install.sh &&  busybox wget -q -nd https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh
 #name:TASK [modify permissions]
 chmod 755 install.sh
