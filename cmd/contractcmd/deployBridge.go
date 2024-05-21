@@ -343,6 +343,7 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("HASTA ACA LLEGO")
 	teleporterRegistryAddress = common.HexToAddress("0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25")
 	teleporterManagerAddress = common.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC")
 	sourceBlockchainID, err := ids.FromString("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL")
@@ -353,12 +354,12 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		TeleporterRegistryAddress: teleporterRegistryAddress,
 		TeleporterManager:         teleporterManagerAddress,
 		SourceBlockchainID:        sourceBlockchainID,
-		TokenSourceAddress:        wrappedNativeTokenAddress,
+		TokenSourceAddress:        nativeTokenSourceAddress,
 	}
 	erc20DestinationAddress, err := deployERC20Destination(
 		bridgeSrcDir,
-		network.BlockchainEndpoint("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL"),
-		"6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb",
+		network.BlockchainEndpoint("C"),
+		"56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027",
 		teleporterTokenDestinationSettings,
 		"Wrapped Token",
 		"WTOK",
