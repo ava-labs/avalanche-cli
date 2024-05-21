@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -18,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/spf13/cobra"
@@ -43,19 +45,21 @@ const (
 )
 
 var (
-	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
+	deployBridgeSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
 		networkoptions.Fuji,
 	}
-	deployFlags DeployFlags
+	deployFlags   DeployFlags
+	foundryupPath = utils.ExpandHome("~/.foundry/bin/foundryup")
+	forgePath     = utils.ExpandHome("~/.foundry/bin/forge")
 )
 
 // inside avalanche-starter-kit repo
 // git submodule update --init --recursive
 
 func foundryIsInstalled() bool {
-	return utils.IsExecutable(utils.ExpandHome("~/.foundry/bin/forge"))
+	return utils.IsExecutable(forgePath)
 }
 
 func installFoundry() error {
@@ -95,7 +99,7 @@ func installFoundry() error {
 		return err
 	}
 	ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
-	out, err := exec.Command(utils.ExpandHome("~/.foundry/bin/foundryup")).Output()
+	out, err := exec.Command(foundryupPath).CombinedOutput()
 	ux.Logger.PrintToUser(string(out))
 	if err != nil {
 		ux.Logger.PrintToUser("")
@@ -116,7 +120,7 @@ func newDeployBridgeCmd() *cobra.Command {
 		RunE:  deployBridge,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deployBridgeSupportedNetworkOptions)
 	cmd.Flags().StringVar(&deployFlags.SubnetName, "subnet", "", "deploy teleporter into the given CLI subnet")
 	cmd.Flags().StringVar(&deployFlags.BlockchainID, "blockchain-id", "", "deploy teleporter into the given blockchain ID/Alias")
 	cmd.Flags().BoolVar(&deployFlags.CChain, "c-chain", false, "deploy teleporter into C-Chain")
@@ -135,23 +139,78 @@ func deployBridge(_ *cobra.Command, args []string) error {
 }
 
 func CallDeployBridge(_ []string, flags DeployFlags) error {
+	if err := vm.CheckGitIsInstalled(); err != nil {
+		return err
+	}
 	if !foundryIsInstalled() {
 		return installFoundry()
 	}
-	return installFoundry()
-	return nil
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
-		"On what Network do you want to deploy the Teleporter Messenger?",
+		"On what Network do you want to deploy the Teleporter bridge?",
 		flags.Network,
 		true,
 		false,
-		deploySupportedNetworkOptions,
+		deployBridgeSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
 		return err
 	}
+	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+	// install bridge src dependencies
+	cmd := exec.Command(
+		"git",
+		"submodule",
+		"update",
+		"--init",
+		"--recursive",
+	)
+	cmd.Dir = bridgeSrcDir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		ux.Logger.PrintToUser(string(out))
+		return err
+	}
+	// build teleporter contracts
+	cmd = exec.Command(
+		forgePath,
+		"build",
+	)
+	cmd.Dir = filepath.Join(bridgeSrcDir, "contracts")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		ux.Logger.PrintToUser(string(out))
+		return err
+	}
+	return nil
+	cmd = exec.Command(
+		forgePath,
+		"install",
+		"openzeppelin/openzeppelin-contracts@v4.8.1",
+		"--no-commit",
+	)
+	cmd.Dir = utils.ExpandHome("~/Workspace/projects/avalanche-cli/")
+	out, err = cmd.CombinedOutput()
+	fmt.Println(string(out))
+	fmt.Println(err)
+	createCmd := exec.Command(
+		forgePath,
+		"create",
+		"--rpc-url",
+		network.BlockchainEndpoint("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL"),
+		"--private-key",
+		"6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb",
+		"src/5-native-token-bridge/WrappedNativeToken.sol:WrappedNativeToken",
+		"--constructor-args",
+		"Wrapped TOK Name",
+		"WTOK",
+	)
+	createCmd.Dir = utils.ExpandHome("~/Workspace/projects/avalanche-cli/")
+	out, err = createCmd.CombinedOutput()
+	fmt.Println(string(out))
+	fmt.Println(err)
+	return nil
 	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.SubnetName != "", flags.BlockchainID != "", flags.CChain}) {
 		return fmt.Errorf("--subnet, --blockchain-id and --cchain are mutually exclusive flags")
 	}
