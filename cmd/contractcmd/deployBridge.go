@@ -5,6 +5,7 @@ package contractcmd
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -21,6 +23,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
 )
@@ -54,9 +58,6 @@ var (
 	foundryupPath = utils.ExpandHome("~/.foundry/bin/foundryup")
 	forgePath     = utils.ExpandHome("~/.foundry/bin/forge")
 )
-
-// inside avalanche-starter-kit repo
-// git submodule update --init --recursive
 
 func foundryIsInstalled() bool {
 	return utils.IsExecutable(forgePath)
@@ -138,6 +139,52 @@ func deployBridge(_ *cobra.Command, args []string) error {
 	return CallDeployBridge(args, deployFlags)
 }
 
+func test(
+	rpcURL string,
+	prefundedPrivateKey string,
+) error {
+	srcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+	abiPath := filepath.Join(srcDir, "contracts/out/WrappedNativeToken.sol/WrappedNativeToken.abi.json")
+	binPath := filepath.Join(srcDir, "contracts/out/WrappedNativeToken.sol/WrappedNativeToken.bin")
+	abiBytes, err := os.ReadFile(abiPath)
+	if err != nil {
+		return err
+	}
+	binBytes, err := os.ReadFile(binPath)
+	if err != nil {
+		return err
+	}
+	metadata := &bind.MetaData{
+		ABI: string(abiBytes),
+		Bin: string(binBytes),
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return err
+	}
+	bin := common.FromHex(metadata.Bin)
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
+	if err != nil {
+		return err
+	}
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, "Al fin", "ALFIN")
+	if err != nil {
+		return err
+	}
+	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+		return err
+	} else if !success {
+		return fmt.Errorf("failed receipt status deploying contract")
+	}
+	fmt.Println(address)
+	return nil
+}
+
 func CallDeployBridge(_ []string, flags DeployFlags) error {
 	if err := vm.CheckGitIsInstalled(); err != nil {
 		return err
@@ -157,6 +204,10 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
+	return test(
+		network.BlockchainEndpoint("2FZA3PDpQvYy6uevt34xr7Sv4RczKe3827PWPqAymfqXhJkkGL"),
+		"6e6cb03f2f64e298b28e56bc53a051257bff62be978b6df010fce46a8fdde2cb",
+	)
 	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
 	// install bridge src dependencies
 	cmd := exec.Command(
@@ -172,10 +223,13 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		ux.Logger.PrintToUser(string(out))
 		return err
 	}
-	// build teleporter contracts
+	// build teleporter contracts bytecode + abi
 	cmd = exec.Command(
 		forgePath,
 		"build",
+		"--extra-output-files",
+		"abi",
+		"bin",
 	)
 	cmd.Dir = filepath.Join(bridgeSrcDir, "contracts")
 	out, err = cmd.CombinedOutput()
