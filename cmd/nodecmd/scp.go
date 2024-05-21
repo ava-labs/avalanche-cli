@@ -168,7 +168,7 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 			spinner := spinSession.SpinToUser(fmt.Sprintf("[%s] transferring file(s)", host.GetCloudID()))
 			// make sure that destination folder exists for generated path
 			if separateNodeFolder {
-				if err := os.MkdirAll(filepath.Dir(suffixPath), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(suffixPath), 0o755); err != nil {
 					ux.SpinFailWithError(spinner, "", err)
 					nodeResults.AddResult(host.NodeID, "", err)
 					return
