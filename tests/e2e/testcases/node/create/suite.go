@@ -224,8 +224,6 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		commands.DeleteE2EInventory()
 		commands.DeleteE2ECluster()
 		commands.DeleteNode(hostName)
-		if err := os.Remove(exportFileName); err != nil {
-			fmt.Sprintf("[IGNORED] failed to remove export file %s. Error: %s", exportFileName, err)
-		}
+		_ = os.Remove(exportFileName)
 	})
 })
