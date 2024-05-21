@@ -392,15 +392,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// make sure that /home/ubuntu/.avalanchego is created under ubuntu user
-		if err := os.MkdirAll(constants.CloudNodeConfigBasePath, constants.DefaultPerms755); err != nil {
-			return err
-		}
-		// use ubuntu user
-		if err := os.Chown(constants.CloudNodeConfigBasePath, 1000, 1000); err != nil {
-			return err
-		}
-		ux.Logger.Info(".avalanchego folder created in /home/ubuntu")
 		if err := utils.StartDockerCompose(dockerComposeFile); err != nil {
 			return err
 		}
