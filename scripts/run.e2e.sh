@@ -21,8 +21,6 @@ if [ "$current_user" = "runner" ]; then
     sudo useradd -m -s /bin/bash ubuntu && sudo mkdir -p /home/ubuntu && sudo chown -R ubuntu:ubuntu /home/ubuntu || echo "failed to create ubuntu user"
     sudo mkdir -p /home/ubuntu/.avalanchego && sudo chown -R ubuntu:ubuntu /home/ubuntu || echo "failed to create /home/ubuntu/.avalanchego"
 fi
-end
-
 
 if [ ! -d "tests/e2e/hardhat/node_modules" ]
 then
