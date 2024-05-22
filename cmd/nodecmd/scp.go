@@ -69,8 +69,8 @@ func scpNode(_ *cobra.Command, args []string) error {
 	}
 
 	sourcePath, destPath := args[0], args[1]
-	sourceClusterNameOrNodeID, sourcePath := utils.SplitSCPPath(sourcePath)
-	destClusterNameOrNodeID, destPath := utils.SplitSCPPath(destPath)
+	sourceClusterNameOrNodeID, sourcePath := utils.SplitScpPath(sourcePath)
+	destClusterNameOrNodeID, destPath := utils.SplitScpPath(destPath)
 
 	// check if source and destination are both clusters
 	sourceClusterExists, err := checkClusterExists(sourceClusterNameOrNodeID)
@@ -140,8 +140,8 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 		if err != nil {
 			return err
 		}
-		prefixIP, prefixPath := utils.SplitSCPPath(scpPrefix)
-		suffixIP, suffixPath := utils.SplitSCPPath(scpSuffix)
+		prefixIP, prefixPath := utils.SplitScpPath(scpPrefix)
+		suffixIP, suffixPath := utils.SplitScpPath(scpSuffix)
 		switch op {
 		case srcCluster:
 			prefixIP = host.IP
@@ -216,9 +216,7 @@ func prepareSCPTarget(op ClusterOp, host *models.Host, clusterName string, dest 
 		return dest, nil
 	}
 	// destination is remote
-	splitDest := strings.Split(dest, ":")
-	node := splitDest[0]
-	path := splitDest[1]
+	node, path := utils.SplitScpPath(dest)
 	if utils.IsValidIP(node) {
 		// destination is IP, ready to go
 		return dest, nil
@@ -276,28 +274,3 @@ func getHostClusterPair(nodeOrCloudIDOrIP string) (*models.Host, string) {
 	}
 	return nil, ""
 }
-
-/*
-func getFileSizeInKB(path string) (int64, error) {
-	if !strings.Contains(path, ":") {
-		// path is local
-		return utils.SizeInKB(path)
-	} else {
-		//path is remote
-		splitDest := strings.Split(path, ":")
-		node := splitDest[0]
-		path := splitDest[1]
-		if utils.IsValidIP(node) {
-			selectedHost, clusterName := getHostClusterPair(node)
-			if selectedHost != nil && clusterName != "" {
-				duOutput, err := selectedHost.Command(fmt.Sprintf("du -sk %s", path), nil, constants.SSHLongRunningScriptTimeout)
-				if err != nil {
-					return 0, err
-				}
-				return strconv.ParseInt(strings.Split(string(duOutput), " ")[0], 10, 64)
-			}
-		}
-	}
-	return 0, fmt.Errorf("failed to get file size for %s", path)
-}
-*/

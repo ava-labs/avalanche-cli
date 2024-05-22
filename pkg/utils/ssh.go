@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/crypto/ssh/agent"
 )
 
@@ -24,14 +24,22 @@ func GetSSHConnectionString(publicIP, certFilePath string) string {
 	return fmt.Sprintf("ssh %s %s@%s %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
 }
 
+// GetSCPTargetPath returns the target path for the given source path and target directory.
+func GetSCPTargetPath(IP, path string) string {
+	if IP == "" {
+		return path
+	}
+	return fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, IP, path)
+}
+
 // GetSCPCommandString returns the SCP command string for the given source and destination paths.
 func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destIP, destPath string, recursive, withCompression bool) (string, error) {
 	scpParams := constants.AnsibleSSHShellParams + " -B -o LogLevel=Error"
 	if sourceIP == "" && destIP == "" {
 		return "", fmt.Errorf("source or destination should be remote")
 	}
-	if sourceIP == "" && destPath == "" {
-		return "", fmt.Errorf("source and destination path is required")
+	if sourcePath == "" || destPath == "" {
+		return "", fmt.Errorf("source and destination path are required")
 	}
 	// end of checks
 	if recursive {
@@ -47,26 +55,17 @@ func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destI
 		scpParams += " -3"
 	}
 	if sourceIP != "" {
-		sourcePath = fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, sourceIP, sourcePath)
+		sourcePath = utils.GetSCPTargetPath(sourceIP, sourcePath)
 	}
 	if destIP != "" {
-		destPath = fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, destIP, destPath)
+		destPath = utils.GetSCPTargetPath(destIP, destPath)
 	}
 
 	return fmt.Sprintf("scp %s %s %s", scpParams, sourcePath, destPath), nil
 }
 
-// Command returns an exec.Cmd for the given command line.
-func Command(cmdLine string, params ...string) *exec.Cmd {
-	cmd := strings.Split(cmdLine, " ")
-	cmd = append(cmd, params...)
-	c := exec.Command(cmd[0], cmd[1:]...)
-	c.Env = os.Environ()
-	return c
-}
-
-// SplitSCPPath splits the given path into host and path.
-func SplitSCPPath(path string) (string, string) {
+// SplitScpPath splits the given path into host and path.
+func SplitScpPath(path string) (string, string) {
 	if !strings.Contains(path, ":") {
 		return "", path
 	}
