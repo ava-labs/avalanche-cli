@@ -2,7 +2,6 @@
 {{ if .IsE2E }}
 echo "E2E detected"
 echo "CLI Version: {{ .CLIVersion }}"
-sudo mkdir -p /home/ubuntu/ && sudo chown -R ubuntu:ubuntu /home/ubuntu
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get -y update && sudo apt-get -y install busybox-static software-properties-common 
 sudo add-apt-repository -y ppa:longsleep/golang-backports
