@@ -91,6 +91,21 @@ func WriteStringToFile(filePath string, data string) error {
 	return os.WriteFile(filePath, []byte(data), constants.WriteReadReadPerms)
 }
 
+// Size returns the size of a file or directory.
+func SizeInKB(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
+}
+
 // RemoteComposeFile returns the path to the remote docker-compose file
 func GetRemoteComposeFile() string {
 	return filepath.Join(constants.CloudNodeCLIConfigBasePath, "services", "docker-compose.yml")

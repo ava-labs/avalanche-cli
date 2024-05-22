@@ -540,3 +540,12 @@ func ExtractPlaceholderValue(pattern, text string) (string, error) {
 		return "", fmt.Errorf("no match found")
 	}
 }
+
+// Command returns an exec.Cmd for the given command line.
+func Command(cmdLine string, params ...string) *exec.Cmd {
+	cmd := strings.Split(cmdLine, " ")
+	cmd = append(cmd, params...)
+	c := exec.Command(cmd[0], cmd[1:]...)
+	c.Env = os.Environ()
+	return c
+}
