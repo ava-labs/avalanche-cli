@@ -110,17 +110,27 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 	ux.Logger.PrintToUser(startMsg)
 
-	outputDirPrefix := filepath.Join(app.GetRunDir(), "network")
-	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
+	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
+
+	tmpDir, err := anrutils.MkDirWithTimestamp(filepath.Join(app.GetRunDir(), "network"))
 	if err != nil {
 		return err
+	}
+
+	rootDir := ""
+	logDir := ""
+	if !autoSave {
+		rootDir = tmpDir
+	} else {
+		logDir = tmpDir
 	}
 
 	pluginDir := app.GetPluginsDir()
 
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(outputDir),
+		client.WithRootDataDir(rootDir),
+		client.WithLogRootDir(logDir),
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(pluginDir),
 	}
@@ -138,13 +148,14 @@ func StartNetwork(*cobra.Command, []string) error {
 	resp, err := cli.LoadSnapshot(
 		ctx,
 		snapshotName,
+		app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey),
 		loadSnapshotOpts...,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
 	}
 
-	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.LogRootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
@@ -152,12 +163,9 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)
-	if utils.FileExists(relayerStoredConfigPath) {
-		relayerConfigPath := app.GetAWMRelayerConfigPath()
-		if err := binutils.CopyFile(relayerStoredConfigPath, relayerConfigPath); err != nil {
-			return err
-		}
+	if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+		return err
+	} else if b {
 		ux.Logger.PrintToUser("")
 		if err := teleporter.DeployRelayer(
 			app.GetAWMRelayerBinDir(),
@@ -166,14 +174,6 @@ func StartNetwork(*cobra.Command, []string) error {
 			app.GetAWMRelayerRunPath(),
 			app.GetAWMRelayerStorageDir(),
 		); err != nil {
-			return err
-		}
-	}
-
-	storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
-	if utils.FileExists(storedExtraLocalNetowkrDataPath) {
-		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-		if err := binutils.CopyFile(storedExtraLocalNetowkrDataPath, extraLocalNetworkDataPath); err != nil {
 			return err
 		}
 	}

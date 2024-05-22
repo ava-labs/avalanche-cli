@@ -5,8 +5,6 @@ package networkcmd
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -14,11 +12,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/local"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
+
+var dontSave bool
 
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -36,34 +35,17 @@ default snapshot with network start.`,
 		Args: cobrautils.ExactArgs(0),
 	}
 	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
+	cmd.Flags().BoolVar(&dontSave, "dont-save", false, "do not save snapshot, just stop the network")
 	return cmd
 }
 
 func StopNetwork(*cobra.Command, []string) error {
-	if err := saveNetwork(); errors.Is(err, binutils.ErrGRPCTimeout) {
-		// no server to kill
-		return nil
-	}
-
-	relayerConfigPath := app.GetAWMRelayerConfigPath()
-	if utils.FileExists(relayerConfigPath) {
-		relayerStoredConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), snapshotName+jsonExt)
-		if err := os.MkdirAll(filepath.Dir(relayerStoredConfigPath), constants.DefaultPerms755); err != nil {
+	if err := stopAndSaveNetwork(dontSave); err != nil {
+		if errors.Is(err, binutils.ErrGRPCTimeout) {
+			// no server to kill
+			return nil
+		} else {
 			return err
-		}
-		if err := os.Rename(relayerConfigPath, relayerStoredConfigPath); err != nil {
-			return fmt.Errorf("couldn't store relayer conf from %s into %s", relayerConfigPath, relayerStoredConfigPath)
-		}
-	}
-
-	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-	if utils.FileExists(extraLocalNetworkDataPath) {
-		storedExtraLocalNetowkrDataPath := filepath.Join(app.GetExtraLocalNetworkSnapshotsDir(), snapshotName+jsonExt)
-		if err := os.MkdirAll(filepath.Dir(storedExtraLocalNetowkrDataPath), constants.DefaultPerms755); err != nil {
-			return err
-		}
-		if err := os.Rename(extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath); err != nil {
-			return fmt.Errorf("couldn't store extra local network data from %s into %s", extraLocalNetworkDataPath, storedExtraLocalNetowkrDataPath)
 		}
 	}
 
@@ -85,7 +67,7 @@ func StopNetwork(*cobra.Command, []string) error {
 	return nil
 }
 
-func saveNetwork() error {
+func stopAndSaveNetwork(dontSave bool) error {
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
@@ -97,23 +79,25 @@ func saveNetwork() error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	_, err = cli.RemoveSnapshot(ctx, snapshotName)
-	if err != nil {
+	if _, err := cli.Status(ctx); err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("Network already stopped.")
 			return nil
 		}
-		// it we try to stop a network with a new snapshot name, remove snapshot
-		// will fail, so we cover here that expected case
-		if !server.IsServerError(err, local.ErrSnapshotNotFound) {
-			return fmt.Errorf("failed stop network with a snapshot: %w", err)
+		return fmt.Errorf("failed to get network status: %w", err)
+	}
+
+	if dontSave {
+		if _, err := cli.Stop(ctx); err != nil {
+			return fmt.Errorf("failed to stop network: %w", err)
+		}
+		return nil
+	} else {
+		if _, err = cli.SaveSnapshot(ctx, snapshotName, true); err != nil {
+			return fmt.Errorf("failed to stop network: %w", err)
 		}
 	}
 
-	_, err = cli.SaveSnapshot(ctx, snapshotName)
-	if err != nil {
-		return fmt.Errorf("failed to stop network with a snapshot: %w", err)
-	}
 	ux.Logger.PrintToUser("Network stopped successfully.")
 
 	return nil
