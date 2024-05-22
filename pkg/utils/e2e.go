@@ -33,7 +33,7 @@ services:
         ipv4_address: {{$ip}}
     command: >
 	    /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server;
-		  id ubuntu || useradd -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
+		  id ubuntu || useradd -u 1000 -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
 		  echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
 		  service ssh start && tail -f /dev/null"
 {{- end }}
