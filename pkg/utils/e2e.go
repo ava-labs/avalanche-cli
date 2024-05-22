@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"os"
 	"os/exec"
+	"os/user"
 	"regexp"
 	"strings"
 
@@ -54,12 +55,16 @@ type Config struct {
 
 // IsE2E checks if the environment variable "RUN_E2E" is set and returns true if it is, false otherwise.
 func IsE2E() bool {
-	return os.Getenv("RUN_E2E") != ""
+	currentUser, err := user.Current()
+	if err != nil {
+		return false
+	}
+	return os.Getenv("RUN_E2E") == "true" || currentUser.Username == "runner"
 }
 
 // E2EDocker checks if docker and docker-compose are available.
 func E2EDocker() bool {
-	cmd := exec.Command("docker-compose", "--version")
+	cmd := exec.Command("docker", "--version")
 	cmd.Env = os.Environ()
 	err := cmd.Run()
 	return err == nil
