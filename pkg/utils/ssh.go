@@ -12,7 +12,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/crypto/ssh/agent"
 )
 
@@ -55,10 +54,10 @@ func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destI
 		scpParams += " -3"
 	}
 	if sourceIP != "" {
-		sourcePath = utils.GetSCPTargetPath(sourceIP, sourcePath)
+		sourcePath = GetSCPTargetPath(sourceIP, sourcePath)
 	}
 	if destIP != "" {
-		destPath = utils.GetSCPTargetPath(destIP, destPath)
+		destPath = GetSCPTargetPath(destIP, destPath)
 	}
 
 	return fmt.Sprintf("scp %s %s %s", scpParams, sourcePath, destPath), nil
