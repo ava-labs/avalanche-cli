@@ -103,7 +103,6 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
-	ux.Logger.Info("DEBUG E2E: %v E2EDocker: %v", utils.IsE2E(), utils.E2EDocker())
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
@@ -127,7 +126,6 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 
 // RunSSHSetupDockerService runs script to setup docker compose service for CLI
 func RunSSHSetupDockerService(host *models.Host) error {
-	ux.Logger.Info("DEBUG IsSystemD: %v", host.IsSystemD())
 	if host.IsSystemD() {
 		return RunOverSSH(
 			"Setup Docker Service",

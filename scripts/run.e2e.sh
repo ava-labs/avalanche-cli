@@ -11,7 +11,18 @@ fi
 
 export RUN_E2E="true"
 #github runner detected 
-[ "$(whoami)" = "runner" ] && echo "github action[runner]" && sudo chown runner /var/run/docker.sock && sudo chmod +rw /var/run/docker.sock
+current_user=$(whoami)
+
+# Check if the current user is 'runner'
+if [ "$current_user" = "runner" ]; then
+    echo "github action[runner]"
+    sudo chown runner /var/run/docker.sock
+    sudo chmod +rw /var/run/docker.sock
+    sudo useradd -m -s /bin/bash ubuntu && sudo mkdir -p /home/ubuntu && sudo chown -R ubuntu:ubuntu /home/ubuntu || echo "failed to create ubuntu user"
+    sudo mkdir -p /home/ubuntu/.avalanchego && sudo chown -R ubuntu:ubuntu /home/ubuntu || echo "failed to create /home/ubuntu/.avalanchego"
+fi
+end
+
 
 if [ ! -d "tests/e2e/hardhat/node_modules" ]
 then

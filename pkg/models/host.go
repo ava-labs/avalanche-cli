@@ -18,7 +18,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -215,7 +214,6 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 		cmd.Env = env
 	}
 	output, err := cmd.CombinedOutput()
-	ux.Logger.Info("DEBUG Command %s on %s returned %s", script, h.IP, string(output))
 	return output, err
 }
 
