@@ -69,8 +69,8 @@ func scpNode(_ *cobra.Command, args []string) error {
 	}
 
 	sourcePath, destPath := args[0], args[1]
-	sourceClusterNameOrNodeID, sourcePath := utils.SplitScpPath(sourcePath)
-	destClusterNameOrNodeID, destPath := utils.SplitScpPath(destPath)
+	sourceClusterNameOrNodeID, sourcePath := utils.SplitSCPPath(sourcePath)
+	destClusterNameOrNodeID, destPath := utils.SplitSCPPath(destPath)
 
 	// check if source and destination are both clusters
 	sourceClusterExists, err := checkClusterExists(sourceClusterNameOrNodeID)
@@ -93,7 +93,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		return scpHosts(srcCluster, clusterHosts, sourcePath, utils.CombineScpPath(destClusterNameOrNodeID, destPath), clusterName, true)
+		return scpHosts(srcCluster, clusterHosts, sourcePath, utils.CombineSCPPath(destClusterNameOrNodeID, destPath), clusterName, true)
 	case destClusterExists:
 		// destination is a cluster
 		clusterName := destClusterNameOrNodeID
@@ -101,14 +101,14 @@ func scpNode(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		return scpHosts(dstCluster, clusterHosts, utils.CombineScpPath(sourceClusterNameOrNodeID, sourcePath), destPath, clusterName, false)
+		return scpHosts(dstCluster, clusterHosts, utils.CombineSCPPath(sourceClusterNameOrNodeID, sourcePath), destPath, clusterName, false)
 	default:
 		if sourceClusterNameOrNodeID == destClusterNameOrNodeID {
 			return fmt.Errorf("source and destination cannot be the same node")
 		}
 		// source is remote
-		srcPath := utils.CombineScpPath(sourceClusterNameOrNodeID, sourcePath)
-		dstPath := utils.CombineScpPath(destClusterNameOrNodeID, destPath)
+		srcPath := utils.CombineSCPPath(sourceClusterNameOrNodeID, sourcePath)
+		dstPath := utils.CombineSCPPath(destClusterNameOrNodeID, destPath)
 		ux.Logger.Info("scp src %s dst %s", srcPath, dstPath)
 		if sourceClusterNameOrNodeID != "" {
 			selectedHost, clusterName := getHostClusterPair(sourceClusterNameOrNodeID)
@@ -140,8 +140,8 @@ func scpHosts(op ClusterOp, hosts []*models.Host, sourcePath, destPath string, c
 		if err != nil {
 			return err
 		}
-		prefixIP, prefixPath := utils.SplitScpPath(scpPrefix)
-		suffixIP, suffixPath := utils.SplitScpPath(scpSuffix)
+		prefixIP, prefixPath := utils.SplitSCPPath(scpPrefix)
+		suffixIP, suffixPath := utils.SplitSCPPath(scpSuffix)
 		switch op {
 		case srcCluster:
 			prefixIP = host.IP
@@ -216,7 +216,7 @@ func prepareSCPTarget(op ClusterOp, host *models.Host, clusterName string, dest 
 		return dest, nil
 	}
 	// destination is remote
-	node, path := utils.SplitScpPath(dest)
+	node, path := utils.SplitSCPPath(dest)
 	if utils.IsValidIP(node) {
 		// destination is IP, ready to go
 		return dest, nil
