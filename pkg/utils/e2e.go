@@ -27,7 +27,6 @@ services:
     container_name: ubuntu_container{{$i}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - /home/ubuntu/.avalanchego:/home/ubuntu/.avalanchego:rw
     networks:
       e2e:
         ipv4_address: {{$ip}}

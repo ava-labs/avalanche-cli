@@ -697,11 +697,13 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
+			ux.Logger.GreenCheckmarkToUser("RunSSHSetupNode")
 			if err := ssh.RunSSHSetupDockerService(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
+			ux.Logger.GreenCheckmarkToUser("RunSSHSetupDockerService")
 			ux.SpinComplete(spinner)
 			if addMonitoring {
 				cloudID := host.GetCloudID()

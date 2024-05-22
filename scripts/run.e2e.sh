@@ -10,6 +10,7 @@ then
 fi
 
 export RUN_E2E="true"
+#github runner detected 
 [ "$(whoami)" = "runner" ] && echo "github action[runner]" && sudo chown runner /var/run/docker.sock && sudo chmod +rw /var/run/docker.sock
 
 if [ ! -d "tests/e2e/hardhat/node_modules" ]

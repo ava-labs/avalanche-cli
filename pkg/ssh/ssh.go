@@ -127,6 +127,7 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 
 // RunSSHSetupDockerService runs script to setup docker compose service for CLI
 func RunSSHSetupDockerService(host *models.Host) error {
+	ux.Logger.Info("DEBUG IsSystemD: %v", host.IsSystemD())
 	if host.IsSystemD() {
 		return RunOverSSH(
 			"Setup Docker Service",
