@@ -256,7 +256,12 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	proxy, err := h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
+	var proxy net.Conn
+	if utils.IsE2E() {
+		proxy, err = net.Dial("tcp", avalancheGoEndpoint)
+	} else {
+		proxy, err = h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
 	}
