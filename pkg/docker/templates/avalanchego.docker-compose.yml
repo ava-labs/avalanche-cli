@@ -18,14 +18,17 @@ services:
     ports:
       - "{{ .E2EIP }}:9650:9650"
       - "{{ .E2EIP }}:9651:9651"
+    networks:
+      - avalanchego_net_{{.E2ESuffix}}
 {{ else }}
     ports:
       - "9650:9650"
       - "9651:9651"
-{{ end }}
+
     networks:
-      - avalanchego_net_{{.E2ESuffix}}
-{{end}}
+      - avalanchego_net
+{{ end }}
+{{ end }}
 {{if .WithMonitoring}}
   promtail:
     image: grafana/promtail:3.0.0
@@ -36,9 +39,13 @@ services:
       - /home/ubuntu/.avalanchego/logs:/logs:ro
       - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
     command: -config.file=/etc/promtail/promtail.yml
+{{if .E2E }}
     networks:
       - avalanchego_net_{{.E2ESuffix}}
-
+{{ else }}
+    networks:
+      - avalanchego_net
+{{ end }}
   node-exporter:
     image: prom/node-exporter:v1.7.0
     container_name: node-exporter
@@ -53,9 +60,20 @@ services:
     links:
       - avalanchego
 {{end}}
+{{if .E2E }}
     networks:
       - avalanchego_net_{{.E2ESuffix}}
+{{ else }}
+    networks:
+      - avalanchego_net
+{{ end }}
 {{end}}
 
+{{if .E2E }}
 networks:
   avalanchego_net_{{.E2ESuffix}}:
+{{ else }}
+networks:
+  avalanchego_net:
+{{ end }}
+    
