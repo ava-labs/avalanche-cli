@@ -166,16 +166,6 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string) error {
-	if utils.IsE2E() && utils.E2EDocker() {
-		return RunOverSSH(
-			"E2E Upgrade Avalanchego",
-			host,
-			constants.SSHScriptTimeout,
-			"shell/e2e_upgradeAvalancheGo.sh",
-			scriptInputs{AvalancheGoVersion: avalancheGoVersion},
-		)
-	}
-
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err

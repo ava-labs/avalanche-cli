@@ -136,7 +136,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 	ginkgo.It("can get cluster status", func() {
 		output := commands.NodeStatus()
 		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring("Checking if node(s) are bootstrapped to Primary Network"))
+		gomega.Expect(output).To(gomega.ContainSubstring("Checking node(s) status"))
 		gomega.Expect(output).To(gomega.ContainSubstring("Checking if node(s) are healthy"))
 		gomega.Expect(output).To(gomega.ContainSubstring("Getting avalanchego version of node(s)"))
 		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
