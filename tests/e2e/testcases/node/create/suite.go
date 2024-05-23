@@ -6,6 +6,7 @@ package root
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -21,7 +22,7 @@ import (
 )
 
 const (
-	avalanchegoVersion = "v1.10.18"
+	avalanchegoVersion = "v1.11.6"
 	network            = "fuji"
 	networkCapitalized = "Fuji"
 	numNodes           = 1
@@ -79,12 +80,26 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(nodeCloudConfig.CertPath).To(gomega.ContainSubstring(homeDir))
 		gomega.Expect(nodeCloudConfig.UseStaticIP).To(gomega.Equal(false))
 	})
-	ginkgo.It("can wait for 10 seconds for avago to startup", func() {
-		time.Sleep(10 * time.Second)
-	})
 	ginkgo.It("installs and runs avalanchego", func() {
 		avalancegoProcess := commands.NodeSSH(constants.E2EClusterName, "docker ps --no-trunc")
 		gomega.Expect(avalancegoProcess).To(gomega.ContainSubstring("avaplatform/avalanchego:" + avalanchegoVersion))
+	})
+	ginkgo.It("can wait up 30 seconds for avago to startup", func() {
+		timeout := 30 * time.Second
+		host := fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, 1+1) //first docker image
+		address := fmt.Sprintf("%s:%s", host, constants.AvalanchegoP2PPort)
+		deadline := time.Now().Add(timeout)
+		var err error
+
+		for time.Now().Before(deadline) {
+			conn, err := net.DialTimeout("tcp", address, 1*time.Second)
+			if err == nil {
+				conn.Close()
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
+		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Expected to connect to avago within 30 seconds")
 	})
 	ginkgo.It("configured avalanchego", func() {
 		avalancegoConfig := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/node.json")
@@ -92,17 +107,6 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("public-ip"))
 		avalancegoConfigCChain := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/chains/C/config.json")
 		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": true"))
-	})
-	ginkgo.It("can get cluster status", func() {
-		output := commands.NodeStatus()
-		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring("Checking if node(s) are bootstrapped to Primary Network"))
-		gomega.Expect(output).To(gomega.ContainSubstring("Checking if node(s) are healthy"))
-		gomega.Expect(output).To(gomega.ContainSubstring("Getting avalanchego version of node(s)"))
-		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
-		gomega.Expect(output).To(gomega.ContainSubstring(hostName))
-		gomega.Expect(output).To(gomega.ContainSubstring(NodeID))
-		gomega.Expect(output).To(gomega.ContainSubstring(networkCapitalized))
 	})
 	ginkgo.It("can ssh to a created node", func() {
 		output := commands.NodeSSH(constants.E2EClusterName, "echo hello")
@@ -129,6 +133,17 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(logs).To(gomega.ContainSubstring("initializing database"))
 		gomega.Expect(logs).To(gomega.ContainSubstring("creating proposervm wrapper"))
 		gomega.Expect(logs).To(gomega.ContainSubstring("check started passing"))
+	})
+	ginkgo.It("can get cluster status", func() {
+		output := commands.NodeStatus()
+		fmt.Println(output)
+		gomega.Expect(output).To(gomega.ContainSubstring("Checking if node(s) are bootstrapped to Primary Network"))
+		gomega.Expect(output).To(gomega.ContainSubstring("Checking if node(s) are healthy"))
+		gomega.Expect(output).To(gomega.ContainSubstring("Getting avalanchego version of node(s)"))
+		gomega.Expect(output).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
+		gomega.Expect(output).To(gomega.ContainSubstring(hostName))
+		gomega.Expect(output).To(gomega.ContainSubstring(NodeID))
+		gomega.Expect(output).To(gomega.ContainSubstring(networkCapitalized))
 	})
 	ginkgo.It("can upgrade the nodes", func() {
 		output := commands.NodeUpgrade()
