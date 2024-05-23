@@ -12,19 +12,21 @@ services:
     command: >
         ./avalanchego
         --config-file=/.avalanchego/configs/node.json
-    volumes:
-      - /home/ubuntu/.avalanchego:/.avalanchego:rw
 {{if .E2E }}
+    volumes:
+      avalancego_data_{{.E2ESuffix}}:/.avalanchego:rw
+      avalancego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
     ports:
       - "{{ .E2EIP }}:9650:9650"
       - "{{ .E2EIP }}:9651:9651"
     networks:
       - avalanchego_net_{{.E2ESuffix}}
 {{ else }}
+    volumes:
+      - /home/ubuntu/.avalanchego:/.avalanchego:rw
     ports:
       - "9650:9650"
       - "9651:9651"
-
     networks:
       - avalanchego_net
 {{ end }}
@@ -35,14 +37,17 @@ services:
     container_name: promtail
     restart: unless-stopped
     user: "0:999"  # root user docker group
-    volumes:
-      - /home/ubuntu/.avalanchego/logs:/logs:ro
-      - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
     command: -config.file=/etc/promtail/promtail.yml
 {{if .E2E }}
+    volumes:
+      - avalancego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
+      - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
     networks:
       - avalanchego_net_{{.E2ESuffix}}
 {{ else }}
+    volumes:
+      - /home/ubuntu/.avalanchego/logs:/logs:ro
+      - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
     networks:
       - avalanchego_net
 {{ end }}
@@ -67,9 +72,12 @@ services:
     networks:
       - avalanchego_net
 {{ end }}
-{{end}}
+{{ end }}
 
 {{if .E2E }}
+volumes:
+  avalancego_data_{{.E2ESuffix}}:
+  avalancego_logs_{{.E2ESuffix}}:
 networks:
   avalanchego_net_{{.E2ESuffix}}:
 {{ else }}

@@ -27,7 +27,7 @@ services:
     container_name: ubuntu_container{{$i}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - /home/ubuntu/.avalanchego:/home/ubuntu/.avalanchego:rw
+      - avalancego_data{{.E2ESuffixList[$i]}}:/home/ubuntu/.avalanchego:rw
     networks:
       e2e:
         ipv4_address: {{$ip}}
@@ -37,6 +37,10 @@ services:
 		  echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
 		  mkdir -p  /home/ubuntu/.avalanche-cli; chown -R 1000 /home/ubuntu/;
 		  service ssh start && curl --max-time 1 http://ipinfo.io && tail -f /dev/null"
+{{- end }}
+volumes:
+{{- range $i, $ip := .IPs }}
+  avalancego_data{{.E2ESuffixList[$i]}}:
 {{- end }}
 networks:
   e2e:
@@ -52,6 +56,7 @@ type Config struct {
 	UbuntuVersion string
 	NetworkPrefix string
 	SSHPubKey     string
+	E2ESuffixList []string
 }
 
 // IsE2E checks if the environment variable "RUN_E2E" is set and returns true if it is, false otherwise.
@@ -92,14 +97,18 @@ func E2ESuffix(ip string) string {
 // GenDockerComposeFile generates a Docker Compose file with the specified number of nodes and Ubuntu version.
 func GenDockerComposeFile(nodes int, ubuntuVersion string, networkPrefix string, sshPubKey string) (string, error) {
 	var ips []string
+	var suffix []string
 	for i := 1; i <= nodes; i++ {
-		ips = append(ips, fmt.Sprintf("%s.%d", networkPrefix, i+1))
+		currentIP := fmt.Sprintf("%s.%d", networkPrefix, i+1)
+		ips = append(ips, currentIP)
+		suffix = append(suffix, E2ESuffix(currentIP))
 	}
 	config := Config{
 		IPs:           ips,
 		UbuntuVersion: ubuntuVersion,
 		NetworkPrefix: networkPrefix,
 		SSHPubKey:     base64.StdEncoding.EncodeToString([]byte(sshPubKey)),
+		E2ESuffixList: suffix,
 	}
 	tmpl, err := template.New("docker-compose").Parse(strings.ReplaceAll(composeTemplate, "\t", "  "))
 	if err != nil {
