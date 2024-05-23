@@ -86,8 +86,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 	})
 	ginkgo.It("can wait up 60 seconds for avago to startup", func() {
 		timeout := 60 * time.Second
-		host := fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, 1+1) //first docker image
-		address := fmt.Sprintf("%s:%s", host, constants.AvalanchegoP2PPort)
+		address := fmt.Sprintf("%s:%s", "127.0.0.1", constants.AvalanchegoP2PPort)
 		deadline := time.Now().Add(timeout)
 		var err error
 
@@ -236,9 +235,9 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(nodeCloudConfig.UseStaticIP).To(gomega.Equal(false))
 	})
 	ginkgo.It("can cleanup", func() {
-		commands.DeleteE2EInventory()
-		commands.DeleteE2ECluster()
-		commands.DeleteNode(hostName)
+		//commands.DeleteE2EInventory()
+		//commands.DeleteE2ECluster()
+		//commands.DeleteNode(hostName)
 		_ = os.Remove(exportFileName)
 	})
 })

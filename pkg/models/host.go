@@ -259,12 +259,16 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	var proxy net.Conn
 	if utils.IsE2E() {
 		proxy, err = net.Dial("tcp", avalancheGoEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("unable to port forward E2E to %s via %s", h.Connection.RemoteAddr(), "tcp")
+		}
 	} else {
 		proxy, err = h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
+		if err != nil {
+			return nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
+		}
 	}
-	if err != nil {
-		return nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
-	}
+
 	defer proxy.Close()
 	// send request to server
 	if _, err = proxy.Write([]byte(httpRequest)); err != nil {
