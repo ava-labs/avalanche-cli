@@ -145,7 +145,7 @@ func RunSSHRestartNode(host *models.Host) error {
 	remoteComposeFile := utils.GetRemoteComposeFile()
 	serviceName := "avalanchego"
 	if utils.IsE2E() {
-		serviceName = serviceName + utils.E2ESuffix(host.IP)
+		serviceName += utils.E2ESuffix(host.IP)
 	}
 	return docker.RestartDockerComposeService(host, remoteComposeFile, "avalanchego", constants.SSHLongRunningScriptTimeout)
 }

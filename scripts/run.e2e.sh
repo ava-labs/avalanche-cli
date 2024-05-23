@@ -22,7 +22,7 @@ if [ "$current_user" = "runner" ]; then
     sudo mkdir -p /home/ubuntu/.avalanche-cli /home/ubuntu/.avalanchego
     sudo chown -R 1000:1000 /home/ubuntu || echo "failed to change ownership of /home/ubuntu to ubuntu user"
     for i in $(seq 1 9) ; do
-        sudo ifconfig lo:$i 192.168.222.10$i up
+        sudo ifconfig lo:$i 192.168.223.10$i up
     done
 fi
 

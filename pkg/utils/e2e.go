@@ -74,7 +74,7 @@ func E2EDocker() bool {
 // E2EConvertIP maps an IP address to an E2E IP address.
 func E2EConvertIP(ip string) string {
 	if suffix := E2ESuffix(ip); suffix != "" {
-		return fmt.Sprintf("%s.%s", constants.E2ENetworkPrefix, suffix)
+		return fmt.Sprintf("%s.10%s", constants.E2EListenPrefix, suffix)
 	} else {
 		return ""
 	}
