@@ -24,7 +24,7 @@ services:
       - "9651:9651"
 {{ end }}
     networks:
-      - avalanchego_net
+      - avalanchego_net_{{.E2ESuffix}}
 {{end}}
 {{if .WithMonitoring}}
   promtail:
@@ -37,7 +37,7 @@ services:
       - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
     command: -config.file=/etc/promtail/promtail.yml
     networks:
-      - avalanchego_net
+      - avalanchego_net_{{.E2ESuffix}}
 
   node-exporter:
     image: prom/node-exporter:v1.7.0
@@ -54,8 +54,8 @@ services:
       - avalanchego
 {{end}}
     networks:
-      - avalanchego_net
+      - avalanchego_net_{{.E2ESuffix}}
 {{end}}
 
 networks:
-  avalanchego_net:
+  avalanchego_net_{{.E2ESuffix}}:

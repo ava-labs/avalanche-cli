@@ -27,8 +27,9 @@ var (
 )
 
 const (
-	NumNodes    = 1
-	NumAPINodes = 1
+	NumNodes           = 1
+	NumAPINodes        = 1
+	avalanchegoVersion = "v1.11.5"
 )
 
 var _ = ginkgo.Describe("[Node devnet]", func() {
@@ -38,7 +39,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring("Error: API nodes can only be created in Devnet"))
 	})
 	ginkgo.It("can create a node", func() {
-		outputB, err := ansi.Strip([]byte(commands.NodeDevnet(NumNodes, NumAPINodes)))
+		outputB, err := ansi.Strip([]byte(commands.NodeDevnet(avalanchegoVersion, NumNodes, NumAPINodes)))
 		gomega.Expect(err).Should(gomega.BeNil())
 		output := string(outputB)
 		fmt.Println(output)
