@@ -3,6 +3,9 @@
 package contractcmd
 
 import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -111,9 +114,18 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 		nativeOption := "The native token " + tokenSymbol
 		erc20Option := "An ERC-20 token"
 		explainOption := "Explain the difference"
-		popularTokens := getPopularTokens(network, subnetOption)
+		popularTokensInfo, err := getPopularTokensInfo(network, subnetOption)
+		if err != nil {
+			return err
+		}
+		popularTokensDesc := utils.Map(
+			popularTokensInfo,
+			func(i PopularTokenInfo) string {
+				return i.Desc()
+			},
+		)
 		options := []string{popularOption, existingOriginOption, nativeOption, erc20Option, explainOption}
-		if len(popularTokens) == 0 {
+		if len(popularTokensDesc) == 0 {
 			options = []string{existingOriginOption, nativeOption, erc20Option, explainOption}
 		}
 		for {
@@ -128,7 +140,7 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 			case popularOption:
 				_, err = app.Prompt.CaptureList(
 					"Choose Token",
-					popularTokens,
+					popularTokensDesc,
 				)
 				if err != nil {
 					return err
@@ -172,10 +184,32 @@ func CallDeployBridge(_ []string, flags DeployFlags) error {
 	return nil
 }
 
-func getPopularTokens(network models.Network, subnetOption string) []string {
-	if network.Kind == models.Fuji && subnetOption == "C-Chain" {
-		return []string{"AVAX", "USDC", "WAVAX"}
+type PopularTokenInfo struct {
+	TokenName            string
+	TokenContractAddress string
+	BridgeHubAddress     string
+}
+
+//go:embed popularTokensInfo.json
+var popularTokensInfoByteSlice []byte
+
+var popularTokensInfo map[string][]PopularTokenInfo
+
+func (i PopularTokenInfo) Desc() string {
+	if i.TokenContractAddress == "" {
+		return i.TokenName
 	} else {
-		return []string{}
+		return fmt.Sprintf("%s | Token address %s | Hub bridge address %s", i.TokenName, i.TokenContractAddress, i.BridgeHubAddress)
+	}
+}
+
+func getPopularTokensInfo(network models.Network, subnetOption string) ([]PopularTokenInfo, error) {
+	if err := json.Unmarshal(popularTokensInfoByteSlice, &popularTokensInfo); err != nil {
+		return nil, fmt.Errorf("unabled to get popular tokens info from file: %w", err)
+	}
+	if network.Kind == models.Fuji && subnetOption == "C-Chain" {
+		return popularTokensInfo[models.Fuji.String()], nil
+	} else {
+		return nil, nil
 	}
 }
