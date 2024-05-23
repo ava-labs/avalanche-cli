@@ -68,15 +68,12 @@ jobs:
             "\\[Upgrade public network\\]",
             "\\[Upgrade local network\\]",
             "\\[Node create\\]",
-            "\\[Node devnet\\]",
             "\\[Docker\\]",
           ]
         os: [ubuntu-latest, macos-13]
         exclude:
           - os: macos-13
             suite: "\\[Node create\\]"
-          - os: macos-13
-            suite: "\\[Node devnet\\]"
           - os: macos-13
             suite: "\\[Docker\\]"
           - os: macos-13
