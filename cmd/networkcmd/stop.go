@@ -87,7 +87,9 @@ func stopAndSaveNetwork(dontSave bool) error {
 		return fmt.Errorf("failed to get network status: %w", err)
 	}
 
-	if dontSave {
+	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
+
+	if dontSave || autoSave {
 		if _, err := cli.Stop(ctx); err != nil {
 			return fmt.Errorf("failed to stop network: %w", err)
 		}
