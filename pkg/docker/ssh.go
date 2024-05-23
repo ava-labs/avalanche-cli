@@ -74,6 +74,9 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 			AvalanchegoVersion: avalancheGoVersion,
 			WithMonitoring:     withMonitoring,
 			WithAvalanchego:    true,
+			E2E:                utils.IsE2E(),
+			E2EIP:              utils.E2EConvertIP(host.IP),
+			E2ESuffix:          utils.E2ESuffix(host.IP),
 		})
 }
 

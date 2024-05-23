@@ -2,7 +2,11 @@ services:
 {{if .WithAvalanchego}}
   avalanchego:
     image: avaplatform/avalanchego:{{ .AvalanchegoVersion }}
+{{if .E2E }}
+    container_name: avalanchego{{.E2ESuffix}}
+{{ else }}
     container_name: avalanchego
+{{ end }}
     restart: unless-stopped
     user: "1000:1000"  # ubuntu user
     command: >
@@ -10,9 +14,15 @@ services:
         --config-file=/.avalanchego/configs/node.json
     volumes:
       - /home/ubuntu/.avalanchego:/.avalanchego:rw
+{{if .E2E }}
+    ports:
+      - "{{ .E2EIP }}:9650:9650"
+      - "{{ .E2EIP }}:9651:9651"
+{{ else }}
     ports:
       - "9650:9650"
       - "9651:9651"
+{{ end }}
     networks:
       - avalanchego_net
 {{end}}

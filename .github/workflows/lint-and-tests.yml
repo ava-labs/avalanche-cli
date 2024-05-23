@@ -83,10 +83,10 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      #- name: Setup upterm session - DEBUG
-      #  uses: lhotari/action-upterm@v1
-      #  with:
-      #    limit-access-to-actor: true
+      - name: Setup upterm session - DEBUG
+        uses: lhotari/action-upterm@v1
+        with:
+          limit-access-to-actor: true
       - name: Install macosx dependencies
         if: ${{ matrix.os == 'macos-13' }}
         run: |
@@ -140,6 +140,6 @@ jobs:
             !~/.avalanche-cli/bin/
             !~/.avalanche-cli/snapshots
           retention-days: 5
-      #- name: "Sleep for 6 hours"
-      #  if: always()
-      #  run: sleep 6h
+      - name: "Sleep for 6 hours"
+        if: always()
+        run: sleep 6h

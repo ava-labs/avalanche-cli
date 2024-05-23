@@ -258,6 +258,7 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	}
 	var proxy net.Conn
 	if utils.IsE2E() {
+		avalancheGoEndpoint = utils.E2EConvertIP(h.IP)
 		proxy, err = net.Dial("tcp", avalancheGoEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("unable to port forward E2E to %s", avalancheGoEndpoint)

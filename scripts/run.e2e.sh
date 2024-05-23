@@ -21,6 +21,9 @@ if [ "$current_user" = "runner" ]; then
     sudo useradd -m -s /bin/bash -u 1000 ubuntu && sudo mkdir -p /home/ubuntu && sudo chown -R 1000:1000 /home/ubuntu || echo "failed to create ubuntu user"
     sudo mkdir -p /home/ubuntu/.avalanche-cli /home/ubuntu/.avalanchego
     sudo chown -R 1000:1000 /home/ubuntu || echo "failed to change ownership of /home/ubuntu to ubuntu user"
+    for i in $(seq 1 9) ; do
+        sudo ifconfig lo:$i 192.168.222.10$i up
+    done
 fi
 
 if [ ! -d "tests/e2e/hardhat/node_modules" ]

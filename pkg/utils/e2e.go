@@ -71,6 +71,24 @@ func E2EDocker() bool {
 	return err == nil
 }
 
+// E2EConvertIP maps an IP address to an E2E IP address.
+func E2EConvertIP(ip string) string {
+	if suffix := E2ESuffix(ip); suffix != "" {
+		return fmt.Sprintf("%s.%s", constants.E2ENetworkPrefix, suffix)
+	} else {
+		return ""
+	}
+}
+
+func E2ESuffix(ip string) string {
+	addressBits := strings.Split(ip, ".")
+	if len(addressBits) != 4 {
+		return ""
+	} else {
+		return addressBits[3]
+	}
+}
+
 // GenDockerComposeFile generates a Docker Compose file with the specified number of nodes and Ubuntu version.
 func GenDockerComposeFile(nodes int, ubuntuVersion string, networkPrefix string, sshPubKey string) (string, error) {
 	var ips []string
