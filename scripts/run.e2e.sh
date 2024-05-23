@@ -18,8 +18,9 @@ if [ "$current_user" = "runner" ]; then
     echo "github action[runner]"
     sudo chown runner /var/run/docker.sock
     sudo chmod +rw /var/run/docker.sock
-    sudo useradd -m -s /bin/bash ubuntu && sudo mkdir -p /home/ubuntu && sudo chown -R 1000:1000 /home/ubuntu || echo "failed to create ubuntu user"
-    sudo mkdir -p /home/ubuntu/.avalanchego && sudo chown -R 1000:1000 /home/ubuntu || echo "failed to create /home/ubuntu/.avalanchego"
+    sudo useradd -m -s /bin/bash -u 1000 ubuntu && sudo mkdir -p /home/ubuntu && sudo chown -R 1000:1000 /home/ubuntu || echo "failed to create ubuntu user"
+    sudo mkdir -p /home/ubuntu/.avalanche-cli /home/ubuntu/.avalanchego
+    sudo chown -R 1000:1000 /home/ubuntu || echo "failed to change ownership of /home/ubuntu to ubuntu user"
 fi
 
 if [ ! -d "tests/e2e/hardhat/node_modules" ]

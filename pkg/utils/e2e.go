@@ -32,10 +32,11 @@ services:
       e2e:
         ipv4_address: {{$ip}}
     command: >
-	    /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server;
+	    /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server curl;
 		  id ubuntu || useradd -u 1000 -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
 		  echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
-		  service ssh start && tail -f /dev/null"
+		  mkdir -p  /home/ubuntu/.avalanche-cli; chown -R 1000 /home/ubuntu/;
+		  service ssh start && curl --max-time 1 http://ipinfo.io  && tail -f /dev/null"
 {{- end }}
 networks:
   e2e:
