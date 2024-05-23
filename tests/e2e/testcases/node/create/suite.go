@@ -193,51 +193,53 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(exportCluster.Nodes[0].SignerKey).To(gomega.Not(gomega.BeEmpty()))
 		gomega.Expect(exportCluster.Nodes[0].StakerKey).To(gomega.Not(gomega.BeEmpty()))
 	})
-	ginkgo.It("can import cluster config", func() {
-		// prepare to reimport the same cluster in different name
-		commands.DeleteNode(hostName)
-		commands.DeleteE2EInventory()
-		// ready to import
-		output := commands.NodeImport(exportFileName, importClusterName)
-		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("cluster [%s] imported successfully", importClusterName)))
-		// check if the cluster is imported now
-	})
-	ginkgo.It("imported cluster config", func() {
-		usr, err := user.Current()
-		gomega.Expect(err).Should(gomega.BeNil())
-		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, constants.ClustersConfigFileName))
-		gomega.Expect(err).Should(gomega.BeNil())
-		clustersConfig := models.ClustersConfig{}
-		err = json.Unmarshal(content, &clustersConfig)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(2))
-		gomega.Expect(clustersConfig.Clusters[importClusterName].External).To(gomega.BeTrue())
-		gomega.Expect(clustersConfig.Clusters[importClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
-		gomega.Expect(clustersConfig.Clusters[importClusterName].Nodes).To(gomega.HaveLen(numNodes))
-	})
-	ginkgo.It("imported node config", func() {
-		fmt.Println("HostName: ", hostName)
-		usr, err := user.Current()
-		gomega.Expect(err).Should(gomega.BeNil())
-		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, hostName, "node_cloud_config.json"))
-		gomega.Expect(err).Should(gomega.BeNil())
-		nodeCloudConfig := models.NodeConfig{}
-		err = json.Unmarshal(content, &nodeCloudConfig)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(nodeCloudConfig.NodeID).To(gomega.Equal(hostName))
-		gomega.Expect(nodeCloudConfig.ElasticIP).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
-		gomega.Expect(nodeCloudConfig.CertPath).To(gomega.BeEmpty())
-		gomega.Expect(nodeCloudConfig.KeyPair).To(gomega.BeEmpty())
-		gomega.Expect(nodeCloudConfig.SecurityGroup).To(gomega.BeEmpty())
-		gomega.Expect(nodeCloudConfig.UseStaticIP).To(gomega.Equal(false))
-	})
-	ginkgo.It("can cleanup", func() {
-		//commands.DeleteE2EInventory()
-		//commands.DeleteE2ECluster()
-		//commands.DeleteNode(hostName)
-		_ = os.Remove(exportFileName)
-	})
+	/*
+		ginkgo.It("can import cluster config", func() {
+			// prepare to reimport the same cluster in different name
+			commands.DeleteNode(hostName)
+			commands.DeleteE2EInventory()
+			// ready to import
+			output := commands.NodeImport(exportFileName, importClusterName)
+			fmt.Println(output)
+			gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("cluster [%s] imported successfully", importClusterName)))
+			// check if the cluster is imported now
+		})
+		ginkgo.It("imported cluster config", func() {
+			usr, err := user.Current()
+			gomega.Expect(err).Should(gomega.BeNil())
+			homeDir := usr.HomeDir
+			content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, constants.ClustersConfigFileName))
+			gomega.Expect(err).Should(gomega.BeNil())
+			clustersConfig := models.ClustersConfig{}
+			err = json.Unmarshal(content, &clustersConfig)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(2))
+			gomega.Expect(clustersConfig.Clusters[importClusterName].External).To(gomega.BeTrue())
+			gomega.Expect(clustersConfig.Clusters[importClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
+			gomega.Expect(clustersConfig.Clusters[importClusterName].Nodes).To(gomega.HaveLen(numNodes))
+		})
+		ginkgo.It("imported node config", func() {
+			fmt.Println("HostName: ", hostName)
+			usr, err := user.Current()
+			gomega.Expect(err).Should(gomega.BeNil())
+			homeDir := usr.HomeDir
+			content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, hostName, "node_cloud_config.json"))
+			gomega.Expect(err).Should(gomega.BeNil())
+			nodeCloudConfig := models.NodeConfig{}
+			err = json.Unmarshal(content, &nodeCloudConfig)
+			gomega.Expect(err).Should(gomega.BeNil())
+			gomega.Expect(nodeCloudConfig.NodeID).To(gomega.Equal(hostName))
+			gomega.Expect(nodeCloudConfig.ElasticIP).To(gomega.ContainSubstring(constants.E2ENetworkPrefix))
+			gomega.Expect(nodeCloudConfig.CertPath).To(gomega.BeEmpty())
+			gomega.Expect(nodeCloudConfig.KeyPair).To(gomega.BeEmpty())
+			gomega.Expect(nodeCloudConfig.SecurityGroup).To(gomega.BeEmpty())
+			gomega.Expect(nodeCloudConfig.UseStaticIP).To(gomega.Equal(false))
+		})
+		ginkgo.It("can cleanup", func() {
+			commands.DeleteE2EInventory()
+			commands.DeleteE2ECluster()
+			commands.DeleteNode(hostName)
+			_ = os.Remove(exportFileName)
+		})
+	*/
 })

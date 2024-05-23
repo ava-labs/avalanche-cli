@@ -260,7 +260,7 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	if utils.IsE2E() {
 		proxy, err = net.Dial("tcp", avalancheGoEndpoint)
 		if err != nil {
-			return nil, fmt.Errorf("unable to port forward E2E to %s via %s", h.Connection.RemoteAddr(), "tcp")
+			return nil, fmt.Errorf("unable to port forward E2E to %s", avalancheGoEndpoint)
 		}
 	} else {
 		proxy, err = h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
