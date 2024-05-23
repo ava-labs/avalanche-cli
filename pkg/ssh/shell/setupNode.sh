@@ -19,4 +19,4 @@ rm -vf install.sh &&  busybox wget -q -nd https://raw.githubusercontent.com/ava-
 #name:TASK [modify permissions]
 chmod 755 install.sh
 #name:TASK [run install script]
-
+./install.sh {{ .CLIVersion }}
