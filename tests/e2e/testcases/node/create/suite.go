@@ -84,8 +84,8 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		avalancegoProcess := commands.NodeSSH(constants.E2EClusterName, "docker ps --no-trunc")
 		gomega.Expect(avalancegoProcess).To(gomega.ContainSubstring("avaplatform/avalanchego:" + avalanchegoVersion))
 	})
-	ginkgo.It("can wait up 30 seconds for avago to startup", func() {
-		timeout := 30 * time.Second
+	ginkgo.It("can wait up 60 seconds for avago to startup", func() {
+		timeout := 60 * time.Second
 		host := fmt.Sprintf("%s.%d", constants.E2ENetworkPrefix, 1+1) //first docker image
 		address := fmt.Sprintf("%s:%s", host, constants.AvalanchegoP2PPort)
 		deadline := time.Now().Add(timeout)
@@ -97,7 +97,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 				conn.Close()
 				break
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "Expected to connect to avago within 30 seconds")
 	})

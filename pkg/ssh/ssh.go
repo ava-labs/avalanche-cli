@@ -103,7 +103,6 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 
 // RunSSHSetupNode runs script to setup node
 func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
-	ux.Logger.Info("DEBUG: isE2E: %v", utils.IsE2E())
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
@@ -111,7 +110,6 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 		"shell/setupNode.sh",
 		scriptInputs{CLIVersion: cliVersion, IsE2E: utils.IsE2E()},
 	); err != nil {
-		ux.Logger.Info("DEBUG ERROR: %v", err)
 		return err
 	}
 	// name: copy metrics config to cloud server
