@@ -143,11 +143,11 @@ func RunSSHSetupDockerService(host *models.Host) error {
 // RunSSHRestartNode runs script to restart avalanchego
 func RunSSHRestartNode(host *models.Host) error {
 	remoteComposeFile := utils.GetRemoteComposeFile()
-	serviceName := "avalanchego"
+	avagoService := "avalanchego"
 	if utils.IsE2E() {
-		serviceName += utils.E2ESuffix(host.IP)
+		avagoService += utils.E2ESuffix(host.IP)
 	}
-	return docker.RestartDockerComposeService(host, remoteComposeFile, "avalanchego", constants.SSHLongRunningScriptTimeout)
+	return docker.RestartDockerComposeService(host, remoteComposeFile, avagoService, constants.SSHLongRunningScriptTimeout)
 }
 
 // ComposeSSHSetupAWMRelayer used docker compose to setup AWM Relayer
