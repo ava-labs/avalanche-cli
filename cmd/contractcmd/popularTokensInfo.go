@@ -19,7 +19,7 @@ type PopularTokenInfo struct {
 //go:embed popularTokensInfo.json
 var popularTokensInfoByteSlice []byte
 
-var popularTokensInfo map[string][]PopularTokenInfo
+var popularTokensInfo map[string]map[string][]PopularTokenInfo
 
 func (i PopularTokenInfo) Desc() string {
 	if i.TokenContractAddress == "" {
@@ -29,12 +29,12 @@ func (i PopularTokenInfo) Desc() string {
 	}
 }
 
-func GetPopularTokensInfo(network models.Network, subnetOption string) ([]PopularTokenInfo, error) {
+func GetPopularTokensInfo(network models.Network, blockchainAlias string) ([]PopularTokenInfo, error) {
 	if err := json.Unmarshal(popularTokensInfoByteSlice, &popularTokensInfo); err != nil {
 		return nil, fmt.Errorf("unabled to get popular tokens info from file: %w", err)
 	}
-	if network.Kind == models.Fuji && subnetOption == "C-Chain" {
-		return popularTokensInfo[models.Fuji.String()], nil
+	if network.Kind == models.Fuji {
+		return popularTokensInfo[models.Fuji.String()][blockchainAlias], nil
 	} else {
 		return nil, nil
 	}
