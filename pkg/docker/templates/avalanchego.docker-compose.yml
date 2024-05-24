@@ -15,8 +15,8 @@ services:
         --config-file=/.avalanchego/configs/node.json
 {{if .E2E }}
     volumes:
-      - avalancego_data_{{.E2ESuffix}}:/.avalanchego:rw
-      - avalancego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
+      - avalanchego_data_{{.E2ESuffix}}:/.avalanchego:rw
+      - avalanchego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
     ports:
       - "{{ .E2EIP }}:9650:9650"
       - "{{ .E2EIP }}:9651:9651"
@@ -41,7 +41,7 @@ services:
     command: -config.file=/etc/promtail/promtail.yml
 {{if .E2E }}
     volumes:
-      - avalancego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
+      - avalanchego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
       - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
     networks:
       - avalanchego_net_{{.E2ESuffix}}
@@ -77,8 +77,8 @@ services:
 
 {{if .E2E }}
 volumes:
-  avalancego_data_{{.E2ESuffix}}:
-  avalancego_logs_{{.E2ESuffix}}:
+  avalanchego_data_{{.E2ESuffix}}:
+  avalanchego_logs_{{.E2ESuffix}}:
 networks:
   avalanchego_net_{{.E2ESuffix}}:
 {{ else }}
