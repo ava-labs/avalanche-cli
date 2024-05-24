@@ -20,6 +20,7 @@ const composeTemplate = `version: '3'
 services:
 {{- $version := .UbuntuVersion }}
 {{- $pubkey := .SSHPubKey }}
+{{- $suffixList := .E2ESuffixList }}
 {{- range $i, $ip := .IPs }}
   ubuntu{{$i}}:
     privileged: true
@@ -27,20 +28,20 @@ services:
     container_name: ubuntu_container{{$i}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - avalancego_data{{.E2ESuffixList[$i]}}:/home/ubuntu/.avalanchego:rw
+      - avalanchego_data{{index $suffixList $i}}:/home/ubuntu/.avalanchego:rw
     networks:
       e2e:
         ipv4_address: {{$ip}}
     command: >
-	    /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server curl;
-		  id ubuntu || useradd -u 1000 -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
-		  echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
-		  mkdir -p  /home/ubuntu/.avalanche-cli; chown -R 1000 /home/ubuntu/;
-		  service ssh start && curl --max-time 1 http://ipinfo.io && tail -f /dev/null"
+      /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server curl;
+      id ubuntu || useradd -u 1000 -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
+      echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
+      mkdir -p  /home/ubuntu/.avalanche-cli; chown -R 1000 /home/ubuntu/;
+      service ssh start && curl --max-time 1 http://ipinfo.io && tail -f /dev/null"
 {{- end }}
 volumes:
 {{- range $i, $ip := .IPs }}
-  avalancego_data{{.E2ESuffixList[$i]}}:
+  avalanchego_data{{index $suffixList $i}}:
 {{- end }}
 networks:
   e2e:
