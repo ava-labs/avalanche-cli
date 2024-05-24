@@ -17,6 +17,7 @@ import (
 )
 
 const composeTemplate = `version: '3'
+name: avalanche-cli
 services:
 {{- $version := .UbuntuVersion }}
 {{- $pubkey := .SSHPubKey }}

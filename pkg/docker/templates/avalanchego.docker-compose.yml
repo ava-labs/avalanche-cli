@@ -1,3 +1,4 @@
+name: avalanche-cli
 services:
 {{if .WithAvalanchego}}
   avalanchego:
