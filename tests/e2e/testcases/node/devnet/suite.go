@@ -93,7 +93,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("\"network-id\": \"network-1338\""))
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("\"public-ip\": \"" + constants.E2ENetworkPrefix))
 		avalancegoConfigCChain := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/chains/C/config.json")
-		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": true"))
+		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": \"true\""))
 	})
 	ginkgo.It("provides avalanchego with staking certs", func() {
 		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "ls /home/ubuntu/.avalanchego/staking/")

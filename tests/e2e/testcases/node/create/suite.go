@@ -107,7 +107,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("\"network-id\": \"" + network + "\""))
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("public-ip"))
 		avalancegoConfigCChain := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/chains/C/config.json")
-		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": true"))
+		gomega.Expect(avalancegoConfigCChain).To(gomega.ContainSubstring("\"state-sync-enabled\": \"true\""))
 	})
 	ginkgo.It("can ssh to a created node", func() {
 		output := commands.NodeSSH(constants.E2EClusterName, "echo hello")
