@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleportercmd
+package bridgecmd
 
 import (
 	_ "embed"
@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type BridgeDeployFlags struct {
+type DeployFlags struct {
 	Network           networkoptions.NetworkFlags
 	SubnetName        string
 	BlockchainID      string
@@ -30,39 +30,39 @@ type BridgeDeployFlags struct {
 }
 
 var (
-	bridgeDeploySupportedNetworkOptions = []networkoptions.NetworkOption{
+	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
 		networkoptions.Fuji,
 	}
-	bridgeDeployFlags BridgeDeployFlags
+	deployFlags DeployFlags
 )
 
 // avalanche teleporter bridge deploy
-func newBridgeDeployCmd() *cobra.Command {
+func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Deploys Token Bridge into a given Network and Subnets",
 		Long:  "Deploys Token Bridge into a given Network and Subnets",
-		RunE:  bridgeDeploy,
+		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, bridgeDeploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	return cmd
 }
 
-func bridgeDeploy(_ *cobra.Command, args []string) error {
-	return CallBridgeDeploy(args, deployFlags)
+func deploy(_ *cobra.Command, args []string) error {
+	return CallDeploy(args, deployFlags)
 }
 
-func CallBridgeDeploy(_ []string, flags DeployFlags) error {
+func CallDeploy(_ []string, flags DeployFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Teleporter bridge?",
 		flags.Network,
 		true,
 		false,
-		bridgeDeploySupportedNetworkOptions,
+		deploySupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
@@ -112,6 +112,7 @@ func CallBridgeDeploy(_ []string, flags DeployFlags) error {
 		nativeOption := "The native token " + tokenSymbol
 		erc20Option := "An ERC-20 token"
 		explainOption := "Explain the difference"
+		goBackOption := "Go Back"
 		popularTokensInfo, err := GetPopularTokensInfo(network, subnetOption)
 		if err != nil {
 			return err
@@ -119,7 +120,7 @@ func CallBridgeDeploy(_ []string, flags DeployFlags) error {
 		popularTokensDesc := utils.Map(
 			popularTokensInfo,
 			func(i PopularTokenInfo) string {
-				return i.Desc()
+				return i.Desc() + " (recommended)"
 			},
 		)
 		options := []string{popularOption, existingOriginOption, nativeOption, erc20Option, explainOption}
@@ -136,12 +137,17 @@ func CallBridgeDeploy(_ []string, flags DeployFlags) error {
 			}
 			switch option {
 			case popularOption:
-				_, err = app.Prompt.CaptureList(
+				options := popularTokensDesc
+				options = append(options, goBackOption)
+				option, err := app.Prompt.CaptureList(
 					"Choose Token",
-					popularTokensDesc,
+					options,
 				)
 				if err != nil {
 					return err
+				}
+				if option == goBackOption {
+					continue
 				}
 			case existingOriginOption:
 				_, err = app.Prompt.CaptureAddress(
@@ -151,11 +157,24 @@ func CallBridgeDeploy(_ []string, flags DeployFlags) error {
 					return err
 				}
 			case erc20Option:
-				_, err = app.Prompt.CaptureAddress(
+				erc20TokenAddr, err := app.Prompt.CaptureAddress(
 					"Enter the address of the ERC-20 Token",
 				)
 				if err != nil {
 					return err
+				}
+				if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
+					ux.Logger.PrintToUser("You have entered the address of %s, a popular token in the subnet.", p.TokenName)
+					deployANewHupOption := "Yes, I want to deploy a new Bridge Hub"
+					useTheExistingHubOption := "No, I want to use the existing official Bridge Hub"
+					options := []string{deployANewHupOption, useTheExistingHubOption}
+					_, err = app.Prompt.CaptureList(
+						"Are you sure you want to deploy a new Bridge Hub for it?",
+						options,
+					)
+					if err != nil {
+						return err
+					}
 				}
 			case explainOption:
 				ux.Logger.PrintToUser("The difference is...")
