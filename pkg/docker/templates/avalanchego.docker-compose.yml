@@ -16,7 +16,6 @@ services:
 {{if .E2E }}
     volumes:
       - avalanchego_data_{{.E2ESuffix}}:/.avalanchego:rw
-      - avalanchego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
     ports:
       - "{{ .E2EIP }}:9650:9650"
       - "{{ .E2EIP }}:9651:9651"
@@ -37,7 +36,7 @@ services:
     image: grafana/promtail:3.0.0
     container_name: promtail
     restart: unless-stopped
-    user: "0:999"  # root user docker group
+    user: "1000:1000"  # ubuntu user
     command: -config.file=/etc/promtail/promtail.yml
 {{if .E2E }}
     volumes:

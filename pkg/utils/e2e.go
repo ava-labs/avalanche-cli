@@ -26,6 +26,7 @@ services:
   ubuntu{{$i}}:
     privileged: true
     image: ubuntu:{{$version}}
+	user: "1000:1000"
     container_name: ubuntu_container{{$i}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
