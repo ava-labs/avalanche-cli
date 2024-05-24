@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package contractcmd
+package teleportercmd
 
 import (
 	_ "embed"
@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type DeployFlags struct {
+type BridgeDeployFlags struct {
 	Network           networkoptions.NetworkFlags
 	SubnetName        string
 	BlockchainID      string
@@ -30,39 +30,39 @@ type DeployFlags struct {
 }
 
 var (
-	deployBridgeSupportedNetworkOptions = []networkoptions.NetworkOption{
+	bridgeDeploySupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
 		networkoptions.Fuji,
 	}
-	deployFlags DeployFlags
+	bridgeDeployFlags BridgeDeployFlags
 )
 
-// avalanche contract deploy bridge
-func newDeployBridgeCmd() *cobra.Command {
+// avalanche teleporter bridge deploy
+func newBridgeDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "bridge",
-		Short: "Deploys Tokeb Bridge into a given Network and Subnets",
-		Long:  "Deploys Tokeb Bridge into a given Network and Subnets",
-		RunE:  deployBridge,
+		Use:   "deploy",
+		Short: "Deploys Token Bridge into a given Network and Subnets",
+		Long:  "Deploys Token Bridge into a given Network and Subnets",
+		RunE:  bridgeDeploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deployBridgeSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, bridgeDeploySupportedNetworkOptions)
 	return cmd
 }
 
-func deployBridge(_ *cobra.Command, args []string) error {
-	return CallDeployBridge(args, deployFlags)
+func bridgeDeploy(_ *cobra.Command, args []string) error {
+	return CallBridgeDeploy(args, deployFlags)
 }
 
-func CallDeployBridge(_ []string, flags DeployFlags) error {
+func CallBridgeDeploy(_ []string, flags DeployFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Teleporter bridge?",
 		flags.Network,
 		true,
 		false,
-		deployBridgeSupportedNetworkOptions,
+		bridgeDeploySupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
