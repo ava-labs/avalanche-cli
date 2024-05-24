@@ -120,7 +120,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		popularTokensDesc := utils.Map(
 			popularTokensInfo,
 			func(i PopularTokenInfo) string {
-				return i.Desc() + " (recommended)"
+				if i.TokenContractAddress == "" {
+					return i.Desc()
+				} else {
+					return i.Desc() + " (recommended)"
+				}
 			},
 		)
 		options := []string{popularOption, existingOriginOption, nativeOption, erc20Option, explainOption}
