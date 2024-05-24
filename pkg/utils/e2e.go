@@ -28,7 +28,7 @@ services:
     container_name: ubuntu_container{{$i}}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-      - avalanchego_data{{index $suffixList $i}}:/home/ubuntu/.avalanchego:rw
+      - avalanchego_data_{{index $suffixList $i}}:/home/ubuntu/.avalanchego:rw
     networks:
       e2e:
         ipv4_address: {{$ip}}
@@ -41,7 +41,7 @@ services:
 {{- end }}
 volumes:
 {{- range $i, $ip := .IPs }}
-  avalanchego_data{{index $suffixList $i}}:
+  avalanchego_data_{{index $suffixList $i}}:
 {{- end }}
 networks:
   e2e:
