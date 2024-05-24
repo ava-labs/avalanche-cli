@@ -14,8 +14,8 @@ services:
         --config-file=/.avalanchego/configs/node.json
 {{if .E2E }}
     volumes:
-      avalancego_data_{{.E2ESuffix}}:/.avalanchego:rw
-      avalancego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
+      - avalancego_data_{{.E2ESuffix}}:/.avalanchego:rw
+      - avalancego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
     ports:
       - "{{ .E2EIP }}:9650:9650"
       - "{{ .E2EIP }}:9651:9651"
