@@ -165,7 +165,7 @@ func StartDockerCompose(filePath string) error {
 
 // StopDockerCompose stops the Docker Compose services defined in the specified file.
 func StopDockerCompose(filePath string) error {
-	cmd := exec.Command("docker-compose", "-f", filePath, "down")
+	cmd := exec.Command("docker", "compose", "-f", filePath, "down")
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
