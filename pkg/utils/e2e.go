@@ -144,7 +144,6 @@ func SaveDockerComposeFile(fileName string, nodes int, ubuntuVersion string, ssh
 		}
 	}
 	composeFile, err := GenDockerComposeFile(nodes, ubuntuVersion, constants.E2ENetworkPrefix, sshPubKey)
-	fmt.Println("Generated Docker Compose file:", composeFile)
 	if err != nil {
 		return "", fmt.Errorf("error generating Docker Compose file: %w", err)
 	}

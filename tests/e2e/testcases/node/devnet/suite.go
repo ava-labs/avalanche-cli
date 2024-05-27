@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -118,6 +119,9 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("\"metricsenabled\": false"))
 		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
 		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
+	})
+	ginkgo.It("can wait up 30 seconds for avago to startup", func() {
+		time.Sleep(20 * time.Second)
 	})
 	ginkgo.It("can get cluster status", func() {
 		output := commands.NodeStatus()
