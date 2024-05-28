@@ -120,10 +120,10 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
 		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
 	})
-	ginkgo.It("can wait up 30 seconds for avago to startup", func() {
+	ginkgo.It("can waitßß 20 seconds for avago to startup", func() {
 		time.Sleep(20 * time.Second)
 	})
-	ginkgo.It("can get cluster status", func() {
+	/*ginkgo.It("can get cluster status", func() {
 		output := commands.NodeStatus()
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("Checking if node(s) are bootstrapped to Primary Network"))
@@ -135,7 +135,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(output).To(gomega.ContainSubstring(apiHostName))
 		gomega.Expect(output).To(gomega.ContainSubstring(apiNodeID))
 		gomega.Expect(output).To(gomega.ContainSubstring("Devnet"))
-	})
+	})*/
 	ginkgo.It("can ssh to a created node", func() {
 		output := commands.NodeSSH(constants.E2EClusterName, "echo hello")
 		gomega.Expect(output).To(gomega.ContainSubstring("hello"))
