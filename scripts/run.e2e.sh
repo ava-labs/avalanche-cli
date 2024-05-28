@@ -14,7 +14,7 @@ export RUN_E2E="true"
 current_user=$(whoami)
 
 # Check if the current user is 'runner'
-if [ "$current_user" = "runner" ] && [ "$OSTYPE" == "linux-gnu"* ]; then
+if [ "$current_user" = "runner" ] && [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo "github action[runner]"
     sudo chown runner /var/run/docker.sock
     sudo chmod +rw /var/run/docker.sock
