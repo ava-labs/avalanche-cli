@@ -19,7 +19,7 @@ if [ "$current_user" = "runner" ] && ["$OSTYPE" == "linux-gnu"* ]; then
     sudo chown runner /var/run/docker.sock
     sudo chmod +rw /var/run/docker.sock
     sudo useradd -m -s /bin/bash -u 1000 ubuntu && sudo mkdir -p /home/ubuntu && sudo chown -R 1000:1000 /home/ubuntu || echo "failed to create ubuntu user"
-    sudo mkdir -p /home/ubuntu/.avalanche-cli /home/ubuntu/.avalanchego /home/ubuntu/.avalanchego/logs
+    sudo mkdir -p /home/ubuntu/.avalanche-cli /home/ubuntu/.avalanchego 
     sudo chown -R 1000:1000 /home/ubuntu || echo "failed to change ownership of /home/ubuntu to ubuntu user"
     for i in $(seq 1 9) ; do
         sudo ifconfig lo:$i 192.168.223.10$i up

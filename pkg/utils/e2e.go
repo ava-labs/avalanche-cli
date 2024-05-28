@@ -38,7 +38,7 @@ services:
       id ubuntu || useradd -u 1000 -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
       echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
       mkdir -p  /home/ubuntu/.avalanche-cli; chown -R 1000 /home/ubuntu/;
-      service ssh start && curl --max-time 1 http://ipinfo.io && tail -f /dev/null"
+      service ssh start && tail -f /dev/null"
 {{- end }}
 volumes:
 {{- range $i, $ip := .IPs }}
