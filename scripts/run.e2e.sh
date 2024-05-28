@@ -24,6 +24,7 @@ if [ "$current_user" = "runner" ] && ["$OSTYPE" == "linux-gnu"* ]; then
     for i in $(seq 1 9) ; do
         sudo ifconfig lo:$i 192.168.223.10$i up
     done
+    sudo docker system prune -f || echo "failed to cleanup docker"
 fi
 
 if [ ! -d "tests/e2e/hardhat/node_modules" ]
