@@ -53,7 +53,7 @@ func (ul *UserLog) print(msg string) {
 
 // Info prints to the log file
 func (ul *UserLog) Info(msg string, args ...interface{}) {
-	ul.print(fmt.Sprintf(msg, args...) + "\n")
+	ul.log.Info(fmt.Sprintf(msg, args...) + "\n")
 }
 
 // Error prints to the log file
