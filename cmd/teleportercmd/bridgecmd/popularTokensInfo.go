@@ -22,10 +22,13 @@ var popularTokensInfoByteSlice []byte
 var popularTokensInfo map[string]map[string][]PopularTokenInfo
 
 func (i PopularTokenInfo) Desc() string {
-	if i.TokenContractAddress == "" {
+	switch {
+	case i.TokenContractAddress != "" && i.BridgeHubAddress != "":
+		return fmt.Sprintf("%s | Token address %s | Hub address %s", i.TokenName, i.TokenContractAddress, i.BridgeHubAddress)
+	case i.BridgeHubAddress != "":
+		return fmt.Sprintf("%s | Hub address %s", i.TokenName, i.BridgeHubAddress)
+	default:
 		return i.TokenName
-	} else {
-		return fmt.Sprintf("%s | Token address %s | Hub bridge address %s", i.TokenName, i.TokenContractAddress, i.BridgeHubAddress)
 	}
 }
 

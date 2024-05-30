@@ -108,9 +108,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		prompt = "What kind of token do you want to bridge?"
 		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...)"
-		existingOriginOption := "A token with an existing Origin Bridge"
-		nativeOption := "The native token " + tokenSymbol
-		erc20Option := "An ERC-20 token"
+		hubDeployedOption := "A token that already has a Hub deployed"
+		deployNewHubOption := "Deploy a new Hub for the token"
 		explainOption := "Explain the difference"
 		goBackOption := "Go Back"
 		popularTokensInfo, err := GetPopularTokensInfo(network, subnetOption)
@@ -120,16 +119,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		popularTokensDesc := utils.Map(
 			popularTokensInfo,
 			func(i PopularTokenInfo) string {
-				if i.TokenContractAddress == "" {
+				if i.BridgeHubAddress == "" {
 					return i.Desc()
 				} else {
 					return i.Desc() + " (recommended)"
 				}
 			},
 		)
-		options := []string{popularOption, existingOriginOption, nativeOption, erc20Option, explainOption}
+		options := []string{popularOption, hubDeployedOption, deployNewHubOption, explainOption}
 		if len(popularTokensDesc) == 0 {
-			options = []string{existingOriginOption, nativeOption, erc20Option, explainOption}
+			options = []string{hubDeployedOption, deployNewHubOption, explainOption}
 		}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -153,31 +152,44 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				if option == goBackOption {
 					continue
 				}
-			case existingOriginOption:
+			case hubDeployedOption:
 				_, err = app.Prompt.CaptureAddress(
-					"Enter the address of the Origin Bridge",
+					"Enter the address of the Hub",
 				)
 				if err != nil {
 					return err
 				}
-			case erc20Option:
-				erc20TokenAddr, err := app.Prompt.CaptureAddress(
-					"Enter the address of the ERC-20 Token",
+			case deployNewHubOption:
+				nativeOption := "The native token " + tokenSymbol
+				erc20Option := "An ERC-20 token"
+				options := []string{nativeOption, erc20Option}
+				option, err := app.Prompt.CaptureList(
+					"What kind of token do you want to deploy the Hub for?",
+					options,
 				)
 				if err != nil {
 					return err
 				}
-				if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
-					ux.Logger.PrintToUser("You have entered the address of %s, a popular token in the subnet.", p.TokenName)
-					deployANewHupOption := "Yes, I want to deploy a new Bridge Hub"
-					useTheExistingHubOption := "No, I want to use the existing official Bridge Hub"
-					options := []string{deployANewHupOption, useTheExistingHubOption}
-					_, err = app.Prompt.CaptureList(
-						"Are you sure you want to deploy a new Bridge Hub for it?",
-						options,
+				switch option {
+				case erc20Option:
+					erc20TokenAddr, err := app.Prompt.CaptureAddress(
+						"Enter the address of the ERC-20 Token",
 					)
 					if err != nil {
 						return err
+					}
+					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
+						ux.Logger.PrintToUser("You have entered the address of %s, a popular token in the subnet.", p.TokenName)
+						deployANewHupOption := "Yes, I want to deploy a new Bridge Hub"
+						useTheExistingHubOption := "No, I want to use the existing official Bridge Hub"
+						options := []string{deployANewHupOption, useTheExistingHubOption}
+						_, err = app.Prompt.CaptureList(
+							"Are you sure you want to deploy a new Bridge Hub for it?",
+							options,
+						)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			case explainOption:
