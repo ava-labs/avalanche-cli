@@ -66,6 +66,31 @@ func getNewAddresses(
 	return newAddresses, nil
 }
 
+func removeAddress(
+	app *application.Avalanche,
+	addresses []common.Address,
+	kind string,
+) ([]common.Address, bool, error) {
+	if len(addresses) == 0 {
+		fmt.Println(fmt.Sprintf("There are no %s addresses to remove from", kind))
+		fmt.Println()
+		return addresses, true, nil
+	}
+	cancelOption := "Cancel"
+	prompt := "Select the address you want to remove"
+	options := utils.Map(addresses, func(a common.Address) string { return a.Hex() })
+	options = append(options, cancelOption)
+	opt, err := app.Prompt.CaptureList(prompt, options)
+	if err != nil {
+		return addresses, false, err
+	}
+	if opt != cancelOption {
+		addresses = utils.RemoveFromSlice(addresses, common.HexToAddress(opt))
+		return addresses, false, nil
+	}
+	return addresses, true, nil
+}
+
 func GenerateAllowList(
 	app *application.Avalanche,
 	action string,
@@ -141,30 +166,27 @@ func GenerateAllowList(
 				break
 			}
 		case removeOption:
-			removePrompt := "What role does the address that should be removed have?"
-			options := []string{adminOption, managerOption, enabledOption, cancelOption}
-			if !managerRoleEnabled {
-				options = []string{adminOption, enabledOption, cancelOption}
-			}
-			roleOption, err := app.Prompt.CaptureList(removePrompt, options)
-			if err != nil {
-				return nil, nil, nil, false, err
-			}
-			switch roleOption {
-			case adminOption:
-				prompt := "Select the address you want to remove"
-				options := utils.Map(adminAddresses, func(a common.Address) string { return a.Hex() })
-				options = append(options, cancelOption)
-				opt, err := app.Prompt.CaptureList(prompt, options)
+			keepAsking := true
+			for keepAsking {
+				removePrompt := "What role does the address that should be removed have?"
+				options := []string{adminOption, managerOption, enabledOption, cancelOption}
+				if !managerRoleEnabled {
+					options = []string{adminOption, enabledOption, cancelOption}
+				}
+				roleOption, err := app.Prompt.CaptureList(removePrompt, options)
 				if err != nil {
 					return nil, nil, nil, false, err
 				}
-				if opt != cancelOption {
-
+				switch roleOption {
+				case adminOption:
+					adminAddresses, keepAsking, err = removeAddress(app, adminAddresses, "admin")
+				case managerOption:
+					managerAddresses, keepAsking, err = removeAddress(app, managerAddresses, "manager")
+				case enabledOption:
+					enabledAddresses, keepAsking, err = removeAddress(app, enabledAddresses, "enabled")
+				case cancelOption:
+					keepAsking = false
 				}
-			case managerOption:
-			case enabledOption:
-			case cancelOption:
 			}
 		case previewOption:
 			preview(adminAddresses, managerAddresses, enabledAddresses)

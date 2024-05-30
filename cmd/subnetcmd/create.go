@@ -163,7 +163,7 @@ func getVMFromFlag() models.VMType {
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func createSubnetConfig(cmd *cobra.Command, args []string) error {
-	vm.GenerateAllowList(app, "issue transactions", "v0.6.4")
+	fmt.Println(vm.GenerateAllowList(app, "issue transactions", "v0.6.4"))
 	return nil
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
