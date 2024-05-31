@@ -405,7 +405,6 @@ func ensureHaveBalance(
 	sc *models.Sidecar,
 	which string,
 	addresses []common.Address,
-	subnetName string,
 ) error {
 	if len(addresses) < 1 {
 		return nil
@@ -449,10 +448,10 @@ func promptAdminManagerAndEnabledAddresses(
 	if cancelled || err != nil {
 		return nil, nil, nil, cancelled, err
 	}
-	if err := ensureHaveBalance(sc, adminLabel, admin, subnetName); err != nil {
+	if err := ensureHaveBalance(sc, adminLabel, admin); err != nil {
 		return nil, nil, nil, false, err
 	}
-	if err := ensureHaveBalance(sc, managerLabel, admin, subnetName); err != nil {
+	if err := ensureHaveBalance(sc, managerLabel, admin); err != nil {
 		return nil, nil, nil, false, err
 	}
 	return admin, manager, enabled, false, nil

@@ -72,7 +72,7 @@ func removeAddress(
 	kind string,
 ) ([]common.Address, bool, error) {
 	if len(addresses) == 0 {
-		fmt.Println(fmt.Sprintf("There are no %s addresses to remove from", kind))
+		fmt.Printf("There are no %s addresses to remove from\n", kind)
 		fmt.Println()
 		return addresses, true, nil
 	}
@@ -180,10 +180,19 @@ func GenerateAllowList(
 				switch roleOption {
 				case adminOption:
 					adminAddresses, keepAsking, err = removeAddress(app, adminAddresses, "admin")
+					if err != nil {
+						return nil, nil, nil, false, err
+					}
 				case managerOption:
 					managerAddresses, keepAsking, err = removeAddress(app, managerAddresses, "manager")
+					if err != nil {
+						return nil, nil, nil, false, err
+					}
 				case enabledOption:
 					enabledAddresses, keepAsking, err = removeAddress(app, enabledAddresses, "enabled")
+					if err != nil {
+						return nil, nil, nil, false, err
+					}
 				case cancelOption:
 					keepAsking = false
 				}
