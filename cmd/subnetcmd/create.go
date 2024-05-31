@@ -189,12 +189,30 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	subnetType := getVMFromFlag()
 
 	if subnetType == "" {
-		subnetTypeStr, err := app.Prompt.CaptureList(
-			"Choose your VM",
-			[]string{models.SubnetEvm, models.CustomVM},
-		)
-		if err != nil {
-			return err
+		subnetEvmOption := "Subnet-EVM"
+		customVMOption := "Custom VM"
+		explainOption := "Explain the difference"
+		options := []string{subnetEvmOption, customVMOption, explainOption}
+		var subnetTypeStr string
+		for {
+			option, err := app.Prompt.CaptureList(
+				"VM",
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case subnetEvmOption:
+				subnetTypeStr = models.SubnetEvm
+			case customVMOption:
+				subnetTypeStr = models.CustomVM
+			case explainOption:
+				ux.Logger.PrintToUser("The difference is...")
+				ux.Logger.PrintToUser("")
+				continue
+			}
+			break
 		}
 		subnetType = models.VMTypeFromString(subnetTypeStr)
 	}
