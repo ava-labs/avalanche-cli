@@ -456,6 +456,81 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Permissioning
+	if subnetType == models.SubnetEvm && genesisFile == "" {
+		noOption := "No"
+		yesOption := "Yes"
+		explainOption := "Explain the difference"
+		options := []string{noOption, yesOption, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				"You can optionally add permissioning on different levels to your blockchain. Do you want to make your blockchain permissioned?",
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case yesOption:
+				anyoneCanSubmitTransactionsOption := "I want anyone to be able to submit transactions on my blockchain. (Transaction Allow List OFF)"
+				approvedCanSubmitTransactionsOption := "I want only approved addresses to submit transactions on my blockchain. (Transaction Allow List ON)"
+				options := []string{anyoneCanSubmitTransactionsOption, approvedCanSubmitTransactionsOption, explainOption}
+				for {
+					option, err := app.Prompt.CaptureList(
+						"Do you want to allow only certain addresses to interact with your blockchain? (Transaction Allowlist Precompile)",
+						options,
+					)
+					if err != nil {
+						return err
+					}
+					switch option {
+					case approvedCanSubmitTransactionsOption:
+						_, _, _, _, err := vm.GenerateAllowList(app, "issue transactions", evmVersion)
+						if err != nil {
+							return err
+						}
+					case explainOption:
+						ux.Logger.PrintToUser("The difference is...")
+						ux.Logger.PrintToUser("")
+						continue
+					}
+					break
+				}
+				anyoneCanDeployContractsOption := "I want anyone to be able to deploy smart contracts on my blockchain. (Smart Contract Deployer Allow List OFF)"
+				approvedCanDeployContractsOption := "I want only approved addresses to deploy smart contracts on my blockchain. (Smart Contract Deployer Allow List ON)"
+				options = []string{anyoneCanDeployContractsOption, approvedCanDeployContractsOption, explainOption}
+				for {
+					option, err := app.Prompt.CaptureList(
+						"Do you want to allow only certain addresses to deploy smart contracts on your blockchain? (Contract Deployer Allowlist)",
+						options,
+					)
+					if err != nil {
+						return err
+					}
+					switch option {
+					case approvedCanDeployContractsOption:
+						_, _, _, _, err := vm.GenerateAllowList(app, "deploy smart contracts", evmVersion)
+						if err != nil {
+							return err
+						}
+					case explainOption:
+						ux.Logger.PrintToUser("The difference is...")
+						ux.Logger.PrintToUser("")
+						continue
+					}
+					break
+				}
+			case explainOption:
+				ux.Logger.PrintToUser("The difference is...")
+				ux.Logger.PrintToUser("")
+				continue
+			}
+			break
+		}
+	}
+
+	return nil
+
 	switch subnetType {
 	case models.SubnetEvm:
 		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
