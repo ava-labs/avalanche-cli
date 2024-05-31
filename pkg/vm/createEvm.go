@@ -165,7 +165,7 @@ func createEvmGenesis(
 				)
 			}
 		case precompilesState:
-			*conf, direction, err = getPrecompiles(*conf, app, &genesis.Timestamp, useSubnetEVMDefaults, useWarp)
+			*conf, direction, err = getPrecompiles(*conf, app, &genesis.Timestamp, useSubnetEVMDefaults, useWarp, subnetEVMVersion)
 			if teleporterInfo != nil {
 				*conf = addTeleporterAddressesToAllowLists(
 					*conf,

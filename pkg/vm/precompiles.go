@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -54,26 +55,19 @@ func PrecompileToUpgradeString(p Precompile) string {
 	}
 }
 
-func configureRewardManager(app *application.Avalanche) (rewardmanager.Config, bool, error) {
-	config := rewardmanager.Config{}
-	adminPrompt := "Configure reward manager admin addresses"
-	managerPrompt := "Configure reward manager manager addresses"
-	enabledPrompt := "Configure reward manager enabled addresses"
+func configureRewardManager(
+	app *application.Avalanche,
+	subnetEvmVersion string,
+) (rewardmanager.Config, bool, error) {
 	info := "\nThis precompile allows to configure the fee reward mechanism " +
 		"on your subnet, including burning or sending fees.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#changing-fee-reward-mechanisms\n\n"
-
-	admins, manager, enabled, cancelled, err := getAdminManagerAndEnabledAddresses(
-		adminPrompt,
-		managerPrompt,
-		enabledPrompt,
-		info,
-		app,
-	)
+	ux.Logger.PrintToUser(info)
+	config := rewardmanager.Config{}
+	admins, manager, enabled, cancelled, err := GenerateAllowList(app, "customize fee distribution", subnetEvmVersion)
 	if err != nil {
 		return config, false, err
 	}
-
 	config.AllowListConfig = allowlist.AllowListConfig{
 		AdminAddresses:   admins,
 		ManagerAddresses: manager,
@@ -86,7 +80,6 @@ func configureRewardManager(app *application.Avalanche) (rewardmanager.Config, b
 	if err != nil {
 		return config, false, err
 	}
-
 	return config, cancelled, nil
 }
 
@@ -419,6 +412,7 @@ func getPrecompiles(
 	genesisTimestamp *uint64,
 	useDefaults bool,
 	useWarp bool,
+	subnetEvmVersion string,
 ) (
 	params.ChainConfig,
 	statemachine.StateDirection,
@@ -544,7 +538,7 @@ func getPrecompiles(
 				}
 			}
 		case RewardManager:
-			rewardManagerConfig, cancelled, err := configureRewardManager(app)
+			rewardManagerConfig, cancelled, err := configureRewardManager(app, subnetEvmVersion)
 			if err != nil {
 				return config, statemachine.Stop, err
 			}
