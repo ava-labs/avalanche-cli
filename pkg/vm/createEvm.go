@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -250,7 +251,6 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 
 func GetVMVersion(
 	app *application.Avalanche,
-	vmName string,
 	repoName string,
 	vmVersion string,
 ) (string, error) {
@@ -273,7 +273,7 @@ func GetVMVersion(
 			return "", err
 		}
 	case "":
-		vmVersion, err = askForVMVersion(app, vmName, repoName)
+		vmVersion, err = askForVMVersion(app, repoName)
 		if err != nil {
 			return "", err
 		}
@@ -283,31 +283,40 @@ func GetVMVersion(
 
 func askForVMVersion(
 	app *application.Avalanche,
-	vmName string,
 	repoName string,
 ) (string, error) {
-	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(
-		binutils.GetGithubLatestReleaseURL(
+	var (
+		latestReleaseVersion    string
+		latestPreReleaseVersion string
+		err                     error
+	)
+	if os.Getenv("OFFLINECLI") == "" {
+		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
+			binutils.GetGithubLatestReleaseURL(
+				constants.AvaLabsOrg,
+				repoName,
+			),
+		)
+		if err != nil {
+			return "", err
+		}
+		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
-		),
-	)
-	if err != nil {
-		return "", err
-	}
-	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
-		constants.AvaLabsOrg,
-		repoName,
-	)
-	if err != nil {
-		return "", err
+		)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		latestReleaseVersion = evm.Version
+		latestPreReleaseVersion = evm.Version
 	}
 
 	useCustom := "Specify custom version"
 	useLatestRelease := "Use latest release version" + versionComments[latestReleaseVersion]
 	useLatestPreRelease := "Use latest pre-release version" + versionComments[latestPreReleaseVersion]
 
-	defaultPrompt := fmt.Sprintf("What version of %s would you like?", vmName)
+	defaultPrompt := "Version"
 
 	versionOptions := []string{useLatestRelease, useCustom}
 	if latestPreReleaseVersion != latestReleaseVersion {

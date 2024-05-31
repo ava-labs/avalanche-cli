@@ -236,7 +236,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if subnetType == models.SubnetEvm {
-		evmVersion, err = vm.GetVMVersion(app, "Subnet-EVM", constants.SubnetEVMRepoName, evmVersion)
+		evmVersion, err = vm.GetVMVersion(app, constants.SubnetEVMRepoName, evmVersion)
 		if err != nil {
 			return err
 		}
