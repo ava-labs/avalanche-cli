@@ -191,6 +191,11 @@ func GenerateAllowList(
 		case previewOption:
 			preview(adminAddresses, managerAddresses, enabledAddresses)
 		case confirmOption:
+			if len(adminAddresses) == 0 && len(managerAddresses) == 0 && len(enabledAddresses) == 0 {
+				fmt.Println("We need at least one address to have been added to the allow list. Otherwise cancel.")
+				fmt.Println()
+				continue
+			}
 			preview(adminAddresses, managerAddresses, enabledAddresses)
 			confirmPrompt := "Confirm?"
 			yesOption := "Yes"
