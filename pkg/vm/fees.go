@@ -21,15 +21,6 @@ func GetFeeConfig(config params.ChainConfig, app *application.Avalanche, useDefa
 		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
 		useSlow   = "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
 		customFee = "Customize fee config"
-
-		setGasLimit                 = "Set gas limit"
-		setBlockRate                = "Set target block rate"
-		setMinBaseFee               = "Set min base fee"
-		setTargetGas                = "Set target gas"
-		setBaseFeeChangeDenominator = "Set base fee change denominator"
-		setMinBlockGas              = "Set min block gas cost"
-		setMaxBlockGas              = "Set max block gas cost"
-		setGasStep                  = "Set block gas cost step"
 	)
 
 	config.FeeConfig = StarterFeeConfig
@@ -64,7 +55,24 @@ func GetFeeConfig(config params.ChainConfig, app *application.Avalanche, useDefa
 	default:
 		ux.Logger.PrintToUser("Customizing fee config")
 	}
+	return CustomizeFeeConfig(config, app)
+}
 
+func CustomizeFeeConfig(config params.ChainConfig, app *application.Avalanche) (
+	params.ChainConfig,
+	statemachine.StateDirection,
+	error,
+) {
+	const (
+		setGasLimit                 = "Set gas limit"
+		setBlockRate                = "Set target block rate"
+		setMinBaseFee               = "Set min base fee"
+		setTargetGas                = "Set target gas"
+		setBaseFeeChangeDenominator = "Set base fee change denominator"
+		setMinBlockGas              = "Set min block gas cost"
+		setMaxBlockGas              = "Set max block gas cost"
+		setGasStep                  = "Set block gas cost step"
+	)
 	gasLimit, err := app.Prompt.CapturePositiveBigInt(setGasLimit)
 	if err != nil {
 		return config, statemachine.Stop, err

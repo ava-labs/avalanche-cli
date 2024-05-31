@@ -290,7 +290,7 @@ func askForVMVersion(
 		latestPreReleaseVersion string
 		err                     error
 	)
-	if os.Getenv("OFFLINECLI") == "" {
+	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
 		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
 			binutils.GetGithubLatestReleaseURL(
 				constants.AvaLabsOrg,

@@ -16,11 +16,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/subnet-evm/params"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
@@ -44,8 +44,7 @@ var (
 	useLatestReleasedEvmVersion    bool
 	useLatestPreReleasedEvmVersion bool
 	useRepo                        bool
-	teleporterReady                bool
-	runRelayer                     bool
+	useTeleporter                  bool
 	useWarp                        bool
 
 	errIllegalNameCharacter = errors.New(
@@ -78,7 +77,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().StringVar(&evmVersion, "vm-version", "", "version of Subnet-EVM template to use")
 	cmd.Flags().Uint64Var(&evmChainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
-	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token name to use with Subnet-EVM")
+	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token symbol to use with Subnet-EVM")
 	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles/teleporter with Subnet-EVM")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&useLatestPreReleasedEvmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
@@ -91,8 +90,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
 	cmd.Flags().BoolVar(&useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
-	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
-	cmd.Flags().BoolVar(&runRelayer, "relayer", false, "run AWM relayer when deploying the vm")
+	cmd.Flags().BoolVar(&useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	return cmd
 }
 
@@ -235,13 +233,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", evmVersion)
 	}
 
-	if subnetType == models.SubnetEvm {
-		evmVersion, err = vm.GetVMVersion(app, constants.SubnetEVMRepoName, evmVersion)
-		if err != nil {
-			return err
-		}
-	}
-
 	genesisFileIsEVM := false
 	if genesisFile != "" {
 		genesisFileIsEVM, err = utils.PathIsSubnetEVMGenesis(genesisFile)
@@ -254,43 +245,214 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("provided genesis file has no proper Subnet-EVM format")
 	}
 
-	if subnetType == models.SubnetEvm || genesisFileIsEVM {
-		if evmDefaults {
-			teleporterReady = true
-			runRelayer = true
-		}
-		teleporterReady, err = prompts.CaptureBoolFlag(
-			app.Prompt,
-			cmd,
-			"teleporter",
-			teleporterReady,
-			"Would you like to enable Teleporter on your VM?",
-		)
+	if subnetType == models.SubnetEvm {
+		evmVersion, err = vm.GetVMVersion(app, constants.SubnetEVMRepoName, evmVersion)
 		if err != nil {
 			return err
 		}
-		if teleporterReady && !useWarp {
-			return fmt.Errorf("warp should be enabled for teleporter to work")
-		}
-		if teleporterReady {
-			runRelayer, err = prompts.CaptureBoolFlag(
-				app.Prompt,
-				cmd,
-				"relayer",
-				runRelayer,
-				"Would you like to run AMW Relayer when deploying your VM?",
-			)
+	}
+
+	if subnetType == models.SubnetEvm && genesisFile == "" {
+		if evmChainID == 0 {
+			evmChainID, err = app.Prompt.CaptureUint64("Chain ID")
 			if err != nil {
 				return err
 			}
 		}
 	}
 
+	// Gas token
+	if subnetType == models.SubnetEvm && genesisFile == "" {
+		nativeTokenOption := "It's own Native Token"
+		externalTokenOption := "A token from another blockchain"
+		explainOption := "Explain the difference"
+		options := []string{nativeTokenOption, externalTokenOption, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				"What kind of gas token should your blockchain use?",
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case nativeTokenOption:
+				evmToken, err = app.Prompt.CaptureString("Token Symbol")
+				if err != nil {
+					return err
+				}
+				allocateToNewKeyOption := "1m to new key (+x amount to relayer)"
+				allocateToEwoqOption := "1m to new ewoq (not recommended for production, +x amount to relayer)"
+				customAllocationOption := "Custom allocation (configure exact amount to relayer)"
+				options := []string{allocateToNewKeyOption, allocateToEwoqOption, customAllocationOption}
+				option, err := app.Prompt.CaptureList(
+					"Initial Token Allocation",
+					options,
+				)
+				if err != nil {
+					return err
+				}
+				if option == customAllocationOption {
+					_, err := app.Prompt.CaptureAddress("Address to allocate to")
+					if err != nil {
+						return err
+					}
+					_, err = app.Prompt.CaptureUint64(fmt.Sprintf("Amount to airdrop (in %s units)", evmToken))
+					if err != nil {
+						return err
+					}
+				}
+				fixedSupplyOption := "I want to have a fixed supply of tokens on my blockchain. (Native Minter Precompile OFF)"
+				dynamicSupplyOption := "Yes, I want to be able to mint additional tokens on my blockchain. (Native Minter Precompile ON)"
+				options = []string{fixedSupplyOption, dynamicSupplyOption}
+				option, err = app.Prompt.CaptureList(
+					"Allow minting new native Tokens? (Native Minter Precompile)",
+					options,
+				)
+				if err != nil {
+					return err
+				}
+				if option == dynamicSupplyOption {
+					_, _, _, _, err := vm.GenerateAllowList(app, "mint native tokens", evmVersion)
+					if err != nil {
+						return err
+					}
+				}
+			case externalTokenOption:
+			case explainOption:
+				ux.Logger.PrintToUser("The difference is...")
+				ux.Logger.PrintToUser("")
+				continue
+			}
+			break
+		}
+	}
+
+	// Transaction / Gas Fees
+	if subnetType == models.SubnetEvm && genesisFile == "" {
+		customizeOption := "Customize fee config"
+		explainOption := "Explain the difference"
+		lowOption := "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
+		mediumOption := "Medium disk use / Medium Throughput 2 mil   gas/s"
+		highOption := "High disk use   / High Throughput   5 mil   gas/s"
+		options := []string{lowOption, mediumOption, highOption, customizeOption, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				"How should the gas fees be configured on your Blockchain?",
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case customizeOption:
+				config := params.ChainConfig{}
+				_, _, err = vm.CustomizeFeeConfig(config, app)
+				if err != nil {
+					return err
+				}
+			case explainOption:
+				ux.Logger.PrintToUser("The difference is...")
+				ux.Logger.PrintToUser("")
+				continue
+			}
+			break
+		}
+		dontChangeFeeSettingsOption := "I am fine with the gas fee configuration set in the genesis (Fee Manager Precompile OFF)"
+		changeFeeSettingsOption := "I want to be able to adjust gas pricing if necessary - recommended for production (Fee Manager Precompile ON)"
+		explainOption = "Explain the difference"
+		options = []string{dontChangeFeeSettingsOption, changeFeeSettingsOption, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				"Should these fees be changeable on the fly? (Fee Manager Precompile)",
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case changeFeeSettingsOption:
+				_, _, _, _, err := vm.GenerateAllowList(app, "adjust the gas fees", evmVersion)
+				if err != nil {
+					return err
+				}
+			case explainOption:
+				ux.Logger.PrintToUser("The difference is...")
+				ux.Logger.PrintToUser("")
+				continue
+			}
+			break
+		}
+		burnFees := "I am fine with gas fees being burned (Reward Manager Precompile OFF)"
+		distributeFees := "I want to customize accumulated gas fees distribution (Reward Manager Precompile ON)"
+		explainOption = "Explain the difference"
+		options = []string{burnFees, distributeFees, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				"By default, all fees on Avalanche are burned (sent to a blackhole address). (Reward Manager Precompile)",
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case distributeFees:
+				_, _, _, _, err := vm.GenerateAllowList(app, "customize gas fees distribution", evmVersion)
+				if err != nil {
+					return err
+				}
+			case explainOption:
+				ux.Logger.PrintToUser("The difference is...")
+				ux.Logger.PrintToUser("")
+				continue
+			}
+			break
+		}
+	}
+
+	// Interoperability
 	var teleporterInfo *teleporter.Info
-	if teleporterReady {
-		teleporterInfo, err = teleporter.GetInfo(app)
-		if err != nil {
-			return err
+	if subnetType == models.SubnetEvm || genesisFileIsEVM {
+		if evmDefaults {
+			useTeleporter = true
+		}
+		flagName := "teleporter"
+		if flag := cmd.Flags().Lookup(flagName); flag == nil {
+			return fmt.Errorf("flag configuration %q not found for cmd %q", flagName, cmd.Use)
+		} else if !flag.Changed {
+			interoperatingBlockchainOption := "Yes, I want my blockchain to be able to interoperate with other blockchains and the C-Chain"
+			isolatedBlockchainOption := "No, I want to run my blockchain isolated"
+			explainOption := "Explain the difference"
+			options := []string{interoperatingBlockchainOption, isolatedBlockchainOption, explainOption}
+			for {
+				option, err := app.Prompt.CaptureList(
+					"Do you want to connect your blockchain with other blockchains or C-Chain? (Deploy Teleporter and Registry)",
+					options,
+				)
+				if err != nil {
+					return err
+				}
+				switch option {
+				case interoperatingBlockchainOption:
+					useTeleporter = true
+				case isolatedBlockchainOption:
+					useTeleporter = false
+				case explainOption:
+					ux.Logger.PrintToUser("The difference is...")
+					ux.Logger.PrintToUser("")
+					continue
+				}
+				break
+			}
+		}
+		if useTeleporter && !useWarp {
+			return fmt.Errorf("warp should be enabled for teleporter to work")
+		}
+		if useTeleporter {
+			teleporterInfo, err = teleporter.GetInfo(app)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -329,11 +491,10 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("not implemented")
 	}
 
-	if teleporterReady {
-		sc.TeleporterReady = teleporterReady
+	if useTeleporter {
+		sc.TeleporterReady = useTeleporter
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
-		sc.RunRelayer = runRelayer
 		if genesisFile != "" && genesisFileIsEVM {
 			// evm genesis file was given. make appropriate checks and customizations for teleporter
 			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())
