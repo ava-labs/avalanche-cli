@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
