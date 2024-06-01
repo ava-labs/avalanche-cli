@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"sort"
 	"strconv"
 	"strings"
@@ -163,6 +165,16 @@ func getVMFromFlag() models.VMType {
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func createSubnetConfig(cmd *cobra.Command, args []string) error {
+	baseApp := avalanche.New(avalanche.DefaultLeveledLogger)
+	subnetParams := subnet.SubnetParams{
+		SubnetEVM: subnet.SubnetEVMParams{
+			EvmChainID:       1234567,
+			EvmDefaults:      true,
+			EnableWarp:       true,
+			EnableTeleporter: true,
+			EnableRelayer:    true,
+		},
+	}
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")

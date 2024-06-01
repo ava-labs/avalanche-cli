@@ -5,6 +5,7 @@ go 1.21.10
 toolchain go1.22.1
 
 require (
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.0.0
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.8.0
 	github.com/ava-labs/avalanchego v1.11.5
