@@ -27,12 +27,13 @@ func ValidateComposeFile(host *models.Host, composeFile string, timeout time.Dur
 // ComposeSSHSetupNode sets up an AvalancheGo node and dependencies on a remote host over SSH.
 func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool) error {
 	startTime := time.Now()
-	for _, dir := range remoteconfig.RemoteFoldersToCreateAvalanchego() {
+	folderStructure := remoteconfig.RemoteFoldersToCreateAvalanchego()
+	for _, dir := range folderStructure {
 		if err := host.MkdirAll(dir, constants.SSHFileOpsTimeout); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
-	ux.Logger.Info("avalancheCLI folder structure created on remote host %s after %s", remoteconfig.RemoteFoldersToCreateAvalanchego(), time.Since(startTime))
+	ux.Logger.Info("avalancheCLI folder structure created on remote host %s after %s", folderStructure, time.Since(startTime))
 	// configs
 	networkID := network.NetworkIDFlagValue()
 	if network.Kind == models.Local || network.Kind == models.Devnet {
@@ -73,6 +74,9 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 			AvalanchegoVersion: avalancheGoVersion,
 			WithMonitoring:     withMonitoring,
 			WithAvalanchego:    true,
+			E2E:                utils.IsE2E(),
+			E2EIP:              utils.E2EConvertIP(host.IP),
+			E2ESuffix:          utils.E2ESuffix(host.IP),
 		})
 }
 

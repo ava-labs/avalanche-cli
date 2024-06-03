@@ -335,7 +335,8 @@ const (
 	CodespaceNameEnvVar = "CODESPACE_NAME"
 
 	// E2E
-	E2ENetworkPrefix        = "172.18.0"
+	E2ENetworkPrefix        = "192.168.222"
+	E2EListenPrefix         = "192.168.223"
 	E2EClusterName          = "e2e"
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"

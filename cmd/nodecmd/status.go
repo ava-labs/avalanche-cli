@@ -89,7 +89,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	defer disconnectHosts(hosts)
 
 	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Checking node status...")
+	spinner := spinSession.SpinToUser("Checking node(s) status...")
 	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
 	if err != nil {
 		ux.SpinFailWithError(spinner, "", err)
