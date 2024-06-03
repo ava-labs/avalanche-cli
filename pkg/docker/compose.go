@@ -124,6 +124,7 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 }
 
 func StartDockerCompose(host *models.Host, timeout time.Duration) error {
+	// we provide systemd service unit for docker compose if the host has systemd
 	if host.IsSystemD() {
 		if output, err := host.Command("sudo systemctl start avalanche-cli-docker", nil, timeout); err != nil {
 			return fmt.Errorf("%w: %s", err, string(output))
@@ -135,7 +136,7 @@ func StartDockerCompose(host *models.Host, timeout time.Duration) error {
 			return fmt.Errorf("%w: %s", err, string(output))
 		}
 	}
-	return nil // no error
+	return nil
 }
 
 func StopDockerCompose(host *models.Host, timeout time.Duration) error {
@@ -150,7 +151,7 @@ func StopDockerCompose(host *models.Host, timeout time.Duration) error {
 			return fmt.Errorf("%w: %s", err, string(output))
 		}
 	}
-	return nil // no error
+	return nil
 }
 
 func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
@@ -165,7 +166,7 @@ func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
 			return fmt.Errorf("%w: %s", err, string(output))
 		}
 	}
-	return nil // no error
+	return nil
 }
 
 func StartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
