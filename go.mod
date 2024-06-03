@@ -8,10 +8,10 @@ require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.8.0
 	github.com/ava-labs/avalanchego v1.11.5
-	github.com/ava-labs/awm-relayer v1.3.0
+	github.com/ava-labs/awm-relayer v1.3.1
 	github.com/ava-labs/coreth v0.13.3-rc.2
 	github.com/ava-labs/subnet-evm v0.6.4
-	github.com/ava-labs/teleporter v1.0.0
+	github.com/ava-labs/teleporter v1.0.1
 	github.com/aws/aws-sdk-go-v2 v1.27.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.16
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.162.0
@@ -25,7 +25,7 @@ require (
 	github.com/melbahja/goph v1.4.0
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.18.0
+	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
@@ -70,7 +70,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/kms v1.31.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/kms v1.32.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.20.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.10 // indirect
