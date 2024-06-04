@@ -280,7 +280,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	switch subnetType {
 	case models.SubnetEvm:
 		subnetParams := subnet.SubnetParams{
-			SubnetEVM: subnet.SubnetEVMParams{
+			SubnetEVM: &subnet.SubnetEVMParams{
 				EvmChainID:       evmChainID,
 				EvmDefaults:      evmDefaults,
 				EnableWarp:       useWarp,
@@ -290,18 +290,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			Name: subnetName,
 		}
 		newSubnet, err := subnet.New(avalancheSDK, &subnetParams)
-		//genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
-		//	app,
-		//	subnetName,
-		//	genesisFile,
-		//	evmVersion,
-		//	true,
-		//	evmChainID,
-		//	evmToken,
-		//	evmDefaults,
-		//	useWarp,
-		//	teleporterInfo,
-		//)
 		if err != nil {
 			return err
 		}
@@ -329,7 +317,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
 		sc.RunRelayer = runRelayer
-		// TODO: Do we need this? seems that we have already added this during genesis creation
 		if genesisFile != "" && genesisFileIsEVM {
 			// evm genesis file was given. make appropriate checks and customizations for teleporter
 			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())

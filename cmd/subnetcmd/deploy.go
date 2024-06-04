@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	subnetSDK "github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -477,21 +479,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
-		subnetParams := subnet.SubnetParams{
-			SubnetEVM: subnet.SubnetEVMParams{
-				EvmChainID:       evmChainID,
-				EvmDefaults:      evmDefaults,
-				EnableWarp:       useWarp,
-				EnableTeleporter: teleporterReady,
-				EnableRelayer:    runRelayer,
-			},
-			Name: subnetName,
+		subnetParams := subnetSDK.SubnetParams{
+			Name:            subnetName,
+			GenesisFilePath: app.GetGenesisPath(subnetName),
 		}
-		newSubnet, err := subnet.New(avalancheSDK, &subnetParams)
+		subnet, err := subnetSDK.New(avalancheSDK, &subnetParams)
 		if err != nil {
 			return err
 		}
-		subnetMultiSig, err := deployer.DeploySubnet(newSubnet, controlKeys, threshold)
+		subnetMultiSig, err := deployer.DeploySubnet(*subnet, controlKeys, threshold)
 		if err != nil {
 			return err
 		}
@@ -505,7 +501,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
 	var (
 		savePartialTx           bool
 		blockchainID            ids.ID
