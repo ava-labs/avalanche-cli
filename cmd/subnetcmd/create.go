@@ -286,6 +286,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				EnableWarp:       useWarp,
 				EnableTeleporter: teleporterReady,
 				EnableRelayer:    runRelayer,
+				GenesisParams:    nil,
 			},
 			Name: subnetName,
 		}
