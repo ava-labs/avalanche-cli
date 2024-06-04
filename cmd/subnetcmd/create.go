@@ -6,13 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
-
-	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -166,16 +164,6 @@ func getVMFromFlag() models.VMType {
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func createSubnetConfig(cmd *cobra.Command, args []string) error {
-	baseApp := avalanche.New(avalanche.DefaultLeveledLogger)
-	subnetParams := subnet.SubnetParams{
-		SubnetEVM: subnet.SubnetEVMParams{
-			EvmChainID:       1234567,
-			EvmDefaults:      true,
-			EnableWarp:       true,
-			EnableTeleporter: true,
-			EnableRelayer:    true,
-		},
-	}
 	subnetName := args[0]
 	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
@@ -291,21 +279,33 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	switch subnetType {
 	case models.SubnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
-			app,
-			subnetName,
-			genesisFile,
-			evmVersion,
-			true,
-			evmChainID,
-			evmToken,
-			evmDefaults,
-			useWarp,
-			teleporterInfo,
-		)
+		subnetParams := subnet.SubnetParams{
+			SubnetEVM: subnet.SubnetEVMParams{
+				EvmChainID:       evmChainID,
+				EvmDefaults:      evmDefaults,
+				EnableWarp:       useWarp,
+				EnableTeleporter: teleporterReady,
+				EnableRelayer:    runRelayer,
+			},
+			Name: subnetName,
+		}
+		newSubnet, err := subnet.New(avalancheSDK, &subnetParams)
+		//genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
+		//	app,
+		//	subnetName,
+		//	genesisFile,
+		//	evmVersion,
+		//	true,
+		//	evmChainID,
+		//	evmToken,
+		//	evmDefaults,
+		//	useWarp,
+		//	teleporterInfo,
+		//)
 		if err != nil {
 			return err
 		}
+		genesisBytes = newSubnet.Genesis
 	case models.CustomVM:
 		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
 			app,
@@ -329,6 +329,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
 		sc.RunRelayer = runRelayer
+		// TODO: Do we need this? seems that we have already added this during genesis creation
 		if genesisFile != "" && genesisFileIsEVM {
 			// evm genesis file was given. make appropriate checks and customizations for teleporter
 			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())

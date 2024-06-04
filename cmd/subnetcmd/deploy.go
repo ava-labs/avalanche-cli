@@ -477,7 +477,25 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
-		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+		subnetParams := subnet.SubnetParams{
+			SubnetEVM: subnet.SubnetEVMParams{
+				EvmChainID:       evmChainID,
+				EvmDefaults:      evmDefaults,
+				EnableWarp:       useWarp,
+				EnableTeleporter: teleporterReady,
+				EnableRelayer:    runRelayer,
+			},
+			Name: subnetName,
+		}
+		newSubnet, err := subnet.New(avalancheSDK, &subnetParams)
+		if err != nil {
+			return err
+		}
+		subnetMultiSig, err := deployer.DeploySubnet(newSubnet, controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+		subnetID, err = subnetMultiSig.GetSubnetID()
 		if err != nil {
 			return err
 		}
