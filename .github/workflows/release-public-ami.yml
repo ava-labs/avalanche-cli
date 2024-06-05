@@ -43,6 +43,9 @@ jobs:
         with:
           version: ${{ env.PACKER_VERSION }}
         
+      - name: Setup `aws ec2 disable-image-block-public-access`
+        run: "aws ec2 disable-image-block-public-access --region us-east-1"
+
       - name: Run `packer init`
         id: init
         run: "packer init ./.github/packer/aws-ubuntu-docker.pkr.hcl"
