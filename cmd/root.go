@@ -5,7 +5,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -41,12 +40,11 @@ import (
 )
 
 var (
-	app          *application.Avalanche
-	avalancheSDK *avalanche.BaseApp
-	logLevel     string
-	Version      = ""
-	cfgFile      string
-	skipCheck    bool
+	app       *application.Avalanche
+	logLevel  string
+	Version   = ""
+	cfgFile   string
+	skipCheck bool
 )
 
 func NewRootCmd() *cobra.Command {
@@ -322,7 +320,6 @@ func initConfig() {
 func Execute() {
 	app = application.New()
 	rootCmd := NewRootCmd()
-	avalancheSDK = avalanche.New(avalanche.DefaultLeveledLogger)
 	err := rootCmd.Execute()
 	cobrautils.HandleErrors(err)
 }
