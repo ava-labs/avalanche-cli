@@ -290,6 +290,9 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			useWarp,
 			teleporterInfo.ConvertToTeleporterSDK(),
 		)
+		if err != nil {
+			return err
+		}
 	case models.CustomVM:
 		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
 			app,
