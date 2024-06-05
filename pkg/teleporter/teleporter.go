@@ -4,11 +4,12 @@ package teleporter
 
 import (
 	"fmt"
-	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 	"math/big"
 	"os"
 	"path/filepath"
 	"time"
+
+	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
