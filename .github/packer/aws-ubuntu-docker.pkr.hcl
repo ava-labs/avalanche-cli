@@ -47,6 +47,7 @@ source "amazon-ebs" "ubuntu_amd64" {
   }
   ssh_username = "ubuntu"
   ami_users = []
+  ami_groups = ["all"]
   ami_regions = local.all_regions
   
   tags = {
@@ -74,6 +75,7 @@ source "amazon-ebs" "ubuntu_arm64" {
   }
   ssh_username = "ubuntu"
   ami_users = []
+  ami_groups = ["all"]
   ami_regions = local.all_regions
   tags = {
     Name = "public-avalanchecli-ubuntu-focal-20.04-docker-arm64"
