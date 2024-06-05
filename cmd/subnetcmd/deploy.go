@@ -501,6 +501,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
 	var (
 		savePartialTx           bool
 		blockchainID            ids.ID
