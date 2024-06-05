@@ -77,7 +77,7 @@ in with avalanche subnet create myNewSubnet.`,
 		BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
 	// add sub commands
-	rootCmd.AddCommand(subnetcmd.NewCmd(app, avalancheSDK))
+	rootCmd.AddCommand(subnetcmd.NewCmd(app))
 	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))

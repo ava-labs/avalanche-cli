@@ -6,7 +6,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/avalanche"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +14,7 @@ var (
 )
 
 // avalanche subnet
-func NewCmd(injectedApp *application.Avalanche, baseApp *avalanche.BaseApp) *cobra.Command {
+func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "subnet",
 		Short: "Create and deploy subnets",
