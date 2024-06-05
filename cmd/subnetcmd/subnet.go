@@ -11,8 +11,7 @@ import (
 )
 
 var (
-	app          *application.Avalanche
-	avalancheSDK *avalanche.BaseApp
+	app *application.Avalanche
 )
 
 // avalanche subnet
@@ -30,7 +29,6 @@ manage your Subnet configurations and live deployments.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
-	avalancheSDK = baseApp
 	// subnet create
 	cmd.AddCommand(newCreateCmd())
 	// subnet delete

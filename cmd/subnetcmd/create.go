@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"sort"
 	"strconv"
 	"strings"
@@ -279,22 +278,18 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	switch subnetType {
 	case models.SubnetEvm:
-		subnetParams := subnet.SubnetParams{
-			SubnetEVM: &subnet.SubnetEVMParams{
-				EvmChainID:       evmChainID,
-				EvmDefaults:      evmDefaults,
-				EnableWarp:       useWarp,
-				EnableTeleporter: teleporterReady,
-				EnableRelayer:    runRelayer,
-				GenesisParams:    nil,
-			},
-			Name: subnetName,
-		}
-		newSubnet, err := subnet.New(avalancheSDK, &subnetParams)
-		if err != nil {
-			return err
-		}
-		genesisBytes = newSubnet.Genesis
+		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
+			app,
+			subnetName,
+			genesisFile,
+			evmVersion,
+			true,
+			evmChainID,
+			evmToken,
+			evmDefaults,
+			useWarp,
+			teleporterInfo.ConvertToTeleporterSDK(),
+		)
 	case models.CustomVM:
 		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
 			app,

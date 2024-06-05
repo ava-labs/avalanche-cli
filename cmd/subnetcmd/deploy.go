@@ -483,7 +483,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			Name:            subnetName,
 			GenesisFilePath: app.GetGenesisPath(subnetName),
 		}
-		subnet, err := subnetSDK.New(avalancheSDK, &subnetParams)
+		subnet, err := subnetSDK.New(&subnetParams)
 		if err != nil {
 			return err
 		}

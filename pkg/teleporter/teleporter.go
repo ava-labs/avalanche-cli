@@ -4,6 +4,7 @@ package teleporter
 
 import (
 	"fmt"
+	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -446,4 +447,14 @@ func GetInfo(
 		return nil, err
 	}
 	return &ti, nil
+}
+
+func (c *Info) ConvertToTeleporterSDK() *teleporterSDK.Info {
+	return &teleporterSDK.Info{
+		Version:                  c.Version,
+		FundedAddress:            c.FundedAddress,
+		FundedBalance:            c.FundedBalance,
+		MessengerDeployerAddress: c.MessengerDeployerAddress,
+		RelayerAddress:           c.RelayerAddress,
+	}
 }
