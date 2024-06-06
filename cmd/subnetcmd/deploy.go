@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	subnetSDK "github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -477,7 +479,19 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
-		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+		subnetParams := subnetSDK.SubnetParams{
+			Name:            subnetName,
+			GenesisFilePath: app.GetGenesisPath(subnetName),
+		}
+		subnet, err := subnetSDK.New(&subnetParams)
+		if err != nil {
+			return err
+		}
+		subnetMultiSig, err := deployer.DeploySubnet(*subnet, controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+		subnetID, err = subnetMultiSig.GetSubnetID()
 		if err != nil {
 			return err
 		}

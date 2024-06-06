@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -446,4 +448,14 @@ func GetInfo(
 		return nil, err
 	}
 	return &ti, nil
+}
+
+func (c *Info) ConvertToTeleporterSDK() *teleporterSDK.Info {
+	return &teleporterSDK.Info{
+		Version:                  c.Version,
+		FundedAddress:            c.FundedAddress,
+		FundedBalance:            c.FundedBalance,
+		MessengerDeployerAddress: c.MessengerDeployerAddress,
+		RelayerAddress:           c.RelayerAddress,
+	}
 }

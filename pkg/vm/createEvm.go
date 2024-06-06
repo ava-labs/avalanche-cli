@@ -3,24 +3,23 @@
 package vm
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"os"
 	"time"
 
+	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
+	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
-	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -39,7 +38,7 @@ func CreateEvmSubnetConfig(
 	subnetEVMTokenSymbol string,
 	useSubnetEVMDefaults bool,
 	useWarp bool,
-	teleporterInfo *teleporter.Info,
+	teleporterInfo *teleporterSDK.Info,
 ) ([]byte, *models.Sidecar, error) {
 	var (
 		genesisBytes []byte
@@ -65,7 +64,8 @@ func CreateEvmSubnetConfig(
 	}
 
 	if genesisPath == "" {
-		genesisBytes, sc, err = createEvmGenesis(
+		var genesisParams subnet.EVMGenesisParams
+		genesisParams, sc, err = createEvmGenesisBytes(
 			app,
 			subnetName,
 			subnetEVMVersion,
@@ -79,6 +79,18 @@ func CreateEvmSubnetConfig(
 		if err != nil {
 			return nil, &models.Sidecar{}, err
 		}
+		subnetParams := subnet.SubnetParams{
+			SubnetEVM: &subnet.SubnetEVMParams{
+				EnableWarp:    useWarp,
+				GenesisParams: &genesisParams,
+			},
+			Name: subnetName,
+		}
+		newSubnet, err := subnet.New(&subnetParams)
+		if err != nil {
+			return nil, &models.Sidecar{}, err
+		}
+		genesisBytes = newSubnet.Genesis
 	} else {
 		ux.Logger.PrintToUser("importing genesis for subnet %s", subnetName)
 		genesisBytes, err = os.ReadFile(genesisPath)
@@ -98,7 +110,7 @@ func CreateEvmSubnetConfig(
 	return genesisBytes, sc, nil
 }
 
-func createEvmGenesis(
+func createEvmGenesisBytes(
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
@@ -107,8 +119,8 @@ func createEvmGenesis(
 	subnetEVMTokenSymbol string,
 	useSubnetEVMDefaults bool,
 	useWarp bool,
-	teleporterInfo *teleporter.Info,
-) ([]byte, *models.Sidecar, error) {
+	teleporterInfo *teleporterSDK.Info,
+) (subnet.EVMGenesisParams, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
 	genesis := core.Genesis{}
@@ -136,7 +148,7 @@ func createEvmGenesis(
 		[]string{descriptorsState, feeState, airdropState, precompilesState},
 	)
 	if err != nil {
-		return nil, nil, err
+		return subnet.EVMGenesisParams{}, nil, err
 	}
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
@@ -157,64 +169,15 @@ func createEvmGenesis(
 				fmt.Sprintf("Amount to airdrop (in %s units)", tokenSymbol),
 				useSubnetEVMDefaults,
 			)
-			if teleporterInfo != nil {
-				allocation = addTeleporterAddressToAllocations(
-					allocation,
-					teleporterInfo.FundedAddress,
-					teleporterInfo.FundedBalance,
-				)
-			}
 		case precompilesState:
 			*conf, direction, err = getPrecompiles(*conf, app, &genesis.Timestamp, useSubnetEVMDefaults, useWarp)
-			if teleporterInfo != nil {
-				*conf = addTeleporterAddressesToAllowLists(
-					*conf,
-					teleporterInfo.FundedAddress,
-					teleporterInfo.MessengerDeployerAddress,
-					teleporterInfo.RelayerAddress,
-				)
-			}
 		default:
 			err = errors.New("invalid creation stage")
 		}
 		if err != nil {
-			return nil, nil, err
+			return subnet.EVMGenesisParams{}, nil, err
 		}
 		subnetEvmState.NextState(direction)
-	}
-
-	if conf != nil && conf.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
-		allowListCfg, ok := conf.GenesisPrecompiles[txallowlist.ConfigKey].(*txallowlist.Config)
-		if !ok {
-			return nil, nil, fmt.Errorf(
-				"expected config of type txallowlist.AllowListConfig, but got %T",
-				allowListCfg,
-			)
-		}
-
-		if err := ensureAdminsHaveBalance(
-			allowListCfg.AdminAddresses,
-			allocation); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	conf.ChainID = chainID
-
-	genesis.Alloc = allocation
-	genesis.Config = conf
-	genesis.Difficulty = Difficulty
-	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()
-
-	jsonBytes, err := genesis.MarshalJSON()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
-	if err != nil {
-		return nil, nil, err
 	}
 
 	sc := &models.Sidecar{
@@ -227,7 +190,15 @@ func createEvmGenesis(
 		TokenName:   tokenSymbol + " Token",
 	}
 
-	return prettyJSON.Bytes(), sc, nil
+	genesisParams := subnet.EVMGenesisParams{
+		ChainID:        chainID,
+		FeeConfig:      conf.FeeConfig,
+		Allocation:     allocation,
+		Precompiles:    conf.GenesisPrecompiles,
+		TeleporterInfo: teleporterInfo,
+	}
+
+	return genesisParams, sc, nil
 }
 
 func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) error {
