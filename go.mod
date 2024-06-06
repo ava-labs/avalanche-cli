@@ -7,15 +7,15 @@ toolchain go1.22.1
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.8.0
-	github.com/ava-labs/avalanche-tooling-sdk-go v0.0.1-0.20240605235341-0c6dfb07e7e8
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.0.1-0.20240606201826-fa9a8aba3c3c
 	github.com/ava-labs/avalanchego v1.11.5
 	github.com/ava-labs/awm-relayer v1.3.0
 	github.com/ava-labs/coreth v0.13.3-rc.2
 	github.com/ava-labs/subnet-evm v0.6.4
 	github.com/ava-labs/teleporter v1.0.0
 	github.com/aws/aws-sdk-go-v2 v1.27.0
-	github.com/aws/aws-sdk-go-v2/config v1.27.15
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.161.3
+	github.com/aws/aws-sdk-go-v2/config v1.27.16
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.162.0
 	github.com/chelnak/ysmrr v0.4.0
 	github.com/docker/docker v26.1.3+incompatible
 	github.com/ethereum/go-ethereum v1.13.2
@@ -44,14 +44,14 @@ require (
 	golang.org/x/oauth2 v0.20.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/text v0.15.0
-	google.golang.org/api v0.181.0
+	google.golang.org/api v0.182.0
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	cloud.google.com/go/auth v0.4.1 // indirect
+	cloud.google.com/go/auth v0.4.2 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
@@ -64,7 +64,7 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.10.0 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.15 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.16 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.3 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.7 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.7 // indirect
@@ -72,9 +72,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.11.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.11.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/kms v1.31.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.20.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.28.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.20.9 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.24.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.28.10 // indirect
 	github.com/aws/smithy-go v1.20.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.7.0 // indirect
@@ -217,7 +217,7 @@ require (
 	golang.org/x/tools v0.21.0 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240506185236-b8a5c65736ae // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240513163218-0867130af1f8 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240521202816-d264139d666e // indirect
 	google.golang.org/grpc v1.64.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect

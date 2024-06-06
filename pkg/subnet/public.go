@@ -23,7 +23,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -435,44 +434,35 @@ func (d *PublicDeployer) DeploySubnet(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) DeployBlockchain(
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
-	subnetID ids.ID,
+	subnet *subnet.Subnet,
 	transferSubnetOwnershipTxID ids.ID,
-	chain string,
-	genesis []byte,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheSDKWallet(subnet.SubnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
-	}
-
-	vmID, err := anrutils.VMID(chain)
-	if err != nil {
-		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
-	}
-
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
-	if err != nil {
-		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "CreateChain transaction")
 
-	tx, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
+	// deploy Subnet returns multisig and error
+	deployBlockchainTx, err := subnet.CreateBlockchainTx(wallet)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	_, remainingSubnetAuthKeys, err := deployBlockchainTx.GetRemainingAuthSigners()
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	id := ids.Empty
+	tx, err := deployBlockchainTx.GetWrappedPChainTx()
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
 	if isFullySigned {
 		id, err = d.Commit(tx, true)
 		if err != nil {
@@ -480,7 +470,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		}
 	}
 
-	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
+	return isFullySigned, id, tx, ids.ShortIDsToStrings(remainingSubnetAuthKeys), nil
 }
 
 func (d *PublicDeployer) Commit(
@@ -575,7 +565,7 @@ func (d *PublicDeployer) loadSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, err
 	ctx := context.Background()
 	// filter out ids.Empty txs
 	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
-	primaryWallet, err := primary.MakeWallet(
+	return wallet.New(
 		ctx,
 		&primary.WalletConfig{
 			URI:              d.network.Endpoint,
@@ -584,11 +574,6 @@ func (d *PublicDeployer) loadSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, err
 			PChainTxsToFetch: set.Of(filteredTxs...),
 		},
 	)
-	if err != nil {
-		return wallet.Wallet{}, err
-	}
-	wallet := wallet.Wallet{Wallet: primaryWallet}
-	return wallet, nil
 }
 
 func (d *PublicDeployer) cleanCacheWallet() {
@@ -601,6 +586,16 @@ func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, 
 		d.wallet, err = d.loadWallet(preloadTxs...)
 	}
 	return d.wallet, err
+}
+
+func (d *PublicDeployer) loadCacheSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, error) {
+	var err error
+	var sdkWallet wallet.Wallet
+	if d.wallet == nil {
+		sdkWallet, err = d.loadSDKWallet(preloadTxs...)
+		d.wallet = sdkWallet
+	}
+	return sdkWallet, err
 }
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {

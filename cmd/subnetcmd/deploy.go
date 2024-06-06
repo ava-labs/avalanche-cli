@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -477,16 +478,21 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-
+	subnetParams := subnetSDK.SubnetParams{
+		Name:            subnetName,
+		GenesisFilePath: app.GetGenesisPath(subnetName),
+	}
+	subnet, err := subnetSDK.New(&subnetParams)
+	if err != nil {
+		return err
+	}
+	subnet.SubnetID = subnetID
+	subnetAuthKeysIDs, err := address.ParseToIDs(subnetAuthKeys)
+	if err != nil {
+		return fmt.Errorf("failure parsing subnet auth keys: %w", err)
+	}
+	subnet.SetDeployParams(controlKeys, subnetAuthKeysIDs, threshold)
 	if createSubnet {
-		subnetParams := subnetSDK.SubnetParams{
-			Name:            subnetName,
-			GenesisFilePath: app.GetGenesisPath(subnetName),
-		}
-		subnet, err := subnetSDK.New(&subnetParams)
-		if err != nil {
-			return err
-		}
 		subnetMultiSig, err := deployer.DeploySubnet(*subnet, controlKeys, threshold)
 		if err != nil {
 			return err
@@ -500,6 +506,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		subnet.SetDeployParams(controlKeys, subnetAuthKeysIDs, threshold)
 	}
 
 	var (
@@ -512,19 +519,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	if !subnetOnly {
 		isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.DeployBlockchain(
-			controlKeys,
-			subnetAuthKeys,
-			subnetID,
+			subnet,
 			transferSubnetOwnershipTxID,
-			chain,
-			chainGenesis,
 		)
 		if err != nil {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
 		}
-
 		savePartialTx = !isFullySigned && err == nil
 	}
 
