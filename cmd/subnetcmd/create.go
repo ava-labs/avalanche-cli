@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
