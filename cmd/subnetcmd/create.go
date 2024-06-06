@@ -272,13 +272,13 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	var teleporterInfo *teleporter.Info
 	var teleporterSDK *teleporterSDK.Info
+
 	if teleporterReady {
 		teleporterInfo, err = teleporter.GetInfo(app)
 		if err != nil {
 			return err
 		}
 		teleporterSDK = teleporterInfo.ConvertToTeleporterSDK()
-
 	}
 
 	switch subnetType {
