@@ -7,7 +7,7 @@ toolchain go1.22.1
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.8.0
-	github.com/ava-labs/avalanche-tooling-sdk-go v0.0.1-0.20240605225652-cb1756880d04
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.0.1-0.20240605235341-0c6dfb07e7e8
 	github.com/ava-labs/avalanchego v1.11.5
 	github.com/ava-labs/awm-relayer v1.3.0
 	github.com/ava-labs/coreth v0.13.3-rc.2
