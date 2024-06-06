@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -338,79 +337,6 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 		}
 	}
 	return arr, errors.New("string not in array")
-}
-
-// adds teleporter-related addresses (main funded key, messenger deploy key, relayer key)
-// to the allow list of relevant enabled precompiles
-func addTeleporterAddressesToAllowLists(
-	config params.ChainConfig,
-	teleporterAddress string,
-	teleporterMessengerDeployerAddress string,
-	relayerAddress string,
-) params.ChainConfig {
-	// tx allow list:
-	// teleporterAddress funds the other two and also deploys the registry
-	// teleporterMessengerDeployerAddress deploys the messenger
-	// relayerAddress is used by the relayer to send txs to the target chain
-	for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
-		precompileConfig := config.GenesisPrecompiles[txallowlist.ConfigKey]
-		if precompileConfig != nil {
-			txAllowListConfig := precompileConfig.(*txallowlist.Config)
-			txAllowListConfig.AllowListConfig = addAddressToAllowed(
-				txAllowListConfig.AllowListConfig,
-				address,
-			)
-		}
-	}
-	// contract deploy allow list:
-	// teleporterAddress deploys the registry
-	// teleporterMessengerDeployerAddress deploys the messenger
-	for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress} {
-		precompileConfig := config.GenesisPrecompiles[deployerallowlist.ConfigKey]
-		if precompileConfig != nil {
-			txAllowListConfig := precompileConfig.(*deployerallowlist.Config)
-			txAllowListConfig.AllowListConfig = addAddressToAllowed(
-				txAllowListConfig.AllowListConfig,
-				address,
-			)
-		}
-	}
-	return config
-}
-
-// adds an address to the given allowlist, as an Allowed address,
-// if it is not yet Admin, Manager or Allowed
-func addAddressToAllowed(
-	allowListConfig allowlist.AllowListConfig,
-	addressStr string,
-) allowlist.AllowListConfig {
-	address := common.HexToAddress(addressStr)
-	allowed := false
-	if utils.Belongs(
-		allowListConfig.AdminAddresses,
-		address,
-	) {
-		allowed = true
-	}
-	if utils.Belongs(
-		allowListConfig.ManagerAddresses,
-		address,
-	) {
-		allowed = true
-	}
-	if utils.Belongs(
-		allowListConfig.EnabledAddresses,
-		address,
-	) {
-		allowed = true
-	}
-	if !allowed {
-		allowListConfig.EnabledAddresses = append(
-			allowListConfig.EnabledAddresses,
-			address,
-		)
-	}
-	return allowListConfig
 }
 
 func getPrecompiles(
