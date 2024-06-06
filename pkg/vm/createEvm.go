@@ -5,11 +5,12 @@ package vm
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
-	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
+	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
