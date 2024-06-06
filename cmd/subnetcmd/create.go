@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	teleporterSDK "github.com/ava-labs/avalanche-tooling-sdk-go/teleporter"
 	"sort"
 	"strconv"
 	"strings"
@@ -269,11 +270,14 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	var teleporterInfo *teleporter.Info
+	var teleporterSDK *teleporterSDK.Info
 	if teleporterReady {
 		teleporterInfo, err = teleporter.GetInfo(app)
 		if err != nil {
 			return err
 		}
+		teleporterSDK = teleporterInfo.ConvertToTeleporterSDK()
+
 	}
 
 	switch subnetType {
@@ -288,7 +292,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			evmToken,
 			evmDefaults,
 			useWarp,
-			teleporterInfo.ConvertToTeleporterSDK(),
+			teleporterSDK,
 		)
 		if err != nil {
 			return err
