@@ -497,10 +497,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
-		//subnetID, err = subnetMultiSig.GetWrappedPChainTx()
-		//if err != nil {
-		//	return err
-		//}
 		// TODO: removing this because seems that control keys and threshold shouldn't change
 		// get the control keys in the same order as the tx
 		//controlKeys, threshold, err = txutils.GetOwners(network, subnetID, ids.Empty)
@@ -510,7 +506,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		//subnet.SetDeployParams(controlKeys, subnetAuthKeysIDs, threshold)
 	}
 	subnet.SubnetID = subnetID
-	fmt.Printf("obtained subnetiD %s \n", subnet.SubnetID.String())
 	var (
 		savePartialTx           bool
 		blockchainID            ids.ID

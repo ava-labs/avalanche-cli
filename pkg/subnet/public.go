@@ -37,12 +37,14 @@ import (
 
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
 
+// TODO: phase out wallet as we implement sdkWallet
 type PublicDeployer struct {
 	LocalDeployer
-	kc      *keychain.Keychain
-	network models.Network
-	app     *application.Avalanche
-	wallet  primary.Wallet
+	kc        *keychain.Keychain
+	network   models.Network
+	app       *application.Avalanche
+	wallet    primary.Wallet
+	sdkWallet *wallet.Wallet
 }
 
 func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
@@ -405,29 +407,18 @@ func (d *PublicDeployer) AddPermissionlessDelegator(
 // DeploySubnet creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
 	subnet subnet.Subnet,
-	// ) (*multisig.Multisig, error) {
 ) (ids.ID, error) {
 	wallet, err := d.loadSDKWallet()
 	if err != nil {
-		//return nil, err
 		return ids.Empty, err
 	}
-	//subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
-	//if err != nil {
-	//	return nil, err
-	//}
-	// deploy Subnet returns multisig and error
 	deploySubnetTx, err := subnet.CreateSubnetTx(wallet)
 	if err != nil {
-		//return nil, err
 		return ids.Empty, err
 	}
-	fmt.Printf("obtained deploySubnetTx %s \n", deploySubnetTx)
 	subnetID, err := deploySubnetTx.GetWrappedPChainTx()
-	//ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
 	time.Sleep(2 * time.Second)
-	//return deploySubnetTx, nil
-	return d.Commit(subnetID, true)
+	return d.CommitSDK(subnetID, true)
 }
 
 // creates a blockchain for the given [subnetID]
@@ -446,8 +437,6 @@ func (d *PublicDeployer) DeployBlockchain(
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
-	fmt.Printf("obtained wallet keychain %s \n", wallet.Keychain)
-	fmt.Printf("obtained wallet keychain addresses %s \n", wallet.Keychain.Addresses())
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "CreateChain transaction")
 
@@ -469,7 +458,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, err
 	}
 	if isFullySigned {
-		id, err = d.Commit(tx, true)
+		id, err = d.CommitSDK(tx, true)
 		if err != nil {
 			return false, ids.Empty, nil, nil, err
 		}
@@ -512,6 +501,45 @@ func (d *PublicDeployer) Commit(
 	}
 	if issueTxErr != nil {
 		d.cleanCacheWallet()
+	}
+	return tx.ID(), issueTxErr
+}
+
+// TODO: Replace commit with commitsdk and rename back to commit
+func (d *PublicDeployer) CommitSDK(
+	tx *txs.Tx,
+	waitForTxAcceptance bool,
+) (ids.ID, error) {
+	const (
+		repeats             = 3
+		sleepBetweenRepeats = 2 * time.Second
+	)
+	var issueTxErr error
+	wallet, err := d.loadCacheSDKWallet()
+	if err != nil {
+		return ids.Empty, err
+	}
+	for i := 0; i < repeats; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		options := []common.Option{common.WithContext(ctx)}
+		if !waitForTxAcceptance {
+			options = append(options, common.WithAssumeDecided())
+		}
+		issueTxErr = wallet.P().IssueTx(tx, options...)
+		if issueTxErr == nil {
+			break
+		}
+		if ctx.Err() != nil {
+			issueTxErr = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), issueTxErr)
+		} else {
+			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), issueTxErr)
+		}
+		ux.Logger.RedXToUser("%s", issueTxErr)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	if issueTxErr != nil {
+		d.cleanCacheSDKWallet()
 	}
 	return tx.ID(), issueTxErr
 }
@@ -585,6 +613,10 @@ func (d *PublicDeployer) cleanCacheWallet() {
 	d.wallet = nil
 }
 
+func (d *PublicDeployer) cleanCacheSDKWallet() {
+	d.sdkWallet = nil
+}
+
 func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
 	var err error
 	if d.wallet == nil {
@@ -596,13 +628,11 @@ func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, 
 func (d *PublicDeployer) loadCacheSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, error) {
 	var err error
 	var sdkWallet wallet.Wallet
-	if d.wallet == nil {
+	if d.sdkWallet == nil {
 		sdkWallet, err = d.loadSDKWallet(preloadTxs...)
-		d.wallet = sdkWallet
-		fmt.Printf("we are here  where wallet is nil %s \n", sdkWallet)
+		d.sdkWallet = &sdkWallet
 	}
-	fmt.Printf("we are here  wallet %s \n", sdkWallet)
-	return sdkWallet, err
+	return *d.sdkWallet, err
 }
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {
