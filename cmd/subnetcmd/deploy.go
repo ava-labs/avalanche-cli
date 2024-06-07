@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 
 	subnetSDK "github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 
