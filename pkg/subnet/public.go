@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/multisig"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet"
 
@@ -406,25 +405,29 @@ func (d *PublicDeployer) AddPermissionlessDelegator(
 // DeploySubnet creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
 	subnet subnet.Subnet,
-	controlKeys []string,
-	threshold uint32,
-) (*multisig.Multisig, error) {
+	// ) (*multisig.Multisig, error) {
+) (ids.ID, error) {
 	wallet, err := d.loadSDKWallet()
 	if err != nil {
-		return nil, err
+		//return nil, err
+		return ids.Empty, err
 	}
-	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
-	if err != nil {
-		return nil, err
-	}
+	//subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
+	//if err != nil {
+	//	return nil, err
+	//}
 	// deploy Subnet returns multisig and error
 	deploySubnetTx, err := subnet.CreateSubnetTx(wallet)
 	if err != nil {
-		return nil, err
+		//return nil, err
+		return ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
+	fmt.Printf("obtained deploySubnetTx %s \n", deploySubnetTx)
+	subnetID, err := deploySubnetTx.GetWrappedPChainTx()
+	//ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
 	time.Sleep(2 * time.Second)
-	return deploySubnetTx, nil
+	//return deploySubnetTx, nil
+	return d.Commit(subnetID, true)
 }
 
 // creates a blockchain for the given [subnetID]
@@ -443,6 +446,8 @@ func (d *PublicDeployer) DeployBlockchain(
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
+	fmt.Printf("obtained wallet keychain %s \n", wallet.Keychain)
+	fmt.Printf("obtained wallet keychain addresses %s \n", wallet.Keychain.Addresses())
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "CreateChain transaction")
 
@@ -594,7 +599,9 @@ func (d *PublicDeployer) loadCacheSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet
 	if d.wallet == nil {
 		sdkWallet, err = d.loadSDKWallet(preloadTxs...)
 		d.wallet = sdkWallet
+		fmt.Printf("we are here  where wallet is nil %s \n", sdkWallet)
 	}
+	fmt.Printf("we are here  wallet %s \n", sdkWallet)
 	return sdkWallet, err
 }
 
