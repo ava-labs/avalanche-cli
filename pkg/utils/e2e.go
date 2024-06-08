@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"os"
 	"os/exec"
+	"os/user"
 	"regexp"
 	"strings"
 
@@ -16,28 +17,39 @@ import (
 )
 
 const composeTemplate = `version: '3'
+name: avalanche-cli
 services:
 {{- $version := .UbuntuVersion }}
 {{- $pubkey := .SSHPubKey }}
+{{- $suffixList := .E2ESuffixList }}
 {{- range $i, $ip := .IPs }}
   ubuntu{{$i}}:
+    privileged: true
     image: ubuntu:{{$version}}
     container_name: ubuntu_container{{$i}}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
+      - avalanchego_data_{{index $suffixList $i}}:/home/ubuntu/.avalanchego:rw
     networks:
       e2e:
         ipv4_address: {{$ip}}
     command: >
-	    /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server;
-		  id ubuntu || useradd -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
-		  echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
-		  service ssh start && tail -f /dev/null"
+      /bin/bash -c "export DEBIAN_FRONTEND=noninteractive; set -e; sshd -V || apt-get update && apt-get install -y sudo openssh-server curl;
+      id ubuntu || useradd -u 1000 -m -s /bin/bash ubuntu; mkdir -p /home/ubuntu/.ssh;
+      echo '{{$pubkey}}' | base64 -d > /home/ubuntu/.ssh/authorized_keys; chown -R ubuntu:sudo /home/ubuntu/.ssh; echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers;
+      mkdir -p  /home/ubuntu/.avalanche-cli; chown -R 1000 /home/ubuntu/;
+      service ssh start && tail -f /dev/null"
+{{- end }}
+volumes:
+{{- range $i, $ip := .IPs }}
+  avalanchego_data_{{index $suffixList $i}}:
 {{- end }}
 networks:
   e2e:
     ipam:
       driver: default
       config:
-        - subnet: {{.NetworkPrefix}}.0/16
+        - subnet: {{.NetworkPrefix}}.0/24
 `
 
 // Config holds the information needed for the template
@@ -46,32 +58,59 @@ type Config struct {
 	UbuntuVersion string
 	NetworkPrefix string
 	SSHPubKey     string
+	E2ESuffixList []string
 }
 
 // IsE2E checks if the environment variable "RUN_E2E" is set and returns true if it is, false otherwise.
 func IsE2E() bool {
-	return os.Getenv("RUN_E2E") != ""
+	currentUser, err := user.Current()
+	if err != nil {
+		return false
+	}
+	return os.Getenv("RUN_E2E") == "true" || currentUser.Username == "runner"
 }
 
 // E2EDocker checks if docker and docker-compose are available.
 func E2EDocker() bool {
-	cmd := exec.Command("docker-compose", "--version")
+	cmd := exec.Command("docker", "--version")
 	cmd.Env = os.Environ()
 	err := cmd.Run()
 	return err == nil
 }
 
+// E2EConvertIP maps an IP address to an E2E IP address.
+func E2EConvertIP(ip string) string {
+	if suffix := E2ESuffix(ip); suffix != "" {
+		return fmt.Sprintf("%s.10%s", constants.E2EListenPrefix, suffix)
+	} else {
+		return ""
+	}
+}
+
+func E2ESuffix(ip string) string {
+	addressBits := strings.Split(ip, ".")
+	if len(addressBits) != 4 {
+		return ""
+	} else {
+		return addressBits[3]
+	}
+}
+
 // GenDockerComposeFile generates a Docker Compose file with the specified number of nodes and Ubuntu version.
 func GenDockerComposeFile(nodes int, ubuntuVersion string, networkPrefix string, sshPubKey string) (string, error) {
 	var ips []string
+	var suffix []string
 	for i := 1; i <= nodes; i++ {
-		ips = append(ips, fmt.Sprintf("%s.%d", networkPrefix, i+1))
+		currentIP := fmt.Sprintf("%s.%d", networkPrefix, i+1)
+		ips = append(ips, currentIP)
+		suffix = append(suffix, E2ESuffix(currentIP))
 	}
 	config := Config{
 		IPs:           ips,
 		UbuntuVersion: ubuntuVersion,
 		NetworkPrefix: networkPrefix,
 		SSHPubKey:     base64.StdEncoding.EncodeToString([]byte(sshPubKey)),
+		E2ESuffixList: suffix,
 	}
 	tmpl, err := template.New("docker-compose").Parse(strings.ReplaceAll(composeTemplate, "\t", "  "))
 	if err != nil {
@@ -116,7 +155,7 @@ func SaveDockerComposeFile(fileName string, nodes int, ubuntuVersion string, ssh
 
 // StartDockerCompose is a function that starts Docker Compose.
 func StartDockerCompose(filePath string) error {
-	cmd := exec.Command("docker-compose", "-f", filePath, "up", "--detach", "--remove-orphans")
+	cmd := exec.Command("docker", "compose", "-f", filePath, "up", "--detach", "--remove-orphans")
 	fmt.Println("Starting Docker Compose... with command:", cmd.String())
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
@@ -126,7 +165,7 @@ func StartDockerCompose(filePath string) error {
 
 // StopDockerCompose stops the Docker Compose services defined in the specified file.
 func StopDockerCompose(filePath string) error {
-	cmd := exec.Command("docker-compose", "-f", filePath, "down")
+	cmd := exec.Command("docker", "compose", "-f", filePath, "down")
 	cmd.Env = os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

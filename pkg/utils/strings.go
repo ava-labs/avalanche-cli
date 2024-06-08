@@ -51,7 +51,7 @@ func AddSingleQuotes(s []string) []string {
 	})
 }
 
-// Cleeans up a string by trimming \r and \n characters.
+// Cleans up a string by trimming \r and \n characters.
 func CleanupString(s string) string {
 	return strings.Trim(strings.Trim(s, "\n"), "\r")
 }

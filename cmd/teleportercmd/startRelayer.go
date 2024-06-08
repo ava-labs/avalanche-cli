@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -53,9 +54,13 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 		} else if relayerIsUp {
 			return fmt.Errorf("local AWM relayer is already running")
 		}
-		if err := teleporter.DeployRelayer(
+		if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+			return err
+		} else if !b {
+			return fmt.Errorf("there is no relayer configuration available")
+		} else if err := teleporter.DeployRelayer(
 			app.GetAWMRelayerBinDir(),
-			app.GetAWMRelayerConfigPath(),
+			relayerConfigPath,
 			app.GetAWMRelayerLogPath(),
 			app.GetAWMRelayerRunPath(),
 			app.GetAWMRelayerStorageDir(),

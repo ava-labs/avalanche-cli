@@ -108,7 +108,7 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{CLIVersion: cliVersion},
+		scriptInputs{CLIVersion: cliVersion, IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
@@ -126,19 +126,28 @@ func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
 
 // RunSSHSetupDockerService runs script to setup docker compose service for CLI
 func RunSSHSetupDockerService(host *models.Host) error {
-	return RunOverSSH(
-		"Setup Docker Service",
-		host,
-		constants.SSHLongRunningScriptTimeout,
-		"shell/setupDockerService.sh",
-		scriptInputs{},
-	)
+	if host.IsSystemD() {
+		return RunOverSSH(
+			"Setup Docker Service",
+			host,
+			constants.SSHLongRunningScriptTimeout,
+			"shell/setupDockerService.sh",
+			scriptInputs{},
+		)
+	} else {
+		// no need to setup docker service
+		return nil
+	}
 }
 
 // RunSSHRestartNode runs script to restart avalanchego
 func RunSSHRestartNode(host *models.Host) error {
 	remoteComposeFile := utils.GetRemoteComposeFile()
-	return docker.RestartDockerComposeService(host, remoteComposeFile, "avalanchego", constants.SSHLongRunningScriptTimeout)
+	avagoService := "avalanchego"
+	if utils.IsE2E() {
+		avagoService += utils.E2ESuffix(host.IP)
+	}
+	return docker.RestartDockerComposeService(host, remoteComposeFile, avagoService, constants.SSHLongRunningScriptTimeout)
 }
 
 // ComposeSSHSetupAWMRelayer used docker compose to setup AWM Relayer
@@ -161,16 +170,6 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
 func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string) error {
-	if utils.IsE2E() && utils.E2EDocker() {
-		return RunOverSSH(
-			"E2E Upgrade Avalanchego",
-			host,
-			constants.SSHScriptTimeout,
-			"shell/e2e_upgradeAvalancheGo.sh",
-			scriptInputs{AvalancheGoVersion: avalancheGoVersion},
-		)
-	}
-
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err

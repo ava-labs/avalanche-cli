@@ -56,11 +56,10 @@ func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinne
 
 func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
 	if txt == "" {
-		s.UpdateMessage(fmt.Sprintf("%s err:%v", s.GetMessage(), err))
+		s.ErrorWithMessagef("%s err:%v", s.GetMessage(), err)
 	} else {
-		s.UpdateMessage(fmt.Sprintf("%s txt:%s err:%v", s.GetMessage(), txt, err))
+		s.ErrorWithMessagef("%s txt:%s err:%v", s.GetMessage(), txt, err)
 	}
-	s.Error()
 	Logger.log.Info(s.GetMessage() + " [Spinner Err]")
 }
 
