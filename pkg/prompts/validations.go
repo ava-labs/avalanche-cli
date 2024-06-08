@@ -94,6 +94,21 @@ func validateAddress(input string) error {
 	return nil
 }
 
+func validateAddresses(input string) error {
+	addresses := strings.Split(input, ",")
+	for _, address := range addresses {
+		address = strings.TrimSpace(address)
+		if !common.IsHexAddress(address) {
+			if address == "" {
+				return fmt.Errorf("invalid empty address")
+			} else {
+				return fmt.Errorf("address %q is invalid", address)
+			}
+		}
+	}
+	return nil
+}
+
 func validateExistingFilepath(input string) error {
 	if fileInfo, err := os.Stat(input); err == nil && !fileInfo.IsDir() {
 		return nil

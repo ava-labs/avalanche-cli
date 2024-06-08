@@ -357,10 +357,10 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 			continue
 		}
 		if allowListCfg != nil {
-			if err := ensureHaveBalance(adminLabel, allowListCfg.AdminAddresses, subnetName); err != nil {
+			if err := ensureHaveBalance(sc, adminLabel, allowListCfg.AdminAddresses); err != nil {
 				return nil, "", err
 			}
-			if err := ensureHaveBalance(managerLabel, allowListCfg.ManagerAddresses, subnetName); err != nil {
+			if err := ensureHaveBalance(sc, managerLabel, allowListCfg.ManagerAddresses); err != nil {
 				return nil, "", err
 			}
 		}

@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -71,6 +72,7 @@ func (comparator *Comparator) Validate(val uint64) error {
 type Prompter interface {
 	CapturePositiveBigInt(promptStr string) (*big.Int, error)
 	CaptureAddress(promptStr string) (common.Address, error)
+	CaptureAddresses(promptStr string) ([]common.Address, error)
 	CaptureNewFilepath(promptStr string) (string, error)
 	CaptureExistingFilepath(promptStr string) (string, error)
 	CaptureYesNo(promptStr string) (bool, error)
@@ -446,6 +448,30 @@ func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 
 	addressHex := common.HexToAddress(addressStr)
 	return addressHex, nil
+}
+
+func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error) {
+	addressesStr := ""
+	validated := false
+	for !validated {
+		var err error
+		addressesStr, err = utils.ReadLongString(promptui.IconGood + " " + promptStr + " ")
+		if err != nil {
+			return nil, err
+		}
+		if err := validateAddresses(addressesStr); err != nil {
+			fmt.Println(err)
+		} else {
+			validated = true
+		}
+	}
+	addresses := utils.Map(
+		strings.Split(addressesStr, ","),
+		func(s string) common.Address {
+			return common.HexToAddress(strings.TrimSpace(s))
+		},
+	)
+	return addresses, nil
 }
 
 func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
