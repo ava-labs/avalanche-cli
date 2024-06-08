@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/spf13/cobra"
 )
@@ -68,151 +69,161 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	switch network.Kind {
-	case models.Local:
-		ux.Logger.PrintToUser("To be defined")
+	subnetNames, err := app.GetSubnetNames()
+	if err != nil {
+		return err
+	}
+	subnetNames, err = filterSubnetsByNetwork(network, subnetNames)
+	if err != nil {
+		return err
+	}
+	subnetOptions := utils.Map(subnetNames, func(s string) string { return "Subnet " + s })
+	prompt := "Where is the Token origin?"
+	cChainOption := "C-Chain"
+	notListedOption := "My blockchain isn't listed"
+	subnetOptions = append(append([]string{cChainOption}, subnetOptions...), notListedOption)
+	subnetOption, err := app.Prompt.CaptureListWithSize(
+		prompt,
+		subnetOptions,
+		11,
+	)
+	if err != nil {
+		return err
+	}
+	if subnetOption == notListedOption {
+		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
 		return nil
-	case models.Devnet:
-		ux.Logger.PrintToUser("To be defined")
-		return nil
-	case models.Fuji:
-		subnetNames, err := app.GetSubnetNames()
+	}
+	return nil
+	tokenSymbol := "AVAX"
+	if subnetOption != cChainOption {
+		subnetName := strings.TrimPrefix(subnetOption, "Subnet ")
+		sc, err := app.LoadSidecar(subnetName)
 		if err != nil {
 			return err
 		}
-		subnetOptions := utils.Map(subnetNames, func(s string) string { return "Subnet " + s })
-		prompt := "Where is the Token origin?"
-		cChainOption := "C-Chain"
-		notListedOption := "My blockchain isn't listed"
-		subnetOptions = append(append([]string{cChainOption}, subnetOptions...), notListedOption)
-		subnetOption, err := app.Prompt.CaptureListWithSize(
+		tokenSymbol = sc.TokenSymbol
+	}
+	prompt = "What kind of token do you want to bridge?"
+	popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...)"
+	hubDeployedOption := "A token that already has a Hub deployed"
+	deployNewHubOption := "Deploy a new Hub for the token"
+	explainOption := "Explain the difference"
+	goBackOption := "Go Back"
+	popularTokensInfo, err := GetPopularTokensInfo(network, subnetOption)
+	if err != nil {
+		return err
+	}
+	popularTokensDesc := utils.Map(
+		popularTokensInfo,
+		func(i PopularTokenInfo) string {
+			if i.BridgeHubAddress == "" {
+				return i.Desc()
+			} else {
+				return i.Desc() + " (recommended)"
+			}
+		},
+	)
+	options := []string{popularOption, hubDeployedOption, deployNewHubOption, explainOption}
+	if len(popularTokensDesc) == 0 {
+		options = []string{hubDeployedOption, deployNewHubOption, explainOption}
+	}
+	for {
+		option, err := app.Prompt.CaptureList(
 			prompt,
-			subnetOptions,
-			11,
+			options,
 		)
 		if err != nil {
 			return err
 		}
-		if subnetOption == notListedOption {
-			ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
-			return nil
-		}
-		tokenSymbol := "AVAX"
-		if subnetOption != cChainOption {
-			subnetName := strings.TrimPrefix(subnetOption, "Subnet ")
-			sc, err := app.LoadSidecar(subnetName)
+		switch option {
+		case popularOption:
+			options := popularTokensDesc
+			options = append(options, goBackOption)
+			option, err := app.Prompt.CaptureList(
+				"Choose Token",
+				options,
+			)
 			if err != nil {
 				return err
 			}
-			tokenSymbol = sc.TokenSymbol
-		}
-		prompt = "What kind of token do you want to bridge?"
-		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...)"
-		hubDeployedOption := "A token that already has a Hub deployed"
-		deployNewHubOption := "Deploy a new Hub for the token"
-		explainOption := "Explain the difference"
-		goBackOption := "Go Back"
-		popularTokensInfo, err := GetPopularTokensInfo(network, subnetOption)
-		if err != nil {
-			return err
-		}
-		popularTokensDesc := utils.Map(
-			popularTokensInfo,
-			func(i PopularTokenInfo) string {
-				if i.BridgeHubAddress == "" {
-					return i.Desc()
-				} else {
-					return i.Desc() + " (recommended)"
-				}
-			},
-		)
-		options := []string{popularOption, hubDeployedOption, deployNewHubOption, explainOption}
-		if len(popularTokensDesc) == 0 {
-			options = []string{hubDeployedOption, deployNewHubOption, explainOption}
-		}
-		for {
+			if option == goBackOption {
+				continue
+			}
+		case hubDeployedOption:
+			_, err = app.Prompt.CaptureAddress(
+				"Enter the address of the Hub",
+			)
+			if err != nil {
+				return err
+			}
+		case deployNewHubOption:
+			nativeOption := "The native token " + tokenSymbol
+			erc20Option := "An ERC-20 token"
+			options := []string{nativeOption, erc20Option}
 			option, err := app.Prompt.CaptureList(
-				prompt,
+				"What kind of token do you want to deploy the Hub for?",
 				options,
 			)
 			if err != nil {
 				return err
 			}
 			switch option {
-			case popularOption:
-				options := popularTokensDesc
-				options = append(options, goBackOption)
-				option, err := app.Prompt.CaptureList(
-					"Choose Token",
-					options,
+			case erc20Option:
+				erc20TokenAddr, err := app.Prompt.CaptureAddress(
+					"Enter the address of the ERC-20 Token",
 				)
 				if err != nil {
 					return err
 				}
-				if option == goBackOption {
-					continue
-				}
-			case hubDeployedOption:
-				_, err = app.Prompt.CaptureAddress(
-					"Enter the address of the Hub",
-				)
-				if err != nil {
-					return err
-				}
-			case deployNewHubOption:
-				nativeOption := "The native token " + tokenSymbol
-				erc20Option := "An ERC-20 token"
-				options := []string{nativeOption, erc20Option}
-				option, err := app.Prompt.CaptureList(
-					"What kind of token do you want to deploy the Hub for?",
-					options,
-				)
-				if err != nil {
-					return err
-				}
-				switch option {
-				case erc20Option:
-					erc20TokenAddr, err := app.Prompt.CaptureAddress(
-						"Enter the address of the ERC-20 Token",
+				if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
+					ux.Logger.PrintToUser("You have entered the address of %s, a popular token in the subnet.", p.TokenName)
+					deployANewHupOption := "Yes, I want to deploy a new Bridge Hub"
+					useTheExistingHubOption := "No, I want to use the existing official Bridge Hub"
+					options := []string{deployANewHupOption, useTheExistingHubOption}
+					_, err = app.Prompt.CaptureList(
+						"Are you sure you want to deploy a new Bridge Hub for it?",
+						options,
 					)
 					if err != nil {
 						return err
 					}
-					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
-						ux.Logger.PrintToUser("You have entered the address of %s, a popular token in the subnet.", p.TokenName)
-						deployANewHupOption := "Yes, I want to deploy a new Bridge Hub"
-						useTheExistingHubOption := "No, I want to use the existing official Bridge Hub"
-						options := []string{deployANewHupOption, useTheExistingHubOption}
-						_, err = app.Prompt.CaptureList(
-							"Are you sure you want to deploy a new Bridge Hub for it?",
-							options,
-						)
-						if err != nil {
-							return err
-						}
-					}
 				}
-			case explainOption:
-				ux.Logger.PrintToUser("The difference is...")
-				ux.Logger.PrintToUser("")
-				continue
 			}
-			break
+		case explainOption:
+			ux.Logger.PrintToUser("The difference is...")
+			ux.Logger.PrintToUser("")
+			continue
 		}
-		prompt = "Where should the token be bridged as an ERC-20?"
-		subnetOptions = utils.Filter(subnetOptions, func(s string) bool { return s != subnetOption })
-		subnetOption, err = app.Prompt.CaptureListWithSize(
-			prompt,
-			subnetOptions,
-			11,
-		)
-		if err != nil {
-			return err
-		}
-		if subnetOption == notListedOption {
-			ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
-			return nil
-		}
+		break
+	}
+	prompt = "Where should the token be bridged as an ERC-20?"
+	subnetOptions = utils.Filter(subnetOptions, func(s string) bool { return s != subnetOption })
+	subnetOption, err = app.Prompt.CaptureListWithSize(
+		prompt,
+		subnetOptions,
+		11,
+	)
+	if err != nil {
+		return err
+	}
+	if subnetOption == notListedOption {
+		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
+		return nil
 	}
 	return nil
+}
+
+func filterSubnetsByNetwork(network models.Network, subnetNames []string) ([]string, error) {
+	filtered := []string{}
+	for _, subnetName := range subnetNames {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return nil, err
+		}
+		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
+			filtered = append(filtered, subnetName)
+		}
+	}
+	return filtered, nil
 }
