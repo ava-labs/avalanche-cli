@@ -23,5 +23,6 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd.AddCommand(newMigrateCmd())
 	cmd.AddCommand(newSingleNodeCmd())
 	cmd.AddCommand(newAuthorizeCloudAccessCmd())
+	cmd.AddCommand(newSnapshotsAutoSaveCmd())
 	return cmd
 }

@@ -256,10 +256,20 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	proxy, err := h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
-	if err != nil {
-		return nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
+	var proxy net.Conn
+	if utils.IsE2E() {
+		avalancheGoEndpoint = fmt.Sprintf("%s:%d", utils.E2EConvertIP(h.IP), constants.AvalanchegoAPIPort)
+		proxy, err = net.Dial("tcp", avalancheGoEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("unable to port forward E2E to %s", avalancheGoEndpoint)
+		}
+	} else {
+		proxy, err = h.Connection.DialTCP("tcp", nil, avalancheGoAddr)
+		if err != nil {
+			return nil, fmt.Errorf("unable to port forward to %s via %s", h.Connection.RemoteAddr(), "ssh")
+		}
 	}
+
 	defer proxy.Close()
 	// send request to server
 	if _, err = proxy.Write([]byte(httpRequest)); err != nil {
@@ -523,4 +533,26 @@ func consumeOutput(ctx context.Context, output io.Reader) error {
 		}
 	}
 	return scanner.Err()
+}
+
+// HasSystemDAvaliable checks if systemd is available on a remote host.
+func (h *Host) IsSystemD() bool {
+	// check for the folder
+	if _, err := h.FileExists("/run/systemd/system"); err != nil {
+		return false
+	}
+	tmpFile, err := os.CreateTemp("", "avalanchecli-proc-systemd-*.txt")
+	if err != nil {
+		return false
+	}
+	defer os.Remove(tmpFile.Name())
+	// check for the service
+	if err := h.Download("/proc/1/comm", tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
+		return false
+	}
+	data, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(data)) == "systemd"
 }

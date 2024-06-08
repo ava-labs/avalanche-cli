@@ -122,6 +122,16 @@ func Belongs[T comparable](input []T, elem T) bool {
 	return false
 }
 
+func RemoveFromSlice[T comparable](input []T, toRemove T) []T {
+	output := make([]T, 0, len(input))
+	for _, e := range input {
+		if e != toRemove {
+			output = append(output, e)
+		}
+	}
+	return output
+}
+
 func Filter[T any](input []T, f func(T) bool) []T {
 	output := make([]T, 0, len(input))
 	for _, e := range input {
@@ -368,7 +378,7 @@ func GetGitCommit(gitRepoURL string) string {
 
 // ReadLongString reads a long string from the user input.
 func ReadLongString(msg string, args ...interface{}) (string, error) {
-	fmt.Println(fmt.Sprintf(msg, args...))
+	fmt.Printf(msg, args...)
 	reader := bufio.NewReader(os.Stdin)
 	longString, err := reader.ReadString('\n')
 	if err != nil {
@@ -539,4 +549,13 @@ func ExtractPlaceholderValue(pattern, text string) (string, error) {
 	} else {
 		return "", fmt.Errorf("no match found")
 	}
+}
+
+// Command returns an exec.Cmd for the given command line.
+func Command(cmdLine string, params ...string) *exec.Cmd {
+	cmd := strings.Split(cmdLine, " ")
+	cmd = append(cmd, params...)
+	c := exec.Command(cmd[0], cmd[1:]...)
+	c.Env = os.Environ()
+	return c
 }

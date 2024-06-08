@@ -72,7 +72,11 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 	return string(output)
 }
 
-func NodeDevnet(numNodes int, numAPINodes int) string {
+func NodeDevnet(version string, numNodes int, numAPINodes int) string {
+	cmdVersion := "--latest-avalanchego-version=true"
+	if version != "latest" && version != "" {
+		cmdVersion = "--custom-avalanchego-version=" + version
+	}
 	/* #nosec G204 */
 	cmd := exec.Command(
 		CLIBinary,
@@ -81,7 +85,7 @@ func NodeDevnet(numNodes int, numAPINodes int) string {
 		constants.E2EClusterName,
 		"--use-static-ip=false",
 		"--enable-monitoring=false",
-		"--latest-avalanchego-version=true",
+		cmdVersion,
 		"--region=local",
 		"--num-validators="+strconv.Itoa(numNodes),
 		"--num-apis="+strconv.Itoa(numAPINodes),

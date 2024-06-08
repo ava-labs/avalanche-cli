@@ -29,9 +29,12 @@ func getSubnetParams(network models.Network, subnetName string) (ids.ID, ids.ID,
 			return ids.Empty, ids.Empty, "", "", nil, err
 		}
 		if network.Kind == models.Local {
-			extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app)
+			b, extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData()
 			if err != nil {
 				return ids.Empty, ids.Empty, "", "", nil, err
+			}
+			if !b {
+				return ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("no extra local network data available")
 			}
 			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
 			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress

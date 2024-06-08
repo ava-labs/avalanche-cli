@@ -14,6 +14,7 @@ import (
 
 // PullDockerImage pulls a docker image on a remote host.
 func PullDockerImage(host *models.Host, image string) error {
+	ux.Logger.Info("Pulling docker image %s on %s", image, host.NodeID)
 	_, err := host.Command("docker pull "+image, nil, constants.SSHLongRunningScriptTimeout)
 	return err
 }

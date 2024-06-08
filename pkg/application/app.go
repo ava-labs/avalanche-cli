@@ -119,20 +119,12 @@ func (app *Avalanche) GetAWMRelayerStorageDir() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerStorageDir)
 }
 
-func (app *Avalanche) GetAWMRelayerConfigPath() string {
-	return filepath.Join(app.GetRunDir(), constants.AWMRelayerConfigFilename)
-}
-
 func (app *Avalanche) GetAWMRelayerLogPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerLogFilename)
 }
 
 func (app *Avalanche) GetAWMRelayerRunPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerRunFilename)
-}
-
-func (app *Avalanche) GetAWMRelayerSnapshotConfsDir() string {
-	return filepath.Join(app.GetSnapshotsDir(), constants.AWMRelayerSnapshotConfsDir)
 }
 
 func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
@@ -148,14 +140,6 @@ func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
 		return filepath.Join(baseDir, constants.AWMRelayerStorageDir)
 	}
 	return filepath.Join(app.GetAWMRelayerServiceDir(""), constants.AWMRelayerStorageDir)
-}
-
-func (app *Avalanche) GetExtraLocalNetworkDataPath() string {
-	return filepath.Join(app.GetRunDir(), constants.ExtraLocalNetworkDataFilename)
-}
-
-func (app *Avalanche) GetExtraLocalNetworkSnapshotsDir() string {
-	return filepath.Join(app.GetSnapshotsDir(), constants.ExtraLocalNetworkDataSnapshotsDir)
 }
 
 func (app *Avalanche) GetSubnetEVMBinDir() string {

@@ -54,6 +54,34 @@ func (_m *Prompter) CaptureAddress(promptStr string) (common.Address, error) {
 	return r0, r1
 }
 
+// CaptureAddresses provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureAddresses(promptStr string) ([]common.Address, error) {
+	ret := _m.Called(promptStr)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CaptureList")
+	}
+
+	var r0 []common.Address
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]common.Address, error)); ok {
+		return rf(promptStr)
+	}
+	if rf, ok := ret.Get(0).(func(string) []common.Address); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).([]common.Address)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureDate provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureDate(promptStr string) (time.Time, error) {
 	ret := _m.Called(promptStr)
