@@ -21,6 +21,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/ethclient"
 	"github.com/ethereum/go-ethereum/common"
+	goethereumethclient "github.com/ethereum/go-ethereum/ethclient"
+	"github.com/liyue201/erc20-go/erc20"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -444,7 +446,7 @@ func getEvmBasedChainAddrInfo(
 	kind string,
 	name string,
 ) (addressInfo, error) {
-	cChainBalance, err := getCChainBalanceStr(cClients[network], cChainAddr)
+	cChainBalance, err := getCChainBalanceStr(network, cClients[network], cChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network.Kind != models.Local {
@@ -480,7 +482,25 @@ func printAddrInfos(addrInfos []addressInfo) {
 	table.Render()
 }
 
-func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, error) {
+func getCChainBalanceStr(network models.Network, cClient ethclient.Client, addrStr string) (string, error) {
+	goEthereumClient, err := goethereumethclient.Dial(network.BlockchainEndpoint("C"))
+	if err != nil {
+		return "", err
+	}
+	token, err := erc20.NewGGToken(common.HexToAddress("0x5DB9A7629912EBF95876228C24A848de0bfB43A9"), goEthereumClient)
+	if err != nil {
+		return "", err
+	}
+	name, err := token.Name(nil)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(name)
+	bal, err := token.BalanceOf(nil, common.HexToAddress(addrStr))
+	fmt.Println(bal)
+	if err != nil {
+		return "", err
+	}
 	addr := common.HexToAddress(addrStr)
 	ctx, cancel := utils.GetAPIContext()
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
