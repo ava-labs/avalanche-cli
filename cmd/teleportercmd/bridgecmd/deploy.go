@@ -97,6 +97,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return nil
 		}
 	}
+	if flags.hubFlags.chainFlags.SubnetName != "" {
+		if err := validateSubnet(network, flags.hubFlags.chainFlags.SubnetName); err != nil {
+			return err
+		}
+	}
 	if flags.hubFlags.hubAddress == "" && flags.hubFlags.erc20Address == "" && !flags.hubFlags.native {
 		tokenSymbol := "AVAX"
 		if !flags.hubFlags.chainFlags.CChain {
@@ -241,6 +246,17 @@ func filterSubnetsByNetwork(network models.Network, subnetNames []string) ([]str
 		}
 	}
 	return filtered, nil
+}
+
+func validateSubnet(network models.Network, subnetName string) error {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("subnet %s not deployed into %s", subnetName, network.Name())
+	}
+	return nil
 }
 
 func promptChain(
