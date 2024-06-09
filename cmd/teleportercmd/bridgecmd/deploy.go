@@ -8,9 +8,11 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -246,25 +248,49 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if _, err := token.Name(nil); err != nil {
 			return err
 		}
+		// TODO: find out if there are decimals options and why (academy)
 		decimals, err := token.Decimals(nil)
 		if err != nil {
 			return err
 		}
 		bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
-		teleporterRegistryAddress := common.HexToAddress("0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25")
-		teleporterManagerAddress := common.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC")
+
+		// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
+		teleporterRegistryAddress := ""
+		teleporterManagerAddress := ""
+		privateKey := ""
+
+		if network.Kind == models.Local {
+			if flags.hubFlags.chainFlags.CChain {
+				if b, extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(); err != nil {
+					return err
+				} else if b {
+					teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
+				} else {
+					return fmt.Errorf("could not find teleporter registry address on local network C-Chain")
+				}
+				k, err := key.LoadEwoq(network.ID)
+				if err != nil {
+					return err
+				}
+				teleporterManagerAddress = k.C()
+				privateKey = k.PrivKeyHex()
+			}
+		}
+
 		hubAddress, err := deployERC20Hub(
 			bridgeSrcDir,
 			hubEndpoint,
-			"56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027",
-			teleporterRegistryAddress,
-			teleporterManagerAddress,
+			privateKey,
+			common.HexToAddress(teleporterRegistryAddress),
+			common.HexToAddress(teleporterManagerAddress),
 			erc20TokenAddress,
 			decimals,
 		)
 		if err != nil {
 			return err
 		}
+
 		fmt.Println(hubAddress)
 	}
 	fmt.Printf("%#v\n", flags.hubFlags)

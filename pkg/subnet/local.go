@@ -1175,6 +1175,7 @@ func GetExtraLocalNetworkData() (bool, ExtraLocalNetworkData, error) {
 		return false, extraLocalNetworkData, err
 	}
 	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
+	fmt.Println(extraLocalNetworkDataPath)
 	if !utils.FileExists(extraLocalNetworkDataPath) {
 		return false, extraLocalNetworkData, nil
 	}
