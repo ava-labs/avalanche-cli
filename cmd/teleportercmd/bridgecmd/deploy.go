@@ -4,6 +4,7 @@ package bridgecmd
 
 import (
 	_ "embed"
+	"fmt"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -56,7 +57,7 @@ func newDeployCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	cmd.Flags().StringVar(&deployFlags.hubFlags.SubnetName, "hub-subnet", "", "use the given CLI subnet as the Bridge Hub's Chain")
 	cmd.Flags().StringVar(&deployFlags.hubFlags.BlockchainID, "hub-blockchain-id", "", "use the given blockchain ID/Alias as the Bridge Hub's Chain")
-	cmd.Flags().BoolVar(&deployFlags.hubFlags.CChain, "hub-at-c-chain", false, "use C-Chain as the Bridge Hub's Chain")
+	cmd.Flags().BoolVar(&deployFlags.hubFlags.CChain, "c-chain-hub", false, "use C-Chain as the Bridge Hub's Chain")
 	return cmd
 }
 
@@ -77,7 +78,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	if flags.hubFlags.SubnetName == "" {
+	if flags.hubFlags.SubnetName == "" && !flags.hubFlags.CChain {
 		prompt := "Where is the Token origin?"
 		if cancel, err := promptChain(prompt, network, false, "", &flags.hubFlags); err != nil {
 			return err
@@ -85,6 +86,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return nil
 		}
 	}
+	fmt.Println(flags.hubFlags)
+	return nil
 	tokenSymbol := "AVAX"
 	if !flags.hubFlags.CChain {
 		sc, err := app.LoadSidecar(flags.hubFlags.SubnetName)
@@ -228,6 +231,7 @@ func promptChain(
 	if err != nil {
 		return false, err
 	}
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
 	cChainOption := "C-Chain"
 	notListedOption := "My blockchain isn't listed"
 	subnetOptions := []string{}
