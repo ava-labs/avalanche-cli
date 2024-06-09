@@ -87,7 +87,7 @@ func validateNodeID(input string) error {
 	return err
 }
 
-func validateAddress(input string) error {
+func ValidateAddress(input string) error {
 	if !common.IsHexAddress(input) {
 		return errors.New("invalid address")
 	}

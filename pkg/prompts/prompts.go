@@ -438,7 +438,7 @@ func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Netwo
 func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateAddress,
+		Validate: ValidateAddress,
 	}
 
 	addressStr, err := prompt.Run()
