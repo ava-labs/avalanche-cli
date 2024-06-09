@@ -97,7 +97,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return nil
 		}
 	}
-	if flags.hubFlags.hubAddress == "" && flags.hubFlags.erc20Address == "" {
+	if flags.hubFlags.hubAddress == "" && flags.hubFlags.erc20Address == "" && !flags.hubFlags.native {
 		tokenSymbol := "AVAX"
 		if !flags.hubFlags.chainFlags.CChain {
 			sc, err := app.LoadSidecar(flags.hubFlags.chainFlags.SubnetName)
