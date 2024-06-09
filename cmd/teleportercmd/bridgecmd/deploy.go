@@ -218,10 +218,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			break
 		}
 	}
+	var hubAddress common.Address
 	if flags.hubFlags.hubAddress != "" {
 		if err := prompts.ValidateAddress(flags.hubFlags.hubAddress); err != nil {
 			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.hubAddress, err)
 		}
+		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
 	}
 	if flags.hubFlags.erc20Address != "" {
 		if err := prompts.ValidateAddress(flags.hubFlags.erc20Address); err != nil {
@@ -278,7 +280,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			}
 		}
 
-		hubAddress, err := deployERC20Hub(
+		hubAddress, err = deployERC20Hub(
 			bridgeSrcDir,
 			hubEndpoint,
 			privateKey,
@@ -290,9 +292,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-
-		fmt.Println(hubAddress)
 	}
+
+	fmt.Println(hubAddress)
 	fmt.Printf("%#v\n", flags.hubFlags)
 	return nil
 	prompt := "Where should the token be bridged as an ERC-20?"
