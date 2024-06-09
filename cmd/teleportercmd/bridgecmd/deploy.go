@@ -24,9 +24,8 @@ import (
 )
 
 type ChainFlags struct {
-	SubnetName   string
-	BlockchainID string
-	CChain       bool
+	SubnetName string
+	CChain     bool
 }
 
 type HubFlags struct {
@@ -37,16 +36,9 @@ type HubFlags struct {
 }
 
 type DeployFlags struct {
-	Network           networkoptions.NetworkFlags
-	hubFlags          HubFlags
-	spokeFlags        ChainFlags
-	PrivateKey        string
-	KeyName           string
-	GenesisKey        bool
-	DeployMessenger   bool
-	DeployRegistry    bool
-	TeleporterVersion string
-	RPCURL            string
+	Network    networkoptions.NetworkFlags
+	hubFlags   HubFlags
+	spokeFlags ChainFlags
 }
 
 var (
@@ -69,11 +61,12 @@ func newDeployCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	cmd.Flags().StringVar(&deployFlags.hubFlags.chainFlags.SubnetName, "hub-subnet", "", "use the given CLI subnet as the Bridge Hub's Chain")
-	cmd.Flags().StringVar(&deployFlags.hubFlags.chainFlags.BlockchainID, "hub-blockchain-id", "", "use the given blockchain ID/Alias as the Bridge Hub's Chain")
 	cmd.Flags().BoolVar(&deployFlags.hubFlags.chainFlags.CChain, "c-chain-hub", false, "use C-Chain as the Bridge Hub's Chain")
 	cmd.Flags().BoolVar(&deployFlags.hubFlags.native, "deploy-native-hub", false, "deploy a Bridge Hub for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.hubFlags.erc20Address, "deploy-erc20-hub", "", "deploy a Bridge Hub for the Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.hubFlags.hubAddress, "use-hub", "", "use the given Bridge Hub Address")
+	cmd.Flags().BoolVar(&deployFlags.spokeFlags.CChain, "c-chain-spoke", false, "use C-Chain as the Bridge Spoke's Chain")
+	cmd.Flags().StringVar(&deployFlags.spokeFlags.SubnetName, "spoke-subnet", "", "use the given CLI subnet as the Bridge Spoke's Chain")
 	return cmd
 }
 
@@ -218,6 +211,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			break
 		}
 	}
+
+	if !flags.spokeFlags.CChain && flags.spokeFlags.SubnetName == "" {
+		prompt := "Where should the token be bridged as an ERC-20?"
+		if cancel, err := promptChain(prompt, network, flags.hubFlags.chainFlags.CChain, flags.hubFlags.chainFlags.SubnetName, &flags.spokeFlags); err != nil {
+			return err
+		} else if cancel {
+			return nil
+		}
+	}
+
 	var hubAddress common.Address
 	if flags.hubFlags.hubAddress != "" {
 		if err := prompts.ValidateAddress(flags.hubFlags.hubAddress); err != nil {
@@ -295,14 +298,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	fmt.Println(hubAddress)
-	fmt.Printf("%#v\n", flags.hubFlags)
-	return nil
-	prompt := "Where should the token be bridged as an ERC-20?"
-	if cancel, err := promptChain(prompt, network, flags.hubFlags.chainFlags.CChain, flags.hubFlags.chainFlags.SubnetName, &flags.spokeFlags); err != nil {
-		return err
-	} else if cancel {
-		return nil
-	}
+
 	return nil
 }
 
