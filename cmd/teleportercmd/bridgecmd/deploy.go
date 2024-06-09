@@ -5,8 +5,8 @@ package bridgecmd
 import (
 	_ "embed"
 	"fmt"
-	"strings"
 
+	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/liyue201/erc20-go/erc20"
@@ -87,6 +86,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
+
+	// flags exclusiveness
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.hubFlags.chainFlags.SubnetName != "", flags.hubFlags.chainFlags.CChain}) {
+		return fmt.Errorf("--hub-subnet and --c-chain-hub are mutually exclusive flags")
+	}
+
+	// Hub Chain Prompts
 	if flags.hubFlags.chainFlags.SubnetName == "" && !flags.hubFlags.chainFlags.CChain {
 		prompt := "Where is the Token origin?"
 		if cancel, err := promptChain(prompt, network, false, "", &flags.hubFlags.chainFlags); err != nil {
@@ -95,19 +101,23 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return nil
 		}
 	}
+
+	// Hub Chain Validations
 	if flags.hubFlags.chainFlags.SubnetName != "" {
 		if err := validateSubnet(network, flags.hubFlags.chainFlags.SubnetName); err != nil {
 			return err
 		}
 	}
+
+	// Hub Contract Prompts
 	if flags.hubFlags.hubAddress == "" && flags.hubFlags.erc20Address == "" && !flags.hubFlags.native {
-		tokenSymbol := "AVAX"
+		nativeTokenSymbol := "AVAX"
 		if !flags.hubFlags.chainFlags.CChain {
 			sc, err := app.LoadSidecar(flags.hubFlags.chainFlags.SubnetName)
 			if err != nil {
 				return err
 			}
-			tokenSymbol = sc.TokenSymbol
+			nativeTokenSymbol = sc.TokenSymbol
 		}
 		prompt := "What kind of token do you want to bridge?"
 		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...)"
@@ -168,7 +178,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				}
 				flags.hubFlags.hubAddress = addr.Hex()
 			case deployNewHubOption:
-				nativeOption := "The native token " + tokenSymbol
+				nativeOption := "The native token " + nativeTokenSymbol
 				erc20Option := "An ERC-20 token"
 				options := []string{nativeOption, erc20Option}
 				option, err := app.Prompt.CaptureList(
@@ -212,6 +222,19 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
+	// Hub Contract Validations
+	if flags.hubFlags.hubAddress != "" {
+		if err := prompts.ValidateAddress(flags.hubFlags.hubAddress); err != nil {
+			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.hubAddress, err)
+		}
+	}
+	if flags.hubFlags.erc20Address != "" {
+		if err := prompts.ValidateAddress(flags.hubFlags.erc20Address); err != nil {
+			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.erc20Address, err)
+		}
+	}
+
+	// Spoke Chain Prompts
 	if !flags.spokeFlags.CChain && flags.spokeFlags.SubnetName == "" {
 		prompt := "Where should the token be bridged as an ERC-20?"
 		if cancel, err := promptChain(prompt, network, flags.hubFlags.chainFlags.CChain, flags.hubFlags.chainFlags.SubnetName, &flags.spokeFlags); err != nil {
@@ -221,58 +244,80 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	var hubAddress common.Address
-	if flags.hubFlags.hubAddress != "" {
-		if err := prompts.ValidateAddress(flags.hubFlags.hubAddress); err != nil {
-			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.hubAddress, err)
+	// Spoke Chain Validations
+	if flags.spokeFlags.SubnetName != "" {
+		if err := validateSubnet(network, flags.spokeFlags.SubnetName); err != nil {
+			return err
 		}
+		if flags.spokeFlags.SubnetName == flags.hubFlags.chainFlags.SubnetName {
+			return fmt.Errorf("trying to make a bridge were hub and spoke are on the same subnet")
+		}
+	}
+	if flags.spokeFlags.CChain && flags.hubFlags.chainFlags.CChain {
+		return fmt.Errorf("trying to make a bridge were hub and spoke are on the same subnet")
+	}
+
+	// Hub Deploy
+	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+	var (
+		hubAddress        common.Address
+		tokenDecimals     uint8
+		tokenName         string
+		tokenSymbol       string
+		erc20TokenAddress common.Address
+	)
+	hubEndpoint := network.CChainEndpoint()
+	if flags.hubFlags.chainFlags.SubnetName != "" {
+		sc, err := app.LoadSidecar(flags.hubFlags.chainFlags.SubnetName)
+		if err != nil {
+			return err
+		}
+		blockchainID := sc.Networks[network.Name()].BlockchainID
+		hubEndpoint = network.BlockchainEndpoint(blockchainID.String())
+	}
+	if flags.hubFlags.hubAddress != "" {
 		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
+		address, err := getHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
+		if err != nil {
+			return err
+		}
+		flags.hubFlags.erc20Address = address.Hex()
 	}
 	if flags.hubFlags.erc20Address != "" {
-		if err := prompts.ValidateAddress(flags.hubFlags.erc20Address); err != nil {
-			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.erc20Address, err)
-		}
-		hubEndpoint := network.CChainEndpoint()
-		if flags.hubFlags.chainFlags.SubnetName != "" {
-			sc, err := app.LoadSidecar(flags.hubFlags.chainFlags.SubnetName)
-			if err != nil {
-				return err
-			}
-			blockchainID := sc.Networks[network.Name()].BlockchainID
-			hubEndpoint = network.BlockchainEndpoint(blockchainID.String())
-		}
+		erc20TokenAddress = common.HexToAddress(flags.hubFlags.erc20Address)
 		client, err := ethclient.Dial(hubEndpoint)
 		if err != nil {
 			return err
 		}
-		erc20TokenAddress := common.HexToAddress(flags.hubFlags.erc20Address)
 		token, err := erc20.NewGGToken(erc20TokenAddress, client)
 		if err != nil {
 			return err
 		}
-		if _, err := token.Name(nil); err != nil {
+		if tokenName, err = token.Name(nil); err != nil {
+			return err
+		}
+		if tokenSymbol, err = token.Symbol(nil); err != nil {
 			return err
 		}
 		// TODO: find out if there are decimals options and why (academy)
-		decimals, err := token.Decimals(nil)
+		tokenDecimals, err = token.Decimals(nil)
 		if err != nil {
 			return err
 		}
-		bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
-
+	}
+	if flags.hubFlags.erc20Address != "" && flags.hubFlags.hubAddress == "" {
 		// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
 		teleporterRegistryAddress := ""
 		teleporterManagerAddress := ""
 		privateKey := ""
-
 		if network.Kind == models.Local {
 			if flags.hubFlags.chainFlags.CChain {
 				if b, extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(); err != nil {
 					return err
-				} else if b {
-					teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
-				} else {
+				} else if !b {
 					return fmt.Errorf("could not find teleporter registry address on local network C-Chain")
+				} else {
+					teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
 				}
 				k, err := key.LoadEwoq(network.ID)
 				if err != nil {
@@ -282,7 +327,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				privateKey = k.PrivKeyHex()
 			}
 		}
-
 		hubAddress, err = deployERC20Hub(
 			bridgeSrcDir,
 			hubEndpoint,
@@ -290,7 +334,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			common.HexToAddress(teleporterRegistryAddress),
 			common.HexToAddress(teleporterManagerAddress),
 			erc20TokenAddress,
-			decimals,
+			tokenDecimals,
 		)
 		if err != nil {
 			return err
@@ -298,75 +342,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	fmt.Println(hubAddress)
+	fmt.Println(tokenDecimals)
+	fmt.Println(tokenName)
+	fmt.Println(tokenSymbol)
 
 	return nil
-}
-
-func filterSubnetsByNetwork(network models.Network, subnetNames []string) ([]string, error) {
-	filtered := []string{}
-	for _, subnetName := range subnetNames {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return nil, err
-		}
-		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
-			filtered = append(filtered, subnetName)
-		}
-	}
-	return filtered, nil
-}
-
-func validateSubnet(network models.Network, subnetName string) error {
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-		return fmt.Errorf("subnet %s not deployed into %s", subnetName, network.Name())
-	}
-	return nil
-}
-
-func promptChain(
-	prompt string,
-	network models.Network,
-	avoidCChain bool,
-	avoidSubnet string,
-	chainFlags *ChainFlags,
-) (bool, error) {
-	subnetNames, err := app.GetSubnetNames()
-	if err != nil {
-		return false, err
-	}
-	subnetNames, err = filterSubnetsByNetwork(network, subnetNames)
-	if err != nil {
-		return false, err
-	}
-	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
-	cChainOption := "C-Chain"
-	notListedOption := "My blockchain isn't listed"
-	subnetOptions := []string{}
-	if !avoidCChain {
-		subnetOptions = append(subnetOptions, cChainOption)
-	}
-	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Subnet " + s })...)
-	subnetOptions = append(subnetOptions, notListedOption)
-	subnetOption, err := app.Prompt.CaptureListWithSize(
-		prompt,
-		subnetOptions,
-		11,
-	)
-	if err != nil {
-		return false, err
-	}
-	if subnetOption == notListedOption {
-		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
-		return true, nil
-	}
-	if subnetOption == cChainOption {
-		chainFlags.CChain = true
-	} else {
-		chainFlags.SubnetName = strings.TrimPrefix(subnetOption, "Subnet ")
-	}
-	return false, nil
 }
