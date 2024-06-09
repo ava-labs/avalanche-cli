@@ -20,11 +20,12 @@ func deployERC20Hub(
 	prefundedPrivateKey string,
 	teleporterRegistryAddress common.Address,
 	teleporterManagerAddress common.Address,
-	wrappedNativeTokenAddress common.Address,
+	erc20TokenAddress common.Address,
+	erc20TokenDecimals uint8,
 ) (common.Address, error) {
 	srcDir = utils.ExpandHome(srcDir)
-	abiPath := filepath.Join(srcDir, "contracts/out/ERC20Source.sol/ERC20Source.abi.json")
-	binPath := filepath.Join(srcDir, "contracts/out/ERC20Source.sol/ERC20Source.bin")
+	abiPath := filepath.Join(srcDir, "contracts/out/ERC20TokenHub.sol/ERC20TokenHub.abi.json")
+	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenHub.sol/ERC20TokenHub.bin")
 	abiBytes, err := os.ReadFile(abiPath)
 	if err != nil {
 		return common.Address{}, err
@@ -51,7 +52,16 @@ func deployERC20Hub(
 	if err != nil {
 		return common.Address{}, err
 	}
-	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, teleporterRegistryAddress, teleporterManagerAddress, wrappedNativeTokenAddress)
+	address, tx, _, err := bind.DeployContract(
+		txOpts,
+		*abi,
+		bin,
+		client,
+		teleporterRegistryAddress,
+		teleporterManagerAddress,
+		erc20TokenAddress,
+		erc20TokenDecimals,
+	)
 	if err != nil {
 		return common.Address{}, err
 	}

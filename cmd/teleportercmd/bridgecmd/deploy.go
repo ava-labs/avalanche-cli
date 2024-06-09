@@ -238,13 +238,34 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		token, err := erc20.NewGGToken(common.HexToAddress(flags.hubFlags.erc20Address), client)
+		erc20TokenAddress := common.HexToAddress(flags.hubFlags.erc20Address)
+		token, err := erc20.NewGGToken(erc20TokenAddress, client)
 		if err != nil {
 			return err
 		}
 		if _, err := token.Name(nil); err != nil {
 			return err
 		}
+		decimals, err := token.Decimals(nil)
+		if err != nil {
+			return err
+		}
+		bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+		teleporterRegistryAddress := common.HexToAddress("0x17aB05351fC94a1a67Bf3f56DdbB941aE6c63E25")
+		teleporterManagerAddress := common.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC")
+		hubAddress, err := deployERC20Hub(
+			bridgeSrcDir,
+			hubEndpoint,
+			"56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027",
+			teleporterRegistryAddress,
+			teleporterManagerAddress,
+			erc20TokenAddress,
+			decimals,
+		)
+		if err != nil {
+			return err
+		}
+		fmt.Println(hubAddress)
 	}
 	fmt.Printf("%#v\n", flags.hubFlags)
 	return nil
