@@ -14,6 +14,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/liyue201/erc20-go/erc20"
 
 	"github.com/spf13/cobra"
 )
@@ -221,6 +224,26 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if flags.hubFlags.erc20Address != "" {
 		if err := prompts.ValidateAddress(flags.hubFlags.erc20Address); err != nil {
 			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.erc20Address, err)
+		}
+		hubEndpoint := network.CChainEndpoint()
+		if flags.hubFlags.chainFlags.SubnetName != "" {
+			sc, err := app.LoadSidecar(flags.hubFlags.chainFlags.SubnetName)
+			if err != nil {
+				return err
+			}
+			blockchainID := sc.Networks[network.Name()].BlockchainID
+			hubEndpoint = network.BlockchainEndpoint(blockchainID.String())
+		}
+		client, err := ethclient.Dial(hubEndpoint)
+		if err != nil {
+			return err
+		}
+		token, err := erc20.NewGGToken(common.HexToAddress(flags.hubFlags.erc20Address), client)
+		if err != nil {
+			return err
+		}
+		if _, err := token.Name(nil); err != nil {
+			return err
 		}
 	}
 	fmt.Printf("%#v\n", flags.hubFlags)

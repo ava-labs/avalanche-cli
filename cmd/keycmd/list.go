@@ -536,7 +536,7 @@ func printAddrInfos(addrInfos []addressInfo) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2, 3})
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2})
 	for _, addrInfo := range addrInfos {
 		table.Append([]string{
 			addrInfo.kind,
