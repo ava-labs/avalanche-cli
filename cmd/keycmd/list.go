@@ -501,12 +501,12 @@ func getEvmBasedChainAddrInfo(
 	if cGethClients != nil && cGethClients[network] != nil {
 		for _, tokenAddress := range tokenAddresses {
 			token, err := erc20.NewGGToken(common.HexToAddress(tokenAddress), cGethClients[network])
+			if err != nil {
+				return addressInfos, err
+			}
+			tokenName, err := token.Name(nil)
 			if err == nil {
 				// just ignore contract address access errors as those may depend on network
-				tokenName, err := token.Name(nil)
-				if err != nil {
-					return addressInfos, err
-				}
 				balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
 				if err != nil {
 					return addressInfos, err
@@ -519,7 +519,7 @@ func getEvmBasedChainAddrInfo(
 					kind:    kind,
 					name:    name,
 					chain:   chainName,
-					token:   tokenName,
+					token:   fmt.Sprintf("%s @%s..", tokenName, tokenAddress[:7]),
 					address: cChainAddr,
 					balance: formattedBalance,
 					network: network.Name(),
