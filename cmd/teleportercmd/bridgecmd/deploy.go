@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
+	"github.com/ava-labs/avalanche-cli/pkg/bridge"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -281,11 +282,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.hubFlags.hubAddress != "" {
 		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
-		erc20TokenAddress, err = getHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
+		erc20TokenAddress, err = bridge.GetHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
 		if err != nil {
 			return err
 		}
-		tokenSymbol, tokenName, tokenDecimals, err = getTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
 			hubEndpoint,
 			erc20TokenAddress.Hex(),
 		)
@@ -295,14 +296,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.hubFlags.erc20Address != "" {
 		erc20TokenAddress = common.HexToAddress(flags.hubFlags.erc20Address)
-		tokenSymbol, tokenName, tokenDecimals, err = getTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
 			hubEndpoint,
 			erc20TokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
-		hubAddress, err = deployERC20Hub(
+		hubAddress, err = bridge.DeployERC20Hub(
 			bridgeSrcDir,
 			hubEndpoint,
 			hubKey.PrivKeyHex(),
@@ -326,7 +327,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		wrappedNativeTokenAddress, err := deployWrappedNativeToken(
+		wrappedNativeTokenAddress, err := bridge.DeployWrappedNativeToken(
 			bridgeSrcDir,
 			hubEndpoint,
 			hubKey.PrivKeyHex(),
@@ -335,7 +336,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		tokenSymbol, tokenName, tokenDecimals, err = getTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
 			hubEndpoint,
 			wrappedNativeTokenAddress.Hex(),
 		)
@@ -345,7 +346,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", hubEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", tokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
-		hubAddress, err = deployNativeHub(
+		hubAddress, err = bridge.DeployNativeHub(
 			bridgeSrcDir,
 			hubEndpoint,
 			hubKey.PrivKeyHex(),
@@ -371,7 +372,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	spokeAddress, err := deployERC20Spoke(
+	spokeAddress, err := bridge.DeployERC20Spoke(
 		bridgeSrcDir,
 		spokeEndpoint,
 		spokeKey.PrivKeyHex(),
@@ -387,7 +388,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	if err := registerERC20Spoke(
+	if err := bridge.RegisterERC20Spoke(
 		bridgeSrcDir,
 		spokeEndpoint,
 		spokeKey.PrivKeyHex(),
