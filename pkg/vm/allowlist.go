@@ -158,7 +158,7 @@ func GenerateAllowList(
 					}
 					enabledAddresses = append(enabledAddresses, addresses...)
 				case explainOption:
-					fmt.Println("The difference to be given by devrel people")
+					fmt.Println("Enabled addresses can perform the permissioned behavior (issuing transactions, deploying contracts,\netc.), but cannot modify other roles.\nManager addresses can perform the permissioned behavior and can change enabled/disable addresses.\nAdmin addresses can perform the permissioned behavior, but can also add/remove other Admins, Managers\nand Enabled addresses.")
 					fmt.Println()
 					continue
 				case cancelOption:
@@ -201,7 +201,7 @@ func GenerateAllowList(
 			preview(adminAddresses, managerAddresses, enabledAddresses)
 		case confirmOption:
 			if len(adminAddresses) == 0 && len(managerAddresses) == 0 && len(enabledAddresses) == 0 {
-				fmt.Println("We need at least one address to have been added to the allow list. Otherwise cancel.")
+				fmt.Println("Allow list should not be empty.")
 				fmt.Println()
 				continue
 			}
