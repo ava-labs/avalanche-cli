@@ -265,6 +265,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return fmt.Errorf("trying to make a bridge were hub and spoke are on the same subnet")
 	}
 
+	// Setup Contracts
+	ux.Logger.PrintToUser("Downloading and Building Smart Contracts")
+	if err := bridge.DownloadRepo(app); err != nil {
+		return err
+	}
+	return nil
+
 	// Hub Deploy
 	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
 	var (
