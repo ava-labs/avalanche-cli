@@ -355,6 +355,15 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
+	if err := registerERC20Spoke(
+		bridgeSrcDir,
+		spokeEndpoint,
+		spokeKey.PrivKeyHex(),
+		spokeAddress,
+	); err != nil {
+		return err
+	}
+
 	ux.Logger.PrintToUser("Spoke Deployed!")
 	ux.Logger.PrintToUser("Spoke Address: %s", spokeAddress)
 

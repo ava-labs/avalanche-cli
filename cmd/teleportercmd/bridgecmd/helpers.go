@@ -5,6 +5,7 @@ package bridgecmd
 import (
 	_ "embed"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,55 @@ func getHubERC20Address(
 	}
 	out0 := *subnetevmabi.ConvertType(out[0], new(common.Address)).(*common.Address)
 	return out0, nil
+}
+
+type TeleporterFeeInfo struct {
+	FeeTokenAddress common.Address
+	Amount          *big.Int
+}
+
+func registerERC20Spoke(
+	srcDir string,
+	rpcURL string,
+	prefundedPrivateKey string,
+	address common.Address,
+) error {
+	srcDir = utils.ExpandHome(srcDir)
+	abiPath := filepath.Join(srcDir, "contracts/out/ERC20TokenSpoke.sol/ERC20TokenSpoke.abi.json")
+	abiBytes, err := os.ReadFile(abiPath)
+	if err != nil {
+		return err
+	}
+	metadata := &bind.MetaData{
+		ABI: string(abiBytes),
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return err
+	}
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
+	if err != nil {
+		return err
+	}
+	feeInfo := TeleporterFeeInfo{
+		Amount: big.NewInt(0),
+	}
+	contract := bind.NewBoundContract(address, *abi, client, client, client)
+	tx, err := contract.Transact(txOpts, "registerWithHub", feeInfo)
+	if err != nil {
+		return err
+	}
+	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+		return err
+	} else if !success {
+		return fmt.Errorf("failed receipt status deploying contract")
+	}
+	return nil
 }
 
 type TokenSpokeSettings struct {
