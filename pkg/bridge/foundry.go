@@ -17,11 +17,11 @@ var (
 	forgePath     = utils.ExpandHome("~/.foundry/bin/forge")
 )
 
-func foundryIsInstalled() bool {
+func FoundryIsInstalled() bool {
 	return utils.IsExecutable(forgePath)
 }
 
-func installFoundry() error {
+func InstallFoundry() error {
 	ux.Logger.PrintToUser("Installing Foundry")
 	downloadCmd := exec.Command("curl", "-L", "https://foundry.paradigm.xyz")
 	installCmd := exec.Command("sh")

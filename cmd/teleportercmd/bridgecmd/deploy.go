@@ -70,6 +70,9 @@ func deploy(_ *cobra.Command, args []string) error {
 }
 
 func CallDeploy(_ []string, flags DeployFlags) error {
+	if !bridge.FoundryIsInstalled() {
+		return bridge.InstallFoundry()
+	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Teleporter bridge?",
