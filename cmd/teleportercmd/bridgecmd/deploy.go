@@ -266,7 +266,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Setup Contracts
-	ux.Logger.PrintToUser("Downloading and Building Smart Contracts")
+	ux.Logger.PrintToUser("Downloading Smart Contracts")
 	if err := bridge.DownloadRepo(app); err != nil {
 		return err
 	}

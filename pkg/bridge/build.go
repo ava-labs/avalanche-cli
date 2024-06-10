@@ -84,5 +84,19 @@ func DownloadRepo(
 			return fmt.Errorf("could not pull git branch %s of repository %s: %w", constants.BridgeBranch, constants.BridgeURL, err)
 		}
 	}
+	cmd = exec.Command(
+		"git",
+		"submodule",
+		"update",
+		"--init",
+		"--recursive",
+	)
+	cmd.Dir = repoDir
+	stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	if err := cmd.Run(); err != nil {
+		fmt.Println(stdout)
+		fmt.Println(stderr)
+		return fmt.Errorf("could not update submodules of repository %s: %w", constants.BridgeURL, err)
+	}
 	return nil
 }
