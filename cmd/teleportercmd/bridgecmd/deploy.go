@@ -13,8 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/liyue201/erc20-go/erc20"
 
 	"github.com/spf13/cobra"
 )
@@ -118,13 +116,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Hub Contract Prompts
 	if flags.hubFlags.hubAddress == "" && flags.hubFlags.erc20Address == "" && !flags.hubFlags.native {
-		nativeTokenSymbol := "AVAX"
-		if !flags.hubFlags.chainFlags.CChain {
-			sc, err := app.LoadSidecar(flags.hubFlags.chainFlags.SubnetName)
-			if err != nil {
-				return err
-			}
-			nativeTokenSymbol = sc.TokenSymbol
+		nativeTokenSymbol, err := getNativeTokenSymbol(
+			flags.hubFlags.chainFlags.SubnetName,
+			flags.hubFlags.chainFlags.CChain,
+		)
+		if err != nil {
+			return err
 		}
 		prompt := "What kind of token do you want to bridge?"
 		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...)"
@@ -268,9 +265,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
 	var (
 		hubAddress        common.Address
-		tokenDecimals     uint8
-		tokenName         string
 		tokenSymbol       string
+		tokenName         string
+		tokenDecimals     uint8
 		erc20TokenAddress common.Address
 	)
 	// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
@@ -284,35 +281,27 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.hubFlags.hubAddress != "" {
 		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
-		address, err := getHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
+		erc20TokenAddress, err = getHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
 		if err != nil {
 			return err
 		}
-		flags.hubFlags.erc20Address = address.Hex()
+		tokenSymbol, tokenName, tokenDecimals, err = getTokenParams(
+			hubEndpoint,
+			erc20TokenAddress.Hex(),
+		)
+		if err != nil {
+			return err
+		}
 	}
 	if flags.hubFlags.erc20Address != "" {
 		erc20TokenAddress = common.HexToAddress(flags.hubFlags.erc20Address)
-		client, err := ethclient.Dial(hubEndpoint)
+		tokenSymbol, tokenName, tokenDecimals, err = getTokenParams(
+			hubEndpoint,
+			erc20TokenAddress.Hex(),
+		)
 		if err != nil {
 			return err
 		}
-		token, err := erc20.NewGGToken(erc20TokenAddress, client)
-		if err != nil {
-			return err
-		}
-		if tokenName, err = token.Name(nil); err != nil {
-			return err
-		}
-		if tokenSymbol, err = token.Symbol(nil); err != nil {
-			return err
-		}
-		// TODO: find out if there are decimals options and why (academy)
-		tokenDecimals, err = token.Decimals(nil)
-		if err != nil {
-			return err
-		}
-	}
-	if flags.hubFlags.erc20Address != "" && flags.hubFlags.hubAddress == "" {
 		hubAddress, err = deployERC20Hub(
 			bridgeSrcDir,
 			hubEndpoint,
@@ -325,8 +314,51 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Hub Deployed!")
+		ux.Logger.PrintToUser("Hub Deployed to %s", hubEndpoint)
 		ux.Logger.PrintToUser("Hub Address: %s", hubAddress)
+		ux.Logger.PrintToUser("")
+	}
+	if flags.hubFlags.native {
+		nativeTokenSymbol, err := getNativeTokenSymbol(
+			flags.hubFlags.chainFlags.SubnetName,
+			flags.hubFlags.chainFlags.CChain,
+		)
+		if err != nil {
+			return err
+		}
+		wrappedNativeTokenAddress, err := deployWrappedNativeToken(
+			bridgeSrcDir,
+			hubEndpoint,
+			hubKey.PrivKeyHex(),
+			nativeTokenSymbol,
+		)
+		if err != nil {
+			return err
+		}
+		tokenSymbol, tokenName, tokenDecimals, err = getTokenParams(
+			hubEndpoint,
+			wrappedNativeTokenAddress.Hex(),
+		)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", hubEndpoint)
+		ux.Logger.PrintToUser("%s Address: %s", tokenSymbol, wrappedNativeTokenAddress)
+		ux.Logger.PrintToUser("")
+		hubAddress, err = deployNativeHub(
+			bridgeSrcDir,
+			hubEndpoint,
+			hubKey.PrivKeyHex(),
+			common.HexToAddress(hubRegistryAddress),
+			common.HexToAddress(hubKey.C()),
+			wrappedNativeTokenAddress,
+		)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Hub Deployed to %s", hubEndpoint)
+		ux.Logger.PrintToUser("Hub Address: %s", hubAddress)
+		ux.Logger.PrintToUser("")
 	}
 
 	// Spoke Deploy
@@ -364,7 +396,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Spoke Deployed!")
+	ux.Logger.PrintToUser("Spoke Deployed to %s", spokeEndpoint)
 	ux.Logger.PrintToUser("Spoke Address: %s", spokeAddress)
 
 	return nil

@@ -20,6 +20,8 @@ import (
 	subnetevmabi "github.com/ava-labs/subnet-evm/accounts/abi"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/liyue201/erc20-go/erc20"
 )
 
 func getHubERC20Address(
@@ -250,8 +252,8 @@ func deployNativeHub(
 	wrappedNativeTokenAddress common.Address,
 ) (common.Address, error) {
 	srcDir = utils.ExpandHome(srcDir)
-	abiPath := filepath.Join(srcDir, "contracts/out/NativeTokenSource.sol/NativeTokenSource.abi.json")
-	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenSource.sol/NativeTokenSource.bin")
+	abiPath := filepath.Join(srcDir, "contracts/out/NativeTokenHub.sol/NativeTokenHub.abi.json")
+	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenHub.sol/NativeTokenHub.bin")
 	abiBytes, err := os.ReadFile(abiPath)
 	if err != nil {
 		return common.Address{}, err
@@ -278,7 +280,15 @@ func deployNativeHub(
 	if err != nil {
 		return common.Address{}, err
 	}
-	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, teleporterRegistryAddress, teleporterManagerAddress, wrappedNativeTokenAddress)
+	address, tx, _, err := bind.DeployContract(
+		txOpts,
+		*abi,
+		bin,
+		client,
+		teleporterRegistryAddress,
+		teleporterManagerAddress,
+		wrappedNativeTokenAddress,
+	)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -294,7 +304,7 @@ func deployWrappedNativeToken(
 	srcDir string,
 	rpcURL string,
 	prefundedPrivateKey string,
-	tokenName string,
+	tokenSymbol string,
 ) (common.Address, error) {
 	srcDir = utils.ExpandHome(srcDir)
 	abiPath := filepath.Join(srcDir, "contracts/out/WrappedNativeToken.sol/WrappedNativeToken.abi.json")
@@ -325,7 +335,7 @@ func deployWrappedNativeToken(
 	if err != nil {
 		return common.Address{}, err
 	}
-	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, tokenName)
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, tokenSymbol)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -475,4 +485,42 @@ func GetSubnetParams(
 		return "", ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", subnetName, network.Name())
 	}
 	return endpoint, subnetID, chainID, teleporterMessengerAddress, teleporterRegistryAddress, k, nil
+}
+
+func getNativeTokenSymbol(subnetName string, isCChain bool) (string, error) {
+	nativeTokenSymbol := "AVAX"
+	if !isCChain {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return "", err
+		}
+		nativeTokenSymbol = sc.TokenSymbol
+	}
+	return nativeTokenSymbol, nil
+}
+
+func getTokenParams(endpoint string, tokenAddress string) (string, string, uint8, error) {
+	address := common.HexToAddress(tokenAddress)
+	client, err := ethclient.Dial(endpoint)
+	if err != nil {
+		return "", "", 0, err
+	}
+	token, err := erc20.NewGGToken(address, client)
+	if err != nil {
+		return "", "", 0, err
+	}
+	tokenName, err := token.Name(nil)
+	if err != nil {
+		return "", "", 0, err
+	}
+	tokenSymbol, err := token.Symbol(nil)
+	if err != nil {
+		return "", "", 0, err
+	}
+	// TODO: find out if there are decimals options and why (academy)
+	tokenDecimals, err := token.Decimals(nil)
+	if err != nil {
+		return "", "", 0, err
+	}
+	return tokenSymbol, tokenName, tokenDecimals, nil
 }
