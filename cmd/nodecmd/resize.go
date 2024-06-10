@@ -97,7 +97,7 @@ func resize(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		hostAnsibleID, err := models.HostCloudIDToAnsibleID(nodeConfig.CloudService, nodeConfig.NodeID)
+		hostAnsibleID, err := host.HostCloudIDToAnsibleID(nodeConfig.CloudService, nodeConfig.NodeID)
 		if err != nil {
 			return err
 		}

@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )
@@ -90,7 +91,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	removedLoadTestHosts := []*models.Host{}
+	removedLoadTestHosts := []*host.Host{}
 	if len(loadTestsToStop) == 0 {
 		return fmt.Errorf("no load test instances to stop in cluster %s", clusterName)
 	}
@@ -136,7 +137,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		hosts := utils.Filter(separateHosts, func(h *models.Host) bool { return h.GetCloudID() == nodeConfig.NodeID })
+		hosts := utils.Filter(separateHosts, func(h *host.Host) bool { return h.GetCloudID() == nodeConfig.NodeID })
 		if len(hosts) == 0 {
 			return fmt.Errorf("host %s is not found in hosts inventory file", nodeConfig.NodeID)
 		}
@@ -182,10 +183,10 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	return updateLoadTestInventory(separateHosts, removedLoadTestHosts, clusterName, separateHostInventoryPath)
 }
 
-func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*models.Host, clusterName, separateHostInventoryPath string) error {
-	var remainingLoadTestHosts []*models.Host
+func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*host.Host, clusterName, separateHostInventoryPath string) error {
+	var remainingLoadTestHosts []*host.Host
 	for _, loadTestHost := range separateHosts {
-		filteredHosts := utils.Filter(removedLoadTestHosts, func(h *models.Host) bool { return h.IP == loadTestHost.IP })
+		filteredHosts := utils.Filter(removedLoadTestHosts, func(h *host.Host) bool { return h.IP == loadTestHost.IP })
 		if len(filteredHosts) == 0 {
 			remainingLoadTestHosts = append(remainingLoadTestHosts, loadTestHost)
 		}

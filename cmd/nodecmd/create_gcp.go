@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
@@ -421,7 +422,7 @@ func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName st
 	return nil
 }
 
-func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *models.Host) error {
+func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *host.Host) error {
 	gcpClient, _, _, _, projectName, err := getGCPConfig(true)
 	if err != nil {
 		return err

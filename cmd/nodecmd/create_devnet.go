@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -26,8 +27,10 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
+
 	coreth_params "github.com/ava-labs/coreth/params"
-	"golang.org/x/exp/maps"
 )
 
 // difference between unlock schedule locktime and startime in original genesis
@@ -64,7 +67,7 @@ func generateCustomGenesis(
 	networkID uint32,
 	walletAddr string,
 	stakingAddr string,
-	hosts []*models.Host,
+	hosts []*host.Host,
 ) ([]byte, error) {
 	genesisMap := map[string]interface{}{}
 
@@ -148,7 +151,7 @@ func generateCustomGenesis(
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[string]string) error {
+func setupDevnet(clusterName string, hosts []*host.Host, apiNodeIPMap map[string]string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -191,13 +194,13 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	walletAddrStr := k.X()[0]
 
 	// exclude API nodes from genesis file generation as they will have no stake
-	hostsAPI := utils.Filter(hosts, func(h *models.Host) bool {
+	hostsAPI := utils.Filter(hosts, func(h *host.Host) bool {
 		return slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
-	hostsWithoutAPI := utils.Filter(hosts, func(h *models.Host) bool {
+	hostsWithoutAPI := utils.Filter(hosts, func(h *host.Host) bool {
 		return !slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
-	hostsWithoutAPIIDs := utils.Map(hostsWithoutAPI, func(h *models.Host) string { return h.NodeID })
+	hostsWithoutAPIIDs := utils.Map(hostsWithoutAPI, func(h *host.Host) string { return h.NodeID })
 
 	// create genesis file at each node dir
 	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hostsWithoutAPI)
@@ -241,7 +244,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *host.Host) {
 			defer wg.Done()
 
 			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())

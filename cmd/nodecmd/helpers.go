@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/ava-labs/avalanchego/api/info"
 )
 
@@ -26,12 +27,12 @@ func (n NumNodes) All() int {
 	return n.numValidators + n.numAPI
 }
 
-func getUnhealthyNodes(hosts []*models.Host) ([]string, error) {
+func getUnhealthyNodes(hosts []*host.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *host.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckHealthy(host); err != nil {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
@@ -69,12 +70,12 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 	return false, fmt.Errorf("unable to parse node healthy status")
 }
 
-func getNotBootstrappedNodes(hosts []*models.Host) ([]string, error) {
+func getNotBootstrappedNodes(hosts []*host.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *host.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckBootstrapped(host); err != nil {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
@@ -112,7 +113,7 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 	return false, errors.New("unable to parse node bootstrap status")
 }
 
-func getRPCIncompatibleNodes(hosts []*models.Host, subnetName string) ([]string, error) {
+func getRPCIncompatibleNodes(hosts []*host.Host, subnetName string) ([]string, error) {
 	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of subnet %s ...", subnetName)
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -122,7 +123,7 @@ func getRPCIncompatibleNodes(hosts []*models.Host, subnetName string) ([]string,
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *host.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
@@ -171,7 +172,7 @@ func parseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
 	return nodeVersionReply.VMVersions["platform"], uint32(nodeVersionReply.RPCProtocolVersion), nil
 }
 
-func disconnectHosts(hosts []*models.Host) {
+func disconnectHosts(hosts []*host.Host) {
 	for _, host := range hosts {
 		_ = host.Disconnect()
 	}
@@ -181,7 +182,7 @@ func authorizedAccessFromSettings() bool {
 	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
 }
 
-func checkHostsAreRPCCompatible(hosts []*models.Host, subnetName string) error {
+func checkHostsAreRPCCompatible(hosts []*host.Host, subnetName string) error {
 	incompatibleNodes, err := getRPCIncompatibleNodes(hosts, subnetName)
 	if err != nil {
 		return err
@@ -205,7 +206,7 @@ func checkHostsAreRPCCompatible(hosts []*models.Host, subnetName string) error {
 	return nil
 }
 
-func checkHostsAreHealthy(hosts []*models.Host) error {
+func checkHostsAreHealthy(hosts []*host.Host) error {
 	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	unhealthyNodes, err := getUnhealthyNodes(hosts)
 	if err != nil {
@@ -217,7 +218,7 @@ func checkHostsAreHealthy(hosts []*models.Host) error {
 	return nil
 }
 
-func checkHostsAreBootstrapped(hosts []*models.Host) error {
+func checkHostsAreBootstrapped(hosts []*host.Host) error {
 	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
 	if err != nil {
 		return err

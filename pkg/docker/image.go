@@ -8,19 +8,19 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 // PullDockerImage pulls a docker image on a remote host.
-func PullDockerImage(host *models.Host, image string) error {
+func PullDockerImage(host *host.Host, image string) error {
 	ux.Logger.Info("Pulling docker image %s on %s", image, host.NodeID)
 	_, err := host.Command("docker pull "+image, nil, constants.SSHLongRunningScriptTimeout)
 	return err
 }
 
 // DockerLocalImageExists checks if a docker image exists on a remote host.
-func DockerLocalImageExists(host *models.Host, image string) (bool, error) {
+func DockerLocalImageExists(host *host.Host, image string) (bool, error) {
 	output, err := host.Command("docker images --format '{{.Repository}}:{{.Tag}}'", nil, constants.SSHLongRunningScriptTimeout)
 	if err != nil {
 		return false, err
@@ -39,13 +39,13 @@ func parseDockerImageListOutput(output []byte) []string {
 }
 
 // BuildDockerImage builds a docker image on a remote host.
-func BuildDockerImage(host *models.Host, image string, path string, dockerfile string) error {
+func BuildDockerImage(host *host.Host, image string, path string, dockerfile string) error {
 	_, err := host.Command(fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, constants.BuildEnvGolangVersion, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
 	return err
 }
 
 // BuildDockerImageFromGitRepo builds a docker image from a git repo on a remote host.
-func BuildDockerImageFromGitRepo(host *models.Host, image string, gitRepo string, commit string) error {
+func BuildDockerImageFromGitRepo(host *host.Host, image string, gitRepo string, commit string) error {
 	if commit == "" {
 		commit = "HEAD"
 	}
@@ -70,7 +70,7 @@ func BuildDockerImageFromGitRepo(host *models.Host, image string, gitRepo string
 	return nil
 }
 
-func PrepareDockerImageWithRepo(host *models.Host, image string, gitRepo string, commit string) error {
+func PrepareDockerImageWithRepo(host *host.Host, image string, gitRepo string, commit string) error {
 	localImageExists, _ := DockerLocalImageExists(host, image)
 	if localImageExists {
 		ux.Logger.Info("Docker image %s is FOUND on %s", image, host.NodeID)

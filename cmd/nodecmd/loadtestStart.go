@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
@@ -273,9 +274,9 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		}
 	}
 	// separateHosts contains all load test hosts defined in load test inventory dir
-	var separateHosts []*models.Host
+	var separateHosts []*host.Host
 	// separateHosts contains only current load test host defined in the command
-	var currentLoadTestHost []*models.Host
+	var currentLoadTestHost []*host.Host
 	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
 	if existingSeparateInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
@@ -390,7 +391,7 @@ func getDeployedSubnetInfo(clusterName string, subnetName string) (string, strin
 	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <subnetName> --cluster <clusterName> first")
 }
 
-func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
+func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *host.Host) error {
 	clusterYAMLFilePath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
 	if utils.FileExists(clusterYAMLFilePath) {
 		if err := os.Remove(clusterYAMLFilePath); err != nil {

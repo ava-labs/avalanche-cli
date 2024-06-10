@@ -7,11 +7,11 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
-func prepareAvalanchegoConfig(host *models.Host, networkID string) (string, string, error) {
+func prepareAvalanchegoConfig(host *host.Host, networkID string) (string, string, error) {
 	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, networkID)
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {

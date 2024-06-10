@@ -265,7 +265,7 @@ func whitelistSSHPubKey(clusterName string, pubkey string) error {
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *host.Host) {
 			defer wg.Done()
 			if err := ssh.RunSSHWhitelistPubKey(host, sshPubKey); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)

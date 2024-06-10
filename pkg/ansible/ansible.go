@@ -14,6 +14,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 // CreateAnsibleHostInventory creates inventory file for ansible
@@ -31,7 +33,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	if cloudConfigMap != nil {
 		for _, cloudConfig := range cloudConfigMap {
 			for _, instanceID := range cloudConfig.InstanceIDs {
-				ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
+				ansibleInstanceID, err := host.HostCloudIDToAnsibleID(cloudService, instanceID)
 				if err != nil {
 					return err
 				}
@@ -42,7 +44,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		}
 	} else {
 		for instanceID := range publicIPMap {
-			ansibleInstanceID, err := models.HostCloudIDToAnsibleID(cloudService, instanceID)
+			ansibleInstanceID, err := host.HostCloudIDToAnsibleID(cloudService, instanceID)
 			if err != nil {
 				return err
 			}
@@ -79,7 +81,7 @@ func WriteNodeConfigsToAnsibleInventory(inventoryDirPath string, nc []models.Nod
 	}
 	defer inventoryFile.Close()
 	for _, nodeConfig := range nc {
-		nodeID, err := models.HostCloudIDToAnsibleID(nodeConfig.CloudService, nodeConfig.NodeID)
+		nodeID, err := host.HostCloudIDToAnsibleID(nodeConfig.CloudService, nodeConfig.NodeID)
 		if err != nil {
 			return err
 		}
@@ -103,8 +105,8 @@ func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
 	return ansibleHostIDs, nil
 }
 
-func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*models.Host, error) {
-	inventory := []*models.Host{}
+func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*host.Host, error) {
+	inventory := []*host.Host{}
 	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
 	file, err := os.Open(inventoryHostsFile)
 	if err != nil {
@@ -118,7 +120,7 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*models.Ho
 		if err != nil {
 			return nil, err
 		}
-		host := &models.Host{
+		host := &host.Host{
 			NodeID:            strings.Split(scanner.Text(), " ")[0],
 			IP:                parsedHost["ansible_host"],
 			SSHUser:           parsedHost["ansible_user"],
@@ -133,12 +135,12 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*models.Ho
 	return inventory, nil
 }
 
-func GetHostByNodeID(nodeID string, inventoryDirPath string) (*models.Host, error) {
+func GetHostByNodeID(nodeID string, inventoryDirPath string) (*host.Host, error) {
 	allHosts, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
 	if err != nil {
 		return nil, err
 	} else {
-		hosts := utils.Filter(allHosts, func(h *models.Host) bool { return h.NodeID == nodeID })
+		hosts := utils.Filter(allHosts, func(h *host.Host) bool { return h.NodeID == nodeID })
 		switch len(hosts) {
 		case 1:
 			return hosts[0], nil
@@ -150,8 +152,8 @@ func GetHostByNodeID(nodeID string, inventoryDirPath string) (*models.Host, erro
 	}
 }
 
-func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]*models.Host, error) {
-	hostMap := map[string]*models.Host{}
+func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]*host.Host, error) {
+	hostMap := map[string]*host.Host{}
 	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
 	if err != nil {
 		return nil, err
@@ -179,7 +181,7 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWithDynamicIP map
 		return err
 	}
 	for host, ansibleHostContent := range inventory {
-		_, nodeID, err := models.HostAnsibleIDToCloudID(host)
+		_, nodeID, err := host.HostAnsibleIDToCloudID(host)
 		if err != nil {
 			return err
 		}

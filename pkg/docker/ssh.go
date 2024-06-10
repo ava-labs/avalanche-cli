@@ -14,10 +14,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 // ValidateComposeFile validates a docker-compose file on a remote host.
-func ValidateComposeFile(host *models.Host, composeFile string, timeout time.Duration) error {
+func ValidateComposeFile(host *host.Host, composeFile string, timeout time.Duration) error {
 	if output, err := host.Command(fmt.Sprintf("docker compose -f %s config", composeFile), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
@@ -25,7 +26,7 @@ func ValidateComposeFile(host *models.Host, composeFile string, timeout time.Dur
 }
 
 // ComposeSSHSetupNode sets up an AvalancheGo node and dependencies on a remote host over SSH.
-func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool) error {
+func ComposeSSHSetupNode(host *host.Host, network models.Network, avalancheGoVersion string, withMonitoring bool) error {
 	startTime := time.Now()
 	folderStructure := remoteconfig.RemoteFoldersToCreateAvalanchego()
 	for _, dir := range folderStructure {
@@ -80,7 +81,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 		})
 }
 
-func ComposeSSHSetupLoadTest(host *models.Host) error {
+func ComposeSSHSetupLoadTest(host *host.Host) error {
 	return ComposeOverSSH("Compose Node",
 		host,
 		constants.SSHScriptTimeout,
@@ -92,12 +93,12 @@ func ComposeSSHSetupLoadTest(host *models.Host) error {
 }
 
 // WasNodeSetupWithMonitoring checks if an AvalancheGo node was setup with monitoring on a remote host.
-func WasNodeSetupWithMonitoring(host *models.Host) (bool, error) {
+func WasNodeSetupWithMonitoring(host *host.Host) (bool, error) {
 	return HasRemoteComposeService(host, utils.GetRemoteComposeFile(), "promtail", constants.SSHScriptTimeout)
 }
 
 // ComposeSSHSetupMonitoring sets up monitoring using docker-compose.
-func ComposeSSHSetupMonitoring(host *models.Host) error {
+func ComposeSSHSetupMonitoring(host *host.Host) error {
 	grafanaConfigFile, grafanaDashboardsFile, grafanaLokiDatasourceFile, grafanaPromDatasourceFile, err := prepareGrafanaConfig()
 	if err != nil {
 		return err
@@ -141,7 +142,7 @@ func ComposeSSHSetupMonitoring(host *models.Host) error {
 		dockerComposeInputs{})
 }
 
-func ComposeSSHSetupAWMRelayer(host *models.Host) error {
+func ComposeSSHSetupAWMRelayer(host *host.Host) error {
 	return ComposeOverSSH("Setup AWM Relayer",
 		host,
 		constants.SSHScriptTimeout,

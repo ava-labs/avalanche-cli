@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 type dockerComposeInputs struct {
@@ -47,7 +47,7 @@ func renderComposeFile(composePath string, composeDesc string, templateVars dock
 	return composeBytes.Bytes(), nil
 }
 
-func pushComposeFile(host *models.Host, localFile string, remoteFile string, merge bool) error {
+func pushComposeFile(host *host.Host, localFile string, remoteFile string, merge bool) error {
 	if !utils.FileExists(localFile) {
 		return fmt.Errorf("file %s does not exist to be uploaded to host: %s", localFile, host.NodeID)
 	}
@@ -87,7 +87,7 @@ func pushComposeFile(host *models.Host, localFile string, remoteFile string, mer
 }
 
 // mergeComposeFiles merges two docker-compose files on a remote host.
-func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeFile string) error {
+func mergeComposeFiles(host *host.Host, currentComposeFile string, newComposeFile string) error {
 	fileExists, err := host.FileExists(currentComposeFile)
 	if err != nil {
 		return err
@@ -123,7 +123,7 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 	return nil
 }
 
-func StartDockerCompose(host *models.Host, timeout time.Duration) error {
+func StartDockerCompose(host *host.Host, timeout time.Duration) error {
 	// we provide systemd service unit for docker compose if the host has systemd
 	if host.IsSystemD() {
 		if output, err := host.Command("sudo systemctl start avalanche-cli-docker", nil, timeout); err != nil {
@@ -139,7 +139,7 @@ func StartDockerCompose(host *models.Host, timeout time.Duration) error {
 	return nil
 }
 
-func StopDockerCompose(host *models.Host, timeout time.Duration) error {
+func StopDockerCompose(host *host.Host, timeout time.Duration) error {
 	if host.IsSystemD() {
 		if output, err := host.Command("sudo systemctl stop avalanche-cli-docker", nil, timeout); err != nil {
 			return fmt.Errorf("%w: %s", err, string(output))
@@ -154,7 +154,7 @@ func StopDockerCompose(host *models.Host, timeout time.Duration) error {
 	return nil
 }
 
-func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
+func RestartDockerCompose(host *host.Host, timeout time.Duration) error {
 	if host.IsSystemD() {
 		if output, err := host.Command("sudo systemctl restart avalanche-cli-docker", nil, timeout); err != nil {
 			return fmt.Errorf("%w: %s", err, string(output))
@@ -169,7 +169,7 @@ func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
 	return nil
 }
 
-func StartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
+func StartDockerComposeService(host *host.Host, composeFile string, service string, timeout time.Duration) error {
 	if err := InitDockerComposeService(host, composeFile, service, timeout); err != nil {
 		return err
 	}
@@ -179,21 +179,21 @@ func StartDockerComposeService(host *models.Host, composeFile string, service st
 	return nil
 }
 
-func StopDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
+func StopDockerComposeService(host *host.Host, composeFile string, service string, timeout time.Duration) error {
 	if output, err := host.Command(fmt.Sprintf("docker compose -f %s stop %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
 
-func RestartDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
+func RestartDockerComposeService(host *host.Host, composeFile string, service string, timeout time.Duration) error {
 	if output, err := host.Command(fmt.Sprintf("docker compose -f %s restart %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
 	return nil
 }
 
-func InitDockerComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) error {
+func InitDockerComposeService(host *host.Host, composeFile string, service string, timeout time.Duration) error {
 	if output, err := host.Command(fmt.Sprintf("docker compose -f %s create %s", composeFile, service), nil, timeout); err != nil {
 		return fmt.Errorf("%w: %s", err, string(output))
 	}
@@ -203,7 +203,7 @@ func InitDockerComposeService(host *models.Host, composeFile string, service str
 // ComposeOverSSH sets up a docker-compose file on a remote host over SSH.
 func ComposeOverSSH(
 	composeDesc string,
-	host *models.Host,
+	host *host.Host,
 	timeout time.Duration,
 	composePath string,
 	composeVars dockerComposeInputs,
@@ -242,7 +242,7 @@ func ComposeOverSSH(
 }
 
 // ListRemoteComposeServices lists the services in a remote docker-compose file.
-func ListRemoteComposeServices(host *models.Host, composeFile string, timeout time.Duration) ([]string, error) {
+func ListRemoteComposeServices(host *host.Host, composeFile string, timeout time.Duration) ([]string, error) {
 	output, err := host.Command(fmt.Sprintf("docker compose -f %s config --services", composeFile), nil, timeout)
 	if err != nil {
 		return nil, err
@@ -251,7 +251,7 @@ func ListRemoteComposeServices(host *models.Host, composeFile string, timeout ti
 }
 
 // GetRemoteComposeContent gets the content of a remote docker-compose file.
-func GetRemoteComposeContent(host *models.Host, composeFile string, timeout time.Duration) (string, error) {
+func GetRemoteComposeContent(host *host.Host, composeFile string, timeout time.Duration) (string, error) {
 	tmpFile, err := os.CreateTemp("", "avalancecli-docker-compose-*.yml")
 	if err != nil {
 		return "", err
@@ -268,7 +268,7 @@ func GetRemoteComposeContent(host *models.Host, composeFile string, timeout time
 }
 
 // ParseRemoteComposeContent extracts a value from a remote docker-compose file.
-func ParseRemoteComposeContent(host *models.Host, composeFile string, pattern string, timeout time.Duration) (string, error) {
+func ParseRemoteComposeContent(host *host.Host, composeFile string, pattern string, timeout time.Duration) (string, error) {
 	content, err := GetRemoteComposeContent(host, composeFile, timeout)
 	if err != nil {
 		return "", err
@@ -277,7 +277,7 @@ func ParseRemoteComposeContent(host *models.Host, composeFile string, pattern st
 }
 
 // HasRemoteComposeService checks if a service is present in a remote docker-compose file.
-func HasRemoteComposeService(host *models.Host, composeFile string, service string, timeout time.Duration) (bool, error) {
+func HasRemoteComposeService(host *host.Host, composeFile string, service string, timeout time.Duration) (bool, error) {
 	services, err := ListRemoteComposeServices(host, composeFile, timeout)
 	if err != nil {
 		return false, err
