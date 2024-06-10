@@ -481,7 +481,7 @@ func getEvmBasedChainAddrInfo(
 	kind string,
 	name string,
 ) ([]addressInfo, error) {
-	cChainBalance, err := getCChainBalanceStr(network, cClients[network], cChainAddr)
+	cChainBalance, err := getCChainBalanceStr(cClients[network], cChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network.Kind != models.Local {
@@ -491,7 +491,7 @@ func getEvmBasedChainAddrInfo(
 	info := addressInfo{
 		kind:    kind,
 		name:    name,
-		chain:   fmt.Sprintf("%s", chainName),
+		chain:   chainName,
 		token:   chainToken,
 		address: cChainAddr,
 		balance: cChainBalance,
@@ -518,7 +518,7 @@ func getEvmBasedChainAddrInfo(
 				info := addressInfo{
 					kind:    kind,
 					name:    name,
-					chain:   fmt.Sprintf("%s", chainName),
+					chain:   chainName,
 					token:   tokenName,
 					address: cChainAddr,
 					balance: formattedBalance,
@@ -551,7 +551,7 @@ func printAddrInfos(addrInfos []addressInfo) {
 	table.Render()
 }
 
-func getCChainBalanceStr(network models.Network, cClient ethclient.Client, addrStr string) (string, error) {
+func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, error) {
 	addr := common.HexToAddress(addrStr)
 	ctx, cancel := utils.GetAPIContext()
 	balance, err := cClient.BalanceAt(ctx, addr, nil)
