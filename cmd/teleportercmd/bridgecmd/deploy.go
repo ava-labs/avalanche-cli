@@ -8,11 +8,8 @@ import (
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
@@ -90,6 +87,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// flags exclusiveness
 	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.hubFlags.chainFlags.SubnetName != "", flags.hubFlags.chainFlags.CChain}) {
 		return fmt.Errorf("--hub-subnet and --c-chain-hub are mutually exclusive flags")
+	}
+	if !cmdflags.EnsureMutuallyExclusive([]bool{
+		flags.hubFlags.hubAddress != "",
+		flags.hubFlags.erc20Address != "",
+		flags.hubFlags.native,
+	}) {
+		return fmt.Errorf("--deploy-native-hub, --deploy-erc20-hub, and --use-hub are mutually exclusive flags")
+	}
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.spokeFlags.SubnetName != "", flags.spokeFlags.CChain}) {
+		return fmt.Errorf("--spoke-subnet and --c-chain-spoke are mutually exclusive flags")
 	}
 
 	// Hub Chain Prompts
@@ -266,15 +273,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		tokenSymbol       string
 		erc20TokenAddress common.Address
 	)
-	hubEndpoint := network.CChainEndpoint()
-	if flags.hubFlags.chainFlags.SubnetName != "" {
-		sc, err := app.LoadSidecar(flags.hubFlags.chainFlags.SubnetName)
-		if err != nil {
-			return err
-		}
-		blockchainID := sc.Networks[network.Name()].BlockchainID
-		hubEndpoint = network.BlockchainEndpoint(blockchainID.String())
-	}
+	// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
+	hubEndpoint, _, hubBlockchainID, _, hubRegistryAddress, hubKey, err :=
+		GetSubnetParams(network, flags.hubFlags.chainFlags.SubnetName, flags.hubFlags.chainFlags.CChain)
 	if flags.hubFlags.hubAddress != "" {
 		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
 		address, err := getHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
@@ -306,33 +307,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 	if flags.hubFlags.erc20Address != "" && flags.hubFlags.hubAddress == "" {
-		// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
-		teleporterRegistryAddress := ""
-		teleporterManagerAddress := ""
-		privateKey := ""
-		if network.Kind == models.Local {
-			if flags.hubFlags.chainFlags.CChain {
-				if b, extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(); err != nil {
-					return err
-				} else if !b {
-					return fmt.Errorf("could not find teleporter registry address on local network C-Chain")
-				} else {
-					teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
-				}
-				k, err := key.LoadEwoq(network.ID)
-				if err != nil {
-					return err
-				}
-				teleporterManagerAddress = k.C()
-				privateKey = k.PrivKeyHex()
-			}
-		}
 		hubAddress, err = deployERC20Hub(
 			bridgeSrcDir,
 			hubEndpoint,
-			privateKey,
-			common.HexToAddress(teleporterRegistryAddress),
-			common.HexToAddress(teleporterManagerAddress),
+			hubKey.PrivKeyHex(),
+			common.HexToAddress(hubRegistryAddress),
+			common.HexToAddress(hubKey.C()),
 			erc20TokenAddress,
 			tokenDecimals,
 		)
@@ -341,10 +321,28 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	fmt.Println(hubAddress)
-	fmt.Println(tokenDecimals)
-	fmt.Println(tokenName)
-	fmt.Println(tokenSymbol)
+	// Spoke Deploy
+	spokeEndpoint, _, _, _, spokeRegistryAddress, spokeKey, err :=
+		GetSubnetParams(network, flags.spokeFlags.SubnetName, flags.spokeFlags.CChain)
+
+	spokeAddress, err := deployERC20Spoke(
+		bridgeSrcDir,
+		spokeEndpoint,
+		spokeKey.PrivKeyHex(),
+		common.HexToAddress(spokeRegistryAddress),
+		common.HexToAddress(spokeKey.C()),
+		hubBlockchainID,
+		hubAddress,
+		tokenName,
+		tokenSymbol,
+		tokenDecimals,
+	)
+	if err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("Spoke Deployed!")
+	ux.Logger.PrintToUser("Spoke Address: %s", spokeAddress)
 
 	return nil
 }
