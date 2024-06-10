@@ -19,10 +19,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 type scriptInputs struct {
@@ -58,7 +59,7 @@ var script embed.FS
 // This script can be template as it will be rendered using scriptInputs vars
 func RunOverSSH(
 	scriptDesc string,
-	host *host.Host,
+	host *sdkHost.Host,
 	timeout time.Duration,
 	scriptPath string,
 	templateVars scriptInputs,
@@ -86,7 +87,7 @@ func RunOverSSH(
 	return nil
 }
 
-func PostOverSSH(host *host.Host, path string, requestBody string) ([]byte, error) {
+func PostOverSSH(host *sdkHost.Host, path string, requestBody string) ([]byte, error) {
 	if path == "" {
 		path = "/ext/info"
 	}
@@ -97,13 +98,13 @@ func PostOverSSH(host *host.Host, path string, requestBody string) ([]byte, erro
 	requestHeaders := fmt.Sprintf("POST %s HTTP/1.1\r\n"+
 		"Host: %s\r\n"+
 		"Content-Length: %d\r\n"+
-		"Content-Type: application/json\r\n\r\n", path, localhost.Host, len(requestBody))
+		"Content-Type: application/json\r\n\r\n", path, localsdkHost.Host, len(requestBody))
 	httpRequest := requestHeaders + requestBody
 	return host.Forward(httpRequest, constants.SSHPOSTTimeout)
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host *host.Host, configPath, cliVersion string) error {
+func RunSSHSetupNode(host *sdkHost.Host, configPath, cliVersion string) error {
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
@@ -126,7 +127,7 @@ func RunSSHSetupNode(host *host.Host, configPath, cliVersion string) error {
 }
 
 // RunSSHSetupDockerService runs script to setup docker compose service for CLI
-func RunSSHSetupDockerService(host *host.Host) error {
+func RunSSHSetupDockerService(host *sdkHost.Host) error {
 	if host.IsSystemD() {
 		return RunOverSSH(
 			"Setup Docker Service",
@@ -142,7 +143,7 @@ func RunSSHSetupDockerService(host *host.Host) error {
 }
 
 // RunSSHRestartNode runs script to restart avalanchego
-func RunSSHRestartNode(host *host.Host) error {
+func RunSSHRestartNode(host *sdkHost.Host) error {
 	remoteComposeFile := utils.GetRemoteComposeFile()
 	avagoService := "avalanchego"
 	if utils.IsE2E() {
@@ -152,7 +153,7 @@ func RunSSHRestartNode(host *host.Host) error {
 }
 
 // ComposeSSHSetupAWMRelayer used docker compose to setup AWM Relayer
-func ComposeSSHSetupAWMRelayer(host *host.Host) error {
+func ComposeSSHSetupAWMRelayer(host *sdkHost.Host) error {
 	if err := docker.ComposeSSHSetupAWMRelayer(host); err != nil {
 		return err
 	}
@@ -160,17 +161,17 @@ func ComposeSSHSetupAWMRelayer(host *host.Host) error {
 }
 
 // RunSSHStartAWMRelayerService runs script to start an AWM Relayer Service
-func RunSSHStartAWMRelayerService(host *host.Host) error {
+func RunSSHStartAWMRelayerService(host *sdkHost.Host) error {
 	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStopAWMRelayerService runs script to start an AWM Relayer Service
-func RunSSHStopAWMRelayerService(host *host.Host) error {
+func RunSSHStopAWMRelayerService(host *sdkHost.Host) error {
 	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host *host.Host, network models.Network, avalancheGoVersion string) error {
+func RunSSHUpgradeAvalanchego(host *sdkHost.Host, network models.Network, avalancheGoVersion string) error {
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err
@@ -183,7 +184,7 @@ func RunSSHUpgradeAvalanchego(host *host.Host, network models.Network, avalanche
 }
 
 // RunSSHStartNode runs script to start avalanchego
-func RunSSHStartNode(host *host.Host) error {
+func RunSSHStartNode(host *sdkHost.Host) error {
 	if utils.IsE2E() && utils.E2EDocker() {
 		return RunOverSSH(
 			"E2E Start Avalanchego",
@@ -197,7 +198,7 @@ func RunSSHStartNode(host *host.Host) error {
 }
 
 // RunSSHStopNode runs script to stop avalanchego
-func RunSSHStopNode(host *host.Host) error {
+func RunSSHStopNode(host *sdkHost.Host) error {
 	if utils.IsE2E() && utils.E2EDocker() {
 		return RunOverSSH(
 			"E2E Stop Avalanchego",
@@ -211,7 +212,7 @@ func RunSSHStopNode(host *host.Host) error {
 }
 
 // RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
-func RunSSHUpgradeSubnetEVM(host *host.Host, subnetEVMBinaryPath string) error {
+func RunSSHUpgradeSubnetEVM(host *sdkHost.Host, subnetEVMBinaryPath string) error {
 	return RunOverSSH(
 		"Upgrade Subnet EVM",
 		host,
@@ -244,7 +245,7 @@ func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID str
 	return nil
 }
 
-func RunSSHUpdateMonitoringDashboards(host *host.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
+func RunSSHUpdateMonitoringDashboards(host *sdkHost.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
 	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
 	if !utils.DirectoryExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
@@ -270,7 +271,7 @@ func RunSSHUpdateMonitoringDashboards(host *host.Host, monitoringDashboardPath, 
 	return docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "grafana", constants.SSHLongRunningScriptTimeout)
 }
 
-func RunSSHSetupMonitoringFolders(host *host.Host) error {
+func RunSSHSetupMonitoringFolders(host *sdkHost.Host) error {
 	for _, folder := range remoteconfig.RemoteFoldersToCreateMonitoring() {
 		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
 			return err
@@ -279,7 +280,7 @@ func RunSSHSetupMonitoringFolders(host *host.Host) error {
 	return nil
 }
 
-func RunSSHCopyMonitoringDashboards(host *host.Host, monitoringDashboardPath string) error {
+func RunSSHCopyMonitoringDashboards(host *sdkHost.Host, monitoringDashboardPath string) error {
 	// TODO: download dashboards from github instead
 	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
 	if !utils.DirectoryExists(monitoringDashboardPath) {
@@ -308,7 +309,7 @@ func RunSSHCopyMonitoringDashboards(host *host.Host, monitoringDashboardPath str
 	}
 }
 
-func RunSSHCopyYAMLFile(host *host.Host, yamlFilePath string) error {
+func RunSSHCopyYAMLFile(host *sdkHost.Host, yamlFilePath string) error {
 	if err := host.Upload(
 		yamlFilePath,
 		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(yamlFilePath)),
@@ -319,7 +320,7 @@ func RunSSHCopyYAMLFile(host *host.Host, yamlFilePath string) error {
 	return nil
 }
 
-func RunSSHSetupPrometheusConfig(host *host.Host, avalancheGoPorts, machinePorts, loadTestPorts []string) error {
+func RunSSHSetupPrometheusConfig(host *sdkHost.Host, avalancheGoPorts, machinePorts, loadTestPorts []string) error {
 	for _, folder := range remoteconfig.PrometheusFoldersToCreate() {
 		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
 			return err
@@ -342,7 +343,7 @@ func RunSSHSetupPrometheusConfig(host *host.Host, avalancheGoPorts, machinePorts
 	)
 }
 
-func RunSSHSetupLokiConfig(host *host.Host, port int) error {
+func RunSSHSetupLokiConfig(host *sdkHost.Host, port int) error {
 	for _, folder := range remoteconfig.LokiFoldersToCreate() {
 		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
 			return err
@@ -364,7 +365,7 @@ func RunSSHSetupLokiConfig(host *host.Host, port int) error {
 	)
 }
 
-func RunSSHSetupPromtailConfig(host *host.Host, lokiIP string, lokiPort int, cloudID string, nodeID string, chainID string) error {
+func RunSSHSetupPromtailConfig(host *sdkHost.Host, lokiIP string, lokiPort int, cloudID string, nodeID string, chainID string) error {
 	for _, folder := range remoteconfig.PromtailFoldersToCreate() {
 		if err := host.MkdirAll(folder, constants.SSHDirOpsTimeout); err != nil {
 			return err
@@ -387,7 +388,7 @@ func RunSSHSetupPromtailConfig(host *host.Host, lokiIP string, lokiPort int, clo
 	)
 }
 
-func RunSSHDownloadNodePrometheusConfig(host *host.Host, nodeInstanceDirPath string) error {
+func RunSSHDownloadNodePrometheusConfig(host *sdkHost.Host, nodeInstanceDirPath string) error {
 	return host.Download(
 		constants.CloudNodePrometheusConfigPath,
 		filepath.Join(nodeInstanceDirPath, constants.NodePrometheusConfigFileName),
@@ -395,7 +396,7 @@ func RunSSHDownloadNodePrometheusConfig(host *host.Host, nodeInstanceDirPath str
 	)
 }
 
-func RunSSHUploadNodeAWMRelayerConfig(host *host.Host, nodeInstanceDirPath string) error {
+func RunSSHUploadNodeAWMRelayerConfig(host *sdkHost.Host, nodeInstanceDirPath string) error {
 	cloudAWMRelayerConfigDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.ServicesDir, constants.AWMRelayerInstallDir)
 	if err := host.MkdirAll(cloudAWMRelayerConfigDir, constants.SSHDirOpsTimeout); err != nil {
 		return err
@@ -408,7 +409,7 @@ func RunSSHUploadNodeAWMRelayerConfig(host *host.Host, nodeInstanceDirPath strin
 }
 
 // RunSSHGetNewSubnetEVMRelease runs script to download new subnet evm
-func RunSSHGetNewSubnetEVMRelease(host *host.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
+func RunSSHGetNewSubnetEVMRelease(host *sdkHost.Host, subnetEVMReleaseURL, subnetEVMArchive string) error {
 	return RunOverSSH(
 		"Get Subnet EVM Release",
 		host,
@@ -419,7 +420,7 @@ func RunSSHGetNewSubnetEVMRelease(host *host.Host, subnetEVMReleaseURL, subnetEV
 }
 
 // RunSSHSetupDevNet runs script to setup devnet
-func RunSSHSetupDevNet(host *host.Host, nodeInstanceDirPath string) error {
+func RunSSHSetupDevNet(host *sdkHost.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
 		constants.CloudNodeConfigPath,
 		constants.SSHDirOpsTimeout,
@@ -458,7 +459,7 @@ func RunSSHSetupDevNet(host *host.Host, nodeInstanceDirPath string) error {
 	return docker.StartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
 }
 
-func RunSSHUploadClustersConfig(host *host.Host, localClustersConfigPath string) error {
+func RunSSHUploadClustersConfig(host *sdkHost.Host, localClustersConfigPath string) error {
 	remoteNodesDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.NodesDir)
 	if err := host.MkdirAll(
 		remoteNodesDir,
@@ -475,7 +476,7 @@ func RunSSHUploadClustersConfig(host *host.Host, localClustersConfigPath string)
 }
 
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
-func RunSSHUploadStakingFiles(host *host.Host, nodeInstanceDirPath string) error {
+func RunSSHUploadStakingFiles(host *sdkHost.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
 		constants.CloudNodeStakingPath,
 		constants.SSHDirOpsTimeout,
@@ -504,7 +505,7 @@ func RunSSHUploadStakingFiles(host *host.Host, nodeInstanceDirPath string) error
 }
 
 // RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
-func RunSSHExportSubnet(host *host.Host, exportPath, cloudServerSubnetPath string) error {
+func RunSSHExportSubnet(host *sdkHost.Host, exportPath, cloudServerSubnetPath string) error {
 	// name: copy exported subnet VM spec to cloud server
 	return host.Upload(
 		exportPath,
@@ -514,7 +515,7 @@ func RunSSHExportSubnet(host *host.Host, exportPath, cloudServerSubnetPath strin
 }
 
 // RunSSHTrackSubnet enables tracking of specified subnet
-func RunSSHTrackSubnet(host *host.Host, subnetName, importPath, networkFlag string) error {
+func RunSSHTrackSubnet(host *sdkHost.Host, subnetName, importPath, networkFlag string) error {
 	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
 		return err
 	}
@@ -528,7 +529,7 @@ func RunSSHTrackSubnet(host *host.Host, subnetName, importPath, networkFlag stri
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
-func RunSSHUpdateSubnet(host *host.Host, subnetName, importPath string) error {
+func RunSSHUpdateSubnet(host *sdkHost.Host, subnetName, importPath string) error {
 	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
@@ -541,7 +542,7 @@ func RunSSHUpdateSubnet(host *host.Host, subnetName, importPath string) error {
 	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
-func RunSSHBuildLoadTestCode(host *host.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {
+func RunSSHBuildLoadTestCode(host *sdkHost.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {
 	return StreamOverSSH(
 		"Build Load Test",
 		host,
@@ -555,7 +556,7 @@ func RunSSHBuildLoadTestCode(host *host.Host, loadTestRepo, loadTestPath, loadTe
 	)
 }
 
-func RunSSHBuildLoadTestDependencies(host *host.Host) error {
+func RunSSHBuildLoadTestDependencies(host *sdkHost.Host) error {
 	return RunOverSSH(
 		"Build Load Test",
 		host,
@@ -565,7 +566,7 @@ func RunSSHBuildLoadTestDependencies(host *host.Host) error {
 	)
 }
 
-func RunSSHRunLoadTest(host *host.Host, loadTestCommand, loadTestName string) error {
+func RunSSHRunLoadTest(host *sdkHost.Host, loadTestCommand, loadTestName string) error {
 	return RunOverSSH(
 		"Run Load Test",
 		host,
@@ -580,7 +581,7 @@ func RunSSHRunLoadTest(host *host.Host, loadTestCommand, loadTestName string) er
 }
 
 // RunSSHSetupCLIFromSource installs any CLI branch from source
-func RunSSHSetupCLIFromSource(host *host.Host, cliBranch string) error {
+func RunSSHSetupCLIFromSource(host *sdkHost.Host, cliBranch string) error {
 	if !constants.EnableSetupCLIFromSource {
 		return nil
 	}
@@ -598,35 +599,35 @@ func RunSSHSetupCLIFromSource(host *host.Host, cliBranch string) error {
 }
 
 // RunSSHCheckAvalancheGoVersion checks node avalanchego version
-func RunSSHCheckAvalancheGoVersion(host *host.Host) ([]byte, error) {
+func RunSSHCheckAvalancheGoVersion(host *sdkHost.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.getNodeVersion\"}"
 	return PostOverSSH(host, "", requestBody)
 }
 
 // RunSSHCheckBootstrapped checks if node is bootstrapped to primary network
-func RunSSHCheckBootstrapped(host *host.Host) ([]byte, error) {
+func RunSSHCheckBootstrapped(host *sdkHost.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.isBootstrapped\", \"params\": {\"chain\":\"X\"}}"
 	return PostOverSSH(host, "", requestBody)
 }
 
 // RunSSHCheckHealthy checks if node is healthy
-func RunSSHCheckHealthy(host *host.Host) ([]byte, error) {
+func RunSSHCheckHealthy(host *sdkHost.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\":\"health.health\",\"params\": {\"tags\": [\"P\"]}}"
 	return PostOverSSH(host, "/ext/health", requestBody)
 }
 
 // RunSSHGetNodeID reads nodeID from avalanchego
-func RunSSHGetNodeID(host *host.Host) ([]byte, error) {
+func RunSSHGetNodeID(host *sdkHost.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.getNodeID\"}"
 	return PostOverSSH(host, "", requestBody)
 }
 
 // SubnetSyncStatus checks if node is synced to subnet
-func RunSSHSubnetSyncStatus(host *host.Host, blockchainID string) ([]byte, error) {
+func RunSSHSubnetSyncStatus(host *sdkHost.Host, blockchainID string) ([]byte, error) {
 	// Craft and send the HTTP POST request
 	requestBody := fmt.Sprintf("{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"platform.getBlockchainStatus\", \"params\": {\"blockchainID\":\"%s\"}}", blockchainID)
 	return PostOverSSH(host, "/ext/bc/P", requestBody)
@@ -636,7 +637,7 @@ func RunSSHSubnetSyncStatus(host *host.Host, blockchainID string) ([]byte, error
 // This script can be template as it will be rendered using scriptInputs vars
 func StreamOverSSH(
 	scriptDesc string,
-	host *host.Host,
+	host *sdkHost.Host,
 	timeout time.Duration,
 	scriptPath string,
 	templateVars scriptInputs,
@@ -662,7 +663,7 @@ func StreamOverSSH(
 }
 
 // RunSSHWhitelistPubKey downloads the authorized_keys file from the specified host, appends the provided sshPubKey to it, and uploads the file back to the host.
-func RunSSHWhitelistPubKey(host *host.Host, sshPubKey string) error {
+func RunSSHWhitelistPubKey(host *sdkHost.Host, sshPubKey string) error {
 	const sshAuthFile = "/home/ubuntu/.ssh/authorized_keys"
 	tmpName := filepath.Join(os.TempDir(), utils.RandomString(10))
 	defer os.Remove(tmpName)
@@ -684,11 +685,11 @@ func RunSSHWhitelistPubKey(host *host.Host, sshPubKey string) error {
 }
 
 // RunSSHDownloadFile downloads specified file from the specified host
-func RunSSHDownloadFile(host *host.Host, filePath string, localFilePath string) error {
+func RunSSHDownloadFile(host *sdkHost.Host, filePath string, localFilePath string) error {
 	return host.Download(filePath, localFilePath, constants.SSHFileOpsTimeout)
 }
 
-func RunSSHUpsizeRootDisk(host *host.Host) error {
+func RunSSHUpsizeRootDisk(host *sdkHost.Host) error {
 	return RunOverSSH(
 		"Upsize Disk",
 		host,
@@ -699,7 +700,7 @@ func RunSSHUpsizeRootDisk(host *host.Host) error {
 }
 
 // composeFileExists checks if the docker-compose file exists on the host
-func composeFileExists(host *host.Host) bool {
+func composeFileExists(host *sdkHost.Host) bool {
 	composeFileExists, _ := host.FileExists(utils.GetRemoteComposeFile())
 	return composeFileExists
 }

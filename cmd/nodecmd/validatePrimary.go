@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -26,6 +25,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var (
@@ -243,7 +244,7 @@ func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex
 	return d, nil
 }
 
-func getNodeIDs(hosts []*host.Host) (map[string]ids.NodeID, map[string]error) {
+func getNodeIDs(hosts []*sdkHost.Host) (map[string]ids.NodeID, map[string]error) {
 	nodeIDMap := map[string]ids.NodeID{}
 	failedNodes := map[string]error{}
 	for _, host := range hosts {
@@ -343,7 +344,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
-		_, clusterNodeID, err := host.HostAnsibleIDToCloudID(host.NodeID)
+		_, clusterNodeID, err := sdkHost.HostAnsibleIDToCloudID(host.NodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err

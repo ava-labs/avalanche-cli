@@ -17,10 +17,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"golang.org/x/exp/slices"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 const (
@@ -35,7 +36,7 @@ var (
 	hostName         string
 	NodeID           string
 	monitoringHostID string
-	createdHosts     []*host.Host
+	createdHosts     []*sdkHost.Host
 	// host names without docker prefix
 	createdHostsFormatted []string
 )

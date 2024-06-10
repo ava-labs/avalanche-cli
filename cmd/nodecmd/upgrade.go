@@ -110,7 +110,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 // nodes needs to have Avalanche Go & SubnetEVM upgraded. It first checks the subnet EVM version -
 // it will install the newest subnet EVM version and install the latest avalanche Go that is still compatible with the Subnet EVM version
 // if the node is not tracking any subnet, it will just install latestAvagoVersion
-func getNodesUpgradeInfo(hosts []*host.Host) (map[*host.Host]nodeUpgradeInfo, error) {
+func getNodesUpgradeInfo(hosts []*sdkHost.Host) (map[*sdkHost.Host]nodeUpgradeInfo, error) {
 	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
@@ -130,13 +130,13 @@ func getNodesUpgradeInfo(hosts []*host.Host) (map[*host.Host]nodeUpgradeInfo, er
 		return nil, err
 	}
 	nodeErrors := map[string]error{}
-	nodesToUpgrade := make(map[*host.Host]nodeUpgradeInfo)
+	nodesToUpgrade := make(map[*sdkHost.Host]nodeUpgradeInfo)
 
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -155,9 +155,9 @@ func getNodesUpgradeInfo(hosts []*host.Host) (map[*host.Host]nodeUpgradeInfo, er
 		return nil, fmt.Errorf("failed to get avalanchego version for node(s) %s", wgResults.GetErrorHostMap())
 	}
 
-	nodeIDToHost := map[string]*host.Host{}
+	nodeIDToHost := map[string]*sdkHost.Host{}
 	for _, host := range hosts {
-		nodeIDToHost[host.NodeID] = host
+		nodeIDTosdkHost.Host.NodeID] = host
 	}
 
 	for hostID, vmVersionsInterface := range wgResults.GetResultMap() {
@@ -195,7 +195,7 @@ func getNodesUpgradeInfo(hosts []*host.Host) (map[*host.Host]nodeUpgradeInfo, er
 			ux.Logger.PrintToUser("Upgrading Avalanche Go version for node %s from version %s to version %s", hostID, currentAvalancheGoVersion, avalancheGoVersionToUpdateTo)
 			nodeUpgradeInfo.AvalancheGoVersion = avalancheGoVersionToUpdateTo
 		}
-		nodesToUpgrade[nodeIDToHost[hostID]] = nodeUpgradeInfo
+		nodesToUpgrade[nodeIDTosdkHost.HostID]] = nodeUpgradeInfo
 	}
 	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed to upgrade nodes: ")
@@ -214,7 +214,7 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 }
 
 func upgradeAvalancheGo(
-	host *host.Host,
+	host *sdkHost.Host,
 	network models.Network,
 	avaGoVersionToUpdateTo string,
 ) error {
@@ -225,7 +225,7 @@ func upgradeAvalancheGo(
 }
 
 func upgradeSubnetEVM(
-	host *host.Host,
+	host *sdkHost.Host,
 	subnetEVMBinaryPath string,
 ) error {
 	if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
@@ -235,7 +235,7 @@ func upgradeSubnetEVM(
 }
 
 func getNewSubnetEVMRelease(
-	host *host.Host,
+	host *sdkHost.Host,
 	subnetEVMReleaseURL string,
 	subnetEVMArchive string,
 ) error {

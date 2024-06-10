@@ -13,7 +13,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
@@ -24,6 +23,8 @@ import (
 
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 func getServiceAccountKeyFilepath() (string, error) {
@@ -422,7 +423,7 @@ func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName st
 	return nil
 }
 
-func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *host.Host) error {
+func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *sdkHost.Host) error {
 	gcpClient, _, _, _, projectName, err := getGCPConfig(true)
 	if err != nil {
 		return err

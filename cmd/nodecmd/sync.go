@@ -14,8 +14,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/spf13/cobra"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 func newSyncCmd() *cobra.Command {
@@ -82,7 +83,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 // trackSubnet exports deployed subnet in user's local machine to cloud server and calls node to
 // start tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
 func trackSubnet(
-	hosts []*host.Host,
+	hosts []*sdkHost.Host,
 	clusterName string,
 	subnetName string,
 ) ([]string, error) {
@@ -95,7 +96,7 @@ func trackSubnet(
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
 			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {

@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var (
@@ -115,12 +115,12 @@ func scpNode(_ *cobra.Command, args []string) error {
 		if sourceClusterNameOrNodeID != "" {
 			selectedHost, clusterName := getHostClusterPair(sourceClusterNameOrNodeID)
 			if selectedHost != nil && clusterName != "" {
-				return scpHosts(noCluster, []*host.Host{selectedHost}, srcPath, dstPath, clusterName, false)
+				return scpHosts(noCluster, []*sdkHost.Host{selectedHost}, srcPath, dstPath, clusterName, false)
 			}
 		} else if destClusterNameOrNodeID != "" {
 			selectedHost, clusterName := getHostClusterPair(destClusterNameOrNodeID)
 			if selectedHost != nil && clusterName != "" {
-				return scpHosts(noCluster, []*host.Host{selectedHost}, srcPath, dstPath, clusterName, false)
+				return scpHosts(noCluster, []*sdkHost.Host{selectedHost}, srcPath, dstPath, clusterName, false)
 			}
 		}
 		return fmt.Errorf("source or destination not found")
@@ -128,7 +128,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 }
 
 // scpHosts securely copies files to and from nodes.
-func scpHosts(op ClusterOp, hosts []*host.Host, sourcePath, destPath string, clusterName string, separateNodeFolder bool) error {
+func scpHosts(op ClusterOp, hosts []*sdkHost.Host, sourcePath, destPath string, clusterName string, separateNodeFolder bool) error {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
@@ -165,7 +165,7 @@ func scpHosts(op ClusterOp, hosts []*host.Host, sourcePath, destPath string, clu
 			suffixPath = fmt.Sprintf("%s/%s_%s/", suffixPath, clusterName, host.GetCloudID())
 		}
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			spinner := spinSession.SpinToUser(fmt.Sprintf("[%s] transferring file(s)", host.GetCloudID()))
 			// make sure that destination folder exists for generated path
@@ -178,7 +178,7 @@ func scpHosts(op ClusterOp, hosts []*host.Host, sourcePath, destPath string, clu
 			}
 			scpCmd := ""
 			scpCmd, err = utils.GetSCPCommandString(
-				host.SSHPrivateKeyPath,
+				host.SSHConfig.PrivateKeyPath,
 				prefixIP,
 				prefixPath,
 				suffixIP,
@@ -211,7 +211,7 @@ func scpHosts(op ClusterOp, hosts []*host.Host, sourcePath, destPath string, clu
 }
 
 // prepareSCPTarget prepares the target for scp command
-func prepareSCPTarget(op ClusterOp, host *host.Host, clusterName string, dest string, isSrc bool) (string, error) {
+func prepareSCPTarget(op ClusterOp, host *sdkHost.Host, clusterName string, dest string, isSrc bool) (string, error) {
 	// valid clusterName - is already checked
 	if !strings.Contains(dest, ":") {
 		// destination is local, ready to go
@@ -228,8 +228,8 @@ func prepareSCPTarget(op ClusterOp, host *host.Host, clusterName string, dest st
 	if err != nil {
 		return "", err
 	}
-	selectedHost := utils.Filter(clusterHosts, func(h *host.Host) bool {
-		_, cloudHostID, _ := host.HostAnsibleIDToCloudID(h.NodeID)
+	selectedHost := utils.Filter(clusterHosts, func(h *sdkHost.Host) bool {
+		_, cloudHostID, _ := sdkHost.HostAnsibleIDToCloudID(h.NodeID)
 		hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
 		return h.GetCloudID() == node || hostNodeID.String() == node || h.IP == node
 	})
@@ -246,7 +246,7 @@ func prepareSCPTarget(op ClusterOp, host *host.Host, clusterName string, dest st
 }
 
 // getHostClusterPair returns the host and cluster name for the given node or cloudID
-func getHostClusterPair(nodeOrCloudIDOrIP string) (*host.Host, string) {
+func getHostClusterPair(nodeOrCloudIDOrIP string) (*sdkHost.Host, string) {
 	var err error
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
@@ -260,8 +260,8 @@ func getHostClusterPair(nodeOrCloudIDOrIP string) (*host.Host, string) {
 		if err != nil {
 			return nil, ""
 		}
-		selectedHost := utils.Filter(clusterHosts, func(h *host.Host) bool {
-			_, cloudHostID, _ := host.HostAnsibleIDToCloudID(h.NodeID)
+		selectedHost := utils.Filter(clusterHosts, func(h *sdkHost.Host) bool {
+			_, cloudHostID, _ := sdkHost.HostAnsibleIDToCloudID(h.NodeID)
 			hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
 			return h.GetCloudID() == nodeOrCloudIDOrIP || hostNodeID.String() == nodeOrCloudIDOrIP || h.IP == nodeOrCloudIDOrIP
 		})

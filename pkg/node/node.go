@@ -6,10 +6,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
-func GetHostWithCloudID(app *application.Avalanche, clusterName string, cloudID string) (*host.Host, error) {
+func GetHostWithCloudID(app *application.Avalanche, clusterName string, cloudID string) (*sdkHost.Host, error) {
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return nil, err
@@ -30,7 +31,7 @@ func GetHostWithCloudID(app *application.Avalanche, clusterName string, cloudID 
 	return nil, nil
 }
 
-func GetAWMRelayerHost(app *application.Avalanche, clusterName string) (*host.Host, error) {
+func GetAWMRelayerHost(app *application.Avalanche, clusterName string) (*sdkHost.Host, error) {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err

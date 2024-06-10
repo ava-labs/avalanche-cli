@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 // CreateAnsibleHostInventory creates inventory file for ansible
@@ -33,7 +33,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 	if cloudConfigMap != nil {
 		for _, cloudConfig := range cloudConfigMap {
 			for _, instanceID := range cloudConfig.InstanceIDs {
-				ansibleInstanceID, err := host.HostCloudIDToAnsibleID(cloudService, instanceID)
+				ansibleInstanceID, err := HostCloudIDToAnsibleID(cloudService, instanceID)
 				if err != nil {
 					return err
 				}
@@ -44,7 +44,7 @@ func CreateAnsibleHostInventory(inventoryDirPath, certFilePath, cloudService str
 		}
 	} else {
 		for instanceID := range publicIPMap {
-			ansibleInstanceID, err := host.HostCloudIDToAnsibleID(cloudService, instanceID)
+			ansibleInstanceID, err := HostCloudIDToAnsibleID(cloudService, instanceID)
 			if err != nil {
 				return err
 			}
@@ -81,7 +81,7 @@ func WriteNodeConfigsToAnsibleInventory(inventoryDirPath string, nc []models.Nod
 	}
 	defer inventoryFile.Close()
 	for _, nodeConfig := range nc {
-		nodeID, err := host.HostCloudIDToAnsibleID(nodeConfig.CloudService, nodeConfig.NodeID)
+		nodeID, err := HostCloudIDToAnsibleID(nodeConfig.CloudService, nodeConfig.NodeID)
 		if err != nil {
 			return err
 		}
@@ -105,8 +105,8 @@ func GetAnsibleHostsFromInventory(inventoryDirPath string) ([]string, error) {
 	return ansibleHostIDs, nil
 }
 
-func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*host.Host, error) {
-	inventory := []*host.Host{}
+func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*sdkHost.Host, error) {
+	inventory := []*sdkHost.Host{}
 	inventoryHostsFile := filepath.Join(inventoryDirPath, constants.AnsibleHostInventoryFileName)
 	file, err := os.Open(inventoryHostsFile)
 	if err != nil {
@@ -120,12 +120,18 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*host.Host
 		if err != nil {
 			return nil, err
 		}
-		host := &host.Host{
-			NodeID:            strings.Split(scanner.Text(), " ")[0],
-			IP:                parsedHost["ansible_host"],
-			SSHUser:           parsedHost["ansible_user"],
-			SSHPrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],
-			SSHCommonArgs:     parsedHost["ansible_ssh_common_args"],
+		commonArgs, err := CommonArgsToMap(parsedHost["ansible_ssh_common_args"])
+		if err != nil {
+			return nil, err
+		}
+		host := &sdkHost.Host{
+			NodeID: strings.Split(scanner.Text(), " ")[0],
+			IP:     parsedHost["ansible_host"],
+			SSHConfig: sdkHost.SSHConfig{
+				User:           parsedHost["ansible_user"],
+				PrivateKeyPath: parsedHost["ansible_ssh_private_key_file"],
+				Params:         commonArgs,
+			},
 		}
 		inventory = append(inventory, host)
 	}
@@ -135,12 +141,12 @@ func GetInventoryFromAnsibleInventoryFile(inventoryDirPath string) ([]*host.Host
 	return inventory, nil
 }
 
-func GetHostByNodeID(nodeID string, inventoryDirPath string) (*host.Host, error) {
+func GetHostByNodeID(nodeID string, inventoryDirPath string) (*sdkHost.Host, error) {
 	allHosts, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
 	if err != nil {
 		return nil, err
 	} else {
-		hosts := utils.Filter(allHosts, func(h *host.Host) bool { return h.NodeID == nodeID })
+		hosts := utils.Filter(allHosts, func(h *sdkHost.Host) bool { return h.NodeID == nodeID })
 		switch len(hosts) {
 		case 1:
 			return hosts[0], nil
@@ -152,8 +158,8 @@ func GetHostByNodeID(nodeID string, inventoryDirPath string) (*host.Host, error)
 	}
 }
 
-func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]*host.Host, error) {
-	hostMap := map[string]*host.Host{}
+func GetHostMapfromAnsibleInventory(inventoryDirPath string) (map[string]*sdkHost.Host, error) {
+	hostMap := map[string]*sdkHost.Host{}
 	inventory, err := GetInventoryFromAnsibleInventoryFile(inventoryDirPath)
 	if err != nil {
 		return nil, err
@@ -181,21 +187,87 @@ func UpdateInventoryHostPublicIP(inventoryDirPath string, nodesWithDynamicIP map
 		return err
 	}
 	for host, ansibleHostContent := range inventory {
-		_, nodeID, err := host.HostAnsibleIDToCloudID(host)
+		_, nodeID, err := HostAnsibleIDToCloudID(host)
 		if err != nil {
 			return err
 		}
 		_, ok := nodesWithDynamicIP[nodeID]
 		if !ok {
-			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
+			if _, err = inventoryFile.WriteString(GetHostInventoryRecord(ansibleHostContent) + "\n"); err != nil {
 				return err
 			}
 		} else {
 			ansibleHostContent.IP = nodesWithDynamicIP[nodeID]
-			if _, err = inventoryFile.WriteString(ansibleHostContent.GetAnsibleInventoryRecord() + "\n"); err != nil {
+			if _, err = inventoryFile.WriteString(GetHostInventoryRecord(ansibleHostContent) + "\n"); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// HostAnsibleIDToCloudID converts ansible host ID to cloud ID
+func HostCloudIDToAnsibleID(cloudService string, hostCloudID string) (string, error) {
+	switch cloudService {
+	case constants.GCPCloudService:
+		return fmt.Sprintf("%s_%s", constants.GCPNodeAnsiblePrefix, hostCloudID), nil
+	case constants.AWSCloudService:
+		return fmt.Sprintf("%s_%s", constants.AWSNodeAnsiblePrefix, hostCloudID), nil
+	case constants.E2EDocker:
+		return fmt.Sprintf("%s_%s", constants.E2EDocker, hostCloudID), nil
+	}
+	return "", fmt.Errorf("unknown cloud service %s", cloudService)
+}
+
+// HostAnsibleIDToCloudID converts a host Ansible ID to a cloud ID.
+func HostAnsibleIDToCloudID(hostAnsibleID string) (string, string, error) {
+	var cloudService, cloudIDPrefix string
+	switch {
+	case strings.HasPrefix(hostAnsibleID, constants.AWSNodeAnsiblePrefix):
+		cloudService = constants.AWSCloudService
+		cloudIDPrefix = strings.TrimPrefix(hostAnsibleID, constants.AWSNodeAnsiblePrefix+"_")
+	case strings.HasPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix):
+		cloudService = constants.GCPCloudService
+		cloudIDPrefix = strings.TrimPrefix(hostAnsibleID, constants.GCPNodeAnsiblePrefix+"_")
+	case strings.HasPrefix(hostAnsibleID, constants.E2EDocker):
+		cloudService = constants.E2EDocker
+		cloudIDPrefix = strings.TrimPrefix(hostAnsibleID, constants.E2EDocker+"_")
+	default:
+		return "", "", fmt.Errorf("unknown cloud service prefix in %s", hostAnsibleID)
+	}
+	return cloudService, cloudIDPrefix, nil
+}
+
+// GetHostInventoryRecord returns the ansible inventory record for a host
+func GetHostInventoryRecord(h *sdkHost.Host) string {
+	return strings.Join([]string{
+		h.NodeID,
+		fmt.Sprintf("ansible_host=%s", h.IP),
+		fmt.Sprintf("ansible_user=%s", h.SSHConfig.User),
+		fmt.Sprintf("ansible_ssh_private_key_file=%s", h.SSHConfig.PrivateKeyPath),
+		fmt.Sprintf("ansible_ssh_common_args='%s'", ParamsMapToCommonArgs(h.SSHConfig.Params)),
+	}, " ")
+}
+
+// CommonArgsToMap converts a comma separated string of key value pairs to a map
+func CommonArgsToMap(commaSeparatedString string) (map[string]string, error) {
+	args := strings.Split(commaSeparatedString, ",")
+	argsMap := map[string]string{}
+	for _, arg := range args {
+		kv := strings.Split(arg, "=")
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("invalid key value pair %s", arg)
+		}
+		argsMap[kv[0]] = kv[1]
+	}
+	return argsMap, nil
+}
+
+// ParamsMapToCommonArgs converts a map of key value pairs to a comma separated string
+func ParamsMapToCommonArgs(params map[string]string) string {
+	args := []string{}
+	for k, v := range params {
+		args = append(args, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(args, ",")
 }

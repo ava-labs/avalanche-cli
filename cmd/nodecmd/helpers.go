@@ -13,8 +13,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/ava-labs/avalanchego/api/info"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 // NumNodes is a struct to hold number of nodes with and without stake
@@ -27,12 +28,12 @@ func (n NumNodes) All() int {
 	return n.numValidators + n.numAPI
 }
 
-func getUnhealthyNodes(hosts []*host.Host) ([]string, error) {
+func getUnhealthyNodes(hosts []*sdkHost.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckHealthy(host); err != nil {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
@@ -70,12 +71,12 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 	return false, fmt.Errorf("unable to parse node healthy status")
 }
 
-func getNotBootstrappedNodes(hosts []*host.Host) ([]string, error) {
+func getNotBootstrappedNodes(hosts []*sdkHost.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckBootstrapped(host); err != nil {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
@@ -113,7 +114,7 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 	return false, errors.New("unable to parse node bootstrap status")
 }
 
-func getRPCIncompatibleNodes(hosts []*host.Host, subnetName string) ([]string, error) {
+func getRPCIncompatibleNodes(hosts []*sdkHost.Host, subnetName string) ([]string, error) {
 	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of subnet %s ...", subnetName)
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
@@ -123,7 +124,7 @@ func getRPCIncompatibleNodes(hosts []*host.Host, subnetName string) ([]string, e
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
@@ -172,7 +173,7 @@ func parseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
 	return nodeVersionReply.VMVersions["platform"], uint32(nodeVersionReply.RPCProtocolVersion), nil
 }
 
-func disconnectHosts(hosts []*host.Host) {
+func disconnectHosts(hosts []*sdkHost.Host) {
 	for _, host := range hosts {
 		_ = host.Disconnect()
 	}
@@ -182,7 +183,7 @@ func authorizedAccessFromSettings() bool {
 	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
 }
 
-func checkHostsAreRPCCompatible(hosts []*host.Host, subnetName string) error {
+func checkHostsAreRPCCompatible(hosts []*sdkHost.Host, subnetName string) error {
 	incompatibleNodes, err := getRPCIncompatibleNodes(hosts, subnetName)
 	if err != nil {
 		return err
@@ -206,7 +207,7 @@ func checkHostsAreRPCCompatible(hosts []*host.Host, subnetName string) error {
 	return nil
 }
 
-func checkHostsAreHealthy(hosts []*host.Host) error {
+func checkHostsAreHealthy(hosts []*sdkHost.Host) error {
 	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
 	unhealthyNodes, err := getUnhealthyNodes(hosts)
 	if err != nil {
@@ -218,7 +219,7 @@ func checkHostsAreHealthy(hosts []*host.Host) error {
 	return nil
 }
 
-func checkHostsAreBootstrapped(hosts []*host.Host) error {
+func checkHostsAreBootstrapped(hosts []*sdkHost.Host) error {
 	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
 	if err != nil {
 		return err

@@ -279,7 +279,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var awmRelayerHost *host.Host
+	var awmRelayerHost *sdkHost.Host
 	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
 		awmRelayerHost, err = node.GetAWMRelayerHost(app, clusterName)
@@ -453,7 +453,7 @@ func updateProposerVMs(
 	return teleporter.SetProposerVM(app, network, "C", "")
 }
 
-func setAWMRelayerHost(host *host.Host) error {
+func setAWMRelayersdkHost.Host *sdkHost.Host) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
@@ -468,7 +468,7 @@ func setAWMRelayerHost(host *host.Host) error {
 	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
-func updateAWMRelayerHostConfig(host *host.Host, subnetName string, clusterName string) error {
+func updateAWMRelayerHostConfig(host *sdkHost.Host, subnetName string, clusterName string) error {
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
 	flags := teleportercmd.AddSubnetToRelayerServiceFlags{
 		Network: networkoptions.NetworkFlags{
@@ -485,7 +485,7 @@ func updateAWMRelayerHostConfig(host *host.Host, subnetName string, clusterName 
 	return ssh.RunSSHStartAWMRelayerService(host)
 }
 
-func chooseAWMRelayerHost(clusterName string) (*host.Host, error) {
+func chooseAWMRelayerHost(clusterName string) (*sdkHost.Host, error) {
 	// first look up for separate monitoring host
 	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
 	if utils.FileExists(monitoringInventoryFile) {
@@ -540,7 +540,7 @@ func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 }
 
 func deployClusterYAMLFile(clusterName, subnetName string) error {
-	var separateHosts []*host.Host
+	var separateHosts []*sdkHost.Host
 	var err error
 	loadTestInventoryDir := app.GetLoadTestInventoryDir(clusterName)
 	if utils.FileExists(loadTestInventoryDir) {
@@ -553,7 +553,7 @@ func deployClusterYAMLFile(clusterName, subnetName string) error {
 	if err != nil {
 		return err
 	}
-	var externalHost *host.Host
+	var externalHost *sdkHost.Host
 	if len(separateHosts) > 0 {
 		externalHost = separateHosts[0]
 	}
@@ -742,7 +742,7 @@ func waitForClusterSubnetStatus(
 		wgResults := models.NodeResults{}
 		for _, host := range hosts {
 			wg.Add(1)
-			go func(nodeResults *models.NodeResults, host *host.Host) {
+			go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 				defer wg.Done()
 				if syncstatus, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID.String()); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
@@ -801,7 +801,7 @@ func checkClusterIsADevnet(clusterName string) error {
 	return nil
 }
 
-func filterHosts(hosts []*host.Host, nodes []string) ([]*host.Host, error) {
+func filterHosts(hosts []*sdkHost.Host, nodes []string) ([]*sdkHost.Host, error) {
 	indices := set.Set[int]{}
 	for _, node := range nodes {
 		added := false
@@ -821,7 +821,7 @@ func filterHosts(hosts []*host.Host, nodes []string) ([]*host.Host, error) {
 			return nil, fmt.Errorf("node %q not found", node)
 		}
 	}
-	filteredHosts := []*host.Host{}
+	filteredHosts := []*sdkHost.Host{}
 	for i, host := range hosts {
 		if indices.Contains(i) {
 			filteredHosts = append(filteredHosts, host)
@@ -830,7 +830,7 @@ func filterHosts(hosts []*host.Host, nodes []string) ([]*host.Host, error) {
 	return filteredHosts, nil
 }
 
-func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *host.Host) error {
+func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *sdkHost.Host) error {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
@@ -929,7 +929,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 			continue
 		}
 		wg.Add(1)
-		go func(host *host.Host) {
+		go func(host *sdkHost.Host) {
 			defer wg.Done()
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Subnet Logs"))
 			cloudID := host.GetCloudID()

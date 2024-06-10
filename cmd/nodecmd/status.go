@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
@@ -23,6 +22,8 @@ import (
 	"github.com/pborman/ansi"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var subnetName string
@@ -111,7 +112,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if resp, err := ssh.RunSSHCheckAvalancheGoVersion(host); err != nil {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
@@ -153,12 +154,12 @@ func statusNode(_ *cobra.Command, args []string) error {
 		}
 		if len(hostsToCheckSyncStatus) != 0 {
 			ux.Logger.PrintToUser("Getting subnet sync status of node(s)")
-			hostsToCheck := utils.Filter(hosts, func(h *host.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.GetCloudID()) })
+			hostsToCheck := utils.Filter(hosts, func(h *sdkHost.Host) bool { return slices.Contains(hostsToCheckSyncStatus, h.GetCloudID()) })
 			wg := sync.WaitGroup{}
 			wgResults := models.NodeResults{}
 			for _, host := range hostsToCheck {
 				wg.Add(1)
-				go func(nodeResults *models.NodeResults, host *host.Host) {
+				go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 					defer wg.Done()
 					if syncstatus, err := ssh.RunSSHSubnetSyncStatus(host, blockchainID.String()); err != nil {
 						nodeResults.AddResult(host.GetCloudID(), nil, err)

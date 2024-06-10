@@ -7,6 +7,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 type GCPConfig struct {
@@ -38,15 +40,15 @@ type ClustersConfig struct {
 }
 
 // GetAPINodes returns a filtered list of API nodes based on the ClusterConfig and given hosts.
-func (cc *ClusterConfig) GetAPIHosts(hosts []*Host) []*Host {
-	return utils.Filter(hosts, func(h *Host) bool {
+func (cc *ClusterConfig) GetAPIHosts(hosts []*sdkHost.Host) []*sdkHost.Host {
+	return utils.Filter(hosts, func(h *sdkHost.Host) bool {
 		return slices.Contains(cc.APINodes, h.NodeID)
 	})
 }
 
 // GetValidatorNodes returns the validator nodes from the ClusterConfig.
-func (cc *ClusterConfig) GetValidatorHosts(hosts []*Host) []*Host {
-	return utils.Filter(hosts, func(h *Host) bool {
+func (cc *ClusterConfig) GetValidatorHosts(hosts []*sdkHost.Host) []*sdkHost.Host {
+	return utils.Filter(hosts, func(h *sdkHost.Host) bool {
 		return !slices.Contains(cc.APINodes, h.GetCloudID())
 	})
 }

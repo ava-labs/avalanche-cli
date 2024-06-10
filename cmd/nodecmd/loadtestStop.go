@@ -17,9 +17,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var loadTestsToStop []string
@@ -91,7 +92,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	removedLoadTestHosts := []*host.Host{}
+	removedLoadTestHosts := []*sdkHost.Host{}
 	if len(loadTestsToStop) == 0 {
 		return fmt.Errorf("no load test instances to stop in cluster %s", clusterName)
 	}
@@ -137,7 +138,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		hosts := utils.Filter(separateHosts, func(h *host.Host) bool { return h.GetCloudID() == nodeConfig.NodeID })
+		hosts := utils.Filter(separateHosts, func(h *sdkHost.Host) bool { return h.GetCloudID() == nodeConfig.NodeID })
 		if len(hosts) == 0 {
 			return fmt.Errorf("host %s is not found in hosts inventory file", nodeConfig.NodeID)
 		}
@@ -183,10 +184,10 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	return updateLoadTestInventory(separateHosts, removedLoadTestHosts, clusterName, separateHostInventoryPath)
 }
 
-func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*host.Host, clusterName, separateHostInventoryPath string) error {
-	var remainingLoadTestHosts []*host.Host
+func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*sdkHost.Host, clusterName, separateHostInventoryPath string) error {
+	var remainingLoadTestHosts []*sdkHost.Host
 	for _, loadTestHost := range separateHosts {
-		filteredHosts := utils.Filter(removedLoadTestHosts, func(h *host.Host) bool { return h.IP == loadTestHost.IP })
+		filteredHosts := utils.Filter(removedLoadTestHosts, func(h *sdkHost.Host) bool { return h.IP == loadTestHost.IP })
 		if len(filteredHosts) == 0 {
 			remainingLoadTestHosts = append(remainingLoadTestHosts, loadTestHost)
 		}
@@ -200,7 +201,7 @@ func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*host.Host, c
 			if err != nil {
 				return err
 			}
-			if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestHost.SSHPrivateKeyPath, nodeConfig.CloudService, map[string]string{nodeConfig.NodeID: nodeConfig.ElasticIP}, nil); err != nil {
+			if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestHost.SSHConfig.PrivateKeyPath, nodeConfig.CloudService, map[string]string{nodeConfig.NodeID: nodeConfig.ElasticIP}, nil); err != nil {
 				return err
 			}
 		}

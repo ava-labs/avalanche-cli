@@ -88,20 +88,20 @@ func sshNode(_ *cobra.Command, args []string) error {
 			// try to detect nodeID
 			selectedHost, clusterName := getHostClusterPair(clusterNameOrNodeID)
 			if selectedHost != nil && clusterName != "" {
-				return sshHosts([]*host.Host{selectedHost}, cmd, clustersConfig.Clusters[clusterName])
+				return sshHosts([]*sdkHost.Host{selectedHost}, cmd, clustersConfig.Clusters[clusterName])
 			}
 		}
 		return fmt.Errorf("cluster or node %s not found", clusterNameOrNodeID)
 	}
 }
 
-func printNodeInfo(host *host.Host, clusterConf models.ClusterConfig, result string) error {
+func printNodeInfo(host *sdkHost.Host, clusterConf models.ClusterConfig, result string) error {
 	nodeConfig, err := app.LoadClusterNodeConfig(host.GetCloudID())
 	if err != nil {
 		return err
 	}
 	nodeIDStr := "----------------------------------------"
-	if clusterConf.IsAvalancheGoHost(host.GetCloudID()) {
+	if clusterConf.IsAvalancheGosdkHost.Host.GetCloudID()) {
 		nodeID, err := getNodeID(app.GetNodeInstanceDirPath(host.GetCloudID()))
 		if err != nil {
 			return err
@@ -117,7 +117,7 @@ func printNodeInfo(host *host.Host, clusterConf models.ClusterConfig, result str
 	return nil
 }
 
-func sshHosts(hosts []*host.Host, cmd string, clusterConf models.ClusterConfig) error {
+func sshHosts(hosts []*sdkHost.Host, cmd string, clusterConf models.ClusterConfig) error {
 	if cmd != "" {
 		// execute cmd
 		wg := sync.WaitGroup{}
@@ -125,7 +125,7 @@ func sshHosts(hosts []*host.Host, cmd string, clusterConf models.ClusterConfig) 
 		wgResults := models.NodeResults{}
 		for _, host := range hosts {
 			wg.Add(1)
-			go func(nodeResults *models.NodeResults, host *host.Host) {
+			go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 				if !isParallel {
 					nowExecutingMutex.Lock()
 					defer nowExecutingMutex.Unlock()
@@ -168,7 +168,7 @@ func sshHosts(hosts []*host.Host, cmd string, clusterConf models.ClusterConfig) 
 		// open shell
 		switch {
 		case len(hosts) > 1:
-			return fmt.Errorf("cannot open ssh shell on multiple nodes: %s", strings.Join(utils.Map(hosts, func(h *host.Host) string { return h.GetCloudID() }), ", "))
+			return fmt.Errorf("cannot open ssh shell on multiple nodes: %s", strings.Join(utils.Map(hosts, func(h *sdkHost.Host) string { return h.GetCloudID() }), ", "))
 		case len(hosts) == 0:
 			return fmt.Errorf("no nodes found")
 		default:
@@ -219,7 +219,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 }
 
 // GetAllClusterHosts returns all hosts in a cluster including loadtest and monitoring hosts
-func GetAllClusterHosts(clusterName string) ([]*host.Host, error) {
+func GetAllClusterHosts(clusterName string) ([]*sdkHost.Host, error) {
 	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
 		return nil, fmt.Errorf("cluster %s not found", clusterName)
 	}

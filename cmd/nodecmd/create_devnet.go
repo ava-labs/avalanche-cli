@@ -28,9 +28,9 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
-
 	coreth_params "github.com/ava-labs/coreth/params"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 // difference between unlock schedule locktime and startime in original genesis
@@ -67,7 +67,7 @@ func generateCustomGenesis(
 	networkID uint32,
 	walletAddr string,
 	stakingAddr string,
-	hosts []*host.Host,
+	hosts []*sdkHost.Host,
 ) ([]byte, error) {
 	genesisMap := map[string]interface{}{}
 
@@ -151,7 +151,7 @@ func generateCustomGenesis(
 	return json.MarshalIndent(genesisMap, "", " ")
 }
 
-func setupDevnet(clusterName string, hosts []*host.Host, apiNodeIPMap map[string]string) error {
+func setupDevnet(clusterName string, hosts []*sdkHost.Host, apiNodeIPMap map[string]string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -194,13 +194,13 @@ func setupDevnet(clusterName string, hosts []*host.Host, apiNodeIPMap map[string
 	walletAddrStr := k.X()[0]
 
 	// exclude API nodes from genesis file generation as they will have no stake
-	hostsAPI := utils.Filter(hosts, func(h *host.Host) bool {
+	hostsAPI := utils.Filter(hosts, func(h *sdkHost.Host) bool {
 		return slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
-	hostsWithoutAPI := utils.Filter(hosts, func(h *host.Host) bool {
+	hostsWithoutAPI := utils.Filter(hosts, func(h *sdkHost.Host) bool {
 		return !slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
-	hostsWithoutAPIIDs := utils.Map(hostsWithoutAPI, func(h *host.Host) string { return h.NodeID })
+	hostsWithoutAPIIDs := utils.Map(hostsWithoutAPI, func(h *sdkHost.Host) string { return h.NodeID })
 
 	// create genesis file at each node dir
 	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hostsWithoutAPI)
@@ -244,7 +244,7 @@ func setupDevnet(clusterName string, hosts []*host.Host, apiNodeIPMap map[string
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *host.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 
 			keyPath := filepath.Join(app.GetNodesDir(), host.GetCloudID())
