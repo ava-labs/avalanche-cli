@@ -274,8 +274,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		erc20TokenAddress common.Address
 	)
 	// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
-	hubEndpoint, _, hubBlockchainID, _, hubRegistryAddress, hubKey, err :=
-		GetSubnetParams(network, flags.hubFlags.chainFlags.SubnetName, flags.hubFlags.chainFlags.CChain)
+	hubEndpoint, _, hubBlockchainID, _, hubRegistryAddress, hubKey, err := GetSubnetParams(
+		network,
+		flags.hubFlags.chainFlags.SubnetName,
+		flags.hubFlags.chainFlags.CChain,
+	)
+	if err != nil {
+		return err
+	}
 	if flags.hubFlags.hubAddress != "" {
 		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
 		address, err := getHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
@@ -319,11 +325,19 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
+		ux.Logger.PrintToUser("Hub Deployed!")
+		ux.Logger.PrintToUser("Hub Address: %s", hubAddress)
 	}
 
 	// Spoke Deploy
-	spokeEndpoint, _, _, _, spokeRegistryAddress, spokeKey, err :=
-		GetSubnetParams(network, flags.spokeFlags.SubnetName, flags.spokeFlags.CChain)
+	spokeEndpoint, _, _, _, spokeRegistryAddress, spokeKey, err := GetSubnetParams(
+		network,
+		flags.spokeFlags.SubnetName,
+		flags.spokeFlags.CChain,
+	)
+	if err != nil {
+		return err
+	}
 
 	spokeAddress, err := deployERC20Spoke(
 		bridgeSrcDir,
