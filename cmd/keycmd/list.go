@@ -488,11 +488,15 @@ func getEvmBasedChainAddrInfo(
 			return nil, err
 		}
 	}
+	taggedChainToken := chainToken
+	if taggedChainToken != "AVAX" {
+		taggedChainToken = fmt.Sprintf("%s (Native)", taggedChainToken)
+	}
 	info := addressInfo{
 		kind:    kind,
 		name:    name,
 		chain:   chainName,
-		token:   chainToken,
+		token:   taggedChainToken,
 		address: cChainAddr,
 		balance: cChainBalance,
 		network: network.Name(),
@@ -519,7 +523,7 @@ func getEvmBasedChainAddrInfo(
 					kind:    kind,
 					name:    name,
 					chain:   chainName,
-					token:   fmt.Sprintf("%s @%s..", tokenName, tokenAddress[:7]),
+					token:   fmt.Sprintf("%s (%s.)", tokenName, tokenAddress[:6]),
 					address: cChainAddr,
 					balance: formattedBalance,
 					network: network.Name(),

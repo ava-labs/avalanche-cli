@@ -5,9 +5,11 @@ package keycmd
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -27,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
+	goethereumcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -135,6 +138,53 @@ func newTransferCmd() *cobra.Command {
 }
 
 func transferF(*cobra.Command, []string) error {
+	val, _ := new(big.Int).SetString("2000000000000000000000", 10)
+	err := contract.TxToMethod(
+		"http://127.0.0.1:9650/ext/bc/C/rpc",
+		"56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027",
+		goethereumcommon.HexToAddress("0x5DB9A7629912EBF95876228C24A848de0bfB43A9"),
+		"approve(address, uint256)->(bool)",
+		goethereumcommon.HexToAddress("0xa4DfF80B4a1D748BF28BC4A271eD834689Ea3407"),
+		val,
+	)
+	type t struct {
+		A1 [32]byte
+		A2 goethereumcommon.Address
+		A3 goethereumcommon.Address
+		A4 goethereumcommon.Address
+		A5 *big.Int
+		A6 *big.Int
+		A7 *big.Int
+		A8 goethereumcommon.Address
+	}
+	chain, err := ids.FromString("nqp2DJw1VbjBhG2mGeH5C1JAshqNcTtpBEkj14kcYiT79Jwwu")
+	if err != nil {
+		return err
+	}
+	tval := t{
+		A1: chain,
+		A2: goethereumcommon.HexToAddress("0xb623C4495220C603D0A939D32478F55891a61750"),
+		A3: goethereumcommon.HexToAddress("0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"),
+		A4: goethereumcommon.HexToAddress("0x5DB9A7629912EBF95876228C24A848de0bfB43A9"),
+		A5: big.NewInt(0),
+		A6: big.NewInt(0),
+		A7: big.NewInt(250000),
+		A8: goethereumcommon.Address{},
+	}
+	val, _ = new(big.Int).SetString("1000000000000000000000", 10)
+	err = contract.TxToMethod(
+		"http://127.0.0.1:9650/ext/bc/C/rpc",
+		"56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027",
+		goethereumcommon.HexToAddress("0xa4DfF80B4a1D748BF28BC4A271eD834689Ea3407"),
+		"send((bytes32:A1, address:A2, address:A3, address:A4, uint256:A5, uint256:A6, uint256:A7, address:A8), uint256)",
+		tval,
+		val,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+
 	if send && receive {
 		return fmt.Errorf("only one of %s, %s flags should be selected", sendFlag, receiveFlag)
 	}
