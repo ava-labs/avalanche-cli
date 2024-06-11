@@ -208,11 +208,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					}
 					flags.hubFlags.erc20Address = erc20TokenAddr.Hex()
 					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
-						chainName := "C-Chain"
-						if !flags.hubFlags.chainFlags.CChain {
-							chainName = flags.hubFlags.chainFlags.SubnetName
-						}
-						ux.Logger.PrintToUser("There already is a Token Hub for %s deployed on %s.", p.TokenName, chainName)
+						ux.Logger.PrintToUser("There already is a Token Hub for %s deployed on %s.", p.TokenName, hubChain)
 						ux.Logger.PrintToUser("")
 						ux.Logger.PrintToUser("Hub Address: %s", p.BridgeHubAddress)
 						deployANewHupOption := "Yes, use the existing Hub"
@@ -233,7 +229,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						case explainOption:
 							ux.Logger.PrintToUser("There is already a Bridge Hub deployed for the popular token %s on %s.",
 								p.TokenName,
-								chainName,
+								hubChain,
 							)
 							ux.Logger.PrintToUser("Connect to that Hub to participate in standard cross chain transfers")
 							ux.Logger.PrintToUser("for the token, including transfers to any of the registered Spoke subnets.")
