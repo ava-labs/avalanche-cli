@@ -142,6 +142,18 @@ func newTransferCmd() *cobra.Command {
 }
 
 func transferF(*cobra.Command, []string) error {
+	out, err := contract.CallToMethod(
+		"http://127.0.0.1:9650/ext/bc/C/rpc",
+		goethereumcommon.HexToAddress("0x4Ac1d98D9cEF99EC6546dEd4Bd550b0b287aaD6D"),
+		"wrappedToken()->(address)",
+	)
+	if err != nil {
+		return err
+	}
+	addr, b := out[0].(goethereumcommon.Address)
+	fmt.Println(b)
+	fmt.Println(addr)
+	return nil
 	chain, err := ids.FromString("nqp2DJw1VbjBhG2mGeH5C1JAshqNcTtpBEkj14kcYiT79Jwwu")
 	if err != nil {
 		return err
