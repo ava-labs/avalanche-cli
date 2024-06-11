@@ -336,12 +336,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		switch hubKind {
 		case bridge.ERC20TokenHub:
-			tokenAddress, err = bridge.GetERC20HubTokenAddress(hubEndpoint, hubAddress)
+			tokenAddress, err = bridge.ERC20TokenHubGetTokenAddress(hubEndpoint, hubAddress)
 			if err != nil {
 				return err
 			}
 		case bridge.NativeTokenHub:
-			tokenAddress, err = bridge.GetNativeHubTokenAddress(hubEndpoint, hubAddress)
+			tokenAddress, err = bridge.NativeTokenHubGetTokenAddress(hubEndpoint, hubAddress)
 			if err != nil {
 				return err
 			}
