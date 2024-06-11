@@ -147,6 +147,9 @@ func transferF(*cobra.Command, []string) error {
 		goethereumcommon.HexToAddress("0xa4DfF80B4a1D748BF28BC4A271eD834689Ea3407"),
 		val,
 	)
+	if err != nil {
+		return err
+	}
 	type t struct {
 		A1 [32]byte
 		A2 goethereumcommon.Address
