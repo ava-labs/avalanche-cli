@@ -208,22 +208,57 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					}
 					flags.hubFlags.erc20Address = erc20TokenAddr.Hex()
 					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
-						ux.Logger.PrintToUser("You have entered the address of %s, a popular token in the subnet.", p.TokenName)
-						deployANewHupOption := "Yes, I want to deploy a new Bridge Hub"
-						useTheExistingHubOption := "No, I want to use the existing official Bridge Hub"
-						options := []string{deployANewHupOption, useTheExistingHubOption}
-						_, err = app.Prompt.CaptureList(
-							"Are you sure you want to deploy a new Bridge Hub for it?",
+						chainName := "C-Chain"
+						if !flags.hubFlags.chainFlags.CChain {
+							chainName = flags.hubFlags.chainFlags.SubnetName
+						}
+						ux.Logger.PrintToUser("There already is a Token Hub for %s deployed on %s.", p.TokenName, chainName)
+						ux.Logger.PrintToUser("")
+						ux.Logger.PrintToUser("Hub Address: %s", p.BridgeHubAddress)
+						deployANewHupOption := "Yes, use the existing Hub"
+						useTheExistingHubOption := "No, deploy my own Hub"
+						options := []string{deployANewHupOption, useTheExistingHubOption, explainOption}
+						option, err := app.Prompt.CaptureList(
+							"Do you want to use the existing Hub?",
 							options,
 						)
 						if err != nil {
 							return err
 						}
+						switch option {
+						case useTheExistingHubOption:
+							flags.hubFlags.hubAddress = p.BridgeHubAddress
+							flags.hubFlags.erc20Address = ""
+						case deployANewHupOption:
+						case explainOption:
+							ux.Logger.PrintToUser("There is already a Bridge Hub deployed for the popular token %s on %s.",
+								p.TokenName,
+								chainName,
+							)
+							ux.Logger.PrintToUser("Connect to that Hub to participate in standard cross chain transfers")
+							ux.Logger.PrintToUser("for the token, including transfers to any of the registered Spoke subnets.")
+							ux.Logger.PrintToUser("Deploy a new Hub if wanting to have isolated cross chain transfers for")
+							ux.Logger.PrintToUser("your application, or if wanting to provide a new bridge alternative")
+							ux.Logger.PrintToUser("for the token.")
+						}
 					}
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("The difference is...")
+				ux.Logger.PrintToUser("A bridge consists of one Hub and at least one but possibly many Spokes.")
+				ux.Logger.PrintToUser("The Hub manages the asset to be bridged out to Spoke instances. It lives on the Subnet")
+				ux.Logger.PrintToUser("where the asset exists")
+				ux.Logger.PrintToUser("The Spokes live on the other Subnets that want to import the asset bridged by the Hub.")
 				ux.Logger.PrintToUser("")
+				if len(popularTokensDesc) != 0 {
+					ux.Logger.PrintToUser("A popular token of a subnet is assumed to already have a Hub Deployed. In this case")
+					ux.Logger.PrintToUser("the Hub parameters will be automatically obtained, and a new Spoke will be created on")
+					ux.Logger.PrintToUser("the other Subnet, to access the popular token.")
+				}
+				ux.Logger.PrintToUser("For a token that already has a Hub deployed, the Hub parameters will be prompted,")
+				ux.Logger.PrintToUser("and a new Spoke will be created on the other Subnet to access that token.")
+				ux.Logger.PrintToUser("If deploying a new Hub for the token, the token parameters will be prompted,")
+				ux.Logger.PrintToUser("and both a new Hub will be created on the token Subnet, and a new Spoke will be created")
+				ux.Logger.PrintToUser("on the other Subnet to access that token.")
 				continue
 			}
 			break
