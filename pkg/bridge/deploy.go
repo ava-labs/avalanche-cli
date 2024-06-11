@@ -11,45 +11,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	subnetevmabi "github.com/ava-labs/subnet-evm/accounts/abi"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/liyue201/erc20-go/erc20"
 )
-
-func GetHubERC20Address(
-	srcDir string,
-	rpcURL string,
-	address common.Address,
-) (common.Address, error) {
-	srcDir = utils.ExpandHome(srcDir)
-	abiPath := filepath.Join(srcDir, "contracts/out/ERC20TokenHub.sol/ERC20TokenHub.abi.json")
-	abiBytes, err := os.ReadFile(abiPath)
-	if err != nil {
-		return common.Address{}, err
-	}
-	metadata := &bind.MetaData{
-		ABI: string(abiBytes),
-	}
-	abi, err := metadata.GetAbi()
-	if err != nil {
-		return common.Address{}, err
-	}
-	client, err := evm.GetClient(rpcURL)
-	if err != nil {
-		return common.Address{}, err
-	}
-	defer client.Close()
-	contract := bind.NewBoundContract(address, *abi, client, client, client)
-	var out []interface{}
-	err = contract.Call(&bind.CallOpts{}, &out, "token")
-	if err != nil {
-		return common.Address{}, err
-	}
-	out0 := *subnetevmabi.ConvertType(out[0], new(common.Address)).(*common.Address)
-	return out0, nil
-}
 
 type TeleporterFeeInfo struct {
 	FeeTokenAddress common.Address

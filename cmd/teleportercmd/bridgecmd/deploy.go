@@ -313,11 +313,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 	var (
-		hubAddress        common.Address
-		tokenSymbol       string
-		tokenName         string
-		tokenDecimals     uint8
-		erc20TokenAddress common.Address
+		hubAddress    common.Address
+		tokenSymbol   string
+		tokenName     string
+		tokenDecimals uint8
+		tokenAddress  common.Address
 	)
 	// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
 	hubEndpoint, _, hubBlockchainID, _, hubRegistryAddress, hubKey, err := GetSubnetParams(
@@ -330,23 +330,35 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.hubFlags.hubAddress != "" {
 		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
-		erc20TokenAddress, err = bridge.GetHubERC20Address(bridgeSrcDir, hubEndpoint, hubAddress)
+		hubKind, err := bridge.GetHubKind(hubEndpoint, hubAddress)
 		if err != nil {
 			return err
 		}
+		switch hubKind {
+		case bridge.ERC20TokenHub:
+			tokenAddress, err = bridge.GetERC20HubTokenAddress(hubEndpoint, hubAddress)
+			if err != nil {
+				return err
+			}
+		case bridge.NativeTokenHub:
+			tokenAddress, err = bridge.GetNativeHubTokenAddress(hubEndpoint, hubAddress)
+			if err != nil {
+				return err
+			}
+		}
 		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
 			hubEndpoint,
-			erc20TokenAddress.Hex(),
+			tokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
 	}
 	if flags.hubFlags.erc20Address != "" {
-		erc20TokenAddress = common.HexToAddress(flags.hubFlags.erc20Address)
+		tokenAddress = common.HexToAddress(flags.hubFlags.erc20Address)
 		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
 			hubEndpoint,
-			erc20TokenAddress.Hex(),
+			tokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
@@ -357,7 +369,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			hubKey.PrivKeyHex(),
 			common.HexToAddress(hubRegistryAddress),
 			common.HexToAddress(hubKey.C()),
-			erc20TokenAddress,
+			tokenAddress,
 			tokenDecimals,
 		)
 		if err != nil {
