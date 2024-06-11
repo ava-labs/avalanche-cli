@@ -266,11 +266,15 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Setup Contracts
-	ux.Logger.PrintToUser("Downloading Smart Contracts")
+	ux.Logger.PrintToUser("Downloading Bridge Contracts")
 	if err := bridge.DownloadRepo(app); err != nil {
 		return err
 	}
-	return nil
+	ux.Logger.PrintToUser("Compiling Bridge")
+	if err := bridge.BuildContracts(app); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("")
 
 	// Hub Deploy
 	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")

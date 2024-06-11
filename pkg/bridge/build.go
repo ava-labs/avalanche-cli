@@ -29,6 +29,30 @@ func RepoDir(
 	return repoDir, nil
 }
 
+func BuildContracts(
+	app *application.Avalanche,
+) error {
+	repoDir, err := RepoDir(app)
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(
+		forgePath,
+		"build",
+		"--extra-output-files",
+		"abi",
+		"bin",
+	)
+	cmd.Dir = filepath.Join(repoDir, "contracts")
+	stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	if err := cmd.Run(); err != nil {
+		fmt.Println(stdout)
+		fmt.Println(stderr)
+		return fmt.Errorf("could not build contracts: %w", err)
+	}
+	return nil
+}
+
 func DownloadRepo(
 	app *application.Avalanche,
 ) error {
@@ -39,50 +63,36 @@ func DownloadRepo(
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("git", "init", "-q")
-	cmd.Dir = repoDir
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("could not init git directory on %s: %w", repoDir, err)
+	alreadyCloned, err := utils.NonEmptyDirectory(repoDir)
+	if err != nil {
+		return err
 	}
-	cmd = exec.Command("git", "remote", "-v")
+	if !alreadyCloned {
+		cmd := exec.Command(
+			"git",
+			"clone",
+			"-b",
+			constants.BridgeBranch,
+			constants.BridgeURL,
+			repoDir,
+			"--recurse-submodules",
+			"--shallow-submodules",
+		)
+		stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
+		if err := cmd.Run(); err != nil {
+			fmt.Println(stdout)
+			fmt.Println(stderr)
+			return fmt.Errorf("could not clone repository %s: %w", constants.BridgeURL, err)
+		}
+		return nil
+	}
+	cmd := exec.Command("git", "pull")
 	cmd.Dir = repoDir
-	remoteStdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, true)
+	stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
 	if err := cmd.Run(); err != nil {
-		fmt.Println(remoteStdout)
+		fmt.Println(stdout)
 		fmt.Println(stderr)
-		return fmt.Errorf("could check git remote conf on %s: %w", repoDir, err)
-	}
-	if remoteStdout.String() == "" {
-		cmd = exec.Command("git", "remote", "add", "origin", constants.BridgeURL)
-		cmd.Dir = repoDir
-		utils.SetupRealtimeCLIOutput(cmd, true, true)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("could not add origin %s on git: %w", constants.BridgeURL, err)
-		}
-		cmd = exec.Command("git", "fetch", "--depth", "1", "origin", constants.BridgeBranch, "-q")
-		cmd.Dir = repoDir
-		utils.SetupRealtimeCLIOutput(cmd, true, true)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("could not fetch git branch/commit %s of repository %s: %w", constants.BridgeBranch, constants.BridgeURL, err)
-		}
-		cmd = exec.Command("git", "checkout", constants.BridgeBranch)
-		cmd.Dir = repoDir
-		stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
-		if err := cmd.Run(); err != nil {
-			fmt.Println(stdout)
-			fmt.Println(stderr)
-			return fmt.Errorf("could not checkout git branch %s of repository %s: %w", constants.BridgeBranch, constants.BridgeURL, err)
-		}
-	} else {
-		cmd = exec.Command("git", "pull")
-		cmd.Dir = repoDir
-		stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
-		if err := cmd.Run(); err != nil {
-			fmt.Println(stdout)
-			fmt.Println(stderr)
-			return fmt.Errorf("could not pull git branch %s of repository %s: %w", constants.BridgeBranch, constants.BridgeURL, err)
-		}
+		return fmt.Errorf("could not pull repository %s: %w", constants.BridgeURL, err)
 	}
 	cmd = exec.Command(
 		"git",
@@ -90,9 +100,10 @@ func DownloadRepo(
 		"update",
 		"--init",
 		"--recursive",
+		"--single-branch",
 	)
 	cmd.Dir = repoDir
-	stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
+	stdout, stderr = utils.SetupRealtimeCLIOutput(cmd, false, false)
 	if err := cmd.Run(); err != nil {
 		fmt.Println(stdout)
 		fmt.Println(stderr)

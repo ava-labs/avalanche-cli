@@ -10,6 +10,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
+func NonEmptyDirectory(dirName string) (bool, error) {
+	if !DirectoryExists(dirName) {
+		return false, fmt.Errorf("%s is not a directory", dirName)
+	}
+	files, err := os.ReadDir(dirName)
+	if err != nil {
+		return false, err
+	}
+	return len(files) != 0, nil
+}
+
 func DirectoryExists(dirName string) bool {
 	info, err := os.Stat(dirName)
 	if os.IsNotExist(err) {
