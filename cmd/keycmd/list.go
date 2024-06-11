@@ -508,7 +508,7 @@ func getEvmBasedChainAddrInfo(
 			if err != nil {
 				return addressInfos, err
 			}
-			tokenName, err := token.Name(nil)
+			tokenSymbol, err := token.Symbol(nil)
 			if err == nil {
 				// just ignore contract address access errors as those may depend on network
 				balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
@@ -523,7 +523,7 @@ func getEvmBasedChainAddrInfo(
 					kind:    kind,
 					name:    name,
 					chain:   chainName,
-					token:   fmt.Sprintf("%s (%s.)", tokenName, tokenAddress[:6]),
+					token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
 					address: cChainAddr,
 					balance: formattedBalance,
 					network: network.Name(),
