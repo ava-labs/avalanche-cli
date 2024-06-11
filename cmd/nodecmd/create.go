@@ -720,11 +720,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			networkID := network.NetworkIDFlagValue()
-			if network.Kind == models.Local || network.Kind == models.Devnet {
-				networkID = fmt.Sprintf("%d", network.ID)
-			}
-			if err := host.ComposeSSHSetupNode(networkID, avalancheGoVersion, addMonitoring); err != nil {
+			if err := host.ComposeSSHSetupNode(network.StringID(), avalancheGoVersion, addMonitoring); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
