@@ -330,11 +330,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.hubFlags.hubAddress != "" {
 		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
-		hubKind, err := bridge.GetHubKind(hubEndpoint, hubAddress)
+		endpointKind, err := bridge.GetEndpointKind(hubEndpoint, hubAddress)
 		if err != nil {
 			return err
 		}
-		switch hubKind {
+		switch endpointKind {
 		case bridge.ERC20TokenHub:
 			tokenAddress, err = bridge.ERC20TokenHubGetTokenAddress(hubEndpoint, hubAddress)
 			if err != nil {
@@ -345,6 +345,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			if err != nil {
 				return err
 			}
+		default:
+			return fmt.Errorf("unsupported bridge endpoint kind %d", endpointKind)
 		}
 		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
 			hubEndpoint,

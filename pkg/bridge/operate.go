@@ -11,23 +11,27 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-type HubKind int64
+type EndpointKind int64
 
 const (
-	Undefined HubKind = iota
+	Undefined EndpointKind = iota
 	ERC20TokenHub
 	NativeTokenHub
+	ERC20TokenSpoke
 )
 
-func GetHubKind(
+func GetEndpointKind(
 	rpcURL string,
-	hubAddress common.Address,
-) (HubKind, error) {
-	if _, err := ERC20TokenHubGetTokenAddress(rpcURL, hubAddress); err == nil {
+	address common.Address,
+) (EndpointKind, error) {
+	if _, err := ERC20TokenHubGetTokenAddress(rpcURL, address); err == nil {
 		return ERC20TokenHub, nil
 	}
-	if _, err := NativeTokenHubGetTokenAddress(rpcURL, hubAddress); err == nil {
+	if _, err := NativeTokenHubGetTokenAddress(rpcURL, address); err == nil {
 		return NativeTokenHub, nil
+	}
+	if _, err := ERC20TokenSpokeGetTokenHubAddress(rpcURL, address); err == nil {
+		return ERC20TokenSpoke, nil
 	} else {
 		return Undefined, err
 	}
@@ -35,11 +39,11 @@ func GetHubKind(
 
 func ERC20TokenHubGetTokenAddress(
 	rpcURL string,
-	hubAddress common.Address,
+	address common.Address,
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
-		hubAddress,
+		address,
 		"token()->(address)",
 	)
 	if err != nil {
@@ -51,11 +55,11 @@ func ERC20TokenHubGetTokenAddress(
 
 func NativeTokenHubGetTokenAddress(
 	rpcURL string,
-	hubAddress common.Address,
+	address common.Address,
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
-		hubAddress,
+		address,
 		"wrappedToken()->(address)",
 	)
 	if err != nil {
@@ -63,6 +67,22 @@ func NativeTokenHubGetTokenAddress(
 	}
 	tokenAddress := out[0].(common.Address)
 	return tokenAddress, nil
+}
+
+func ERC20TokenSpokeGetTokenHubAddress(
+	rpcURL string,
+	address common.Address,
+) (common.Address, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"tokenHubAddress()->(address)",
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	tokenHubAddress := out[0].(common.Address)
+	return tokenHubAddress, nil
 }
 
 func ERC20TokenHubSend(
@@ -160,5 +180,56 @@ func NativeTokenHubSend(
 		amount,
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
 		params,
+	)
+}
+
+func ERC20TokenSpokeSend(
+	rpcURL string,
+	spokeAddress common.Address,
+	privateKey string,
+	destinationBlockchainID ids.ID,
+	destinationBridgeEnd common.Address,
+	amountRecipient common.Address,
+	amount *big.Int,
+) error {
+	if err := contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		spokeAddress,
+		nil,
+		"approve(address, uint256)->(bool)",
+		spokeAddress,
+		amount,
+	); err != nil {
+		return err
+	}
+	type Params struct {
+		DestinationBlockchainID [32]byte
+		DestinationBridgeEnd    common.Address
+		AmountRecipient         common.Address
+		PrimaryFeeTokenAddress  common.Address
+		PrimaryFee              *big.Int
+		SecondaryFee            *big.Int
+		RequiredGasLimit        *big.Int
+		MultiHopFallback        common.Address
+	}
+	params := Params{
+		DestinationBlockchainID: destinationBlockchainID,
+		DestinationBridgeEnd:    destinationBridgeEnd,
+		AmountRecipient:         amountRecipient,
+		PrimaryFeeTokenAddress:  common.Address{},
+		PrimaryFee:              big.NewInt(0),
+		SecondaryFee:            big.NewInt(0),
+		RequiredGasLimit:        big.NewInt(250000),
+		MultiHopFallback:        common.Address{},
+	}
+	return contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		spokeAddress,
+		nil,
+		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)",
+		params,
+		amount,
 	)
 }
