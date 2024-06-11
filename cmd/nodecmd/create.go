@@ -670,7 +670,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					return
 				}
 				ux.Logger.Info("RunSSHSetupLokiConfig completed")
-				if err := docker.ComposeSSHSetupMonitoring(monitoringHost); err != nil {
+				if err := monitoringHost.ComposeSSHSetupMonitoring(); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -720,7 +720,11 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring); err != nil {
+			networkID := network.NetworkIDFlagValue()
+			if network.Kind == models.Local || network.Kind == models.Devnet {
+				networkID = fmt.Sprintf("%d", network.ID)
+			}
+			if err := host.ComposeSSHSetupNode(networkID, avalancheGoVersion, addMonitoring); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

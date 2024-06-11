@@ -344,7 +344,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 			nodeErrors[host.NodeID] = err
 			continue
 		}
-		_, clusterNodeID, err := sdkHost.HostAnsibleIDToCloudID(host.NodeID)
+		_, clusterNodeID, err := ansible.HostAnsibleIDToCloudID(host.NodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network due to %s", host.NodeID, err.Error())
 			nodeErrors[host.NodeID] = err

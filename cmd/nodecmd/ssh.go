@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 )
@@ -101,7 +101,7 @@ func printNodeInfo(host *sdkHost.Host, clusterConf models.ClusterConfig, result 
 		return err
 	}
 	nodeIDStr := "----------------------------------------"
-	if clusterConf.IsAvalancheGosdkHost.Host.GetCloudID()) {
+	if clusterConf.IsAvalancheGoHost(host.GetCloudID()) {
 		nodeID, err := getNodeID(app.GetNodeInstanceDirPath(host.GetCloudID()))
 		if err != nil {
 			return err
@@ -134,7 +134,7 @@ func sshHosts(hosts []*sdkHost.Host, cmd string, clusterConf models.ClusterConfi
 					}
 				}
 				defer wg.Done()
-				cmd := utils.Command(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath), cmd)
+				cmd := utils.Command(utils.GetSSHConnectionString(host.IP, host.SSHConfig.PrivateKeyPath), cmd)
 				outBuf, errBuf := utils.SetupRealtimeCLIOutput(cmd, false, false)
 				if !isParallel {
 					_, _ = utils.SetupRealtimeCLIOutput(cmd, true, true)
@@ -173,7 +173,7 @@ func sshHosts(hosts []*sdkHost.Host, cmd string, clusterConf models.ClusterConfi
 			return fmt.Errorf("no nodes found")
 		default:
 			selectedHost := hosts[0]
-			splitCmdLine := strings.Split(utils.GetSSHConnectionString(selectedHost.IP, selectedHost.SSHPrivateKeyPath), " ")
+			splitCmdLine := strings.Split(utils.GetSSHConnectionString(selectedHost.IP, selectedHost.SSHConfig.PrivateKeyPath), " ")
 			cmd := exec.Command(splitCmdLine[0], splitCmdLine[1:]...)
 			cmd.Env = os.Environ()
 			cmd.Stdin = os.Stdin
@@ -212,7 +212,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 		clusterHosts = append(clusterHosts, monitoringHosts...)
 	}
 	for _, host := range clusterHosts {
-		ux.Logger.PrintToUser(utils.GetSSHConnectionString(host.IP, host.SSHPrivateKeyPath))
+		ux.Logger.PrintToUser(utils.GetSSHConnectionString(host.IP, host.SSHConfig.PrivateKeyPath))
 	}
 	ux.Logger.PrintToUser("")
 	return nil

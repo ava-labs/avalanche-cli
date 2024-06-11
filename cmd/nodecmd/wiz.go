@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
@@ -18,7 +18,6 @@ import (
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -453,7 +452,7 @@ func updateProposerVMs(
 	return teleporter.SetProposerVM(app, network, "C", "")
 }
 
-func setAWMRelayersdkHost.Host *sdkHost.Host) error {
+func setAWMRelayerHost(host *sdkHost.Host) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
@@ -944,7 +943,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
-			if err := docker.RestartDockerComposeService(host, utils.GetRemoteComposeFile(), "promtail", constants.SSHLongRunningScriptTimeout); err != nil {
+			if err := host.RestartDockerComposeService(utils.GetRemoteComposeFile(), "promtail", constants.SSHLongRunningScriptTimeout); err != nil {
 				wgResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

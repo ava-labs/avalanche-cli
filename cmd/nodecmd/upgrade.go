@@ -17,7 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/host"
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -157,7 +157,7 @@ func getNodesUpgradeInfo(hosts []*sdkHost.Host) (map[*sdkHost.Host]nodeUpgradeIn
 
 	nodeIDToHost := map[string]*sdkHost.Host{}
 	for _, host := range hosts {
-		nodeIDTosdkHost.Host.NodeID] = host
+		nodeIDToHost[host.NodeID] = host
 	}
 
 	for hostID, vmVersionsInterface := range wgResults.GetResultMap() {
@@ -195,7 +195,7 @@ func getNodesUpgradeInfo(hosts []*sdkHost.Host) (map[*sdkHost.Host]nodeUpgradeIn
 			ux.Logger.PrintToUser("Upgrading Avalanche Go version for node %s from version %s to version %s", hostID, currentAvalancheGoVersion, avalancheGoVersionToUpdateTo)
 			nodeUpgradeInfo.AvalancheGoVersion = avalancheGoVersionToUpdateTo
 		}
-		nodesToUpgrade[nodeIDTosdkHost.HostID]] = nodeUpgradeInfo
+		nodesToUpgrade[nodeIDToHost[hostID]] = nodeUpgradeInfo
 	}
 	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed to upgrade nodes: ")

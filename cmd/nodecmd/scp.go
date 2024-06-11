@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -229,7 +230,7 @@ func prepareSCPTarget(op ClusterOp, host *sdkHost.Host, clusterName string, dest
 		return "", err
 	}
 	selectedHost := utils.Filter(clusterHosts, func(h *sdkHost.Host) bool {
-		_, cloudHostID, _ := sdkHost.HostAnsibleIDToCloudID(h.NodeID)
+		_, cloudHostID, _ := ansible.HostAnsibleIDToCloudID(h.NodeID)
 		hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
 		return h.GetCloudID() == node || hostNodeID.String() == node || h.IP == node
 	})
@@ -261,7 +262,7 @@ func getHostClusterPair(nodeOrCloudIDOrIP string) (*sdkHost.Host, string) {
 			return nil, ""
 		}
 		selectedHost := utils.Filter(clusterHosts, func(h *sdkHost.Host) bool {
-			_, cloudHostID, _ := sdkHost.HostAnsibleIDToCloudID(h.NodeID)
+			_, cloudHostID, _ := ansible.HostAnsibleIDToCloudID(h.NodeID)
 			hostNodeID, _ := getNodeID(app.GetNodeInstanceDirPath(cloudHostID))
 			return h.GetCloudID() == nodeOrCloudIDOrIP || hostNodeID.String() == nodeOrCloudIDOrIP || h.IP == nodeOrCloudIDOrIP
 		})
