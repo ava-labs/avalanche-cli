@@ -277,7 +277,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	ux.Logger.PrintToUser("")
 
 	// Hub Deploy
-	bridgeSrcDir := utils.ExpandHome("~/Workspace/projects/teleporter-token-bridge/")
+	bridgeSrcDir, err := bridge.RepoDir(app)
+	if err != nil {
+		return err
+	}
 	var (
 		hubAddress        common.Address
 		tokenSymbol       string
