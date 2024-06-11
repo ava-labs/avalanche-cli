@@ -45,17 +45,21 @@ const (
 )
 
 var (
-	transferSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Mainnet, networkoptions.Fuji, networkoptions.Local}
-	send                            bool
-	receive                         bool
-	keyName                         string
-	ledgerIndex                     uint32
-	force                           bool
-	receiverAddrStr                 string
-	amountFlt                       float64
-	receiveRecoveryStep             uint64
-	PToX                            bool
-	PToP                            bool
+	transferSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Mainnet,
+		networkoptions.Fuji,
+		networkoptions.Local,
+	}
+	send                bool
+	receive             bool
+	keyName             string
+	ledgerIndex         uint32
+	force               bool
+	receiverAddrStr     string
+	amountFlt           float64
+	receiveRecoveryStep uint64
+	PToX                bool
+	PToP                bool
 )
 
 func newTransferCmd() *cobra.Command {
@@ -168,7 +172,7 @@ func transferF(*cobra.Command, []string) error {
 		"56289e99c94b6912bfc12adc093c9b51124f0dc54ac7a766b2bc5ccf558d8027",
 		goethereumcommon.HexToAddress("0x4Ac1d98D9cEF99EC6546dEd4Bd550b0b287aaD6D"),
 		val,
-		"send((bytes32:A1, address:A2, address:A3, address:A4, uint256:A5, uint256:A6, uint256:A7, address:A8))",
+		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
 		tval,
 	)
 	if err != nil {
