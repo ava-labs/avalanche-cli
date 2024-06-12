@@ -211,7 +211,7 @@ func transferF(*cobra.Command, []string) error {
 			}
 			blockchainID := sc.Networks[network.Name()].BlockchainID
 			if blockchainID == ids.Empty {
-				return fmt.Errorf("subnet %s is not deployed to %s", originSubnet, network)
+				return fmt.Errorf("subnet %s is not deployed to %s", originSubnet, network.Name())
 			}
 			originURL = network.BlockchainEndpoint(blockchainID.String())
 		}
@@ -258,19 +258,20 @@ func transferF(*cobra.Command, []string) error {
 		}
 		privateKey := originK.PrivKeyHex()
 		var destinationAddr goethereumcommon.Address
-		if destinationAddrStr != "" {
+		switch {
+		case destinationAddrStr != "":
 			if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
 				return err
 			}
 			destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
-		} else if destinationKeyName != "" {
+		case destinationKeyName != "":
 			destinationK, err := app.GetKey(destinationKeyName, network, false)
 			if err != nil {
 				return err
 			}
 			destinationAddrStr = destinationK.C()
 			destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
-		} else {
+		default:
 			return fmt.Errorf("you should set the destination address or destination key")
 		}
 		if amountFlt == 0 {

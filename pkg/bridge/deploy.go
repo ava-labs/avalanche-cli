@@ -27,7 +27,6 @@ type TokenSpokeSettings struct {
 }
 
 func RegisterERC20Spoke(
-	srcDir string,
 	rpcURL string,
 	privateKey string,
 	spokeAddress common.Address,

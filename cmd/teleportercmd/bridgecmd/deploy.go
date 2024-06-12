@@ -451,7 +451,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	if err := bridge.RegisterERC20Spoke(
-		bridgeSrcDir,
 		spokeEndpoint,
 		spokeKey.PrivKeyHex(),
 		spokeAddress,
