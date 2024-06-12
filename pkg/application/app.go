@@ -631,6 +631,24 @@ func (app *Avalanche) GetSubnetNames() ([]string, error) {
 	return names, nil
 }
 
+func (app *Avalanche) GetSubnetNamesOnNetwork(network models.Network) ([]string, error) {
+	subnetNames, err := app.GetSubnetNames()
+	if err != nil {
+		return nil, err
+	}
+	filtered := []string{}
+	for _, subnetName := range subnetNames {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return nil, err
+		}
+		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
+			filtered = append(filtered, subnetName)
+		}
+	}
+	return filtered, nil
+}
+
 func (*Avalanche) readFile(path string) ([]byte, error) {
 	if err := os.MkdirAll(filepath.Dir(path), constants.DefaultPerms755); err != nil {
 		return nil, err

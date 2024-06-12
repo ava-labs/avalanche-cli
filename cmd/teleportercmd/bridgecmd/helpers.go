@@ -5,29 +5,14 @@ package bridgecmd
 import (
 	_ "embed"
 	"fmt"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 )
-
-func filterSubnetsByNetwork(network models.Network, subnetNames []string) ([]string, error) {
-	filtered := []string{}
-	for _, subnetName := range subnetNames {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return nil, err
-		}
-		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
-			filtered = append(filtered, subnetName)
-		}
-	}
-	return filtered, nil
-}
 
 func validateSubnet(network models.Network, subnetName string) error {
 	sc, err := app.LoadSidecar(subnetName)
@@ -47,41 +32,24 @@ func promptChain(
 	avoidSubnet string,
 	chainFlags *ChainFlags,
 ) (bool, error) {
-	subnetNames, err := app.GetSubnetNames()
+	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
 	if err != nil {
 		return false, err
 	}
-	subnetNames, err = filterSubnetsByNetwork(network, subnetNames)
-	if err != nil {
-		return false, err
-	}
-	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
-	cChainOption := "C-Chain"
-	notListedOption := "My blockchain isn't listed"
-	subnetOptions := []string{}
-	if !avoidCChain {
-		subnetOptions = append(subnetOptions, cChainOption)
-	}
-	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Subnet " + s })...)
-	subnetOptions = append(subnetOptions, notListedOption)
-	subnetOption, err := app.Prompt.CaptureListWithSize(
+	cancel, _, _, cChain, subnetName, err := prompts.PromptChain(
+		app.Prompt,
 		prompt,
-		subnetOptions,
-		11,
+		subnetNames,
+		true,
+		true,
+		avoidCChain,
+		avoidSubnet,
 	)
-	if err != nil {
-		return false, err
+	if err == nil {
+		chainFlags.SubnetName = subnetName
+		chainFlags.CChain = cChain
 	}
-	if subnetOption == notListedOption {
-		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
-		return true, nil
-	}
-	if subnetOption == cChainOption {
-		chainFlags.CChain = true
-	} else {
-		chainFlags.SubnetName = strings.TrimPrefix(subnetOption, "Subnet ")
-	}
-	return false, nil
+	return cancel, err
 }
 
 func GetSubnetParams(

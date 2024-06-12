@@ -49,6 +49,7 @@ var (
 	transferSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Mainnet,
 		networkoptions.Fuji,
+		networkoptions.Devnet,
 		networkoptions.Local,
 	}
 	send                bool
@@ -189,7 +190,7 @@ func transferF(*cobra.Command, []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
-		"",
+		"On what Network do you want to execute the transfer?",
 		globalNetworkFlags,
 		false,
 		false,
@@ -200,9 +201,77 @@ func transferF(*cobra.Command, []string) error {
 		return err
 	}
 
+	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	if err != nil {
+		return err
+	}
+
+	if originSubnet == "" && !PToX && !PToP {
+		prompt := "Where are the funds to transfer?"
+		cancel, pChain, _, cChain, subnetName, err := prompts.PromptChain(
+			app.Prompt,
+			prompt,
+			subnetNames,
+			false,
+			true,
+			false,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		switch {
+		case cancel:
+			return nil
+		case pChain:
+			option, err := app.Prompt.CaptureList(
+				"Destination Chain",
+				[]string{"P-Chain", "X-Chain"},
+			)
+			if err != nil {
+				return err
+			}
+			if option == "P-Chain" {
+				PToP = true
+			} else {
+				PToX = true
+			}
+		case cChain:
+			originSubnet = "c-chain"
+		default:
+			originSubnet = subnetName
+		}
+	}
+
 	// bridge experimental
-	// bridge hub -> spoke
 	if originSubnet != "" {
+		if destinationSubnet == "" {
+			prompt := "Where are the funds going to?"
+			avoidSubnet := originSubnet
+			if originSubnet == "c-chain" {
+				avoidSubnet = ""
+			}
+			cancel, _, _, cChain, subnetName, err := prompts.PromptChain(
+				app.Prompt,
+				prompt,
+				subnetNames,
+				true,
+				true,
+				originSubnet == "c-chain",
+				avoidSubnet,
+			)
+			if err != nil {
+				return err
+			}
+			switch {
+			case cancel:
+				return nil
+			case cChain:
+				destinationSubnet = "c-chain"
+			default:
+				destinationSubnet = subnetName
+			}
+		}
 		originURL := network.CChainEndpoint()
 		if strings.ToLower(originSubnet) != "c-chain" {
 			sc, err := app.LoadSidecar(originSubnet)
@@ -214,9 +283,6 @@ func transferF(*cobra.Command, []string) error {
 				return fmt.Errorf("subnet %s is not deployed to %s", originSubnet, network.Name())
 			}
 			originURL = network.BlockchainEndpoint(blockchainID.String())
-		}
-		if destinationSubnet == "" {
-			return fmt.Errorf("you should set destination subnet")
 		}
 		var destinationBlockchainID ids.ID
 		if strings.ToLower(destinationSubnet) == "c-chain" {
@@ -236,21 +302,36 @@ func transferF(*cobra.Command, []string) error {
 			destinationBlockchainID = blockchainID
 		}
 		if originBridgeAddress == "" {
-			return fmt.Errorf("you should set bridge address at origin")
+			addr, err := app.Prompt.CaptureAddress(
+				fmt.Sprintf("Enter the address of the Bridge on %s", originSubnet),
+			)
+			if err != nil {
+				return err
+			}
+			originBridgeAddress = addr.Hex()
 		} else {
 			if err := prompts.ValidateAddress(originBridgeAddress); err != nil {
 				return err
 			}
 		}
 		if destinationBridgeAddress == "" {
-			return fmt.Errorf("you should set bridge address at destination")
+			addr, err := app.Prompt.CaptureAddress(
+				fmt.Sprintf("Enter the address of the Bridge on %s", destinationSubnet),
+			)
+			if err != nil {
+				return err
+			}
+			destinationBridgeAddress = addr.Hex()
 		} else {
 			if err := prompts.ValidateAddress(destinationBridgeAddress); err != nil {
 				return err
 			}
 		}
 		if keyName == "" {
-			return fmt.Errorf("you should set the key that has the funds")
+			keyName, err = prompts.CaptureKeyName(app.Prompt, "fund the transfer", app.GetKeyDir(), true)
+			if err != nil {
+				return err
+			}
 		}
 		originK, err := app.GetKey(keyName, network, false)
 		if err != nil {
@@ -258,6 +339,30 @@ func transferF(*cobra.Command, []string) error {
 		}
 		privateKey := originK.PrivKeyHex()
 		var destinationAddr goethereumcommon.Address
+		if destinationAddrStr == "" && destinationKeyName == "" {
+			option, err := app.Prompt.CaptureList(
+				"Do you want to choose a stored key for the destination, or input a destination address?",
+				[]string{"Key", "Address"},
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case "Key":
+				destinationKeyName, err = prompts.CaptureKeyName(app.Prompt, "receive the transfer", app.GetKeyDir(), true)
+				if err != nil {
+					return err
+				}
+			case "Address":
+				addr, err := app.Prompt.CaptureAddress(
+					"Enter the destination address",
+				)
+				if err != nil {
+					return err
+				}
+				destinationAddrStr = addr.Hex()
+			}
+		}
 		switch {
 		case destinationAddrStr != "":
 			if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
@@ -275,7 +380,10 @@ func transferF(*cobra.Command, []string) error {
 			return fmt.Errorf("you should set the destination address or destination key")
 		}
 		if amountFlt == 0 {
-			return fmt.Errorf("you should set the amount")
+			amountFlt, err = captureAmount(true, "TOKEN units")
+			if err != nil {
+				return err
+			}
 		}
 		amount := new(big.Float).SetFloat64(amountFlt)
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
@@ -337,21 +445,6 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	if !PToP && !PToX {
-		option, err := app.Prompt.CaptureList(
-			"Destination Chain",
-			[]string{"P-Chain", "X-Chain"},
-		)
-		if err != nil {
-			return err
-		}
-		if option == "P-Chain" {
-			PToP = true
-		} else {
-			PToX = true
-		}
-	}
-
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
 		var useLedger bool
 		goalStr := ""
@@ -373,18 +466,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if amountFlt == 0 {
-		var promptStr string
-		if send {
-			promptStr = "Amount to send (AVAX units)"
-		} else {
-			promptStr = "Amount to receive (AVAX units)"
-		}
-		amountFlt, err = app.Prompt.CaptureFloat(promptStr, func(v float64) error {
-			if v <= 0 {
-				return fmt.Errorf("value %f must be greater than zero", v)
-			}
-			return nil
-		})
+		amountFlt, err = captureAmount(send, "AVAX units")
 		if err != nil {
 			return err
 		}
@@ -645,4 +727,23 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	return nil
+}
+
+func captureAmount(sending bool, tokenDesc string) (float64, error) {
+	var promptStr string
+	if sending {
+		promptStr = fmt.Sprintf("Amount to send (%s)", tokenDesc)
+	} else {
+		promptStr = fmt.Sprintf("Amount to receive (%s)", tokenDesc)
+	}
+	amountFlt, err := app.Prompt.CaptureFloat(promptStr, func(v float64) error {
+		if v <= 0 {
+			return fmt.Errorf("value %f must be greater than zero", v)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return amountFlt, nil
 }
