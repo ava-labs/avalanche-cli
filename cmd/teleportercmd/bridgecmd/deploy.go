@@ -128,8 +128,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		prompt := "What kind of token do you want to bridge?"
-		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...)"
-		hubDeployedOption := "A token that already has a Hub deployed"
+		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...) (recommended)"
+		hubDeployedOption := "A token that already has a Hub deployed (recommended)"
 		deployNewHubOption := "Deploy a new Hub for the token"
 		explainOption := "Explain the difference"
 		goBackOption := "Go Back"
@@ -144,11 +144,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		popularTokensDesc := utils.Map(
 			popularTokensInfo,
 			func(i PopularTokenInfo) string {
-				if i.BridgeHubAddress == "" {
-					return i.Desc()
-				} else {
-					return i.Desc() + " (recommended)"
-				}
+				return i.Desc()
 			},
 		)
 		options := []string{popularOption, hubDeployedOption, deployNewHubOption, explainOption}
@@ -211,7 +207,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						ux.Logger.PrintToUser("There already is a Token Hub for %s deployed on %s.", p.TokenName, hubChain)
 						ux.Logger.PrintToUser("")
 						ux.Logger.PrintToUser("Hub Address: %s", p.BridgeHubAddress)
-						deployANewHupOption := "Yes, use the existing Hub"
+						deployANewHupOption := "Yes, use the existing Hub (recommended)"
 						useTheExistingHubOption := "No, deploy my own Hub"
 						options := []string{deployANewHupOption, useTheExistingHubOption, explainOption}
 						option, err := app.Prompt.CaptureList(
