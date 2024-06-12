@@ -96,6 +96,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
+	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
 	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
 	cmd.Flags().StringVar(&teleporterEsp.Version, "teleporter-version", "latest", "teleporter version to deploy")
 	cmd.Flags().StringVar(&teleporterEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
