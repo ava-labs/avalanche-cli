@@ -35,6 +35,7 @@ import (
 )
 
 const (
+	cChain                  = "c-chain"
 	sendFlag                = "send"
 	receiveFlag             = "receive"
 	keyNameFlag             = "key"
@@ -208,7 +209,7 @@ func transferF(*cobra.Command, []string) error {
 
 	if originSubnet == "" && !PToX && !PToP {
 		prompt := "Where are the funds to transfer?"
-		cancel, pChain, _, cChain, subnetName, err := prompts.PromptChain(
+		cancel, pChainChoosen, _, cChainChoosen, subnetName, err := prompts.PromptChain(
 			app.Prompt,
 			prompt,
 			subnetNames,
@@ -223,7 +224,7 @@ func transferF(*cobra.Command, []string) error {
 		switch {
 		case cancel:
 			return nil
-		case pChain:
+		case pChainChoosen:
 			option, err := app.Prompt.CaptureList(
 				"Destination Chain",
 				[]string{"P-Chain", "X-Chain"},
@@ -236,8 +237,8 @@ func transferF(*cobra.Command, []string) error {
 			} else {
 				PToX = true
 			}
-		case cChain:
-			originSubnet = "c-chain"
+		case cChainChoosen:
+			originSubnet = cChain
 		default:
 			originSubnet = subnetName
 		}
@@ -248,16 +249,16 @@ func transferF(*cobra.Command, []string) error {
 		if destinationSubnet == "" {
 			prompt := "Where are the funds going to?"
 			avoidSubnet := originSubnet
-			if originSubnet == "c-chain" {
+			if originSubnet == cChain {
 				avoidSubnet = ""
 			}
-			cancel, _, _, cChain, subnetName, err := prompts.PromptChain(
+			cancel, _, _, cChainChoosen, subnetName, err := prompts.PromptChain(
 				app.Prompt,
 				prompt,
 				subnetNames,
 				true,
 				true,
-				originSubnet == "c-chain",
+				originSubnet == cChain,
 				avoidSubnet,
 			)
 			if err != nil {
@@ -266,14 +267,14 @@ func transferF(*cobra.Command, []string) error {
 			switch {
 			case cancel:
 				return nil
-			case cChain:
-				destinationSubnet = "c-chain"
+			case cChainChoosen:
+				destinationSubnet = cChain
 			default:
 				destinationSubnet = subnetName
 			}
 		}
 		originURL := network.CChainEndpoint()
-		if strings.ToLower(originSubnet) != "c-chain" {
+		if strings.ToLower(originSubnet) != cChain {
 			sc, err := app.LoadSidecar(originSubnet)
 			if err != nil {
 				return err
@@ -285,7 +286,7 @@ func transferF(*cobra.Command, []string) error {
 			originURL = network.BlockchainEndpoint(blockchainID.String())
 		}
 		var destinationBlockchainID ids.ID
-		if strings.ToLower(destinationSubnet) == "c-chain" {
+		if strings.ToLower(destinationSubnet) == cChain {
 			destinationBlockchainID, err = utils.GetChainID(network.Endpoint, "C")
 			if err != nil {
 				return err
