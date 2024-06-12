@@ -389,7 +389,7 @@ func SetProposerVM(
 
 func DeployAndFundRelayer(
 	app *application.Avalanche,
-	teleporterVersion string,
+	td *Deployer,
 	network models.Network,
 	subnetName string,
 	blockchainID string,
@@ -400,13 +400,6 @@ func DeployAndFundRelayer(
 		return false, "", "", err
 	}
 	endpoint := network.BlockchainEndpoint(blockchainID)
-	td := Deployer{}
-	if err := td.DownloadAssets(
-		app.GetTeleporterBinDir(),
-		teleporterVersion,
-	); err != nil {
-		return false, "", "", err
-	}
 	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
 		subnetName,
 		endpoint,
