@@ -40,7 +40,6 @@ func BuildContracts(
 		forgePath,
 		"build",
 		"--extra-output-files",
-		"abi",
 		"bin",
 	)
 	cmd.Dir = filepath.Join(repoDir, "contracts")
