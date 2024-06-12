@@ -20,17 +20,21 @@ import (
 )
 
 type DeployFlags struct {
-	Network           networkoptions.NetworkFlags
-	SubnetName        string
-	BlockchainID      string
-	CChain            bool
-	PrivateKey        string
-	KeyName           string
-	GenesisKey        bool
-	DeployMessenger   bool
-	DeployRegistry    bool
-	TeleporterVersion string
-	RPCURL            string
+	Network                      networkoptions.NetworkFlags
+	SubnetName                   string
+	BlockchainID                 string
+	CChain                       bool
+	PrivateKey                   string
+	KeyName                      string
+	GenesisKey                   bool
+	DeployMessenger              bool
+	DeployRegistry               bool
+	RPCURL                       string
+	Version                      string
+	MessengerContractAddressPath string
+	MessengerDeployerAddressPath string
+	MessengerDeployerTxPath      string
+	RegistryBydecodePath         string
 }
 
 const (
@@ -65,8 +69,12 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&deployFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to fund teleporter deploy")
 	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
-	cmd.Flags().StringVar(&deployFlags.TeleporterVersion, "version", "latest", "version to deploy")
 	cmd.Flags().StringVar(&deployFlags.RPCURL, "rpc-url", "", "use the given RPC URL to connect to the subnet")
+	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
+	cmd.Flags().StringVar(&deployFlags.MessengerContractAddressPath, "messenger-contract-address-path", "", "path to a messenger contract address file")
+	cmd.Flags().StringVar(&deployFlags.MessengerDeployerAddressPath, "messenger-deployer-address-path", "", "path to a messenger deployer address file")
+	cmd.Flags().StringVar(&deployFlags.MessengerDeployerTxPath, "messenger-deployer-tx-path", "", "path to a messenger deployer tx file")
+	cmd.Flags().StringVar(&deployFlags.RegistryBydecodePath, "registry-bytecode-path", "", "path to a registry bytecode file")
 	return cmd
 }
 
@@ -234,9 +242,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			privateKey = genesisPrivateKey
 		}
 	}
-	if flags.TeleporterVersion != "" && flags.TeleporterVersion != "latest" {
-		teleporterVersion = flags.TeleporterVersion
-	} else if teleporterVersion == "" {
+	if flags.Version != "" && flags.Version != "latest" {
+		teleporterVersion = flags.Version
+	} else if flags.MessengerContractAddressPath != "" || flags.MessengerDeployerAddressPath != "" || flags.MessengerDeployerTxPath != "" || flags.RegistryBydecodePath != "" {
+		teleporterVersion = ""
+		if flags.MessengerContractAddressPath == "" || flags.MessengerDeployerAddressPath == "" || flags.MessengerDeployerTxPath == "" || flags.RegistryBydecodePath == "" {
+			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
+		}
+	} else {
 		teleporterInfo, err := teleporter.GetInfo(app)
 		if err != nil {
 			return err
@@ -249,6 +262,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		rpcURL = flags.RPCURL
 	}
 	td := teleporter.Deployer{}
+	if flags.MessengerContractAddressPath != "" {
+		if err := td.SetAssetsFromPaths(
+			flags.MessengerContractAddressPath,
+			flags.MessengerDeployerAddressPath,
+			flags.MessengerDeployerTxPath,
+			flags.RegistryBydecodePath,
+		); err != nil {
+			return err
+		}
+	}
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
 		app.GetTeleporterBinDir(),
 		teleporterVersion,

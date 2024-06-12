@@ -78,6 +78,13 @@ func (t *Deployer) GetAssets(
 	return t.messengerContractAddress, t.messengerDeployerAddress, t.messengerDeployerTx, t.registryBydecode, nil
 }
 
+func (t *Deployer) CheckAssets() error {
+	if t.messengerContractAddress == "" || t.messengerDeployerAddress == "" || t.messengerDeployerTx == "" || t.registryBydecode == "" {
+		return fmt.Errorf("teleporter assets has not been initialized")
+	}
+	return nil
+}
+
 func (t *Deployer) SetAssetsFromPaths(
 	messengerContractAddressPath string,
 	messengerDeployerAddressPath string,
@@ -268,7 +275,7 @@ func (t *Deployer) DeployMessenger(
 	rpcURL string,
 	privateKey string,
 ) (bool, string, error) {
-	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+	if err := t.CheckAssets(); err != nil {
 		return false, "", err
 	}
 	// check if contract is already deployed
@@ -283,6 +290,7 @@ func (t *Deployer) DeployMessenger(
 		return true, t.messengerContractAddress, nil
 	}
 	// get teleporter deployer balance
+	fmt.Println("PEPE", t.messengerDeployerAddress)
 	messengerDeployerBalance, err := evm.GetAddressBalance(
 		client,
 		t.messengerDeployerAddress,
@@ -320,7 +328,7 @@ func (t *Deployer) DeployRegistry(
 	rpcURL string,
 	privateKey string,
 ) (string, error) {
-	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+	if err := t.CheckAssets(); err != nil {
 		return "", err
 	}
 	messengerContractAddress := common.HexToAddress(t.messengerContractAddress)
