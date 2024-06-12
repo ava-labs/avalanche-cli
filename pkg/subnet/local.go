@@ -599,11 +599,12 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			}
 		} else {
 			teleporterVersion := ""
-			if teleporterEsp.Version != "" && teleporterEsp.Version != "latest" {
+			switch {
+			case teleporterEsp.Version != "" && teleporterEsp.Version != "latest":
 				teleporterVersion = teleporterEsp.Version
-			} else if sc.TeleporterVersion != "" {
+			case sc.TeleporterVersion != "":
 				teleporterVersion = sc.TeleporterVersion
-			} else {
+			default:
 				teleporterInfo, err := teleporter.GetInfo(d.app)
 				if err != nil {
 					return nil, err

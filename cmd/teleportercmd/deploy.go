@@ -242,14 +242,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			privateKey = genesisPrivateKey
 		}
 	}
-	if flags.Version != "" && flags.Version != "latest" {
-		teleporterVersion = flags.Version
-	} else if flags.MessengerContractAddressPath != "" || flags.MessengerDeployerAddressPath != "" || flags.MessengerDeployerTxPath != "" || flags.RegistryBydecodePath != "" {
+	switch {
+	case flags.MessengerContractAddressPath != "" || flags.MessengerDeployerAddressPath != "" || flags.MessengerDeployerTxPath != "" || flags.RegistryBydecodePath != "":
 		teleporterVersion = ""
 		if flags.MessengerContractAddressPath == "" || flags.MessengerDeployerAddressPath == "" || flags.MessengerDeployerTxPath == "" || flags.RegistryBydecodePath == "" {
 			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
 		}
-	} else {
+	case flags.Version != "" && flags.Version != "latest":
+		teleporterVersion = flags.Version
+	case teleporterVersion != "":
+	default:
 		teleporterInfo, err := teleporter.GetInfo(app)
 		if err != nil {
 			return err
