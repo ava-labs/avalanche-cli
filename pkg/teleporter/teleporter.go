@@ -7,20 +7,16 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
-	"github.com/ava-labs/subnet-evm/core/types"
-	"github.com/ava-labs/subnet-evm/ethclient"
-	registry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -29,7 +25,7 @@ const (
 	messengerContractAddressURLFmt = releaseURL + "/TeleporterMessenger_Contract_Address_%s.txt"
 	messengerDeployerAddressURLFmt = releaseURL + "/TeleporterMessenger_Deployer_Address_%s.txt"
 	messengerDeployerTxURLFmt      = releaseURL + "/TeleporterMessenger_Deployment_Transaction_%s.txt"
-	registryBytecodeURLFmt         = releaseURL + "/TeleporterRegisrtry_Bytecode_%s.txt"
+	registryBytecodeURLFmt         = releaseURL + "/TeleporterRegistry_Bytecode_%s.txt"
 )
 
 var (
@@ -181,7 +177,7 @@ func (t *Deployer) Deploy(
 	version string,
 	subnetName string,
 	rpcURL string,
-	prefundedPrivateKey string,
+	privateKey string,
 	deployMessenger bool,
 	deployRegistry bool,
 ) (bool, string, string, error) {
@@ -197,12 +193,12 @@ func (t *Deployer) Deploy(
 			version,
 			subnetName,
 			rpcURL,
-			prefundedPrivateKey,
+			privateKey,
 		)
 	}
 	if err == nil && deployRegistry {
 		if !deployMessenger || !alreadyDeployed {
-			registryAddress, err = t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, prefundedPrivateKey)
+			registryAddress, err = t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, privateKey)
 		}
 	}
 	return alreadyDeployed, messengerAddress, registryAddress, err
@@ -213,7 +209,7 @@ func (t *Deployer) DeployMessenger(
 	version string,
 	subnetName string,
 	rpcURL string,
-	prefundedPrivateKey string,
+	privateKey string,
 ) (bool, string, error) {
 	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
 		return false, "", err
@@ -242,7 +238,7 @@ func (t *Deployer) DeployMessenger(
 			Sub(messengerDeployerRequiredBalance, messengerDeployerBalance)
 		if err := evm.FundAddress(
 			client,
-			prefundedPrivateKey,
+			privateKey,
 			t.messengerDeployerAddress,
 			toFund,
 		); err != nil {
@@ -265,80 +261,38 @@ func (t *Deployer) DeployRegistry(
 	version string,
 	subnetName string,
 	rpcURL string,
-	prefundedPrivateKey string,
+	privateKey string,
 ) (string, error) {
 	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
 		return "", err
 	}
 	messengerContractAddress := common.HexToAddress(t.messengerContractAddress)
-	registryConstructorInput := []registry.ProtocolRegistryEntry{
+	type ProtocolRegistryEntry struct {
+		Version         *big.Int
+		ProtocolAddress common.Address
+	}
+	constructorInput := []ProtocolRegistryEntry{
 		{
 			Version:         big.NewInt(1),
 			ProtocolAddress: messengerContractAddress,
 		},
 	}
-	client, err := evm.GetClient(rpcURL)
-	if err != nil {
-		return "", err
-	}
-	defer client.Close()
-	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
-	if err != nil {
-		return "", err
-	}
-	registryAddress, tx, _, err := DeployTeleporterRegistry(
-		txOpts,
-		client,
-		registryConstructorInput,
+	registryAddress, err := contract.DeployContract(
+		rpcURL,
+		privateKey,
+		[]byte(t.registryBydecode),
+		"([(uint256, address)])",
+		constructorInput,
 	)
 	if err != nil {
 		return "", err
-	}
-	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
-		return "", err
-	} else if !success {
-		return "", fmt.Errorf("failed receipt status deploying teleporter registry")
 	}
 	ux.Logger.PrintToUser(
 		"Teleporter Registry successfully deployed to %s (%s)",
 		subnetName,
 		registryAddress,
 	)
-	return registryAddress.String(), nil
-}
-
-func DeployTeleporterRegistry(
-	txOpts *bind.TransactOpts,
-	client ethclient.Client,
-	registryConstructorInput []registry.ProtocolRegistryEntry,
-) (common.Address, *types.Transaction, *registry.TeleporterRegistry, error) {
-	const (
-		repeatsOnFailure    = 3
-		sleepBetweenRepeats = 1 * time.Second
-	)
-	var (
-		addr     common.Address
-		tx       *types.Transaction
-		registry *registry.TeleporterRegistry
-		err      error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		txOpts.Context = ctx
-		addr, tx, registry, err = registry.DeployTeleporterRegistry(
-			txOpts,
-			client,
-			registryConstructorInput,
-		)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure deploying teleporter registry on %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return addr, tx, registry, err
+	return registryAddress.Hex(), nil
 }
 
 func getPrivateKey(
