@@ -271,9 +271,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		); err != nil {
 			return err
 		}
+	} else {
+		if err := td.DownloadAssets(
+			app.GetTeleporterBinDir(),
+			teleporterVersion,
+		); err != nil {
+			return err
+		}
 	}
-	//app.GetTeleporterBinDir(),
-	//teleporterVersion,
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
 		teleporterSubnetDesc,
 		rpcURL,

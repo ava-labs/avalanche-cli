@@ -284,7 +284,6 @@ func (t *Deployer) DeployMessenger(
 		return true, t.messengerContractAddress, nil
 	}
 	// get teleporter deployer balance
-	fmt.Println("PEPE", t.messengerDeployerAddress)
 	messengerDeployerBalance, err := evm.GetAddressBalance(
 		client,
 		t.messengerDeployerAddress,
