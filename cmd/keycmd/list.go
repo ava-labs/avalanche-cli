@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -32,7 +31,6 @@ const (
 	pchainFlag        = "pchain"
 	cchainFlag        = "cchain"
 	xchainFlag        = "xchain"
-	chainsFlag        = "chains"
 	ledgerIndicesFlag = "ledger"
 	useNanoAvaxFlag   = "use-nano-avax"
 	keysFlag          = "keys"
@@ -45,13 +43,12 @@ var (
 	pchain                      bool
 	cchain                      bool
 	xchain                      bool
-	chains                      string
 	useNanoAvax                 bool
 	ledgerIndices               []uint
-	subnetName                  string
 	keys                        []string
 	tokenAddresses              []string
 	subnetToken                 string
+	subnets                     []string
 )
 
 // avalanche subnet list
@@ -110,17 +107,11 @@ keys or for the ledger addresses associated to certain indices.`,
 		[]string{},
 		"list addresses for the given keys",
 	)
-	cmd.Flags().StringVar(
-		&subnetName,
-		"subnet",
-		"",
-		"provide balance information for the given subnet (Subnet-Evm based only)",
-	)
-	cmd.Flags().StringVar(
-		&chains,
-		chainsFlag,
-		"pxc",
-		"short way to specify which chains to show information about (p=show p-chain, x=show x-chain, c=show c-chain). defaults to pxc",
+	cmd.Flags().StringSliceVar(
+		&subnets,
+		"subnets",
+		[]string{},
+		"specify which subnets to show information about (p=p-chain, x=x-chain, c=c-chain, and subnet names). defaults to `p,x,c`",
 	)
 	cmd.Flags().StringSliceVar(
 		&tokenAddresses,
@@ -135,12 +126,12 @@ type Clients struct {
 	x       map[models.Network]avm.Client
 	p       map[models.Network]platformvm.Client
 	c       map[models.Network]ethclient.Client
-	evm     map[models.Network]ethclient.Client
 	cGeth   map[models.Network]*goethereumethclient.Client
-	evmGeth map[models.Network]*goethereumethclient.Client
+	evm     map[models.Network]map[string]ethclient.Client
+	evmGeth map[models.Network]map[string]*goethereumethclient.Client
 }
 
-func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, subnetName string) (
+func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, subnets []string) (
 	*Clients,
 	error,
 ) {
@@ -148,9 +139,9 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 	xClients := map[models.Network]avm.Client{}
 	pClients := map[models.Network]platformvm.Client{}
 	cClients := map[models.Network]ethclient.Client{}
-	evmClients := map[models.Network]ethclient.Client{}
 	cGethClients := map[models.Network]*goethereumethclient.Client{}
-	evmGethClients := map[models.Network]*goethereumethclient.Client{}
+	evmClients := map[models.Network]map[string]ethclient.Client{}
+	evmGethClients := map[models.Network]map[string]*goethereumethclient.Client{}
 	for _, network := range networks {
 		if pchain {
 			pClients[network] = platformvm.NewClient(network.Endpoint)
@@ -170,31 +161,41 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 				}
 			}
 		}
-		if subnetName != "" {
-			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
-			if err != nil {
-				return nil, err
-			}
-			b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
-			if err != nil {
-				return nil, err
-			}
-			if b {
-				sc, err := app.LoadSidecar(subnetName)
+		for _, subnetName := range subnets {
+			if subnetName != "p" && subnetName != "x" && subnetName != "c" {
+				_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 				if err != nil {
 					return nil, err
 				}
-				subnetToken = sc.TokenSymbol
-				chainID := sc.Networks[network.Name()].BlockchainID
-				if chainID != ids.Empty {
-					evmClients[network], err = ethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+				b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+				if err != nil {
+					return nil, err
+				}
+				if b {
+					sc, err := app.LoadSidecar(subnetName)
 					if err != nil {
 						return nil, err
 					}
-					if len(tokenAddresses) != 0 {
-						evmGethClients[network], err = goethereumethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+					subnetToken = sc.TokenSymbol
+					chainID := sc.Networks[network.Name()].BlockchainID
+					if chainID != ids.Empty {
+						_, b := evmClients[network]
+						if !b {
+							evmClients[network] = map[string]ethclient.Client{}
+						}
+						evmClients[network][subnetName], err = ethclient.Dial(network.BlockchainEndpoint(chainID.String()))
 						if err != nil {
 							return nil, err
+						}
+						if len(tokenAddresses) != 0 {
+							_, b := evmGethClients[network]
+							if !b {
+								evmGethClients[network] = map[string]*goethereumethclient.Client{}
+							}
+							evmGethClients[network][subnetName], err = goethereumethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+							if err != nil {
+								return nil, err
+							}
 						}
 					}
 				}
@@ -248,20 +249,23 @@ func listKeys(*cobra.Command, []string) error {
 			false,
 			false,
 			listSupportedNetworkOptions,
-			subnetName,
+			"",
 		)
 		if err != nil {
 			return err
 		}
 		networks = append(networks, network)
 	}
-	if !strings.Contains(chains, "p") {
+	if len(subnets) == 0 {
+		subnets = []string{"p", "x", "c"}
+	}
+	if !utils.Belongs(subnets, "p") {
 		pchain = false
 	}
-	if !strings.Contains(chains, "x") {
+	if !utils.Belongs(subnets, "x") {
 		xchain = false
 	}
-	if !strings.Contains(chains, "c") {
+	if !utils.Belongs(subnets, "c") {
 		cchain = false
 	}
 	queryLedger := len(ledgerIndices) > 0
@@ -270,7 +274,7 @@ func listKeys(*cobra.Command, []string) error {
 		cchain = false
 		xchain = false
 	}
-	clients, err := getClients(networks, pchain, cchain, xchain, subnetName)
+	clients, err := getClients(networks, pchain, cchain, xchain, subnets)
 	if err != nil {
 		return err
 	}
@@ -328,15 +332,26 @@ func getStoredKeyInfo(
 		}
 		if _, ok := clients.evm[network]; ok {
 			evmAddr := sk.C()
-			addrInfo, err := getEvmBasedChainAddrInfo(subnetName, subnetToken, clients.evm, clients.evmGeth, network, evmAddr, "stored", keyName)
-			if err != nil {
-				return nil, err
+			for subnetName := range clients.evm[network] {
+				addrInfo, err := getEvmBasedChainAddrInfo(
+					subnetName,
+					subnetToken,
+					clients.evm[network][subnetName],
+					clients.evmGeth[network][subnetName],
+					network,
+					evmAddr,
+					"stored",
+					keyName,
+				)
+				if err != nil {
+					return nil, err
+				}
+				addrInfos = append(addrInfos, addrInfo...)
 			}
-			addrInfos = append(addrInfos, addrInfo...)
 		}
 		if _, ok := clients.c[network]; ok {
 			cChainAddr := sk.C()
-			addrInfo, err := getEvmBasedChainAddrInfo("C-Chain", "AVAX", clients.c, clients.cGeth, network, cChainAddr, "stored", keyName)
+			addrInfo, err := getEvmBasedChainAddrInfo("C-Chain", "AVAX", clients.c[network], clients.cGeth[network], network, cChainAddr, "stored", keyName)
 			if err != nil {
 				return nil, err
 			}
@@ -474,14 +489,14 @@ func getXChainAddrInfo(
 func getEvmBasedChainAddrInfo(
 	chainName string,
 	chainToken string,
-	cClients map[models.Network]ethclient.Client,
-	cGethClients map[models.Network]*goethereumethclient.Client,
+	cClient ethclient.Client,
+	cGethClient *goethereumethclient.Client,
 	network models.Network,
 	cChainAddr string,
 	kind string,
 	name string,
 ) ([]addressInfo, error) {
-	cChainBalance, err := getCChainBalanceStr(cClients[network], cChainAddr)
+	cChainBalance, err := getCChainBalanceStr(cClient, cChainAddr)
 	if err != nil {
 		// just ignore local network errors
 		if network.Kind != models.Local {
@@ -502,9 +517,9 @@ func getEvmBasedChainAddrInfo(
 		network: network.Name(),
 	}
 	addressInfos := []addressInfo{info}
-	if cGethClients != nil && cGethClients[network] != nil {
+	if cGethClient != nil {
 		for _, tokenAddress := range tokenAddresses {
-			token, err := erc20.NewGGToken(common.HexToAddress(tokenAddress), cGethClients[network])
+			token, err := erc20.NewGGToken(common.HexToAddress(tokenAddress), cGethClient)
 			if err != nil {
 				return addressInfos, err
 			}
@@ -536,7 +551,7 @@ func getEvmBasedChainAddrInfo(
 }
 
 func printAddrInfos(addrInfos []addressInfo) {
-	header := []string{"Kind", "Name", "Chain", "Address", "Token", "Balance", "Network"}
+	header := []string{"Kind", "Name", "Subnet", "Address", "Token", "Balance", "Network"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)

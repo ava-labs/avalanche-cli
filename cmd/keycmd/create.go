@@ -57,7 +57,7 @@ func createKey(_ *cobra.Command, args []string) error {
 		pchain := true
 		cchain := true
 		xchain := true
-		clients, err := getClients(networks, pchain, cchain, xchain, "")
+		clients, err := getClients(networks, pchain, cchain, xchain, nil)
 		if err != nil {
 			return err
 		}
