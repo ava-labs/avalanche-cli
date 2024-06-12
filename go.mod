@@ -62,7 +62,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/VictoriaMetrics/fastcache v1.10.0 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
-	github.com/ava-labs/avalanche-tooling-sdk-go v0.0.1-0.20240611184958-aefe655152c2 // indirect
+	github.com/ava-labs/avalanche-tooling-sdk-go v0.0.1-0.20240611211612-8711b098bfd6 // indirect
 	github.com/ava-labs/ledger-avalanche/go v0.0.0-20231102202641-ae2ebdaeac34 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.16 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.3 // indirect

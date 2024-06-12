@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -90,14 +89,10 @@ func PostOverSSH(host *sdkHost.Host, path string, requestBody string) ([]byte, e
 	if path == "" {
 		path = "/ext/info"
 	}
-	localhost, err := url.Parse(constants.LocalAPIEndpoint)
-	if err != nil {
-		return nil, err
-	}
 	requestHeaders := fmt.Sprintf("POST %s HTTP/1.1\r\n"+
 		"Host: %s\r\n"+
 		"Content-Length: %d\r\n"+
-		"Content-Type: application/json\r\n\r\n", path, localhost, len(requestBody))
+		"Content-Type: application/json\r\n\r\n", path, "localhost", len(requestBody))
 	httpRequest := requestHeaders + requestBody
 	return host.Forward(httpRequest, constants.SSHPOSTTimeout)
 }
