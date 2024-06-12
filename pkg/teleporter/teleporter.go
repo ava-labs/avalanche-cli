@@ -237,8 +237,6 @@ func (t *Deployer) DownloadAssets(
 }
 
 func (t *Deployer) Deploy(
-	teleporterInstallDir string,
-	version string,
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -253,8 +251,6 @@ func (t *Deployer) Deploy(
 	)
 	if deployMessenger {
 		alreadyDeployed, messengerAddress, err = t.DeployMessenger(
-			teleporterInstallDir,
-			version,
 			subnetName,
 			rpcURL,
 			privateKey,
@@ -262,15 +258,13 @@ func (t *Deployer) Deploy(
 	}
 	if err == nil && deployRegistry {
 		if !deployMessenger || !alreadyDeployed {
-			registryAddress, err = t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, privateKey)
+			registryAddress, err = t.DeployRegistry(subnetName, rpcURL, privateKey)
 		}
 	}
 	return alreadyDeployed, messengerAddress, registryAddress, err
 }
 
 func (t *Deployer) DeployMessenger(
-	teleporterInstallDir string,
-	version string,
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -322,8 +316,6 @@ func (t *Deployer) DeployMessenger(
 }
 
 func (t *Deployer) DeployRegistry(
-	teleporterInstallDir string,
-	version string,
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -410,9 +402,13 @@ func DeployAndFundRelayer(
 	}
 	endpoint := network.BlockchainEndpoint(blockchainID)
 	td := Deployer{}
-	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
+	if err := td.DownloadAssets(
 		app.GetTeleporterBinDir(),
 		teleporterVersion,
+	); err != nil {
+		return false, "", "", err
+	}
+	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
 		subnetName,
 		endpoint,
 		privKeyStr,

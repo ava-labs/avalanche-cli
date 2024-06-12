@@ -272,9 +272,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
+	//app.GetTeleporterBinDir(),
+	//teleporterVersion,
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
-		app.GetTeleporterBinDir(),
-		teleporterVersion,
 		teleporterSubnetDesc,
 		rpcURL,
 		privateKey,
@@ -311,8 +311,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
-			app.GetTeleporterBinDir(),
-			teleporterVersion,
 			cChainName,
 			network.BlockchainEndpoint(cChainAlias),
 			ewoq.PrivKeyHex(),
