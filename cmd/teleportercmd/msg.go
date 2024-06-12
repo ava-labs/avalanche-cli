@@ -23,8 +23,14 @@ import (
 )
 
 var (
-	msgSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
-	globalNetworkFlags         networkoptions.NetworkFlags
+	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Cluster,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+		networkoptions.Devnet,
+	}
+	globalNetworkFlags networkoptions.NetworkFlags
 )
 
 // avalanche teleporter msg
