@@ -38,17 +38,22 @@ const (
 
 var (
 	globalNetworkFlags          networkoptions.NetworkFlags
-	listSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Mainnet, networkoptions.Fuji, networkoptions.Local, networkoptions.Cluster}
-	all                         bool
-	pchain                      bool
-	cchain                      bool
-	xchain                      bool
-	useNanoAvax                 bool
-	ledgerIndices               []uint
-	keys                        []string
-	tokenAddresses              []string
-	subnetToken                 string
-	subnets                     []string
+	listSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Mainnet,
+		networkoptions.Fuji,
+		networkoptions.Local,
+		networkoptions.Devnet,
+	}
+	all            bool
+	pchain         bool
+	cchain         bool
+	xchain         bool
+	useNanoAvax    bool
+	ledgerIndices  []uint
+	keys           []string
+	tokenAddresses []string
+	subnetToken    string
+	subnets        []string
 )
 
 // avalanche subnet list
