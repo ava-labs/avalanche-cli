@@ -44,16 +44,17 @@ var (
 		networkoptions.Local,
 		networkoptions.Devnet,
 	}
-	all            bool
-	pchain         bool
-	cchain         bool
-	xchain         bool
-	useNanoAvax    bool
-	ledgerIndices  []uint
-	keys           []string
-	tokenAddresses []string
-	subnetToken    string
-	subnets        []string
+	all             bool
+	pchain          bool
+	cchain          bool
+	xchain          bool
+	useNanoAvax     bool
+	ledgerIndices   []uint
+	keys            []string
+	tokenAddresses  []string
+	subnetToken     string
+	subnets         []string
+	showNativeToken bool
 )
 
 // avalanche subnet list
@@ -116,12 +117,12 @@ keys or for the ledger addresses associated to certain indices.`,
 		&subnets,
 		"subnets",
 		[]string{},
-		"specify which subnets to show information about (p=p-chain, x=x-chain, c=c-chain, and subnet names). defaults to `p,x,c`",
+		"subnets to show information about (p=p-chain, x=x-chain, c=c-chain, and subnet names) (default p,x,c)",
 	)
 	cmd.Flags().StringSliceVar(
 		&tokenAddresses,
 		"tokens",
-		[]string{},
+		[]string{"Native"},
 		"provide balance information for the given token contract addresses (Evm only)",
 	)
 	return cmd
@@ -279,6 +280,10 @@ func listKeys(*cobra.Command, []string) error {
 		cchain = false
 		xchain = false
 	}
+	if utils.Belongs(tokenAddresses, "Native") {
+		showNativeToken = true
+	}
+	tokenAddresses = utils.RemoveFromSlice(tokenAddresses, "Native")
 	clients, err := getClients(networks, pchain, cchain, xchain, subnets)
 	if err != nil {
 		return err
@@ -501,27 +506,30 @@ func getEvmBasedChainAddrInfo(
 	kind string,
 	name string,
 ) ([]addressInfo, error) {
-	cChainBalance, err := getCChainBalanceStr(cClient, cChainAddr)
-	if err != nil {
-		// just ignore local network errors
-		if network.Kind != models.Local {
-			return nil, err
+	addressInfos := []addressInfo{}
+	if showNativeToken {
+		cChainBalance, err := getCChainBalanceStr(cClient, cChainAddr)
+		if err != nil {
+			// just ignore local network errors
+			if network.Kind != models.Local {
+				return nil, err
+			}
 		}
+		taggedChainToken := chainToken
+		if taggedChainToken != "AVAX" {
+			taggedChainToken = fmt.Sprintf("%s (Native)", taggedChainToken)
+		}
+		info := addressInfo{
+			kind:    kind,
+			name:    name,
+			chain:   chainName,
+			token:   taggedChainToken,
+			address: cChainAddr,
+			balance: cChainBalance,
+			network: network.Name(),
+		}
+		addressInfos = append(addressInfos, info)
 	}
-	taggedChainToken := chainToken
-	if taggedChainToken != "AVAX" {
-		taggedChainToken = fmt.Sprintf("%s (Native)", taggedChainToken)
-	}
-	info := addressInfo{
-		kind:    kind,
-		name:    name,
-		chain:   chainName,
-		token:   taggedChainToken,
-		address: cChainAddr,
-		balance: cChainBalance,
-		network: network.Name(),
-	}
-	addressInfos := []addressInfo{info}
 	if cGethClient != nil {
 		for _, tokenAddress := range tokenAddresses {
 			token, err := erc20.NewGGToken(common.HexToAddress(tokenAddress), cGethClient)
