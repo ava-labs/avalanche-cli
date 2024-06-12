@@ -587,7 +587,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
-		// sc.TeleporterVersion,
 		td := teleporter.Deployer{}
 		if teleporterEsp.MessengerContractAddressPath != "" {
 			if err := td.SetAssetsFromPaths(
@@ -595,6 +594,25 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 				teleporterEsp.MessengerDeployerAddressPath,
 				teleporterEsp.MessengerDeployerTxPath,
 				teleporterEsp.RegistryBydecodePath,
+			); err != nil {
+				return nil, err
+			}
+		} else {
+			teleporterVersion := ""
+			if teleporterEsp.Version != "" && teleporterEsp.Version != "latest" {
+				teleporterVersion = teleporterEsp.Version
+			} else if sc.TeleporterVersion != "" {
+				teleporterVersion = sc.TeleporterVersion
+			} else {
+				teleporterInfo, err := teleporter.GetInfo(d.app)
+				if err != nil {
+					return nil, err
+				}
+				teleporterVersion = teleporterInfo.Version
+			}
+			if err := td.DownloadAssets(
+				d.app.GetTeleporterBinDir(),
+				teleporterVersion,
 			); err != nil {
 				return nil, err
 			}
