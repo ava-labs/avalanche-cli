@@ -262,6 +262,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// Gas token
+	externalGasToken := false
 	if subnetType == models.SubnetEvm && genesisFile == "" {
 		nativeTokenOption := "It's own Native Token"
 		externalTokenOption := "A token from another blockchain"
@@ -319,6 +320,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 					}
 				}
 			case externalTokenOption:
+				externalGasToken = true
 			case explainOption:
 				ux.Logger.PrintToUser("The difference is...")
 				ux.Logger.PrintToUser("")
@@ -413,13 +415,16 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	// Interoperability
 	var teleporterInfo *teleporter.Info
 	if subnetType == models.SubnetEvm || genesisFileIsEVM {
+		if externalGasToken {
+			useTeleporter = true
+		}
 		if evmDefaults {
 			useTeleporter = true
 		}
 		flagName := "teleporter"
 		if flag := cmd.Flags().Lookup(flagName); flag == nil {
 			return fmt.Errorf("flag configuration %q not found for cmd %q", flagName, cmd.Use)
-		} else if !flag.Changed {
+		} else if !flag.Changed && !externalGasToken {
 			interoperatingBlockchainOption := "Yes, I want my blockchain to be able to interoperate with other blockchains and the C-Chain"
 			isolatedBlockchainOption := "No, I want to run my blockchain isolated"
 			explainOption := "Explain the difference"
