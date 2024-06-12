@@ -82,7 +82,7 @@ func getMap(
 			name := ""
 			if len(params) == 1 {
 				rt := reflect.TypeOf(params[0])
-				if rt.NumField() == len(types) {
+				if rt.Kind() == reflect.Struct && rt.NumField() == len(types) {
 					name = rt.Field(i).Name
 				}
 			}
@@ -97,6 +97,7 @@ func getMap(
 
 func ParseMethodEsp(
 	methodEsp string,
+	constructor bool,
 	paid bool,
 	view bool,
 	params ...interface{},
@@ -132,17 +133,21 @@ func ParseMethodEsp(
 	abiMap := []map[string]interface{}{
 		{
 			"inputs":          inputs,
-			"outputs":         outputs,
-			"name":            methodName,
-			"statemutability": "nonpayable",
+			"stateMutability": "nonpayable",
 			"type":            "function",
 		},
 	}
+	if !constructor {
+		abiMap[0]["outputs"] = outputs
+		abiMap[0]["name"] = methodName
+	} else {
+		abiMap[0]["type"] = "constructor"
+	}
 	if paid {
-		abiMap[0]["statemutability"] = "payable"
+		abiMap[0]["stateMutability"] = "payable"
 	}
 	if view {
-		abiMap[0]["statemutability"] = "view"
+		abiMap[0]["stateMutability"] = "view"
 	}
 	abiBytes, err := json.MarshalIndent(abiMap, "", "  ")
 	if err != nil {
@@ -153,13 +158,13 @@ func ParseMethodEsp(
 
 func TxToMethod(
 	rpcURL string,
-	prefundedPrivateKey string,
+	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
 	methodEsp string,
 	params ...interface{},
 ) error {
-	methodName, methodABI, err := ParseMethodEsp(methodEsp, payment != nil, false, params...)
+	methodName, methodABI, err := ParseMethodEsp(methodEsp, false, payment != nil, false, params...)
 	if err != nil {
 		return err
 	}
@@ -176,7 +181,7 @@ func TxToMethod(
 	}
 	defer client.Close()
 	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
-	txOpts, err := evm.GetTxOptsWithSigner(client, prefundedPrivateKey)
+	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
 	if err != nil {
 		return err
 	}
@@ -199,7 +204,7 @@ func CallToMethod(
 	methodEsp string,
 	params ...interface{},
 ) ([]interface{}, error) {
-	methodName, methodABI, err := ParseMethodEsp(methodEsp, false, true, params...)
+	methodName, methodABI, err := ParseMethodEsp(methodEsp, false, false, true, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -222,4 +227,45 @@ func CallToMethod(
 		return nil, err
 	}
 	return out, nil
+}
+
+func DeployContract(
+	rpcURL string,
+	privateKey string,
+	binBytes []byte,
+	methodEsp string,
+	params ...interface{},
+) (common.Address, error) {
+	_, methodABI, err := ParseMethodEsp(methodEsp, true, false, false, params...)
+	if err != nil {
+		return common.Address{}, err
+	}
+	metadata := &bind.MetaData{
+		ABI: methodABI,
+		Bin: string(binBytes),
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return common.Address{}, err
+	}
+	bin := common.FromHex(metadata.Bin)
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return common.Address{}, err
+	}
+	defer client.Close()
+	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, params...)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+		return common.Address{}, err
+	} else if !success {
+		return common.Address{}, fmt.Errorf("failed receipt status deploying contract")
+	}
+	return address, nil
 }
