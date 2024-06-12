@@ -78,6 +78,63 @@ func (t *Deployer) GetAssets(
 	return t.messengerContractAddress, t.messengerDeployerAddress, t.messengerDeployerTx, t.registryBydecode, nil
 }
 
+func (t *Deployer) SetAssetsFromPaths(
+	messengerContractAddressPath string,
+	messengerDeployerAddressPath string,
+	messengerDeployerTxPath string,
+	registryBydecodePath string,
+) error {
+	if messengerContractAddressPath != "" {
+		if bs, err := os.ReadFile(messengerContractAddressPath); err != nil {
+			return err
+		} else {
+			t.messengerContractAddress = string(bs)
+		}
+	}
+	if messengerDeployerAddressPath != "" {
+		if bs, err := os.ReadFile(messengerDeployerAddressPath); err != nil {
+			return err
+		} else {
+			t.messengerDeployerAddress = string(bs)
+		}
+	}
+	if messengerDeployerTxPath != "" {
+		if bs, err := os.ReadFile(messengerDeployerTxPath); err != nil {
+			return err
+		} else {
+			t.messengerDeployerTx = string(bs)
+		}
+	}
+	if registryBydecodePath != "" {
+		if bs, err := os.ReadFile(registryBydecodePath); err != nil {
+			return err
+		} else {
+			t.registryBydecode = string(bs)
+		}
+	}
+	return nil
+}
+
+func (t *Deployer) SetAssets(
+	messengerContractAddress string,
+	messengerDeployerAddress string,
+	messengerDeployerTx string,
+	registryBydecode string,
+) {
+	if messengerContractAddress != "" {
+		t.messengerContractAddress = messengerContractAddress
+	}
+	if messengerDeployerAddress != "" {
+		t.messengerDeployerAddress = messengerDeployerAddress
+	}
+	if messengerDeployerTx != "" {
+		t.messengerDeployerTx = messengerDeployerTx
+	}
+	if registryBydecode != "" {
+		t.registryBydecode = registryBydecode
+	}
+}
+
 func (t *Deployer) DownloadAssets(
 	teleporterInstallDir string,
 	version string,
