@@ -4,11 +4,9 @@ go 1.21.11
 
 toolchain go1.22.3
 
-replace github.com/ava-labs/apm => ../apm/
-
 require (
-	github.com/ava-labs/apm v0.0.4
-	github.com/ava-labs/avalanche-network-runner v1.8.1-0.20240613142421-f1ff2d3d844a
+	github.com/ava-labs/apm v1.0.0
+	github.com/ava-labs/avalanche-network-runner v1.8.1-0.20240613173905-80d33ed0b7b9
 	github.com/ava-labs/avalanchego v1.11.8
 	github.com/ava-labs/awm-relayer v1.3.0
 	github.com/ava-labs/coreth v0.13.5-rc.0
