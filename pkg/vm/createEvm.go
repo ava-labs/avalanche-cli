@@ -64,7 +64,7 @@ func CreateEvmSubnetConfig(
 	}
 
 	if genesisPath == "" {
-		var genesisParams subnet.EVMGenesisParams
+		var genesisParams subnet.SubnetEVMParams
 		genesisParams, sc, err = createEvmGenesisBytes(
 			app,
 			subnetName,
@@ -80,11 +80,8 @@ func CreateEvmSubnetConfig(
 			return nil, &models.Sidecar{}, err
 		}
 		subnetParams := subnet.SubnetParams{
-			SubnetEVM: &subnet.SubnetEVMParams{
-				EnableWarp:    useWarp,
-				GenesisParams: &genesisParams,
-			},
-			Name: subnetName,
+			SubnetEVM: &genesisParams,
+			Name:      subnetName,
 		}
 		newSubnet, err := subnet.New(&subnetParams)
 		if err != nil {
@@ -120,7 +117,7 @@ func createEvmGenesisBytes(
 	useSubnetEVMDefaults bool,
 	useWarp bool,
 	teleporterInfo *teleporterSDK.Info,
-) (subnet.EVMGenesisParams, *models.Sidecar, error) {
+) (subnet.SubnetEVMParams, *models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
 
 	genesis := core.Genesis{}
@@ -148,7 +145,7 @@ func createEvmGenesisBytes(
 		[]string{descriptorsState, feeState, airdropState, precompilesState},
 	)
 	if err != nil {
-		return subnet.EVMGenesisParams{}, nil, err
+		return subnet.SubnetEVMParams{}, nil, err
 	}
 	for subnetEvmState.Running() {
 		switch subnetEvmState.CurrentState() {
@@ -175,7 +172,7 @@ func createEvmGenesisBytes(
 			err = errors.New("invalid creation stage")
 		}
 		if err != nil {
-			return subnet.EVMGenesisParams{}, nil, err
+			return subnet.SubnetEVMParams{}, nil, err
 		}
 		subnetEvmState.NextState(direction)
 	}
@@ -190,7 +187,8 @@ func createEvmGenesisBytes(
 		TokenName:   tokenSymbol + " Token",
 	}
 
-	genesisParams := subnet.EVMGenesisParams{
+	genesisParams := subnet.SubnetEVMParams{
+		EnableWarp:     useWarp,
 		ChainID:        chainID,
 		FeeConfig:      conf.FeeConfig,
 		Allocation:     allocation,

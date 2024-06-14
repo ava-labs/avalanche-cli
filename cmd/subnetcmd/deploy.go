@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+
 	subnetSDK "github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -477,31 +479,38 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-
-	if createSubnet {
-		subnetParams := subnetSDK.SubnetParams{
-			Name:            subnetName,
-			GenesisFilePath: app.GetGenesisPath(subnetName),
-		}
-		subnet, err := subnetSDK.New(&subnetParams)
-		if err != nil {
-			return err
-		}
-		subnetMultiSig, err := deployer.DeploySubnet(*subnet, controlKeys, threshold)
-		if err != nil {
-			return err
-		}
-		subnetID, err = subnetMultiSig.GetSubnetID()
-		if err != nil {
-			return err
-		}
-		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, ids.Empty)
-		if err != nil {
-			return err
-		}
+	subnetParams := subnetSDK.SubnetParams{
+		Name:            subnetName,
+		GenesisFilePath: app.GetGenesisPath(subnetName),
 	}
-
+	subnet, err := subnetSDK.New(&subnetParams)
+	if err != nil {
+		return err
+	}
+	controlKeysIDs, err := address.ParseToIDs(controlKeys)
+	if err != nil {
+		return fmt.Errorf("failure parsing control keys: %w", err)
+	}
+	subnetAuthKeysIDs, err := address.ParseToIDs(subnetAuthKeys)
+	if err != nil {
+		return fmt.Errorf("failure parsing subnet auth keys: %w", err)
+	}
+	subnet.SetDeployParams(controlKeysIDs, subnetAuthKeysIDs, threshold)
+	if createSubnet {
+		subnetID, err = deployer.DeploySubnet(*subnet)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
+		// TODO: removing this because seems that control keys and threshold shouldn't change
+		// get the control keys in the same order as the tx
+		//controlKeys, threshold, err = txutils.GetOwners(network, subnetID, ids.Empty)
+		//if err != nil {
+		//	return err
+		//}
+		//subnet.SetDeployParams(controlKeys, subnetAuthKeysIDs, threshold)
+	}
+	subnet.SubnetID = subnetID
 	var (
 		savePartialTx           bool
 		blockchainID            ids.ID
@@ -512,19 +521,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 
 	if !subnetOnly {
 		isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.DeployBlockchain(
-			controlKeys,
-			subnetAuthKeys,
-			subnetID,
+			subnet,
 			transferSubnetOwnershipTxID,
-			chain,
-			chainGenesis,
 		)
 		if err != nil {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
 		}
-
 		savePartialTx = !isFullySigned && err == nil
 	}
 

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/multisig"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet"
 
@@ -23,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -39,12 +37,14 @@ import (
 
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
 
+// TODO: phase out wallet as we implement sdkWallet
 type PublicDeployer struct {
 	LocalDeployer
-	kc      *keychain.Keychain
-	network models.Network
-	app     *application.Avalanche
-	wallet  primary.Wallet
+	kc        *keychain.Keychain
+	network   models.Network
+	app       *application.Avalanche
+	wallet    primary.Wallet
+	sdkWallet *wallet.Wallet
 }
 
 func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
@@ -407,25 +407,18 @@ func (d *PublicDeployer) AddPermissionlessDelegator(
 // DeploySubnet creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
 	subnet subnet.Subnet,
-	controlKeys []string,
-	threshold uint32,
-) (*multisig.Multisig, error) {
+) (ids.ID, error) {
 	wallet, err := d.loadSDKWallet()
 	if err != nil {
-		return nil, err
+		return ids.Empty, err
 	}
-	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
-	if err != nil {
-		return nil, err
-	}
-	// deploy Subnet returns multisig and error
 	deploySubnetTx, err := subnet.CreateSubnetTx(wallet)
 	if err != nil {
-		return nil, err
+		return ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
+	subnetID, err := deploySubnetTx.GetWrappedPChainTx()
 	time.Sleep(2 * time.Second)
-	return deploySubnetTx, nil
+	return d.CommitSDK(subnetID, true)
 }
 
 // creates a blockchain for the given [subnetID]
@@ -435,52 +428,43 @@ func (d *PublicDeployer) DeploySubnet(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) DeployBlockchain(
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
-	subnetID ids.ID,
+	subnet *subnet.Subnet,
 	transferSubnetOwnershipTxID ids.ID,
-	chain string,
-	genesis []byte,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheSDKWallet(subnet.SubnetID, transferSubnetOwnershipTxID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
-	}
-
-	vmID, err := anrutils.VMID(chain)
-	if err != nil {
-		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
-	}
-
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
-	if err != nil {
-		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "CreateChain transaction")
 
-	tx, err := d.createBlockchainTx(subnetAuthKeys, chain, vmID, subnetID, genesis, wallet)
+	// deploy Subnet returns multisig and error
+	deployBlockchainTx, err := subnet.CreateBlockchainTx(wallet)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	_, remainingSubnetAuthKeys, err := deployBlockchainTx.GetRemainingAuthSigners()
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
 	isFullySigned := len(remainingSubnetAuthKeys) == 0
 
 	id := ids.Empty
+	tx, err := deployBlockchainTx.GetWrappedPChainTx()
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
 	if isFullySigned {
-		id, err = d.Commit(tx, true)
+		id, err = d.CommitSDK(tx, true)
 		if err != nil {
 			return false, ids.Empty, nil, nil, err
 		}
 	}
 
-	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
+	return isFullySigned, id, tx, ids.ShortIDsToStrings(remainingSubnetAuthKeys), nil
 }
 
 func (d *PublicDeployer) Commit(
@@ -517,6 +501,45 @@ func (d *PublicDeployer) Commit(
 	}
 	if issueTxErr != nil {
 		d.cleanCacheWallet()
+	}
+	return tx.ID(), issueTxErr
+}
+
+// TODO: Replace commit with commitsdk and rename back to commit
+func (d *PublicDeployer) CommitSDK(
+	tx *txs.Tx,
+	waitForTxAcceptance bool,
+) (ids.ID, error) {
+	const (
+		repeats             = 3
+		sleepBetweenRepeats = 2 * time.Second
+	)
+	var issueTxErr error
+	wallet, err := d.loadCacheSDKWallet()
+	if err != nil {
+		return ids.Empty, err
+	}
+	for i := 0; i < repeats; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		options := []common.Option{common.WithContext(ctx)}
+		if !waitForTxAcceptance {
+			options = append(options, common.WithAssumeDecided())
+		}
+		issueTxErr = wallet.P().IssueTx(tx, options...)
+		if issueTxErr == nil {
+			break
+		}
+		if ctx.Err() != nil {
+			issueTxErr = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), issueTxErr)
+		} else {
+			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), issueTxErr)
+		}
+		ux.Logger.RedXToUser("%s", issueTxErr)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	if issueTxErr != nil {
+		d.cleanCacheSDKWallet()
 	}
 	return tx.ID(), issueTxErr
 }
@@ -575,7 +598,7 @@ func (d *PublicDeployer) loadSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, err
 	ctx := context.Background()
 	// filter out ids.Empty txs
 	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
-	primaryWallet, err := primary.MakeWallet(
+	return wallet.New(
 		ctx,
 		&primary.WalletConfig{
 			URI:              d.network.Endpoint,
@@ -584,15 +607,14 @@ func (d *PublicDeployer) loadSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, err
 			PChainTxsToFetch: set.Of(filteredTxs...),
 		},
 	)
-	if err != nil {
-		return wallet.Wallet{}, err
-	}
-	wallet := wallet.Wallet{Wallet: primaryWallet}
-	return wallet, nil
 }
 
 func (d *PublicDeployer) cleanCacheWallet() {
 	d.wallet = nil
+}
+
+func (d *PublicDeployer) cleanCacheSDKWallet() {
+	d.sdkWallet = nil
 }
 
 func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
@@ -601,6 +623,16 @@ func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, 
 		d.wallet, err = d.loadWallet(preloadTxs...)
 	}
 	return d.wallet, err
+}
+
+func (d *PublicDeployer) loadCacheSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, error) {
+	var err error
+	var sdkWallet wallet.Wallet
+	if d.sdkWallet == nil {
+		sdkWallet, err = d.loadSDKWallet(preloadTxs...)
+		d.sdkWallet = &sdkWallet
+	}
+	return *d.sdkWallet, err
 }
 
 func (d *PublicDeployer) getMultisigTxOptions(subnetAuthKeys []ids.ShortID) []common.Option {
