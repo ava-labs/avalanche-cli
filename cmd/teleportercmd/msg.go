@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package teleportercmd
 
@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -30,6 +31,8 @@ var (
 		networkoptions.Devnet,
 	}
 	globalNetworkFlags networkoptions.NetworkFlags
+	destinationAddress string
+	hexEncodedMessage  bool
 )
 
 // avalanche teleporter msg
@@ -42,6 +45,8 @@ func newMsgCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(3),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, msgSupportedNetworkOptions)
+	cmd.Flags().BoolVar(&hexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
+	cmd.Flags().StringVar(&destinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
 	return cmd
 }
 
@@ -101,17 +106,28 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	encodedMessage := []byte(message)
+	if hexEncodedMessage {
+		encodedMessage = common.FromHex(message)
+	}
+	destAddr := common.Address{}
+	if destinationAddress != "" {
+		if err := prompts.ValidateAddress(destinationAddress); err != nil {
+			return fmt.Errorf("failure validating address %s: %w", destinationAddress, err)
+		}
+		destAddr = common.HexToAddress(destinationAddress)
+	}
 	// send tx to the teleporter contract at the source
 	msgInput := teleportermessenger.TeleporterMessageInput{
 		DestinationBlockchainID: destBlockchainID,
-		DestinationAddress:      common.Address{},
+		DestinationAddress:      destAddr,
 		FeeInfo: teleportermessenger.TeleporterFeeInfo{
 			FeeTokenAddress: common.Address{},
 			Amount:          big.NewInt(0),
 		},
 		RequiredGasLimit:        big.NewInt(0),
 		AllowedRelayerAddresses: []common.Address{},
-		Message:                 []byte(message),
+		Message:                 encodedMessage,
 	}
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
 	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, sourceKey.PrivKeyHex())
