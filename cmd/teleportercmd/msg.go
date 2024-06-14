@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -71,7 +72,7 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, _, sourceChainID, sourceMessengerAddress, _, sourceKey, err := bridgecmd.GetSubnetParams(
+	_, _, sourceBlockchainID, sourceMessengerAddress, _, sourceKey, err := bridgecmd.GetSubnetParams(
 		network,
 		sourceSubnetName,
 		isCChain(sourceSubnetName),
@@ -79,7 +80,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, _, destChainID, destMessengerAddress, _, _, err := bridgecmd.GetSubnetParams(
+	_, _, destBlockchainID, destMessengerAddress, _, _, err := bridgecmd.GetSubnetParams(
 		network,
 		destSubnetName,
 		isCChain(destSubnetName),
@@ -96,7 +97,7 @@ func msg(_ *cobra.Command, args []string) error {
 	defer cancel()
 
 	// get clients + messengers
-	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceChainID.String()))
+	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceBlockchainID.String()))
 	if err != nil {
 		return err
 	}
@@ -104,7 +105,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	destWebSocketClient, err := evm.GetClient(network.BlockchainWSEndpoint(destChainID.String()))
+	destWebSocketClient, err := evm.GetClient(network.BlockchainWSEndpoint(destBlockchainID.String()))
 	if err != nil {
 		return err
 	}
@@ -121,10 +122,30 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 	defer destHeadsSubscription.Unsubscribe()
 
+	nextMessageID, err := teleporter.GetNextMessageID(
+		network.BlockchainEndpoint(sourceBlockchainID.String()),
+		common.HexToAddress(sourceMessengerAddress),
+		destBlockchainID,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(hex.EncodeToString(nextMessageID[:]))
+
+	b, err := teleporter.MessageReceived(
+		network.BlockchainEndpoint(destBlockchainID.String()),
+		common.HexToAddress(destMessengerAddress),
+		nextMessageID,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(b, err)
+
 	// send tx to the teleporter contract at the source
 	sourceAddress := common.HexToAddress(sourceKey.C())
 	msgInput := teleportermessenger.TeleporterMessageInput{
-		DestinationBlockchainID: destChainID,
+		DestinationBlockchainID: destBlockchainID,
 		DestinationAddress:      sourceAddress,
 		FeeInfo: teleportermessenger.TeleporterFeeInfo{
 			FeeTokenAddress: sourceAddress,
@@ -134,7 +155,7 @@ func msg(_ *cobra.Command, args []string) error {
 		AllowedRelayerAddresses: []common.Address{},
 		Message:                 []byte(message),
 	}
-	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceChainID)
+	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
 	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, sourceKey.PrivKeyHex())
 	if err != nil {
 		return err
@@ -151,7 +172,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if !b {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(network.BlockchainEndpoint(sourceChainID.String()), txHash)
+		trace, err := evm.GetTrace(network.BlockchainEndpoint(sourceBlockchainID.String()), txHash)
 		if err != nil {
 			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
 			ux.Logger.PrintToUser("")
@@ -167,22 +188,41 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if destChainID != ids.ID(sourceEvent.DestinationBlockchainID[:]) {
-		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destChainID, ids.ID(sourceEvent.DestinationBlockchainID[:]))
+	if destBlockchainID != ids.ID(sourceEvent.DestinationBlockchainID[:]) {
+		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destBlockchainID, ids.ID(sourceEvent.DestinationBlockchainID[:]))
 	}
 	if message != string(sourceEvent.Message.Message) {
 		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(sourceEvent.Message.Message))
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be received on destination subnet %q (%s)", destSubnetName, destChainID)
+	ux.Logger.PrintToUser("Waiting for message to be received on destination subnet %q (%s)", destSubnetName, destBlockchainID)
+
+	fmt.Println(hex.EncodeToString(sourceEvent.MessageID[:]))
+
+	for {
+		b, err := teleporter.MessageReceived(
+			network.BlockchainEndpoint(destBlockchainID.String()),
+			common.HexToAddress(destMessengerAddress),
+			sourceEvent.MessageID,
+		)
+		if err != nil {
+			return err
+		}
+		fmt.Println(b, err)
+		if b {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	var head *types.Header
 	select {
 	case head = <-destHeadsCh:
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	if sourceChainID == destChainID {
+	if sourceBlockchainID == destBlockchainID {
 		// we have another block
 		select {
 		case head = <-destHeadsCh:
@@ -205,7 +245,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if destReceipt.Status != types.ReceiptStatusSuccessful {
 		txHash := block.Transactions()[0].Hash().String()
 		ux.Logger.PrintToUser("error: dest receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(network.BlockchainEndpoint(destChainID.String()), txHash)
+		trace, err := evm.GetTrace(network.BlockchainEndpoint(destBlockchainID.String()), txHash)
 		if err != nil {
 			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
 			ux.Logger.PrintToUser("")
@@ -221,8 +261,8 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if sourceChainID != ids.ID(destEvent.SourceBlockchainID[:]) {
-		return fmt.Errorf("invalid source blockchain id at dest event, expected %s, got %s", sourceChainID, ids.ID(destEvent.SourceBlockchainID[:]))
+	if sourceBlockchainID != ids.ID(destEvent.SourceBlockchainID[:]) {
+		return fmt.Errorf("invalid source blockchain id at dest event, expected %s, got %s", sourceBlockchainID, ids.ID(destEvent.SourceBlockchainID[:]))
 	}
 	if message != string(destEvent.Message.Message) {
 		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(destEvent.Message.Message))

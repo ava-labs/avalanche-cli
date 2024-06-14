@@ -4,6 +4,7 @@ package teleporter
 
 import (
 	_ "embed"
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -11,10 +12,31 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+func GetNextMessageID(
+	rpcURL string,
+	messengerAddress common.Address,
+	destinationBlockchainID ids.ID,
+) (ids.ID, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		messengerAddress,
+		"getNextMessageID(bytes32)->(bytes32)",
+		destinationBlockchainID,
+	)
+	if err != nil {
+		return ids.Empty, err
+	}
+	received, b := out[0].([32]byte)
+	if !b {
+		return ids.Empty, fmt.Errorf("error at getNextMessageID call, expected ids.ID, got %T", out[0])
+	}
+	return received, nil
+}
+
 func MessageReceived(
 	rpcURL string,
 	messengerAddress common.Address,
-	messageID ids.ShortID,
+	messageID ids.ID,
 ) (bool, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
@@ -25,7 +47,10 @@ func MessageReceived(
 	if err != nil {
 		return false, err
 	}
-	received := out[0].(bool)
+	received, b := out[0].(bool)
+	if !b {
+		return false, fmt.Errorf("error at messageReceived call, expected bool, got %T", out[0])
+	}
 	return received, nil
 }
 

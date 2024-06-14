@@ -4,6 +4,7 @@ package bridge
 
 import (
 	_ "embed"
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -49,7 +50,10 @@ func ERC20TokenHubGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenAddress := out[0].(common.Address)
+	tokenAddress, b := out[0].(common.Address)
+	if !b {
+		return common.Address{}, fmt.Errorf("error at token call, expected common.Address, got %T", out[0])
+	}
 	return tokenAddress, nil
 }
 
@@ -65,7 +69,10 @@ func NativeTokenHubGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenAddress := out[0].(common.Address)
+	tokenAddress, b := out[0].(common.Address)
+	if !b {
+		return common.Address{}, fmt.Errorf("error at wrappedToken call, expected common.Address, got %T", out[0])
+	}
 	return tokenAddress, nil
 }
 
@@ -81,7 +88,10 @@ func ERC20TokenSpokeGetTokenHubAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenHubAddress := out[0].(common.Address)
+	tokenHubAddress, b := out[0].(common.Address)
+	if !b {
+		return common.Address{}, fmt.Errorf("error at tokenHubAddress call, expected common.Address, got %T", out[0])
+	}
 	return tokenHubAddress, nil
 }
 
