@@ -81,7 +81,7 @@ func UpdateKeychainWithSubnetControlKeys(
 		return errNoSubnetID
 	}
 	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
-	controlKeys, _, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+	controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}

@@ -125,7 +125,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
