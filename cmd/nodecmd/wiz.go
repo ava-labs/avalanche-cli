@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,12 +11,12 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
 	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -845,7 +846,7 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *sdkHost.
 		switch {
 		case nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService:
 			if nodeConfig.Region != lastRegion {
-				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
+				ec2Svc, err = awsAPI.NewAwsCloud(context.Background(), awsProfile, nodeConfig.Region)
 				if err != nil {
 					return err
 				}

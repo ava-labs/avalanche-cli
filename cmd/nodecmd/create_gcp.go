@@ -14,15 +14,13 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/net/context"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/compute/v1"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 
 	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
@@ -51,7 +49,8 @@ func getServiceAccountKeyFilepath() (string, error) {
 	return utils.GetRealFilePath(credJSONFilePath), err
 }
 
-func getGCPCloudCredentials() (*compute.Service, string, string, error) {
+// getGCPCloudCredentials returns gcpProjectName, gcpCredentialsPath and error
+func getGCPCloudCredentials() (string, string, error) {
 	var err error
 	var gcpCredentialsPath string
 	var gcpProjectName string
@@ -59,7 +58,7 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	if app.ClustersConfigExists() {
 		clustersConfig, err = app.LoadClustersConfig()
 		if err != nil {
-			return nil, "", "", err
+			return "", "", err
 		}
 		if clustersConfig.GCPConfig != (models.GCPConfig{}) {
 			gcpProjectName = clustersConfig.GCPConfig.ProjectName
@@ -72,27 +71,21 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 		} else {
 			gcpProjectName, err = app.Prompt.CaptureString("What is the name of your Google Cloud project?")
 			if err != nil {
-				return nil, "", "", err
+				return "", "", err
 			}
 		}
 	}
 	if gcpCredentialsPath == "" {
 		gcpCredentialsPath, err = getServiceAccountKeyFilepath()
 		if err != nil {
-			return nil, "", "", err
+			return "", "", err
 		}
 	}
 	err = os.Setenv(constants.GCPEnvVar, gcpCredentialsPath)
 	if err != nil {
-		return nil, "", "", err
+		return "", "", err
 	}
-	ctx := context.Background()
-	client, err := google.DefaultClient(ctx, compute.ComputeScope)
-	if err != nil {
-		return nil, "", "", err
-	}
-	computeService, err := compute.New(client)
-	return computeService, gcpProjectName, gcpCredentialsPath, err
+	return gcpProjectName, gcpCredentialsPath, err
 }
 
 func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, string, string, string, error) {
@@ -125,11 +118,11 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, strin
 			}
 		}
 	}
-	gcpClient, projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
+	projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
 		return nil, nil, "", "", "", err
 	}
-	gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+	gcpCloud, err := gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 	if err != nil {
 		return nil, nil, "", "", "", err
 	}
@@ -146,7 +139,7 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, strin
 			finalZones[finalZone] = numNodes
 		}
 	}
-	imageID, err := gcpCloud.GetUbuntuImageID()
+	imageID, err := gcpCloud.GetUbuntuimageID()
 	if err != nil {
 		return nil, nil, "", "", "", err
 	}

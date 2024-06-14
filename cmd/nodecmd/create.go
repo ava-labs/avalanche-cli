@@ -14,9 +14,8 @@ import (
 	"sync"
 	"time"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"

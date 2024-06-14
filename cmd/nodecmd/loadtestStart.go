@@ -9,8 +9,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -18,11 +16,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+	"golang.org/x/net/context"
 	"gopkg.in/yaml.v3"
 
 	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
@@ -226,25 +227,29 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			}
 		}
 	case constants.GCPCloudService:
-		var gcpClient *gcpAPI.GcpCloud
+		var gcpCloud *gcpAPI.GcpCloud
 		var gcpRegions map[string]NumNodes
 		var imageID string
 		var projectName string
 		if existingSeparateInstance == "" {
 			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-			gcpClient, gcpRegions, imageID, _, projectName, err = getGCPConfig(true)
+			gcpCloud, gcpRegions, imageID, _, projectName, err = getGCPConfig(true)
 			if err != nil {
 				return err
 			}
 			regions := maps.Keys(gcpRegions)
 			separateHostRegion = regions[0]
-			loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, clusterName, true)
+			loadTestCloudConfig, err = createGCPInstance(gcpCloud, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, clusterName, true)
 			if err != nil {
 				return err
 			}
 			loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
 		} else {
-			_, projectName, _, err = getGCPCloudCredentials()
+			projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
+			if err != nil {
+				return err
+			}
+			gcpCloud, err = gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 			if err != nil {
 				return err
 			}
@@ -261,7 +266,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			loadTestNodeConfig.PublicIPs = []string{loadTestPublicIPMap[loadTestNodeConfig.InstanceIDs[0]]}
 		}
 		if existingSeparateInstance == "" {
-			if err = grantAccessToPublicIPViaFirewall(gcpClient, projectName, loadTestNodeConfig.PublicIPs[0], "loadtest"); err != nil {
+			if err = grantAccessToPublicIPViaFirewall(gcpCloud, projectName, loadTestNodeConfig.PublicIPs[0], "loadtest"); err != nil {
 				return err
 			}
 		}

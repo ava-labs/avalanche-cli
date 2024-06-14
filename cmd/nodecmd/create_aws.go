@@ -8,14 +8,15 @@ import (
 	"strings"
 
 	"golang.org/x/exp/maps"
+	"golang.org/x/net/context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -72,7 +73,7 @@ func printExpiredCredentialsOutput(awsProfile string) {
 
 // getAWSCloudCredentials gets AWS account credentials defined in .aws dir in user home dir
 func getAWSCloudCredentials(awsProfile, region string) (*awsAPI.AwsCloud, error) {
-	return awsAPI.NewAwsCloud(awsProfile, region)
+	return awsAPI.NewAwsCloud(context.Background(), awsProfile, region)
 }
 
 // promptKeyPairName get custom name for key pair if the default key pair name that we use cannot be used for this EC2 instance
@@ -495,7 +496,7 @@ func createAWSInstances(
 		for region, regionInstanceID := range instanceIDs {
 			for _, instanceID := range regionInstanceID {
 				ux.Logger.PrintToUser(fmt.Sprintf("Destroying AWS cloud server %s...", instanceID))
-				if destroyErr := ec2Svc[region].DestroyInstance(instanceID, "", true); destroyErr != nil {
+				if destroyErr := destroyAWSInstance(ec2Svc[region], instanceID, ""); destroyErr != nil {
 					failedNodes[instanceID] = destroyErr
 				}
 				ux.Logger.PrintToUser(fmt.Sprintf("AWS cloud server instance %s destroyed", instanceID))

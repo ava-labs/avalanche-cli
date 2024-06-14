@@ -8,13 +8,13 @@ import (
 	"os"
 	"strings"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
 
@@ -151,7 +151,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	// TODO: need implementation for GCP
 	if nodeToStopConfig.CloudService == constants.AWSCloudService {
 		for _, sg := range filteredSGList {
-			sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+			sgEc2Svc, err := awsAPI.NewAwsCloud(context.Background(), awsProfile, sg.region)
 			if err != nil {
 				return err
 			}
@@ -170,7 +170,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 					return fmt.Errorf("cloud access is required")
 				}
-				if err = ec2SvcMap[nodeConfig.Region].DestroyAWSNode(nodeConfig, clusterName); err != nil {
+				if err = ec2SvcMap[nodeConfig.Region].DestroyAWSNode(nodeConfig.NodeID); err != nil {
 					if isExpiredCredentialError(err) {
 						ux.Logger.PrintToUser("")
 						printExpiredCredentialsOutput(awsProfile)
@@ -193,11 +193,11 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					return fmt.Errorf("cloud access is required")
 				}
 				if gcpCloud == nil {
-					gcpClient, projectName, _, err := getGCPCloudCredentials()
+					projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 					if err != nil {
 						return err
 					}
-					gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+					gcpCloud, err = gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 					if err != nil {
 						return err
 					}
@@ -284,4 +284,32 @@ func getClusterNodes(clusterName string) ([]string, error) {
 		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
 	return clusterNodes, nil
+}
+
+// destroyAWSInstance destroys an AWS instance and releases an elastic IP. It's just a sugar for destroyAWSNode and ReleaseElasticIP
+func destroyAWSInstance(awsCloud *awsAPI.AwsCloud, instanceID string, elasticIP string) error {
+	if instanceID != "" {
+		if err := awsCloud.DestroyAWSNode(instanceID); err != nil {
+			return err
+		}
+	}
+	if elasticIP != "" {
+		if err := awsCloud.ReleasePublicIP(elasticIP); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func destroyGCPInstance(gcpCloud *gcpAPI.GcpCloud, instanceID string, elasticIP string) error {
+	if instanceID != "" {
+		if err := gcpCloud.DestroyGCPNode(instanceID); err != nil {
+			return err
+		}
+	}
+	if elasticIP != "" {
+		if err := gcpCloud.ReleaseStaticIP(elasticIP); err != nil {
+			return err
+		}
+	}
 }
