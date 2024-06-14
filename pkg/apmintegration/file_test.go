@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/version"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +29,9 @@ const (
 	vm = "testvm"
 
 	testSubnetYaml = `subnet:
-  id: "abcd"
+  id:
+    k1: v1
+    k2: v2
   alias: "testsubnet"
   homepage: "https://subnet.com"
   description: It's a subnet
@@ -208,7 +209,10 @@ func TestLoadSubnetFile_Success(t *testing.T) {
 	require.NoError(err)
 
 	expectedSubnet := types.Subnet{
-		ID:          "abcd",
+		ID: map[string]string{
+			"k1": "v1",
+			"k2": "v2",
+		},
 		Alias:       "testsubnet",
 		Homepage:    "https://subnet.com",
 		Description: "It's a subnet",
@@ -290,11 +294,6 @@ func TestLoadVMFile(t *testing.T) {
 		InstallScript: "scripts/build.sh",
 		URL:           "https://github.com/org/repo/archive/refs/tags/v1.0.0.tar.gz",
 		SHA256:        "1ac250f6c40472f22eaf0616fc8c886078a4eaa9b2b85fbb4fb7783a1db6af3f",
-		Version: version.Semantic{
-			Major: 1,
-			Minor: 0,
-			Patch: 0,
-		},
 	}
 
 	loadedVM, err := LoadVMFile(app, makeAlias(org1, repo1), vm)
