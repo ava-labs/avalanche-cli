@@ -4,7 +4,6 @@ package teleportercmd
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/subnet-evm/core/types"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -93,9 +91,6 @@ func msg(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
 	// get clients + messengers
 	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceBlockchainID.String()))
 	if err != nil {
@@ -105,53 +100,16 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	destWebSocketClient, err := evm.GetClient(network.BlockchainWSEndpoint(destBlockchainID.String()))
-	if err != nil {
-		return err
-	}
-	destMessenger, err := teleportermessenger.NewTeleporterMessenger(common.HexToAddress(destMessengerAddress), destWebSocketClient)
-	if err != nil {
-		return err
-	}
-
-	// subscribe to get new heads from destination
-	destHeadsCh := make(chan *types.Header, 10)
-	destHeadsSubscription, err := destWebSocketClient.SubscribeNewHead(ctx, destHeadsCh)
-	if err != nil {
-		return err
-	}
-	defer destHeadsSubscription.Unsubscribe()
-
-	nextMessageID, err := teleporter.GetNextMessageID(
-		network.BlockchainEndpoint(sourceBlockchainID.String()),
-		common.HexToAddress(sourceMessengerAddress),
-		destBlockchainID,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println(hex.EncodeToString(nextMessageID[:]))
-
-	b, err := teleporter.MessageReceived(
-		network.BlockchainEndpoint(destBlockchainID.String()),
-		common.HexToAddress(destMessengerAddress),
-		nextMessageID,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println(b, err)
 
 	// send tx to the teleporter contract at the source
-	sourceAddress := common.HexToAddress(sourceKey.C())
 	msgInput := teleportermessenger.TeleporterMessageInput{
 		DestinationBlockchainID: destBlockchainID,
-		DestinationAddress:      sourceAddress,
+		DestinationAddress:      common.Address{},
 		FeeInfo: teleportermessenger.TeleporterFeeInfo{
-			FeeTokenAddress: sourceAddress,
+			FeeTokenAddress: common.Address{},
 			Amount:          big.NewInt(0),
 		},
-		RequiredGasLimit:        big.NewInt(1),
+		RequiredGasLimit:        big.NewInt(0),
 		AllowedRelayerAddresses: []common.Address{},
 		Message:                 []byte(message),
 	}
@@ -160,6 +118,8 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
 	txOpts.Context = ctx
 	tx, err := sourceMessenger.SendCrossChainMessage(txOpts, msgInput)
 	if err != nil {
@@ -196,79 +156,26 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be received on destination subnet %q (%s)", destSubnetName, destBlockchainID)
+	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destSubnetName, destBlockchainID)
 
-	fmt.Println(hex.EncodeToString(sourceEvent.MessageID[:]))
-
+	arrivalCheckInterval := time.Duration(100 * time.Millisecond)
+	arrivalCheckTimeout := time.Duration(10 * time.Second)
+	t0 := time.Now()
 	for {
-		b, err := teleporter.MessageReceived(
+		if b, err := teleporter.MessageReceived(
 			network.BlockchainEndpoint(destBlockchainID.String()),
 			common.HexToAddress(destMessengerAddress),
 			sourceEvent.MessageID,
-		)
-		if err != nil {
+		); err != nil {
 			return err
-		}
-		fmt.Println(b, err)
-		if b {
+		} else if b {
 			break
 		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	var head *types.Header
-	select {
-	case head = <-destHeadsCh:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	if sourceBlockchainID == destBlockchainID {
-		// we have another block
-		select {
-		case head = <-destHeadsCh:
-		case <-ctx.Done():
-			return ctx.Err()
+		elapsed := time.Since(t0)
+		if elapsed > arrivalCheckTimeout {
+			return fmt.Errorf("timeout waiting for message to be teleported")
 		}
-	}
-	blockNumber := head.Number
-	block, err := destWebSocketClient.BlockByNumber(ctx, blockNumber)
-	if err != nil {
-		return err
-	}
-	if len(block.Transactions()) != 1 {
-		return fmt.Errorf("expected to have only one transaction on new block at destination")
-	}
-	destReceipt, err := destWebSocketClient.TransactionReceipt(ctx, block.Transactions()[0].Hash())
-	if err != nil {
-		return err
-	}
-	if destReceipt.Status != types.ReceiptStatusSuccessful {
-		txHash := block.Transactions()[0].Hash().String()
-		ux.Logger.PrintToUser("error: dest receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(network.BlockchainEndpoint(destBlockchainID.String()), txHash)
-		if err != nil {
-			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
-			ux.Logger.PrintToUser("")
-		} else {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("trace: %#v", trace)
-			ux.Logger.PrintToUser("")
-		}
-		return fmt.Errorf("dest receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-	}
-	destEvent, err := evm.GetEventFromLogs(destReceipt.Logs, destMessenger.ParseReceiveCrossChainMessage)
-	if err != nil {
-		return err
-	}
-
-	if sourceBlockchainID != ids.ID(destEvent.SourceBlockchainID[:]) {
-		return fmt.Errorf("invalid source blockchain id at dest event, expected %s, got %s", sourceBlockchainID, ids.ID(destEvent.SourceBlockchainID[:]))
-	}
-	if message != string(destEvent.Message.Message) {
-		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(destEvent.Message.Message))
-	}
-	if sourceEvent.MessageID != destEvent.MessageID {
-		return fmt.Errorf("unexpected difference between message ID at source and dest events: %s vs %s", hex.EncodeToString(sourceEvent.MessageID[:]), hex.EncodeToString(destEvent.MessageID[:]))
+		time.Sleep(arrivalCheckInterval)
 	}
 
 	ux.Logger.PrintToUser("Message successfully Teleported!")
