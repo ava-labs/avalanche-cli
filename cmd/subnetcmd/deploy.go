@@ -487,11 +487,15 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	controlKeysIDs, err := address.ParseToIDs(controlKeys)
+	if err != nil {
+		return fmt.Errorf("failure parsing control keys: %w", err)
+	}
 	subnetAuthKeysIDs, err := address.ParseToIDs(subnetAuthKeys)
 	if err != nil {
 		return fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
-	subnet.SetDeployParams(controlKeys, subnetAuthKeysIDs, threshold)
+	subnet.SetDeployParams(controlKeysIDs, subnetAuthKeysIDs, threshold)
 	if createSubnet {
 		subnetID, err = deployer.DeploySubnet(*subnet)
 		if err != nil {
