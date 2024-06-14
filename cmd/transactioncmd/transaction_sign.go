@@ -109,7 +109,7 @@ func signTx(_ *cobra.Command, args []string) error {
 		subnetID = subnetIDFromTX
 	}
 
-	controlKeys, _, err := txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+	controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
