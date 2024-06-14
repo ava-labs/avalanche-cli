@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"time"
 
+	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -33,6 +34,9 @@ var (
 	globalNetworkFlags networkoptions.NetworkFlags
 	destinationAddress string
 	hexEncodedMessage  bool
+	privateKey         string
+	keyName            string
+	genesisKey         bool
 )
 
 // avalanche teleporter msg
@@ -47,6 +51,9 @@ func newMsgCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, msgSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&hexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&destinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
+	cmd.Flags().StringVar(&privateKey, "private-key", "", "private key to use as message originator and to pay source blockchain fees")
+	cmd.Flags().StringVar(&keyName, "key", "", "CLI stored key to use to use as message originator and to pay source blockchain fees")
+	cmd.Flags().BoolVar(&genesisKey, "genesis-key", false, "use genesis aidrop key to use as message originator and to pay source blockchain fees")
 	return cmd
 }
 
@@ -54,6 +61,10 @@ func msg(_ *cobra.Command, args []string) error {
 	sourceSubnetName := args[0]
 	destSubnetName := args[1]
 	message := args[2]
+
+	if !cmdflags.EnsureMutuallyExclusive([]bool{privateKey != "", keyName != "", genesisKey}) {
+		return fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
+	}
 
 	subnetNameToGetNetworkFrom := ""
 	if !isCChain(sourceSubnetName) {
