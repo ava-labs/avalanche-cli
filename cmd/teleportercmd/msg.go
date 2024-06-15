@@ -9,16 +9,12 @@ import (
 	"time"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
@@ -26,12 +22,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-type PrivateKeyFlags struct {
-	PrivateKey string
-	KeyName    string
-	GenesisKey bool
-}
 
 type MsgFlags struct {
 	Network            networkoptions.NetworkFlags
@@ -104,6 +94,7 @@ func msg(_ *cobra.Command, args []string) error {
 		network,
 		sourceSubnetName,
 		isCChain(sourceSubnetName),
+		"",
 	)
 	if err != nil {
 		return err
@@ -244,116 +235,4 @@ func msg(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Message successfully Teleported!")
 
 	return nil
-}
-
-func getPrivateKeyFromFlags(
-	flags PrivateKeyFlags,
-	genesisPrivateKey string,
-) (string, error) {
-	privateKey := flags.PrivateKey
-	if flags.KeyName != "" {
-		k, err := app.GetKey(flags.KeyName, models.NewLocalNetwork(), false)
-		if err != nil {
-			return "", err
-		}
-		privateKey = k.PrivKeyHex()
-	}
-	if flags.GenesisKey {
-		privateKey = genesisPrivateKey
-	}
-	return privateKey, nil
-}
-
-func getEVMSubnetPrefundedKey(
-	network models.Network,
-	subnetName string,
-	isCChain bool,
-) (string, string, error) {
-	blockchainID := "C"
-	if !isCChain {
-		sc, err := app.LoadSidecar(subnetName)
-		if err != nil {
-			return "", "", fmt.Errorf("failed to load sidecar: %w", err)
-		}
-		if b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName); err != nil {
-			return "", "", err
-		} else if !b {
-			return "", "", fmt.Errorf("getPrefundedKey only works on EVM based vms")
-		}
-		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-			return "", "", fmt.Errorf("subnet has not been deployed to %s", network.Name())
-		}
-		blockchainID = sc.Networks[network.Name()].BlockchainID.String()
-	}
-	var (
-		err     error
-		chainID ids.ID
-	)
-	if isCChain || !network.StandardPublicEndpoint() {
-		chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
-		if err != nil {
-			return "", "", err
-		}
-	} else {
-		chainID, err = ids.FromString(blockchainID)
-		if err != nil {
-			return "", "", err
-		}
-	}
-	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
-	if err != nil {
-		return "", "", err
-	}
-	_, genesisAddress, genesisPrivateKey, err := subnet.GetSubnetAirdropKeyInfo(
-		app,
-		network,
-		subnetName,
-		createChainTx.GenesisData,
-	)
-	if err != nil {
-		return "", "", err
-	}
-	return genesisAddress, genesisPrivateKey, nil
-}
-
-func promptPrivateKey(
-	goal string,
-	genesisAddress string,
-	genesisPrivateKey string,
-) (string, error) {
-	privateKey := ""
-	cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
-	customKeyOpt := "Custom"
-	genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Aidrop address %s", genesisAddress)
-	keyOptions := []string{cliKeyOpt, customKeyOpt}
-	if genesisPrivateKey != "" {
-		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
-	}
-	keyOption, err := app.Prompt.CaptureList(
-		fmt.Sprintf("Which private key do you want to use to %s?", goal),
-		keyOptions,
-	)
-	if err != nil {
-		return "", err
-	}
-	switch keyOption {
-	case cliKeyOpt:
-		keyName, err := prompts.CaptureKeyName(app.Prompt, goal, app.GetKeyDir(), true)
-		if err != nil {
-			return "", err
-		}
-		k, err := app.GetKey(keyName, models.NewLocalNetwork(), false)
-		if err != nil {
-			return "", err
-		}
-		privateKey = k.PrivKeyHex()
-	case customKeyOpt:
-		privateKey, err = app.Prompt.CaptureString("Private Key")
-		if err != nil {
-			return "", err
-		}
-	case genesisKeyOpt:
-		privateKey = genesisPrivateKey
-	}
-	return privateKey, nil
 }
