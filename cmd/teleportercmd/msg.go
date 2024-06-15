@@ -9,12 +9,15 @@ import (
 	"time"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
+	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
@@ -23,20 +26,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type MsgFlags struct {
+	Network            networkoptions.NetworkFlags
+	DestinationAddress string
+	HexEncodedMessage  bool
+	PrivateKey         string
+	KeyName            string
+	GenesisKey         bool
+}
+
 var (
 	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
-		networkoptions.Cluster,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
 		networkoptions.Devnet,
+		networkoptions.Fuji,
 	}
-	globalNetworkFlags networkoptions.NetworkFlags
-	destinationAddress string
-	hexEncodedMessage  bool
-	privateKey         string
-	keyName            string
-	genesisKey         bool
+	msgFlags MsgFlags
 )
 
 // avalanche teleporter msg
@@ -48,12 +53,12 @@ func newMsgCmd() *cobra.Command {
 		RunE:  msg,
 		Args:  cobrautils.ExactArgs(3),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, msgSupportedNetworkOptions)
-	cmd.Flags().BoolVar(&hexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
-	cmd.Flags().StringVar(&destinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
-	cmd.Flags().StringVar(&privateKey, "private-key", "", "private key to use as message originator and to pay source blockchain fees")
-	cmd.Flags().StringVar(&keyName, "key", "", "CLI stored key to use to use as message originator and to pay source blockchain fees")
-	cmd.Flags().BoolVar(&genesisKey, "genesis-key", false, "use genesis aidrop key to use as message originator and to pay source blockchain fees")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
+	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
+	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
+	cmd.Flags().StringVar(&msgFlags.PrivateKey, "private-key", "", "private key to use as message originator and to pay source blockchain fees")
+	cmd.Flags().StringVar(&msgFlags.KeyName, "key", "", "CLI stored key to use to use as message originator and to pay source blockchain fees")
+	cmd.Flags().BoolVar(&msgFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to use as message originator and to pay source blockchain fees")
 	return cmd
 }
 
@@ -62,7 +67,7 @@ func msg(_ *cobra.Command, args []string) error {
 	destSubnetName := args[1]
 	message := args[2]
 
-	if !cmdflags.EnsureMutuallyExclusive([]bool{privateKey != "", keyName != "", genesisKey}) {
+	if !cmdflags.EnsureMutuallyExclusive([]bool{msgFlags.PrivateKey != "", msgFlags.KeyName != "", msgFlags.GenesisKey}) {
 		return fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
 	}
 
@@ -76,7 +81,7 @@ func msg(_ *cobra.Command, args []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
-		globalNetworkFlags,
+		msgFlags.Network,
 		true,
 		false,
 		msgSupportedNetworkOptions,
@@ -86,7 +91,92 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, _, sourceBlockchainID, sourceMessengerAddress, _, sourceKey, err := bridgecmd.GetSubnetParams(
+	privateKey := msgFlags.PrivateKey
+	if msgFlags.KeyName != "" {
+		k, err := app.GetKey(msgFlags.KeyName, network, false)
+		if err != nil {
+			return err
+		}
+		privateKey = k.PrivKeyHex()
+	}
+	blockchainID := "C"
+	if !isCChain(sourceSubnetName) {
+		sc, err := app.LoadSidecar(sourceSubnetName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		if b, _, err := subnetcmd.HasSubnetEVMGenesis(sourceSubnetName); err != nil {
+			return err
+		} else if !b {
+			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")
+		}
+		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+			return fmt.Errorf("subnet has not been deployed to %s", network.Name())
+		}
+		blockchainID = sc.Networks[network.Name()].BlockchainID.String()
+	}
+	var chainID ids.ID
+	if isCChain(sourceSubnetName) || !network.StandardPublicEndpoint() {
+		chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
+		if err != nil {
+			return err
+		}
+	} else {
+		chainID, err = ids.FromString(blockchainID)
+		if err != nil {
+			return err
+		}
+	}
+	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
+	if err != nil {
+		return err
+	}
+	_, genesisAddress, genesisPrivateKey, err := subnet.GetSubnetAirdropKeyInfo(
+		app,
+		network,
+		sourceSubnetName,
+		createChainTx.GenesisData,
+	)
+	if err != nil {
+		return err
+	}
+	if msgFlags.GenesisKey {
+		privateKey = genesisPrivateKey
+	}
+	if privateKey == "" {
+		cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
+		customKeyOpt := "Custom"
+		genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Aidrop address %s", genesisAddress)
+		keyOptions := []string{cliKeyOpt, customKeyOpt}
+		if genesisPrivateKey != "" {
+			keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+		}
+		keyOption, err := app.Prompt.CaptureList("Which private key do you want to use to send the message?", keyOptions)
+		if err != nil {
+			return err
+		}
+		switch keyOption {
+		case cliKeyOpt:
+			keyName, err := prompts.CaptureKeyName(app.Prompt, "send the message", app.GetKeyDir(), true)
+			if err != nil {
+				return err
+			}
+			k, err := app.GetKey(keyName, network, false)
+			if err != nil {
+				return err
+			}
+			privateKey = k.PrivKeyHex()
+		case customKeyOpt:
+			privateKey, err = app.Prompt.CaptureString("Private Key")
+			if err != nil {
+				return err
+			}
+		case genesisKeyOpt:
+			privateKey = genesisPrivateKey
+		}
+	}
+
+	_, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := bridgecmd.GetSubnetParams(
 		network,
 		sourceSubnetName,
 		isCChain(sourceSubnetName),
@@ -118,15 +208,15 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 
 	encodedMessage := []byte(message)
-	if hexEncodedMessage {
+	if msgFlags.HexEncodedMessage {
 		encodedMessage = common.FromHex(message)
 	}
 	destAddr := common.Address{}
-	if destinationAddress != "" {
-		if err := prompts.ValidateAddress(destinationAddress); err != nil {
-			return fmt.Errorf("failure validating address %s: %w", destinationAddress, err)
+	if msgFlags.DestinationAddress != "" {
+		if err := prompts.ValidateAddress(msgFlags.DestinationAddress); err != nil {
+			return fmt.Errorf("failure validating address %s: %w", msgFlags.DestinationAddress, err)
 		}
-		destAddr = common.HexToAddress(destinationAddress)
+		destAddr = common.HexToAddress(msgFlags.DestinationAddress)
 	}
 	// send tx to the teleporter contract at the source
 	msgInput := teleportermessenger.TeleporterMessageInput{
@@ -141,7 +231,7 @@ func msg(_ *cobra.Command, args []string) error {
 		Message:                 encodedMessage,
 	}
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
-	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, sourceKey.PrivKeyHex())
+	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, privateKey)
 	if err != nil {
 		return err
 	}
