@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -26,13 +27,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type PrivateKeyFlags struct {
+	PrivateKey string
+	KeyName    string
+	GenesisKey bool
+}
+
 type MsgFlags struct {
 	Network            networkoptions.NetworkFlags
 	DestinationAddress string
 	HexEncodedMessage  bool
-	PrivateKey         string
-	KeyName            string
-	GenesisKey         bool
+	PrivateKeyFlags    PrivateKeyFlags
 }
 
 var (
@@ -56,9 +61,9 @@ func newMsgCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
-	cmd.Flags().StringVar(&msgFlags.PrivateKey, "private-key", "", "private key to use as message originator and to pay source blockchain fees")
-	cmd.Flags().StringVar(&msgFlags.KeyName, "key", "", "CLI stored key to use to use as message originator and to pay source blockchain fees")
-	cmd.Flags().BoolVar(&msgFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to use as message originator and to pay source blockchain fees")
+	cmd.Flags().StringVar(&msgFlags.PrivateKeyFlags.PrivateKey, "private-key", "", "private key to use as message originator and to pay source blockchain fees")
+	cmd.Flags().StringVar(&msgFlags.PrivateKeyFlags.KeyName, "key", "", "CLI stored key to use to use as message originator and to pay source blockchain fees")
+	cmd.Flags().BoolVar(&msgFlags.PrivateKeyFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to use as message originator and to pay source blockchain fees")
 	return cmd
 }
 
@@ -67,7 +72,11 @@ func msg(_ *cobra.Command, args []string) error {
 	destSubnetName := args[1]
 	message := args[2]
 
-	if !cmdflags.EnsureMutuallyExclusive([]bool{msgFlags.PrivateKey != "", msgFlags.KeyName != "", msgFlags.GenesisKey}) {
+	if !cmdflags.EnsureMutuallyExclusive([]bool{
+		msgFlags.PrivateKeyFlags.PrivateKey != "",
+		msgFlags.PrivateKeyFlags.KeyName != "",
+		msgFlags.PrivateKeyFlags.GenesisKey,
+	}) {
 		return fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
 	}
 
@@ -91,88 +100,25 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	privateKey := msgFlags.PrivateKey
-	if msgFlags.KeyName != "" {
-		k, err := app.GetKey(msgFlags.KeyName, network, false)
-		if err != nil {
-			return err
-		}
-		privateKey = k.PrivKeyHex()
-	}
-	blockchainID := "C"
-	if !isCChain(sourceSubnetName) {
-		sc, err := app.LoadSidecar(sourceSubnetName)
-		if err != nil {
-			return fmt.Errorf("failed to load sidecar: %w", err)
-		}
-		if b, _, err := subnetcmd.HasSubnetEVMGenesis(sourceSubnetName); err != nil {
-			return err
-		} else if !b {
-			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")
-		}
-		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-			return fmt.Errorf("subnet has not been deployed to %s", network.Name())
-		}
-		blockchainID = sc.Networks[network.Name()].BlockchainID.String()
-	}
-	var chainID ids.ID
-	if isCChain(sourceSubnetName) || !network.StandardPublicEndpoint() {
-		chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
-		if err != nil {
-			return err
-		}
-	} else {
-		chainID, err = ids.FromString(blockchainID)
-		if err != nil {
-			return err
-		}
-	}
-	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
-	if err != nil {
-		return err
-	}
-	_, genesisAddress, genesisPrivateKey, err := subnet.GetSubnetAirdropKeyInfo(
-		app,
+	genesisAddress, genesisPrivateKey, err := getEVMSubnetPrefundedKey(
 		network,
 		sourceSubnetName,
-		createChainTx.GenesisData,
+		isCChain(sourceSubnetName),
 	)
 	if err != nil {
 		return err
 	}
-	if msgFlags.GenesisKey {
-		privateKey = genesisPrivateKey
+	privateKey, err := getPrivateKeyFromFlags(
+		msgFlags.PrivateKeyFlags,
+		genesisPrivateKey,
+	)
+	if err != nil {
+		return err
 	}
 	if privateKey == "" {
-		cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
-		customKeyOpt := "Custom"
-		genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Aidrop address %s", genesisAddress)
-		keyOptions := []string{cliKeyOpt, customKeyOpt}
-		if genesisPrivateKey != "" {
-			keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
-		}
-		keyOption, err := app.Prompt.CaptureList("Which private key do you want to use to send the message?", keyOptions)
+		privateKey, err = promptPrivateKey("send the message", genesisAddress, genesisPrivateKey)
 		if err != nil {
 			return err
-		}
-		switch keyOption {
-		case cliKeyOpt:
-			keyName, err := prompts.CaptureKeyName(app.Prompt, "send the message", app.GetKeyDir(), true)
-			if err != nil {
-				return err
-			}
-			k, err := app.GetKey(keyName, network, false)
-			if err != nil {
-				return err
-			}
-			privateKey = k.PrivKeyHex()
-		case customKeyOpt:
-			privateKey, err = app.Prompt.CaptureString("Private Key")
-			if err != nil {
-				return err
-			}
-		case genesisKeyOpt:
-			privateKey = genesisPrivateKey
 		}
 	}
 
@@ -298,4 +244,116 @@ func msg(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Message successfully Teleported!")
 
 	return nil
+}
+
+func getPrivateKeyFromFlags(
+	flags PrivateKeyFlags,
+	genesisPrivateKey string,
+) (string, error) {
+	privateKey := flags.PrivateKey
+	if flags.KeyName != "" {
+		k, err := app.GetKey(flags.KeyName, models.NewLocalNetwork(), false)
+		if err != nil {
+			return "", err
+		}
+		privateKey = k.PrivKeyHex()
+	}
+	if flags.GenesisKey {
+		privateKey = genesisPrivateKey
+	}
+	return privateKey, nil
+}
+
+func getEVMSubnetPrefundedKey(
+	network models.Network,
+	subnetName string,
+	isCChain bool,
+) (string, string, error) {
+	blockchainID := "C"
+	if !isCChain {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		if b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName); err != nil {
+			return "", "", err
+		} else if !b {
+			return "", "", fmt.Errorf("getPrefundedKey only works on EVM based vms")
+		}
+		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+			return "", "", fmt.Errorf("subnet has not been deployed to %s", network.Name())
+		}
+		blockchainID = sc.Networks[network.Name()].BlockchainID.String()
+	}
+	var (
+		err     error
+		chainID ids.ID
+	)
+	if isCChain || !network.StandardPublicEndpoint() {
+		chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
+		if err != nil {
+			return "", "", err
+		}
+	} else {
+		chainID, err = ids.FromString(blockchainID)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
+	if err != nil {
+		return "", "", err
+	}
+	_, genesisAddress, genesisPrivateKey, err := subnet.GetSubnetAirdropKeyInfo(
+		app,
+		network,
+		subnetName,
+		createChainTx.GenesisData,
+	)
+	if err != nil {
+		return "", "", err
+	}
+	return genesisAddress, genesisPrivateKey, nil
+}
+
+func promptPrivateKey(
+	goal string,
+	genesisAddress string,
+	genesisPrivateKey string,
+) (string, error) {
+	privateKey := ""
+	cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
+	customKeyOpt := "Custom"
+	genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Aidrop address %s", genesisAddress)
+	keyOptions := []string{cliKeyOpt, customKeyOpt}
+	if genesisPrivateKey != "" {
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+	}
+	keyOption, err := app.Prompt.CaptureList(
+		fmt.Sprintf("Which private key do you want to use to %s?", goal),
+		keyOptions,
+	)
+	if err != nil {
+		return "", err
+	}
+	switch keyOption {
+	case cliKeyOpt:
+		keyName, err := prompts.CaptureKeyName(app.Prompt, goal, app.GetKeyDir(), true)
+		if err != nil {
+			return "", err
+		}
+		k, err := app.GetKey(keyName, models.NewLocalNetwork(), false)
+		if err != nil {
+			return "", err
+		}
+		privateKey = k.PrivKeyHex()
+	case customKeyOpt:
+		privateKey, err = app.Prompt.CaptureString("Private Key")
+		if err != nil {
+			return "", err
+		}
+	case genesisKeyOpt:
+		privateKey = genesisPrivateKey
+	}
+	return privateKey, nil
 }
