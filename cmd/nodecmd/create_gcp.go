@@ -154,6 +154,11 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	cliDefaultName string,
 	forMonitoring bool,
 ) (map[string][]string, map[string][]string, string, string, error) {
+	diskSize := constants.CloudServerStorageSize
+	if forMonitoring {
+		diskSize = constants.MonitoringCloudServerStorageSize
+	}
+
 	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
 	if err != nil {
@@ -278,7 +283,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			instanceType,
 			publicIP[zone],
 			numNodes.All(),
-			forMonitoring)
+			diskSize)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return nil, nil, "", "", err
@@ -339,11 +344,7 @@ func createGCPInstance(
 		failedNodes := map[string]error{}
 		for zone, zoneInstances := range instanceIDs {
 			for _, instanceID := range zoneInstances {
-				nodeConfig := models.NodeConfig{
-					NodeID: instanceID,
-					Region: zone,
-				}
-				if destroyErr := gcpClient.DestroyGCPNode(nodeConfig, clusterName); destroyErr != nil {
+				if destroyErr := gcpClient.DestroyGCPNode(instanceID, zone); destroyErr != nil {
 					failedNodes[instanceID] = destroyErr
 					continue
 				}

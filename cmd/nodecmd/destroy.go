@@ -301,15 +301,16 @@ func destroyAWSInstance(awsCloud *awsAPI.AwsCloud, instanceID string, elasticIP 
 	return nil
 }
 
-func destroyGCPInstance(gcpCloud *gcpAPI.GcpCloud, instanceID string, elasticIP string) error {
+func destroyGCPInstance(gcpCloud *gcpAPI.GcpCloud, region string, instanceID string, elasticIP string) error {
 	if instanceID != "" {
-		if err := gcpCloud.DestroyGCPNode(instanceID); err != nil {
+		if err := gcpCloud.DestroyGCPNode(region, instanceID); err != nil {
 			return err
 		}
 	}
 	if elasticIP != "" {
-		if err := gcpCloud.ReleaseStaticIP(elasticIP); err != nil {
+		if err := gcpCloud.ReleaseStaticIP(region, elasticIP); err != nil {
 			return err
 		}
 	}
+	return nil
 }
