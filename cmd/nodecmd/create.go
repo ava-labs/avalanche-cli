@@ -338,7 +338,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		cloudConfigMap = models.CloudConfig{
-			"docker": {
+			"docker": models.RegionConfig{
 				InstanceIDs:       dockerHostIDs,
 				PublicIPs:         dockerNodesPublicIPs,
 				KeyPair:           keyPairName,
@@ -352,6 +352,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				InstanceType:      "docker",
 			},
 		}
+		ux.Logger.PrintToUser("%s", cloudConfigMap)
 		currentRegionConfig := cloudConfigMap["docker"]
 		for i, ip := range currentRegionConfig.PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
@@ -369,7 +370,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
 			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
 			monitoringCloudConfig := models.CloudConfig{
-				"monitoringDocker": {
+				"monitoringDocker": models.RegionConfig{
 					InstanceIDs:       monitoringDockerHostID,
 					PublicIPs:         []string{monitoringHostIP},
 					KeyPair:           keyPairName,
@@ -384,6 +385,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				},
 			}
 			monitoringNodeConfig = monitoringCloudConfig["monitoringDocker"]
+			ux.Logger.PrintToUser("monitoring node created with: %s", monitoringNodeConfig)
 		}
 		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
 		if err != nil {
