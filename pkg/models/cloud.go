@@ -32,7 +32,6 @@ func (rc *RegionConfig) GetHostCloudParams(cloudService sdkHost.SupportedCloud, 
 	default:
 		return sdkHost.CloudParams{}
 	}
-
 }
 
 type CloudConfig map[string]RegionConfig
