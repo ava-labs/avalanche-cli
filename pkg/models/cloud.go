@@ -2,7 +2,10 @@
 // See the file LICENSE for licensing terms.
 package models
 
-import "golang.org/x/exp/maps"
+import (
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
+	"golang.org/x/exp/maps"
+)
 
 type RegionConfig struct {
 	InstanceIDs       []string
@@ -17,6 +20,19 @@ type RegionConfig struct {
 	SecurityGroupName string
 	NumNodes          int
 	InstanceType      string
+}
+
+func (rc *RegionConfig) GetHostCloudParams(cloudService sdkHost.SupportedCloud, region string) sdkHost.CloudParams {
+	switch cloudService {
+	case sdkHost.AWSCloud:
+		return sdkHost.CloudParams{
+			Region: region,
+			Image:  rc.ImageID,
+		}
+	default:
+		return sdkHost.CloudParams{}
+	}
+
 }
 
 type CloudConfig map[string]RegionConfig

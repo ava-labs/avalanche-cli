@@ -215,11 +215,11 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 		return err
 	}
 	networkName := fmt.Sprintf("%s-network", prefix)
-	gcpClient, projectName, _, err := getGCPCloudCredentials()
+	projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
 		return err
 	}
-	gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+	gcpCloud, err := gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 	if err != nil {
 		return err
 	}

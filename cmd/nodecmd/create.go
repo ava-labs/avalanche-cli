@@ -788,6 +788,7 @@ func CreateClusterNodeConfig(
 			if len(cloudConfig.PublicIPs) > 0 {
 				publicIP = cloudConfig.PublicIPs[i]
 			}
+
 			nodeConfig := models.NodeConfig{
 				NodeID:        cloudConfig.InstanceIDs[i],
 				Region:        region,

@@ -141,7 +141,7 @@ func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
 	}
 	switch nodeConfig.CloudService {
 	case "", constants.AWSCloudService:
-		ec2Svc, err := awsAPI.NewAwsCloud(awsProfile, nodeConfig.Region)
+		ec2Svc, err := awsAPI.NewAwsCloud(context.Background(), awsProfile, nodeConfig.Region)
 		if err != nil {
 			return err
 		}
@@ -151,11 +151,11 @@ func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
 		}
 		return ec2Svc.ResizeVolume(rootVolume, int32(diskSize))
 	case constants.GCPCloudService:
-		gcpClient, projectName, _, err := getGCPCloudCredentials()
+		projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 		if err != nil {
 			return err
 		}
-		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+		gcpCloud, err := gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 		if err != nil {
 			return err
 		}
@@ -189,11 +189,11 @@ func resizeNode(nodeConfig models.NodeConfig) error {
 		}
 		return ec2Svc.ChangeInstanceType(nodeConfig.NodeID, nodeType)
 	case constants.GCPCloudService:
-		gcpClient, projectName, _, err := getGCPCloudCredentials()
+		projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 		if err != nil {
 			return err
 		}
-		gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+		gcpCloud, err := gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 		if err != nil {
 			return err
 		}

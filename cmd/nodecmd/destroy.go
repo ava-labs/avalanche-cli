@@ -202,7 +202,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 						return err
 					}
 				}
-				if err = gcpCloud.DestroyGCPNode(nodeConfig, clusterName); err != nil {
+				if err = gcpCloud.DestroyGCPNode(nodeConfig.Region, nodeConfig.NodeID); err != nil {
 					if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 						nodeErrors[node] = err
 						continue

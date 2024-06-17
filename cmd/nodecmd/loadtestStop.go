@@ -19,6 +19,7 @@ import (
 	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+	"golang.org/x/net/context"
 
 	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
@@ -118,7 +119,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	}
 	ec2SvcMap := make(map[string]*awsAPI.AwsCloud)
 	for _, sg := range filteredSGList {
-		sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+		sgEc2Svc, err := awsAPI.NewAwsCloud(context.Background(), awsProfile, sg.region)
 		if err != nil {
 			return err
 		}
@@ -219,7 +220,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
-		if err = ec2Svc.DestroyAWSNode(nodeConfig, ""); err != nil {
+		if err = ec2Svc.DestroyAWSNode(nodeConfig.NodeID); err != nil {
 			if isExpiredCredentialError(err) {
 				ux.Logger.PrintToUser("")
 				printExpiredCredentialsOutput(awsProfile)
@@ -234,7 +235,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
-		if err = gcpClient.DestroyGCPNode(nodeConfig, ""); err != nil {
+		if err = gcpClient.DestroyGCPNode(nodeConfig.Region, nodeConfig.NodeID); err != nil {
 			if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 				return err
 			}

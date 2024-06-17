@@ -259,7 +259,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			}
 		}
 		if !useStaticIP {
-			loadTestPublicIPMap, err := gcpClient.GetInstancePublicIPs(separateHostRegion, loadTestNodeConfig.InstanceIDs)
+			loadTestPublicIPMap, err := gcpCloud.GetInstancePublicIPs(separateHostRegion, loadTestNodeConfig.InstanceIDs)
 			if err != nil {
 				return err
 			}
