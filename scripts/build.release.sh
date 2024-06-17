@@ -17,4 +17,4 @@ go install -v github.com/goreleaser/goreleaser@latest
 #goreleaser release --config .goreleaser.yml --skip-announce --skip-publish
 
 # to test without git tags
-goreleaser release --config .goreleaser.yml --rm-dist --skip-announce --skip-publish --snapshot
+goreleaser release --config .goreleaser.yml --clean --skip-announce --skip-publish --snapshot
