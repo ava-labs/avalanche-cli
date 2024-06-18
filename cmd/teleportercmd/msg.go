@@ -168,6 +168,16 @@ func msg(_ *cobra.Command, args []string) error {
 		Message:                 encodedMessage,
 	}
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
+	if err := teleporter.SendCrossChainMessage(
+		network.BlockchainEndpoint(sourceBlockchainID.String()),
+		common.HexToAddress(sourceMessengerAddress),
+		privateKey,
+		destBlockchainID,
+		destAddr,
+		encodedMessage,
+	); err != nil {
+		return err
+	}
 	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, privateKey)
 	if err != nil {
 		return err

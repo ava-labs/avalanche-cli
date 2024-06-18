@@ -60,7 +60,7 @@ func SendCrossChainMessage(
 	privateKey string,
 	destinationBlockchainID ids.ID,
 	destinationAddress common.Address,
-	message string,
+	message []byte,
 ) error {
 	type FeeInfo struct {
 		FeeTokenAddress common.Address
@@ -83,14 +83,14 @@ func SendCrossChainMessage(
 		},
 		RequiredGasLimit:        big.NewInt(1),
 		AllowedRelayerAddresses: []common.Address{},
-		Message:                 []byte(message),
+		Message:                 message,
 	}
 	return contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		messengerAddress,
 		nil,
-		"sendCrossChainMessage((bytes32, address, (address, uint256), uin256, address[], bytes))->(bytes32)",
+		"sendCrossChainMessage((bytes32, address, (address, uint256), uin256, [address], bytes))->(bytes32)",
 		params,
 	)
 }

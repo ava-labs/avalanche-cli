@@ -40,16 +40,21 @@ func removeSurroundingBrackets(s string) (string, error) {
 func getWords(s string) []string {
 	words := []string{}
 	word := ""
-	insideParenthesis := false
+	parenthesisCount := 0
 	insideBrackets := false
 	for _, rune := range s {
 		c := string(rune)
-		if insideParenthesis {
+		if parenthesisCount > 0 {
 			word += c
+			if c == "(" {
+				parenthesisCount++
+			}
 			if c == ")" {
-				words = append(words, word)
-				word = ""
-				insideParenthesis = false
+				parenthesisCount--
+				if parenthesisCount == 0 {
+					words = append(words, word)
+					word = ""
+				}
 			}
 			continue
 		}
@@ -72,7 +77,7 @@ func getWords(s string) []string {
 			continue
 		}
 		if c == "(" {
-			insideParenthesis = true
+			parenthesisCount++
 		}
 		if c == "[" {
 			insideBrackets = true
@@ -91,6 +96,7 @@ func getMap(
 ) ([]map[string]interface{}, error) {
 	r := []map[string]interface{}{}
 	for i, t := range types {
+		fmt.Println(i, t)
 		m := map[string]interface{}{}
 		switch {
 		case string(t[0]) == "(":
@@ -100,10 +106,12 @@ func getMap(
 			if err != nil {
 				return nil, err
 			}
+			fmt.Println(t, params)
 			m["components"], err = getMap(getWords(t), params[i])
 			if err != nil {
 				return nil, err
 			}
+			fmt.Println("despues")
 			m["internaltype"] = "tuple"
 			m["type"] = "tuple"
 			m["name"] = ""
@@ -146,6 +154,7 @@ func getMap(
 			m["internaltype"] = t
 			m["type"] = t
 			m["name"] = name
+			fmt.Println(m)
 		}
 		r = append(r, m)
 	}
