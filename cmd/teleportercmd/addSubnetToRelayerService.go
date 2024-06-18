@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -62,7 +63,7 @@ func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerSe
 		return err
 	}
 
-	subnetID, chainID, messengerAddress, registryAddress, _, err := getSubnetParams(network, "c-chain")
+	_, subnetID, chainID, messengerAddress, registryAddress, _, err := bridgecmd.GetSubnetParams(network, "", true)
 	if err != nil {
 		return err
 	}
@@ -94,7 +95,7 @@ func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerSe
 		return err
 	}
 
-	subnetID, chainID, messengerAddress, registryAddress, _, err = getSubnetParams(network, subnetName)
+	_, subnetID, chainID, messengerAddress, registryAddress, _, err = bridgecmd.GetSubnetParams(network, subnetName, false)
 	if err != nil {
 		return err
 	}

@@ -438,7 +438,7 @@ func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Netwo
 func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateAddress,
+		Validate: ValidateAddress,
 	}
 
 	addressStr, err := prompt.Run()
@@ -882,5 +882,55 @@ func CaptureBoolFlag(
 		return prompt.CaptureYesNo(promptMsg)
 	} else {
 		return cmd.Flags().GetBool(flagName)
+	}
+}
+
+func PromptChain(
+	prompter Prompter,
+	prompt string,
+	subnetNames []string,
+	avoidPChain bool,
+	avoidXChain bool,
+	avoidCChain bool,
+	avoidSubnet string,
+) (bool, bool, bool, bool, string, error) {
+	pChainOption := "P-Chain"
+	xChainOption := "X-Chain"
+	cChainOption := "C-Chain"
+	notListedOption := "My blockchain isn't listed"
+	subnetOptions := []string{}
+	if !avoidPChain {
+		subnetOptions = append(subnetOptions, pChainOption)
+	}
+	if !avoidXChain {
+		subnetOptions = append(subnetOptions, xChainOption)
+	}
+	if !avoidCChain {
+		subnetOptions = append(subnetOptions, cChainOption)
+	}
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
+	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Subnet " + s })...)
+	subnetOptions = append(subnetOptions, notListedOption)
+	subnetOption, err := prompter.CaptureListWithSize(
+		prompt,
+		subnetOptions,
+		11,
+	)
+	if err != nil {
+		return false, false, false, false, "", err
+	}
+	if subnetOption == notListedOption {
+		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
+		return true, false, false, false, "", nil
+	}
+	switch subnetOption {
+	case pChainOption:
+		return false, true, false, false, "", nil
+	case xChainOption:
+		return false, false, true, false, "", nil
+	case cChainOption:
+		return false, false, false, true, "", nil
+	default:
+		return false, false, false, false, strings.TrimPrefix(subnetOption, "Subnet "), nil
 	}
 }

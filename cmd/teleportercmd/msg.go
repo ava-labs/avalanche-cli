@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -22,8 +23,14 @@ import (
 )
 
 var (
-	msgSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
-	globalNetworkFlags         networkoptions.NetworkFlags
+	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Cluster,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+		networkoptions.Devnet,
+	}
+	globalNetworkFlags networkoptions.NetworkFlags
 )
 
 // avalanche teleporter msg
@@ -64,11 +71,19 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, sourceChainID, sourceMessengerAddress, _, sourceKey, err := getSubnetParams(network, sourceSubnetName)
+	_, _, sourceChainID, sourceMessengerAddress, _, sourceKey, err := bridgecmd.GetSubnetParams(
+		network,
+		sourceSubnetName,
+		isCChain(sourceSubnetName),
+	)
 	if err != nil {
 		return err
 	}
-	_, destChainID, destMessengerAddress, _, _, err := getSubnetParams(network, destSubnetName)
+	_, _, destChainID, destMessengerAddress, _, _, err := bridgecmd.GetSubnetParams(
+		network,
+		destSubnetName,
+		isCChain(destSubnetName),
+	)
 	if err != nil {
 		return err
 	}

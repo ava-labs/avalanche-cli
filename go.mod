@@ -21,6 +21,7 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
+	github.com/liyue201/erc20-go v0.0.0-20210521034206-b2824246def0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/melbahja/goph v1.4.0
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148

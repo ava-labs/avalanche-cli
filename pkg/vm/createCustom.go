@@ -3,7 +3,6 @@
 package vm
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -144,22 +143,22 @@ func SetCustomVMSourceCodeFields(app *application.Avalanche, sc *models.Sidecar,
 	return nil
 }
 
-func checkGitIsInstalled() error {
-	if err := exec.Command("git").Run(); errors.Is(err, exec.ErrNotFound) {
+func CheckGitIsInstalled() error {
+	err := exec.Command("git", "--version").Run()
+	if err != nil {
 		ux.Logger.PrintToUser("Git tool is not available. It is a necessary dependency for CLI to import a custom VM.")
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Please follow install instructions at https://git-scm.com/book/en/v2/Getting-Started-Installing-Git and try again")
 		ux.Logger.PrintToUser("")
-		return err
 	}
-	return nil
+	return err
 }
 
 func BuildCustomVM(
 	app *application.Avalanche,
 	sc *models.Sidecar,
 ) error {
-	if err := checkGitIsInstalled(); err != nil {
+	if err := CheckGitIsInstalled(); err != nil {
 		return err
 	}
 
