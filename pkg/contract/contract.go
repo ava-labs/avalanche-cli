@@ -26,23 +26,43 @@ func removeSurroundingParenthesis(s string) (string, error) {
 	return s, nil
 }
 
+func removeSurroundingBrackets(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if len(s) > 0 {
+		if string(s[0]) != "[" || string(s[len(s)-1]) != "]" {
+			return "", fmt.Errorf("expected esp %q to be surrounded by parenthesis", s)
+		}
+		s = s[1 : len(s)-1]
+	}
+	return s, nil
+}
+
 func getWords(s string) []string {
 	words := []string{}
 	word := ""
 	insideParenthesis := false
+	insideBrackets := false
 	for _, rune := range s {
 		c := string(rune)
 		if insideParenthesis {
+			word += c
 			if c == ")" {
 				words = append(words, word)
 				word = ""
 				insideParenthesis = false
-			} else {
-				word += c
 			}
 			continue
 		}
-		if c == " " || c == "," || c == "(" {
+		if insideBrackets {
+			word += c
+			if c == "]" {
+				words = append(words, word)
+				word = ""
+				insideBrackets = false
+			}
+			continue
+		}
+		if c == " " || c == "," || c == "(" || c == "[" {
 			if word != "" {
 				words = append(words, word)
 				word = ""
@@ -53,7 +73,9 @@ func getWords(s string) []string {
 		}
 		if c == "(" {
 			insideParenthesis = true
-			continue
+		}
+		if c == "[" {
+			insideBrackets = true
 		}
 		word += c
 	}
@@ -66,24 +88,59 @@ func getWords(s string) []string {
 func getMap(
 	types []string,
 	params ...interface{},
-) []map[string]interface{} {
+) ([]map[string]interface{}, error) {
 	r := []map[string]interface{}{}
 	for i, t := range types {
-		spaceIndex := strings.Index(t, " ")
-		commaIndex := strings.Index(t, ",")
 		m := map[string]interface{}{}
-		if spaceIndex != -1 || commaIndex != -1 {
-			// complex type
-			m["components"] = getMap(getWords(t), params[i])
+		switch {
+		case string(t[0]) == "(":
+			// struct type
+			var err error
+			t, err = removeSurroundingParenthesis(t)
+			if err != nil {
+				return nil, err
+			}
+			m["components"], err = getMap(getWords(t), params[i])
+			if err != nil {
+				return nil, err
+			}
 			m["internaltype"] = "tuple"
 			m["type"] = "tuple"
 			m["name"] = ""
-		} else {
+		case string(t[0]) == "[":
+			// TODO: add more types
+			// slice struct type
+			var err error
+			t, err = removeSurroundingBrackets(t)
+			if err != nil {
+				return nil, err
+			}
+			if string(t[0]) == "(" {
+				t, err = removeSurroundingParenthesis(t)
+				if err != nil {
+					return nil, err
+				}
+				m["components"], err = getMap(getWords(t), params[i])
+				if err != nil {
+					return nil, err
+				}
+				m["internaltype"] = "tuple[]"
+				m["type"] = "tuple[]"
+				m["name"] = ""
+			} else {
+				m["internaltype"] = fmt.Sprintf("%s[]", t)
+				m["type"] = fmt.Sprintf("%s[]", t)
+				m["name"] = ""
+			}
+		default:
 			name := ""
 			if len(params) == 1 {
-				rt := reflect.TypeOf(params[0])
+				rt := reflect.ValueOf(params[0])
+				if rt.Kind() == reflect.Slice && rt.Len() > 0 {
+					rt = rt.Index(0)
+				}
 				if rt.Kind() == reflect.Struct && rt.NumField() == len(types) {
-					name = rt.Field(i).Name
+					name = rt.Type().Field(i).Name
 				}
 			}
 			m["internaltype"] = t
@@ -92,7 +149,7 @@ func getMap(
 		}
 		r = append(r, m)
 	}
-	return r
+	return r, nil
 }
 
 func ParseMethodEsp(
@@ -128,8 +185,14 @@ func ParseMethodEsp(
 	}
 	inputTypes := getWords(methodInputs)
 	outputTypes := getWords(methodOutputs)
-	inputs := getMap(inputTypes, params...)
-	outputs := getMap(outputTypes)
+	inputs, err := getMap(inputTypes, params...)
+	if err != nil {
+		return "", "", err
+	}
+	outputs, err := getMap(outputTypes)
+	if err != nil {
+		return "", "", err
+	}
 	abiMap := []map[string]interface{}{
 		{
 			"inputs":          inputs,
