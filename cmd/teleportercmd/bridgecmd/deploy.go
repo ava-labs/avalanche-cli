@@ -34,6 +34,7 @@ type DeployFlags struct {
 	Network    networkoptions.NetworkFlags
 	hubFlags   HubFlags
 	spokeFlags ChainFlags
+	version    string
 }
 
 var (
@@ -62,6 +63,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.hubFlags.hubAddress, "use-hub", "", "use the given Bridge Hub Address")
 	cmd.Flags().BoolVar(&deployFlags.spokeFlags.CChain, "c-chain-spoke", false, "use C-Chain as the Bridge Spoke's Chain")
 	cmd.Flags().StringVar(&deployFlags.spokeFlags.SubnetName, "spoke-subnet", "", "use the given CLI subnet as the Bridge Spoke's Chain")
+	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of bridge to deploy (defaults to main branch)")
 	return cmd
 }
 
@@ -294,7 +296,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Setup Contracts
 	ux.Logger.PrintToUser("Downloading Bridge Contracts")
-	if err := bridge.DownloadRepo(app); err != nil {
+	if err := bridge.DownloadRepo(app, flags.version); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Compiling Bridge")
