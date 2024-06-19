@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -61,7 +62,7 @@ func SendCrossChainMessage(
 	destinationBlockchainID ids.ID,
 	destinationAddress common.Address,
 	message []byte,
-) error {
+) (*types.Transaction, *types.Receipt, error) {
 	type FeeInfo struct {
 		FeeTokenAddress common.Address
 		Amount          *big.Int

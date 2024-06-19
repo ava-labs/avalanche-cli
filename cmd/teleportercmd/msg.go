@@ -3,14 +3,13 @@
 package teleportercmd
 
 import (
-	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -156,44 +155,19 @@ func msg(_ *cobra.Command, args []string) error {
 		destAddr = common.HexToAddress(msgFlags.DestinationAddress)
 	}
 	// send tx to the teleporter contract at the source
-	msgInput := teleportermessenger.TeleporterMessageInput{
-		DestinationBlockchainID: destBlockchainID,
-		DestinationAddress:      destAddr,
-		FeeInfo: teleportermessenger.TeleporterFeeInfo{
-			FeeTokenAddress: common.Address{},
-			Amount:          big.NewInt(0),
-		},
-		RequiredGasLimit:        big.NewInt(0),
-		AllowedRelayerAddresses: []common.Address{},
-		Message:                 encodedMessage,
-	}
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
-	if err := teleporter.SendCrossChainMessage(
+	tx, receipt, err := teleporter.SendCrossChainMessage(
 		network.BlockchainEndpoint(sourceBlockchainID.String()),
 		common.HexToAddress(sourceMessengerAddress),
 		privateKey,
 		destBlockchainID,
 		destAddr,
 		encodedMessage,
-	); err != nil {
-		return err
-	}
-	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, privateKey)
+	)
 	if err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
-	defer cancel()
-	txOpts.Context = ctx
-	tx, err := sourceMessenger.SendCrossChainMessage(txOpts, msgInput)
-	if err != nil {
-		return err
-	}
-	sourceReceipt, b, err := evm.WaitForTransaction(sourceClient, tx)
-	if err != nil {
-		return err
-	}
-	if !b {
+	if err == contract.ErrFailedReceiptStatus {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 		trace, err := evm.GetTrace(network.BlockchainEndpoint(sourceBlockchainID.String()), txHash)
@@ -207,7 +181,7 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 	}
-	sourceEvent, err := evm.GetEventFromLogs(sourceReceipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
+	sourceEvent, err := evm.GetEventFromLogs(receipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
 	if err != nil {
 		return err
 	}

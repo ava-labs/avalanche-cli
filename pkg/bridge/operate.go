@@ -118,7 +118,7 @@ func ERC20TokenHubSend(
 	if err != nil {
 		return err
 	}
-	if err := contract.TxToMethod(
+	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		tokenAddress,
@@ -139,7 +139,7 @@ func ERC20TokenHubSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	return contract.TxToMethod(
+	_, _, err = contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		hubAddress,
@@ -148,6 +148,7 @@ func ERC20TokenHubSend(
 		params,
 		amount,
 	)
+	return err
 }
 
 func NativeTokenHubSend(
@@ -183,7 +184,7 @@ func NativeTokenHubSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	return contract.TxToMethod(
+	_, _, err = contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		hubAddress,
@@ -191,6 +192,7 @@ func NativeTokenHubSend(
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
 		params,
 	)
+	return err
 }
 
 func ERC20TokenSpokeSend(
@@ -202,7 +204,7 @@ func ERC20TokenSpokeSend(
 	amountRecipient common.Address,
 	amount *big.Int,
 ) error {
-	if err := contract.TxToMethod(
+	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		spokeAddress,
@@ -233,7 +235,7 @@ func ERC20TokenSpokeSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	return contract.TxToMethod(
+	_, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		spokeAddress,
@@ -242,4 +244,5 @@ func ERC20TokenSpokeSend(
 		params,
 		amount,
 	)
+	return err
 }

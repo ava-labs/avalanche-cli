@@ -12,8 +12,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
 )
+
+var ErrFailedReceiptStatus = fmt.Errorf("failed receipt status")
 
 func removeSurroundingParenthesis(s string) (string, error) {
 	s = strings.TrimSpace(s)
@@ -255,39 +258,40 @@ func TxToMethod(
 	payment *big.Int,
 	methodEsp string,
 	params ...interface{},
-) error {
+) (*types.Transaction, *types.Receipt, error) {
 	methodName, methodABI, err := ParseMethodEsp(methodEsp, false, payment != nil, false, params...)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	metadata := &bind.MetaData{
 		ABI: methodABI,
 	}
 	abi, err := metadata.GetAbi()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer client.Close()
 	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
 	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	txOpts.Value = payment
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
-		return err
+	receipt, success, err := evm.WaitForTransaction(client, tx)
+	if err != nil {
+		return tx, nil, err
 	} else if !success {
-		return fmt.Errorf("failed receipt status deploying contract")
+		return tx, receipt, ErrFailedReceiptStatus
 	}
-	return nil
+	return tx, receipt, nil
 }
 
 func CallToMethod(
@@ -357,7 +361,7 @@ func DeployContract(
 	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
 		return common.Address{}, err
 	} else if !success {
-		return common.Address{}, fmt.Errorf("failed receipt status deploying contract")
+		return common.Address{}, ErrFailedReceiptStatus
 	}
 	return address, nil
 }
