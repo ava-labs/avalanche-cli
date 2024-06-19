@@ -355,15 +355,15 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("The difference is...")
-				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser("The two gas fee variables that have the largest impact on performance are the gas limit, the maximum amount of gas that fits in a block, and the gas target, the expected amount of gas consumed in a rolling ten-second period.")
+				ux.Logger.PrintToUser("By increasing the gas limit, you can fit more transactions into a single block which in turn increases your max throughput. Increasing the gas target has the same effect; if the targeted amount of gas is not consumed, the dynamic fee algorithm will decrease the base fee until it reaches the minimum.")
+				ux.Logger.PrintToUser("There is a long-term risk of increasing your gas parameters. By allowing more transactions to occur on your network, the network state will increase at a faster rate, meaning infrastructure costs and requirements will increase.")
 				continue
 			}
 			break
 		}
 		dontChangeFeeSettingsOption := "I am fine with the gas fee configuration set in the genesis (Fee Manager Precompile OFF)"
 		changeFeeSettingsOption := "I want to be able to adjust gas pricing if necessary - recommended for production (Fee Manager Precompile ON)"
-		explainOption = "Explain the difference"
 		options = []string{dontChangeFeeSettingsOption, changeFeeSettingsOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -379,10 +379,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-			case explainOption:
-				ux.Logger.PrintToUser("The difference is...")
-				ux.Logger.PrintToUser("")
-				continue
+				//missing case for dontChangeFeeSettingsOption
 			}
 			break
 		}
@@ -405,8 +402,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("The difference is...")
-				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser("Fee reward mechanism can be configured with this stateful precompile contract called as RewardManager. Configuration can include burning fees, sending fees to a predefined address, or enabling fees to be collected by block producers. For more info, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#changing-fee-reward-mechanisms")
 				continue
 			}
 			break
