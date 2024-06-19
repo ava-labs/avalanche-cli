@@ -104,8 +104,9 @@ func getMap(
 		if rt.Kind() == reflect.Slice {
 			if rt.Len() != len(types) {
 				return nil, fmt.Errorf(
-					"inconsistency in slice len between method esp %q and given params: expected %d got %d",
+					"inconsistency in slice len between method esp %q and given params %#v: expected %d got %d",
 					types,
+					params,
 					len(types),
 					rt.Len(),
 				)
@@ -114,8 +115,9 @@ func getMap(
 		} else if rt.Kind() == reflect.Struct {
 			if rt.NumField() != len(types) {
 				return nil, fmt.Errorf(
-					"inconsistency in struct len between method esp %q and given params: expected %d got %d",
+					"inconsistency in struct len between method esp %q and given params %#v: expected %d got %d",
 					types,
+					params,
 					len(types),
 					rt.NumField(),
 				)
@@ -140,8 +142,6 @@ func getMap(
 			m["type"] = "tuple"
 			m["name"] = name
 		case string(t[0]) == "[":
-			// TODO: add more types
-			// slice struct type
 			var err error
 			t, err = removeSurroundingBrackets(t)
 			if err != nil {
@@ -151,6 +151,13 @@ func getMap(
 				t, err = removeSurroundingParenthesis(t)
 				if err != nil {
 					return nil, err
+				}
+				rt := reflect.ValueOf(param)
+				if rt.Kind() != reflect.Slice {
+					return nil, fmt.Errorf("expected param for field %d of esp %q to be an slice", i, types)
+				}
+				if rt.Len() > i {
+					param = rt.Index(0).Interface()
 				}
 				m["components"], err = getMap(getWords(t), param)
 				if err != nil {
