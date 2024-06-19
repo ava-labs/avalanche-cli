@@ -4,6 +4,8 @@ go 1.21.10
 
 toolchain go1.22.1
 
+replace github.com/ava-labs/subnet-evm => ../subnet-evm/
+
 require (
 	github.com/ava-labs/apm v0.0.4
 	github.com/ava-labs/avalanche-network-runner v1.8.0

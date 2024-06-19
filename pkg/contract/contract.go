@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -100,23 +101,31 @@ func getMap(
 	r := []map[string]interface{}{}
 	for i, t := range types {
 		var (
-			param interface{}
-			name  string
+			param      interface{}
+			name       string
+			structName string
 		)
 		rt := reflect.ValueOf(params)
+		if rt.Kind() == reflect.Ptr {
+			rt = rt.Elem()
+		}
 		if rt.Kind() == reflect.Slice {
 			if rt.Len() != len(types) {
-				return nil, fmt.Errorf(
-					"inconsistency in slice len between method esp %q and given params %#v: expected %d got %d",
-					types,
-					params,
-					len(types),
-					rt.Len(),
-				)
+				if rt.Len() == 1 {
+					return getMap(types, rt.Index(0).Interface())
+				} else {
+					return nil, fmt.Errorf(
+						"inconsistency in slice len between method esp %q and given params %#v: expected %d got %d",
+						types,
+						params,
+						len(types),
+						rt.Len(),
+					)
+				}
 			}
 			param = rt.Index(i).Interface()
 		} else if rt.Kind() == reflect.Struct {
-			if rt.NumField() != len(types) {
+			if rt.NumField() < len(types) {
 				return nil, fmt.Errorf(
 					"inconsistency in struct len between method esp %q and given params %#v: expected %d got %d",
 					types,
@@ -126,6 +135,7 @@ func getMap(
 				)
 			}
 			name = rt.Type().Field(i).Name
+			structName = rt.Type().Field(i).Type.Name()
 			param = rt.Field(i).Interface()
 		}
 		m := map[string]interface{}{}
@@ -141,7 +151,11 @@ func getMap(
 			if err != nil {
 				return nil, err
 			}
-			m["internaltype"] = "tuple"
+			if structName != "" {
+				m["internalType"] = "struct " + structName
+			} else {
+				m["internalType"] = "tuple"
+			}
 			m["type"] = "tuple"
 			m["name"] = name
 		case string(t[0]) == "[":
@@ -159,23 +173,26 @@ func getMap(
 				if rt.Kind() != reflect.Slice {
 					return nil, fmt.Errorf("expected param for field %d of esp %q to be an slice", i, types)
 				}
-				if rt.Len() > i {
-					param = rt.Index(0).Interface()
-				}
+				param = reflect.Zero(rt.Type().Elem()).Interface()
+				structName = rt.Type().Elem().Name()
 				m["components"], err = getMap(getWords(t), param)
 				if err != nil {
 					return nil, err
 				}
-				m["internaltype"] = "tuple[]"
+				if structName != "" {
+					m["internalType"] = "struct " + structName + "[]"
+				} else {
+					m["internalType"] = "tuple[]"
+				}
 				m["type"] = "tuple[]"
 				m["name"] = name
 			} else {
-				m["internaltype"] = fmt.Sprintf("%s[]", t)
+				m["internalType"] = fmt.Sprintf("%s[]", t)
 				m["type"] = fmt.Sprintf("%s[]", t)
 				m["name"] = name
 			}
 		default:
-			m["internaltype"] = t
+			m["internalType"] = t
 			m["type"] = t
 			m["name"] = name
 		}
@@ -184,71 +201,85 @@ func getMap(
 	return r, nil
 }
 
-func ParseMethodEsp(
-	methodEsp string,
+func ParseEsp(
+	esp string,
+	indexedFields []int,
 	constructor bool,
+	event bool,
 	paid bool,
 	view bool,
 	params ...interface{},
 ) (string, string, error) {
-	index := strings.Index(methodEsp, "(")
+	index := strings.Index(esp, "(")
 	if index == -1 {
-		return methodEsp, "", nil
+		return esp, "", nil
 	}
-	methodName := methodEsp[:index]
-	methodTypes := methodEsp[index:]
-	methodInputs := ""
-	methodOutputs := ""
-	index = strings.Index(methodTypes, "->")
+	name := esp[:index]
+	types := esp[index:]
+	inputs := ""
+	outputs := ""
+	index = strings.Index(types, "->")
 	if index == -1 {
-		methodInputs = methodTypes
+		inputs = types
 	} else {
-		methodInputs = methodTypes[:index]
-		methodOutputs = methodTypes[index+2:]
+		inputs = types[:index]
+		outputs = types[index+2:]
 	}
 	var err error
-	methodInputs, err = removeSurroundingParenthesis(methodInputs)
+	inputs, err = removeSurroundingParenthesis(inputs)
 	if err != nil {
 		return "", "", err
 	}
-	methodOutputs, err = removeSurroundingParenthesis(methodOutputs)
+	outputs, err = removeSurroundingParenthesis(outputs)
 	if err != nil {
 		return "", "", err
 	}
-	inputTypes := getWords(methodInputs)
-	outputTypes := getWords(methodOutputs)
-	inputs, err := getMap(inputTypes, params)
+	inputTypes := getWords(inputs)
+	outputTypes := getWords(outputs)
+	inputsMaps, err := getMap(inputTypes, params)
 	if err != nil {
 		return "", "", err
 	}
-	outputs, err := getMap(outputTypes, nil)
+	outputsMaps, err := getMap(outputTypes, nil)
 	if err != nil {
 		return "", "", err
+	}
+	if event {
+		for i := range inputsMaps {
+			if utils.Belongs(indexedFields, i) {
+				inputsMaps[i]["indexed"] = true
+			}
+		}
 	}
 	abiMap := []map[string]interface{}{
 		{
-			"inputs":          inputs,
-			"stateMutability": "nonpayable",
-			"type":            "function",
+			"inputs": inputsMaps,
 		},
 	}
-	if !constructor {
-		abiMap[0]["outputs"] = outputs
-		abiMap[0]["name"] = methodName
-	} else {
-		abiMap[0]["type"] = "constructor"
-	}
-	if paid {
+	switch {
+	case paid:
 		abiMap[0]["stateMutability"] = "payable"
-	}
-	if view {
+	case view:
 		abiMap[0]["stateMutability"] = "view"
+	default:
+		abiMap[0]["stateMutability"] = "nonpayable"
+	}
+	if constructor {
+		abiMap[0]["type"] = "constructor"
+	} else if event {
+		abiMap[0]["type"] = "event"
+		abiMap[0]["name"] = name
+		delete(abiMap[0], "stateMutability")
+	} else {
+		abiMap[0]["type"] = "function"
+		abiMap[0]["outputs"] = outputsMaps
+		abiMap[0]["name"] = name
 	}
 	abiBytes, err := json.MarshalIndent(abiMap, "", "  ")
 	if err != nil {
 		return "", "", err
 	}
-	return methodName, string(abiBytes), nil
+	return name, string(abiBytes), nil
 }
 
 func TxToMethod(
@@ -259,7 +290,7 @@ func TxToMethod(
 	methodEsp string,
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
-	methodName, methodABI, err := ParseMethodEsp(methodEsp, false, payment != nil, false, params...)
+	methodName, methodABI, err := ParseEsp(methodEsp, nil, false, false, payment != nil, false, params...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -300,7 +331,7 @@ func CallToMethod(
 	methodEsp string,
 	params ...interface{},
 ) ([]interface{}, error) {
-	methodName, methodABI, err := ParseMethodEsp(methodEsp, false, false, true, params...)
+	methodName, methodABI, err := ParseEsp(methodEsp, nil, false, false, false, true, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -332,7 +363,7 @@ func DeployContract(
 	methodEsp string,
 	params ...interface{},
 ) (common.Address, error) {
-	_, methodABI, err := ParseMethodEsp(methodEsp, true, false, false, params...)
+	_, methodABI, err := ParseEsp(methodEsp, nil, true, false, false, false, params...)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -364,4 +395,25 @@ func DeployContract(
 		return common.Address{}, ErrFailedReceiptStatus
 	}
 	return address, nil
+}
+
+func UnpackLog(
+	eventEsp string,
+	indexedFields []int,
+	log types.Log,
+	event interface{},
+) error {
+	eventName, eventABI, err := ParseEsp(eventEsp, indexedFields, false, true, false, false, event)
+	if err != nil {
+		return err
+	}
+	metadata := &bind.MetaData{
+		ABI: eventABI,
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return err
+	}
+	contract := bind.NewBoundContract(common.Address{}, *abi, nil, nil, nil)
+	return contract.UnpackLog(event, eventName, log)
 }

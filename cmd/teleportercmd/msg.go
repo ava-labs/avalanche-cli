@@ -16,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
@@ -133,16 +132,6 @@ func msg(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
-	// get clients + messengers
-	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceBlockchainID.String()))
-	if err != nil {
-		return err
-	}
-	sourceMessenger, err := teleportermessenger.NewTeleporterMessenger(common.HexToAddress(sourceMessengerAddress), sourceClient)
-	if err != nil {
-		return err
-	}
-
 	encodedMessage := []byte(message)
 	if msgFlags.HexEncodedMessage {
 		encodedMessage = common.FromHex(message)
@@ -181,16 +170,17 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 	}
-	sourceEvent, err := evm.GetEventFromLogs(receipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
+
+	event, err := evm.GetEventFromLogs(receipt.Logs, teleporter.ParseSendCrossChainMessage)
 	if err != nil {
 		return err
 	}
 
-	if destBlockchainID != ids.ID(sourceEvent.DestinationBlockchainID[:]) {
-		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destBlockchainID, ids.ID(sourceEvent.DestinationBlockchainID[:]))
+	if destBlockchainID != ids.ID(event.DestinationBlockchainID[:]) {
+		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destBlockchainID, ids.ID(event.DestinationBlockchainID[:]))
 	}
-	if message != string(sourceEvent.Message.Message) {
-		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(sourceEvent.Message.Message))
+	if message != string(event.Message.Message) {
+		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(event.Message.Message))
 	}
 
 	// receive and process head from destination
@@ -203,7 +193,7 @@ func msg(_ *cobra.Command, args []string) error {
 		if b, err := teleporter.MessageReceived(
 			network.BlockchainEndpoint(destBlockchainID.String()),
 			common.HexToAddress(destMessengerAddress),
-			sourceEvent.MessageID,
+			event.MessageID,
 		); err != nil {
 			return err
 		} else if b {

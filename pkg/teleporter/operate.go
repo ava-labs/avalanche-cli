@@ -95,3 +95,43 @@ func SendCrossChainMessage(
 		params,
 	)
 }
+
+// events
+
+type TeleporterMessageReceipt struct {
+	ReceivedMessageNonce *big.Int
+	RelayerRewardAddress common.Address
+}
+type TeleporterFeeInfo struct {
+	FeeTokenAddress common.Address
+	Amount          *big.Int
+}
+type TeleporterMessage struct {
+	MessageNonce            *big.Int
+	OriginSenderAddress     common.Address
+	DestinationBlockchainID [32]byte
+	DestinationAddress      common.Address
+	RequiredGasLimit        *big.Int
+	AllowedRelayerAddresses []common.Address
+	Receipts                []TeleporterMessageReceipt
+	Message                 []byte
+}
+type TeleporterMessengerSendCrossChainMessage struct {
+	MessageID               [32]byte
+	DestinationBlockchainID [32]byte
+	Message                 TeleporterMessage
+	FeeInfo                 TeleporterFeeInfo
+}
+
+func ParseSendCrossChainMessage(log types.Log) (*TeleporterMessengerSendCrossChainMessage, error) {
+	event := new(TeleporterMessengerSendCrossChainMessage)
+	if err := contract.UnpackLog(
+		"SendCrossChainMessage(bytes32,bytes32,(uint256,address,bytes32,address,uint256,[address],[(uint256,address)],bytes),(address,uint256))",
+		[]int{0, 1},
+		log,
+		event,
+	); err != nil {
+		return nil, err
+	}
+	return event, nil
+}
