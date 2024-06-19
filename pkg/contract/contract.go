@@ -92,11 +92,37 @@ func getWords(s string) []string {
 
 func getMap(
 	types []string,
-	params ...interface{},
+	params interface{},
 ) ([]map[string]interface{}, error) {
 	r := []map[string]interface{}{}
 	for i, t := range types {
-		fmt.Println(i, t)
+		var (
+			param interface{}
+			name  string
+		)
+		rt := reflect.ValueOf(params)
+		if rt.Kind() == reflect.Slice {
+			if rt.Len() != len(types) {
+				return nil, fmt.Errorf(
+					"inconsistency in slice len between method esp %q and given params: expected %d got %d",
+					types,
+					len(types),
+					rt.Len(),
+				)
+			}
+			param = rt.Index(i).Interface()
+		} else if rt.Kind() == reflect.Struct {
+			if rt.NumField() != len(types) {
+				return nil, fmt.Errorf(
+					"inconsistency in struct len between method esp %q and given params: expected %d got %d",
+					types,
+					len(types),
+					rt.NumField(),
+				)
+			}
+			name = rt.Type().Field(i).Name
+			param = rt.Field(i).Interface()
+		}
 		m := map[string]interface{}{}
 		switch {
 		case string(t[0]) == "(":
@@ -106,15 +132,13 @@ func getMap(
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println(t, params)
-			m["components"], err = getMap(getWords(t), params[i])
+			m["components"], err = getMap(getWords(t), param)
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println("despues")
 			m["internaltype"] = "tuple"
 			m["type"] = "tuple"
-			m["name"] = ""
+			m["name"] = name
 		case string(t[0]) == "[":
 			// TODO: add more types
 			// slice struct type
@@ -128,33 +152,22 @@ func getMap(
 				if err != nil {
 					return nil, err
 				}
-				m["components"], err = getMap(getWords(t), params[i])
+				m["components"], err = getMap(getWords(t), param)
 				if err != nil {
 					return nil, err
 				}
 				m["internaltype"] = "tuple[]"
 				m["type"] = "tuple[]"
-				m["name"] = ""
+				m["name"] = name
 			} else {
 				m["internaltype"] = fmt.Sprintf("%s[]", t)
 				m["type"] = fmt.Sprintf("%s[]", t)
-				m["name"] = ""
+				m["name"] = name
 			}
 		default:
-			name := ""
-			if len(params) == 1 {
-				rt := reflect.ValueOf(params[0])
-				if rt.Kind() == reflect.Slice && rt.Len() > 0 {
-					rt = rt.Index(0)
-				}
-				if rt.Kind() == reflect.Struct && rt.NumField() == len(types) {
-					name = rt.Type().Field(i).Name
-				}
-			}
 			m["internaltype"] = t
 			m["type"] = t
 			m["name"] = name
-			fmt.Println(m)
 		}
 		r = append(r, m)
 	}
@@ -194,11 +207,11 @@ func ParseMethodEsp(
 	}
 	inputTypes := getWords(methodInputs)
 	outputTypes := getWords(methodOutputs)
-	inputs, err := getMap(inputTypes, params...)
+	inputs, err := getMap(inputTypes, params)
 	if err != nil {
 		return "", "", err
 	}
-	outputs, err := getMap(outputTypes)
+	outputs, err := getMap(outputTypes, nil)
 	if err != nil {
 		return "", "", err
 	}

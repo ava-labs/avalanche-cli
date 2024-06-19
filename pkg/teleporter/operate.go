@@ -90,7 +90,7 @@ func SendCrossChainMessage(
 		privateKey,
 		messengerAddress,
 		nil,
-		"sendCrossChainMessage((bytes32, address, (address, uint256), uin256, [address], bytes))->(bytes32)",
+		"sendCrossChainMessage((bytes32, address, (address, uint256), uint256, [address], bytes))->(bytes32)",
 		params,
 	)
 }
