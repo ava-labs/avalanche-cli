@@ -456,7 +456,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Blue.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, transferSubnetOwnershipTxID)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -494,7 +494,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID, ids.Empty)
+		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
