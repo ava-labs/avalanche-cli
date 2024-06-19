@@ -23,18 +23,18 @@ type ChainFlags struct {
 	CChain     bool
 }
 
-type HubFlags struct {
+type HomeFlags struct {
 	chainFlags   ChainFlags
-	hubAddress   string
+	homeAddress  string
 	native       bool
 	erc20Address string
 }
 
 type DeployFlags struct {
-	Network    networkoptions.NetworkFlags
-	hubFlags   HubFlags
-	spokeFlags ChainFlags
-	version    string
+	Network     networkoptions.NetworkFlags
+	homeFlags   HomeFlags
+	remoteFlags ChainFlags
+	version     string
 }
 
 var (
@@ -56,13 +56,13 @@ func newDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	cmd.Flags().StringVar(&deployFlags.hubFlags.chainFlags.SubnetName, "hub-subnet", "", "use the given CLI subnet as the Bridge Hub's Chain")
-	cmd.Flags().BoolVar(&deployFlags.hubFlags.chainFlags.CChain, "c-chain-hub", false, "use C-Chain as the Bridge Hub's Chain")
-	cmd.Flags().BoolVar(&deployFlags.hubFlags.native, "deploy-native-hub", false, "deploy a Bridge Hub for the Chain's Native Token")
-	cmd.Flags().StringVar(&deployFlags.hubFlags.erc20Address, "deploy-erc20-hub", "", "deploy a Bridge Hub for the Chain's ERC20 Token")
-	cmd.Flags().StringVar(&deployFlags.hubFlags.hubAddress, "use-hub", "", "use the given Bridge Hub Address")
-	cmd.Flags().BoolVar(&deployFlags.spokeFlags.CChain, "c-chain-spoke", false, "use C-Chain as the Bridge Spoke's Chain")
-	cmd.Flags().StringVar(&deployFlags.spokeFlags.SubnetName, "spoke-subnet", "", "use the given CLI subnet as the Bridge Spoke's Chain")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.chainFlags.SubnetName, "home-subnet", "", "use the given CLI subnet as the Bridge Home's Chain")
+	cmd.Flags().BoolVar(&deployFlags.homeFlags.chainFlags.CChain, "c-chain-home", false, "use C-Chain as the Bridge Home's Chain")
+	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Bridge Home for the Chain's Native Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Bridge Home for the Chain's ERC20 Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Bridge Home Address")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.CChain, "c-chain-remote", false, "use C-Chain as the Bridge Remote's Chain")
+	cmd.Flags().StringVar(&deployFlags.remoteFlags.SubnetName, "remote-subnet", "", "use the given CLI subnet as the Bridge Remote's Chain")
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of bridge to deploy (defaults to main branch)")
 	return cmd
 }
@@ -89,57 +89,57 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// flags exclusiveness
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.hubFlags.chainFlags.SubnetName != "", flags.hubFlags.chainFlags.CChain}) {
-		return fmt.Errorf("--hub-subnet and --c-chain-hub are mutually exclusive flags")
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.homeFlags.chainFlags.SubnetName != "", flags.homeFlags.chainFlags.CChain}) {
+		return fmt.Errorf("--home-subnet and --c-chain-home are mutually exclusive flags")
 	}
 	if !cmdflags.EnsureMutuallyExclusive([]bool{
-		flags.hubFlags.hubAddress != "",
-		flags.hubFlags.erc20Address != "",
-		flags.hubFlags.native,
+		flags.homeFlags.homeAddress != "",
+		flags.homeFlags.erc20Address != "",
+		flags.homeFlags.native,
 	}) {
-		return fmt.Errorf("--deploy-native-hub, --deploy-erc20-hub, and --use-hub are mutually exclusive flags")
+		return fmt.Errorf("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
 	}
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.spokeFlags.SubnetName != "", flags.spokeFlags.CChain}) {
-		return fmt.Errorf("--spoke-subnet and --c-chain-spoke are mutually exclusive flags")
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.remoteFlags.SubnetName != "", flags.remoteFlags.CChain}) {
+		return fmt.Errorf("--remote-subnet and --c-chain-remote are mutually exclusive flags")
 	}
 
-	// Hub Chain Prompts
-	if flags.hubFlags.chainFlags.SubnetName == "" && !flags.hubFlags.chainFlags.CChain {
+	// Home Chain Prompts
+	if flags.homeFlags.chainFlags.SubnetName == "" && !flags.homeFlags.chainFlags.CChain {
 		prompt := "Where is the Token origin?"
-		if cancel, err := promptChain(prompt, network, false, "", &flags.hubFlags.chainFlags); err != nil {
+		if cancel, err := promptChain(prompt, network, false, "", &flags.homeFlags.chainFlags); err != nil {
 			return err
 		} else if cancel {
 			return nil
 		}
 	}
 
-	// Hub Chain Validations
-	if flags.hubFlags.chainFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.hubFlags.chainFlags.SubnetName); err != nil {
+	// Home Chain Validations
+	if flags.homeFlags.chainFlags.SubnetName != "" {
+		if err := validateSubnet(network, flags.homeFlags.chainFlags.SubnetName); err != nil {
 			return err
 		}
 	}
 
-	// Hub Contract Prompts
-	if flags.hubFlags.hubAddress == "" && flags.hubFlags.erc20Address == "" && !flags.hubFlags.native {
+	// Home Contract Prompts
+	if flags.homeFlags.homeAddress == "" && flags.homeFlags.erc20Address == "" && !flags.homeFlags.native {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.hubFlags.chainFlags.SubnetName,
-			flags.hubFlags.chainFlags.CChain,
+			flags.homeFlags.chainFlags.SubnetName,
+			flags.homeFlags.chainFlags.CChain,
 		)
 		if err != nil {
 			return err
 		}
 		prompt := "What kind of token do you want to bridge?"
 		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...) (recommended)"
-		hubDeployedOption := "A token that already has a Hub deployed (recommended)"
-		deployNewHubOption := "Deploy a new Hub for the token"
+		homeDeployedOption := "A token that already has a Home deployed (recommended)"
+		deployNewHomeOption := "Deploy a new Home for the token"
 		explainOption := "Explain the difference"
 		goBackOption := "Go Back"
-		hubChain := "C-Chain"
-		if !flags.hubFlags.chainFlags.CChain {
-			hubChain = flags.hubFlags.chainFlags.SubnetName
+		homeChain := "C-Chain"
+		if !flags.homeFlags.chainFlags.CChain {
+			homeChain = flags.homeFlags.chainFlags.SubnetName
 		}
-		popularTokensInfo, err := GetPopularTokensInfo(network, hubChain)
+		popularTokensInfo, err := GetPopularTokensInfo(network, homeChain)
 		if err != nil {
 			return err
 		}
@@ -149,9 +149,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				return i.Desc()
 			},
 		)
-		options := []string{popularOption, hubDeployedOption, deployNewHubOption, explainOption}
+		options := []string{popularOption, homeDeployedOption, deployNewHomeOption, explainOption}
 		if len(popularTokensDesc) == 0 {
-			options = []string{hubDeployedOption, deployNewHubOption, explainOption}
+			options = []string{homeDeployedOption, deployNewHomeOption, explainOption}
 		}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -175,20 +175,20 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				if option == goBackOption {
 					continue
 				}
-			case hubDeployedOption:
+			case homeDeployedOption:
 				addr, err := app.Prompt.CaptureAddress(
-					"Enter the address of the Hub",
+					"Enter the address of the Home",
 				)
 				if err != nil {
 					return err
 				}
-				flags.hubFlags.hubAddress = addr.Hex()
-			case deployNewHubOption:
+				flags.homeFlags.homeAddress = addr.Hex()
+			case deployNewHomeOption:
 				nativeOption := "The native token " + nativeTokenSymbol
 				erc20Option := "An ERC-20 token"
 				options := []string{nativeOption, erc20Option}
 				option, err := app.Prompt.CaptureList(
-					"What kind of token do you want to deploy the Hub for?",
+					"What kind of token do you want to deploy the Home for?",
 					options,
 				)
 				if err != nil {
@@ -196,7 +196,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				}
 				switch option {
 				case nativeOption:
-					flags.hubFlags.native = true
+					flags.homeFlags.native = true
 				case erc20Option:
 					erc20TokenAddr, err := app.Prompt.CaptureAddress(
 						"Enter the address of the ERC-20 Token",
@@ -204,54 +204,54 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					if err != nil {
 						return err
 					}
-					flags.hubFlags.erc20Address = erc20TokenAddr.Hex()
+					flags.homeFlags.erc20Address = erc20TokenAddr.Hex()
 					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
-						ux.Logger.PrintToUser("There already is a Token Hub for %s deployed on %s.", p.TokenName, hubChain)
+						ux.Logger.PrintToUser("There already is a Token Home for %s deployed on %s.", p.TokenName, homeChain)
 						ux.Logger.PrintToUser("")
-						ux.Logger.PrintToUser("Hub Address: %s", p.BridgeHubAddress)
-						deployANewHupOption := "Yes, use the existing Hub (recommended)"
-						useTheExistingHubOption := "No, deploy my own Hub"
-						options := []string{deployANewHupOption, useTheExistingHubOption, explainOption}
+						ux.Logger.PrintToUser("Home Address: %s", p.BridgeHomeAddress)
+						deployANewHupOption := "Yes, use the existing Home (recommended)"
+						useTheExistingHomeOption := "No, deploy my own Home"
+						options := []string{deployANewHupOption, useTheExistingHomeOption, explainOption}
 						option, err := app.Prompt.CaptureList(
-							"Do you want to use the existing Hub?",
+							"Do you want to use the existing Home?",
 							options,
 						)
 						if err != nil {
 							return err
 						}
 						switch option {
-						case useTheExistingHubOption:
-							flags.hubFlags.hubAddress = p.BridgeHubAddress
-							flags.hubFlags.erc20Address = ""
+						case useTheExistingHomeOption:
+							flags.homeFlags.homeAddress = p.BridgeHomeAddress
+							flags.homeFlags.erc20Address = ""
 						case deployANewHupOption:
 						case explainOption:
-							ux.Logger.PrintToUser("There is already a Bridge Hub deployed for the popular token %s on %s.",
+							ux.Logger.PrintToUser("There is already a Bridge Home deployed for the popular token %s on %s.",
 								p.TokenName,
-								hubChain,
+								homeChain,
 							)
-							ux.Logger.PrintToUser("Connect to that Hub to participate in standard cross chain transfers")
-							ux.Logger.PrintToUser("for the token, including transfers to any of the registered Spoke subnets.")
-							ux.Logger.PrintToUser("Deploy a new Hub if wanting to have isolated cross chain transfers for")
+							ux.Logger.PrintToUser("Connect to that Home to participate in standard cross chain transfers")
+							ux.Logger.PrintToUser("for the token, including transfers to any of the registered Remote subnets.")
+							ux.Logger.PrintToUser("Deploy a new Home if wanting to have isolated cross chain transfers for")
 							ux.Logger.PrintToUser("your application, or if wanting to provide a new bridge alternative")
 							ux.Logger.PrintToUser("for the token.")
 						}
 					}
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("A bridge consists of one Hub and at least one but possibly many Spokes.")
-				ux.Logger.PrintToUser("The Hub manages the asset to be bridged out to Spoke instances. It lives on the Subnet")
+				ux.Logger.PrintToUser("A bridge consists of one Home and at least one but possibly many Remotes.")
+				ux.Logger.PrintToUser("The Home manages the asset to be bridged out to Remote instances. It lives on the Subnet")
 				ux.Logger.PrintToUser("where the asset exists")
-				ux.Logger.PrintToUser("The Spokes live on the other Subnets that want to import the asset bridged by the Hub.")
+				ux.Logger.PrintToUser("The Remotes live on the other Subnets that want to import the asset bridged by the Home.")
 				ux.Logger.PrintToUser("")
 				if len(popularTokensDesc) != 0 {
-					ux.Logger.PrintToUser("A popular token of a subnet is assumed to already have a Hub Deployed. In this case")
-					ux.Logger.PrintToUser("the Hub parameters will be automatically obtained, and a new Spoke will be created on")
+					ux.Logger.PrintToUser("A popular token of a subnet is assumed to already have a Home Deployed. In this case")
+					ux.Logger.PrintToUser("the Home parameters will be automatically obtained, and a new Remote will be created on")
 					ux.Logger.PrintToUser("the other Subnet, to access the popular token.")
 				}
-				ux.Logger.PrintToUser("For a token that already has a Hub deployed, the Hub parameters will be prompted,")
-				ux.Logger.PrintToUser("and a new Spoke will be created on the other Subnet to access that token.")
-				ux.Logger.PrintToUser("If deploying a new Hub for the token, the token parameters will be prompted,")
-				ux.Logger.PrintToUser("and both a new Hub will be created on the token Subnet, and a new Spoke will be created")
+				ux.Logger.PrintToUser("For a token that already has a Home deployed, the Home parameters will be prompted,")
+				ux.Logger.PrintToUser("and a new Remote will be created on the other Subnet to access that token.")
+				ux.Logger.PrintToUser("If deploying a new Home for the token, the token parameters will be prompted,")
+				ux.Logger.PrintToUser("and both a new Home will be created on the token Subnet, and a new Remote will be created")
 				ux.Logger.PrintToUser("on the other Subnet to access that token.")
 				continue
 			}
@@ -259,39 +259,39 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	// Hub Contract Validations
-	if flags.hubFlags.hubAddress != "" {
-		if err := prompts.ValidateAddress(flags.hubFlags.hubAddress); err != nil {
-			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.hubAddress, err)
+	// Home Contract Validations
+	if flags.homeFlags.homeAddress != "" {
+		if err := prompts.ValidateAddress(flags.homeFlags.homeAddress); err != nil {
+			return fmt.Errorf("failure validating %s: %w", flags.homeFlags.homeAddress, err)
 		}
 	}
-	if flags.hubFlags.erc20Address != "" {
-		if err := prompts.ValidateAddress(flags.hubFlags.erc20Address); err != nil {
-			return fmt.Errorf("failure validating %s: %w", flags.hubFlags.erc20Address, err)
+	if flags.homeFlags.erc20Address != "" {
+		if err := prompts.ValidateAddress(flags.homeFlags.erc20Address); err != nil {
+			return fmt.Errorf("failure validating %s: %w", flags.homeFlags.erc20Address, err)
 		}
 	}
 
-	// Spoke Chain Prompts
-	if !flags.spokeFlags.CChain && flags.spokeFlags.SubnetName == "" {
+	// Remote Chain Prompts
+	if !flags.remoteFlags.CChain && flags.remoteFlags.SubnetName == "" {
 		prompt := "Where should the token be bridged as an ERC-20?"
-		if cancel, err := promptChain(prompt, network, flags.hubFlags.chainFlags.CChain, flags.hubFlags.chainFlags.SubnetName, &flags.spokeFlags); err != nil {
+		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags); err != nil {
 			return err
 		} else if cancel {
 			return nil
 		}
 	}
 
-	// Spoke Chain Validations
-	if flags.spokeFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.spokeFlags.SubnetName); err != nil {
+	// Remote Chain Validations
+	if flags.remoteFlags.SubnetName != "" {
+		if err := validateSubnet(network, flags.remoteFlags.SubnetName); err != nil {
 			return err
 		}
-		if flags.spokeFlags.SubnetName == flags.hubFlags.chainFlags.SubnetName {
-			return fmt.Errorf("trying to make a bridge were hub and spoke are on the same subnet")
+		if flags.remoteFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
+			return fmt.Errorf("trying to make a bridge were home and remote are on the same subnet")
 		}
 	}
-	if flags.spokeFlags.CChain && flags.hubFlags.chainFlags.CChain {
-		return fmt.Errorf("trying to make a bridge were hub and spoke are on the same subnet")
+	if flags.remoteFlags.CChain && flags.homeFlags.chainFlags.CChain {
+		return fmt.Errorf("trying to make a bridge were home and remote are on the same subnet")
 	}
 
 	// Setup Contracts
@@ -305,41 +305,41 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	ux.Logger.PrintToUser("")
 
-	// Hub Deploy
+	// Home Deploy
 	bridgeSrcDir, err := bridge.RepoDir(app)
 	if err != nil {
 		return err
 	}
 	var (
-		hubAddress    common.Address
+		homeAddress   common.Address
 		tokenSymbol   string
 		tokenName     string
 		tokenDecimals uint8
 		tokenAddress  common.Address
 	)
-	// TODO: need registry address, manager address, private key for the hub chain (academy for fuji)
-	hubEndpoint, _, hubBlockchainID, _, hubRegistryAddress, hubKey, err := GetSubnetParams(
+	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
+	homeEndpoint, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := GetSubnetParams(
 		network,
-		flags.hubFlags.chainFlags.SubnetName,
-		flags.hubFlags.chainFlags.CChain,
+		flags.homeFlags.chainFlags.SubnetName,
+		flags.homeFlags.chainFlags.CChain,
 	)
 	if err != nil {
 		return err
 	}
-	if flags.hubFlags.hubAddress != "" {
-		hubAddress = common.HexToAddress(flags.hubFlags.hubAddress)
-		endpointKind, err := bridge.GetEndpointKind(hubEndpoint, hubAddress)
+	if flags.homeFlags.homeAddress != "" {
+		homeAddress = common.HexToAddress(flags.homeFlags.homeAddress)
+		endpointKind, err := bridge.GetEndpointKind(homeEndpoint, homeAddress)
 		if err != nil {
 			return err
 		}
 		switch endpointKind {
-		case bridge.ERC20TokenHub:
-			tokenAddress, err = bridge.ERC20TokenHubGetTokenAddress(hubEndpoint, hubAddress)
+		case bridge.ERC20TokenHome:
+			tokenAddress, err = bridge.ERC20TokenHomeGetTokenAddress(homeEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
-		case bridge.NativeTokenHub:
-			tokenAddress, err = bridge.NativeTokenHubGetTokenAddress(hubEndpoint, hubAddress)
+		case bridge.NativeTokenHome:
+			tokenAddress, err = bridge.NativeTokenHomeGetTokenAddress(homeEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
@@ -347,99 +347,99 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return fmt.Errorf("unsupported bridge endpoint kind %d", endpointKind)
 		}
 		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
-			hubEndpoint,
+			homeEndpoint,
 			tokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
 	}
-	if flags.hubFlags.erc20Address != "" {
-		tokenAddress = common.HexToAddress(flags.hubFlags.erc20Address)
+	if flags.homeFlags.erc20Address != "" {
+		tokenAddress = common.HexToAddress(flags.homeFlags.erc20Address)
 		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
-			hubEndpoint,
+			homeEndpoint,
 			tokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
-		hubAddress, err = bridge.DeployERC20Hub(
+		homeAddress, err = bridge.DeployERC20Home(
 			bridgeSrcDir,
-			hubEndpoint,
-			hubKey.PrivKeyHex(),
-			common.HexToAddress(hubRegistryAddress),
-			common.HexToAddress(hubKey.C()),
+			homeEndpoint,
+			homeKey.PrivKeyHex(),
+			common.HexToAddress(homeRegistryAddress),
+			common.HexToAddress(homeKey.C()),
 			tokenAddress,
 			tokenDecimals,
 		)
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Hub Deployed to %s", hubEndpoint)
-		ux.Logger.PrintToUser("Hub Address: %s", hubAddress)
+		ux.Logger.PrintToUser("Home Deployed to %s", homeEndpoint)
+		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
 		ux.Logger.PrintToUser("")
 	}
-	if flags.hubFlags.native {
+	if flags.homeFlags.native {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.hubFlags.chainFlags.SubnetName,
-			flags.hubFlags.chainFlags.CChain,
+			flags.homeFlags.chainFlags.SubnetName,
+			flags.homeFlags.chainFlags.CChain,
 		)
 		if err != nil {
 			return err
 		}
 		wrappedNativeTokenAddress, err := bridge.DeployWrappedNativeToken(
 			bridgeSrcDir,
-			hubEndpoint,
-			hubKey.PrivKeyHex(),
+			homeEndpoint,
+			homeKey.PrivKeyHex(),
 			nativeTokenSymbol,
 		)
 		if err != nil {
 			return err
 		}
 		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
-			hubEndpoint,
+			homeEndpoint,
 			wrappedNativeTokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", hubEndpoint)
+		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", tokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
-		hubAddress, err = bridge.DeployNativeHub(
+		homeAddress, err = bridge.DeployNativeHome(
 			bridgeSrcDir,
-			hubEndpoint,
-			hubKey.PrivKeyHex(),
-			common.HexToAddress(hubRegistryAddress),
-			common.HexToAddress(hubKey.C()),
+			homeEndpoint,
+			homeKey.PrivKeyHex(),
+			common.HexToAddress(homeRegistryAddress),
+			common.HexToAddress(homeKey.C()),
 			wrappedNativeTokenAddress,
 		)
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Hub Deployed to %s", hubEndpoint)
-		ux.Logger.PrintToUser("Hub Address: %s", hubAddress)
+		ux.Logger.PrintToUser("Home Deployed to %s", homeEndpoint)
+		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
 		ux.Logger.PrintToUser("")
 	}
 
-	// Spoke Deploy
-	spokeEndpoint, _, _, _, spokeRegistryAddress, spokeKey, err := GetSubnetParams(
+	// Remote Deploy
+	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := GetSubnetParams(
 		network,
-		flags.spokeFlags.SubnetName,
-		flags.spokeFlags.CChain,
+		flags.remoteFlags.SubnetName,
+		flags.remoteFlags.CChain,
 	)
 	if err != nil {
 		return err
 	}
 
-	spokeAddress, err := bridge.DeployERC20Spoke(
+	remoteAddress, err := bridge.DeployERC20Remote(
 		bridgeSrcDir,
-		spokeEndpoint,
-		spokeKey.PrivKeyHex(),
-		common.HexToAddress(spokeRegistryAddress),
-		common.HexToAddress(spokeKey.C()),
-		hubBlockchainID,
-		hubAddress,
+		remoteEndpoint,
+		remoteKey.PrivKeyHex(),
+		common.HexToAddress(remoteRegistryAddress),
+		common.HexToAddress(remoteKey.C()),
+		homeBlockchainID,
+		homeAddress,
 		tokenName,
 		tokenSymbol,
 		tokenDecimals,
@@ -448,16 +448,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	if err := bridge.RegisterERC20Spoke(
-		spokeEndpoint,
-		spokeKey.PrivKeyHex(),
-		spokeAddress,
+	if err := bridge.RegisterERC20Remote(
+		remoteEndpoint,
+		remoteKey.PrivKeyHex(),
+		remoteAddress,
 	); err != nil {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Spoke Deployed to %s", spokeEndpoint)
-	ux.Logger.PrintToUser("Spoke Address: %s", spokeAddress)
+	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)
+	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
 	return nil
 }

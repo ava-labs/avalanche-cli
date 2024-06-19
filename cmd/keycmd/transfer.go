@@ -398,8 +398,8 @@ func transferF(*cobra.Command, []string) error {
 			return err
 		}
 		switch endpointKind {
-		case bridge.ERC20TokenSpoke:
-			return bridge.ERC20TokenSpokeSend(
+		case bridge.ERC20TokenRemote:
+			return bridge.ERC20TokenRemoteSend(
 				originURL,
 				goethereumcommon.HexToAddress(originBridgeAddress),
 				privateKey,
@@ -408,8 +408,8 @@ func transferF(*cobra.Command, []string) error {
 				destinationAddr,
 				amountInt,
 			)
-		case bridge.ERC20TokenHub:
-			return bridge.ERC20TokenHubSend(
+		case bridge.ERC20TokenHome:
+			return bridge.ERC20TokenHomeSend(
 				originURL,
 				goethereumcommon.HexToAddress(originBridgeAddress),
 				privateKey,
@@ -418,8 +418,8 @@ func transferF(*cobra.Command, []string) error {
 				destinationAddr,
 				amountInt,
 			)
-		case bridge.NativeTokenHub:
-			return bridge.NativeTokenHubSend(
+		case bridge.NativeTokenHome:
+			return bridge.NativeTokenHomeSend(
 				originURL,
 				goethereumcommon.HexToAddress(originBridgeAddress),
 				privateKey,
