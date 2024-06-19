@@ -323,8 +323,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			case externalTokenOption:
 				externalGasToken = true
 			case explainOption:
-				ux.Logger.PrintToUser("The difference is...")
-				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser("Gas tokens exist because blockchains have limited resources. Native tokens the default gas token, and are non-programmable unless wrapped by an ERC-20 token contract.")
+				ux.Logger.PrintToUser("If desired, ERC-20 tokens can be deployed on other blockchains and used as the gas token enabled by a bridge. When a transaction is initiated, the ERC-20 amount will be locked on the source chain, a message will be relayed to the Subnet, and then the token will be minted to the sender's address using the Native Minter precompile. This means users with a balance of that ERC-20 on a separate chain can use it to pay for gas on the Subnet.")
 				continue
 			}
 			break
