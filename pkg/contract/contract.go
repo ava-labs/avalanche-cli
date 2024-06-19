@@ -264,13 +264,14 @@ func ParseEsp(
 	default:
 		abiMap[0]["stateMutability"] = "nonpayable"
 	}
-	if constructor {
+	switch {
+	case constructor:
 		abiMap[0]["type"] = "constructor"
-	} else if event {
+	case event:
 		abiMap[0]["type"] = "event"
 		abiMap[0]["name"] = name
 		delete(abiMap[0], "stateMutability")
-	} else {
+	default:
 		abiMap[0]["type"] = "function"
 		abiMap[0]["outputs"] = outputsMaps
 		abiMap[0]["name"] = name

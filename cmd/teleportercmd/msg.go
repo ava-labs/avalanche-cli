@@ -186,8 +186,8 @@ func msg(_ *cobra.Command, args []string) error {
 	// receive and process head from destination
 	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destSubnetName, destBlockchainID)
 
-	arrivalCheckInterval := time.Duration(100 * time.Millisecond)
-	arrivalCheckTimeout := time.Duration(10 * time.Second)
+	arrivalCheckInterval := 100 * time.Millisecond
+	arrivalCheckTimeout := 10 * time.Second
 	t0 := time.Now()
 	for {
 		if b, err := teleporter.MessageReceived(
