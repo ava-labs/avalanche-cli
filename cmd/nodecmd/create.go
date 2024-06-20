@@ -262,7 +262,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
-
+	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
 		return err
