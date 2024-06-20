@@ -4,17 +4,17 @@
       {
         "TokenName": "AVAX",
         "TokenContractAddress": "",
-        "BridgeHubAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c"
+        "BridgeHomeAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c"
       },
       {
         "TokenName": "USDC",
         "TokenContractAddress": "0x5425890298aed601595a70AB815c96711a31Bc65",
-        "BridgeHubAddress": "0x5425890298aed601595a70AB815c96711a31Bc65"
+        "BridgeHomeAddress": "0x5425890298aed601595a70AB815c96711a31Bc65"
       },
       {
         "TokenName": "WAVAX",
         "TokenContractAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c",
-        "BridgeHubAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c"
+        "BridgeHomeAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c"
       }
     ]
   }

@@ -13,7 +13,7 @@ import (
 type PopularTokenInfo struct {
 	TokenName            string
 	TokenContractAddress string
-	BridgeHubAddress     string
+	BridgeHomeAddress    string
 }
 
 //go:embed popularTokensInfo.json
@@ -23,10 +23,10 @@ var popularTokensInfo map[string]map[string][]PopularTokenInfo
 
 func (i PopularTokenInfo) Desc() string {
 	switch {
-	case i.TokenContractAddress != "" && i.BridgeHubAddress != "":
-		return fmt.Sprintf("%s | Token address %s | Hub address %s", i.TokenName, i.TokenContractAddress, i.BridgeHubAddress)
-	case i.BridgeHubAddress != "":
-		return fmt.Sprintf("%s | Hub address %s", i.TokenName, i.BridgeHubAddress)
+	case i.TokenContractAddress != "" && i.BridgeHomeAddress != "":
+		return fmt.Sprintf("%s | Token address %s | Home address %s", i.TokenName, i.TokenContractAddress, i.BridgeHomeAddress)
+	case i.BridgeHomeAddress != "":
+		return fmt.Sprintf("%s | Home address %s", i.TokenName, i.BridgeHomeAddress)
 	default:
 		return i.TokenName
 	}
