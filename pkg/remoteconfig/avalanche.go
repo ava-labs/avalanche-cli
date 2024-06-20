@@ -21,6 +21,8 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
+	Alias            string
+	BlockChainID     string
 }
 
 func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfigInputs {
@@ -32,6 +34,8 @@ func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfi
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
+		Alias:            "",
+		BlockChainID:     "",
 	}
 }
 
@@ -69,12 +73,24 @@ func RenderAvalancheCChainConfig(config AvalancheConfigInputs) ([]byte, error) {
 	}
 }
 
+func RenderAvalancheAliasesConfig(config AvalancheConfigInputs) ([]byte, error) {
+	if output, err := RenderAvalancheTemplate("templates/avalanche-aliases.tmpl", config); err != nil {
+		return nil, err
+	} else {
+		return output, nil
+	}
+}
+
 func GetRemoteAvalancheNodeConfig() string {
 	return filepath.Join(constants.CloudNodeConfigPath, "node.json")
 }
 
 func GetRemoteAvalancheCChainConfig() string {
 	return filepath.Join(constants.CloudNodeConfigPath, "chains", "C", "config.json")
+}
+
+func GetRemoteAvalancheAliasesConfig() string {
+	return filepath.Join(constants.CloudNodeConfigPath, "chains", "aliases.json")
 }
 
 func AvalancheFolderToCreate() []string {

@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -91,6 +92,7 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVar(&subnetAlias, "subnet-alias", "", "subnet alias to be used for RPC calls. defaults to subnet blockchain ID")
 	return cmd
 }
 
@@ -274,6 +276,31 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	//render alias file is subnetAlias is set
+	if subnetAlias != "" {
+		writeAvagoAliasConfigFile(
+			sc.Networks[network.Name()].BlockchainID.String(),
+			subnetAlias,
+		)
+	}
+
+	return nil
+}
+
+func writeAvagoAliasConfigFile(
+	blockchainID string,
+	subnetAlias string,
+) error {
+	aliasConf, err := remoteconfig.RenderAvalancheAliasesConfig(remoteconfig.AvalancheConfigInputs{
+		BlockChainID: blockchainID,
+		Alias:        subnetAlias,
+	})
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(remoteconfig.GetRemoteAvalancheAliasesConfig(), aliasConf, constants.DefaultPerms755); err != nil {
+		return err
+	}
 	return nil
 }
 
