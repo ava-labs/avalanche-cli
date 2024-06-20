@@ -24,6 +24,21 @@ jobs:
           check-latest: true
       - run: go version
 
+      - name: install nodejs
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: install npx aws-amicleaner
+        run: npm install -g aws-amicleaner
+      
+      - name: clean up old AMIs
+        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 1 --exclude-days 2 --region="*" --force
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.EXPERIMENTAL_AWS_ACCESS_KEY_PACKER }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.EXPERIMENTAL_AWS_SECRET_KEY_PACKER }}
+          AWS_REGION: us-east-1
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
