@@ -16,29 +16,29 @@ type EndpointKind int64
 
 const (
 	Undefined EndpointKind = iota
-	ERC20TokenHub
-	NativeTokenHub
-	ERC20TokenSpoke
+	ERC20TokenHome
+	NativeTokenHome
+	ERC20TokenRemote
 )
 
 func GetEndpointKind(
 	rpcURL string,
 	address common.Address,
 ) (EndpointKind, error) {
-	if _, err := ERC20TokenHubGetTokenAddress(rpcURL, address); err == nil {
-		return ERC20TokenHub, nil
+	if _, err := ERC20TokenHomeGetTokenAddress(rpcURL, address); err == nil {
+		return ERC20TokenHome, nil
 	}
-	if _, err := NativeTokenHubGetTokenAddress(rpcURL, address); err == nil {
-		return NativeTokenHub, nil
+	if _, err := NativeTokenHomeGetTokenAddress(rpcURL, address); err == nil {
+		return NativeTokenHome, nil
 	}
-	if _, err := ERC20TokenSpokeGetTokenHubAddress(rpcURL, address); err == nil {
-		return ERC20TokenSpoke, nil
+	if _, err := ERC20TokenRemoteGetTokenHomeAddress(rpcURL, address); err == nil {
+		return ERC20TokenRemote, nil
 	} else {
 		return Undefined, err
 	}
 }
 
-func ERC20TokenHubGetTokenAddress(
+func ERC20TokenHomeGetTokenAddress(
 	rpcURL string,
 	address common.Address,
 ) (common.Address, error) {
@@ -57,7 +57,7 @@ func ERC20TokenHubGetTokenAddress(
 	return tokenAddress, nil
 }
 
-func NativeTokenHubGetTokenAddress(
+func NativeTokenHomeGetTokenAddress(
 	rpcURL string,
 	address common.Address,
 ) (common.Address, error) {
@@ -76,14 +76,14 @@ func NativeTokenHubGetTokenAddress(
 	return tokenAddress, nil
 }
 
-func ERC20TokenSpokeGetTokenHubAddress(
+func ERC20TokenRemoteGetTokenHomeAddress(
 	rpcURL string,
 	address common.Address,
 ) (common.Address, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
 		address,
-		"tokenHubAddress()->(address)",
+		"tokenHomeAddress()->(address)",
 	)
 	if err != nil {
 		return common.Address{}, err
@@ -95,9 +95,9 @@ func ERC20TokenSpokeGetTokenHubAddress(
 	return tokenHubAddress, nil
 }
 
-func ERC20TokenHubSend(
+func ERC20TokenHomeSend(
 	rpcURL string,
-	hubAddress common.Address,
+	homeAddress common.Address,
 	privateKey string,
 	destinationBlockchainID ids.ID,
 	destinationBridgeEnd common.Address,
@@ -114,7 +114,7 @@ func ERC20TokenHubSend(
 		RequiredGasLimit        *big.Int
 		MultiHopFallback        common.Address
 	}
-	tokenAddress, err := ERC20TokenHubGetTokenAddress(rpcURL, hubAddress)
+	tokenAddress, err := ERC20TokenHomeGetTokenAddress(rpcURL, homeAddress)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func ERC20TokenHubSend(
 		tokenAddress,
 		nil,
 		"approve(address, uint256)->(bool)",
-		hubAddress,
+		homeAddress,
 		amount,
 	); err != nil {
 		return err
@@ -142,7 +142,7 @@ func ERC20TokenHubSend(
 	_, _, err = contract.TxToMethod(
 		rpcURL,
 		privateKey,
-		hubAddress,
+		homeAddress,
 		nil,
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)",
 		params,
@@ -151,9 +151,9 @@ func ERC20TokenHubSend(
 	return err
 }
 
-func NativeTokenHubSend(
+func NativeTokenHomeSend(
 	rpcURL string,
-	hubAddress common.Address,
+	homeAddress common.Address,
 	privateKey string,
 	destinationBlockchainID ids.ID,
 	destinationBridgeEnd common.Address,
@@ -170,7 +170,7 @@ func NativeTokenHubSend(
 		RequiredGasLimit        *big.Int
 		MultiHopFallback        common.Address
 	}
-	tokenAddress, err := NativeTokenHubGetTokenAddress(rpcURL, hubAddress)
+	tokenAddress, err := NativeTokenHomeGetTokenAddress(rpcURL, homeAddress)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func NativeTokenHubSend(
 	_, _, err = contract.TxToMethod(
 		rpcURL,
 		privateKey,
-		hubAddress,
+		homeAddress,
 		amount,
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
 		params,
@@ -195,9 +195,9 @@ func NativeTokenHubSend(
 	return err
 }
 
-func ERC20TokenSpokeSend(
+func ERC20TokenRemoteSend(
 	rpcURL string,
-	spokeAddress common.Address,
+	remoteAddress common.Address,
 	privateKey string,
 	destinationBlockchainID ids.ID,
 	destinationBridgeEnd common.Address,
@@ -207,10 +207,10 @@ func ERC20TokenSpokeSend(
 	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
-		spokeAddress,
+		remoteAddress,
 		nil,
 		"approve(address, uint256)->(bool)",
-		spokeAddress,
+		remoteAddress,
 		amount,
 	); err != nil {
 		return err
@@ -238,7 +238,7 @@ func ERC20TokenSpokeSend(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
-		spokeAddress,
+		remoteAddress,
 		nil,
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)",
 		params,

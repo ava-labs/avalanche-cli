@@ -54,6 +54,7 @@ func BuildContracts(
 
 func DownloadRepo(
 	app *application.Avalanche,
+	version string,
 ) error {
 	if err := vm.CheckGitIsInstalled(); err != nil {
 		return err
@@ -83,17 +84,53 @@ func DownloadRepo(
 			fmt.Println(stderr)
 			return fmt.Errorf("could not clone repository %s: %w", constants.BridgeURL, err)
 		}
-		return nil
+	} else {
+		cmd := exec.Command("git", "checkout", constants.BridgeBranch)
+		cmd.Dir = repoDir
+		stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
+		if err := cmd.Run(); err != nil {
+			fmt.Println(stdout)
+			fmt.Println(stderr)
+			return fmt.Errorf("could not checkout commit/branch %s of repository %s: %w", constants.BridgeBranch, constants.BridgeURL, err)
+		}
+		cmd = exec.Command("git", "pull")
+		cmd.Dir = repoDir
+		stdout, stderr = utils.SetupRealtimeCLIOutput(cmd, false, false)
+		if err := cmd.Run(); err != nil {
+			fmt.Println(stdout)
+			fmt.Println(stderr)
+			return fmt.Errorf("could not pull repository %s: %w", constants.BridgeURL, err)
+		}
 	}
-	cmd := exec.Command("git", "pull")
-	cmd.Dir = repoDir
-	stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
-	if err := cmd.Run(); err != nil {
-		fmt.Println(stdout)
-		fmt.Println(stderr)
-		return fmt.Errorf("could not pull repository %s: %w", constants.BridgeURL, err)
+	if version != "" {
+		cmd := exec.Command("git", "checkout", version)
+		cmd.Dir = repoDir
+		stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
+		if err := cmd.Run(); err != nil {
+			fmt.Println(stdout)
+			fmt.Println(stderr)
+			return fmt.Errorf("could not checkout commit/branch %s of repository %s: %w", version, constants.BridgeURL, err)
+		}
+		cmd = exec.Command("git", "branch", "--show-current")
+		cmd.Dir = repoDir
+		stdout, stderr = utils.SetupRealtimeCLIOutput(cmd, false, false)
+		if err := cmd.Run(); err != nil {
+			fmt.Println(stdout)
+			fmt.Println(stderr)
+			return fmt.Errorf("could not query current branch name: %w", err)
+		}
+		if stdout.String() != "" {
+			cmd = exec.Command("git", "pull")
+			cmd.Dir = repoDir
+			stdout, stderr = utils.SetupRealtimeCLIOutput(cmd, false, false)
+			if err := cmd.Run(); err != nil {
+				fmt.Println(stdout)
+				fmt.Println(stderr)
+				return fmt.Errorf("could not pull repository %s: %w", constants.BridgeURL, err)
+			}
+		}
 	}
-	cmd = exec.Command(
+	cmd := exec.Command(
 		"git",
 		"submodule",
 		"update",
@@ -102,7 +139,7 @@ func DownloadRepo(
 		"--single-branch",
 	)
 	cmd.Dir = repoDir
-	stdout, stderr = utils.SetupRealtimeCLIOutput(cmd, false, false)
+	stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
 	if err := cmd.Run(); err != nil {
 		fmt.Println(stdout)
 		fmt.Println(stderr)

@@ -12,7 +12,7 @@ require (
 	github.com/ava-labs/coreth v0.13.5-rc.0
 	github.com/ava-labs/subnet-evm v0.6.6
 	github.com/ava-labs/teleporter v1.0.0
-	github.com/aws/aws-sdk-go-v2 v1.28.0
+	github.com/aws/aws-sdk-go-v2 v1.30.0
 	github.com/aws/aws-sdk-go-v2/config v1.27.19
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.162.0
 	github.com/chelnak/ysmrr v0.4.0
