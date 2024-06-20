@@ -34,7 +34,7 @@ func RegisterERC20Remote(
 	feeInfo := TeleporterFeeInfo{
 		Amount: big.NewInt(0),
 	}
-	return contract.TxToMethod(
+	_, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		remoteAddress,
@@ -42,6 +42,7 @@ func RegisterERC20Remote(
 		"registerWithHome((address, uint256))",
 		feeInfo,
 	)
+	return err
 }
 
 func DeployERC20Remote(

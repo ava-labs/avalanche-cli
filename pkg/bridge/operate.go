@@ -4,6 +4,7 @@ package bridge
 
 import (
 	_ "embed"
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -49,7 +50,10 @@ func ERC20TokenHomeGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenAddress := out[0].(common.Address)
+	tokenAddress, b := out[0].(common.Address)
+	if !b {
+		return common.Address{}, fmt.Errorf("error at token call, expected common.Address, got %T", out[0])
+	}
 	return tokenAddress, nil
 }
 
@@ -65,7 +69,10 @@ func NativeTokenHomeGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenAddress := out[0].(common.Address)
+	tokenAddress, b := out[0].(common.Address)
+	if !b {
+		return common.Address{}, fmt.Errorf("error at wrappedToken call, expected common.Address, got %T", out[0])
+	}
 	return tokenAddress, nil
 }
 
@@ -81,8 +88,11 @@ func ERC20TokenRemoteGetTokenHomeAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenHomeAddress := out[0].(common.Address)
-	return tokenHomeAddress, nil
+	tokenHubAddress, b := out[0].(common.Address)
+	if !b {
+		return common.Address{}, fmt.Errorf("error at tokenHubAddress call, expected common.Address, got %T", out[0])
+	}
+	return tokenHubAddress, nil
 }
 
 func ERC20TokenHomeSend(
@@ -108,7 +118,7 @@ func ERC20TokenHomeSend(
 	if err != nil {
 		return err
 	}
-	if err := contract.TxToMethod(
+	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		tokenAddress,
@@ -129,7 +139,7 @@ func ERC20TokenHomeSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	return contract.TxToMethod(
+	_, _, err = contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		homeAddress,
@@ -138,6 +148,7 @@ func ERC20TokenHomeSend(
 		params,
 		amount,
 	)
+	return err
 }
 
 func NativeTokenHomeSend(
@@ -173,7 +184,7 @@ func NativeTokenHomeSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	return contract.TxToMethod(
+	_, _, err = contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		homeAddress,
@@ -181,6 +192,7 @@ func NativeTokenHomeSend(
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
 		params,
 	)
+	return err
 }
 
 func ERC20TokenRemoteSend(
@@ -192,7 +204,7 @@ func ERC20TokenRemoteSend(
 	amountRecipient common.Address,
 	amount *big.Int,
 ) error {
-	if err := contract.TxToMethod(
+	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		remoteAddress,
@@ -223,7 +235,7 @@ func ERC20TokenRemoteSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	return contract.TxToMethod(
+	_, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		remoteAddress,
@@ -232,4 +244,5 @@ func ERC20TokenRemoteSend(
 		params,
 		amount,
 	)
+	return err
 }

@@ -78,6 +78,70 @@ func (t *Deployer) GetAssets(
 	return t.messengerContractAddress, t.messengerDeployerAddress, t.messengerDeployerTx, t.registryBydecode, nil
 }
 
+func (t *Deployer) CheckAssets() error {
+	if t.messengerContractAddress == "" || t.messengerDeployerAddress == "" || t.messengerDeployerTx == "" || t.registryBydecode == "" {
+		return fmt.Errorf("teleporter assets has not been initialized")
+	}
+	return nil
+}
+
+func (t *Deployer) SetAssetsFromPaths(
+	messengerContractAddressPath string,
+	messengerDeployerAddressPath string,
+	messengerDeployerTxPath string,
+	registryBydecodePath string,
+) error {
+	if messengerContractAddressPath != "" {
+		if bs, err := os.ReadFile(messengerContractAddressPath); err != nil {
+			return err
+		} else {
+			t.messengerContractAddress = string(bs)
+		}
+	}
+	if messengerDeployerAddressPath != "" {
+		if bs, err := os.ReadFile(messengerDeployerAddressPath); err != nil {
+			return err
+		} else {
+			t.messengerDeployerAddress = string(bs)
+		}
+	}
+	if messengerDeployerTxPath != "" {
+		if bs, err := os.ReadFile(messengerDeployerTxPath); err != nil {
+			return err
+		} else {
+			t.messengerDeployerTx = string(bs)
+		}
+	}
+	if registryBydecodePath != "" {
+		if bs, err := os.ReadFile(registryBydecodePath); err != nil {
+			return err
+		} else {
+			t.registryBydecode = string(bs)
+		}
+	}
+	return nil
+}
+
+func (t *Deployer) SetAssets(
+	messengerContractAddress string,
+	messengerDeployerAddress string,
+	messengerDeployerTx string,
+	registryBydecode string,
+) {
+	if messengerContractAddress != "" {
+		t.messengerContractAddress = messengerContractAddress
+	}
+	if messengerDeployerAddress != "" {
+		t.messengerDeployerAddress = messengerDeployerAddress
+	}
+	if messengerDeployerTx != "" {
+		t.messengerDeployerTx = messengerDeployerTx
+	}
+	if registryBydecode != "" {
+		t.registryBydecode = registryBydecode
+	}
+}
+
 func (t *Deployer) DownloadAssets(
 	teleporterInstallDir string,
 	version string,
@@ -173,8 +237,6 @@ func (t *Deployer) DownloadAssets(
 }
 
 func (t *Deployer) Deploy(
-	teleporterInstallDir string,
-	version string,
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -189,8 +251,6 @@ func (t *Deployer) Deploy(
 	)
 	if deployMessenger {
 		alreadyDeployed, messengerAddress, err = t.DeployMessenger(
-			teleporterInstallDir,
-			version,
 			subnetName,
 			rpcURL,
 			privateKey,
@@ -198,20 +258,18 @@ func (t *Deployer) Deploy(
 	}
 	if err == nil && deployRegistry {
 		if !deployMessenger || !alreadyDeployed {
-			registryAddress, err = t.DeployRegistry(teleporterInstallDir, version, subnetName, rpcURL, privateKey)
+			registryAddress, err = t.DeployRegistry(subnetName, rpcURL, privateKey)
 		}
 	}
 	return alreadyDeployed, messengerAddress, registryAddress, err
 }
 
 func (t *Deployer) DeployMessenger(
-	teleporterInstallDir string,
-	version string,
 	subnetName string,
 	rpcURL string,
 	privateKey string,
 ) (bool, string, error) {
-	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+	if err := t.CheckAssets(); err != nil {
 		return false, "", err
 	}
 	// check if contract is already deployed
@@ -257,13 +315,11 @@ func (t *Deployer) DeployMessenger(
 }
 
 func (t *Deployer) DeployRegistry(
-	teleporterInstallDir string,
-	version string,
 	subnetName string,
 	rpcURL string,
 	privateKey string,
 ) (string, error) {
-	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+	if err := t.CheckAssets(); err != nil {
 		return "", err
 	}
 	messengerContractAddress := common.HexToAddress(t.messengerContractAddress)
@@ -333,7 +389,7 @@ func SetProposerVM(
 
 func DeployAndFundRelayer(
 	app *application.Avalanche,
-	teleporterVersion string,
+	td *Deployer,
 	network models.Network,
 	subnetName string,
 	blockchainID string,
@@ -344,10 +400,7 @@ func DeployAndFundRelayer(
 		return false, "", "", err
 	}
 	endpoint := network.BlockchainEndpoint(blockchainID)
-	td := Deployer{}
 	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
-		app.GetTeleporterBinDir(),
-		teleporterVersion,
 		subnetName,
 		endpoint,
 		privKeyStr,
