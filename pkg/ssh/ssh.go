@@ -513,12 +513,16 @@ func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath str
 }
 
 // RunSSHTrackSubnet enables tracking of specified subnet
-func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag string) error {
+func RunSSHTrackSubnet(host *models.Host, subnetName, subnetAlias, importPath, networkFlag string) error {
 	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
 		return err
 	}
 	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
+	}
+	additionalFlags := ""
+	if subnetAlias != "" {
+		additionalFlags += fmt.Sprintf("--subnet-alias %s", subnetAlias)
 	}
 	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s %s --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName, networkFlag), nil, constants.SSHScriptTimeout); err != nil {
 		return err

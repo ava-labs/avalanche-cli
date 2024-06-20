@@ -31,6 +31,7 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "sync subnet into given comma separated list of validators. defaults to all cluster nodes")
 	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for bootstrapped/healthy status or rpc compatibility of nodes against subnet")
+	cmd.Flags().StringVar(&subnetAlias, "subnet-alias", "", "subnet alias to be used for RPC calls. defaults to subnet blockchain ID")
 
 	return cmd
 }
@@ -66,7 +67,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	untrackedNodes, err := trackSubnet(hosts, clusterName, subnetName)
+	untrackedNodes, err := trackSubnet(hosts, clusterName, subnetName, subnetAlias)
 	if err != nil {
 		return err
 	}
@@ -84,6 +85,7 @@ func trackSubnet(
 	hosts []*models.Host,
 	clusterName string,
 	subnetName string,
+	subnetAlias string,
 ) ([]string, error) {
 	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
 	networkFlag := "--cluster " + clusterName
@@ -105,7 +107,7 @@ func trackSubnet(
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 
-			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetExportPath, networkFlag); err != nil {
+			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetAlias, subnetExportPath, networkFlag); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
