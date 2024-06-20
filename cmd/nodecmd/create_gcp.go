@@ -113,7 +113,7 @@ func getGCPConfig(singleNode bool) (*gcpAPI.GcpCloud, map[string]NumNodes, strin
 			}
 		}
 	default:
-		if globalNetworkFlags.UseDevnet {
+		if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 			for i, region := range cmdLineRegion {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 			}
