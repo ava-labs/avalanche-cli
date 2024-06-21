@@ -4,6 +4,7 @@ package teleportercmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ with Teleporter-Enabled Subnets.`,
 	// teleporter deploy
 	cmd.AddCommand(newDeployCmd())
 	// teleporter relayer
-	cmd.AddCommand(newRelayerCmd())
+	cmd.AddCommand(relayercmd.NewCmd(app))
 	// teleporter bridge
 	cmd.AddCommand(bridgecmd.NewCmd(app))
 	return cmd
