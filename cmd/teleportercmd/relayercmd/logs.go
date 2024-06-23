@@ -59,23 +59,6 @@ func logs(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
-	if err != nil {
-		return err
-	}
-	blockchainIDToSubnetName := map[string]string{}
-	for _, subnetName := range subnetNames {
-		_, _, blockchainID, _, _, _, err := bridgecmd.GetSubnetParams(network, subnetName, false)
-		if err != nil {
-			return err
-		}
-		blockchainIDToSubnetName[blockchainID.String()] = subnetName
-	}
-	_, _, blockchainID, _, _, _, err := bridgecmd.GetSubnetParams(network, "", true)
-	if err != nil {
-		return err
-	}
-	blockchainIDToSubnetName[blockchainID.String()] = "c-chain"
 	var logLines []string
 	switch {
 	case network.Kind == models.Local:
@@ -108,6 +91,10 @@ func logs(_ *cobra.Command, _ []string) error {
 		}
 		return nil
 	}
+	blockchainIDToSubnetName, err := getBlockchainIDToSubnetNameMap(network)
+	if err != nil {
+		return err
+	}
 	t := table.NewWriter()
 	t.AppendHeader(table.Row{"", "Time", "Chain", "Log"})
 	for _, logLine := range logLines {
@@ -121,21 +108,9 @@ func logs(_ *cobra.Command, _ []string) error {
 			levelEmoji := ""
 			levelStr, b := logMap["level"].(string)
 			if b {
-				level, err := logging.ToLevel(levelStr)
+				levelEmoji, err = logLevelToEmoji(levelStr)
 				if err != nil {
 					return err
-				}
-				switch level {
-				case logging.Info:
-					levelEmoji = "ℹ️"
-				case logging.Debug:
-					levelEmoji = "🪲"
-				case logging.Warn:
-					levelEmoji = "⚠️"
-				case logging.Error:
-					levelEmoji = "⛔"
-				case logging.Fatal:
-					levelEmoji = "💀"
 				}
 			}
 			timeStampStr, b := logMap["timestamp"].(string)
@@ -214,4 +189,46 @@ func getLogSubnet(
 		}
 	}
 	return ""
+}
+
+func getBlockchainIDToSubnetNameMap(network models.Network) (map[string]string, error) {
+	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	if err != nil {
+		return nil, err
+	}
+	blockchainIDToSubnetName := map[string]string{}
+	for _, subnetName := range subnetNames {
+		_, _, blockchainID, _, _, _, err := bridgecmd.GetSubnetParams(network, subnetName, false)
+		if err != nil {
+			return nil, err
+		}
+		blockchainIDToSubnetName[blockchainID.String()] = subnetName
+	}
+	_, _, blockchainID, _, _, _, err := bridgecmd.GetSubnetParams(network, "", true)
+	if err != nil {
+		return nil, err
+	}
+	blockchainIDToSubnetName[blockchainID.String()] = "c-chain"
+	return blockchainIDToSubnetName, nil
+}
+
+func logLevelToEmoji(logLevel string) (string, error) {
+	levelEmoji := ""
+	level, err := logging.ToLevel(logLevel)
+	if err != nil {
+		return "", err
+	}
+	switch level {
+	case logging.Info:
+		levelEmoji = "ℹ️"
+	case logging.Debug:
+		levelEmoji = "🪲"
+	case logging.Warn:
+		levelEmoji = "⚠️"
+	case logging.Error:
+		levelEmoji = "⛔"
+	case logging.Fatal:
+		levelEmoji = "💀"
+	}
+	return levelEmoji, nil
 }
