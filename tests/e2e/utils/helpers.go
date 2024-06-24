@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	expectedKeyListLineComponents = 8
+	expectedKeyListLineComponents = 9
 	expectedRPCComponentsLen      = 7
 	blockchainIDPos               = 5
 	subnetEVMName                 = "subnet-evm"
@@ -398,7 +398,7 @@ func ParseAddrBalanceFromKeyListOutput(output string, keyName string) (string, u
 			)
 		}
 		addr := strings.TrimSpace(components[4])
-		balanceStr := strings.TrimSpace(components[5])
+		balanceStr := strings.TrimSpace(components[6])
 		balance, err := strconv.ParseUint(balanceStr, 0, 64)
 		if err != nil {
 			return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)

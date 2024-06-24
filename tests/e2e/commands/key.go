@@ -33,6 +33,7 @@ func CreateKeyFromPath(keyName string, keyPath string) (string, error) {
 		"--file",
 		keyPath,
 		keyName,
+		"--skip-balances",
 		"--"+constants.SkipUpdateFlag,
 	)
 	out, err := cmd.Output()
@@ -127,7 +128,7 @@ func KeyTransferSend(keyName string, targetAddr string, amount string) (string, 
 		"--key",
 		keyName,
 		"--send",
-		"--target-addr",
+		"--destination-addr",
 		targetAddr,
 		"--amount",
 		amount,

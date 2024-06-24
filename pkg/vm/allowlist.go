@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/mod/semver"
@@ -29,6 +30,10 @@ func preview(
 	addRoleToPreviewTable(table, "Enabled", enabledAddresses)
 	table.Render()
 	fmt.Println()
+	if len(adminAddresses) == 0 && len(managerAddresses) == 0 && len(enabledAddresses) == 0 {
+		fmt.Println(logging.Red.Wrap("Caution: Allow lists are empty. You will not be able to easily change the precompile settings in the future."))
+		fmt.Println()
+	}
 }
 
 func addRoleToPreviewTable(table *tablewriter.Table, name string, addresses []common.Address) {
@@ -120,9 +125,11 @@ func GenerateAllowList(
 	explainOption := "Explain the difference"
 
 	for {
-		option, err := app.Prompt.CaptureList(
-			prompt, []string{addOption, removeOption, previewOption, confirmOption, cancelOption},
-		)
+		options := []string{addOption, removeOption, previewOption, confirmOption, cancelOption}
+		if len(adminAddresses) == 0 && len(managerAddresses) == 0 && len(enabledAddresses) == 0 {
+			options = utils.RemoveFromSlice(options, removeOption)
+		}
+		option, err := app.Prompt.CaptureList(prompt, options)
 		if err != nil {
 			return nil, nil, nil, false, err
 		}
@@ -169,10 +176,17 @@ func GenerateAllowList(
 			keepAsking := true
 			for keepAsking {
 				removePrompt := "What role does the address that should be removed have?"
-				options := []string{adminOption, managerOption, enabledOption, cancelOption}
-				if !managerRoleEnabled {
-					options = []string{adminOption, enabledOption, cancelOption}
+				options := []string{}
+				if len(adminAddresses) != 0 {
+					options = append(options, adminOption)
 				}
+				if len(managerAddresses) != 0 && managerRoleEnabled {
+					options = append(options, managerOption)
+				}
+				if len(enabledAddresses) != 0 {
+					options = append(options, enabledOption)
+				}
+				options = append(options, cancelOption)
 				roleOption, err := app.Prompt.CaptureList(removePrompt, options)
 				if err != nil {
 					return nil, nil, nil, false, err
@@ -200,11 +214,6 @@ func GenerateAllowList(
 		case previewOption:
 			preview(adminAddresses, managerAddresses, enabledAddresses)
 		case confirmOption:
-			if len(adminAddresses) == 0 && len(managerAddresses) == 0 && len(enabledAddresses) == 0 {
-				fmt.Println("Allow list should not be empty.")
-				fmt.Println()
-				continue
-			}
 			preview(adminAddresses, managerAddresses, enabledAddresses)
 			confirmPrompt := "Confirm?"
 			yesOption := "Yes"
