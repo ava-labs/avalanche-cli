@@ -12,14 +12,14 @@ require (
 	github.com/ava-labs/awm-relayer v1.3.0
 	github.com/ava-labs/coreth v0.13.5-rc.0
 	github.com/ava-labs/subnet-evm v0.6.6
-	github.com/ava-labs/teleporter v1.0.0
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.164.2
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.162.0
 	github.com/chelnak/ysmrr v0.4.0
 	github.com/docker/docker v26.1.3+incompatible
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/fatih/color v1.17.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
+	github.com/liyue201/erc20-go v0.0.0-20210521034206-b2824246def0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo/v2 v2.18.0
@@ -56,7 +56,8 @@ require (
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.1 // indirect
 	github.com/ava-labs/ledger-avalanche/go v0.0.0-20240610153809-9c955cc90a95 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.28.0 // indirect
+	github.com/ava-labs/teleporter v1.0.0 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.30.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.27.19 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.19 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.6 // indirect

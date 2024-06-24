@@ -18,8 +18,9 @@ const (
 )
 
 var (
-	forceCreate bool
-	filename    string
+	forceCreate  bool
+	skipBalances bool
+	filename     string
 )
 
 func createKey(_ *cobra.Command, args []string) error {
@@ -53,19 +54,21 @@ func createKey(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("Key loaded")
-		networks := []models.Network{models.NewFujiNetwork(), models.NewMainnetNetwork()}
-		pchain := true
-		cchain := true
-		xchain := true
-		pClients, xClients, cClients, evmClients, err := getClients(networks, pchain, cchain, xchain, "")
-		if err != nil {
-			return err
+		if !skipBalances {
+			networks := []models.Network{models.NewFujiNetwork(), models.NewMainnetNetwork()}
+			pchain := true
+			cchain := true
+			xchain := true
+			clients, err := getClients(networks, pchain, cchain, xchain, nil)
+			if err != nil {
+				return err
+			}
+			addrInfos, err := getStoredKeyInfo(clients, networks, keyName)
+			if err != nil {
+				return err
+			}
+			printAddrInfos(addrInfos)
 		}
-		addrInfos, err := getStoredKeyInfo(pClients, xClients, cClients, evmClients, networks, keyName)
-		if err != nil {
-			return err
-		}
-		printAddrInfos(addrInfos)
 	}
 
 	return nil
@@ -100,6 +103,12 @@ If you'd like to import an existing key instead of generating one from scratch, 
 		"f",
 		false,
 		"overwrite an existing key with the same name",
+	)
+	cmd.Flags().BoolVar(
+		&skipBalances,
+		"skip-balances",
+		false,
+		"do not query public network balances for an imported key",
 	)
 	return cmd
 }

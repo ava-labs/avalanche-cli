@@ -17,7 +17,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var startRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+var (
+	startRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+	globalNetworkFlags         networkoptions.NetworkFlags
+)
 
 // avalanche teleporter relayer start
 func newStartRelayerCmd() *cobra.Command {

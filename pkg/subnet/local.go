@@ -90,6 +90,15 @@ type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, erro
 
 type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 
+type TeleporterEsp struct {
+	SkipDeploy                   bool
+	Version                      string
+	MessengerContractAddressPath string
+	MessengerDeployerAddressPath string
+	MessengerDeployerTxPath      string
+	RegistryBydecodePath         string
+}
+
 type DeployInfo struct {
 	SubnetID                   ids.ID
 	BlockchainID               ids.ID
@@ -100,11 +109,11 @@ type DeployInfo struct {
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, chainGenesis, genesisPath, skipTeleporter, subnetIDStr)
+	return d.doDeploy(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
 }
 
 func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
@@ -370,7 +379,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -564,7 +573,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		teleporterMessengerAddress string
 		teleporterRegistryAddress  string
 	)
-	if sc.TeleporterReady && !skipTeleporter {
+	if sc.TeleporterReady && !teleporterEsp.SkipDeploy {
 		network := models.NewLocalNetwork()
 		// get relayer address
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
@@ -578,9 +587,40 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
+		td := teleporter.Deployer{}
+		if teleporterEsp.MessengerContractAddressPath != "" {
+			if err := td.SetAssetsFromPaths(
+				teleporterEsp.MessengerContractAddressPath,
+				teleporterEsp.MessengerDeployerAddressPath,
+				teleporterEsp.MessengerDeployerTxPath,
+				teleporterEsp.RegistryBydecodePath,
+			); err != nil {
+				return nil, err
+			}
+		} else {
+			teleporterVersion := ""
+			switch {
+			case teleporterEsp.Version != "" && teleporterEsp.Version != "latest":
+				teleporterVersion = teleporterEsp.Version
+			case sc.TeleporterVersion != "":
+				teleporterVersion = sc.TeleporterVersion
+			default:
+				teleporterInfo, err := teleporter.GetInfo(d.app)
+				if err != nil {
+					return nil, err
+				}
+				teleporterVersion = teleporterInfo.Version
+			}
+			if err := td.DownloadAssets(
+				d.app.GetTeleporterBinDir(),
+				teleporterVersion,
+			); err != nil {
+				return nil, err
+			}
+		}
 		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
 			d.app,
-			sc.TeleporterVersion,
+			&td,
 			network,
 			"c-chain",
 			"C",
@@ -630,7 +670,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		_, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
 			d.app,
-			sc.TeleporterVersion,
+			&td,
 			network,
 			chain,
 			blockchainID,

@@ -203,7 +203,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	useExistingKeyPair := map[string]bool{}
 	keyPairName := map[string]string{}
 	instanceIDs := map[string][]string{}
 	elasticIPs := map[string][]string{}
@@ -255,10 +254,8 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			switch {
 			case useSSHAgent:
 				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s] via ssh-agent", keyPairName[region], region)
-				useExistingKeyPair[region] = true
 			case !useSSHAgent && certInSSHDir:
 				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
-				useExistingKeyPair[region] = true
 			case !useSSHAgent && !certInSSHDir:
 				ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
 				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName)
@@ -367,14 +364,12 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	}
 	ux.Logger.GreenCheckmarkToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
-		if !useExistingKeyPair[region] && !useSSHAgent {
+		if useSSHAgent {
 			// takes the cert file downloaded from AWS and moves it to .ssh directory
 			err = addCertToSSH(regionConf[region].CertName)
 			if err != nil {
 				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 			}
-		}
-		if useSSHAgent {
 			sshCertPath[region] = ""
 		} else {
 			sshCertPath[region], err = app.GetSSHCertFilePath(regionConf[region].CertName)

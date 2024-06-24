@@ -5,8 +5,11 @@ package keycmd
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/bridge"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -27,32 +30,45 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
+	goethereumcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
 const (
+	cChain                  = "c-chain"
 	sendFlag                = "send"
 	receiveFlag             = "receive"
 	keyNameFlag             = "key"
 	ledgerIndexFlag         = "ledger"
-	receiverAddrFlag        = "target-addr"
+	destinationAddrFlag     = "destination-addr"
 	amountFlag              = "amount"
 	wrongLedgerIndexVal     = 32768
 	receiveRecoveryStepFlag = "receive-recovery-step"
 )
 
 var (
-	transferSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Mainnet, networkoptions.Fuji, networkoptions.Local}
-	send                            bool
-	receive                         bool
-	keyName                         string
-	ledgerIndex                     uint32
-	force                           bool
-	receiverAddrStr                 string
-	amountFlt                       float64
-	receiveRecoveryStep             uint64
-	PToX                            bool
-	PToP                            bool
+	transferSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Mainnet,
+		networkoptions.Fuji,
+		networkoptions.Devnet,
+		networkoptions.Local,
+	}
+	send                bool
+	receive             bool
+	keyName             string
+	ledgerIndex         uint32
+	force               bool
+	destinationAddrStr  string
+	amountFlt           float64
+	receiveRecoveryStep uint64
+	PToX                bool
+	PToP                bool
+	// bridge experimental
+	originSubnet             string
+	destinationSubnet        string
+	originBridgeAddress      string
+	destinationBridgeAddress string
+	destinationKeyName       string
 )
 
 func newTransferCmd() *cobra.Command {
@@ -68,13 +84,13 @@ func newTransferCmd() *cobra.Command {
 		&PToX,
 		"fund-x-chain",
 		false,
-		"fund X-Chain account on target",
+		"fund X-Chain account on destination",
 	)
 	cmd.Flags().BoolVar(
 		&PToP,
 		"fund-p-chain",
 		false,
-		"fund P-Chain account on target",
+		"fund P-Chain account on destination",
 	)
 	cmd.Flags().BoolVar(
 		&force,
@@ -118,18 +134,48 @@ func newTransferCmd() *cobra.Command {
 		"receive step to use for multiple step transaction recovery",
 	)
 	cmd.Flags().StringVarP(
-		&receiverAddrStr,
-		receiverAddrFlag,
+		&destinationAddrStr,
+		destinationAddrFlag,
 		"a",
 		"",
-		"receiver address",
+		"destination address",
+	)
+	cmd.Flags().StringVar(
+		&destinationKeyName,
+		"destination-key",
+		"",
+		"key associated to a destination address",
 	)
 	cmd.Flags().Float64VarP(
 		&amountFlt,
 		amountFlag,
 		"o",
 		0,
-		"amount to send or receive (AVAX units)",
+		"amount to send or receive (AVAX or TOKEN units)",
+	)
+	cmd.Flags().StringVar(
+		&originSubnet,
+		"origin-subnet",
+		"",
+		"subnet where the funds belong (bridge experimental)",
+	)
+	cmd.Flags().StringVar(
+		&destinationSubnet,
+		"destination-subnet",
+		"",
+		"subnet where the funds will be sent (bridge experimental)",
+	)
+	cmd.Flags().StringVar(
+		&originBridgeAddress,
+		"origin-bridge-address",
+		"",
+		"bridge address at the origin subnet (bridge experimental)",
+	)
+	cmd.Flags().StringVar(
+		&destinationBridgeAddress,
+		"destination-bridge-address",
+		"",
+		"bridge address at the destination subnet (bridge experimental)",
 	)
 	return cmd
 }
@@ -145,7 +191,7 @@ func transferF(*cobra.Command, []string) error {
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
-		"",
+		"On what Network do you want to execute the transfer?",
 		globalNetworkFlags,
 		false,
 		false,
@@ -154,6 +200,235 @@ func transferF(*cobra.Command, []string) error {
 	)
 	if err != nil {
 		return err
+	}
+
+	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	if err != nil {
+		return err
+	}
+
+	if originSubnet == "" && !PToX && !PToP {
+		prompt := "Where are the funds to transfer?"
+		cancel, pChainChoosen, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+			app.Prompt,
+			prompt,
+			subnetNames,
+			false,
+			true,
+			false,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		switch {
+		case cancel:
+			return nil
+		case pChainChoosen:
+			option, err := app.Prompt.CaptureList(
+				"Destination Chain",
+				[]string{"P-Chain", "X-Chain"},
+			)
+			if err != nil {
+				return err
+			}
+			if option == "P-Chain" {
+				PToP = true
+			} else {
+				PToX = true
+			}
+		case cChainChoosen:
+			originSubnet = cChain
+		default:
+			originSubnet = subnetName
+		}
+	}
+
+	// bridge experimental
+	if originSubnet != "" {
+		if destinationSubnet == "" {
+			prompt := "Where are the funds going to?"
+			avoidSubnet := originSubnet
+			if originSubnet == cChain {
+				avoidSubnet = ""
+			}
+			cancel, _, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+				app.Prompt,
+				prompt,
+				subnetNames,
+				true,
+				true,
+				originSubnet == cChain,
+				avoidSubnet,
+			)
+			if err != nil {
+				return err
+			}
+			switch {
+			case cancel:
+				return nil
+			case cChainChoosen:
+				destinationSubnet = cChain
+			default:
+				destinationSubnet = subnetName
+			}
+		}
+		originURL := network.CChainEndpoint()
+		if strings.ToLower(originSubnet) != cChain {
+			sc, err := app.LoadSidecar(originSubnet)
+			if err != nil {
+				return err
+			}
+			blockchainID := sc.Networks[network.Name()].BlockchainID
+			if blockchainID == ids.Empty {
+				return fmt.Errorf("subnet %s is not deployed to %s", originSubnet, network.Name())
+			}
+			originURL = network.BlockchainEndpoint(blockchainID.String())
+		}
+		var destinationBlockchainID ids.ID
+		if strings.ToLower(destinationSubnet) == cChain {
+			destinationBlockchainID, err = utils.GetChainID(network.Endpoint, "C")
+			if err != nil {
+				return err
+			}
+		} else {
+			sc, err := app.LoadSidecar(destinationSubnet)
+			if err != nil {
+				return err
+			}
+			blockchainID := sc.Networks[network.Name()].BlockchainID
+			if blockchainID == ids.Empty {
+				return fmt.Errorf("subnet %s is not deployed to %s", destinationSubnet, network.Name())
+			}
+			destinationBlockchainID = blockchainID
+		}
+		if originBridgeAddress == "" {
+			addr, err := app.Prompt.CaptureAddress(
+				fmt.Sprintf("Enter the address of the Bridge on %s", originSubnet),
+			)
+			if err != nil {
+				return err
+			}
+			originBridgeAddress = addr.Hex()
+		} else {
+			if err := prompts.ValidateAddress(originBridgeAddress); err != nil {
+				return err
+			}
+		}
+		if destinationBridgeAddress == "" {
+			addr, err := app.Prompt.CaptureAddress(
+				fmt.Sprintf("Enter the address of the Bridge on %s", destinationSubnet),
+			)
+			if err != nil {
+				return err
+			}
+			destinationBridgeAddress = addr.Hex()
+		} else {
+			if err := prompts.ValidateAddress(destinationBridgeAddress); err != nil {
+				return err
+			}
+		}
+		if keyName == "" {
+			keyName, err = prompts.CaptureKeyName(app.Prompt, "fund the transfer", app.GetKeyDir(), true)
+			if err != nil {
+				return err
+			}
+		}
+		originK, err := app.GetKey(keyName, network, false)
+		if err != nil {
+			return err
+		}
+		privateKey := originK.PrivKeyHex()
+		var destinationAddr goethereumcommon.Address
+		if destinationAddrStr == "" && destinationKeyName == "" {
+			option, err := app.Prompt.CaptureList(
+				"Do you want to choose a stored key for the destination, or input a destination address?",
+				[]string{"Key", "Address"},
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case "Key":
+				destinationKeyName, err = prompts.CaptureKeyName(app.Prompt, "receive the transfer", app.GetKeyDir(), true)
+				if err != nil {
+					return err
+				}
+			case "Address":
+				addr, err := app.Prompt.CaptureAddress(
+					"Enter the destination address",
+				)
+				if err != nil {
+					return err
+				}
+				destinationAddrStr = addr.Hex()
+			}
+		}
+		switch {
+		case destinationAddrStr != "":
+			if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
+				return err
+			}
+			destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+		case destinationKeyName != "":
+			destinationK, err := app.GetKey(destinationKeyName, network, false)
+			if err != nil {
+				return err
+			}
+			destinationAddrStr = destinationK.C()
+			destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+		default:
+			return fmt.Errorf("you should set the destination address or destination key")
+		}
+		if amountFlt == 0 {
+			amountFlt, err = captureAmount(true, "TOKEN units")
+			if err != nil {
+				return err
+			}
+		}
+		amount := new(big.Float).SetFloat64(amountFlt)
+		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
+		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
+		amountInt, _ := amount.Int(nil)
+		endpointKind, err := bridge.GetEndpointKind(
+			originURL,
+			goethereumcommon.HexToAddress(originBridgeAddress),
+		)
+		if err != nil {
+			return err
+		}
+		switch endpointKind {
+		case bridge.ERC20TokenRemote:
+			return bridge.ERC20TokenRemoteSend(
+				originURL,
+				goethereumcommon.HexToAddress(originBridgeAddress),
+				privateKey,
+				destinationBlockchainID,
+				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				destinationAddr,
+				amountInt,
+			)
+		case bridge.ERC20TokenHome:
+			return bridge.ERC20TokenHomeSend(
+				originURL,
+				goethereumcommon.HexToAddress(originBridgeAddress),
+				privateKey,
+				destinationBlockchainID,
+				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				destinationAddr,
+				amountInt,
+			)
+		case bridge.NativeTokenHome:
+			return bridge.NativeTokenHomeSend(
+				originURL,
+				goethereumcommon.HexToAddress(originBridgeAddress),
+				privateKey,
+				destinationBlockchainID,
+				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				destinationAddr,
+				amountInt,
+			)
+		}
 	}
 
 	if !send && !receive {
@@ -171,28 +446,13 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	if !PToP && !PToX {
-		option, err := app.Prompt.CaptureList(
-			"Destination Chain",
-			[]string{"P-Chain", "X-Chain"},
-		)
-		if err != nil {
-			return err
-		}
-		if option == "P-Chain" {
-			PToP = true
-		} else {
-			PToX = true
-		}
-	}
-
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
 		var useLedger bool
 		goalStr := ""
 		if send {
 			goalStr = " for the sender address"
 		} else {
-			goalStr = " for the receiver address"
+			goalStr = " for the destination address"
 		}
 		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir())
 		if err != nil {
@@ -207,18 +467,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if amountFlt == 0 {
-		var promptStr string
-		if send {
-			promptStr = "Amount to send (AVAX units)"
-		} else {
-			promptStr = "Amount to receive (AVAX units)"
-		}
-		amountFlt, err = app.Prompt.CaptureFloat(promptStr, func(v float64) error {
-			if v <= 0 {
-				return fmt.Errorf("value %f must be greater than zero", v)
-			}
-			return nil
-		})
+		amountFlt, err = captureAmount(send, "AVAX units")
 		if err != nil {
 			return err
 		}
@@ -246,28 +495,28 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	var receiverAddr ids.ShortID
+	var destinationAddr ids.ShortID
 	if send {
-		if receiverAddrStr == "" {
+		if destinationAddrStr == "" {
 			if PToP {
-				receiverAddrStr, err = app.Prompt.CapturePChainAddress("Receiver address", network)
+				destinationAddrStr, err = app.Prompt.CapturePChainAddress("Destination address", network)
 				if err != nil {
 					return err
 				}
 			} else {
-				receiverAddrStr, err = app.Prompt.CaptureXChainAddress("Receiver address", network)
+				destinationAddrStr, err = app.Prompt.CaptureXChainAddress("Destination address", network)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		receiverAddr, err = address.ParseToID(receiverAddrStr)
+		destinationAddr, err = address.ParseToID(destinationAddrStr)
 		if err != nil {
 			return err
 		}
 	} else {
-		receiverAddr = kc.Addresses().List()[0]
-		receiverAddrStr, err = address.Format("P", key.GetHRP(network.ID), receiverAddr[:])
+		destinationAddr = kc.Addresses().List()[0]
+		destinationAddrStr, err = address.Format("P", key.GetHRP(network.ID), destinationAddr[:])
 		if err != nil {
 			return err
 		}
@@ -281,17 +530,17 @@ func transferF(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		if addr == receiverAddr && PToP {
-			return fmt.Errorf("sender addr is the same as receiver addr")
+		if addr == destinationAddr && PToP {
+			return fmt.Errorf("sender addr is the same as destination addr")
 		}
-		ux.Logger.PrintToUser("- send %.9f AVAX from %s to target address %s", float64(amount)/float64(units.Avax), addrStr, receiverAddrStr)
+		ux.Logger.PrintToUser("- send %.9f AVAX from %s to destination address %s", float64(amount)/float64(units.Avax), addrStr, destinationAddrStr)
 		totalFee := 4 * fee
 		if PToX {
 			totalFee = 2 * fee
 		}
 		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(totalFee)/float64(units.Avax), addrStr)
 	} else {
-		ux.Logger.PrintToUser("- receive %.9f AVAX at target address %s", float64(amount)/float64(units.Avax), receiverAddrStr)
+		ux.Logger.PrintToUser("- receive %.9f AVAX at destination address %s", float64(amount)/float64(units.Avax), destinationAddrStr)
 	}
 	ux.Logger.PrintToUser("")
 
@@ -309,7 +558,7 @@ func transferF(*cobra.Command, []string) error {
 
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
-		Addrs:     []ids.ShortID{receiverAddr},
+		Addrs:     []ids.ShortID{destinationAddr},
 	}
 
 	if send {
@@ -479,4 +728,23 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	return nil
+}
+
+func captureAmount(sending bool, tokenDesc string) (float64, error) {
+	var promptStr string
+	if sending {
+		promptStr = fmt.Sprintf("Amount to send (%s)", tokenDesc)
+	} else {
+		promptStr = fmt.Sprintf("Amount to receive (%s)", tokenDesc)
+	}
+	amountFlt, err := app.Prompt.CaptureFloat(promptStr, func(v float64) error {
+		if v <= 0 {
+			return fmt.Errorf("value %f must be greater than zero", v)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return amountFlt, nil
 }

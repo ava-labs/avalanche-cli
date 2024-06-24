@@ -345,4 +345,9 @@ const (
 
 	// Docker
 	RemoteDockeSocketPath = "/var/run/docker.sock"
+
+	// Bridge
+	BridgeDir    = "teleporter-token-bridge"
+	BridgeURL    = "https://github.com/ava-labs/teleporter-token-bridge"
+	BridgeBranch = "main"
 )
