@@ -126,6 +126,15 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	return fmt.Sprintf("ws://%s/ext/bc/%s/ws", trimmedURI, blockchainID)
 }
 
+// StringID returns the network ID as a string
+func (n Network) StringID() string {
+	networkID := n.NetworkIDFlagValue()
+	if n.Kind == Local || n.Kind == Devnet {
+		networkID = fmt.Sprintf("%d", n.ID)
+	}
+	return networkID
+}
+
 func (n Network) NetworkIDFlagValue() string {
 	switch n.Kind {
 	case Local:

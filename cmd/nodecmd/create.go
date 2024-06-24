@@ -15,7 +15,6 @@ import (
 	"time"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
@@ -39,6 +38,8 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 const (
@@ -579,7 +580,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	monitoringInventoryPath := ""
-	var monitoringHosts []*models.Host
+	var monitoringHosts []*sdkHost.Host
 	if addMonitoring {
 		monitoringInventoryPath = app.GetMonitoringInventoryDir(clusterName)
 		if existingMonitoringInstance == "" {
@@ -596,7 +597,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfigMap.GetAllInstanceIDs(), h.GetCloudID()) })
+	hosts := utils.Filter(allHosts, func(h *sdkHost.Host) bool { return slices.Contains(cloudConfigMap.GetAllInstanceIDs(), h.GetCloudID()) })
 	// waiting for all nodes to become accessible
 	checkHosts := hosts
 	if addMonitoring && len(monitoringHosts) > 0 {
@@ -627,7 +628,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		if existingMonitoringInstance == "" {
 			// setup new monitoring host
 			wg.Add(1)
-			go func(nodeResults *models.NodeResults, monitoringHost *models.Host) {
+			go func(nodeResults *models.NodeResults, monitoringHost *sdkHost.Host) {
 				defer wg.Done()
 				if err := monitoringHost.Connect(0); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
@@ -669,7 +670,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					return
 				}
 				ux.Logger.Info("RunSSHSetupLokiConfig completed")
-				if err := docker.ComposeSSHSetupMonitoring(monitoringHost); err != nil {
+				if err := monitoringHost.ComposeSSHSetupMonitoring(); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -681,7 +682,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if err := host.Connect(0); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
@@ -719,7 +720,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring); err != nil {
+			if err := host.ComposeSSHSetupNode(network.StringID(), avalancheGoVersion, addMonitoring); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -980,7 +981,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 	return nodeID, nil
 }
 
-func provideStakingCertAndKey(host *models.Host) error {
+func provideStakingCertAndKey(host *sdkHost.Host) error {
 	instanceID := host.GetCloudID()
 	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
 	nodeID, err := generateNodeCertAndKeys(
@@ -1211,7 +1212,7 @@ func printResults(cloudConfigMap models.CloudConfig, publicIPMap map[string]stri
 		}
 	}
 	if addMonitoring {
-		monitoringHost := models.Host{
+		monitoringHost := sdkHost.Host{
 			IP: monitoringHostIP,
 		}
 		if err := waitForMonitoringEndpoint(&monitoringHost); err != nil {
@@ -1233,7 +1234,7 @@ func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
 }
 
-func waitForMonitoringEndpoint(monitoringHost *models.Host) error {
+func waitForMonitoringEndpoint(monitoringHost *sdkHost.Host) error {
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Waiting for monitoring endpoint to be available")
 	if err := monitoringHost.WaitForPort(constants.AvalanchegoGrafanaPort, constants.SSHLongRunningScriptTimeout); err != nil {
@@ -1246,13 +1247,13 @@ func waitForMonitoringEndpoint(monitoringHost *models.Host) error {
 }
 
 // waitForHosts waits for all hosts to become available via SSH.
-func waitForHosts(hosts []*models.Host) *models.NodeResults {
+func waitForHosts(hosts []*sdkHost.Host) *models.NodeResults {
 	hostErrors := models.NodeResults{}
 	createdWaitGroup := sync.WaitGroup{}
 	spinSession := ux.NewUserSpinner()
 	for _, host := range hosts {
 		createdWaitGroup.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer createdWaitGroup.Done()
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for instance response"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {

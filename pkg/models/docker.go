@@ -10,7 +10,7 @@ type DockerProxy struct {
 	ctx        context.Context
 }
 
-func NewDockerProxy(socketPath string, host Host) (*DockerProxy, error) {
+func NewDockerProxy(socketPath string, sdkHost.Host) (*DockerProxy, error) {
 	stopCh := make(chan struct{})
 
 	go StartDockerProxy(host, socketPath, stopCh)
@@ -27,7 +27,7 @@ func (s *DockerProxy) Stop() {
 	close(s.stopCh)
 }
 
-func StartDockerProxy(dockerHost Host, localSocketPath string, stopCh chan struct{}) {
+func StartDockerProxy(dockersdkHost.Host, localSocketPath string, stopCh chan struct{}) {
 	_ = os.Remove(localSocketPath)
 
 	l, err := net.Listen("unix", localSocketPath)
@@ -57,7 +57,7 @@ func StartDockerProxy(dockerHost Host, localSocketPath string, stopCh chan struc
 	}
 }
 
-func handleConnection(conn net.Conn, host Host, remoteSocketPath string) {
+func handleConnection(conn net.Conn, sdkHost.Host, remoteSocketPath string) {
 	defer conn.Close()
 
 	if !host.Connected() {

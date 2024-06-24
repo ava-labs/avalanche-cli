@@ -23,6 +23,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/context"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var (
@@ -265,7 +267,7 @@ func whitelistSSHPubKey(clusterName string, pubkey string) error {
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if err := ssh.RunSSHWhitelistPubKey(host, sshPubKey); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)

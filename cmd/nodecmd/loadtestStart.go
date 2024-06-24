@@ -13,7 +13,6 @@ import (
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -25,6 +24,8 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var (
@@ -273,9 +274,9 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		}
 	}
 	// separateHosts contains all load test hosts defined in load test inventory dir
-	var separateHosts []*models.Host
+	var separateHosts []*sdkHost.Host
 	// separateHosts contains only current load test host defined in the command
-	var currentLoadTestHost []*models.Host
+	var currentLoadTestHost []*sdkHost.Host
 	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
 	if existingSeparateInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
@@ -323,7 +324,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupDockerService(currentLoadTestHost[0]); err != nil {
 			return err
 		}
-		if err := docker.ComposeSSHSetupLoadTest(currentLoadTestHost[0]); err != nil {
+		if err := currentLoadTestHost[0].ComposeSSHSetupLoadTest(); err != nil {
 			return err
 		}
 		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
@@ -333,7 +334,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupPrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
 			return err
 		}
-		if err := docker.RestartDockerComposeService(monitoringHosts[0], utils.GetRemoteComposeFile(), "prometheus", constants.SSHLongRunningScriptTimeout); err != nil {
+		if err := monitoringHosts[0].RestartDockerComposeService(utils.GetRemoteComposeFile(), "prometheus", constants.SSHLongRunningScriptTimeout); err != nil {
 			return err
 		}
 	}
@@ -390,7 +391,7 @@ func getDeployedSubnetInfo(clusterName string, subnetName string) (string, strin
 	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <subnetName> --cluster <clusterName> first")
 }
 
-func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
+func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *sdkHost.Host) error {
 	clusterYAMLFilePath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
 	if utils.FileExists(clusterYAMLFilePath) {
 		if err := os.Remove(clusterYAMLFilePath); err != nil {

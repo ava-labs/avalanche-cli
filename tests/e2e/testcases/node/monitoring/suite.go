@@ -20,6 +20,8 @@ import (
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"golang.org/x/exp/slices"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 const (
@@ -34,7 +36,7 @@ var (
 	hostName         string
 	NodeID           string
 	monitoringHostID string
-	createdHosts     []*models.Host
+	createdHosts     []*sdkHost.Host
 	// host names without docker prefix
 	createdHostsFormatted []string
 )
