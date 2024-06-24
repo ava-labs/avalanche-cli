@@ -225,5 +225,3 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
-
-replace github.com/ava-labs/avalanche-tooling-sdk-go => /Users/artur/src/github.com/ava-labs/avalanche-tooling-sdk-go
