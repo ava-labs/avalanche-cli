@@ -402,7 +402,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("Fee reward mechanism can be configured with this stateful precompile contract called as RewardManager. Configuration can include burning fees, sending fees to a predefined address, or enabling fees to be collected by block producers. For more info, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#changing-fee-reward-mechanisms")
+				ux.Logger.PrintToUser("The fee reward mechanism can be configured with a stateful precompile contract called the RewardManager. The configuration can include burning fees, sending fees to a predefined address, or enabling fees to be collected by block producers. For more info, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#changing-fee-reward-mechanisms")
 				continue
 			}
 			break
@@ -428,7 +428,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			options := []string{interoperatingBlockchainOption, isolatedBlockchainOption, explainOption}
 			for {
 				option, err := app.Prompt.CaptureList(
-					"Do you want to connect your blockchain with other blockchains or C-Chain? (Deploy Teleporter and Registry)",
+					"Do you want to connect your blockchain with other blockchains or the C-Chain? (Deploy Teleporter along with its Registry)",
 					options,
 				)
 				if err != nil {
@@ -440,8 +440,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				case isolatedBlockchainOption:
 					useTeleporter = false
 				case explainOption:
-					ux.Logger.PrintToUser("The difference is...")
-					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser("Avalanche already enables native interoperability between blockchains with the VM-agnostic Avalanche Warp Messaging protocol (AWM). Teleporter is a messaging protocol built on top of AWM that provides a developer-friendly interface for sending and receiving cross-chain messages to and from EVM-compatible blockchains.")
 					continue
 				}
 				break
@@ -479,7 +478,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				options := []string{anyoneCanSubmitTransactionsOption, approvedCanSubmitTransactionsOption, explainOption}
 				for {
 					option, err := app.Prompt.CaptureList(
-						"Do you want to allow only certain addresses to interact with your blockchain? (Transaction Allowlist Precompile)",
+						"Do you want to allow only certain user addresses to interact with your blockchain? (Transaction Allowlist Precompile)",
 						options,
 					)
 					if err != nil {
@@ -492,8 +491,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 							return err
 						}
 					case explainOption:
-						ux.Logger.PrintToUser("The difference is...")
-						ux.Logger.PrintToUser("")
+						ux.Logger.PrintToUser("The Transaction Allow List is a precompile contract that allows you to specify a list of addresses that are allowed to submit transactions to your blockchain. This is useful for permissioning your blockchain, similar to a whitelist, and can be used to prevent spam and unwanted transactions on your chain. This prevents any unauthorized users from sending transactions or deploying smart contracts on your blockchain. For more information, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#restricting-who-can-submit-transactions.")
 						continue
 					}
 					break
@@ -503,7 +501,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				options = []string{anyoneCanDeployContractsOption, approvedCanDeployContractsOption, explainOption}
 				for {
 					option, err := app.Prompt.CaptureList(
-						"Do you want to allow only certain addresses to deploy smart contracts on your blockchain? (Contract Deployer Allowlist)",
+						"Do you want to allow only certain addresses to deploy smart contracts on your blockchain? (Contract Deployer Allow List)",
 						options,
 					)
 					if err != nil {
@@ -516,15 +514,13 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 							return err
 						}
 					case explainOption:
-						ux.Logger.PrintToUser("The difference is...")
-						ux.Logger.PrintToUser("")
+						ux.Logger.PrintToUser("While you may wish to allow anyone to submit transactions to your blockchain, you may want to restrict who can deploy smart contracts and create dApps on your chain. The Smart Contract Deployer Allow List is a precompile contract that allows you to specify a list of addresses that are allowed to deploy smart contracts on your blockchain. For more information, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#restricting-smart-contract-deployers.")
 						continue
 					}
 					break
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("The difference is...")
-				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser("You can permission your chain at different levels of interaction with EVM-Precompiles. These precompiles act as whitelists, preventing unapproved users from deploying smart contracts, sending transactions, or interacting with your blockchain. You may choose to apply as many or as little of these rules as you see fit.")
 				continue
 			}
 			break
