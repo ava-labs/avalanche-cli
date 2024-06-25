@@ -9,16 +9,19 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+	"golang.org/x/net/context"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var loadTestsToStop []string
@@ -90,7 +93,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	removedLoadTestHosts := []*models.Host{}
+	removedLoadTestHosts := []*sdkHost.Host{}
 	if len(loadTestsToStop) == 0 {
 		return fmt.Errorf("no load test instances to stop in cluster %s", clusterName)
 	}
@@ -116,7 +119,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	}
 	ec2SvcMap := make(map[string]*awsAPI.AwsCloud)
 	for _, sg := range filteredSGList {
-		sgEc2Svc, err := awsAPI.NewAwsCloud(awsProfile, sg.region)
+		sgEc2Svc, err := awsAPI.NewAwsCloud(context.Background(), awsProfile, sg.region)
 		if err != nil {
 			return err
 		}
@@ -136,7 +139,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		hosts := utils.Filter(separateHosts, func(h *models.Host) bool { return h.GetCloudID() == nodeConfig.NodeID })
+		hosts := utils.Filter(separateHosts, func(h *sdkHost.Host) bool { return h.GetCloudID() == nodeConfig.NodeID })
 		if len(hosts) == 0 {
 			return fmt.Errorf("host %s is not found in hosts inventory file", nodeConfig.NodeID)
 		}
@@ -182,10 +185,10 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	return updateLoadTestInventory(separateHosts, removedLoadTestHosts, clusterName, separateHostInventoryPath)
 }
 
-func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*models.Host, clusterName, separateHostInventoryPath string) error {
-	var remainingLoadTestHosts []*models.Host
+func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*sdkHost.Host, clusterName, separateHostInventoryPath string) error {
+	var remainingLoadTestHosts []*sdkHost.Host
 	for _, loadTestHost := range separateHosts {
-		filteredHosts := utils.Filter(removedLoadTestHosts, func(h *models.Host) bool { return h.IP == loadTestHost.IP })
+		filteredHosts := utils.Filter(removedLoadTestHosts, func(h *sdkHost.Host) bool { return h.IP == loadTestHost.IP })
 		if len(filteredHosts) == 0 {
 			remainingLoadTestHosts = append(remainingLoadTestHosts, loadTestHost)
 		}
@@ -199,7 +202,7 @@ func updateLoadTestInventory(separateHosts, removedLoadTestHosts []*models.Host,
 			if err != nil {
 				return err
 			}
-			if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestHost.SSHPrivateKeyPath, nodeConfig.CloudService, map[string]string{nodeConfig.NodeID: nodeConfig.ElasticIP}, nil); err != nil {
+			if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestHost.SSHConfig.PrivateKeyPath, nodeConfig.CloudService, map[string]string{nodeConfig.NodeID: nodeConfig.ElasticIP}, nil); err != nil {
 				return err
 			}
 		}
@@ -217,7 +220,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
-		if err = ec2Svc.DestroyAWSNode(nodeConfig, ""); err != nil {
+		if err = ec2Svc.DestroyAWSNode(nodeConfig.NodeID); err != nil {
 			if isExpiredCredentialError(err) {
 				ux.Logger.PrintToUser("")
 				printExpiredCredentialsOutput(awsProfile)
@@ -232,7 +235,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
-		if err = gcpClient.DestroyGCPNode(nodeConfig, ""); err != nil {
+		if err = gcpClient.DestroyGCPNode(nodeConfig.Region, nodeConfig.NodeID); err != nil {
 			if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {
 				return err
 			}

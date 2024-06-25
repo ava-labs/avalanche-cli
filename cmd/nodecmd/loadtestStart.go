@@ -9,22 +9,24 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+	"golang.org/x/net/context"
 	"gopkg.in/yaml.v3"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var (
@@ -225,25 +227,29 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			}
 		}
 	case constants.GCPCloudService:
-		var gcpClient *gcpAPI.GcpCloud
+		var gcpCloud *gcpAPI.GcpCloud
 		var gcpRegions map[string]NumNodes
 		var imageID string
 		var projectName string
 		if existingSeparateInstance == "" {
 			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
-			gcpClient, gcpRegions, imageID, _, projectName, err = getGCPConfig(true)
+			gcpCloud, gcpRegions, imageID, _, projectName, err = getGCPConfig(true)
 			if err != nil {
 				return err
 			}
 			regions := maps.Keys(gcpRegions)
 			separateHostRegion = regions[0]
-			loadTestCloudConfig, err = createGCPInstance(gcpClient, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, clusterName, true)
+			loadTestCloudConfig, err = createGCPInstance(gcpCloud, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, true)
 			if err != nil {
 				return err
 			}
 			loadTestNodeConfig = loadTestCloudConfig[separateHostRegion]
 		} else {
-			_, projectName, _, err = getGCPCloudCredentials()
+			projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
+			if err != nil {
+				return err
+			}
+			gcpCloud, err = gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 			if err != nil {
 				return err
 			}
@@ -253,14 +259,14 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			}
 		}
 		if !useStaticIP {
-			loadTestPublicIPMap, err := gcpClient.GetInstancePublicIPs(separateHostRegion, loadTestNodeConfig.InstanceIDs)
+			loadTestPublicIPMap, err := gcpCloud.GetInstancePublicIPs(separateHostRegion, loadTestNodeConfig.InstanceIDs)
 			if err != nil {
 				return err
 			}
 			loadTestNodeConfig.PublicIPs = []string{loadTestPublicIPMap[loadTestNodeConfig.InstanceIDs[0]]}
 		}
 		if existingSeparateInstance == "" {
-			if err = grantAccessToPublicIPViaFirewall(gcpClient, projectName, loadTestNodeConfig.PublicIPs[0], "loadtest"); err != nil {
+			if err = grantAccessToPublicIPViaFirewall(gcpCloud, projectName, loadTestNodeConfig.PublicIPs[0], "loadtest"); err != nil {
 				return err
 			}
 		}
@@ -273,9 +279,9 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		}
 	}
 	// separateHosts contains all load test hosts defined in load test inventory dir
-	var separateHosts []*models.Host
+	var separateHosts []*sdkHost.Host
 	// separateHosts contains only current load test host defined in the command
-	var currentLoadTestHost []*models.Host
+	var currentLoadTestHost []*sdkHost.Host
 	separateHostInventoryPath := app.GetLoadTestInventoryDir(clusterName)
 	if existingSeparateInstance == "" {
 		if err = ansible.CreateAnsibleHostInventory(separateHostInventoryPath, loadTestNodeConfig.CertFilePath, cloudService, map[string]string{loadTestNodeConfig.InstanceIDs[0]: loadTestNodeConfig.PublicIPs[0]}, nil); err != nil {
@@ -323,7 +329,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupDockerService(currentLoadTestHost[0]); err != nil {
 			return err
 		}
-		if err := docker.ComposeSSHSetupLoadTest(currentLoadTestHost[0]); err != nil {
+		if err := currentLoadTestHost[0].ComposeSSHSetupLoadTest(); err != nil {
 			return err
 		}
 		avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
@@ -333,7 +339,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		if err := ssh.RunSSHSetupPrometheusConfig(monitoringHosts[0], avalancheGoPorts, machinePorts, ltPorts); err != nil {
 			return err
 		}
-		if err := docker.RestartDockerComposeService(monitoringHosts[0], utils.GetRemoteComposeFile(), "prometheus", constants.SSHLongRunningScriptTimeout); err != nil {
+		if err := monitoringHosts[0].RestartDockerComposeService(utils.GetRemoteComposeFile(), "prometheus", constants.SSHLongRunningScriptTimeout); err != nil {
 			return err
 		}
 	}
@@ -390,7 +396,7 @@ func getDeployedSubnetInfo(clusterName string, subnetName string) (string, strin
 	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <subnetName> --cluster <clusterName> first")
 }
 
-func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
+func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *sdkHost.Host) error {
 	clusterYAMLFilePath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.ClusterYAMLFileName)
 	if utils.FileExists(clusterYAMLFilePath) {
 		if err := os.Remove(clusterYAMLFilePath); err != nil {

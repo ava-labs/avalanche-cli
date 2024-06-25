@@ -6,8 +6,8 @@ import (
 	"context"
 	"fmt"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -42,7 +42,7 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 	for _, node := range nodesWithDynamicIP {
 		if lastRegion == "" || node.Region != lastRegion {
 			if node.CloudService == "" || node.CloudService == constants.AWSCloudService {
-				ec2Svc, err = awsAPI.NewAwsCloud(awsProfile, node.Region)
+				ec2Svc, err = awsAPI.NewAwsCloud(context.Background(), awsProfile, node.Region)
 				if err != nil {
 					return nil, err
 				}
@@ -55,11 +55,11 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 				return nil, fmt.Errorf("cloud access is required")
 			}
 			if gcpCloud == nil {
-				gcpClient, projectName, _, err := getGCPCloudCredentials()
+				projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 				if err != nil {
 					return nil, err
 				}
-				gcpCloud, err = gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+				gcpCloud, err = gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 				if err != nil {
 					return nil, err
 				}

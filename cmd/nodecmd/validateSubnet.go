@@ -21,6 +21,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var avoidSubnetValidationChecks bool
@@ -149,7 +151,7 @@ func waitForSubnetValidator(
 // node status is not 'syncing'. If getNodeSubnetSyncStatus is called from node status command,
 // it will return true node status is 'syncing'
 func getNodeSubnetSyncStatus(
-	host *models.Host,
+	host *sdkHost.Host,
 	blockchainID string,
 ) (string, error) {
 	ux.Logger.PrintToUser("Checking if node %s is synced to subnet ...", host.NodeID)

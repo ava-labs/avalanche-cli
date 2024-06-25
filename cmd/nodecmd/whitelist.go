@@ -10,19 +10,21 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	awsAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-tooling-sdk-go/cloud/gcp"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/pingcap/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/context"
+
+	sdkHost "github.com/ava-labs/avalanche-tooling-sdk-go/host"
 )
 
 var (
@@ -172,7 +174,7 @@ func whitelist(_ *cobra.Command, args []string) error {
 }
 
 func GrantAccessToIPinAWS(awsProfile string, region string, sgName string, userIPAddress string) error {
-	ec2Svc, err := awsAPI.NewAwsCloud(awsProfile, region)
+	ec2Svc, err := awsAPI.NewAwsCloud(context.Background(), awsProfile, region)
 	if err != nil {
 		return fmt.Errorf("failed to establish connection to %s cloud region %s with err: %w", constants.AWSCloudService, region, err)
 	}
@@ -213,11 +215,11 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 		return err
 	}
 	networkName := fmt.Sprintf("%s-network", prefix)
-	gcpClient, projectName, _, err := getGCPCloudCredentials()
+	projectName, gcpCredentialFilePath, err := getGCPCloudCredentials()
 	if err != nil {
 		return err
 	}
-	gcpCloud, err := gcpAPI.NewGcpCloud(gcpClient, projectName, context.Background())
+	gcpCloud, err := gcpAPI.NewGcpCloud(context.Background(), projectName, gcpCredentialFilePath)
 	if err != nil {
 		return err
 	}
@@ -265,7 +267,7 @@ func whitelistSSHPubKey(clusterName string, pubkey string) error {
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
+		go func(nodeResults *models.NodeResults, host *sdkHost.Host) {
 			defer wg.Done()
 			if err := ssh.RunSSHWhitelistPubKey(host, sshPubKey); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
