@@ -342,8 +342,8 @@ func createGCPInstance(
 		ux.Logger.PrintToUser("Destroying all created GCP instances due to error to prevent charge for unused GCP instances...")
 		failedNodes := map[string]error{}
 		for zone, zoneInstances := range instanceIDs {
-			for _, instanceID := range zoneInstances {
-				if destroyErr := gcpClient.DestroyGCPNode(instanceID, zone); destroyErr != nil {
+			for i, instanceID := range zoneInstances {
+				if destroyErr := destroyGCPInstance(gcpClient, zone, instanceID, elasticIPs[zone][i]); destroyErr != nil {
 					failedNodes[instanceID] = destroyErr
 					continue
 				}
