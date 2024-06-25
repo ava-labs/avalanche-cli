@@ -478,7 +478,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				options := []string{anyoneCanSubmitTransactionsOption, approvedCanSubmitTransactionsOption, explainOption}
 				for {
 					option, err := app.Prompt.CaptureList(
-						"Do you want to allow only certain user addresses to interact with your blockchain? (Transaction Allowlist Precompile)",
+						"Do you want to allow only certain user addresses to interact with your blockchain? (Transaction Allow List Precompile)",
 						options,
 					)
 					if err != nil {
