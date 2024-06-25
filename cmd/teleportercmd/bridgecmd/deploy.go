@@ -240,7 +240,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				ux.Logger.PrintToUser("The Hub manages the asset to be bridged out to Spoke instances. It lives on the Subnet")
 				ux.Logger.PrintToUser("where the asset exists")
 				ux.Logger.PrintToUser("The Spokes live on the other Subnets that want to import the asset bridged by the Hub.")
-				ux.Logger.PrintToUser("")
 				if len(popularTokensDesc) != 0 {
 					ux.Logger.PrintToUser("A popular token of a subnet is assumed to already have a Hub Deployed. In this case")
 					ux.Logger.PrintToUser("the Hub parameters will be automatically obtained, and a new Spoke will be created on")
