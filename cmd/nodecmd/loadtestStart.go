@@ -239,7 +239,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			}
 			regions := maps.Keys(gcpRegions)
 			separateHostRegion = regions[0]
-			loadTestCloudConfig, err = createGCPInstance(gcpCloud, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, clusterName, true)
+			loadTestCloudConfig, err = createGCPInstance(gcpCloud, nodeType, map[string]NumNodes{separateHostRegion: {1, 0}}, imageID, true)
 			if err != nil {
 				return err
 			}

@@ -314,7 +314,6 @@ func createGCPInstance(
 	instanceType string,
 	numNodesMap map[string]NumNodes,
 	imageID string,
-	clusterName string,
 	forMonitoring bool,
 ) (models.CloudConfig, error) {
 	prefix, err := defaultAvalancheCLIPrefix("")

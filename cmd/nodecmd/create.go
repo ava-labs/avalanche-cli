@@ -352,7 +352,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				InstanceType:      "docker",
 			},
 		}
-		ux.Logger.PrintToUser("%s", cloudConfigMap)
+		ux.Logger.PrintToUser("%v", cloudConfigMap)
 		currentRegionConfig := cloudConfigMap["docker"]
 		for i, ip := range currentRegionConfig.PublicIPs {
 			publicIPMap[dockerHostIDs[i]] = ip
@@ -385,7 +385,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				},
 			}
 			monitoringNodeConfig = monitoringCloudConfig["monitoringDocker"]
-			ux.Logger.PrintToUser("monitoring node created with: %s", monitoringNodeConfig)
+			ux.Logger.PrintToUser("monitoring node created with: %v", monitoringNodeConfig)
 		}
 		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
 		if err != nil {
@@ -484,12 +484,12 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		if existingMonitoringInstance == "" {
 			monitoringHostRegion = maps.Keys(numNodesMap)[0]
 		}
-		cloudConfigMap, err = createGCPInstance(gcpClient, nodeType, numNodesMap, imageID, clusterName, false)
+		cloudConfigMap, err = createGCPInstance(gcpClient, nodeType, numNodesMap, imageID, false)
 		if err != nil {
 			return err
 		}
 		if addMonitoring && existingMonitoringInstance == "" {
-			monitoringCloudConfig, err := createGCPInstance(gcpClient, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, imageID, clusterName, true)
+			monitoringCloudConfig, err := createGCPInstance(gcpClient, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, imageID, true)
 			if err != nil {
 				return err
 			}
