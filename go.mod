@@ -25,7 +25,7 @@ require (
 	github.com/melbahja/goph v1.4.0
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.18.0
+	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
@@ -63,7 +63,7 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.12.1 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/ava-labs/ledger-avalanche/go v0.0.0-20240610153809-9c955cc90a95 // indirect
-	github.com/ava-labs/teleporter v1.0.0 // indirect
+	github.com/ava-labs/teleporter v1.0.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.19 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.6 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.10 // indirect
