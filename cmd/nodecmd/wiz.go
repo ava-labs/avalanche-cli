@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -488,13 +489,13 @@ func setAWMRelayerHost(host *models.Host) error {
 
 func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
-	flags := teleportercmd.AddSubnetToRelayerServiceFlags{
+	flags := relayercmd.AddSubnetToServiceFlags{
 		Network: networkoptions.NetworkFlags{
 			ClusterName: clusterName,
 		},
 		CloudNodeID: host.GetCloudID(),
 	}
-	if err := teleportercmd.CallAddSubnetToRelayerService(subnetName, flags); err != nil {
+	if err := relayercmd.CallAddSubnetToService(subnetName, flags); err != nil {
 		return err
 	}
 	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
