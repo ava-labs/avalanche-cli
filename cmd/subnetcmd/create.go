@@ -207,8 +207,10 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				subnetTypeStr = models.CustomVM
 			case explainOption:
 				ux.Logger.PrintToUser("Virtual machines are the blueprint the defines the application-level logic of a blockchain. It determines the language and rules for writing and executing smart contracts, as well as other blockchain logic.")
-				ux.Logger.PrintToUser("Subnet-EVM is a EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-box solution for Subnet deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. For more information, please visit: https://github.com/ava-labs/subnet-evm")
-				ux.Logger.PrintToUser("Custom VMs created with the HyperSDK or writen from scratch in golang or rust can be deployed on Avalanche using the second option. More information can be found in the docs at https://docs.avax.network/learn/avalanche/virtual-machines.")
+				ux.Logger.PrintToUser(" ")
+				ux.Logger.PrintToUser("Subnet-EVM is a EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-box solution for Subnet deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. Subnet-EVM can be configured with this CLI to meet the developers requirements without writing code. For more information, please visit: https://github.com/ava-labs/subnet-evm")
+				ux.Logger.PrintToUser(" ")
+				ux.Logger.PrintToUser("Custom VMs created with SDKs such as the Precompile-EVM, HyperSDK, Rust-SDK and that are written in golang or rust can be deployed on Avalanche using the second option. You can provide the path to the binary directly or provide the the code as well as the build script. In addition to the VM you need to provide the genesis file. More information can be found in the docs at https://docs.avax.network/learn/avalanche/virtual-machines.")
 				continue
 			}
 			break
@@ -243,7 +245,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if subnetType == models.SubnetEvm && genesisFile != "" && !genesisFileIsEVM {
-		return fmt.Errorf("provided genesis file has no proper Subnet-EVM format")
+		return fmt.Errorf("The provided genesis file has no proper Subnet-EVM format")
 	}
 
 	if subnetType == models.SubnetEvm {
@@ -271,7 +273,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		options := []string{nativeTokenOption, externalTokenOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"What kind of gas token should your blockchain use?",
+				"What kind of native token (also known as gas token) should your blockchain use?",
 				options,
 			)
 			if err != nil {
@@ -283,12 +285,12 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				allocateToNewKeyOption := "1m to new key (+x amount to relayer)"
-				allocateToEwoqOption := "1m to new ewoq (not recommended for production, +x amount to relayer)"
-				customAllocationOption := "Custom allocation (configure exact amount to relayer)"
+				allocateToNewKeyOption := "Allocate 1m tokens to new a newly created address (Recommended for testing)"
+				allocateToEwoqOption := "Allocate 1m to the ewoq address 0xF0f...12f (Only recommended for local testing, not recommended for production)"
+				customAllocationOption := "Define a custom allocation (Recommended for production)"
 				options := []string{allocateToNewKeyOption, allocateToEwoqOption, customAllocationOption}
 				option, err := app.Prompt.CaptureList(
-					"Initial Token Allocation",
+					"How should the initial token allocation be strcutured?",
 					options,
 				)
 				if err != nil {
@@ -299,13 +301,13 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					_, err = app.Prompt.CaptureUint64(fmt.Sprintf("Amount to airdrop (in %s units)", evmToken))
+					_, err = app.Prompt.CaptureUint64(fmt.Sprintf("Amount to allocate (in %s units)", evmToken))
 					if err != nil {
 						return err
 					}
 				}
-				fixedSupplyOption := "I want to have a fixed supply of tokens on my blockchain. (Native Minter Precompile OFF)"
-				dynamicSupplyOption := "Yes, I want to be able to mint additional tokens on my blockchain. (Native Minter Precompile ON)"
+				fixedSupplyOption := "No, I want to have a hard-capped supply of the native token. (Native Minter Precompile OFF)"
+				dynamicSupplyOption := "Yes, I want to be able to mint additional the native tokens. (Native Minter Precompile ON)"
 				options = []string{fixedSupplyOption, dynamicSupplyOption}
 				option, err = app.Prompt.CaptureList(
 					"Allow minting new native Tokens? (Native Minter Precompile)",
@@ -323,8 +325,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			case externalTokenOption:
 				externalGasToken = true
 			case explainOption:
-				ux.Logger.PrintToUser("Gas tokens exist because blockchains have limited resources. Native tokens the default gas token, and are non-programmable unless wrapped by an ERC-20 token contract.")
-				ux.Logger.PrintToUser("If desired, ERC-20 tokens can be deployed on other blockchains and used as the gas token enabled by a bridge. When a transaction is initiated, the ERC-20 amount will be locked on the source chain, a message will be relayed to the Subnet, and then the token will be minted to the sender's address using the Native Minter precompile. This means users with a balance of that ERC-20 on a separate chain can use it to pay for gas on the Subnet.")
+				ux.Logger.PrintToUser("The Native token (also known as gas token) exist because blockchains have limited resources. ETH is the native token of Ethereum and AVAX is the native token of the Avalanche C-Chain. Users of the blockchain pay for transactions with the native token. If there is more demand for the blockchain than there is capacity, the gas price rises, meaning the user needs to pay more native tokens for their transaction.")
+				ux.Logger.PrintToUser(" ")
+				ux.Logger.PrintToUser("Every blockchain on Avalanche can have it's own native tokens. Therefore, users do not necessarily have to acquire ETH or AVAX to issue transactions.")
+				ux.Logger.PrintToUser(" ")
+				ux.Logger.PrintToUser("Alternatively, a blockchain on Avalanche can also use and ERC-20 token deployed on or the native token of another blockchain in the Avalanche network as it's native token. This is implemented leveraging a bridge contract in combination with the Native Minter Precompile. When a user bridges the token from the other blockchain, the amount will be locked on the home chain, a message will be relayed to the Subnet, and then the token will be minted to the sender's address using the Native Minter precompile. This allows you to use any ERC-20 (e.g. USDC) or native token (e.g. AVAX) on any blockchain in the Avalanche network as your native token.")
 				continue
 			}
 			break
@@ -341,7 +346,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		options := []string{lowOption, mediumOption, highOption, customizeOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"How should the gas fees be configured on your Blockchain?",
+				"How should the transaction fees be configured on your Blockchain?",
 				options,
 			)
 			if err != nil {
@@ -356,14 +361,16 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				}
 			case explainOption:
 				ux.Logger.PrintToUser("The two gas fee variables that have the largest impact on performance are the gas limit, the maximum amount of gas that fits in a block, and the gas target, the expected amount of gas consumed in a rolling ten-second period.")
+				ux.Logger.PrintToUser(" ")
 				ux.Logger.PrintToUser("By increasing the gas limit, you can fit more transactions into a single block which in turn increases your max throughput. Increasing the gas target has the same effect; if the targeted amount of gas is not consumed, the dynamic fee algorithm will decrease the base fee until it reaches the minimum.")
+				ux.Logger.PrintToUser(" ")
 				ux.Logger.PrintToUser("There is a long-term risk of increasing your gas parameters. By allowing more transactions to occur on your network, the network state will increase at a faster rate, meaning infrastructure costs and requirements will increase.")
 				continue
 			}
 			break
 		}
-		dontChangeFeeSettingsOption := "I am fine with the gas fee configuration set in the genesis (Fee Manager Precompile OFF)"
-		changeFeeSettingsOption := "I want to be able to adjust gas pricing if necessary - recommended for production (Fee Manager Precompile ON)"
+		dontChangeFeeSettingsOption := "No, I am fine with the gas fee configuration set in the genesis (Fee Manager Precompile OFF)"
+		changeFeeSettingsOption := "Yes, I want to be able to adjust gas pricing if necessary - recommended for production (Fee Manager Precompile ON)"
 		options = []string{dontChangeFeeSettingsOption, changeFeeSettingsOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -379,17 +386,17 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				//missing case for dontChangeFeeSettingsOption
+				// missing case for dontChangeFeeSettingsOption
 			}
 			break
 		}
-		burnFees := "I am fine with gas fees being burned (Reward Manager Precompile OFF)"
-		distributeFees := "I want to customize accumulated gas fees distribution (Reward Manager Precompile ON)"
+		burnFees := "Yes, I am fine with transaction fees being burned (Reward Manager Precompile OFF)"
+		distributeFees := "No, I want to customize accumulated transaction fees distribution (Reward Manager Precompile ON)"
 		explainOption = "Explain the difference"
 		options = []string{burnFees, distributeFees, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"By default, all fees on Avalanche are burned (sent to a blackhole address). (Reward Manager Precompile)",
+				"By default, all transaction fees on Avalanche are burned (sent to a blackhole address). Should the fees be burned??",
 				options,
 			)
 			if err != nil {
