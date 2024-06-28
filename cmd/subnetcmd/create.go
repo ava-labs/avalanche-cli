@@ -387,6 +387,9 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
+			case explainOption:
+				ux.Logger.PrintToUser("The Fee Manager Precompile enables you to give certain account the right to change the fee paramters set in the previous step on the fly without a network upgrade. This list can be dynamically changed by calling the precompile.")
+				continue
 				// missing case for dontChangeFeeSettingsOption
 			}
 			break
