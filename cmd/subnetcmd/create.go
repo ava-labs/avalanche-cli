@@ -53,6 +53,8 @@ var (
 	errMutuallyVMConfigOptions        = errors.New("specifying --genesis flag disables SubnetEVM config flags --evm-chain-id,--evm-token,--evm-defaults")
 )
 
+const explainOption = "Explain the difference"
+
 // avalanche subnet create
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -189,7 +191,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if subnetType == "" {
 		subnetEvmOption := "Subnet-EVM"
 		customVMOption := "Custom VM"
-		explainOption := "Explain the difference"
 		options := []string{subnetEvmOption, customVMOption, explainOption}
 		var subnetTypeStr string
 		for {
@@ -269,7 +270,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if subnetType == models.SubnetEvm && genesisFile == "" {
 		nativeTokenOption := "It's own Native Token"
 		externalTokenOption := "A token from another blockchain"
-		explainOption := "Explain the difference"
 		options := []string{nativeTokenOption, externalTokenOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -341,7 +341,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	// Transaction / Gas Fees
 	if subnetType == models.SubnetEvm && genesisFile == "" {
 		customizeOption := "Customize fee config"
-		explainOption := "Explain the difference"
 		lowOption := "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
 		mediumOption := "Medium disk use / Medium Throughput 2 mil   gas/s"
 		highOption := "High disk use   / High Throughput   5 mil   gas/s"
@@ -394,7 +393,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 		burnFees := "Yes, I am fine with transaction fees being burned (Reward Manager Precompile OFF)"
 		distributeFees := "No, I want to customize accumulated transaction fees distribution (Reward Manager Precompile ON)"
-		explainOption = "Explain the difference"
 		options = []string{burnFees, distributeFees, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -433,7 +431,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		} else if !flag.Changed && !externalGasToken {
 			interoperatingBlockchainOption := "Yes, I want my blockchain to be able to interoperate with other blockchains and the C-Chain"
 			isolatedBlockchainOption := "No, I want to run my blockchain isolated"
-			explainOption := "Explain the difference"
 			options := []string{interoperatingBlockchainOption, isolatedBlockchainOption, explainOption}
 			for {
 				option, err := app.Prompt.CaptureList(
@@ -470,7 +467,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if subnetType == models.SubnetEvm && genesisFile == "" {
 		noOption := "No"
 		yesOption := "Yes"
-		explainOption := "Explain the difference"
 		options := []string{noOption, yesOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
