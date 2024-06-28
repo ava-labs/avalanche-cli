@@ -306,7 +306,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
-				fixedSupplyOption := "No, I want to have a hard-capped supply of the native token. (Native Minter Precompile OFF)"
+				fixedSupplyOption := "No, I want the supply of the native token be hard-capped. (Native Minter Precompile OFF)"
 				dynamicSupplyOption := "Yes, I want to be able to mint additional the native tokens. (Native Minter Precompile ON)"
 				options = []string{fixedSupplyOption, dynamicSupplyOption}
 				option, err = app.Prompt.CaptureList(
@@ -329,7 +329,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser(" ")
 				ux.Logger.PrintToUser("Every blockchain on Avalanche can have it's own native tokens. Therefore, users do not necessarily have to acquire ETH or AVAX to issue transactions.")
 				ux.Logger.PrintToUser(" ")
-				ux.Logger.PrintToUser("Alternatively, a blockchain on Avalanche can also use and ERC-20 token deployed on or the native token of another blockchain in the Avalanche network as it's native token. This is implemented leveraging a bridge contract in combination with the Native Minter Precompile. When a user bridges the token from the other blockchain, the amount will be locked on the home chain, a message will be relayed to the Subnet, and then the token will be minted to the sender's address using the Native Minter precompile. This allows you to use any ERC-20 (e.g. USDC) or native token (e.g. AVAX) on any blockchain in the Avalanche network as your native token.")
+				ux.Logger.PrintToUser("Alternatively, a blockchain on Avalanche can also use an ERC-20 token deployed on or the native token of another blockchain in the Avalanche network as it's native token. This is implemented leveraging a bridge contract in combination with the Native Minter Precompile. When a user bridges the token from the other blockchain, the amount will be locked on the home chain, a message will be relayed to the Subnet, and then the token will be minted to the sender's address using the Native Minter precompile. This allows you to use any ERC-20 (e.g. USDC) or native token (e.g. AVAX) on any blockchain in the Avalanche network as your native token.")
 				ux.Logger.PrintToUser(" ")
 				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter is required and activated automatically.")
 				continue
