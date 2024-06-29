@@ -63,12 +63,12 @@ var (
 	receiveRecoveryStep uint64
 	PToX                bool
 	PToP                bool
-	// ictt experimental
-	originSubnet           string
-	destinationSubnet      string
-	originICTTAddress      string
-	destinationICTTAddress string
-	destinationKeyName     string
+	// token transferer experimental
+	originSubnet                 string
+	destinationSubnet            string
+	originTransfererAddress      string
+	destinationTransfererAddress string
+	destinationKeyName           string
 )
 
 func newTransferCmd() *cobra.Command {
@@ -157,25 +157,25 @@ func newTransferCmd() *cobra.Command {
 		&originSubnet,
 		"origin-subnet",
 		"",
-		"subnet where the funds belong (ictt experimental)",
+		"subnet where the funds belong (token transferer experimental)",
 	)
 	cmd.Flags().StringVar(
 		&destinationSubnet,
 		"destination-subnet",
 		"",
-		"subnet where the funds will be sent (ictt experimental)",
+		"subnet where the funds will be sent (token transferer experimental)",
 	)
 	cmd.Flags().StringVar(
-		&originICTTAddress,
-		"origin-ictt-address",
+		&originTransfererAddress,
+		"origin-transferer-address",
 		"",
-		"avalanche interchain token transfer address at the origin subnet (ictt experimental)",
+		"token transferer address at the origin subnet (token transferer experimental)",
 	)
 	cmd.Flags().StringVar(
-		&destinationICTTAddress,
-		"destination-ictt-address",
+		&destinationTransfererAddress,
+		"destination-transferer-address",
 		"",
-		"avalanche interchain token transfer address at the destination subnet (ictt experimental)",
+		"token transferer address at the destination subnet (token transferer experimental)",
 	)
 	return cmd
 }
@@ -244,7 +244,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	// ictt experimental
+	// token transferer experimental
 	if originSubnet != "" {
 		if destinationSubnet == "" {
 			prompt := "Where are the funds going to?"
@@ -302,29 +302,29 @@ func transferF(*cobra.Command, []string) error {
 			}
 			destinationBlockchainID = blockchainID
 		}
-		if originICTTAddress == "" {
+		if originTransfererAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the InterChain Token Transfer on %s", originSubnet),
+				fmt.Sprintf("Enter the address of the Token Transferer on %s", originSubnet),
 			)
 			if err != nil {
 				return err
 			}
-			originICTTAddress = addr.Hex()
+			originTransfererAddress = addr.Hex()
 		} else {
-			if err := prompts.ValidateAddress(originICTTAddress); err != nil {
+			if err := prompts.ValidateAddress(originTransfererAddress); err != nil {
 				return err
 			}
 		}
-		if destinationICTTAddress == "" {
+		if destinationTransfererAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the InterChain Token Transfer on %s", destinationSubnet),
+				fmt.Sprintf("Enter the address of the Token Transferer on %s", destinationSubnet),
 			)
 			if err != nil {
 				return err
 			}
-			destinationICTTAddress = addr.Hex()
+			destinationTransfererAddress = addr.Hex()
 		} else {
-			if err := prompts.ValidateAddress(destinationICTTAddress); err != nil {
+			if err := prompts.ValidateAddress(destinationTransfererAddress); err != nil {
 				return err
 			}
 		}
@@ -392,7 +392,7 @@ func transferF(*cobra.Command, []string) error {
 		amountInt, _ := amount.Int(nil)
 		endpointKind, err := ictt.GetEndpointKind(
 			originURL,
-			goethereumcommon.HexToAddress(originICTTAddress),
+			goethereumcommon.HexToAddress(originTransfererAddress),
 		)
 		if err != nil {
 			return err
@@ -401,30 +401,30 @@ func transferF(*cobra.Command, []string) error {
 		case ictt.ERC20TokenRemote:
 			return ictt.ERC20TokenRemoteSend(
 				originURL,
-				goethereumcommon.HexToAddress(originICTTAddress),
+				goethereumcommon.HexToAddress(originTransfererAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationICTTAddress),
+				goethereumcommon.HexToAddress(destinationTransfererAddress),
 				destinationAddr,
 				amountInt,
 			)
 		case ictt.ERC20TokenHome:
 			return ictt.ERC20TokenHomeSend(
 				originURL,
-				goethereumcommon.HexToAddress(originICTTAddress),
+				goethereumcommon.HexToAddress(originTransfererAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationICTTAddress),
+				goethereumcommon.HexToAddress(destinationTransfererAddress),
 				destinationAddr,
 				amountInt,
 			)
 		case ictt.NativeTokenHome:
 			return ictt.NativeTokenHomeSend(
 				originURL,
-				goethereumcommon.HexToAddress(originICTTAddress),
+				goethereumcommon.HexToAddress(originTransfererAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationICTTAddress),
+				goethereumcommon.HexToAddress(destinationTransfererAddress),
 				destinationAddr,
 				amountInt,
 			)
