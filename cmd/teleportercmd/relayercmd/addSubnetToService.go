@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransfercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -63,7 +62,7 @@ func CallAddSubnetToService(subnetName string, flags AddSubnetToServiceFlags) er
 		return err
 	}
 
-	_, subnetID, chainID, messengerAddress, registryAddress, _, err := tokentransfercmd.GetSubnetParams(network, "", true)
+	_, subnetID, chainID, messengerAddress, registryAddress, _, err := teleporter.GetSubnetParams(app, network, "", true)
 	if err != nil {
 		return err
 	}
@@ -95,7 +94,7 @@ func CallAddSubnetToService(subnetName string, flags AddSubnetToServiceFlags) er
 		return err
 	}
 
-	_, subnetID, chainID, messengerAddress, registryAddress, _, err = tokentransfercmd.GetSubnetParams(network, subnetName, false)
+	_, subnetID, chainID, messengerAddress, registryAddress, _, err = teleporter.GetSubnetParams(app, network, subnetName, false)
 	if err != nil {
 		return err
 	}

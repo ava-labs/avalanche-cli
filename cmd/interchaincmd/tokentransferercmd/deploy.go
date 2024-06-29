@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
@@ -318,7 +319,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		tokenAddress  common.Address
 	)
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
-	homeEndpoint, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := GetSubnetParams(
+	homeEndpoint, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
+		app,
 		network,
 		flags.homeFlags.chainFlags.SubnetName,
 		flags.homeFlags.chainFlags.CChain,
@@ -423,7 +425,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Deploy
-	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := GetSubnetParams(
+	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
+		app,
 		network,
 		flags.remoteFlags.SubnetName,
 		flags.remoteFlags.CChain,

@@ -8,9 +8,9 @@ import (
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -287,7 +287,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		if !alreadyDeployed {
 			if network.Kind == models.Local {
-				if err := subnet.WriteExtraLocalNetworkData(teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
+				if err := localnet.WriteExtraLocalNetworkData(teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
 					return err
 				}
 			}
