@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package tokentransfercmd
+package tokentransferercmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -10,16 +10,16 @@ import (
 
 var app *application.Avalanche
 
-// avalanche interchain tokenTransfer
+// avalanche interchain tokenTransferer
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "tokenTransfer",
-		Short: "Manage Avalanche InterChain Token Transfer (ICTT) Applications",
-		Long:  `The tokenTransfer command suite provides tools to deploy and manage Avalanche InterChain Token Transfer Applications.`,
+		Use:   "tokenTransferer",
+		Short: "Manage Token Transferers",
+		Long:  `The tokenTransfer command suite provides tools to deploy and manage Token Transferers.`,
 		RunE:  cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
-	// tokenTransfer deploy
+	// tokenTransferer deploy
 	cmd.AddCommand(newDeployCmd())
 	return cmd
 }

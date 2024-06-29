@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package tokentransfercmd
+package tokentransferercmd
 
 import (
 	_ "embed"
@@ -46,24 +46,24 @@ var (
 	deployFlags DeployFlags
 )
 
-// avalanche interchain tokenTransfer deploy
+// avalanche interchain tokenTransferer deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
-		Short: "Deploys an Avalanche InterChain Token Transfer Application (ICTT) into a given Network and Subnets",
-		Long:  "Deploys an Avalanche InterChain Token Transfer Application (ICTT) into a given Network and Subnets",
+		Short: "Deploys a Token Transferer into a given Network and Subnets",
+		Long:  "Deploys a Token Transferer into a given Network and Subnets",
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	cmd.Flags().StringVar(&deployFlags.homeFlags.chainFlags.SubnetName, "home-subnet", "", "use the given CLI subnet as the ICTT Home's Chain")
-	cmd.Flags().BoolVar(&deployFlags.homeFlags.chainFlags.CChain, "c-chain-home", false, "use C-Chain as the ICTT Home's Chain")
-	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy an ICTT Home for the Chain's Native Token")
-	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy an ICTT Home for the Chain's ERC20 Token")
-	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given ICTT Home Address")
-	cmd.Flags().BoolVar(&deployFlags.remoteFlags.CChain, "c-chain-remote", false, "use C-Chain as the ICTT Remote's Chain")
-	cmd.Flags().StringVar(&deployFlags.remoteFlags.SubnetName, "remote-subnet", "", "use the given CLI subnet as the ICTT Remote's Chain")
-	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of ICTT to deploy (defaults to main branch)")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.chainFlags.SubnetName, "home-subnet", "", "use the given CLI subnet as the Transferer's Home Chain")
+	cmd.Flags().BoolVar(&deployFlags.homeFlags.chainFlags.CChain, "c-chain-home", false, "use C-Chain as the Transferer's Home Chain")
+	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferer Home for the Chain's Native Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferer Home for the given Chain's ERC20 Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferer's Home Address")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.CChain, "c-chain-remote", false, "use C-Chain as the Transferer's Remote Chain")
+	cmd.Flags().StringVar(&deployFlags.remoteFlags.SubnetName, "remote-subnet", "", "use the given CLI subnet as the Transferer's Remote Chain")
+	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	return cmd
 }
 
@@ -208,7 +208,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
 						ux.Logger.PrintToUser("There already is a Token Home for %s deployed on %s.", p.TokenName, homeChain)
 						ux.Logger.PrintToUser("")
-						ux.Logger.PrintToUser("Home Address: %s", p.ICTTHomeAddress)
+						ux.Logger.PrintToUser("Home Address: %s", p.TransfererHomeAddress)
 						deployANewHupOption := "Yes, use the existing Home (recommended)"
 						useTheExistingHomeOption := "No, deploy my own Home"
 						options := []string{deployANewHupOption, useTheExistingHomeOption, explainOption}
@@ -221,7 +221,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						}
 						switch option {
 						case useTheExistingHomeOption:
-							flags.homeFlags.homeAddress = p.ICTTHomeAddress
+							flags.homeFlags.homeAddress = p.TransfererHomeAddress
 							flags.homeFlags.erc20Address = ""
 						case deployANewHupOption:
 						case explainOption:
@@ -232,7 +232,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 							ux.Logger.PrintToUser("Connect to that Home to participate in standard cross chain transfers")
 							ux.Logger.PrintToUser("for the token, including transfers to any of the registered Remote subnets.")
 							ux.Logger.PrintToUser("Deploy a new Home if wanting to have isolated cross chain transfers for")
-							ux.Logger.PrintToUser("your application, or if wanting to provide a new ICTT alternative")
+							ux.Logger.PrintToUser("your application, or if wanting to provide a new Transferer alternative")
 							ux.Logger.PrintToUser("for the token.")
 						}
 					}
