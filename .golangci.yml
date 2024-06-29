@@ -51,6 +51,10 @@ linters:
     # - noctx
 
 linters-settings:
+  misspell:
+    ignore-words:
+      - transferer
+      - transferers
   errorlint:
     # Check for plain type assertions and type switches.
     asserts: false
