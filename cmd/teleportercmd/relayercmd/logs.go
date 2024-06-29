@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransfercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -198,13 +198,13 @@ func getBlockchainIDToSubnetNameMap(network models.Network) (map[string]string, 
 	}
 	blockchainIDToSubnetName := map[string]string{}
 	for _, subnetName := range subnetNames {
-		_, _, blockchainID, _, _, _, err := bridgecmd.GetSubnetParams(network, subnetName, false)
+		_, _, blockchainID, _, _, _, err := tokentransfercmd.GetSubnetParams(network, subnetName, false)
 		if err != nil {
 			return nil, err
 		}
 		blockchainIDToSubnetName[blockchainID.String()] = subnetName
 	}
-	_, _, blockchainID, _, _, _, err := bridgecmd.GetSubnetParams(network, "", true)
+	_, _, blockchainID, _, _, _, err := tokentransfercmd.GetSubnetParams(network, "", true)
 	if err != nil {
 		return nil, err
 	}

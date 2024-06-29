@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/bridge"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -63,12 +63,12 @@ var (
 	receiveRecoveryStep uint64
 	PToX                bool
 	PToP                bool
-	// bridge experimental
-	originSubnet             string
-	destinationSubnet        string
-	originBridgeAddress      string
-	destinationBridgeAddress string
-	destinationKeyName       string
+	// ictt experimental
+	originSubnet           string
+	destinationSubnet      string
+	originICTTAddress      string
+	destinationICTTAddress string
+	destinationKeyName     string
 )
 
 func newTransferCmd() *cobra.Command {
@@ -157,25 +157,25 @@ func newTransferCmd() *cobra.Command {
 		&originSubnet,
 		"origin-subnet",
 		"",
-		"subnet where the funds belong (bridge experimental)",
+		"subnet where the funds belong (ictt experimental)",
 	)
 	cmd.Flags().StringVar(
 		&destinationSubnet,
 		"destination-subnet",
 		"",
-		"subnet where the funds will be sent (bridge experimental)",
+		"subnet where the funds will be sent (ictt experimental)",
 	)
 	cmd.Flags().StringVar(
-		&originBridgeAddress,
-		"origin-bridge-address",
+		&originICTTAddress,
+		"origin-ictt-address",
 		"",
-		"bridge address at the origin subnet (bridge experimental)",
+		"avalanche interchain token transfer address at the origin subnet (ictt experimental)",
 	)
 	cmd.Flags().StringVar(
-		&destinationBridgeAddress,
-		"destination-bridge-address",
+		&destinationICTTAddress,
+		"destination-ictt-address",
 		"",
-		"bridge address at the destination subnet (bridge experimental)",
+		"avalanche interchain token transfer address at the destination subnet (ictt experimental)",
 	)
 	return cmd
 }
@@ -244,7 +244,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	// bridge experimental
+	// ictt experimental
 	if originSubnet != "" {
 		if destinationSubnet == "" {
 			prompt := "Where are the funds going to?"
@@ -302,29 +302,29 @@ func transferF(*cobra.Command, []string) error {
 			}
 			destinationBlockchainID = blockchainID
 		}
-		if originBridgeAddress == "" {
+		if originICTTAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Bridge on %s", originSubnet),
+				fmt.Sprintf("Enter the address of the InterChain Token Transfer on %s", originSubnet),
 			)
 			if err != nil {
 				return err
 			}
-			originBridgeAddress = addr.Hex()
+			originICTTAddress = addr.Hex()
 		} else {
-			if err := prompts.ValidateAddress(originBridgeAddress); err != nil {
+			if err := prompts.ValidateAddress(originICTTAddress); err != nil {
 				return err
 			}
 		}
-		if destinationBridgeAddress == "" {
+		if destinationICTTAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Bridge on %s", destinationSubnet),
+				fmt.Sprintf("Enter the address of the InterChain Token Transfer on %s", destinationSubnet),
 			)
 			if err != nil {
 				return err
 			}
-			destinationBridgeAddress = addr.Hex()
+			destinationICTTAddress = addr.Hex()
 		} else {
-			if err := prompts.ValidateAddress(destinationBridgeAddress); err != nil {
+			if err := prompts.ValidateAddress(destinationICTTAddress); err != nil {
 				return err
 			}
 		}
@@ -390,41 +390,41 @@ func transferF(*cobra.Command, []string) error {
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amountInt, _ := amount.Int(nil)
-		endpointKind, err := bridge.GetEndpointKind(
+		endpointKind, err := ictt.GetEndpointKind(
 			originURL,
-			goethereumcommon.HexToAddress(originBridgeAddress),
+			goethereumcommon.HexToAddress(originICTTAddress),
 		)
 		if err != nil {
 			return err
 		}
 		switch endpointKind {
-		case bridge.ERC20TokenRemote:
-			return bridge.ERC20TokenRemoteSend(
+		case ictt.ERC20TokenRemote:
+			return ictt.ERC20TokenRemoteSend(
 				originURL,
-				goethereumcommon.HexToAddress(originBridgeAddress),
+				goethereumcommon.HexToAddress(originICTTAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				goethereumcommon.HexToAddress(destinationICTTAddress),
 				destinationAddr,
 				amountInt,
 			)
-		case bridge.ERC20TokenHome:
-			return bridge.ERC20TokenHomeSend(
+		case ictt.ERC20TokenHome:
+			return ictt.ERC20TokenHomeSend(
 				originURL,
-				goethereumcommon.HexToAddress(originBridgeAddress),
+				goethereumcommon.HexToAddress(originICTTAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				goethereumcommon.HexToAddress(destinationICTTAddress),
 				destinationAddr,
 				amountInt,
 			)
-		case bridge.NativeTokenHome:
-			return bridge.NativeTokenHomeSend(
+		case ictt.NativeTokenHome:
+			return ictt.NativeTokenHomeSend(
 				originURL,
-				goethereumcommon.HexToAddress(originBridgeAddress),
+				goethereumcommon.HexToAddress(originICTTAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				goethereumcommon.HexToAddress(destinationICTTAddress),
 				destinationAddr,
 				amountInt,
 			)

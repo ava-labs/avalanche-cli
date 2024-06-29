@@ -1,14 +1,14 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridgecmd
+package tokentransfercmd
 
 import (
 	_ "embed"
 	"fmt"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/pkg/bridge"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -46,7 +46,7 @@ var (
 	deployFlags DeployFlags
 )
 
-// avalanche teleporter bridge deploy
+// avalanche interchain tokenTransfer deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
@@ -72,8 +72,8 @@ func deploy(_ *cobra.Command, args []string) error {
 }
 
 func CallDeploy(_ []string, flags DeployFlags) error {
-	if !bridge.FoundryIsInstalled() {
-		return bridge.InstallFoundry()
+	if !ictt.FoundryIsInstalled() {
+		return ictt.InstallFoundry()
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -208,7 +208,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
 						ux.Logger.PrintToUser("There already is a Token Home for %s deployed on %s.", p.TokenName, homeChain)
 						ux.Logger.PrintToUser("")
-						ux.Logger.PrintToUser("Home Address: %s", p.BridgeHomeAddress)
+						ux.Logger.PrintToUser("Home Address: %s", p.ICTTHomeAddress)
 						deployANewHupOption := "Yes, use the existing Home (recommended)"
 						useTheExistingHomeOption := "No, deploy my own Home"
 						options := []string{deployANewHupOption, useTheExistingHomeOption, explainOption}
@@ -221,7 +221,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						}
 						switch option {
 						case useTheExistingHomeOption:
-							flags.homeFlags.homeAddress = p.BridgeHomeAddress
+							flags.homeFlags.homeAddress = p.ICTTHomeAddress
 							flags.homeFlags.erc20Address = ""
 						case deployANewHupOption:
 						case explainOption:
@@ -296,17 +296,17 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Setup Contracts
 	ux.Logger.PrintToUser("Downloading Bridge Contracts")
-	if err := bridge.DownloadRepo(app, flags.version); err != nil {
+	if err := ictt.DownloadRepo(app, flags.version); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Compiling Bridge")
-	if err := bridge.BuildContracts(app); err != nil {
+	if err := ictt.BuildContracts(app); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("")
 
 	// Home Deploy
-	bridgeSrcDir, err := bridge.RepoDir(app)
+	bridgeSrcDir, err := ictt.RepoDir(app)
 	if err != nil {
 		return err
 	}
@@ -328,25 +328,25 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.homeAddress != "" {
 		homeAddress = common.HexToAddress(flags.homeFlags.homeAddress)
-		endpointKind, err := bridge.GetEndpointKind(homeEndpoint, homeAddress)
+		endpointKind, err := ictt.GetEndpointKind(homeEndpoint, homeAddress)
 		if err != nil {
 			return err
 		}
 		switch endpointKind {
-		case bridge.ERC20TokenHome:
-			tokenAddress, err = bridge.ERC20TokenHomeGetTokenAddress(homeEndpoint, homeAddress)
+		case ictt.ERC20TokenHome:
+			tokenAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
-		case bridge.NativeTokenHome:
-			tokenAddress, err = bridge.NativeTokenHomeGetTokenAddress(homeEndpoint, homeAddress)
+		case ictt.NativeTokenHome:
+			tokenAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
 		default:
 			return fmt.Errorf("unsupported bridge endpoint kind %d", endpointKind)
 		}
-		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
 			homeEndpoint,
 			tokenAddress.Hex(),
 		)
@@ -356,14 +356,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.erc20Address != "" {
 		tokenAddress = common.HexToAddress(flags.homeFlags.erc20Address)
-		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
 			homeEndpoint,
 			tokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
-		homeAddress, err = bridge.DeployERC20Home(
+		homeAddress, err = ictt.DeployERC20Home(
 			bridgeSrcDir,
 			homeEndpoint,
 			homeKey.PrivKeyHex(),
@@ -387,7 +387,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		wrappedNativeTokenAddress, err := bridge.DeployWrappedNativeToken(
+		wrappedNativeTokenAddress, err := ictt.DeployWrappedNativeToken(
 			bridgeSrcDir,
 			homeEndpoint,
 			homeKey.PrivKeyHex(),
@@ -396,7 +396,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
 			homeEndpoint,
 			wrappedNativeTokenAddress.Hex(),
 		)
@@ -406,7 +406,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", tokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
-		homeAddress, err = bridge.DeployNativeHome(
+		homeAddress, err = ictt.DeployNativeHome(
 			bridgeSrcDir,
 			homeEndpoint,
 			homeKey.PrivKeyHex(),
@@ -432,7 +432,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	remoteAddress, err := bridge.DeployERC20Remote(
+	remoteAddress, err := ictt.DeployERC20Remote(
 		bridgeSrcDir,
 		remoteEndpoint,
 		remoteKey.PrivKeyHex(),
@@ -448,7 +448,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	if err := bridge.RegisterERC20Remote(
+	if err := ictt.RegisterERC20Remote(
 		remoteEndpoint,
 		remoteKey.PrivKeyHex(),
 		remoteAddress,

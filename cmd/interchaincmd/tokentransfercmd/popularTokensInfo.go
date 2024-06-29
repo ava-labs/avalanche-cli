@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridgecmd
+package tokentransfercmd
 
 import (
 	_ "embed"
@@ -13,7 +13,7 @@ import (
 type PopularTokenInfo struct {
 	TokenName            string
 	TokenContractAddress string
-	BridgeHomeAddress    string
+	ICTTHomeAddress      string
 }
 
 //go:embed popularTokensInfo.json
@@ -23,10 +23,10 @@ var popularTokensInfo map[string]map[string][]PopularTokenInfo
 
 func (i PopularTokenInfo) Desc() string {
 	switch {
-	case i.TokenContractAddress != "" && i.BridgeHomeAddress != "":
-		return fmt.Sprintf("%s | Token address %s | Home address %s", i.TokenName, i.TokenContractAddress, i.BridgeHomeAddress)
-	case i.BridgeHomeAddress != "":
-		return fmt.Sprintf("%s | Home address %s", i.TokenName, i.BridgeHomeAddress)
+	case i.TokenContractAddress != "" && i.ICTTHomeAddress != "":
+		return fmt.Sprintf("%s | Token address %s | Home address %s", i.TokenName, i.TokenContractAddress, i.ICTTHomeAddress)
+	case i.ICTTHomeAddress != "":
+		return fmt.Sprintf("%s | Home address %s", i.TokenName, i.ICTTHomeAddress)
 	default:
 		return i.TokenName
 	}
