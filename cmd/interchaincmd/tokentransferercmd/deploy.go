@@ -78,7 +78,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
-		"On what Network do you want to deploy Avalanche InterChain Token Transfer?",
+		"On what Network do you want to deploy the Transferer?",
 		flags.Network,
 		true,
 		false,
@@ -130,7 +130,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		prompt := "What kind of token do you want to transfer?"
+		prompt := "What kind of token do you want to be able to transfer?"
 		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...) (recommended)"
 		homeDeployedOption := "A token that already has a Home deployed (recommended)"
 		deployNewHomeOption := "Deploy a new Home for the token"
@@ -226,7 +226,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 							flags.homeFlags.erc20Address = ""
 						case deployANewHupOption:
 						case explainOption:
-							ux.Logger.PrintToUser("There is already an InterChain Token Transfer Home deployed for the popular token %s on %s.",
+							ux.Logger.PrintToUser("There is already a Transferer Home deployed for the popular token %s on %s.",
 								p.TokenName,
 								homeChain,
 							)
@@ -239,8 +239,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					}
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("An Avalanche InterChain Token Transfer consists of one Home and at least one but possibly many Remotes.")
-				ux.Logger.PrintToUser("The Home manages the asset to be transferred to Remote instances. It lives on the Subnet")
+				ux.Logger.PrintToUser("An Avalanche InterChain Token Transferer consists of one Home and at least one but possibly many Remotes.")
+				ux.Logger.PrintToUser("The Home manages the asset to be shared to Remote instances. It lives on the Subnet")
 				ux.Logger.PrintToUser("where the asset exists")
 				ux.Logger.PrintToUser("The Remotes live on the other Subnets that want to import the asset managed by the Home.")
 				ux.Logger.PrintToUser("")
@@ -274,7 +274,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Remote Chain Prompts
 	if !flags.remoteFlags.CChain && flags.remoteFlags.SubnetName == "" {
-		prompt := "Where should the token be transferred as an ERC-20?"
+		prompt := "Where should the token be available as an ERC-20?"
 		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags); err != nil {
 			return err
 		} else if cancel {
@@ -288,11 +288,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if flags.remoteFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
-			return fmt.Errorf("trying to make an InterChain Token Transfer were home and remote are on the same subnet")
+			return fmt.Errorf("trying to make an Transferer were home and remote are on the same subnet")
 		}
 	}
 	if flags.remoteFlags.CChain && flags.homeFlags.chainFlags.CChain {
-		return fmt.Errorf("trying to make an InterChain Token Transfer were home and remote are on the same subnet")
+		return fmt.Errorf("trying to make an Transferer were home and remote are on the same subnet")
 	}
 
 	// Setup Contracts
