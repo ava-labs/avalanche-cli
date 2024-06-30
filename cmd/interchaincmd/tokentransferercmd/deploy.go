@@ -8,6 +8,7 @@ import (
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -19,13 +20,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type ChainFlags struct {
-	SubnetName string
-	CChain     bool
-}
-
 type HomeFlags struct {
-	chainFlags   ChainFlags
+	chainFlags   contract.ChainFlags
 	homeAddress  string
 	native       bool
 	erc20Address string
@@ -34,7 +30,7 @@ type HomeFlags struct {
 type DeployFlags struct {
 	Network     networkoptions.NetworkFlags
 	homeFlags   HomeFlags
-	remoteFlags ChainFlags
+	remoteFlags contract.ChainFlags
 	version     string
 }
 
@@ -57,13 +53,23 @@ func newDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	cmd.Flags().StringVar(&deployFlags.homeFlags.chainFlags.SubnetName, "home-subnet", "", "use the given CLI subnet as the Transferer's Home Chain")
-	cmd.Flags().BoolVar(&deployFlags.homeFlags.chainFlags.CChain, "c-chain-home", false, "use C-Chain as the Transferer's Home Chain")
+	contract.AddChainFlagsToCmd(
+		cmd,
+		&deployFlags.homeFlags.chainFlags,
+		"set the Transferer's Home Chain",
+		"home-subnet",
+		"c-chain-home",
+	)
+	contract.AddChainFlagsToCmd(
+		cmd,
+		&deployFlags.remoteFlags,
+		"set the Transferer's Remote Chain",
+		"remote-subnet",
+		"c-chain-remote",
+	)
 	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferer Home for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferer's Home Address")
-	cmd.Flags().BoolVar(&deployFlags.remoteFlags.CChain, "c-chain-remote", false, "use C-Chain as the Transferer's Remote Chain")
-	cmd.Flags().StringVar(&deployFlags.remoteFlags.SubnetName, "remote-subnet", "", "use the given CLI subnet as the Transferer's Remote Chain")
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	return cmd
 }

@@ -16,15 +16,16 @@ type DeployERC20Flags struct {
 	DestinationAddress string
 	HexEncodedMessage  bool
 	PrivateKeyFlags    contract.PrivateKeyFlags
+	chainFlags         contract.ChainFlags
 }
 
 var (
-	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
+	deployERC20SupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
 		networkoptions.Fuji,
 	}
-	msgFlags DeployERC20Flags
+	deployERC20Flags DeployERC20Flags
 )
 
 // avalanche contract deploy erc20
@@ -36,27 +37,36 @@ func newDeployERC20Cmd() *cobra.Command {
 		RunE:  deployERC20,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "as contract deployer")
-	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
-	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
+	contract.AddPrivateKeyFlagsToCmd(cmd, &deployERC20Flags.PrivateKeyFlags, "as contract deployer")
+	contract.AddChainFlagsToCmd(
+		cmd,
+		&deployERC20Flags.chainFlags,
+		"deploy the ERC20 contract",
+		"",
+		"",
+	)
 	return cmd
 }
 
-func deployERC20(_ *cobra.Command, args []string) error {
+func deployERC20(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
-		msgFlags.Network,
+		deployERC20Flags.Network,
 		true,
 		false,
-		msgSupportedNetworkOptions,
+		deployERC20SupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
 		return err
 	}
-	_ = network
+	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	if err != nil {
+		return err
+	}
+	_ = subnetNames
 	ux.Logger.PrintToUser("ERC20 Contract Successfully Deployed!")
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/ids"
@@ -27,7 +28,7 @@ func promptChain(
 	network models.Network,
 	avoidCChain bool,
 	avoidSubnet string,
-	chainFlags *ChainFlags,
+	chainFlags *contract.ChainFlags,
 ) (bool, error) {
 	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
 	if err != nil {
