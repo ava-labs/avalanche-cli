@@ -11,5 +11,3 @@ echo @openzeppelin/contracts@4.8.1/=lib/openzeppelin-contracts/contracts/ > rema
 forge build --extra-output-files bin
 mkdir -p bin
 cp out/Token.sol/Token.bin bin
-# cleanup
-rm -rf foundry.toml remappings.txt lib cache out
