@@ -74,7 +74,9 @@ func deploy(_ *cobra.Command, args []string) error {
 
 func CallDeploy(_ []string, flags DeployFlags) error {
 	if !ictt.FoundryIsInstalled() {
-		return ictt.InstallFoundry()
+		if err := ictt.InstallFoundry(); err != nil {
+			return err
+		}
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
