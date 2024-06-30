@@ -3,13 +3,12 @@
 package contractcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
 // avalanche contract deploy
-func newDeployCmd(injectedApp *application.Avalanche) *cobra.Command {
+func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Deploy smart contracts",
@@ -17,7 +16,6 @@ func newDeployCmd(injectedApp *application.Avalanche) *cobra.Command {
 smart contracts.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
-	app = injectedApp
 	// contract deploy erc20
 	cmd.AddCommand(newDeployERC20Cmd())
 	return cmd

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -24,7 +23,7 @@ type MsgFlags struct {
 	Network            networkoptions.NetworkFlags
 	DestinationAddress string
 	HexEncodedMessage  bool
-	PrivateKeyFlags    PrivateKeyFlags
+	PrivateKeyFlags    contract.PrivateKeyFlags
 }
 
 var (
@@ -46,11 +45,9 @@ func newMsgCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(3),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
+	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "as message originator and to pay source blockchain fees")
 	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
-	cmd.Flags().StringVar(&msgFlags.PrivateKeyFlags.PrivateKey, "private-key", "", "private key to use as message originator and to pay source blockchain fees")
-	cmd.Flags().StringVar(&msgFlags.PrivateKeyFlags.KeyName, "key", "", "CLI stored key to use to use as message originator and to pay source blockchain fees")
-	cmd.Flags().BoolVar(&msgFlags.PrivateKeyFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to use as message originator and to pay source blockchain fees")
 	return cmd
 }
 
@@ -58,14 +55,6 @@ func msg(_ *cobra.Command, args []string) error {
 	sourceSubnetName := args[0]
 	destSubnetName := args[1]
 	message := args[2]
-
-	if !cmdflags.EnsureMutuallyExclusive([]bool{
-		msgFlags.PrivateKeyFlags.PrivateKey != "",
-		msgFlags.PrivateKeyFlags.KeyName != "",
-		msgFlags.PrivateKeyFlags.GenesisKey,
-	}) {
-		return fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
-	}
 
 	subnetNameToGetNetworkFrom := ""
 	if !isCChain(sourceSubnetName) {
@@ -96,7 +85,8 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	privateKey, err := getPrivateKeyFromFlags(
+	privateKey, err := contract.GetPrivateKeyFromFlags(
+		app,
 		msgFlags.PrivateKeyFlags,
 		genesisPrivateKey,
 	)

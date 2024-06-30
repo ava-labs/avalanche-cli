@@ -14,30 +14,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 )
 
-type PrivateKeyFlags struct {
-	PrivateKey string
-	KeyName    string
-	GenesisKey bool
-}
-
-func getPrivateKeyFromFlags(
-	flags PrivateKeyFlags,
-	genesisPrivateKey string,
-) (string, error) {
-	privateKey := flags.PrivateKey
-	if flags.KeyName != "" {
-		k, err := app.GetKey(flags.KeyName, models.NewLocalNetwork(), false)
-		if err != nil {
-			return "", err
-		}
-		privateKey = k.PrivKeyHex()
-	}
-	if flags.GenesisKey {
-		privateKey = genesisPrivateKey
-	}
-	return privateKey, nil
-}
-
 func getEVMSubnetPrefundedKey(
 	network models.Network,
 	subnetName string,
