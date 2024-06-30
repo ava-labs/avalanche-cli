@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
@@ -99,6 +100,9 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add interchain command
 	rootCmd.AddCommand(interchaincmd.NewCmd(app))
+
+	// add contract command
+	rootCmd.AddCommand(contractcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 
