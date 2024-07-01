@@ -16,14 +16,16 @@ func DeployERC20(
 	rpcURL string,
 	privateKey string,
 	symbol string,
+	funded common.Address,
 	supply *big.Int,
 ) (common.Address, error) {
 	return DeployContract(
 		rpcURL,
 		privateKey,
 		tokenBin,
-		"(string, uint256)",
+		"(string, address, uint256)",
 		symbol,
+		funded,
 		supply,
 	)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
 )
@@ -21,6 +22,7 @@ type DeployERC20Flags struct {
 	PrivateKeyFlags contract.PrivateKeyFlags
 	chainFlags      contract.ChainFlags
 	symbol          string
+	funded          string
 	supply          uint64
 }
 
@@ -51,8 +53,9 @@ func newDeployERC20Cmd() *cobra.Command {
 		"",
 		"",
 	)
-	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the ERC20 Token Symbol")
-	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the ERC20 Token Supply")
+	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the token symbol")
+	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the token supply")
+	cmd.Flags().StringVar(&deployERC20Flags.funded, "funded", "", "set the funded address")
 	return cmd
 }
 
@@ -118,6 +121,9 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if privateKey == "" {
+		ux.Logger.PrintToUser("A private key is needed to pay for the contract deploy fees.")
+		ux.Logger.PrintToUser("It will also be considered the owner address of the contract, beign able to call")
+		ux.Logger.PrintToUser("the contract methods only available to owners.")
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
 			"deploy the contract",
@@ -131,7 +137,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		}
 	}
 	if deployERC20Flags.symbol == "" {
-		ux.Logger.PrintToUser("Select a symbol for the ERC20 Token")
+		ux.Logger.PrintToUser("Which is the token symbol?")
 		deployERC20Flags.symbol, err = app.Prompt.CaptureString("Token symbol")
 		if err != nil {
 			return err
@@ -139,8 +145,21 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	}
 	supply := new(big.Int).SetUint64(deployERC20Flags.supply)
 	if deployERC20Flags.supply == 0 {
-		ux.Logger.PrintToUser("Select the total available supply for the ERC20 Token")
+		ux.Logger.PrintToUser("Which is the total token supply?")
 		supply, err = app.Prompt.CapturePositiveBigInt("Token supply")
+		if err != nil {
+			return err
+		}
+	}
+	if deployERC20Flags.funded == "" {
+		ux.Logger.PrintToUser("Which address should receive the supply?")
+		deployERC20Flags.funded, err = prompts.PromptAddress(
+			app.Prompt,
+			"receive the total token supply",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+		)
 		if err != nil {
 			return err
 		}
@@ -158,6 +177,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		rpcURL,
 		privateKey,
 		deployERC20Flags.symbol,
+		common.HexToAddress(deployERC20Flags.funded),
 		supply,
 	)
 	if err != nil {
