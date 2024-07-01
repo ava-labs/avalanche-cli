@@ -1,16 +1,17 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridgecmd
+package tokentransferrercmd
 
 import (
 	_ "embed"
 	"fmt"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/pkg/bridge"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
@@ -46,24 +47,24 @@ var (
 	deployFlags DeployFlags
 )
 
-// avalanche teleporter bridge deploy
+// avalanche interchain tokenTransferrer deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
-		Short: "Deploys Token Bridge into a given Network and Subnets",
-		Long:  "Deploys Token Bridge into a given Network and Subnets",
+		Short: "Deploys a Token Transferrer into a given Network and Subnets",
+		Long:  "Deploys a Token Transferrer into a given Network and Subnets",
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	cmd.Flags().StringVar(&deployFlags.homeFlags.chainFlags.SubnetName, "home-subnet", "", "use the given CLI subnet as the Bridge Home's Chain")
-	cmd.Flags().BoolVar(&deployFlags.homeFlags.chainFlags.CChain, "c-chain-home", false, "use C-Chain as the Bridge Home's Chain")
-	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Bridge Home for the Chain's Native Token")
-	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Bridge Home for the Chain's ERC20 Token")
-	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Bridge Home Address")
-	cmd.Flags().BoolVar(&deployFlags.remoteFlags.CChain, "c-chain-remote", false, "use C-Chain as the Bridge Remote's Chain")
-	cmd.Flags().StringVar(&deployFlags.remoteFlags.SubnetName, "remote-subnet", "", "use the given CLI subnet as the Bridge Remote's Chain")
-	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of bridge to deploy (defaults to main branch)")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.chainFlags.SubnetName, "home-subnet", "", "use the given CLI subnet as the Transferrer's Home Chain")
+	cmd.Flags().BoolVar(&deployFlags.homeFlags.chainFlags.CChain, "c-chain-home", false, "use C-Chain as the Transferrer's Home Chain")
+	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.CChain, "c-chain-remote", false, "use C-Chain as the Transferrer's Remote Chain")
+	cmd.Flags().StringVar(&deployFlags.remoteFlags.SubnetName, "remote-subnet", "", "use the given CLI subnet as the Transferrer's Remote Chain")
+	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	return cmd
 }
 
@@ -72,12 +73,14 @@ func deploy(_ *cobra.Command, args []string) error {
 }
 
 func CallDeploy(_ []string, flags DeployFlags) error {
-	if !bridge.FoundryIsInstalled() {
-		return bridge.InstallFoundry()
+	if !ictt.FoundryIsInstalled() {
+		if err := ictt.InstallFoundry(); err != nil {
+			return err
+		}
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
-		"On what Network do you want to deploy the Teleporter bridge?",
+		"On what Network do you want to deploy the Transferrer?",
 		flags.Network,
 		true,
 		false,
@@ -129,7 +132,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		prompt := "What kind of token do you want to bridge?"
+		prompt := "What kind of token do you want to be able to transfer?"
 		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...) (recommended)"
 		homeDeployedOption := "A token that already has a Home deployed (recommended)"
 		deployNewHomeOption := "Deploy a new Home for the token"
@@ -208,7 +211,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
 						ux.Logger.PrintToUser("There already is a Token Home for %s deployed on %s.", p.TokenName, homeChain)
 						ux.Logger.PrintToUser("")
-						ux.Logger.PrintToUser("Home Address: %s", p.BridgeHomeAddress)
+						ux.Logger.PrintToUser("Home Address: %s", p.TransferrerHomeAddress)
 						deployANewHupOption := "Yes, use the existing Home (recommended)"
 						useTheExistingHomeOption := "No, deploy my own Home"
 						options := []string{deployANewHupOption, useTheExistingHomeOption, explainOption}
@@ -221,27 +224,27 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						}
 						switch option {
 						case useTheExistingHomeOption:
-							flags.homeFlags.homeAddress = p.BridgeHomeAddress
+							flags.homeFlags.homeAddress = p.TransferrerHomeAddress
 							flags.homeFlags.erc20Address = ""
 						case deployANewHupOption:
 						case explainOption:
-							ux.Logger.PrintToUser("There is already a Bridge Home deployed for the popular token %s on %s.",
+							ux.Logger.PrintToUser("There is already a Transferrer Home deployed for the popular token %s on %s.",
 								p.TokenName,
 								homeChain,
 							)
 							ux.Logger.PrintToUser("Connect to that Home to participate in standard cross chain transfers")
 							ux.Logger.PrintToUser("for the token, including transfers to any of the registered Remote subnets.")
 							ux.Logger.PrintToUser("Deploy a new Home if wanting to have isolated cross chain transfers for")
-							ux.Logger.PrintToUser("your application, or if wanting to provide a new bridge alternative")
+							ux.Logger.PrintToUser("your application, or if wanting to provide a new Transferrer alternative")
 							ux.Logger.PrintToUser("for the token.")
 						}
 					}
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("A bridge consists of one Home and at least one but possibly many Remotes.")
-				ux.Logger.PrintToUser("The Home manages the asset to be bridged out to Remote instances. It lives on the Subnet")
+				ux.Logger.PrintToUser("An Avalanche InterChain Token Transferrer consists of one Home and at least one but possibly many Remotes.")
+				ux.Logger.PrintToUser("The Home manages the asset to be shared to Remote instances. It lives on the Subnet")
 				ux.Logger.PrintToUser("where the asset exists")
-				ux.Logger.PrintToUser("The Remotes live on the other Subnets that want to import the asset bridged by the Home.")
+				ux.Logger.PrintToUser("The Remotes live on the other Subnets that want to import the asset managed by the Home.")
 				ux.Logger.PrintToUser("")
 				if len(popularTokensDesc) != 0 {
 					ux.Logger.PrintToUser("A popular token of a subnet is assumed to already have a Home Deployed. In this case")
@@ -273,7 +276,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Remote Chain Prompts
 	if !flags.remoteFlags.CChain && flags.remoteFlags.SubnetName == "" {
-		prompt := "Where should the token be bridged as an ERC-20?"
+		prompt := "Where should the token be available as an ERC-20?"
 		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags); err != nil {
 			return err
 		} else if cancel {
@@ -287,26 +290,26 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if flags.remoteFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
-			return fmt.Errorf("trying to make a bridge were home and remote are on the same subnet")
+			return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 		}
 	}
 	if flags.remoteFlags.CChain && flags.homeFlags.chainFlags.CChain {
-		return fmt.Errorf("trying to make a bridge were home and remote are on the same subnet")
+		return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 	}
 
 	// Setup Contracts
-	ux.Logger.PrintToUser("Downloading Bridge Contracts")
-	if err := bridge.DownloadRepo(app, flags.version); err != nil {
+	ux.Logger.PrintToUser("Downloading Avalanche InterChain Token Transfer Contracts")
+	if err := ictt.DownloadRepo(app, flags.version); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Compiling Bridge")
-	if err := bridge.BuildContracts(app); err != nil {
+	ux.Logger.PrintToUser("Compiling Avalanche InterChain Token Transfer")
+	if err := ictt.BuildContracts(app); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("")
 
 	// Home Deploy
-	bridgeSrcDir, err := bridge.RepoDir(app)
+	icttSrcDir, err := ictt.RepoDir(app)
 	if err != nil {
 		return err
 	}
@@ -318,7 +321,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		tokenAddress  common.Address
 	)
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
-	homeEndpoint, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := GetSubnetParams(
+	homeEndpoint, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
+		app,
 		network,
 		flags.homeFlags.chainFlags.SubnetName,
 		flags.homeFlags.chainFlags.CChain,
@@ -328,25 +332,25 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.homeAddress != "" {
 		homeAddress = common.HexToAddress(flags.homeFlags.homeAddress)
-		endpointKind, err := bridge.GetEndpointKind(homeEndpoint, homeAddress)
+		endpointKind, err := ictt.GetEndpointKind(homeEndpoint, homeAddress)
 		if err != nil {
 			return err
 		}
 		switch endpointKind {
-		case bridge.ERC20TokenHome:
-			tokenAddress, err = bridge.ERC20TokenHomeGetTokenAddress(homeEndpoint, homeAddress)
+		case ictt.ERC20TokenHome:
+			tokenAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
-		case bridge.NativeTokenHome:
-			tokenAddress, err = bridge.NativeTokenHomeGetTokenAddress(homeEndpoint, homeAddress)
+		case ictt.NativeTokenHome:
+			tokenAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
 		default:
-			return fmt.Errorf("unsupported bridge endpoint kind %d", endpointKind)
+			return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
 		}
-		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
 			homeEndpoint,
 			tokenAddress.Hex(),
 		)
@@ -356,15 +360,15 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.erc20Address != "" {
 		tokenAddress = common.HexToAddress(flags.homeFlags.erc20Address)
-		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
 			homeEndpoint,
 			tokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
-		homeAddress, err = bridge.DeployERC20Home(
-			bridgeSrcDir,
+		homeAddress, err = ictt.DeployERC20Home(
+			icttSrcDir,
 			homeEndpoint,
 			homeKey.PrivKeyHex(),
 			common.HexToAddress(homeRegistryAddress),
@@ -387,8 +391,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		wrappedNativeTokenAddress, err := bridge.DeployWrappedNativeToken(
-			bridgeSrcDir,
+		wrappedNativeTokenAddress, err := ictt.DeployWrappedNativeToken(
+			icttSrcDir,
 			homeEndpoint,
 			homeKey.PrivKeyHex(),
 			nativeTokenSymbol,
@@ -396,7 +400,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		tokenSymbol, tokenName, tokenDecimals, err = bridge.GetTokenParams(
+		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
 			homeEndpoint,
 			wrappedNativeTokenAddress.Hex(),
 		)
@@ -406,8 +410,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", tokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
-		homeAddress, err = bridge.DeployNativeHome(
-			bridgeSrcDir,
+		homeAddress, err = ictt.DeployNativeHome(
+			icttSrcDir,
 			homeEndpoint,
 			homeKey.PrivKeyHex(),
 			common.HexToAddress(homeRegistryAddress),
@@ -423,7 +427,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Deploy
-	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := GetSubnetParams(
+	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
+		app,
 		network,
 		flags.remoteFlags.SubnetName,
 		flags.remoteFlags.CChain,
@@ -432,8 +437,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	remoteAddress, err := bridge.DeployERC20Remote(
-		bridgeSrcDir,
+	remoteAddress, err := ictt.DeployERC20Remote(
+		icttSrcDir,
 		remoteEndpoint,
 		remoteKey.PrivKeyHex(),
 		common.HexToAddress(remoteRegistryAddress),
@@ -448,7 +453,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	if err := bridge.RegisterERC20Remote(
+	if err := ictt.RegisterERC20Remote(
 		remoteEndpoint,
 		remoteKey.PrivKeyHex(),
 		remoteAddress,

@@ -22,7 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -453,7 +453,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	// latest check for rpc compatibility
-	statusChecker := localnetworkinterface.NewStatusChecker()
+	statusChecker := localnet.NewStatusChecker()
 	_, avagoRPCVersion, _, err := statusChecker.GetCurrentNetworkVersion()
 	if err != nil {
 		return nil, err
@@ -647,7 +647,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			); err != nil {
 				return nil, err
 			}
-			if err := WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
+			if err := localnet.WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
 				return nil, err
 			}
 		}
@@ -1133,20 +1133,6 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 	return deployedNames, nil
 }
 
-func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
-	cli, err := binutils.NewGRPCClient()
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	resp, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return resp.GetClusterInfo(), nil
-}
-
 func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID ids.NodeID) (ids.ID, error) {
 	ctx := context.Background()
 	api := constants.LocalAPIEndpoint
@@ -1194,63 +1180,11 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 	return false, nil
 }
 
-type ExtraLocalNetworkData struct {
-	CChainTeleporterMessengerAddress string
-	CChainTeleporterRegistryAddress  string
-}
-
 func GetAWMRelayerConfigPath() (bool, string, error) {
-	clusterInfo, err := GetClusterInfo()
+	clusterInfo, err := localnet.GetClusterInfo()
 	if err != nil {
 		return false, "", err
 	}
 	relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
-}
-
-func GetExtraLocalNetworkData() (bool, ExtraLocalNetworkData, error) {
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
-	if !utils.FileExists(extraLocalNetworkDataPath) {
-		return false, extraLocalNetworkData, nil
-	}
-	bs, err := os.ReadFile(extraLocalNetworkDataPath)
-	if err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	return true, extraLocalNetworkData, nil
-}
-
-func WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return err
-	}
-	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	if utils.FileExists(extraLocalNetworkDataPath) {
-		var err error
-		_, extraLocalNetworkData, err = GetExtraLocalNetworkData()
-		if err != nil {
-			return err
-		}
-	}
-	if cchainTeleporterMessengerAddress != "" {
-		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainTeleporterMessengerAddress
-	}
-	if cchainTeleporterRegistryAddress != "" {
-		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainTeleporterRegistryAddress
-	}
-	bs, err := json.Marshal(&extraLocalNetworkData)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
 }

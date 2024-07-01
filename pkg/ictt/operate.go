@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridge
+package ictt
 
 import (
 	_ "embed"
@@ -100,13 +100,13 @@ func ERC20TokenHomeSend(
 	homeAddress common.Address,
 	privateKey string,
 	destinationBlockchainID ids.ID,
-	destinationBridgeEnd common.Address,
+	destinationICTTEndpoint common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
 ) error {
 	type Params struct {
 		DestinationBlockchainID [32]byte
-		DestinationBridgeEnd    common.Address
+		DestinationICTTEndpoint common.Address
 		AmountRecipient         common.Address
 		PrimaryFeeTokenAddress  common.Address
 		PrimaryFee              *big.Int
@@ -131,7 +131,7 @@ func ERC20TokenHomeSend(
 	}
 	params := Params{
 		DestinationBlockchainID: destinationBlockchainID,
-		DestinationBridgeEnd:    destinationBridgeEnd,
+		DestinationICTTEndpoint: destinationICTTEndpoint,
 		AmountRecipient:         amountRecipient,
 		PrimaryFeeTokenAddress:  tokenAddress, // in theory this is optional
 		PrimaryFee:              big.NewInt(0),
@@ -156,13 +156,13 @@ func NativeTokenHomeSend(
 	homeAddress common.Address,
 	privateKey string,
 	destinationBlockchainID ids.ID,
-	destinationBridgeEnd common.Address,
+	destinationICTTEndpoint common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
 ) error {
 	type Params struct {
 		DestinationBlockchainID [32]byte
-		DestinationBridgeEnd    common.Address
+		DestinationICTTEndpoint common.Address
 		AmountRecipient         common.Address
 		PrimaryFeeTokenAddress  common.Address
 		PrimaryFee              *big.Int
@@ -176,7 +176,7 @@ func NativeTokenHomeSend(
 	}
 	params := Params{
 		DestinationBlockchainID: destinationBlockchainID,
-		DestinationBridgeEnd:    destinationBridgeEnd,
+		DestinationICTTEndpoint: destinationICTTEndpoint,
 		AmountRecipient:         amountRecipient,
 		PrimaryFeeTokenAddress:  tokenAddress, // in theory this is optional
 		PrimaryFee:              big.NewInt(0),
@@ -200,7 +200,7 @@ func ERC20TokenRemoteSend(
 	remoteAddress common.Address,
 	privateKey string,
 	destinationBlockchainID ids.ID,
-	destinationBridgeEnd common.Address,
+	destinationICTTEndpoint common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
 ) error {
@@ -217,7 +217,7 @@ func ERC20TokenRemoteSend(
 	}
 	type Params struct {
 		DestinationBlockchainID [32]byte
-		DestinationBridgeEnd    common.Address
+		DestinationICTTEndpoint common.Address
 		AmountRecipient         common.Address
 		PrimaryFeeTokenAddress  common.Address
 		PrimaryFee              *big.Int
@@ -227,7 +227,7 @@ func ERC20TokenRemoteSend(
 	}
 	params := Params{
 		DestinationBlockchainID: destinationBlockchainID,
-		DestinationBridgeEnd:    destinationBridgeEnd,
+		DestinationICTTEndpoint: destinationICTTEndpoint,
 		AmountRecipient:         amountRecipient,
 		PrimaryFeeTokenAddress:  common.Address{},
 		PrimaryFee:              big.NewInt(0),

@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridge
+package ictt
 
 import (
 	_ "embed"
@@ -15,14 +15,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 )
 
-const (
-	BridgeRepoDir = "teleporter-token-bridge"
-)
-
 func RepoDir(
 	app *application.Avalanche,
 ) (string, error) {
-	repoDir := filepath.Join(app.GetReposDir(), constants.BridgeDir)
+	repoDir := filepath.Join(app.GetReposDir(), constants.ICTTDir)
 	if err := os.MkdirAll(repoDir, constants.DefaultPerms755); err != nil {
 		return "", err
 	}
@@ -33,6 +29,10 @@ func BuildContracts(
 	app *application.Avalanche,
 ) error {
 	repoDir, err := RepoDir(app)
+	if err != nil {
+		return err
+	}
+	forgePath, err := GetForgePath()
 	if err != nil {
 		return err
 	}
@@ -72,8 +72,8 @@ func DownloadRepo(
 			"git",
 			"clone",
 			"-b",
-			constants.BridgeBranch,
-			constants.BridgeURL,
+			constants.ICTTBranch,
+			constants.ICTTURL,
 			repoDir,
 			"--recurse-submodules",
 			"--shallow-submodules",
@@ -82,16 +82,16 @@ func DownloadRepo(
 		if err := cmd.Run(); err != nil {
 			fmt.Println(stdout)
 			fmt.Println(stderr)
-			return fmt.Errorf("could not clone repository %s: %w", constants.BridgeURL, err)
+			return fmt.Errorf("could not clone repository %s: %w", constants.ICTTURL, err)
 		}
 	} else {
-		cmd := exec.Command("git", "checkout", constants.BridgeBranch)
+		cmd := exec.Command("git", "checkout", constants.ICTTBranch)
 		cmd.Dir = repoDir
 		stdout, stderr := utils.SetupRealtimeCLIOutput(cmd, false, false)
 		if err := cmd.Run(); err != nil {
 			fmt.Println(stdout)
 			fmt.Println(stderr)
-			return fmt.Errorf("could not checkout commit/branch %s of repository %s: %w", constants.BridgeBranch, constants.BridgeURL, err)
+			return fmt.Errorf("could not checkout commit/branch %s of repository %s: %w", constants.ICTTBranch, constants.ICTTURL, err)
 		}
 		cmd = exec.Command("git", "pull")
 		cmd.Dir = repoDir
@@ -99,7 +99,7 @@ func DownloadRepo(
 		if err := cmd.Run(); err != nil {
 			fmt.Println(stdout)
 			fmt.Println(stderr)
-			return fmt.Errorf("could not pull repository %s: %w", constants.BridgeURL, err)
+			return fmt.Errorf("could not pull repository %s: %w", constants.ICTTURL, err)
 		}
 	}
 	if version != "" {
@@ -109,7 +109,7 @@ func DownloadRepo(
 		if err := cmd.Run(); err != nil {
 			fmt.Println(stdout)
 			fmt.Println(stderr)
-			return fmt.Errorf("could not checkout commit/branch %s of repository %s: %w", version, constants.BridgeURL, err)
+			return fmt.Errorf("could not checkout commit/branch %s of repository %s: %w", version, constants.ICTTURL, err)
 		}
 		cmd = exec.Command("git", "branch", "--show-current")
 		cmd.Dir = repoDir
@@ -126,7 +126,7 @@ func DownloadRepo(
 			if err := cmd.Run(); err != nil {
 				fmt.Println(stdout)
 				fmt.Println(stderr)
-				return fmt.Errorf("could not pull repository %s: %w", constants.BridgeURL, err)
+				return fmt.Errorf("could not pull repository %s: %w", constants.ICTTURL, err)
 			}
 		}
 	}
@@ -143,7 +143,7 @@ func DownloadRepo(
 	if err := cmd.Run(); err != nil {
 		fmt.Println(stdout)
 		fmt.Println(stderr)
-		return fmt.Errorf("could not update submodules of repository %s: %w", constants.BridgeURL, err)
+		return fmt.Errorf("could not update submodules of repository %s: %w", constants.ICTTURL, err)
 	}
 	return nil
 }

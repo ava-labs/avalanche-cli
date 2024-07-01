@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridgecmd
+package tokentransferrercmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -10,16 +10,16 @@ import (
 
 var app *application.Avalanche
 
-// avalanche teleporter bridge
+// avalanche interchain tokenTransferrer
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "bridge",
-		Short: "Manage Teleporter Bridges",
-		Long:  `The bridge command suite provides tools to deploy and manage Teleporter Bridges.`,
+		Use:   "tokenTransferrer",
+		Short: "Manage Token Transferrers",
+		Long:  `The tokenTransfer command suite provides tools to deploy and manage Token Transferrers.`,
 		RunE:  cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
-	// contract deploy
+	// tokenTransferrer deploy
 	cmd.AddCommand(newDeployCmd())
 	return cmd
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -360,7 +360,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		// check if selected version matches what is currently running
-		nc := localnetworkinterface.NewStatusChecker()
+		nc := localnet.NewStatusChecker()
 		avagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
 		if err != nil {
 			return err
@@ -841,9 +841,12 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) erro
 
 // Determines the appropriate version of avalanchego to run with. Returns an error if
 // that version conflicts with the current deployment.
-func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.StatusChecker, configuredRPCVersion int) (string, error) {
+func CheckForInvalidDeployAndGetAvagoVersion(
+	statusChecker localnet.StatusChecker,
+	configuredRPCVersion int,
+) (string, error) {
 	// get current network
-	runningAvagoVersion, runningRPCVersion, networkRunning, err := network.GetCurrentNetworkVersion()
+	runningAvagoVersion, runningRPCVersion, networkRunning, err := statusChecker.GetCurrentNetworkVersion()
 	if err != nil {
 		return "", err
 	}

@@ -4,13 +4,19 @@ package ssh
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 func TestReplaceCustomVarDashboardValues(t *testing.T) {
-	tempFileName := "test_dashboard.json"
+	tmpDir := os.TempDir()
+	testDir, err := os.MkdirTemp(tmpDir, "dashboard-test")
+	if err != nil {
+		t.Fatalf("Error creating test dir: %v", err)
+	}
+	tempFileName := filepath.Join(testDir, "test_dashboard.json")
 	tempContent := []byte(`{
 		"templating": {
 			"list": [
@@ -39,7 +45,7 @@ func TestReplaceCustomVarDashboardValues(t *testing.T) {
 			]
 		}
 	}`)
-	err := os.WriteFile(tempFileName, tempContent, constants.WriteReadUserOnlyPerms)
+	err = os.WriteFile(tempFileName, tempContent, constants.WriteReadUserOnlyPerms)
 	if err != nil {
 		t.Fatalf("Error creating test file: %v", err)
 	}
