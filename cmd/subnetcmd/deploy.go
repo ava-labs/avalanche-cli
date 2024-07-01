@@ -307,7 +307,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, validationErr, err := HasSubnetEVMGenesis(chain)
+	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
 	}
@@ -892,18 +892,6 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 		}
 	}
 	return desiredAvagoVersion, nil
-}
-
-func HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
-	if _, err := app.LoadRawGenesis(subnetName); err != nil {
-		return false, nil, err
-	}
-	// from here, we are sure to have a genesis file
-	_, err := app.LoadEvmGenesis(subnetName)
-	if err != nil {
-		return false, err, nil
-	}
-	return true, nil, nil
 }
 
 func promptOwners(

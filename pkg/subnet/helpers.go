@@ -22,7 +22,12 @@ func GetDefaultSubnetAirdropKeyInfo(app *application.Avalanche, subnetName strin
 	return "", "", "", nil
 }
 
-func GetSubnetAirdropKeyInfo(app *application.Avalanche, network models.Network, subnetName string, genesisData []byte) (string, string, string, error) {
+func GetSubnetAirdropKeyInfo(
+	app *application.Avalanche,
+	network models.Network,
+	subnetName string,
+	genesisData []byte,
+) (string, string, string, error) {
 	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
 	if err != nil {
 		return "", "", "", err

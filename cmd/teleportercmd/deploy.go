@@ -6,11 +6,12 @@ import (
 	"fmt"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -22,7 +23,6 @@ type DeployFlags struct {
 	SubnetName                   string
 	BlockchainID                 string
 	CChain                       bool
-	PrivateKey                   string
 	KeyName                      string
 	GenesisKey                   bool
 	DeployMessenger              bool
@@ -33,7 +33,7 @@ type DeployFlags struct {
 	MessengerDeployerAddressPath string
 	MessengerDeployerTxPath      string
 	RegistryBydecodePath         string
-	PrivateKeyFlags              PrivateKeyFlags
+	PrivateKeyFlags              contract.PrivateKeyFlags
 }
 
 const (
@@ -60,12 +60,10 @@ func newDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "to fund teleporter deploy")
 	cmd.Flags().StringVar(&deployFlags.SubnetName, "subnet", "", "deploy teleporter into the given CLI subnet")
 	cmd.Flags().StringVar(&deployFlags.BlockchainID, "blockchain-id", "", "deploy teleporter into the given blockchain ID/Alias")
 	cmd.Flags().BoolVar(&deployFlags.CChain, "c-chain", false, "deploy teleporter into C-Chain")
-	cmd.Flags().StringVar(&deployFlags.PrivateKeyFlags.PrivateKey, "private-key", "", "private key to use to fund teleporter deploy)")
-	cmd.Flags().StringVar(&deployFlags.PrivateKeyFlags.KeyName, "key", "", "CLI stored key to use to fund teleporter deploy)")
-	cmd.Flags().BoolVar(&deployFlags.PrivateKeyFlags.GenesisKey, "genesis-key", false, "use genesis aidrop key to fund teleporter deploy")
 	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
 	cmd.Flags().StringVar(&deployFlags.RPCURL, "rpc-url", "", "use the given RPC URL to connect to the subnet")
@@ -96,9 +94,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.SubnetName != "", flags.BlockchainID != "", flags.CChain}) {
 		return fmt.Errorf("--subnet, --blockchain-id and --cchain are mutually exclusive flags")
-	}
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.PrivateKey != "", flags.KeyName != "", flags.GenesisKey}) {
-		return fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
 	}
 	if !flags.DeployMessenger && !flags.DeployRegistry {
 		return fmt.Errorf("you should set at least one of --deploy-messenger/--deploy-registry to true")
@@ -150,7 +145,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
-		if b, _, err := subnetcmd.HasSubnetEVMGenesis(flags.SubnetName); err != nil {
+		if b, _, err := app.HasSubnetEVMGenesis(flags.SubnetName); err != nil {
 			return err
 		} else if !b {
 			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")
@@ -176,7 +171,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		teleporterSubnetDesc = cChainName
 		blockchainID = cChainAlias
 	}
-	genesisAddress, genesisPrivateKey, err := getEVMSubnetPrefundedKey(
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
 		network,
 		flags.SubnetName,
 		flags.CChain,
@@ -186,7 +182,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 	if privateKey == "" {
-		privateKey, err = getPrivateKeyFromFlags(
+		privateKey, err = contract.GetPrivateKeyFromFlags(
+			app,
 			deployFlags.PrivateKeyFlags,
 			genesisPrivateKey,
 		)
@@ -194,7 +191,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if privateKey == "" {
-			privateKey, err = promptPrivateKey("deploy teleporter", genesisAddress, genesisPrivateKey)
+			privateKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"deploy teleporter",
+				app.GetKeyDir(),
+				app.GetKey,
+				genesisAddress,
+				genesisPrivateKey,
+			)
 			if err != nil {
 				return err
 			}
