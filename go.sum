@@ -89,8 +89,8 @@ github.com/ava-labs/avalanchego v1.11.8 h1:Q/der5bC/q3BQbIqxT7nNC0F30c+6X1G/eQzz
 github.com/ava-labs/avalanchego v1.11.8/go.mod h1:aPYTETkM0KjtC7vFwPO6S8z2L0QTKaXjVUi98pTdNO4=
 github.com/ava-labs/awm-relayer v1.3.0 h1:aI90Daoq7bs9SnfZpyjXajj7YLcdZoFgEkyCd52fOHE=
 github.com/ava-labs/awm-relayer v1.3.0/go.mod h1:UI1Tm0jfFIpO1S2hpE5WGzJCDpLHLldhsE1bWn2FjEE=
-github.com/ava-labs/coreth v0.13.5-rc.0 h1:PJQbR9o2RrW3j9ba4r1glXnmM2PNAP3xR569+gMcBd0=
-github.com/ava-labs/coreth v0.13.5-rc.0/go.mod h1:cm5c12xo5NiTgtbmeduv8i2nYdzgkczz9Wm3yiwwTRU=
+github.com/ava-labs/coreth v0.13.6-rc.0 h1:YYlZ/yrcUVfbA4if2Zq18/CEx5jAOFEZqUC2pwOD3ro=
+github.com/ava-labs/coreth v0.13.6-rc.0/go.mod h1:vm9T8qzP7RLo/jR2MKkliPfaiGgWeEpu/PG6fvvPmog=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20240610153809-9c955cc90a95 h1:dOVbtdnZL++pENdTCNZ1nu41eYDQkTML4sWebDnnq8c=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20240610153809-9c955cc90a95/go.mod h1:pJxaT9bUgeRNVmNRgtCHb7sFDIRKy7CzTQVi8gGNT6g=
 github.com/ava-labs/subnet-evm v0.6.6 h1:F2s40f2SE2Yt/e97ZA6jMVaqDW+/1PLewcqOiUWDFd0=
@@ -527,8 +527,6 @@ github.com/jackpal/go-nat-pmp v1.0.2 h1:KzKSgb7qkJvOUTqYl9/Hg/me3pWgBmERKrTGD7Bd
 github.com/jackpal/go-nat-pmp v1.0.2/go.mod h1:QPH045xvCAeXUZOxsnwmrtiCoxIr9eob+4orBN1SBKc=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 h1:BQSFePA1RWJOlocH6Fxy8MmwDt+yVQYULKfN0RoTN8A=
 github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i6rXxKeerYnT8Nvf0QmHCRC1n8sfWVwXF2Frvo=
-github.com/jedib0t/go-pretty v4.3.0+incompatible h1:CGs8AVhEKg/n9YbUenWmNStRW2PHJzaeDodcfvRAbIo=
-github.com/jedib0t/go-pretty v4.3.0+incompatible/go.mod h1:XemHduiw8R651AF9Pt4FwCTKeG3oo7hrHJAoznj9nag=
 github.com/jedib0t/go-pretty/v6 v6.5.9 h1:ACteMBRrrmm1gMsXe9PSTOClQ63IXDUt03H5U+UV8OU=
 github.com/jedib0t/go-pretty/v6 v6.5.9/go.mod h1:zbn98qrYlh95FIhwwsbIip0LYpwSG8SUOScs+v9/t0E=
 github.com/jedisct1/go-minisign v0.0.0-20190909160543-45766022959e/go.mod h1:G1CVv03EnqU1wYL2dFwXxW2An0az9JTl/ZsqXQeBlkU=
@@ -622,8 +620,6 @@ github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWE
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-runewidth v0.0.3/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/mattn/go-runewidth v0.0.9/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
-github.com/mattn/go-runewidth v0.0.13 h1:lTGmDsbAYt5DmK6OnoV7EuIF1wEIFAcxld6ypU4OSgU=
-github.com/mattn/go-runewidth v0.0.13/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/mattn/go-runewidth v0.0.15 h1:UNAjwbU9l54TA3KzvqLGxwWjHmMgBUVhBiTjelZgg3U=
 github.com/mattn/go-runewidth v0.0.15/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
 github.com/mattn/go-sqlite3 v1.11.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
