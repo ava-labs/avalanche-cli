@@ -4,6 +4,7 @@ package contractcmd
 
 import (
 	"fmt"
+	"math/big"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -136,13 +137,35 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
+	supply := new(big.Int).SetUint64(deployERC20Flags.supply)
 	if deployERC20Flags.supply == 0 {
 		ux.Logger.PrintToUser("Select the total available supply for the ERC20 Token")
-		deployERC20Flags.supply, err = app.Prompt.CaptureUint64("Token supply")
+		supply, err = app.Prompt.CapturePositiveBigInt("Token supply")
 		if err != nil {
 			return err
 		}
 	}
+	rpcURL, err := contract.GetRPCURL(
+		app,
+		network,
+		deployERC20Flags.chainFlags.SubnetName,
+		deployERC20Flags.chainFlags.CChain,
+	)
+	if err != nil {
+		return err
+	}
+	address, err := contract.DeployERC20(
+		rpcURL,
+		privateKey,
+		deployERC20Flags.symbol,
+		supply,
+	)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Token Address: %s", address.Hex())
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("ERC20 Contract Successfully Deployed!")
 	return nil
 }
