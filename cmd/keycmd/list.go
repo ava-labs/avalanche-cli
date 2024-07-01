@@ -173,7 +173,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 				if err != nil {
 					return nil, err
 				}
-				b, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+				b, _, err := app.HasSubnetEVMGenesis(subnetName)
 				if err != nil {
 					return nil, err
 				}

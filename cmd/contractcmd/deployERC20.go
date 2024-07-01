@@ -3,20 +3,22 @@
 package contractcmd
 
 import (
+	"fmt"
+
+	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
 )
 
 type DeployERC20Flags struct {
-	Network            networkoptions.NetworkFlags
-	DestinationAddress string
-	HexEncodedMessage  bool
-	PrivateKeyFlags    contract.PrivateKeyFlags
-	chainFlags         contract.ChainFlags
+	Network         networkoptions.NetworkFlags
+	PrivateKeyFlags contract.PrivateKeyFlags
+	chainFlags      contract.ChainFlags
 }
 
 var (
@@ -62,11 +64,65 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	// flags exclusiveness
+	if !cmdflags.EnsureMutuallyExclusive([]bool{
+		deployERC20Flags.chainFlags.SubnetName != "",
+		deployERC20Flags.chainFlags.CChain,
+	}) {
+		return fmt.Errorf("--subnet and --c-chain are mutually exclusive flags")
+	}
+	if deployERC20Flags.chainFlags.SubnetName == "" && !deployERC20Flags.chainFlags.CChain {
+		subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+		if err != nil {
+			return err
+		}
+		prompt := "Where do you want to Deploy the ERC-20 Token?"
+		cancel, _, _, cChain, subnetName, err := prompts.PromptChain(
+			app.Prompt,
+			prompt,
+			subnetNames,
+			true,
+			true,
+			false,
+			"",
+		)
+		if cancel {
+			return nil
+		}
+		if err == nil {
+			deployERC20Flags.chainFlags.SubnetName = subnetName
+			deployERC20Flags.chainFlags.CChain = cChain
+		}
+	}
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		deployERC20Flags.chainFlags.SubnetName,
+		deployERC20Flags.chainFlags.CChain,
+		"",
+	)
 	if err != nil {
 		return err
 	}
-	_ = subnetNames
+	privateKey, err := contract.GetPrivateKeyFromFlags(
+		app,
+		deployERC20Flags.PrivateKeyFlags,
+		genesisPrivateKey,
+	)
+	if err != nil {
+		return err
+	}
+	if privateKey == "" {
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"deploy the contract",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+	}
+	fmt.Println(privateKey)
 	ux.Logger.PrintToUser("ERC20 Contract Successfully Deployed!")
 	return nil
 }

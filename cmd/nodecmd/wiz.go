@@ -288,7 +288,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+	isEVMGenesis, _, err := app.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
 	}
@@ -426,7 +426,7 @@ func hasTeleporterDeploys(
 		return false, err
 	}
 	for _, deployedSubnetName := range clusterConfig.Subnets {
-		deployedSubnetIsEVMGenesis, _, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		deployedSubnetIsEVMGenesis, _, err := app.HasSubnetEVMGenesis(deployedSubnetName)
 		if err != nil {
 			return false, err
 		}
@@ -449,7 +449,7 @@ func updateProposerVMs(
 		return err
 	}
 	for _, deployedSubnetName := range clusterConfig.Subnets {
-		deployedSubnetIsEVMGenesis, _, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		deployedSubnetIsEVMGenesis, _, err := app.HasSubnetEVMGenesis(deployedSubnetName)
 		if err != nil {
 			return err
 		}

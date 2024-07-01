@@ -4,6 +4,7 @@ package teleportercmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -76,7 +77,8 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	genesisAddress, genesisPrivateKey, err := getEVMSubnetPrefundedKey(
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
 		network,
 		sourceSubnetName,
 		isCChain(sourceSubnetName),
@@ -94,10 +96,14 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if privateKey == "" {
-		privateKey, err = promptPrivateKey("send the message", genesisAddress, genesisPrivateKey)
-		if err != nil {
-			return err
-		}
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"send the message",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
 	}
 
 	_, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetSubnetParams(
@@ -200,4 +206,8 @@ func msg(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Message successfully Teleported!")
 
 	return nil
+}
+
+func isCChain(subnetName string) bool {
+	return strings.ToLower(subnetName) == "c-chain" || strings.ToLower(subnetName) == "cchain"
 }

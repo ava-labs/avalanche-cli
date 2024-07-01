@@ -6,12 +6,12 @@ import (
 	"fmt"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -145,7 +145,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
-		if b, _, err := subnetcmd.HasSubnetEVMGenesis(flags.SubnetName); err != nil {
+		if b, _, err := app.HasSubnetEVMGenesis(flags.SubnetName); err != nil {
 			return err
 		} else if !b {
 			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")
@@ -171,7 +171,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		teleporterSubnetDesc = cChainName
 		blockchainID = cChainAlias
 	}
-	genesisAddress, genesisPrivateKey, err := getEVMSubnetPrefundedKey(
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
 		network,
 		flags.SubnetName,
 		flags.CChain,
@@ -190,7 +191,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if privateKey == "" {
-			privateKey, err = promptPrivateKey("deploy teleporter", genesisAddress, genesisPrivateKey)
+			privateKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"deploy teleporter",
+				app.GetKeyDir(),
+				app.GetKey,
+				genesisAddress,
+				genesisPrivateKey,
+			)
 			if err != nil {
 				return err
 			}
