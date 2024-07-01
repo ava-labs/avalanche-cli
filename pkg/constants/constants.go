@@ -349,5 +349,5 @@ const (
 	// Avalanche InterChain Token Transfer
 	ICTTDir    = "avalanche-interchain-token-transfer"
 	ICTTURL    = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
-	ICTTBranch = "rename"
+	ICTTBranch = "main"
 )

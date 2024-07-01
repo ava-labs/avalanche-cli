@@ -280,7 +280,7 @@ func listKeys(*cobra.Command, []string) error {
 		cchain = false
 		xchain = false
 	}
-	if utils.Belongs(tokenAddresses, "Native") {
+	if utils.Belongs(tokenAddresses, "Native") || utils.Belongs(tokenAddresses, "native") {
 		showNativeToken = true
 	}
 	tokenAddresses = utils.RemoveFromSlice(tokenAddresses, "Native")

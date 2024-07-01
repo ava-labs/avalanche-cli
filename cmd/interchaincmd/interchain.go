@@ -3,7 +3,7 @@
 package interchaincmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferercmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ set and manage interoperability between blockchains.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
-	// interchain tokenTransfer
-	cmd.AddCommand(tokentransferercmd.NewCmd(app))
+	// interchain tokenTransferrer
+	cmd.AddCommand(tokentransferrercmd.NewCmd(app))
 	return cmd
 }

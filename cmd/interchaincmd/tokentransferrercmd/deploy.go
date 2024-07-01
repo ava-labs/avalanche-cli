@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package tokentransferercmd
+package tokentransferrercmd
 
 import (
 	_ "embed"
@@ -43,12 +43,12 @@ var (
 	deployFlags DeployFlags
 )
 
-// avalanche interchain tokenTransferer deploy
+// avalanche interchain tokenTransferrer deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
-		Short: "Deploys a Token Transferer into a given Network and Subnets",
-		Long:  "Deploys a Token Transferer into a given Network and Subnets",
+		Short: "Deploys a Token Transferrer into a given Network and Subnets",
+		Long:  "Deploys a Token Transferrer into a given Network and Subnets",
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
@@ -56,20 +56,20 @@ func newDeployCmd() *cobra.Command {
 	contract.AddChainFlagsToCmd(
 		cmd,
 		&deployFlags.homeFlags.chainFlags,
-		"set the Transferer's Home Chain",
+		"set the Transferrer's Home Chain",
 		"home-subnet",
 		"c-chain-home",
 	)
 	contract.AddChainFlagsToCmd(
 		cmd,
 		&deployFlags.remoteFlags,
-		"set the Transferer's Remote Chain",
+		"set the Transferrer's Remote Chain",
 		"remote-subnet",
 		"c-chain-remote",
 	)
-	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferer Home for the Chain's Native Token")
-	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferer Home for the given Chain's ERC20 Token")
-	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferer's Home Address")
+	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	return cmd
 }
@@ -84,7 +84,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
-		"On what Network do you want to deploy the Transferer?",
+		"On what Network do you want to deploy the Transferrer?",
 		flags.Network,
 		true,
 		false,
@@ -215,7 +215,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					if p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.TokenContractAddress == erc20TokenAddr.Hex() }); p != nil {
 						ux.Logger.PrintToUser("There already is a Token Home for %s deployed on %s.", p.TokenName, homeChain)
 						ux.Logger.PrintToUser("")
-						ux.Logger.PrintToUser("Home Address: %s", p.TransfererHomeAddress)
+						ux.Logger.PrintToUser("Home Address: %s", p.TransferrerHomeAddress)
 						deployANewHupOption := "Yes, use the existing Home (recommended)"
 						useTheExistingHomeOption := "No, deploy my own Home"
 						options := []string{deployANewHupOption, useTheExistingHomeOption, explainOption}
@@ -228,24 +228,24 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						}
 						switch option {
 						case useTheExistingHomeOption:
-							flags.homeFlags.homeAddress = p.TransfererHomeAddress
+							flags.homeFlags.homeAddress = p.TransferrerHomeAddress
 							flags.homeFlags.erc20Address = ""
 						case deployANewHupOption:
 						case explainOption:
-							ux.Logger.PrintToUser("There is already a Transferer Home deployed for the popular token %s on %s.",
+							ux.Logger.PrintToUser("There is already a Transferrer Home deployed for the popular token %s on %s.",
 								p.TokenName,
 								homeChain,
 							)
 							ux.Logger.PrintToUser("Connect to that Home to participate in standard cross chain transfers")
 							ux.Logger.PrintToUser("for the token, including transfers to any of the registered Remote subnets.")
 							ux.Logger.PrintToUser("Deploy a new Home if wanting to have isolated cross chain transfers for")
-							ux.Logger.PrintToUser("your application, or if wanting to provide a new Transferer alternative")
+							ux.Logger.PrintToUser("your application, or if wanting to provide a new Transferrer alternative")
 							ux.Logger.PrintToUser("for the token.")
 						}
 					}
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("An Avalanche InterChain Token Transferer consists of one Home and at least one but possibly many Remotes.")
+				ux.Logger.PrintToUser("An Avalanche InterChain Token Transferrer consists of one Home and at least one but possibly many Remotes.")
 				ux.Logger.PrintToUser("The Home manages the asset to be shared to Remote instances. It lives on the Subnet")
 				ux.Logger.PrintToUser("where the asset exists")
 				ux.Logger.PrintToUser("The Remotes live on the other Subnets that want to import the asset managed by the Home.")
@@ -294,11 +294,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if flags.remoteFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
-			return fmt.Errorf("trying to make an Transferer were home and remote are on the same subnet")
+			return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 		}
 	}
 	if flags.remoteFlags.CChain && flags.homeFlags.chainFlags.CChain {
-		return fmt.Errorf("trying to make an Transferer were home and remote are on the same subnet")
+		return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 	}
 
 	// Setup Contracts
