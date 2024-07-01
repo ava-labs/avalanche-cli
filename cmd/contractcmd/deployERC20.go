@@ -19,6 +19,8 @@ type DeployERC20Flags struct {
 	Network         networkoptions.NetworkFlags
 	PrivateKeyFlags contract.PrivateKeyFlags
 	chainFlags      contract.ChainFlags
+	symbol          string
+	supply          uint64
 }
 
 var (
@@ -48,6 +50,8 @@ func newDeployERC20Cmd() *cobra.Command {
 		"",
 		"",
 	)
+	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the ERC20 Token Symbol")
+	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the ERC20 Token Supply")
 	return cmd
 }
 
@@ -121,8 +125,24 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			genesisAddress,
 			genesisPrivateKey,
 		)
+		if err != nil {
+			return err
+		}
 	}
-	fmt.Println(privateKey)
+	if deployERC20Flags.symbol == "" {
+		ux.Logger.PrintToUser("Select a symbol for the ERC20 Token")
+		deployERC20Flags.symbol, err = app.Prompt.CaptureString("Token symbol")
+		if err != nil {
+			return err
+		}
+	}
+	if deployERC20Flags.supply == 0 {
+		ux.Logger.PrintToUser("Select the total available supply for the ERC20 Token")
+		deployERC20Flags.supply, err = app.Prompt.CaptureUint64("Token supply")
+		if err != nil {
+			return err
+		}
+	}
 	ux.Logger.PrintToUser("ERC20 Contract Successfully Deployed!")
 	return nil
 }

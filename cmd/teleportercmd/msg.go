@@ -104,6 +104,9 @@ func msg(_ *cobra.Command, args []string) error {
 			genesisAddress,
 			genesisPrivateKey,
 		)
+		if err != nil {
+			return err
+		}
 	}
 
 	_, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetSubnetParams(
