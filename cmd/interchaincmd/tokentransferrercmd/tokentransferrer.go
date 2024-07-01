@@ -20,6 +20,6 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	}
 	app = injectedApp
 	// tokenTransferrer deploy
-	cmd.AddCommand(newDeployCmd())
+	cmd.AddCommand(NewDeployCmd())
 	return cmd
 }

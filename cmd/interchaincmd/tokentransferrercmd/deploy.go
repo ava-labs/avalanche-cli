@@ -44,7 +44,7 @@ var (
 )
 
 // avalanche interchain tokenTransferrer deploy
-func newDeployCmd() *cobra.Command {
+func NewDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Deploys a Token Transferrer into a given Network and Subnets",
