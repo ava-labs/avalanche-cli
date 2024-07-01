@@ -20,6 +20,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
@@ -268,12 +271,12 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	// Gas token
 	externalGasToken := false
 	if subnetType == models.SubnetEvm && genesisFile == "" {
-		nativeTokenOption := "It's own Native Token"
+		nativeTokenOption := "The blockchain's native token"
 		externalTokenOption := "A token from another blockchain"
 		options := []string{nativeTokenOption, externalTokenOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"What kind of native token (also known as gas token) should your blockchain use?",
+				"Which token will be used for transaction fee payments?",
 				options,
 			)
 			if err != nil {
@@ -285,12 +288,12 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				allocateToNewKeyOption := "Allocate 1m tokens to new a newly created address (Recommended for testing)"
-				allocateToEwoqOption := "Allocate 1m to the ewoq address 0xF0f...12f (Only recommended for local testing, not recommended for production)"
+				allocateToNewKeyOption := "Allocate 1m tokens to new a newly created account"
+				allocateToEwoqOption := "Allocate 1m to the ewoq account 0x8db...2FC (Only recommended for testing, not recommended for production)"
 				customAllocationOption := "Define a custom allocation (Recommended for production)"
 				options := []string{allocateToNewKeyOption, allocateToEwoqOption, customAllocationOption}
 				option, err := app.Prompt.CaptureList(
-					"How should the initial token allocation be strcutured?",
+					"How should the initial token allocation be structured?",
 					options,
 				)
 				if err != nil {
@@ -325,11 +328,13 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			case externalTokenOption:
 				externalGasToken = true
 			case explainOption:
-				ux.Logger.PrintToUser("The Native token (also known as gas token) exist because blockchains have limited resources. ETH is the native token of Ethereum and AVAX is the native token of the Avalanche C-Chain. Users of the blockchain pay for transactions with the native token. If there is more demand for the blockchain than there is capacity, the gas price rises, meaning the user needs to pay more native tokens for their transaction.")
+				ux.Logger.PrintToUser("Every blockchain uses a token to manage access to its limited resources. For example, ETH is the native token of Ethereum, and AVAX is the native token of the Avalanche C-Chain. Users pay transaction fees with these tokens. If demand exceeds capacity, transaction fees increase, requiring users to pay more tokens for their transactions.")
 				ux.Logger.PrintToUser(" ")
-				ux.Logger.PrintToUser("Every blockchain on Avalanche can have it's own native tokens. Therefore, users do not necessarily have to acquire ETH or AVAX to issue transactions.")
+				ux.Logger.PrintToUser(logging.Bold.Wrap("The blockchain's native token"))
+				ux.Logger.PrintToUser("Each blockchain on Avalanche has its own transaction fee token. To issue transactions users don't need to acquire ETH or AVAX and the therefore the transaction fees are completely isolated.")
 				ux.Logger.PrintToUser(" ")
-				ux.Logger.PrintToUser("Alternatively, a blockchain on Avalanche can also use an ERC-20 token deployed on or the native token of another blockchain in the Avalanche network as it's native token. This is implemented leveraging a bridge contract in combination with the Native Minter Precompile. When a user bridges the token from the other blockchain, the amount will be locked on the home chain, a message will be relayed to the Subnet, and then the token will be minted to the sender's address using the Native Minter precompile. This allows you to use any ERC-20 (e.g. USDC) or native token (e.g. AVAX) on any blockchain in the Avalanche network as your native token.")
+				ux.Logger.PrintToUser(logging.Bold.Wrap("A token from another blockchain"))
+				ux.Logger.PrintToUser("You can use an ERC-20 token (e.g., USDC, WETH) or the native token (e.g., AVAX) of another blockchain within the Avalanche network as the transaction fee token. This is achieved through a bridge contract and the Native Minter Precompile. When a user bridges a token from another blockchain, it is locked on the home chain, a message is relayed to the Subnet, and the token is minted to the sender’s account.")
 				ux.Logger.PrintToUser(" ")
 				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter is required and activated automatically.")
 				continue
@@ -370,12 +375,12 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			}
 			break
 		}
-		dontChangeFeeSettingsOption := "No, I am fine with the gas fee configuration set in the genesis (Fee Manager Precompile OFF)"
-		changeFeeSettingsOption := "Yes, I want to be able to adjust gas pricing if necessary - recommended for production (Fee Manager Precompile ON)"
+		dontChangeFeeSettingsOption := "No, use the transaction fee configuration set in the genesis block. (Fee Manager Precompile OFF)"
+		changeFeeSettingsOption := "Yes, allow adjustment of the transaction fee configuration as needed. Recommended for production. (Fee Manager Precompile ON)"
 		options = []string{dontChangeFeeSettingsOption, changeFeeSettingsOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"Should these fees be changeable on the fly? (Fee Manager Precompile)",
+				"Should transaction fees be adjustable without a network upgrade? (Fee Manager Precompile)",
 				options,
 			)
 			if err != nil {
@@ -388,7 +393,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("The Fee Manager Precompile enables you to give certain account the right to change the fee paramters set in the previous step on the fly without a network upgrade. This list can be dynamically changed by calling the precompile.")
+				ux.Logger.PrintToUser("The Fee Manager Precompile enables you to give certain account the right to change the fee parameters set in the previous step on the fly without a network upgrade. This list can be dynamically changed by calling the precompile.")
 				continue
 				// missing case for dontChangeFeeSettingsOption
 			}
@@ -473,7 +478,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		options := []string{noOption, yesOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"You can optionally add permissioning on different levels to your blockchain. Do you want to make your blockchain permissioned?",
+				"Do you want to add permissioning to your blockchain?",
 				options,
 			)
 			if err != nil {
@@ -481,12 +486,12 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			}
 			switch option {
 			case yesOption:
-				anyoneCanSubmitTransactionsOption := "No, I want anyone to be able to submit transactions on my blockchain. (Transaction Allow List OFF)"
-				approvedCanSubmitTransactionsOption := "Yes, I want only approved addresses to submit transactions on my blockchain. (Transaction Allow List ON)"
+				anyoneCanSubmitTransactionsOption := "No, I want anyone to be able to issue transactions on my blockchain. (Transaction Allow List OFF)"
+				approvedCanSubmitTransactionsOption := "Yes, I want only approved addresses to issue transactions on my blockchain. (Transaction Allow List ON)"
 				options := []string{anyoneCanSubmitTransactionsOption, approvedCanSubmitTransactionsOption, explainOption}
 				for {
 					option, err := app.Prompt.CaptureList(
-						"Do you want to allow only certain user addresses to interact with your blockchain? (Transaction Allow List Precompile)",
+						"Do you want to allow only certain addresses to issue transactions? (Transaction Allow List Precompile)",
 						options,
 					)
 					if err != nil {
