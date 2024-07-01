@@ -32,6 +32,10 @@ func BuildContracts(
 	if err != nil {
 		return err
 	}
+	forgePath, err := GetForgePath()
+	if err != nil {
+		return err
+	}
 	cmd := exec.Command(
 		forgePath,
 		"build",
