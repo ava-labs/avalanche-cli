@@ -161,10 +161,10 @@ func preCreateChecks(clusterName string) error {
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
 		return fmt.Errorf("ssh agent is not available")
 	}
-	if len(numAPINodes) > 0 && !globalNetworkFlags.UseDevnet {
-		return fmt.Errorf("API nodes can only be created in Devnet")
+	if len(numAPINodes) > 0 && !(globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
+		return fmt.Errorf("API nodes can only be created in Devnet/Fuji(Testnet)")
 	}
-	if globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes) {
+	if (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(numValidatorsNodes) {
 		return fmt.Errorf("API nodes and Validator nodes must be deployed to same number of regions")
 	}
 	if len(numAPINodes) > 0 {
@@ -262,7 +262,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
-
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
@@ -1001,6 +1000,10 @@ func provideStakingCertAndKey(host *models.Host) error {
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
 func getAvalancheGoVersion() (string, error) {
+	// skip this logic if custom-avalanchego-version flag is set
+	if useCustomAvalanchegoVersion != "" {
+		return useCustomAvalanchegoVersion, nil
+	}
 	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
@@ -1381,7 +1384,7 @@ func getRegionsNodeNum(cloudName string) (
 		if err != nil {
 			return nil, err
 		}
-		if globalNetworkFlags.UseDevnet {
+		if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 			numAPINodes, err = app.Prompt.CaptureUint32(fmt.Sprintf("How many API nodes (nodes without stake) do you want to set up in %s %s?", userRegion, supportedClouds[cloudName].locationName))
 			if err != nil {
 				return nil, err
@@ -1392,7 +1395,7 @@ func getRegionsNodeNum(cloudName string) (
 		}
 		nodes[userRegion] = NumNodes{int(numNodes), int(numAPINodes)}
 		var currentInput []string
-		if globalNetworkFlags.UseDevnet {
+		if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
 				return fmt.Sprintf("[%s]: %d validator(s) %d api(s)", region, nodes[region].numValidators, nodes[region].numAPI)
 			})

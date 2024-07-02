@@ -102,9 +102,9 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
-	case globalNetworkFlags.UseDevnet && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and regions should be the same")
-	case globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(numValidatorsNodes):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
@@ -127,7 +127,7 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			if globalNetworkFlags.UseDevnet {
+			if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 			} else {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], 0}
