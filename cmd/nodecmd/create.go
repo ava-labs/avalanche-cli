@@ -1000,6 +1000,10 @@ func provideStakingCertAndKey(host *models.Host) error {
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
 func getAvalancheGoVersion() (string, error) {
+	// skip this logic if custom-avalanchego-version flag is set
+	if useCustomAvalanchegoVersion != "" {
+		return useCustomAvalanchegoVersion, nil
+	}
 	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
