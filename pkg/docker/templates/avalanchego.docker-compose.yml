@@ -64,7 +64,7 @@ services:
       - avalanchego
 {{end}}
 {{if .E2E }}
-  networks:
+    networks:
       - avalanchego_net_{{.E2ESuffix}}
 {{ end }}
 {{end}}
