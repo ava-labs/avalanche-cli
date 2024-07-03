@@ -9,11 +9,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
 func prepareAvalanchegoConfig(host *models.Host, network models.Network) (string, string, error) {
 	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, network.ShortID())
-	if network.PublicAPI {
+	if network.PublicAPI || utils.IsE2E() {
 		avagoConf.HTTPHost = "0.0.0.0"
 	}
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)

@@ -19,15 +19,18 @@ services:
     ports:
       - "{{ .E2EIP }}:9650:9650"
       - "{{ .E2EIP }}:9651:9651"
+    networks:
+      - avalanchego_net_{{.E2ESuffix}}
 {{ else }}
     volumes:
       - /home/ubuntu/.avalanchego:/.avalanchego:rw
     ports:
       - "9650:9650"
       - "9651:9651"
-{{ end }}
     network_mode: "host"
 {{ end }}
+{{ end }}
+
 {{if .WithMonitoring}}
   promtail:
     image: grafana/promtail:3.0.0
@@ -39,6 +42,8 @@ services:
     volumes:
       - avalanchego_logs_{{.E2ESuffix}}:/.avalanchego/logs:rw
       - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
+    networks:
+      - avalanchego_net_{{.E2ESuffix}}
 {{ else }}
     volumes:
       - /home/ubuntu/.avalanchego/logs:/logs:ro
@@ -58,11 +63,17 @@ services:
     links:
       - avalanchego
 {{end}}
+{{if .E2E }}
+  networks:
+      - avalanchego_net_{{.E2ESuffix}}
+{{ end }}
 {{end}}
 
 {{if .E2E }}
 volumes:
   avalanchego_data_{{.E2ESuffix}}:
   avalanchego_logs_{{.E2ESuffix}}:
+networks:
+  avalanchego_net_{{.E2ESuffix}}:
 {{ end }}
     
