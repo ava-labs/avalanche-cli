@@ -281,6 +281,12 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			} else {
 				sgID = newSGID
 			}
+			// allow public access to API avalanchego port
+			if globalNetworkFlags.PublicAPI {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort); err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
+			}
 		} else {
 			sgID = *sg.GroupId
 			ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
@@ -313,6 +319,15 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			if !ipInLoki {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoLokiPort); err != nil {
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
+			}
+			// check for public access to API port if flag is set
+			if globalNetworkFlags.PublicAPI {
+				ipInPublicAPI := awsAPI.CheckIPInSg(&sg, "0.0.0.0/0", constants.AvalanchegoAPIPort)
+				if !ipInPublicAPI {
+					if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
 			}
 		}

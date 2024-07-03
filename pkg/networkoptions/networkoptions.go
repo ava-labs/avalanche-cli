@@ -68,10 +68,10 @@ type NetworkFlags struct {
 	UseMainnet  bool
 	Endpoint    string
 	ClusterName string
+	PublicAPI   bool
 }
 
-func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, alwaysAddEndpoint bool, supportedNetworkOptions []NetworkOption) {
-	addEndpoint := alwaysAddEndpoint
+func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEndpoint bool, addPublicAPI bool, supportedNetworkOptions []NetworkOption) {
 	addCluster := false
 	for _, networkOption := range supportedNetworkOptions {
 		switch networkOption {
@@ -95,6 +95,9 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, always
 	}
 	if addEndpoint {
 		cmd.Flags().StringVar(&networkFlags.Endpoint, "endpoint", "", "use the given endpoint for network operations")
+	}
+	if addPublicAPI {
+		cmd.Flags().BoolVar(&networkFlags.PublicAPI, "public-api", false, "allow public API access")
 	}
 }
 

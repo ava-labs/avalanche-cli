@@ -25,7 +25,7 @@ type AvalancheConfigInputs struct {
 
 func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
-		HTTPHost:         "0.0.0.0",
+		HTTPHost:         "127.0.0.1",
 		NetworkID:        networkID,
 		DBDir:            "/.avalanchego/db/",
 		LogDir:           "/.avalanchego/logs/",

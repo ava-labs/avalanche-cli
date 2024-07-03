@@ -34,11 +34,6 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 		}
 	}
 	ux.Logger.Info("avalancheCLI folder structure created on remote host %s after %s", folderStructure, time.Since(startTime))
-	// configs
-	networkID := network.NetworkIDFlagValue()
-	if network.Kind == models.Local || network.Kind == models.Devnet {
-		networkID = fmt.Sprintf("%d", network.ID)
-	}
 
 	avagoDockerImage := fmt.Sprintf("%s:%s", constants.AvalancheGoDockerImage, avalancheGoVersion)
 	ux.Logger.Info("Preparing AvalancheGo Docker image %s on %s[%s]", avagoDockerImage, host.NodeID, host.IP)
@@ -46,7 +41,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 		return err
 	}
 	ux.Logger.Info("AvalancheGo Docker image %s ready on %s[%s] after %s", avagoDockerImage, host.NodeID, host.IP, time.Since(startTime))
-	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(host, networkID)
+	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(host, network)
 	if err != nil {
 		return err
 	}

@@ -33,7 +33,7 @@ func newStatsCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(1),
 		RunE:  stats,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, statsSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, statsSupportedNetworkOptions)
 	return cmd
 }
 

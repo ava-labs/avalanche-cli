@@ -28,7 +28,7 @@ func newStartRelayerCmd() *cobra.Command {
 		RunE:  startRelayer,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startRelayerNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, false, startRelayerNetworkOptions)
 	return cmd
 }
 

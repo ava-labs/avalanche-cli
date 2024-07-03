@@ -40,7 +40,7 @@ doesn't overwrite an existing Subnet with the same name. To allow overwrites, pr
 flag.`,
 	}
 
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, importPublicSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, importPublicSupportedNetworkOptions)
 
 	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running subnet validator")
 

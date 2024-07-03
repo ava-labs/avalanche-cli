@@ -41,21 +41,23 @@ type Network struct {
 	ID          uint32
 	Endpoint    string
 	ClusterName string
+	PublicAPI   bool
 }
 
 var UndefinedNetwork = Network{}
 
-func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string) Network {
+func NewNetwork(kind NetworkKind, id uint32, endpoint string, isPublicAPI bool, clusterName string) Network {
 	return Network{
 		Kind:        kind,
 		ID:          id,
 		Endpoint:    endpoint,
+		PublicAPI:   isPublicAPI,
 		ClusterName: clusterName,
 	}
 }
 
 func NewLocalNetwork() Network {
-	return NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint, "")
+	return NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint, constants.PublicAPI, "")
 }
 
 func NewDevnetNetwork(endpoint string, id uint32) Network {
@@ -65,19 +67,19 @@ func NewDevnetNetwork(endpoint string, id uint32) Network {
 	if id == 0 {
 		id = constants.DevnetNetworkID
 	}
-	return NewNetwork(Devnet, id, endpoint, "")
+	return NewNetwork(Devnet, id, endpoint, constants.PublicAPI, "")
 }
 
 func NewFujiNetwork() Network {
-	return NewNetwork(Fuji, avagoconstants.FujiID, constants.FujiAPIEndpoint, "")
+	return NewNetwork(Fuji, avagoconstants.FujiID, constants.FujiAPIEndpoint, constants.PrivateAPI, "")
 }
 
 func NewMainnetNetwork() Network {
-	return NewNetwork(Mainnet, avagoconstants.MainnetID, constants.MainnetAPIEndpoint, "")
+	return NewNetwork(Mainnet, avagoconstants.MainnetID, constants.MainnetAPIEndpoint, constants.PrivateAPI, "")
 }
 
 func NewNetworkFromCluster(n Network, clusterName string) Network {
-	return NewNetwork(n.Kind, n.ID, n.Endpoint, clusterName)
+	return NewNetwork(n.Kind, n.ID, n.Endpoint, n.PublicAPI, clusterName)
 }
 
 func NetworkFromNetworkID(networkID uint32) Network {
@@ -94,6 +96,10 @@ func NetworkFromNetworkID(networkID uint32) Network {
 
 func (n Network) StandardPublicEndpoint() bool {
 	return n.Endpoint == constants.FujiAPIEndpoint || n.Endpoint == constants.MainnetAPIEndpoint
+}
+
+func (n Network) HasPublicAPI() bool {
+	return n.PublicAPI
 }
 
 func (n Network) Name() string {
@@ -138,6 +144,17 @@ func (n Network) NetworkIDFlagValue() string {
 		return "mainnet"
 	}
 	return "invalid-network"
+}
+
+func (n Network) ShortID() string {
+	switch n.Kind {
+	case Local:
+		return fmt.Sprintf("%d", n.ID)
+	case Devnet:
+		return fmt.Sprintf("%d", n.ID)
+	default:
+		return n.NetworkIDFlagValue()
+	}
 }
 
 func (n Network) GenesisParams() *genesis.Params {

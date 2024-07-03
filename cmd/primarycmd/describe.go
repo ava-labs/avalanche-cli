@@ -44,7 +44,7 @@ func newDescribeCmd() *cobra.Command {
 		RunE:  describe,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, describeSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, describeSupportedNetworkOptions)
 	return cmd
 }
 

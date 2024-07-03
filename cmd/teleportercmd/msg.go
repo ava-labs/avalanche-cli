@@ -42,7 +42,7 @@ func newMsgCmd() *cobra.Command {
 		RunE:  msg,
 		Args:  cobrautils.ExactArgs(3),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, msgSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, false, msgSupportedNetworkOptions)
 	return cmd
 }
 

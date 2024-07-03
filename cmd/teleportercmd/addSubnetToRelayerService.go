@@ -35,7 +35,7 @@ func newAddSubnetToRelayerServiceCmd() *cobra.Command {
 		RunE:  addSubnetToRelayerService,
 		Args:  cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &addSubnetToRelayerServiceFlags.Network, true, addSubnetToRelayerServiceSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &addSubnetToRelayerServiceFlags.Network, true, false, addSubnetToRelayerServiceSupportedNetworkOptions)
 	cmd.Flags().StringVar(&addSubnetToRelayerServiceFlags.CloudNodeID, "cloud-node-id", "", "generate a config to be used on given cloud node")
 	return cmd
 }

@@ -79,7 +79,7 @@ func newTransferCmd() *cobra.Command {
 		RunE:  transferF,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, transferSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, transferSupportedNetworkOptions)
 	cmd.Flags().BoolVar(
 		&PToX,
 		"fund-x-chain",

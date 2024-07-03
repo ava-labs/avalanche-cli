@@ -66,7 +66,7 @@ func newListCmd() *cobra.Command {
 keys or for the ledger addresses associated to certain indices.`,
 		RunE: listKeys,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, listSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, listSupportedNetworkOptions)
 	cmd.Flags().BoolVarP(
 		&all,
 		allFlag,
