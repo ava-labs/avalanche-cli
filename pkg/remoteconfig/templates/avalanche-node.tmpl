@@ -5,9 +5,9 @@
 	"network-id": "{{if .NetworkID}}{{.NetworkID}}{{else}}fuji{{end}}",
 	"db-dir": "{{.DBDir}}",
 	"log-dir": "{{.LogDir}}",
-{{- if .PublicIP -}}
+{{- if .PublicIP }}
     "public-ip": "{{.PublicIP}}"
-{{- else -}}
+{{- else }}
     "public-ip-resolution-service": "opendns"
-{{- end -}}
+{{- end }}
 }
