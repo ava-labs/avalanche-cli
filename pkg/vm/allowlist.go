@@ -16,17 +16,19 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func preview(
-	adminAddresses []common.Address,
-	managerAddresses []common.Address,
-	enabledAddresses []common.Address,
-) {
+type AllowList struct {
+	AdminAddresses   []common.Address
+	ManagerAddresses []common.Address
+	EnabledAddresses []common.Address
+}
+
+func preview(allowList AllowList) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
-	addRoleToPreviewTable(table, "Admins", adminAddresses)
-	addRoleToPreviewTable(table, "Manager", managerAddresses)
-	addRoleToPreviewTable(table, "Enabled", enabledAddresses)
+	addRoleToPreviewTable(table, "Admins", allowList.AdminAddresses)
+	addRoleToPreviewTable(table, "Manager", allowList.ManagerAddresses)
+	addRoleToPreviewTable(table, "Enabled", allowList.EnabledAddresses)
 	table.Render()
 	fmt.Println()
 }
@@ -42,9 +44,7 @@ func addRoleToPreviewTable(table *tablewriter.Table, name string, addresses []co
 
 func getNewAddresses(
 	app *application.Avalanche,
-	adminAddresses []common.Address,
-	managerAddresses []common.Address,
-	enabledAddresses []common.Address,
+	allowList AllowList,
 ) ([]common.Address, error) {
 	newAddresses := []common.Address{}
 	addresses, err := app.Prompt.CaptureAddresses("Enter the address of the account (or multiple comma separated):")
@@ -53,11 +53,11 @@ func getNewAddresses(
 	}
 	for _, address := range addresses {
 		switch {
-		case utils.Belongs(adminAddresses, address):
+		case utils.Belongs(allowList.AdminAddresses, address):
 			fmt.Println(address.Hex() + " is already allowed as admin role")
-		case utils.Belongs(managerAddresses, address):
+		case utils.Belongs(allowList.ManagerAddresses, address):
 			fmt.Println(address.Hex() + " is already allowed as manager role")
-		case utils.Belongs(enabledAddresses, address):
+		case utils.Belongs(allowList.EnabledAddresses, address):
 			fmt.Println(address.Hex() + " is already allowed as enabled role")
 		default:
 			newAddresses = append(newAddresses, address)
@@ -95,15 +95,13 @@ func GenerateAllowList(
 	app *application.Avalanche,
 	action string,
 	evmVersion string,
-) ([]common.Address, []common.Address, []common.Address, bool, error) {
+) (AllowList, bool, error) {
 	if !semver.IsValid(evmVersion) {
-		return nil, nil, nil, false, fmt.Errorf("invalid semantic version %q", evmVersion)
+		return AllowList{}, false, fmt.Errorf("invalid semantic version %q", evmVersion)
 	}
 	managerRoleEnabled := semver.Compare(evmVersion, "v0.6.4") >= 0
 
-	adminAddresses := []common.Address{}
-	managerAddresses := []common.Address{}
-	enabledAddresses := []common.Address{}
+	allowList := AllowList{}
 
 	promptTemplate := "Configure the addresses that are allowed to %s"
 	prompt := fmt.Sprintf(promptTemplate, action)
@@ -124,7 +122,7 @@ func GenerateAllowList(
 			prompt, []string{addOption, removeOption, previewOption, confirmOption, cancelOption},
 		)
 		if err != nil {
-			return nil, nil, nil, false, err
+			return AllowList{}, false, err
 		}
 		switch option {
 		case addOption:
@@ -136,27 +134,27 @@ func GenerateAllowList(
 				}
 				roleOption, err := app.Prompt.CaptureList(addPrompt, options)
 				if err != nil {
-					return nil, nil, nil, false, err
+					return AllowList{}, false, err
 				}
 				switch roleOption {
 				case adminOption:
-					addresses, err := getNewAddresses(app, adminAddresses, managerAddresses, enabledAddresses)
+					addresses, err := getNewAddresses(app, allowList)
 					if err != nil {
-						return nil, nil, nil, false, err
+						return AllowList{}, false, err
 					}
-					adminAddresses = append(adminAddresses, addresses...)
+					allowList.AdminAddresses = append(allowList.AdminAddresses, addresses...)
 				case managerOption:
-					addresses, err := getNewAddresses(app, adminAddresses, managerAddresses, enabledAddresses)
+					addresses, err := getNewAddresses(app, allowList)
 					if err != nil {
-						return nil, nil, nil, false, err
+						return AllowList{}, false, err
 					}
-					managerAddresses = append(managerAddresses, addresses...)
+					allowList.ManagerAddresses = append(allowList.ManagerAddresses, addresses...)
 				case enabledOption:
-					addresses, err := getNewAddresses(app, adminAddresses, managerAddresses, enabledAddresses)
+					addresses, err := getNewAddresses(app, allowList)
 					if err != nil {
-						return nil, nil, nil, false, err
+						return AllowList{}, false, err
 					}
-					enabledAddresses = append(enabledAddresses, addresses...)
+					allowList.EnabledAddresses = append(allowList.EnabledAddresses, addresses...)
 				case explainOption:
 					fmt.Println("The difference to be given by devrel people")
 					fmt.Println()
@@ -175,37 +173,37 @@ func GenerateAllowList(
 				}
 				roleOption, err := app.Prompt.CaptureList(removePrompt, options)
 				if err != nil {
-					return nil, nil, nil, false, err
+					return AllowList{}, false, err
 				}
 				switch roleOption {
 				case adminOption:
-					adminAddresses, keepAsking, err = removeAddress(app, adminAddresses, "admin")
+					allowList.AdminAddresses, keepAsking, err = removeAddress(app, allowList.AdminAddresses, "admin")
 					if err != nil {
-						return nil, nil, nil, false, err
+						return AllowList{}, false, err
 					}
 				case managerOption:
-					managerAddresses, keepAsking, err = removeAddress(app, managerAddresses, "manager")
+					allowList.ManagerAddresses, keepAsking, err = removeAddress(app, allowList.ManagerAddresses, "manager")
 					if err != nil {
-						return nil, nil, nil, false, err
+						return AllowList{}, false, err
 					}
 				case enabledOption:
-					enabledAddresses, keepAsking, err = removeAddress(app, enabledAddresses, "enabled")
+					allowList.EnabledAddresses, keepAsking, err = removeAddress(app, allowList.EnabledAddresses, "enabled")
 					if err != nil {
-						return nil, nil, nil, false, err
+						return AllowList{}, false, err
 					}
 				case cancelOption:
 					keepAsking = false
 				}
 			}
 		case previewOption:
-			preview(adminAddresses, managerAddresses, enabledAddresses)
+			preview(allowList)
 		case confirmOption:
-			if len(adminAddresses) == 0 && len(managerAddresses) == 0 && len(enabledAddresses) == 0 {
+			if len(allowList.AdminAddresses) == 0 && len(allowList.ManagerAddresses) == 0 && len(allowList.EnabledAddresses) == 0 {
 				fmt.Println("We need at least one address to have been added to the allow list. Otherwise cancel.")
 				fmt.Println()
 				continue
 			}
-			preview(adminAddresses, managerAddresses, enabledAddresses)
+			preview(allowList)
 			confirmPrompt := "Confirm?"
 			yesOption := "Yes"
 			noOption := "No, keep editing"
@@ -213,13 +211,13 @@ func GenerateAllowList(
 				confirmPrompt, []string{yesOption, noOption},
 			)
 			if err != nil {
-				return nil, nil, nil, false, err
+				return AllowList{}, false, err
 			}
 			if confirmOption == yesOption {
-				return adminAddresses, managerAddresses, enabledAddresses, false, nil
+				return allowList, false, nil
 			}
 		case cancelOption:
-			return nil, nil, nil, true, err
+			return AllowList{}, true, err
 		}
 	}
 }
