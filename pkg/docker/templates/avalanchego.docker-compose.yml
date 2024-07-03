@@ -25,8 +25,8 @@ services:
     ports:
       - "9650:9650"
       - "9651:9651"
-    network_mode: "host"
 {{ end }}
+    network_mode: "host"
 {{ end }}
 {{if .WithMonitoring}}
   promtail:
@@ -57,6 +57,7 @@ services:
 {{if .WithAvalanchego}}
     links:
       - avalanchego
+{{end}}
 {{end}}
 
 {{if .E2E }}
