@@ -15,7 +15,6 @@ services:
       - '--storage.tsdb.path=/var/lib/prometheus'
     links:
       - node-exporter
-    network_mode: "host"
 
   grafana:
     image: grafana/grafana:10.4.1
@@ -30,7 +29,6 @@ services:
     links:
       - prometheus
       - loki
-    network_mode: "host"
 
   loki:
     image: grafana/loki:3.0.0
@@ -43,7 +41,6 @@ services:
     volumes:
       - /home/ubuntu/.avalanche-cli/services/loki:/etc/loki:ro
       - /home/ubuntu/.avalanche-cli/services/loki/data:/var/lib/loki:rw
-    network_mode: "host"
   
   node-exporter:
     image: prom/node-exporter:v1.7.0
@@ -55,4 +52,3 @@ services:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
-    network_mode: "host"
