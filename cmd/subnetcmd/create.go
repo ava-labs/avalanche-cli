@@ -447,15 +447,18 @@ type SubnetEVMGenesisParams struct {
 // - use teleporter
 // - enable warp precompile
 // - disable the other precompiles
+// in the other case, will prompt for all these settings
 //
 // tokenSymbol is not needed to build a genesis but is needed in the ux flow
 // as such, is returned separately from the genesis params
 //
-// prompts the user for chainID and tokenSymbol, unless provided in call args
+// prompts the user for chainID, tokenSymbol, and useTeleporter, unless
+// provided in call args
 func getSubnetEVMGenesisParams(
 	cmd *cobra.Command,
 	chainID uint64,
 	tokenSymbol string,
+	useTeleporter *bool,
 	useDefaults bool,
 ) (SubnetEVMGenesisParams, string, error) {
 	var (
