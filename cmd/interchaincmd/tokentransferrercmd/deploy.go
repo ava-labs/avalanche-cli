@@ -52,7 +52,7 @@ func NewDeployCmd() *cobra.Command {
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, false, deploySupportedNetworkOptions)
 	contract.AddChainFlagsToCmd(
 		cmd,
 		&deployFlags.homeFlags.chainFlags,

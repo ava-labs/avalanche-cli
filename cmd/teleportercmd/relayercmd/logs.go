@@ -39,7 +39,7 @@ func newLogsCmd() *cobra.Command {
 		RunE:  logs,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, logsNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, false, logsNetworkOptions)
 	cmd.Flags().BoolVar(&raw, "raw", false, "raw logs output")
 	cmd.Flags().UintVar(&last, "last", 0, "output last N log lines")
 	cmd.Flags().UintVar(&first, "first", 0, "output first N log lines")
