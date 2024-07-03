@@ -1,36 +1,39 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package teleportercmd
 
 import (
-	"context"
-	"encoding/hex"
 	"fmt"
-	"math/big"
+	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/subnet-evm/core/types"
-	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
 )
 
+type MsgFlags struct {
+	Network            networkoptions.NetworkFlags
+	DestinationAddress string
+	HexEncodedMessage  bool
+	PrivateKeyFlags    contract.PrivateKeyFlags
+}
+
 var (
 	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
-		networkoptions.Cluster,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
 		networkoptions.Devnet,
+		networkoptions.Fuji,
 	}
-	globalNetworkFlags networkoptions.NetworkFlags
+	msgFlags MsgFlags
 )
 
 // avalanche teleporter msg
@@ -42,7 +45,10 @@ func newMsgCmd() *cobra.Command {
 		RunE:  msg,
 		Args:  cobrautils.ExactArgs(3),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, false, msgSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, false, msgSupportedNetworkOptions)
+	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "as message originator and to pay source blockchain fees")
+	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
+	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
 	return cmd
 }
 
@@ -61,7 +67,7 @@ func msg(_ *cobra.Command, args []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
-		globalNetworkFlags,
+		msgFlags.Network,
 		true,
 		false,
 		msgSupportedNetworkOptions,
@@ -71,7 +77,40 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, _, sourceChainID, sourceMessengerAddress, _, sourceKey, err := bridgecmd.GetSubnetParams(
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		sourceSubnetName,
+		isCChain(sourceSubnetName),
+		"",
+	)
+	if err != nil {
+		return err
+	}
+	privateKey, err := contract.GetPrivateKeyFromFlags(
+		app,
+		msgFlags.PrivateKeyFlags,
+		genesisPrivateKey,
+	)
+	if err != nil {
+		return err
+	}
+	if privateKey == "" {
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"send the message",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetSubnetParams(
+		app,
 		network,
 		sourceSubnetName,
 		isCChain(sourceSubnetName),
@@ -79,7 +118,8 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, _, destChainID, destMessengerAddress, _, _, err := bridgecmd.GetSubnetParams(
+	_, _, destBlockchainID, destMessengerAddress, _, _, err := teleporter.GetSubnetParams(
+		app,
 		network,
 		destSubnetName,
 		isCChain(destSubnetName),
@@ -92,66 +132,34 @@ func msg(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("different teleporter messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	// get clients + messengers
-	sourceClient, err := evm.GetClient(network.BlockchainEndpoint(sourceChainID.String()))
-	if err != nil {
-		return err
+	encodedMessage := []byte(message)
+	if msgFlags.HexEncodedMessage {
+		encodedMessage = common.FromHex(message)
 	}
-	sourceMessenger, err := teleportermessenger.NewTeleporterMessenger(common.HexToAddress(sourceMessengerAddress), sourceClient)
-	if err != nil {
-		return err
+	destAddr := common.Address{}
+	if msgFlags.DestinationAddress != "" {
+		if err := prompts.ValidateAddress(msgFlags.DestinationAddress); err != nil {
+			return fmt.Errorf("failure validating address %s: %w", msgFlags.DestinationAddress, err)
+		}
+		destAddr = common.HexToAddress(msgFlags.DestinationAddress)
 	}
-	destWebSocketClient, err := evm.GetClient(network.BlockchainWSEndpoint(destChainID.String()))
-	if err != nil {
-		return err
-	}
-	destMessenger, err := teleportermessenger.NewTeleporterMessenger(common.HexToAddress(destMessengerAddress), destWebSocketClient)
-	if err != nil {
-		return err
-	}
-
-	// subscribe to get new heads from destination
-	destHeadsCh := make(chan *types.Header, 10)
-	destHeadsSubscription, err := destWebSocketClient.SubscribeNewHead(ctx, destHeadsCh)
-	if err != nil {
-		return err
-	}
-	defer destHeadsSubscription.Unsubscribe()
-
 	// send tx to the teleporter contract at the source
-	sourceAddress := common.HexToAddress(sourceKey.C())
-	msgInput := teleportermessenger.TeleporterMessageInput{
-		DestinationBlockchainID: destChainID,
-		DestinationAddress:      sourceAddress,
-		FeeInfo: teleportermessenger.TeleporterFeeInfo{
-			FeeTokenAddress: sourceAddress,
-			Amount:          big.NewInt(0),
-		},
-		RequiredGasLimit:        big.NewInt(1),
-		AllowedRelayerAddresses: []common.Address{},
-		Message:                 []byte(message),
-	}
-	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceChainID)
-	txOpts, err := evm.GetTxOptsWithSigner(sourceClient, sourceKey.PrivKeyHex())
+	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
+	tx, receipt, err := teleporter.SendCrossChainMessage(
+		network.BlockchainEndpoint(sourceBlockchainID.String()),
+		common.HexToAddress(sourceMessengerAddress),
+		privateKey,
+		destBlockchainID,
+		destAddr,
+		encodedMessage,
+	)
 	if err != nil {
 		return err
 	}
-	txOpts.Context = ctx
-	tx, err := sourceMessenger.SendCrossChainMessage(txOpts, msgInput)
-	if err != nil {
-		return err
-	}
-	sourceReceipt, b, err := evm.WaitForTransaction(sourceClient, tx)
-	if err != nil {
-		return err
-	}
-	if !b {
+	if err == contract.ErrFailedReceiptStatus {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(network.BlockchainEndpoint(sourceChainID.String()), txHash)
+		trace, err := evm.GetTrace(network.BlockchainEndpoint(sourceBlockchainID.String()), txHash)
 		if err != nil {
 			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
 			ux.Logger.PrintToUser("")
@@ -162,76 +170,47 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 	}
-	sourceEvent, err := evm.GetEventFromLogs(sourceReceipt.Logs, sourceMessenger.ParseSendCrossChainMessage)
+
+	event, err := evm.GetEventFromLogs(receipt.Logs, teleporter.ParseSendCrossChainMessage)
 	if err != nil {
 		return err
 	}
 
-	if destChainID != ids.ID(sourceEvent.DestinationBlockchainID[:]) {
-		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destChainID, ids.ID(sourceEvent.DestinationBlockchainID[:]))
+	if destBlockchainID != ids.ID(event.DestinationBlockchainID[:]) {
+		return fmt.Errorf("invalid destination blockchain id at source event, expected %s, got %s", destBlockchainID, ids.ID(event.DestinationBlockchainID[:]))
 	}
-	if message != string(sourceEvent.Message.Message) {
-		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(sourceEvent.Message.Message))
+	if message != string(event.Message.Message) {
+		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(event.Message.Message))
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be received on destination subnet %q (%s)", destSubnetName, destChainID)
-	var head *types.Header
-	select {
-	case head = <-destHeadsCh:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	if sourceChainID == destChainID {
-		// we have another block
-		select {
-		case head = <-destHeadsCh:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-	blockNumber := head.Number
-	block, err := destWebSocketClient.BlockByNumber(ctx, blockNumber)
-	if err != nil {
-		return err
-	}
-	if len(block.Transactions()) != 1 {
-		return fmt.Errorf("expected to have only one transaction on new block at destination")
-	}
-	destReceipt, err := destWebSocketClient.TransactionReceipt(ctx, block.Transactions()[0].Hash())
-	if err != nil {
-		return err
-	}
-	if destReceipt.Status != types.ReceiptStatusSuccessful {
-		txHash := block.Transactions()[0].Hash().String()
-		ux.Logger.PrintToUser("error: dest receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(network.BlockchainEndpoint(destChainID.String()), txHash)
-		if err != nil {
-			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
-			ux.Logger.PrintToUser("")
-		} else {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("trace: %#v", trace)
-			ux.Logger.PrintToUser("")
-		}
-		return fmt.Errorf("dest receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-	}
-	destEvent, err := evm.GetEventFromLogs(destReceipt.Logs, destMessenger.ParseReceiveCrossChainMessage)
-	if err != nil {
-		return err
-	}
+	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destSubnetName, destBlockchainID)
 
-	if sourceChainID != ids.ID(destEvent.SourceBlockchainID[:]) {
-		return fmt.Errorf("invalid source blockchain id at dest event, expected %s, got %s", sourceChainID, ids.ID(destEvent.SourceBlockchainID[:]))
-	}
-	if message != string(destEvent.Message.Message) {
-		return fmt.Errorf("invalid message content at source event, expected %s, got %s", message, string(destEvent.Message.Message))
-	}
-	if sourceEvent.MessageID != destEvent.MessageID {
-		return fmt.Errorf("unexpected difference between message ID at source and dest events: %s vs %s", hex.EncodeToString(sourceEvent.MessageID[:]), hex.EncodeToString(destEvent.MessageID[:]))
+	arrivalCheckInterval := 100 * time.Millisecond
+	arrivalCheckTimeout := 10 * time.Second
+	t0 := time.Now()
+	for {
+		if b, err := teleporter.MessageReceived(
+			network.BlockchainEndpoint(destBlockchainID.String()),
+			common.HexToAddress(destMessengerAddress),
+			event.MessageID,
+		); err != nil {
+			return err
+		} else if b {
+			break
+		}
+		elapsed := time.Since(t0)
+		if elapsed > arrivalCheckTimeout {
+			return fmt.Errorf("timeout waiting for message to be teleported")
+		}
+		time.Sleep(arrivalCheckInterval)
 	}
 
 	ux.Logger.PrintToUser("Message successfully Teleported!")
 
 	return nil
+}
+
+func isCChain(subnetName string) bool {
+	return strings.ToLower(subnetName) == "c-chain" || strings.ToLower(subnetName) == "cchain"
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -44,26 +45,33 @@ const (
 )
 
 var (
-	forceSubnetCreate              bool
-	subnetGenesisFile              string
-	useEvmSubnet                   bool
-	useCustomSubnet                bool
-	evmVersion                     string
-	evmChainID                     uint64
-	evmToken                       string
-	evmDefaults                    bool
-	useLatestEvmReleasedVersion    bool
-	useLatestEvmPreReleasedVersion bool
-	customVMRepoURL                string
-	customVMBranch                 string
-	customVMBuildScript            string
-	nodeConf                       string
-	subnetConf                     string
-	chainConf                      string
-	validators                     []string
-	customGrafanaDashboardPath     string
-	teleporterReady                bool
-	runRelayer                     bool
+	forceSubnetCreate                      bool
+	subnetGenesisFile                      string
+	useEvmSubnet                           bool
+	useCustomSubnet                        bool
+	evmVersion                             string
+	evmChainID                             uint64
+	evmToken                               string
+	evmDefaults                            bool
+	useLatestEvmReleasedVersion            bool
+	useLatestEvmPreReleasedVersion         bool
+	customVMRepoURL                        string
+	customVMBranch                         string
+	customVMBuildScript                    string
+	nodeConf                               string
+	subnetConf                             string
+	chainConf                              string
+	validators                             []string
+	customGrafanaDashboardPath             string
+	teleporterReady                        bool
+	runRelayer                             bool
+	teleporterVersion                      string
+	teleporterMessengerContractAddressPath string
+	teleporterMessengerDeployerAddressPath string
+	teleporterMessengerDeployerTxPath      string
+	teleporterRegistryBydecodePath         string
+	deployTeleporterMessenger              bool
+	deployTeleporterRegistry               bool
 )
 
 func newWizCmd() *cobra.Command {
@@ -124,6 +132,13 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	cmd.Flags().StringVar(&grafanaPkg, "grafana-pkg", "", "use grafana pkg instead of apt repo(by default), for example https://dl.grafana.com/oss/release/grafana_10.4.1_amd64.deb")
+	cmd.Flags().StringVar(&teleporterVersion, "teleporter-version", "latest", "teleporter version to deploy")
+	cmd.Flags().StringVar(&teleporterMessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
+	cmd.Flags().StringVar(&teleporterMessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
+	cmd.Flags().StringVar(&teleporterMessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
+	cmd.Flags().StringVar(&teleporterRegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
+	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Teleporter Messenger")
+	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Teleporter Registry")
 	return cmd
 }
 
@@ -273,7 +288,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, _, err := subnetcmd.HasSubnetEVMGenesis(subnetName)
+	isEVMGenesis, _, err := app.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err
 	}
@@ -350,8 +365,13 @@ func wiz(cmd *cobra.Command, args []string) error {
 			Network: networkoptions.NetworkFlags{
 				ClusterName: clusterName,
 			},
-			DeployMessenger: true,
-			DeployRegistry:  true,
+			DeployMessenger:              deployTeleporterMessenger,
+			DeployRegistry:               deployTeleporterRegistry,
+			Version:                      teleporterVersion,
+			MessengerContractAddressPath: teleporterMessengerContractAddressPath,
+			MessengerDeployerAddressPath: teleporterMessengerDeployerAddressPath,
+			MessengerDeployerTxPath:      teleporterMessengerDeployerTxPath,
+			RegistryBydecodePath:         teleporterRegistryBydecodePath,
 		}
 		if err := teleportercmd.CallDeploy([]string{}, flags); err != nil {
 			return err
@@ -406,7 +426,7 @@ func hasTeleporterDeploys(
 		return false, err
 	}
 	for _, deployedSubnetName := range clusterConfig.Subnets {
-		deployedSubnetIsEVMGenesis, _, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		deployedSubnetIsEVMGenesis, _, err := app.HasSubnetEVMGenesis(deployedSubnetName)
 		if err != nil {
 			return false, err
 		}
@@ -429,7 +449,7 @@ func updateProposerVMs(
 		return err
 	}
 	for _, deployedSubnetName := range clusterConfig.Subnets {
-		deployedSubnetIsEVMGenesis, _, err := subnetcmd.HasSubnetEVMGenesis(deployedSubnetName)
+		deployedSubnetIsEVMGenesis, _, err := app.HasSubnetEVMGenesis(deployedSubnetName)
 		if err != nil {
 			return err
 		}
@@ -469,13 +489,13 @@ func setAWMRelayerHost(host *models.Host) error {
 
 func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
-	flags := teleportercmd.AddSubnetToRelayerServiceFlags{
+	flags := relayercmd.AddSubnetToServiceFlags{
 		Network: networkoptions.NetworkFlags{
 			ClusterName: clusterName,
 		},
 		CloudNodeID: host.GetCloudID(),
 	}
-	if err := teleportercmd.CallAddSubnetToRelayerService(subnetName, flags); err != nil {
+	if err := relayercmd.CallAddSubnetToService(subnetName, flags); err != nil {
 		return err
 	}
 	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {

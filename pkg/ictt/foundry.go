@@ -1,9 +1,10 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridge
+package ictt
 
 import (
 	_ "embed"
+	"fmt"
 	"io"
 	"os/exec"
 	"strings"
@@ -13,18 +14,30 @@ import (
 )
 
 var (
-	foundryupPath = utils.ExpandHome("~/.foundry/bin/foundryup")
-	forgePath     = utils.ExpandHome("~/.foundry/bin/forge")
+	foundryupPath    = utils.ExpandHome("~/.foundry/bin/foundryup")
+	defaultForgePath = utils.ExpandHome("~/.foundry/bin/forge")
 )
 
 func FoundryIsInstalled() bool {
-	return utils.IsExecutable(forgePath)
+	_, err := GetForgePath()
+	return err == nil
+}
+
+func GetForgePath() (string, error) {
+	if utils.FileExists(defaultForgePath) {
+		return defaultForgePath, nil
+	}
+	out, err := exec.Command("which", "forge").CombinedOutput()
+	if err == nil {
+		return string(out), nil
+	}
+	return "", fmt.Errorf("forge is not installed")
 }
 
 func InstallFoundry() error {
 	ux.Logger.PrintToUser("Installing Foundry")
 	downloadCmd := exec.Command("curl", "-L", "https://foundry.paradigm.xyz")
-	installCmd := exec.Command("sh")
+	installCmd := exec.Command("bash")
 	var downloadOutbuf, downloadErrbuf strings.Builder
 	downloadCmdStdoutPipe, err := downloadCmd.StdoutPipe()
 	if err != nil {

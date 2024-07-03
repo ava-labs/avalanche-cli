@@ -1,14 +1,17 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleportercmd
+package relayercmd
 
 import (
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
+var app *application.Avalanche
+
 // avalanche teleporter relayer
-func newRelayerCmd() *cobra.Command {
+func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "relayer",
 		Short: "Install and configure relayer on localhost",
@@ -16,9 +19,11 @@ func newRelayerCmd() *cobra.Command {
 and configuring an AWM relayer on localhost.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
-	cmd.AddCommand(newPrepareRelayerServiceCmd())
-	cmd.AddCommand(newAddSubnetToRelayerServiceCmd())
-	cmd.AddCommand(newStopRelayerCmd())
-	cmd.AddCommand(newStartRelayerCmd())
+	app = injectedApp
+	cmd.AddCommand(newPrepareServiceCmd())
+	cmd.AddCommand(newAddSubnetToServiceCmd())
+	cmd.AddCommand(newStopCmd())
+	cmd.AddCommand(newStartCmd())
+	cmd.AddCommand(newLogsCmd())
 	return cmd
 }

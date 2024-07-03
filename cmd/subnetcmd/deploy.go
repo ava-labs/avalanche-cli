@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -53,8 +53,8 @@ var (
 	mainnetChainID           uint32
 	skipCreatePrompt         bool
 	avagoBinaryPath          string
-	skipLocalTeleporter      bool
 	subnetOnly               bool
+	teleporterEsp            subnet.TeleporterEsp
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -95,8 +95,14 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "do not create a subnet, deploy the blockchain into the given subnet id")
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().BoolVar(&skipLocalTeleporter, "skip-local-teleporter", false, "skip local teleporter deploy to a local network")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
+	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
+	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
+	cmd.Flags().StringVar(&teleporterEsp.Version, "teleporter-version", "latest", "teleporter version to deploy")
+	cmd.Flags().StringVar(&teleporterEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
+	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
+	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
+	cmd.Flags().StringVar(&teleporterEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
 	return cmd
 }
 
@@ -265,6 +271,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if teleporterEsp.MessengerContractAddressPath != "" || teleporterEsp.MessengerDeployerAddressPath != "" || teleporterEsp.MessengerDeployerTxPath != "" || teleporterEsp.RegistryBydecodePath != "" {
+		if teleporterEsp.MessengerContractAddressPath == "" || teleporterEsp.MessengerDeployerAddressPath == "" || teleporterEsp.MessengerDeployerTxPath == "" || teleporterEsp.RegistryBydecodePath == "" {
+			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
+		}
+	}
+
 	chain := chains[0]
 
 	sidecar, err := app.LoadSidecar(chain)
@@ -295,7 +307,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	isEVMGenesis, validationErr, err := HasSubnetEVMGenesis(chain)
+	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
 	}
@@ -348,7 +360,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		// check if selected version matches what is currently running
-		nc := localnetworkinterface.NewStatusChecker()
+		nc := localnet.NewStatusChecker()
 		avagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
 		if err != nil {
 			return err
@@ -358,7 +370,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath, skipLocalTeleporter, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -829,9 +841,12 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) erro
 
 // Determines the appropriate version of avalanchego to run with. Returns an error if
 // that version conflicts with the current deployment.
-func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.StatusChecker, configuredRPCVersion int) (string, error) {
+func CheckForInvalidDeployAndGetAvagoVersion(
+	statusChecker localnet.StatusChecker,
+	configuredRPCVersion int,
+) (string, error) {
 	// get current network
-	runningAvagoVersion, runningRPCVersion, networkRunning, err := network.GetCurrentNetworkVersion()
+	runningAvagoVersion, runningRPCVersion, networkRunning, err := statusChecker.GetCurrentNetworkVersion()
 	if err != nil {
 		return "", err
 	}
@@ -877,18 +892,6 @@ func CheckForInvalidDeployAndGetAvagoVersion(network localnetworkinterface.Statu
 		}
 	}
 	return desiredAvagoVersion, nil
-}
-
-func HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
-	if _, err := app.LoadRawGenesis(subnetName); err != nil {
-		return false, nil, err
-	}
-	// from here, we are sure to have a genesis file
-	_, err := app.LoadEvmGenesis(subnetName)
-	if err != nil {
-		return false, err, nil
-	}
-	return true, nil, nil
 }
 
 func promptOwners(

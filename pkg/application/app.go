@@ -421,6 +421,18 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	return os.WriteFile(keyPath, keyBytes, constants.WriteReadReadPerms)
 }
 
+func (app *Avalanche) HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
+	if _, err := app.LoadRawGenesis(subnetName); err != nil {
+		return false, nil, err
+	}
+	// from here, we are sure to have a genesis file
+	_, err := app.LoadEvmGenesis(subnetName)
+	if err != nil {
+		return false, err, nil
+	}
+	return true, nil, nil
+}
+
 func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	genesisPath := app.GetGenesisPath(subnetName)
 	bs, err := os.ReadFile(genesisPath)

@@ -338,13 +338,18 @@ func WaitForTransaction(
 
 // Returns the first log in 'logs' that is successfully parsed by 'parser'
 func GetEventFromLogs[T any](logs []*types.Log, parser func(log types.Log) (T, error)) (T, error) {
-	for _, log := range logs {
+	cumErrMsg := ""
+	for i, log := range logs {
 		event, err := parser(*log)
 		if err == nil {
 			return event, nil
 		}
+		if cumErrMsg != "" {
+			cumErrMsg += "; "
+		}
+		cumErrMsg += fmt.Sprintf("log %d -> %s", i, err.Error())
 	}
-	return *new(T), fmt.Errorf("failed to find %T event in receipt logs", *new(T))
+	return *new(T), fmt.Errorf("failed to find %T event in receipt logs: [%s]", *new(T), cumErrMsg)
 }
 
 func GetRPCClient(rpcURL string) (*rpc.Client, error) {

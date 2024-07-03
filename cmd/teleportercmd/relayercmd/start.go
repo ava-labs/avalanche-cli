@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleportercmd
+package relayercmd
 
 import (
 	"fmt"
@@ -17,29 +17,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var startRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+var (
+	startNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+	globalNetworkFlags  networkoptions.NetworkFlags
+)
 
 // avalanche teleporter relayer start
-func newStartRelayerCmd() *cobra.Command {
+func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "starts AWM relayer",
 		Long:  `Starts AWM relayer on the specified network (Currently only for local network).`,
-		RunE:  startRelayer,
+		RunE:  start,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, false, startRelayerNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startNetworkOptions)
 	return cmd
 }
 
-func startRelayer(_ *cobra.Command, _ []string) error {
+func start(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		false,
 		false,
-		startRelayerNetworkOptions,
+		startNetworkOptions,
 		"",
 	)
 	if err != nil {

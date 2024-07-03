@@ -12,9 +12,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -78,7 +78,7 @@ func describe(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if network.Kind == models.Local {
-		if b, extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(); err != nil {
+		if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(); err != nil {
 			return err
 		} else if b {
 			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress

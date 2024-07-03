@@ -1,12 +1,11 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleportercmd
+package relayercmd
 
 import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/bridgecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -16,42 +15,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type AddSubnetToRelayerServiceFlags struct {
+type AddSubnetToServiceFlags struct {
 	Network     networkoptions.NetworkFlags
 	CloudNodeID string
 }
 
 var (
-	addSubnetToRelayerServiceSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
-	addSubnetToRelayerServiceFlags                   AddSubnetToRelayerServiceFlags
+	addSubnetToServiceSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Devnet}
+	addSubnetToServiceFlags                   AddSubnetToServiceFlags
 )
 
 // avalanche teleporter relayer addSubnetToService
-func newAddSubnetToRelayerServiceCmd() *cobra.Command {
+func newAddSubnetToServiceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "addSubnetToService [subnetName]",
 		Short: "Adds a subnet to the AWM relayer service configuration",
 		Long:  `Adds a subnet to the AWM relayer service configuration".`,
-		RunE:  addSubnetToRelayerService,
+		RunE:  addSubnetToService,
 		Args:  cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &addSubnetToRelayerServiceFlags.Network, true, false, addSubnetToRelayerServiceSupportedNetworkOptions)
-	cmd.Flags().StringVar(&addSubnetToRelayerServiceFlags.CloudNodeID, "cloud-node-id", "", "generate a config to be used on given cloud node")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &addSubnetToServiceFlags.Network, true, addSubnetToServiceSupportedNetworkOptions)
+	cmd.Flags().StringVar(&addSubnetToServiceFlags.CloudNodeID, "cloud-node-id", "", "generate a config to be used on given cloud node")
 	return cmd
 }
 
-func addSubnetToRelayerService(_ *cobra.Command, args []string) error {
-	return CallAddSubnetToRelayerService(args[0], addSubnetToRelayerServiceFlags)
+func addSubnetToService(_ *cobra.Command, args []string) error {
+	return CallAddSubnetToService(args[0], addSubnetToServiceFlags)
 }
 
-func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerServiceFlags) error {
+func CallAddSubnetToService(subnetName string, flags AddSubnetToServiceFlags) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		flags.Network,
 		true,
 		false,
-		addSubnetToRelayerServiceSupportedNetworkOptions,
+		addSubnetToServiceSupportedNetworkOptions,
 		subnetName,
 	)
 	if err != nil {
@@ -63,7 +62,7 @@ func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerSe
 		return err
 	}
 
-	_, subnetID, chainID, messengerAddress, registryAddress, _, err := bridgecmd.GetSubnetParams(network, "", true)
+	_, subnetID, chainID, messengerAddress, registryAddress, _, err := teleporter.GetSubnetParams(app, network, "", true)
 	if err != nil {
 		return err
 	}
@@ -95,7 +94,7 @@ func CallAddSubnetToRelayerService(subnetName string, flags AddSubnetToRelayerSe
 		return err
 	}
 
-	_, subnetID, chainID, messengerAddress, registryAddress, _, err = bridgecmd.GetSubnetParams(network, subnetName, false)
+	_, subnetID, chainID, messengerAddress, registryAddress, _, err = teleporter.GetSubnetParams(app, network, subnetName, false)
 	if err != nil {
 		return err
 	}

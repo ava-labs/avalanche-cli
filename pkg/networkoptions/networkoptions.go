@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/api/info"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 )
@@ -76,7 +77,7 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 	for _, networkOption := range supportedNetworkOptions {
 		switch networkOption {
 		case Local:
-			cmd.Flags().BoolVarP(&networkFlags.UseLocal, "local", "l", false, "opeate on a local network")
+			cmd.Flags().BoolVarP(&networkFlags.UseLocal, "local", "l", false, "operate on a local network")
 		case Devnet:
 			cmd.Flags().BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
 			addEndpoint = true

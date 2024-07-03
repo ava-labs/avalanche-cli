@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package bridge
+package ictt
 
 import (
 	_ "embed"
@@ -18,70 +18,71 @@ type TeleporterFeeInfo struct {
 	Amount          *big.Int
 }
 
-type TokenSpokeSettings struct {
+type TokenRemoteSettings struct {
 	TeleporterRegistryAddress common.Address
 	TeleporterManager         common.Address
-	TokenHubBlockchainID      [32]byte
-	TokenHubAddress           common.Address
-	TokenHubDecimals          uint8
+	TokenHomeBlockchainID     [32]byte
+	TokenHomeAddress          common.Address
+	TokenHomeDecimals         uint8
 }
 
-func RegisterERC20Spoke(
+func RegisterERC20Remote(
 	rpcURL string,
 	privateKey string,
-	spokeAddress common.Address,
+	remoteAddress common.Address,
 ) error {
 	feeInfo := TeleporterFeeInfo{
 		Amount: big.NewInt(0),
 	}
-	return contract.TxToMethod(
+	_, _, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
-		spokeAddress,
+		remoteAddress,
 		nil,
-		"registerWithHub((address, uint256))",
+		"registerWithHome((address, uint256))",
 		feeInfo,
 	)
+	return err
 }
 
-func DeployERC20Spoke(
+func DeployERC20Remote(
 	srcDir string,
 	rpcURL string,
 	privateKey string,
 	teleporterRegistryAddress common.Address,
 	teleporterManagerAddress common.Address,
-	tokenHubBlockchainID [32]byte,
-	tokenHubAddress common.Address,
+	tokenHomeBlockchainID [32]byte,
+	tokenHomeAddress common.Address,
 	tokenName string,
 	tokenSymbol string,
 	tokenDecimals uint8,
 ) (common.Address, error) {
-	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenSpoke.sol/ERC20TokenSpoke.bin")
+	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenRemote.sol/ERC20TokenRemote.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenSpokeSettings := TokenSpokeSettings{
+	tokenRemoteSettings := TokenRemoteSettings{
 		TeleporterRegistryAddress: teleporterRegistryAddress,
 		TeleporterManager:         teleporterManagerAddress,
-		TokenHubBlockchainID:      tokenHubBlockchainID,
-		TokenHubAddress:           tokenHubAddress,
-		// TODO: user case for hub having diff decimals
-		TokenHubDecimals: tokenDecimals,
+		TokenHomeBlockchainID:     tokenHomeBlockchainID,
+		TokenHomeAddress:          tokenHomeAddress,
+		// TODO: user case for home having diff decimals
+		TokenHomeDecimals: tokenDecimals,
 	}
 	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		binBytes,
 		"((address, address, bytes32, address, uint8), string, string, uint8)",
-		tokenSpokeSettings,
+		tokenRemoteSettings,
 		tokenName,
 		tokenSymbol,
 		tokenDecimals,
 	)
 }
 
-func DeployERC20Hub(
+func DeployERC20Home(
 	srcDir string,
 	rpcURL string,
 	privateKey string,
@@ -90,7 +91,7 @@ func DeployERC20Hub(
 	erc20TokenAddress common.Address,
 	erc20TokenDecimals uint8,
 ) (common.Address, error) {
-	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenHub.sol/ERC20TokenHub.bin")
+	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenHome.sol/ERC20TokenHome.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
 		return common.Address{}, err
@@ -107,7 +108,7 @@ func DeployERC20Hub(
 	)
 }
 
-func DeployNativeHub(
+func DeployNativeHome(
 	srcDir string,
 	rpcURL string,
 	privateKey string,
@@ -115,7 +116,7 @@ func DeployNativeHub(
 	teleporterManagerAddress common.Address,
 	wrappedNativeTokenAddress common.Address,
 ) (common.Address, error) {
-	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenHub.sol/NativeTokenHub.bin")
+	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenHome.sol/NativeTokenHome.bin")
 	binBytes, err := os.ReadFile(binPath)
 	if err != nil {
 		return common.Address{}, err
