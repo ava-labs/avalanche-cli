@@ -32,6 +32,8 @@ const (
 )
 
 type CreateFlags struct {
+	useSubnetEvm                   bool
+	useCustomVm                    bool
 	chainID                        uint64
 	tokenSymbol                    string
 	useDefaults                    bool
@@ -43,13 +45,11 @@ type CreateFlags struct {
 }
 
 var (
-	createFlags  CreateFlags
-	forceCreate  bool
-	useSubnetEvm bool
-	genesisFile  string
-	vmFile       string
-	useCustom    bool
-	useRepo      bool
+	createFlags CreateFlags
+	forceCreate bool
+	genesisFile string
+	vmFile      string
+	useRepo     bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -78,12 +78,12 @@ configuration, pass the -f flag.`,
 		PersistentPostRun: handlePostRun,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
-	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
+	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().StringVar(&createFlags.evmVersion, "vm-version", "", "version of Subnet-EVM template to use")
 	cmd.Flags().Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
 	cmd.Flags().BoolVar(&createFlags.useDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles/teleporter with Subnet-EVM")
-	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
+	cmd.Flags().BoolVar(&createFlags.useCustomVm, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedEvmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
 	cmd.Flags().BoolVar(&createFlags.useLatestReleasedEvmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
@@ -117,14 +117,14 @@ func CallCreate(
 ) error {
 	forceCreate = forceCreateParam
 	genesisFile = genesisFileParam
-	useSubnetEvm = useSubnetEvmParam
+	createFlags.useSubnetEvm = useSubnetEvmParam
 	createFlags.evmVersion = evmVersionParam
 	createFlags.chainID = evmChainIDParam
 	createFlags.tokenSymbol = tokenSymbolParam
 	createFlags.useDefaults = useDefaultsParam
 	createFlags.useLatestReleasedEvmVersion = useLatestReleasedEvmVersionParam
 	createFlags.useLatestPreReleasedEvmVersion = useLatestPreReleasedEvmVersionParam
-	useCustom = useCustomParam
+	createFlags.useCustomVm = useCustomParam
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
 	customVMBuildScript = customVMBuildScriptParam
@@ -146,10 +146,10 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	// if given custom repo info, assumes custom VM
 	if vmFile != "" || customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
-		useCustom = true
+		createFlags.useCustomVm = true
 	}
 
-	if !flags.EnsureMutuallyExclusive([]bool{useSubnetEvm, useCustom}) {
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVm}) {
 		return errors.New("too many VMs selected. Provide at most one VM selection flag")
 	}
 
@@ -165,7 +165,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errMutuallyVMConfigOptions
 	}
 
-	vmType, err := promptVMType(useSubnetEvm, useCustom)
+	vmType, err := promptVMType(createFlags.useSubnetEvm, createFlags.useCustomVm)
 	if err != nil {
 		return err
 	}
