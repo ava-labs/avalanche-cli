@@ -133,16 +133,9 @@ func importPublic(*cobra.Command, []string) error {
 	// TODO: it's probably possible to deploy VMs with the same name on a public network
 	// In this case, an import could clash because the tool supports unique names only
 
-	vmType := getVMFromFlag()
-	if vmType == "" {
-		subnetTypeStr, err := app.Prompt.CaptureList(
-			"What's this VM's type?",
-			[]string{models.SubnetEvm, models.CustomVM},
-		)
-		if err != nil {
-			return err
-		}
-		vmType = models.VMTypeFromString(subnetTypeStr)
+	vmType, err := promptVMType(useSubnetEvm, useCustom)
+	if err != nil {
+		return err
 	}
 
 	vmIDstr := vmID.String()

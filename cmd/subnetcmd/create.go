@@ -131,36 +131,6 @@ func CallCreate(
 	return createSubnetConfig(cmd, []string{subnetName})
 }
 
-func detectVMTypeFromFlags() {
-	// assumes custom
-	if customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
-		useCustom = true
-	}
-}
-
-func moreThanOneVMSelected() bool {
-	vmVars := []bool{useSubnetEvm, useCustom}
-	firstSelect := false
-	for _, val := range vmVars {
-		if firstSelect && val {
-			return true
-		} else if val {
-			firstSelect = true
-		}
-	}
-	return false
-}
-
-func getVMFromFlag() models.VMType {
-	if useSubnetEvm {
-		return models.SubnetEvm
-	}
-	if useCustom {
-		return models.CustomVM
-	}
-	return ""
-}
-
 // override postrun function from root.go, so that we don't double send metrics for the same command
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
@@ -174,9 +144,12 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("subnet name %q is invalid: %w", subnetName, err)
 	}
 
-	detectVMTypeFromFlags()
+	// if given custom repo info, assumes custom VM
+	if vmFile != "" || customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
+		useCustom = true
+	}
 
-	if moreThanOneVMSelected() {
+	if !flags.EnsureMutuallyExclusive([]bool{useSubnetEvm, useCustom}) {
 		return errors.New("too many VMs selected. Provide at most one VM selection flag")
 	}
 
@@ -192,43 +165,14 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errMutuallyVMConfigOptions
 	}
 
-	subnetType := getVMFromFlag()
-
-	if subnetType == "" {
-		subnetEvmOption := "Subnet-EVM"
-		customVMOption := "Custom VM"
-		options := []string{subnetEvmOption, customVMOption, explainOption}
-		var subnetTypeStr string
-		for {
-			option, err := app.Prompt.CaptureList(
-				"VM",
-				options,
-			)
-			if err != nil {
-				return err
-			}
-			switch option {
-			case subnetEvmOption:
-				subnetTypeStr = models.SubnetEvm
-			case customVMOption:
-				subnetTypeStr = models.CustomVM
-			case explainOption:
-				ux.Logger.PrintToUser("Virtual machines are the blueprint the defines the application-level logic of a blockchain. It determines the language and rules for writing and executing smart contracts, as well as other blockchain logic.")
-				ux.Logger.PrintToUser(" ")
-				ux.Logger.PrintToUser("Subnet-EVM is a EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-box solution for Subnet deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. Subnet-EVM can be configured with this CLI to meet the developers requirements without writing code. For more information, please visit: https://github.com/ava-labs/subnet-evm")
-				ux.Logger.PrintToUser(" ")
-				ux.Logger.PrintToUser("Custom VMs created with SDKs such as the Precompile-EVM, HyperSDK, Rust-SDK and that are written in golang or rust can be deployed on Avalanche using the second option. You can provide the path to the binary directly or provide the code as well as the build script. In addition to the VM you need to provide the genesis file. More information can be found in the docs at https://docs.avax.network/learn/avalanche/virtual-machines.")
-				continue
-			}
-			break
-		}
-		subnetType = models.VMTypeFromString(subnetTypeStr)
+	vmType, err := promptVMType(useSubnetEvm, useCustom)
+	if err != nil {
+		return err
 	}
 
 	var (
 		genesisBytes []byte
 		sc           *models.Sidecar
-		err          error
 	)
 
 	evmVersion := createFlags.evmVersion
@@ -251,11 +195,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if subnetType == models.SubnetEvm && genesisFile != "" && !genesisFileIsEVM {
+	if vmType == models.SubnetEvm && genesisFile != "" && !genesisFileIsEVM {
 		return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
 	}
 
-	if subnetType == models.SubnetEvm {
+	if vmType == models.SubnetEvm {
 		evmVersion, err = vm.GetVMVersion(app, constants.SubnetEVMRepoName, evmVersion)
 		if err != nil {
 			return err
@@ -288,7 +232,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	switch subnetType {
+	switch vmType {
 	case models.SubnetEvm:
 		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
 			app,
@@ -344,8 +288,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
-	if subnetType == models.SubnetEvm {
-		err = sendMetrics(cmd, subnetType.RepoName(), subnetName)
+	if vmType == models.SubnetEvm {
+		err = sendMetrics(cmd, vmType.RepoName(), subnetName)
 		if err != nil {
 			return err
 		}
