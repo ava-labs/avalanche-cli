@@ -486,8 +486,12 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
+func RunSSHJoinSubnet(host *models.Host, subnetName, networkFlag string) error {
+
+}
+
 // RunSSHTrackSubnet enables tracking of specified subnet
-func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag string) error {
+func RunSSHTrackSubnet(host *models.Host, subnetName, networkFlag string) error {
 	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
@@ -498,7 +502,7 @@ func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag st
 }
 
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
-func RunSSHUpdateSubnet(host *models.Host, subnetName, importPath string) error {
+func RunSSHUpdateSubnet(host *models.Host, subnetName string) error {
 	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}

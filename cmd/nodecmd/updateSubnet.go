@@ -4,13 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
-	"path/filepath"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -73,18 +71,13 @@ func doUpdateSubnet(
 	hosts []*models.Host,
 	subnetName string,
 ) ([]string, error) {
-	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
-	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath); err != nil {
-		return nil, err
-	}
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
-			if err := ssh.RunSSHUpdateSubnet(host, subnetName, subnetExportPath); err != nil {
+			if err := ssh.RunSSHUpdateSubnet(host, subnetName); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
