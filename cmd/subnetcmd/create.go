@@ -32,24 +32,24 @@ const (
 )
 
 type CreateFlags struct {
-	chainID       uint64
-	tokenSymbol   string
-	useDefaults   bool
-	useWarp       bool
-	useTeleporter bool
-}
-
-var (
-	createFlags                    CreateFlags
-	forceCreate                    bool
-	useSubnetEvm                   bool
-	genesisFile                    string
-	vmFile                         string
-	useCustom                      bool
+	chainID                        uint64
+	tokenSymbol                    string
+	useDefaults                    bool
+	useWarp                        bool
+	useTeleporter                  bool
 	evmVersion                     string
 	useLatestReleasedEvmVersion    bool
 	useLatestPreReleasedEvmVersion bool
-	useRepo                        bool
+}
+
+var (
+	createFlags  CreateFlags
+	forceCreate  bool
+	useSubnetEvm bool
+	genesisFile  string
+	vmFile       string
+	useCustom    bool
+	useRepo      bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -79,13 +79,13 @@ configuration, pass the -f flag.`,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
-	cmd.Flags().StringVar(&evmVersion, "vm-version", "", "version of Subnet-EVM template to use")
+	cmd.Flags().StringVar(&createFlags.evmVersion, "vm-version", "", "version of Subnet-EVM template to use")
 	cmd.Flags().Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
 	cmd.Flags().BoolVar(&createFlags.useDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles/teleporter with Subnet-EVM")
 	cmd.Flags().BoolVar(&useCustom, "custom", false, "use a custom VM template")
-	cmd.Flags().BoolVar(&useLatestPreReleasedEvmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
-	cmd.Flags().BoolVar(&useLatestReleasedEvmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedEvmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&createFlags.useLatestReleasedEvmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use. alias to custom-vm-path")
 	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
@@ -118,12 +118,12 @@ func CallCreate(
 	forceCreate = forceCreateParam
 	genesisFile = genesisFileParam
 	useSubnetEvm = useSubnetEvmParam
-	evmVersion = evmVersionParam
+	createFlags.evmVersion = evmVersionParam
 	createFlags.chainID = evmChainIDParam
 	createFlags.tokenSymbol = tokenSymbolParam
 	createFlags.useDefaults = useDefaultsParam
-	useLatestReleasedEvmVersion = useLatestReleasedEvmVersionParam
-	useLatestPreReleasedEvmVersion = useLatestPreReleasedEvmVersionParam
+	createFlags.useLatestReleasedEvmVersion = useLatestReleasedEvmVersionParam
+	createFlags.useLatestPreReleasedEvmVersion = useLatestPreReleasedEvmVersionParam
 	useCustom = useCustomParam
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
@@ -180,7 +180,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("too many VMs selected. Provide at most one VM selection flag")
 	}
 
-	if !flags.EnsureMutuallyExclusive([]bool{useLatestReleasedEvmVersion, useLatestPreReleasedEvmVersion, evmVersion != ""}) {
+	if !flags.EnsureMutuallyExclusive([]bool{
+		createFlags.useLatestReleasedEvmVersion,
+		createFlags.useLatestPreReleasedEvmVersion,
+		createFlags.evmVersion != "",
+	}) {
 		return errMutuallyExlusiveVersionOptions
 	}
 
@@ -227,11 +231,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		err          error
 	)
 
-	if useLatestReleasedEvmVersion {
+	evmVersion := createFlags.evmVersion
+	if createFlags.useLatestReleasedEvmVersion {
 		evmVersion = latest
 	}
-
-	if useLatestPreReleasedEvmVersion {
+	if createFlags.useLatestPreReleasedEvmVersion {
 		evmVersion = preRelease
 	}
 
@@ -273,6 +277,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	params, tokenSymbol, err := promptSubnetEVMGenesisParams(
+		evmVersion,
 		createFlags.chainID,
 		createFlags.tokenSymbol,
 		useTeleporter,
