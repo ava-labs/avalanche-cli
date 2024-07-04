@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,16 +33,16 @@ const (
 )
 
 type CreateFlags struct {
-	useSubnetEvm                   bool
-	useCustomVm                    bool
-	chainID                        uint64
-	tokenSymbol                    string
-	useDefaults                    bool
-	useWarp                        bool
-	useTeleporter                  bool
-	evmVersion                     string
-	useLatestReleasedEvmVersion    bool
-	useLatestPreReleasedEvmVersion bool
+	useSubnetEvm                  bool
+	useCustomVm                   bool
+	chainID                       uint64
+	tokenSymbol                   string
+	useDefaults                   bool
+	useWarp                       bool
+	useTeleporter                 bool
+	vmVersion                     string
+	useLatestReleasedVmVersion    bool
+	useLatestPreReleasedVmVersion bool
 }
 
 var (
@@ -53,8 +54,8 @@ var (
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
-	errMutuallyExlusiveVersionOptions = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
-	errMutuallyVMConfigOptions        = errors.New("specifying --genesis flag disables SubnetEVM config flags --evm-chain-id,--evm-token,--evm-defaults")
+	errMutuallyExlusiveVersionOptions   = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
+	errMutuallyExclusiveVMConfigOptions = errors.New("specifying --genesis flag disable flags --evm-chain-id,--evm-token,--evm-defaults")
 )
 
 // avalanche subnet create
@@ -79,13 +80,13 @@ configuration, pass the -f flag.`,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
-	cmd.Flags().StringVar(&createFlags.evmVersion, "vm-version", "", "version of Subnet-EVM template to use")
+	cmd.Flags().BoolVar(&createFlags.useCustomVm, "custom", false, "use a custom VM template")
+	cmd.Flags().StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
+	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedVmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&createFlags.useLatestReleasedVmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
 	cmd.Flags().BoolVar(&createFlags.useDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles/teleporter with Subnet-EVM")
-	cmd.Flags().BoolVar(&createFlags.useCustomVm, "custom", false, "use a custom VM template")
-	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedEvmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
-	cmd.Flags().BoolVar(&createFlags.useLatestReleasedEvmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use. alias to custom-vm-path")
 	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
@@ -105,12 +106,12 @@ func CallCreate(
 	genesisFileParam string,
 	useSubnetEvmParam bool,
 	useCustomParam bool,
-	evmVersionParam string,
+	vmVersionParam string,
 	evmChainIDParam uint64,
 	tokenSymbolParam string,
 	useDefaultsParam bool,
-	useLatestReleasedEvmVersionParam bool,
-	useLatestPreReleasedEvmVersionParam bool,
+	useLatestReleasedVMVersionParam bool,
+	useLatestPreReleasedVMVersionParam bool,
 	customVMRepoURLParam string,
 	customVMBranchParam string,
 	customVMBuildScriptParam string,
@@ -118,12 +119,12 @@ func CallCreate(
 	forceCreate = forceCreateParam
 	genesisFile = genesisFileParam
 	createFlags.useSubnetEvm = useSubnetEvmParam
-	createFlags.evmVersion = evmVersionParam
+	createFlags.vmVersion = vmVersionParam
 	createFlags.chainID = evmChainIDParam
 	createFlags.tokenSymbol = tokenSymbolParam
 	createFlags.useDefaults = useDefaultsParam
-	createFlags.useLatestReleasedEvmVersion = useLatestReleasedEvmVersionParam
-	createFlags.useLatestPreReleasedEvmVersion = useLatestPreReleasedEvmVersionParam
+	createFlags.useLatestReleasedVmVersion = useLatestReleasedVMVersionParam
+	createFlags.useLatestPreReleasedVmVersion = useLatestPreReleasedVMVersionParam
 	createFlags.useCustomVm = useCustomParam
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
@@ -136,6 +137,7 @@ func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	subnetName := args[0]
+
 	if app.GenesisExists(subnetName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
@@ -144,27 +146,31 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("subnet name %q is invalid: %w", subnetName, err)
 	}
 
+	// version flags exclusiveness
+	if !flags.EnsureMutuallyExclusive([]bool{
+		createFlags.useLatestReleasedVmVersion,
+		createFlags.useLatestPreReleasedVmVersion,
+		createFlags.vmVersion != "",
+	}) {
+		return errMutuallyExlusiveVersionOptions
+	}
+
+	// genesis flags exclusiveness
+	if genesisFile != "" && (createFlags.chainID != 0 || createFlags.tokenSymbol != "" || createFlags.useDefaults) {
+		return errMutuallyExclusiveVMConfigOptions
+	}
+
 	// if given custom repo info, assumes custom VM
 	if vmFile != "" || customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
 		createFlags.useCustomVm = true
 	}
 
+	// vm type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVm}) {
-		return errors.New("too many VMs selected. Provide at most one VM selection flag")
+		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
-	if !flags.EnsureMutuallyExclusive([]bool{
-		createFlags.useLatestReleasedEvmVersion,
-		createFlags.useLatestPreReleasedEvmVersion,
-		createFlags.evmVersion != "",
-	}) {
-		return errMutuallyExlusiveVersionOptions
-	}
-
-	if genesisFile != "" && (createFlags.chainID != 0 || createFlags.tokenSymbol != "" || createFlags.useDefaults) {
-		return errMutuallyVMConfigOptions
-	}
-
+	// get vm kind
 	vmType, err := promptVMType(createFlags.useSubnetEvm, createFlags.useCustomVm)
 	if err != nil {
 		return err
@@ -175,51 +181,53 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		sc           *models.Sidecar
 	)
 
-	evmVersion := createFlags.evmVersion
-	if createFlags.useLatestReleasedEvmVersion {
-		evmVersion = latest
-	}
-	if createFlags.useLatestPreReleasedEvmVersion {
-		evmVersion = preRelease
-	}
-	if evmVersion != latest && evmVersion != preRelease && evmVersion != "" && !semver.IsValid(evmVersion) {
-		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", evmVersion)
-	}
-
-	genesisFileIsEVM := false
-	if genesisFile != "" {
-		genesisFileIsEVM, err = utils.PathIsSubnetEVMGenesis(genesisFile)
-		if err != nil {
-			return err
-		}
-	}
-
-	if vmType == models.SubnetEvm && genesisFile != "" && !genesisFileIsEVM {
-		return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
-	}
-
 	if vmType == models.SubnetEvm {
-		evmVersion, err = promptVMVersion(app, constants.SubnetEVMRepoName, evmVersion)
+		// get vm version
+		vmVersion := createFlags.vmVersion
+		if createFlags.useLatestReleasedVmVersion {
+			vmVersion = latest
+		}
+		if createFlags.useLatestPreReleasedVmVersion {
+			vmVersion = preRelease
+		}
+		if vmVersion != latest && vmVersion != preRelease && vmVersion != "" && !semver.IsValid(vmVersion) {
+			return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
+		}
+		vmVersion, err = promptVMVersion(app, constants.SubnetEVMRepoName, vmVersion)
 		if err != nil {
 			return err
 		}
-	}
 
-	var useTeleporter *bool
-	flagName := "teleporter"
-	if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
-		useTeleporter = &createFlags.useTeleporter
-	}
-	params, tokenSymbol, err := promptSubnetEVMGenesisParams(
-		evmVersion,
-		createFlags.chainID,
-		createFlags.tokenSymbol,
-		useTeleporter,
-		createFlags.useDefaults,
-		createFlags.useWarp,
-	)
-	if err != nil {
-		return err
+		if genesisFile != "" {
+			// load given genesis
+			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
+				return err
+			} else if !evmCompatibleGenesis {
+				return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
+			}
+			ux.Logger.PrintToUser("importing genesis for subnet %s", subnetName)
+			genesisBytes, err = os.ReadFile(genesisFile)
+			if err != nil {
+				return err
+			}
+		} else {
+			var useTeleporterFlag *bool
+			flagName := "teleporter"
+			if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
+				useTeleporterFlag = &createFlags.useTeleporter
+			}
+			params, tokenSymbol, err := promptSubnetEVMGenesisParams(
+				vmVersion,
+				createFlags.chainID,
+				createFlags.tokenSymbol,
+				useTeleporterFlag,
+				createFlags.useDefaults,
+				createFlags.useWarp,
+			)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	var teleporterInfo *teleporter.Info
@@ -236,7 +244,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			app,
 			subnetName,
 			genesisFile,
-			evmVersion,
+			vmVersion,
 			true,
 			createFlags.chainID,
 			tokenSymbol,
@@ -269,11 +277,15 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		sc.TeleporterReady = true
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
-		if genesisFile != "" && genesisFileIsEVM {
-			// evm genesis file was given. make appropriate checks and customizations for teleporter
-			genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())
-			if err != nil {
+		if genesisFile != "" {
+			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
 				return err
+			} else if !evmCompatibleGenesis {
+				// evm genesis file was given. make appropriate checks and customizations for teleporter
+				genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
