@@ -457,22 +457,6 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	return docker.StartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
 }
 
-func RunSSHUploadClustersConfig(host *models.Host, localClustersConfigPath string) error {
-	remoteNodesDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.NodesDir)
-	if err := host.MkdirAll(
-		remoteNodesDir,
-		constants.SSHDirOpsTimeout,
-	); err != nil {
-		return err
-	}
-	remoteClustersConfigPath := filepath.Join(remoteNodesDir, constants.ClustersConfigFileName)
-	return host.Upload(
-		localClustersConfigPath,
-		remoteClustersConfigPath,
-		constants.SSHFileOpsTimeout,
-	)
-}
-
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
 func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
@@ -502,21 +486,8 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
-// RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
-func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath string) error {
-	// name: copy exported subnet VM spec to cloud server
-	return host.Upload(
-		exportPath,
-		cloudServerSubnetPath,
-		constants.SSHFileOpsTimeout,
-	)
-}
-
 // RunSSHTrackSubnet enables tracking of specified subnet
 func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag string) error {
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
-		return err
-	}
 	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
@@ -529,9 +500,6 @@ func RunSSHTrackSubnet(host *models.Host, subnetName, importPath, networkFlag st
 // RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
 func RunSSHUpdateSubnet(host *models.Host, subnetName, importPath string) error {
 	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
-		return err
-	}
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
 		return err
 	}
 	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName), nil, constants.SSHScriptTimeout); err != nil {

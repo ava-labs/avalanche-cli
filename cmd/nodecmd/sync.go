@@ -97,14 +97,6 @@ func trackSubnet(
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
-			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := ssh.RunSSHUploadClustersConfig(host, app.GetClustersConfigPath()); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-			}
-
 			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetExportPath, networkFlag); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
