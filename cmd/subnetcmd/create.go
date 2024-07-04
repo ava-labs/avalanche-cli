@@ -182,7 +182,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if createFlags.useLatestPreReleasedEvmVersion {
 		evmVersion = preRelease
 	}
-
 	if evmVersion != latest && evmVersion != preRelease && evmVersion != "" && !semver.IsValid(evmVersion) {
 		return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", evmVersion)
 	}
@@ -200,15 +199,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if vmType == models.SubnetEvm {
-		evmVersion, err = vm.GetVMVersion(app, constants.SubnetEVMRepoName, evmVersion)
-		if err != nil {
-			return err
-		}
-	}
-
-	var teleporterInfo *teleporter.Info
-	if createFlags.useTeleporter {
-		teleporterInfo, err = teleporter.GetInfo(app)
+		evmVersion, err = promptVMVersion(app, constants.SubnetEVMRepoName, evmVersion)
 		if err != nil {
 			return err
 		}
@@ -219,7 +210,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
 		useTeleporter = &createFlags.useTeleporter
 	}
-
 	params, tokenSymbol, err := promptSubnetEVMGenesisParams(
 		evmVersion,
 		createFlags.chainID,
@@ -230,6 +220,14 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	)
 	if err != nil {
 		return err
+	}
+
+	var teleporterInfo *teleporter.Info
+	if params.useTeleporter || params.useExternalGasToken {
+		teleporterInfo, err = teleporter.GetInfo(app)
+		if err != nil {
+			return err
+		}
 	}
 
 	switch vmType {

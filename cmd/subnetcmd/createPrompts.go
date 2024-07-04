@@ -5,10 +5,15 @@ package subnetcmd
 import (
 	"fmt"
 	"math/big"
+	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -551,4 +556,100 @@ func promptPermissioning(
 		break
 	}
 	return params, nil
+}
+
+func promptVMVersion(
+	app *application.Avalanche,
+	repoName string,
+	vmVersion string,
+) (string, error) {
+	switch vmVersion {
+	case "latest":
+		return app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+			constants.AvaLabsOrg,
+			repoName,
+		))
+	case "pre-release":
+		return app.Downloader.GetLatestPreReleaseVersion(
+			constants.AvaLabsOrg,
+			repoName,
+		)
+	case "":
+		return promptUserForVMVersion(app, repoName)
+	}
+	return vmVersion, nil
+}
+
+func promptUserForVMVersion(
+	app *application.Avalanche,
+	repoName string,
+) (string, error) {
+	var (
+		latestReleaseVersion    string
+		latestPreReleaseVersion string
+		err                     error
+	)
+	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
+		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
+			binutils.GetGithubLatestReleaseURL(
+				constants.AvaLabsOrg,
+				repoName,
+			),
+		)
+		if err != nil {
+			return "", err
+		}
+		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
+			constants.AvaLabsOrg,
+			repoName,
+		)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		latestReleaseVersion = evm.Version
+		latestPreReleaseVersion = evm.Version
+	}
+
+	useCustom := "Specify custom version"
+	useLatestRelease := "Use latest release version"
+	useLatestPreRelease := "Use latest pre-release version"
+
+	defaultPrompt := "Version"
+
+	versionOptions := []string{useLatestRelease, useCustom}
+	if latestPreReleaseVersion != latestReleaseVersion {
+		versionOptions = []string{useLatestPreRelease, useLatestRelease, useCustom}
+	}
+
+	versionOption, err := app.Prompt.CaptureList(
+		defaultPrompt,
+		versionOptions,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	if versionOption == useLatestPreRelease {
+		return latestPreReleaseVersion, err
+	}
+
+	if versionOption == useLatestRelease {
+		return latestReleaseVersion, err
+	}
+
+	// prompt for version
+	versions, err := app.Downloader.GetAllReleasesForRepo(
+		constants.AvaLabsOrg,
+		constants.SubnetEVMRepoName,
+	)
+	if err != nil {
+		return "", err
+	}
+	version, err := app.Prompt.CaptureList("Pick the version for this VM", versions)
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
 }

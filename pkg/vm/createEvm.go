@@ -13,22 +13,16 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
-	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
-
-var versionComments = map[string]string{
-	"v0.6.0-fuji": " (recommended for fuji durango)",
-}
 
 func CreateEvmSubnetConfig(
 	app *application.Avalanche,
@@ -247,110 +241,4 @@ func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) e
 	return errors.New(
 		"none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue",
 	)
-}
-
-func GetVMVersion(
-	app *application.Avalanche,
-	repoName string,
-	vmVersion string,
-) (string, error) {
-	var err error
-	switch vmVersion {
-	case "latest":
-		vmVersion, err = app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-			constants.AvaLabsOrg,
-			repoName,
-		))
-		if err != nil {
-			return "", err
-		}
-	case "pre-release":
-		vmVersion, err = app.Downloader.GetLatestPreReleaseVersion(
-			constants.AvaLabsOrg,
-			repoName,
-		)
-		if err != nil {
-			return "", err
-		}
-	case "":
-		vmVersion, err = askForVMVersion(app, repoName)
-		if err != nil {
-			return "", err
-		}
-	}
-	return vmVersion, nil
-}
-
-func askForVMVersion(
-	app *application.Avalanche,
-	repoName string,
-) (string, error) {
-	var (
-		latestReleaseVersion    string
-		latestPreReleaseVersion string
-		err                     error
-	)
-	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
-		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
-			binutils.GetGithubLatestReleaseURL(
-				constants.AvaLabsOrg,
-				repoName,
-			),
-		)
-		if err != nil {
-			return "", err
-		}
-		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
-			constants.AvaLabsOrg,
-			repoName,
-		)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		latestReleaseVersion = evm.Version
-		latestPreReleaseVersion = evm.Version
-	}
-
-	useCustom := "Specify custom version"
-	useLatestRelease := "Use latest release version" + versionComments[latestReleaseVersion]
-	useLatestPreRelease := "Use latest pre-release version" + versionComments[latestPreReleaseVersion]
-
-	defaultPrompt := "Version"
-
-	versionOptions := []string{useLatestRelease, useCustom}
-	if latestPreReleaseVersion != latestReleaseVersion {
-		versionOptions = []string{useLatestPreRelease, useLatestRelease, useCustom}
-	}
-
-	versionOption, err := app.Prompt.CaptureList(
-		defaultPrompt,
-		versionOptions,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	if versionOption == useLatestPreRelease {
-		return latestPreReleaseVersion, err
-	}
-
-	if versionOption == useLatestRelease {
-		return latestReleaseVersion, err
-	}
-
-	// prompt for version
-	versions, err := app.Downloader.GetAllReleasesForRepo(
-		constants.AvaLabsOrg,
-		constants.SubnetEVMRepoName,
-	)
-	if err != nil {
-		return "", err
-	}
-	version, err := app.Prompt.CaptureList("Pick the version for this VM", versions)
-	if err != nil {
-		return "", err
-	}
-
-	return version, nil
 }
