@@ -564,12 +564,12 @@ func promptVMVersion(
 	vmVersion string,
 ) (string, error) {
 	switch vmVersion {
-	case "latest":
+	case latest:
 		return app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
-	case "pre-release":
+	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,

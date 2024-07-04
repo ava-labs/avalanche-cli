@@ -170,8 +170,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				if err != nil {
 					return err
 				}
-				switch option {
-				case erc20Option:
+				if option == erc20Option {
 					erc20TokenAddr, err := app.Prompt.CaptureAddress(
 						"Enter the address of the ERC-20 Token",
 					)

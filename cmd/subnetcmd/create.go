@@ -34,15 +34,15 @@ const (
 
 type CreateFlags struct {
 	useSubnetEvm                  bool
-	useCustomVm                   bool
+	useCustomVM                   bool
 	chainID                       uint64
 	tokenSymbol                   string
 	useDefaults                   bool
 	useWarp                       bool
 	useTeleporter                 bool
 	vmVersion                     string
-	useLatestReleasedVmVersion    bool
-	useLatestPreReleasedVmVersion bool
+	useLatestReleasedVMVersion    bool
+	useLatestPreReleasedVMVersion bool
 }
 
 var (
@@ -80,10 +80,10 @@ configuration, pass the -f flag.`,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
-	cmd.Flags().BoolVar(&createFlags.useCustomVm, "custom", false, "use a custom VM template")
+	cmd.Flags().BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM template")
 	cmd.Flags().StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
-	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedVmVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
-	cmd.Flags().BoolVar(&createFlags.useLatestReleasedVmVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedVMVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
+	cmd.Flags().BoolVar(&createFlags.useLatestReleasedVMVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
 	cmd.Flags().BoolVar(&createFlags.useDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles/teleporter with Subnet-EVM")
@@ -123,9 +123,9 @@ func CallCreate(
 	createFlags.chainID = evmChainIDParam
 	createFlags.tokenSymbol = tokenSymbolParam
 	createFlags.useDefaults = useDefaultsParam
-	createFlags.useLatestReleasedVmVersion = useLatestReleasedVMVersionParam
-	createFlags.useLatestPreReleasedVmVersion = useLatestPreReleasedVMVersionParam
-	createFlags.useCustomVm = useCustomParam
+	createFlags.useLatestReleasedVMVersion = useLatestReleasedVMVersionParam
+	createFlags.useLatestPreReleasedVMVersion = useLatestPreReleasedVMVersionParam
+	createFlags.useCustomVM = useCustomParam
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
 	customVMBuildScript = customVMBuildScriptParam
@@ -148,8 +148,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	// version flags exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{
-		createFlags.useLatestReleasedVmVersion,
-		createFlags.useLatestPreReleasedVmVersion,
+		createFlags.useLatestReleasedVMVersion,
+		createFlags.useLatestPreReleasedVMVersion,
 		createFlags.vmVersion != "",
 	}) {
 		return errMutuallyExlusiveVersionOptions
@@ -162,16 +162,16 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	// if given custom repo info, assumes custom VM
 	if vmFile != "" || customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
-		createFlags.useCustomVm = true
+		createFlags.useCustomVM = true
 	}
 
 	// vm type exclusiveness
-	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVm}) {
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVM}) {
 		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
 	// get vm kind
-	vmType, err := promptVMType(createFlags.useSubnetEvm, createFlags.useCustomVm)
+	vmType, err := promptVMType(createFlags.useSubnetEvm, createFlags.useCustomVM)
 	if err != nil {
 		return err
 	}
@@ -181,13 +181,15 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		sc           *models.Sidecar
 	)
 
+	var teleporterInfo *teleporter.Info
+
 	if vmType == models.SubnetEvm {
 		// get vm version
 		vmVersion := createFlags.vmVersion
-		if createFlags.useLatestReleasedVmVersion {
+		if createFlags.useLatestReleasedVMVersion {
 			vmVersion = latest
 		}
-		if createFlags.useLatestPreReleasedVmVersion {
+		if createFlags.useLatestPreReleasedVMVersion {
 			vmVersion = preRelease
 		}
 		if vmVersion != latest && vmVersion != preRelease && vmVersion != "" && !semver.IsValid(vmVersion) {
@@ -227,35 +229,31 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-		}
-	}
 
-	var teleporterInfo *teleporter.Info
-	if params.useTeleporter || params.useExternalGasToken {
-		teleporterInfo, err = teleporter.GetInfo(app)
-		if err != nil {
-			return err
-		}
-	}
+			if params.useTeleporter || params.useExternalGasToken {
+				teleporterInfo, err = teleporter.GetInfo(app)
+				if err != nil {
+					return err
+				}
+			}
 
-	switch vmType {
-	case models.SubnetEvm:
-		genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
-			app,
-			subnetName,
-			genesisFile,
-			vmVersion,
-			true,
-			createFlags.chainID,
-			tokenSymbol,
-			createFlags.useDefaults,
-			createFlags.useWarp,
-			teleporterInfo,
-		)
-		if err != nil {
-			return err
+			genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
+				app,
+				subnetName,
+				genesisFile,
+				vmVersion,
+				true,
+				createFlags.chainID,
+				tokenSymbol,
+				createFlags.useDefaults,
+				createFlags.useWarp,
+				teleporterInfo,
+			)
+			if err != nil {
+				return err
+			}
 		}
-	case models.CustomVM:
+	} else {
 		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
 			app,
 			subnetName,
@@ -269,11 +267,9 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	default:
-		return errors.New("not implemented")
 	}
 
-	if params.useTeleporter {
+	if teleporterInfo != nil {
 		sc.TeleporterReady = true
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
