@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -438,7 +439,7 @@ func (*realPrompter) CaptureXChainAddress(promptStr string, network models.Netwo
 func (*realPrompter) CaptureAddress(promptStr string) (common.Address, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateAddress,
+		Validate: ValidateAddress,
 	}
 
 	addressStr, err := prompt.Run()
@@ -876,11 +877,149 @@ func CaptureBoolFlag(
 	if flagValue {
 		return true, nil
 	}
-	if flag := cmd.Flags().Lookup(flagName); flag == nil {
-		return false, fmt.Errorf("flag configuration %q not found for cmd %q", flagName, cmd.Use)
-	} else if !flag.Changed {
+	if flag := cmd.Flags().Lookup(flagName); flag == nil || !flag.Changed {
 		return prompt.CaptureYesNo(promptMsg)
 	} else {
 		return cmd.Flags().GetBool(flagName)
 	}
+}
+
+func PromptChain(
+	prompter Prompter,
+	prompt string,
+	subnetNames []string,
+	avoidPChain bool,
+	avoidXChain bool,
+	avoidCChain bool,
+	avoidSubnet string,
+) (bool, bool, bool, bool, string, error) {
+	pChainOption := "P-Chain"
+	xChainOption := "X-Chain"
+	cChainOption := "C-Chain"
+	notListedOption := "My blockchain isn't listed"
+	subnetOptions := []string{}
+	if !avoidPChain {
+		subnetOptions = append(subnetOptions, pChainOption)
+	}
+	if !avoidXChain {
+		subnetOptions = append(subnetOptions, xChainOption)
+	}
+	if !avoidCChain {
+		subnetOptions = append(subnetOptions, cChainOption)
+	}
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
+	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Subnet " + s })...)
+	subnetOptions = append(subnetOptions, notListedOption)
+	subnetOption, err := prompter.CaptureListWithSize(
+		prompt,
+		subnetOptions,
+		11,
+	)
+	if err != nil {
+		return false, false, false, false, "", err
+	}
+	if subnetOption == notListedOption {
+		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
+		return true, false, false, false, "", nil
+	}
+	switch subnetOption {
+	case pChainOption:
+		return false, true, false, false, "", nil
+	case xChainOption:
+		return false, false, true, false, "", nil
+	case cChainOption:
+		return false, false, false, true, "", nil
+	default:
+		return false, false, false, false, strings.TrimPrefix(subnetOption, "Subnet "), nil
+	}
+}
+
+func PromptPrivateKey(
+	prompter Prompter,
+	goal string,
+	keyDir string,
+	getKey func(string, models.Network, bool) (*key.SoftKey, error),
+	genesisAddress string,
+	genesisPrivateKey string,
+) (string, error) {
+	privateKey := ""
+	cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
+	customKeyOpt := "Custom"
+	genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Allocated address %s", genesisAddress)
+	keyOptions := []string{cliKeyOpt, customKeyOpt}
+	if genesisPrivateKey != "" {
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+	}
+	keyOption, err := prompter.CaptureList(
+		fmt.Sprintf("Which private key do you want to use to %s?", goal),
+		keyOptions,
+	)
+	if err != nil {
+		return "", err
+	}
+	switch keyOption {
+	case cliKeyOpt:
+		keyName, err := CaptureKeyName(prompter, goal, keyDir, true)
+		if err != nil {
+			return "", err
+		}
+		k, err := getKey(keyName, models.NewLocalNetwork(), false)
+		if err != nil {
+			return "", err
+		}
+		privateKey = k.PrivKeyHex()
+	case customKeyOpt:
+		privateKey, err = prompter.CaptureString("Private Key")
+		if err != nil {
+			return "", err
+		}
+	case genesisKeyOpt:
+		privateKey = genesisPrivateKey
+	}
+	return privateKey, nil
+}
+
+func PromptAddress(
+	prompter Prompter,
+	goal string,
+	keyDir string,
+	getKey func(string, models.Network, bool) (*key.SoftKey, error),
+	genesisAddress string,
+) (string, error) {
+	address := ""
+	cliKeyOpt := "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
+	customKeyOpt := "Custom"
+	genesisKeyOpt := fmt.Sprintf("Use the Genesis Allocated address %s", genesisAddress)
+	keyOptions := []string{cliKeyOpt, customKeyOpt}
+	if genesisAddress != "" {
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+	}
+	keyOption, err := prompter.CaptureList(
+		fmt.Sprintf("Which address do you want to %s?", goal),
+		keyOptions,
+	)
+	if err != nil {
+		return "", err
+	}
+	switch keyOption {
+	case cliKeyOpt:
+		keyName, err := CaptureKeyName(prompter, goal, keyDir, true)
+		if err != nil {
+			return "", err
+		}
+		k, err := getKey(keyName, models.NewLocalNetwork(), false)
+		if err != nil {
+			return "", err
+		}
+		address = k.C()
+	case customKeyOpt:
+		addr, err := prompter.CaptureAddress("Address")
+		if err != nil {
+			return "", err
+		}
+		address = addr.Hex()
+	case genesisKeyOpt:
+		address = genesisAddress
+	}
+	return address, nil
 }

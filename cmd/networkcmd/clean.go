@@ -52,11 +52,6 @@ func clean(*cobra.Command, []string) error {
 		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
 	}
 
-	defaultSnapshotRelayerConfigPath := filepath.Join(app.GetAWMRelayerSnapshotConfsDir(), constants.DefaultSnapshotName+jsonExt)
-	if err := os.RemoveAll(defaultSnapshotRelayerConfigPath); err != nil {
-		return err
-	}
-
 	if err := binutils.KillgRPCServerProcess(app); err != nil {
 		app.Log.Warn("failed killing server process", zap.Error(err))
 	} else {
@@ -67,14 +62,6 @@ func clean(*cobra.Command, []string) error {
 		app.GetAWMRelayerRunPath(),
 		app.GetAWMRelayerStorageDir(),
 	); err != nil {
-		return err
-	}
-
-	if err := os.RemoveAll(app.GetAWMRelayerConfigPath()); err != nil {
-		return err
-	}
-
-	if err := os.RemoveAll(app.GetExtraLocalNetworkDataPath()); err != nil {
 		return err
 	}
 

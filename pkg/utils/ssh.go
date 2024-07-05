@@ -18,10 +18,66 @@ import (
 // GetSSHConnectionString returns the SSH connection string for the given public IP and certificate file path.
 func GetSSHConnectionString(publicIP, certFilePath string) string {
 	if certFilePath != "" {
-		return fmt.Sprintf("ssh %s %s@%s -i %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
-	} else {
-		return fmt.Sprintf("ssh %s %s@%s", constants.AnsibleSSHUseAgentParams, constants.AnsibleSSHUser, publicIP)
+		certFilePath = fmt.Sprintf("-i %s", certFilePath)
 	}
+	return fmt.Sprintf("ssh %s %s@%s %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
+}
+
+// GetSCPTargetPath returns the target path for the given source path and target directory.
+func GetSCPTargetPath(ip, path string) string {
+	if ip == "" {
+		return path
+	}
+	return fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, ip, path)
+}
+
+// GetSCPCommandString returns the SCP command string for the given source and destination paths.
+func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destIP, destPath string, recursive, withCompression bool) (string, error) {
+	scpParams := constants.AnsibleSSHShellParams + " -B -o LogLevel=Error"
+	if sourceIP == "" && destIP == "" {
+		return "", fmt.Errorf("source or destination should be remote")
+	}
+	if sourcePath == "" || destPath == "" {
+		return "", fmt.Errorf("source and destination path are required")
+	}
+	// end of checks
+	if recursive {
+		scpParams += " -r"
+	}
+	if withCompression {
+		scpParams += " -C"
+	}
+	if certFilePath != "" {
+		scpParams += fmt.Sprintf(" -i %s", certFilePath)
+	}
+	if sourceIP != "" && destIP != "" {
+		scpParams += " -3"
+	}
+	if sourceIP != "" {
+		sourcePath = GetSCPTargetPath(sourceIP, sourcePath)
+	}
+	if destIP != "" {
+		destPath = GetSCPTargetPath(destIP, destPath)
+	}
+
+	return fmt.Sprintf("scp %s %s %s", scpParams, sourcePath, destPath), nil
+}
+
+// SplitSCPPath splits the given path into host and path.
+func SplitSCPPath(path string) (string, string) {
+	if !strings.Contains(path, ":") {
+		return "", path
+	}
+	parts := strings.Split(path, ":")
+	return parts[0], parts[1]
+}
+
+// CombineSCPPath combines the given host and path into a single item for scp.
+func CombineSCPPath(host, path string) string {
+	if host != "" {
+		return fmt.Sprintf("%s:%s", host, path)
+	}
+	return path
 }
 
 // isSSHAgentAvailable checks if the SSH agent is available.

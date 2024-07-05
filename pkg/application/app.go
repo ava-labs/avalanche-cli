@@ -119,20 +119,12 @@ func (app *Avalanche) GetAWMRelayerStorageDir() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerStorageDir)
 }
 
-func (app *Avalanche) GetAWMRelayerConfigPath() string {
-	return filepath.Join(app.GetRunDir(), constants.AWMRelayerConfigFilename)
-}
-
 func (app *Avalanche) GetAWMRelayerLogPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerLogFilename)
 }
 
 func (app *Avalanche) GetAWMRelayerRunPath() string {
 	return filepath.Join(app.GetRunDir(), constants.AWMRelayerRunFilename)
-}
-
-func (app *Avalanche) GetAWMRelayerSnapshotConfsDir() string {
-	return filepath.Join(app.GetSnapshotsDir(), constants.AWMRelayerSnapshotConfsDir)
 }
 
 func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
@@ -148,14 +140,6 @@ func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
 		return filepath.Join(baseDir, constants.AWMRelayerStorageDir)
 	}
 	return filepath.Join(app.GetAWMRelayerServiceDir(""), constants.AWMRelayerStorageDir)
-}
-
-func (app *Avalanche) GetExtraLocalNetworkDataPath() string {
-	return filepath.Join(app.GetRunDir(), constants.ExtraLocalNetworkDataFilename)
-}
-
-func (app *Avalanche) GetExtraLocalNetworkSnapshotsDir() string {
-	return filepath.Join(app.GetSnapshotsDir(), constants.ExtraLocalNetworkDataSnapshotsDir)
 }
 
 func (app *Avalanche) GetSubnetEVMBinDir() string {
@@ -437,6 +421,18 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	return os.WriteFile(keyPath, keyBytes, constants.WriteReadReadPerms)
 }
 
+func (app *Avalanche) HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
+	if _, err := app.LoadRawGenesis(subnetName); err != nil {
+		return false, nil, err
+	}
+	// from here, we are sure to have a genesis file
+	_, err := app.LoadEvmGenesis(subnetName)
+	if err != nil {
+		return false, err, nil
+	}
+	return true, nil, nil
+}
+
 func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	genesisPath := app.GetGenesisPath(subnetName)
 	bs, err := os.ReadFile(genesisPath)
@@ -645,6 +641,24 @@ func (app *Avalanche) GetSubnetNames() ([]string, error) {
 		}
 	}
 	return names, nil
+}
+
+func (app *Avalanche) GetSubnetNamesOnNetwork(network models.Network) ([]string, error) {
+	subnetNames, err := app.GetSubnetNames()
+	if err != nil {
+		return nil, err
+	}
+	filtered := []string{}
+	for _, subnetName := range subnetNames {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return nil, err
+		}
+		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
+			filtered = append(filtered, subnetName)
+		}
+	}
+	return filtered, nil
 }
 
 func (*Avalanche) readFile(path string) ([]byte, error) {

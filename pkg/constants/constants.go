@@ -120,8 +120,7 @@ const (
 	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
 	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
 
-	ExtraLocalNetworkDataFilename     = "extra-local-network-data.json"
-	ExtraLocalNetworkDataSnapshotsDir = "extra-local-network-data"
+	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
 	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
 	ExpectedCliInstallErr      = "resource temporarily unavailable"
@@ -192,6 +191,7 @@ const (
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
 	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
 	ConfigSingleNodeEnabledKey    = "SingleNodeEnabled"
+	ConfigSnapshotsAutoSaveKey    = "SnapshotsAutoSaveEnabled"
 	OldConfigFileName             = ".avalanche-cli.json"
 	OldMetricsConfigFileName      = ".avalanche-cli/config"
 	DefaultConfigFileName         = ".avalanche-cli/config.json"
@@ -337,7 +337,8 @@ const (
 	CodespaceNameEnvVar = "CODESPACE_NAME"
 
 	// E2E
-	E2ENetworkPrefix        = "172.18.0"
+	E2ENetworkPrefix        = "192.168.222"
+	E2EListenPrefix         = "192.168.223"
 	E2EClusterName          = "e2e"
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
@@ -346,4 +347,9 @@ const (
 
 	// Docker
 	RemoteDockeSocketPath = "/var/run/docker.sock"
+
+	// Avalanche InterChain Token Transfer
+	ICTTDir    = "avalanche-interchain-token-transfer"
+	ICTTURL    = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
+	ICTTBranch = "main"
 )

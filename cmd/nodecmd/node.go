@@ -42,6 +42,8 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newUpgradeCmd())
 	// node ssh
 	cmd.AddCommand(newSSHCmd())
+	// node scp
+	cmd.AddCommand(newSCPCmd())
 	// node whitelist
 	cmd.AddCommand(newWhitelistCmd())
 	// node refresh-ips

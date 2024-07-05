@@ -22,7 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -90,6 +90,15 @@ type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, erro
 
 type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 
+type TeleporterEsp struct {
+	SkipDeploy                   bool
+	Version                      string
+	MessengerContractAddressPath string
+	MessengerDeployerAddressPath string
+	MessengerDeployerTxPath      string
+	RegistryBydecodePath         string
+}
+
 type DeployInfo struct {
 	SubnetID                   ids.ID
 	BlockchainID               ids.ID
@@ -100,11 +109,11 @@ type DeployInfo struct {
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, chainGenesis, genesisPath, skipTeleporter, subnetIDStr)
+	return d.doDeploy(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
 }
 
 func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
@@ -370,7 +379,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -389,8 +398,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 	defer cli.Close()
 
-	runDir := d.app.GetRunDir()
-
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
@@ -403,10 +410,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// check for network status
 	networkBooted := true
 	clusterInfo, err := WaitForHealthy(ctx, cli)
-	rootDir := clusterInfo.GetRootDataDir()
+	logRootDir := clusterInfo.GetLogRootDir()
 	if err != nil {
 		if !server.IsServerError(err, server.ErrNotBootstrapped) {
-			FindErrorLogs(rootDir, backendLogDir)
+			FindErrorLogs(logRootDir, backendLogDir)
 			return nil, fmt.Errorf("failed to query network health: %w", err)
 		} else {
 			networkBooted = false
@@ -439,14 +446,14 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	if !networkBooted {
-		if err := d.startNetwork(ctx, cli, avalancheGoBinPath, runDir); err != nil {
-			FindErrorLogs(rootDir, backendLogDir)
+		if err := d.startNetwork(ctx, cli, avalancheGoBinPath); err != nil {
+			FindErrorLogs(logRootDir, backendLogDir)
 			return nil, err
 		}
 	}
 
 	// latest check for rpc compatibility
-	statusChecker := localnetworkinterface.NewStatusChecker()
+	statusChecker := localnet.NewStatusChecker()
 	_, avagoRPCVersion, _, err := statusChecker.GetCurrentNetworkVersion()
 	if err != nil {
 		return nil, err
@@ -465,10 +472,10 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	// get VM info
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		FindErrorLogs(clusterInfo.GetRootDataDir(), backendLogDir)
+		FindErrorLogs(clusterInfo.GetLogRootDir(), backendLogDir)
 		return nil, fmt.Errorf("failed to query network health: %w", err)
 	}
-	rootDir = clusterInfo.GetRootDataDir()
+	logRootDir = clusterInfo.GetLogRootDir()
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
 		return nil, fmt.Errorf("subnet %s has already been deployed", chain)
@@ -541,20 +548,20 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		blockchainSpecs,
 	)
 	if err != nil {
-		FindErrorLogs(rootDir, backendLogDir)
+		FindErrorLogs(logRootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
 		}
 		return nil, fmt.Errorf("failed to deploy blockchain: %w", err)
 	}
-	rootDir = clusterInfo.GetRootDataDir()
+	logRootDir = clusterInfo.GetLogRootDir()
 
 	d.app.Log.Debug(deployBlockchainsInfo.String())
 
 	clusterInfo, err = WaitForHealthy(ctx, cli)
 	if err != nil {
-		FindErrorLogs(rootDir, backendLogDir)
+		FindErrorLogs(logRootDir, backendLogDir)
 		pluginRemoveErr := d.removeInstalledPlugin(chainVMID)
 		if pluginRemoveErr != nil {
 			ux.Logger.PrintToUser("Failed to remove plugin binary: %s", pluginRemoveErr)
@@ -566,18 +573,54 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		teleporterMessengerAddress string
 		teleporterRegistryAddress  string
 	)
-	if sc.TeleporterReady && !skipTeleporter {
+	if sc.TeleporterReady && !teleporterEsp.SkipDeploy {
 		network := models.NewLocalNetwork()
 		// get relayer address
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
 		if err != nil {
 			return nil, err
 		}
+		// relayer config file
+		_, relayerConfigPath, err := GetAWMRelayerConfigPath()
+		if err != nil {
+			return nil, err
+		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
+		td := teleporter.Deployer{}
+		if teleporterEsp.MessengerContractAddressPath != "" {
+			if err := td.SetAssetsFromPaths(
+				teleporterEsp.MessengerContractAddressPath,
+				teleporterEsp.MessengerDeployerAddressPath,
+				teleporterEsp.MessengerDeployerTxPath,
+				teleporterEsp.RegistryBydecodePath,
+			); err != nil {
+				return nil, err
+			}
+		} else {
+			teleporterVersion := ""
+			switch {
+			case teleporterEsp.Version != "" && teleporterEsp.Version != "latest":
+				teleporterVersion = teleporterEsp.Version
+			case sc.TeleporterVersion != "":
+				teleporterVersion = sc.TeleporterVersion
+			default:
+				teleporterInfo, err := teleporter.GetInfo(d.app)
+				if err != nil {
+					return nil, err
+				}
+				teleporterVersion = teleporterInfo.Version
+			}
+			if err := td.DownloadAssets(
+				d.app.GetTeleporterBinDir(),
+				teleporterVersion,
+			); err != nil {
+				return nil, err
+			}
+		}
 		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
 			d.app,
-			sc.TeleporterVersion,
+			&td,
 			network,
 			"c-chain",
 			"C",
@@ -592,7 +635,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 				return nil, err
 			}
 			if err = teleporter.UpdateRelayerConfig(
-				d.app.GetAWMRelayerConfigPath(),
+				relayerConfigPath,
 				d.app.GetAWMRelayerStorageDir(),
 				relayerAddress,
 				relayerPrivateKey,
@@ -604,7 +647,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			); err != nil {
 				return nil, err
 			}
-			if err := WriteExtraLocalNetworkData(d.app, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
+			if err := localnet.WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
 				return nil, err
 			}
 		}
@@ -627,7 +670,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		_, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
 			d.app,
-			sc.TeleporterVersion,
+			&td,
 			network,
 			chain,
 			blockchainID,
@@ -637,7 +680,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			return nil, err
 		}
 		if err = teleporter.UpdateRelayerConfig(
-			d.app.GetAWMRelayerConfigPath(),
+			relayerConfigPath,
 			d.app.GetAWMRelayerStorageDir(),
 			relayerAddress,
 			relayerPrivateKey,
@@ -654,7 +697,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			// start relayer
 			if err := teleporter.DeployRelayer(
 				d.app.GetAWMRelayerBinDir(),
-				d.app.GetAWMRelayerConfigPath(),
+				relayerConfigPath,
 				d.app.GetAWMRelayerLogPath(),
 				d.app.GetAWMRelayerRunPath(),
 				d.app.GetAWMRelayerStorageDir(),
@@ -1017,11 +1060,26 @@ func (d *LocalDeployer) startNetwork(
 	ctx context.Context,
 	cli client.Client,
 	avalancheGoBinPath string,
-	runDir string,
 ) error {
+	autoSave := d.app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
+
+	tmpDir, err := anrutils.MkDirWithTimestamp(filepath.Join(d.app.GetRunDir(), "network"))
+	if err != nil {
+		return err
+	}
+
+	rootDir := ""
+	logDir := ""
+	if !autoSave {
+		rootDir = tmpDir
+	} else {
+		logDir = tmpDir
+	}
+
 	loadSnapshotOpts := []client.OpOption{
 		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(runDir),
+		client.WithRootDataDir(rootDir),
+		client.WithLogRootDir(logDir),
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(d.app.GetPluginsDir()),
 	}
@@ -1040,12 +1098,13 @@ func (d *LocalDeployer) startNetwork(
 	resp, err := cli.LoadSnapshot(
 		ctx,
 		constants.DefaultSnapshotName,
+		d.app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey),
 		loadSnapshotOpts...,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to start network :%w", err)
 	}
-	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.RootDataDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.LogRootDir)
 	ux.Logger.PrintToUser("Network ready to use.")
 	return nil
 }
@@ -1121,42 +1180,11 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 	return false, nil
 }
 
-type ExtraLocalNetworkData struct {
-	CChainTeleporterMessengerAddress string
-	CChainTeleporterRegistryAddress  string
-}
-
-func GetExtraLocalNetworkData(app *application.Avalanche) (ExtraLocalNetworkData, error) {
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	bs, err := os.ReadFile(app.GetExtraLocalNetworkDataPath())
+func GetAWMRelayerConfigPath() (bool, string, error) {
+	clusterInfo, err := localnet.GetClusterInfo()
 	if err != nil {
-		return extraLocalNetworkData, err
+		return false, "", err
 	}
-	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return extraLocalNetworkData, err
-	}
-	return extraLocalNetworkData, nil
-}
-
-func WriteExtraLocalNetworkData(app *application.Avalanche, cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
-	extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	if utils.FileExists(extraLocalNetworkDataPath) {
-		var err error
-		extraLocalNetworkData, err = GetExtraLocalNetworkData(app)
-		if err != nil {
-			return err
-		}
-	}
-	if cchainTeleporterMessengerAddress != "" {
-		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainTeleporterMessengerAddress
-	}
-	if cchainTeleporterRegistryAddress != "" {
-		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainTeleporterRegistryAddress
-	}
-	bs, err := json.Marshal(&extraLocalNetworkData)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
+	relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
+	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }

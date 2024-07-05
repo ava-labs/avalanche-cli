@@ -39,8 +39,7 @@ func NewUserLog(log logging.Logger, userwriter io.Writer) {
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
 	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
-	formattedMsg := fmt.Sprintf(msg, args...) + "\n"
-	ul.print(formattedMsg)
+	ul.print(fmt.Sprintf(msg, args...) + "\n")
 }
 
 func (ul *UserLog) print(msg string) {
@@ -54,14 +53,12 @@ func (ul *UserLog) print(msg string) {
 
 // Info prints to the log file
 func (ul *UserLog) Info(msg string, args ...interface{}) {
-	formattedMsg := fmt.Sprintf(msg, args...)
-	ul.log.Info(formattedMsg)
+	ul.log.Info(fmt.Sprintf(msg, args...) + "\n")
 }
 
 // Error prints to the log file
 func (ul *UserLog) Error(msg string, args ...interface{}) {
-	formattedMsg := fmt.Sprintf(msg, args...)
-	ul.log.Error(formattedMsg)
+	ul.log.Error(fmt.Sprintf(msg, args...))
 }
 
 // GreenCheckmarkToUser prints a green checkmark to the user before the message

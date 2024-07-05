@@ -72,9 +72,9 @@ func HandleErrors(err error) {
 	if err != nil {
 		usageErr, ok := err.(UsageError)
 		if ok {
-			usageErr.cmd.Println(usageErr)
-			usageErr.cmd.Println()
 			usageErr.cmd.Println(usageErr.cmd.UsageString())
+			usageErr.cmd.Println()
+			usageErr.cmd.Println(usageErr)
 		} else {
 			ux.Logger.PrintToUser("Error: %s", err)
 		}

@@ -23,6 +23,9 @@ type dockerComposeInputs struct {
 	WithMonitoring     bool
 	WithAvalanchego    bool
 	AvalanchegoVersion string
+	E2E                bool
+	E2EIP              string
+	E2ESuffix          string
 }
 
 //go:embed templates/*.docker-compose.yml
@@ -121,22 +124,47 @@ func mergeComposeFiles(host *models.Host, currentComposeFile string, newComposeF
 }
 
 func StartDockerCompose(host *models.Host, timeout time.Duration) error {
-	if output, err := host.Command("sudo systemctl start avalanche-cli-docker", nil, timeout); err != nil {
-		return fmt.Errorf("%w: %s", err, string(output))
+	// we provide systemd service unit for docker compose if the host has systemd
+	if host.IsSystemD() {
+		if output, err := host.Command("sudo systemctl start avalanche-cli-docker", nil, timeout); err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
+	} else {
+		composeFile := utils.GetRemoteComposeFile()
+		output, err := host.Command(fmt.Sprintf("docker compose -f %s up -d", composeFile), nil, constants.SSHScriptTimeout)
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
 	}
 	return nil
 }
 
 func StopDockerCompose(host *models.Host, timeout time.Duration) error {
-	if output, err := host.Command("sudo systemctl stop avalanche-cli-docker", nil, timeout); err != nil {
-		return fmt.Errorf("%w: %s", err, string(output))
+	if host.IsSystemD() {
+		if output, err := host.Command("sudo systemctl stop avalanche-cli-docker", nil, timeout); err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
+	} else {
+		composeFile := utils.GetRemoteComposeFile()
+		output, err := host.Command(fmt.Sprintf("docker compose -f %s down", composeFile), nil, constants.SSHScriptTimeout)
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
 	}
 	return nil
 }
 
 func RestartDockerCompose(host *models.Host, timeout time.Duration) error {
-	if output, err := host.Command("sudo systemctl restart avalanche-cli-docker", nil, timeout); err != nil {
-		return fmt.Errorf("%w: %s", err, string(output))
+	if host.IsSystemD() {
+		if output, err := host.Command("sudo systemctl restart avalanche-cli-docker", nil, timeout); err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
+	} else {
+		composeFile := utils.GetRemoteComposeFile()
+		output, err := host.Command(fmt.Sprintf("docker compose -f %s restart", composeFile), nil, constants.SSHScriptTimeout)
+		if err != nil {
+			return fmt.Errorf("%w: %s", err, string(output))
+		}
 	}
 	return nil
 }

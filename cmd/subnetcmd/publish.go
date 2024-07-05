@@ -364,8 +364,12 @@ func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
 		return nil, errors.New("canceled by user")
 	}
 
+	id := map[string]string{}
+	for k, v := range sc.Networks {
+		id[k] = v.SubnetID.String()
+	}
 	subnet := &types.Subnet{
-		ID:          sc.Networks[models.Fuji.String()].SubnetID.String(),
+		ID:          id,
 		Alias:       sc.Name,
 		Homepage:    homepage,
 		Description: desc,
@@ -381,7 +385,6 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		maintrs              []string
 		vmID, desc, url, sha string
 		canceled             bool
-		ver                  *version.Semantic
 		err                  error
 	)
 
@@ -422,21 +425,12 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		if err != nil {
 			return nil, err
 		}
-		strVer, err := app.Prompt.CaptureVersion(
-			"This is the last question! What is the version being used? Use semantic versioning (v1.2.3)")
-		if err != nil {
-			return nil, err
-		}
-		ver, err = version.Parse(strVer)
-		if err != nil {
-			return nil, err
-		}
 
 	case sc.VM == models.SubnetEvm:
 		vmID = models.SubnetEvm
 		dl := binutils.NewSubnetEVMDownloader()
 		desc = "Subnet EVM is a simplified version of Coreth VM (C-Chain). It implements the Ethereum Virtual Machine and supports Solidity smart contracts as well as most other Ethereum client functionality"
-		maintrs, ver, url, sha, err = getInfoForKnownVMs(
+		maintrs, _, url, sha, err = getInfoForKnownVMs(
 			sc.VMVersion,
 			constants.SubnetEVMRepoName,
 			app.GetSubnetEVMBinDir(),
@@ -472,7 +466,6 @@ func getVMInfo(sc *models.Sidecar) (*types.VM, error) {
 		BinaryPath:    bin,
 		URL:           url,
 		SHA256:        sha,
-		Version:       *ver,
 	}
 
 	return vm, nil

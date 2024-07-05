@@ -45,3 +45,9 @@ tests/e2e/hardhat/dynamic_conf.json
 tests/e2e/hardhat/greeter.json
 
 tests/e2e/ledgerSim/node_modules/
+
+pkg/contract/contracts/foundry.toml
+pkg/contract/contracts/remappings.txt
+pkg/contract/contracts/lib/
+pkg/contract/contracts/cache/
+pkg/contract/contracts/out/

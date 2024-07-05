@@ -12,9 +12,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -65,24 +65,6 @@ func describe(_ *cobra.Command, _ []string) error {
 		teleporterMessengerAddress string
 		teleporterRegistryAddress  string
 	)
-	if network.Kind == models.Local {
-		extraLocalNetworkDataPath := app.GetExtraLocalNetworkDataPath()
-		if utils.FileExists(extraLocalNetworkDataPath) {
-			if extraLocalNetworkData, err := subnet.GetExtraLocalNetworkData(app); err != nil {
-				return err
-			} else {
-				teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
-				teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
-			}
-		}
-	} else if network.ClusterName != "" {
-		if clusterConfig, err := app.GetClusterConfig(network.ClusterName); err != nil {
-			return err
-		} else {
-			teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
-			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
-		}
-	}
 	blockchainID, err := utils.GetChainID(network.Endpoint, "C")
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
@@ -94,6 +76,21 @@ func describe(_ *cobra.Command, _ []string) error {
 			return nil
 		}
 		return err
+	}
+	if network.Kind == models.Local {
+		if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(); err != nil {
+			return err
+		} else if b {
+			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
+		}
+	} else if network.ClusterName != "" {
+		if clusterConfig, err := app.GetClusterConfig(network.ClusterName); err != nil {
+			return err
+		} else {
+			teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
+			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+		}
 	}
 	fmt.Print(logging.LightBlue.Wrap(art))
 	blockchainIDHexEncoding := "0x" + hex.EncodeToString(blockchainID[:])

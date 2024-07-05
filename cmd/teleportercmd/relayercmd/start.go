@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleportercmd
+package relayercmd
 
 import (
 	"fmt"
@@ -10,35 +10,39 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
 )
 
-var startRelayerNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+var (
+	startNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+	globalNetworkFlags  networkoptions.NetworkFlags
+)
 
 // avalanche teleporter relayer start
-func newStartRelayerCmd() *cobra.Command {
+func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "starts AWM relayer",
 		Long:  `Starts AWM relayer on the specified network (Currently only for local network).`,
-		RunE:  startRelayer,
+		RunE:  start,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startRelayerNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startNetworkOptions)
 	return cmd
 }
 
-func startRelayer(_ *cobra.Command, _ []string) error {
+func start(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		false,
 		false,
-		startRelayerNetworkOptions,
+		startNetworkOptions,
 		"",
 	)
 	if err != nil {
@@ -53,9 +57,13 @@ func startRelayer(_ *cobra.Command, _ []string) error {
 		} else if relayerIsUp {
 			return fmt.Errorf("local AWM relayer is already running")
 		}
-		if err := teleporter.DeployRelayer(
+		if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+			return err
+		} else if !b {
+			return fmt.Errorf("there is no relayer configuration available")
+		} else if err := teleporter.DeployRelayer(
 			app.GetAWMRelayerBinDir(),
-			app.GetAWMRelayerConfigPath(),
+			relayerConfigPath,
 			app.GetAWMRelayerLogPath(),
 			app.GetAWMRelayerRunPath(),
 			app.GetAWMRelayerStorageDir(),

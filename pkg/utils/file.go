@@ -10,6 +10,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
+func NonEmptyDirectory(dirName string) (bool, error) {
+	if !DirectoryExists(dirName) {
+		return false, fmt.Errorf("%s is not a directory", dirName)
+	}
+	files, err := os.ReadDir(dirName)
+	if err != nil {
+		return false, err
+	}
+	return len(files) != 0, nil
+}
+
 func DirectoryExists(dirName string) bool {
 	info, err := os.Stat(dirName)
 	if os.IsNotExist(err) {
@@ -89,6 +100,21 @@ func ReadFile(filePath string) (string, error) {
 func WriteStringToFile(filePath string, data string) error {
 	filePath = ExpandHome(filePath)
 	return os.WriteFile(filePath, []byte(data), constants.WriteReadReadPerms)
+}
+
+// Size returns the size of a file or directory.
+func SizeInKB(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
 }
 
 // RemoteComposeFile returns the path to the remote docker-compose file

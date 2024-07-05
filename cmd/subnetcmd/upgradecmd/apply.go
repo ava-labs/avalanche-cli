@@ -185,7 +185,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	// save a temporary snapshot
 	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(timestampFormat)
 	app.Log.Debug("saving temporary snapshot for upgrade bytes", zap.String("snapshot-name", snapName))
-	_, err = cli.SaveSnapshot(ctx, snapName)
+	_, err = cli.SaveSnapshot(ctx, snapName, false)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,12 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	}
 	// restart the network setting the upgrade bytes file
 	opts := ANRclient.WithUpgradeConfigs(netUpgradeConfs)
-	_, err = cli.LoadSnapshot(ctx, snapName, opts)
+	_, err = cli.LoadSnapshot(
+		ctx,
+		snapName,
+		app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey),
+		opts,
+	)
 	if err != nil {
 		return err
 	}
@@ -352,10 +357,10 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 			continue
 		}
 		if allowListCfg != nil {
-			if err := ensureHaveBalance(adminLabel, allowListCfg.AdminAddresses, subnetName); err != nil {
+			if err := ensureHaveBalance(sc, adminLabel, allowListCfg.AdminAddresses); err != nil {
 				return nil, "", err
 			}
-			if err := ensureHaveBalance(managerLabel, allowListCfg.ManagerAddresses, subnetName); err != nil {
+			if err := ensureHaveBalance(sc, managerLabel, allowListCfg.ManagerAddresses); err != nil {
 				return nil, "", err
 			}
 		}
