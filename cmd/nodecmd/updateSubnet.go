@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -36,6 +37,10 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
@@ -53,7 +58,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
 		return err
 	}
-	nonUpdatedNodes, err := doUpdateSubnet(hosts, subnetName)
+	nonUpdatedNodes, err := doUpdateSubnet(hosts, clusterName, clusterConfig.Network.NetworkIDFlagValue(), subnetName)
 	if err != nil {
 		return err
 	}
@@ -69,15 +74,34 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 // restart tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
 func doUpdateSubnet(
 	hosts []*models.Host,
+	clusterName string,
+	networkID string,
 	subnetName string,
 ) ([]string, error) {
+	// load cluster config
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	// and get list of subnets
+	allSubnets := utils.Unique(append(clusterConf.Subnets, subnetName))
+
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := ssh.RunSSHUpdateSubnet(host, subnetName); err != nil {
+			if err := ssh.RunSSHStopNode(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, networkID, allSubnets); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+			if err := ssh.RunSSHSyncSubnetData(app, host, networkID, subnetName); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+			if err := ssh.RunSSHStartNode(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}

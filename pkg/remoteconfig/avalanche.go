@@ -21,9 +21,10 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
+	TrackSubents     []string
 }
 
-func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfigInputs {
+func DefaultCliAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
 		HTTPHost:         "0.0.0.0",
 		NetworkID:        networkID,
@@ -32,6 +33,7 @@ func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfi
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
+		TrackSubents:     subnets,
 	}
 }
 
@@ -75,6 +77,10 @@ func GetRemoteAvalancheNodeConfig() string {
 
 func GetRemoteAvalancheCChainConfig() string {
 	return filepath.Join(constants.CloudNodeConfigPath, "chains", "C", "config.json")
+}
+
+func GetRemoteAvalancheGenesis() string {
+	return filepath.Join(constants.CloudNodeConfigPath, "genesis.json")
 }
 
 func AvalancheFolderToCreate() []string {

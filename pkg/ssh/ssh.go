@@ -5,6 +5,7 @@ package ssh
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,11 +15,13 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -486,30 +489,141 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
-func RunSSHJoinSubnet(host *models.Host, subnetName, networkFlag string) error {
+// RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
+func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, networkID string, trackSubnets []string) error {
+	// get subnet ids
+	subnetIDs, err := utils.MapWithError(trackSubnets, func(subnetName string) (string, error) {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return "", err
+		} else {
+			return sc.Networks[networkID].SubnetID.String(), nil
+		}
+	})
+	if err != nil {
+		return err
+	}
 
+	nodeConfFile, err := os.CreateTemp("", "avalanchecli-node-*.yml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(nodeConfFile.Name())
+
+	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, networkID, subnetIDs)
+	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(nodeConfFile.Name(), nodeConf, constants.WriteReadUserOnlyPerms); err != nil {
+		return err
+	}
+	return host.Upload(nodeConfFile.Name(), remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
 }
 
-// RunSSHTrackSubnet enables tracking of specified subnet
-func RunSSHTrackSubnet(host *models.Host, subnetName, networkFlag string) error {
-	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
+// RunSSHSyncSubnetData syncs subnet data required
+func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, networkID string, subnetName string) error {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
 		return err
 	}
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s %s --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName, networkFlag), nil, constants.SSHScriptTimeout); err != nil {
+	subnetID := sc.Networks[networkID].SubnetID
+	if subnetID == ids.Empty {
+		return errors.New("subnet id is empty")
+	}
+	subnetIDStr := subnetID.String()
+	blockchainID := sc.Networks[networkID].BlockchainID
+	// genesis config
+	genData, err := app.LoadRawGenesis(subnetName)
+	if err != nil {
 		return err
 	}
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
-}
+	genesisFile, err := os.CreateTemp("", "avalanchecli-genesis-*.json")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(genesisFile.Name())
+	if err := os.WriteFile(genesisFile.Name(), genData, constants.WriteReadUserOnlyPerms); err != nil {
+		return err
+	}
+	if err := host.Upload(genesisFile.Name(), remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	// end genesis config
+	// subnet config
+	if app.AvagoSubnetConfigExists(subnetName) {
+		subnetConfig, err := app.LoadRawAvagoSubnetConfig(subnetName)
+		if err != nil {
+			return err
+		}
+		subnetConfigFile, err := os.CreateTemp("", "avalanchecli-subnet-*.json")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(subnetConfigFile.Name())
+		if err := os.WriteFile(subnetConfigFile.Name(), subnetConfig, constants.WriteReadUserOnlyPerms); err != nil {
+			return err
+		}
 
-// RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
-func RunSSHUpdateSubnet(host *models.Host, subnetName string) error {
-	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
-		return err
+		subnetConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", subnetIDStr+".json")
+		if err := host.MkdirAll(filepath.Base(subnetConfigPath), constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+		if err := host.Upload(subnetConfigFile.Name(), subnetConfigPath, constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
 	}
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName), nil, constants.SSHScriptTimeout); err != nil {
-		return err
+	// end subnet config
+
+	// chain config
+	if blockchainID != ids.Empty && app.ChainConfigExists(subnetName) {
+		chainConfigFile, err := os.CreateTemp("", "avalanchecli-chain-*.json")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(chainConfigFile.Name())
+		chainConfig, err := app.LoadRawChainConfig(subnetName)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(chainConfigFile.Name(), chainConfig, constants.WriteReadUserOnlyPerms); err != nil {
+			return err
+		}
+		chainConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", "chains", blockchainID.String(), "config.json")
+		if err := host.MkdirAll(filepath.Base(chainConfigPath), constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+		if err := host.Upload(chainConfigFile.Name(), chainConfigPath, constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
 	}
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
+	// end chain config
+
+	// network upgrade
+	if app.NetworkUpgradeExists(subnetName) {
+		networkUpgradesFile, err := os.CreateTemp("", "avalanchecli-network-*.json")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(networkUpgradesFile.Name())
+		networkUpgrades, err := app.LoadRawNetworkUpgrades(subnetName)
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(networkUpgradesFile.Name(), networkUpgrades, constants.WriteReadUserOnlyPerms); err != nil {
+			return err
+		}
+		networkUpgradesPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", "chains", blockchainID.String(), "upgrade.json")
+		if err := host.MkdirAll(filepath.Base(networkUpgradesPath), constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+		if err := host.Upload(networkUpgradesFile.Name(), networkUpgradesPath, constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
+	}
+	// end network upgrade
+
+	return nil
 }
 
 func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {

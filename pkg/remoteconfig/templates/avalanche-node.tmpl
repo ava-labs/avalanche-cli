@@ -10,4 +10,7 @@
 {{- else -}}
     "public-ip-resolution-service": "opendns"
 {{- end -}}
+{{- if .TrackSubnets }}
+	"track-subnets": "{{ join .TrackSubnets ", " }}"
+{{- end }} 
 }
