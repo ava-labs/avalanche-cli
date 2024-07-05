@@ -124,7 +124,7 @@ func GenerateAllowList(
 
 	for {
 		options := []string{addOption, removeOption, previewOption, confirmOption, cancelOption}
-		if len(adminAddresses) == 0 && len(managerAddresses) == 0 && len(enabledAddresses) == 0 {
+		if len(allowList.AdminAddresses) == 0 && len(allowList.ManagerAddresses) == 0 && len(allowList.EnabledAddresses) == 0 {
 			options = utils.RemoveFromSlice(options, removeOption)
 		}
 		option, err := app.Prompt.CaptureList(prompt, options)
@@ -176,13 +176,13 @@ func GenerateAllowList(
 			for keepAsking {
 				removePrompt := "What role does the address that should be removed have?"
 				options := []string{}
-				if len(adminAddresses) != 0 {
+				if len(allowList.AdminAddresses) != 0 {
 					options = append(options, adminOption)
 				}
-				if len(managerAddresses) != 0 && managerRoleEnabled {
+				if len(allowList.ManagerAddresses) != 0 && managerRoleEnabled {
 					options = append(options, managerOption)
 				}
-				if len(enabledAddresses) != 0 {
+				if len(allowList.EnabledAddresses) != 0 {
 					options = append(options, enabledOption)
 				}
 				options = append(options, cancelOption)

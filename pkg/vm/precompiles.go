@@ -44,14 +44,14 @@ func configureContractAllowList(
 		"on your subnet.\nFor more information visit " + //nolint:goconst
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-smart-contract-deployers\n"
 	ux.Logger.PrintToUser(info)
-	admins, managers, enabled, cancelled, err := GenerateAllowList(app, "deploy smart contracts", subnetEvmVersion)
+	allowList, cancelled, err := GenerateAllowList(app, "deploy smart contracts", subnetEvmVersion)
 	if cancelled || err != nil {
 		return config, cancelled, err
 	}
 	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   admins,
-		ManagerAddresses: managers,
-		EnabledAddresses: enabled,
+		AdminAddresses:   allowList.AdminAddresses,
+		ManagerAddresses: allowList.ManagerAddresses,
+		EnabledAddresses: allowList.EnabledAddresses,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
 		BlockTimestamp: subnetevmutils.NewUint64(0),
