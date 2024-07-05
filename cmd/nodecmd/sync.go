@@ -9,7 +9,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -69,6 +71,9 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	if err := prepareSubnetPlugin(hosts, subnetName); err != nil {
+		return err
+	}
 	untrackedNodes, err := trackSubnet(hosts, clusterName, clusterConfig.Network.NetworkIDFlagValue(), subnetName)
 	if err != nil {
 		return err
@@ -78,6 +83,34 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Node(s) successfully started syncing with Subnet!")
 	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetName))
+	return nil
+}
+
+func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
+	pluginDir := app.GetTmpPluginDir()
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	vmPath, err := plugins.CreatePlugin(app, sc.Name, pluginDir)
+	if err != nil {
+		return err
+	}
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			if err := host.Upload(vmPath, constants.CloudNodePluginsPath, constants.SSHFileOpsTimeout); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to upload plugin to node(s) %s", wgResults.GetErrorHostMap())
+	}
 	return nil
 }
 
