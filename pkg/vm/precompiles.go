@@ -68,14 +68,14 @@ func configureTransactionAllowList(
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet/#restricting-who-can-submit-transactions\n"
 	ux.Logger.PrintToUser(info)
-	admins, managers, enabled, cancelled, err := GenerateAllowList(app, "issue transactions", subnetEvmVersion)
+	allowList, cancelled, err := GenerateAllowList(app, "issue transactions", subnetEvmVersion)
 	if cancelled || err != nil {
 		return config, cancelled, err
 	}
 	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   admins,
-		ManagerAddresses: managers,
-		EnabledAddresses: enabled,
+		AdminAddresses:   allowList.AdminAddresses,
+		ManagerAddresses: allowList.ManagerAddresses,
+		EnabledAddresses: allowList.EnabledAddresses,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
 		BlockTimestamp: subnetevmutils.NewUint64(0),
@@ -92,14 +92,14 @@ func configureMinterList(
 		"on your subnet.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#minting-native-coins\n"
 	ux.Logger.PrintToUser(info)
-	admins, managers, enabled, cancelled, err := GenerateAllowList(app, "mint native tokens", subnetEvmVersion)
+	allowList, cancelled, err := GenerateAllowList(app, "mint native tokens", subnetEvmVersion)
 	if cancelled || err != nil {
 		return config, cancelled, err
 	}
 	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   admins,
-		ManagerAddresses: managers,
-		EnabledAddresses: enabled,
+		AdminAddresses:   allowList.AdminAddresses,
+		ManagerAddresses: allowList.ManagerAddresses,
+		EnabledAddresses: allowList.EnabledAddresses,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
 		BlockTimestamp: subnetevmutils.NewUint64(0),
@@ -116,14 +116,14 @@ func configureFeeConfigAllowList(
 		"performing a hardfork.\nFor more information visit " +
 		"https://docs.avax.network/subnets/customize-a-subnet#configuring-dynamic-fees\n"
 	ux.Logger.PrintToUser(info)
-	admins, managers, enabled, cancelled, err := GenerateAllowList(app, "adjust the gas fees", subnetEvmVersion)
+	allowList, cancelled, err := GenerateAllowList(app, "adjust the gas fees", subnetEvmVersion)
 	if cancelled || err != nil {
 		return config, cancelled, err
 	}
 	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   admins,
-		ManagerAddresses: managers,
-		EnabledAddresses: enabled,
+		AdminAddresses:   allowList.AdminAddresses,
+		ManagerAddresses: allowList.ManagerAddresses,
+		EnabledAddresses: allowList.EnabledAddresses,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
 		BlockTimestamp: subnetevmutils.NewUint64(0),
@@ -140,14 +140,14 @@ func configureRewardManager(
 		"https://docs.avax.network/subnets/customize-a-subnet#changing-fee-reward-mechanisms\n"
 	ux.Logger.PrintToUser(info)
 	config := rewardmanager.Config{}
-	admins, managers, enabled, cancelled, err := GenerateAllowList(app, "customize fee distribution", subnetEvmVersion)
+	allowList, cancelled, err := GenerateAllowList(app, "customize fee distribution", subnetEvmVersion)
 	if cancelled || err != nil {
 		return config, cancelled, err
 	}
 	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   admins,
-		ManagerAddresses: managers,
-		EnabledAddresses: enabled,
+		AdminAddresses:   allowList.AdminAddresses,
+		ManagerAddresses: allowList.ManagerAddresses,
+		EnabledAddresses: allowList.EnabledAddresses,
 	}
 	config.Upgrade = precompileconfig.Upgrade{
 		BlockTimestamp: subnetevmutils.NewUint64(0),

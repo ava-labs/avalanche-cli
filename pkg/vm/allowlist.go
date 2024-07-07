@@ -163,7 +163,6 @@ func GenerateAllowList(
 					}
 					allowList.EnabledAddresses = append(allowList.EnabledAddresses, addresses...)
 				case explainOption:
-				case explainOption:
 					fmt.Println("Enabled addresses can perform the permissioned behavior (issuing transactions, deploying contracts,\netc.), but cannot modify other roles.\nManager addresses can perform the permissioned behavior and can change enabled/disable addresses.\nAdmin addresses can perform the permissioned behavior, but can also add/remove other Admins, Managers\nand Enabled addresses.")
 					fmt.Println()
 					continue
@@ -211,6 +210,9 @@ func GenerateAllowList(
 				}
 			}
 		case previewOption:
+			preview(allowList)
+		case confirmOption:
+			preview(allowList)
 			confirmPrompt := "Confirm?"
 			yesOption := "Yes"
 			noOption := "No, keep editing"

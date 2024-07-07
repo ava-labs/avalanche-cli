@@ -444,15 +444,15 @@ func promptAdminManagerAndEnabledAddresses(
 	sc *models.Sidecar,
 	action string,
 ) ([]common.Address, []common.Address, []common.Address, bool, error) {
-	admin, manager, enabled, cancelled, err := vm.GenerateAllowList(app, action, sc.VMVersion)
+	allowList, cancelled, err := vm.GenerateAllowList(app, action, sc.VMVersion)
 	if cancelled || err != nil {
 		return nil, nil, nil, cancelled, err
 	}
-	if err := ensureHaveBalance(sc, adminLabel, admin); err != nil {
+	if err := ensureHaveBalance(sc, adminLabel, allowList.AdminAddresses); err != nil {
 		return nil, nil, nil, false, err
 	}
-	if err := ensureHaveBalance(sc, managerLabel, admin); err != nil {
+	if err := ensureHaveBalance(sc, managerLabel, allowList.ManagerAddresses); err != nil {
 		return nil, nil, nil, false, err
 	}
-	return admin, manager, enabled, false, nil
+	return allowList.AdminAddresses, allowList.ManagerAddresses, allowList.EnabledAddresses, false, nil
 }
