@@ -256,18 +256,34 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			case !useSSHAgent && certInSSHDir:
 				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
 			case !useSSHAgent && !certInSSHDir:
-				ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
-				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName[region])
-				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
-				if err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-				privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
-				if err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				if replaceKeyPair {
+					// delete default key pair in .ssh dir and recreate default key pair
+					// in both AWS console and store it in .ssh dir
+					privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					if err := ec2Svc[region].DeleteKeyPair(regionConf[region].Prefix); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+
+				} else {
+					ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
+					ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName[region])
+					keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
 			}
 		}
