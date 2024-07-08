@@ -79,6 +79,9 @@ func TrackMetrics(commandPath string, flags map[string]string) {
 	telemetryProperties["command"] = commandPath
 	telemetryProperties["version"] = GetCLIVersion()
 	telemetryProperties["os"] = runtime.GOOS
+	if utils.InsideCodespace() {
+		telemetryProperties["codespace"] = os.Getenv(constants.CodespaceNameEnvVar)
+	}
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
 	}
