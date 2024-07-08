@@ -269,7 +269,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 					if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
 						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 					}
-
 				} else {
 					ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
 					ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName[region])
