@@ -436,6 +436,7 @@ func (c *AwsCloud) AssociateEIP(instanceID, allocationID string) error {
 
 // CreateAndDownloadKeyPair creates a new key pair and downloads the private key material to the specified file path.
 func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath string) error {
+	fmt.Printf("we are creating new key pair %s \n", keyName)
 	createKeyPairOutput, err := c.ec2Client.CreateKeyPair(c.ctx, &ec2.CreateKeyPairInput{
 		KeyName: aws.String(keyName),
 	})
@@ -445,8 +446,10 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 	privateKeyMaterial := *createKeyPairOutput.KeyMaterial
 	err = os.WriteFile(privateKeyFilePath, []byte(privateKeyMaterial), 0o600)
 	if err != nil {
+		fmt.Printf("error writing file to key file path %s, err %s \n", privateKeyFilePath, err)
 		return err
 	}
+	fmt.Printf("no error writing file to key file path %s \n", privateKeyFilePath)
 	return nil
 }
 
