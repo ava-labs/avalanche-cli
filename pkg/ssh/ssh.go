@@ -510,7 +510,7 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 	}
 	defer os.Remove(nodeConfFile.Name())
 
-	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, networkID, subnetIDs)
+	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, networkID, subnetIDs)
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {
 		return err

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"html/template"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
@@ -21,10 +22,10 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
-	TrackSubents     []string
+	TrackSubnets     string
 }
 
-func DefaultCliAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {
+func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
 		HTTPHost:         "0.0.0.0",
 		NetworkID:        networkID,
@@ -33,7 +34,7 @@ func DefaultCliAvalancheConfig(publicIP string, networkID string, subnets []stri
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
-		TrackSubents:     subnets,
+		TrackSubnets:     strings.Join(subnets, ","),
 	}
 }
 

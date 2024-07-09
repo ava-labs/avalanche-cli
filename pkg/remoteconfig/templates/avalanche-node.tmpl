@@ -11,6 +11,6 @@
     "public-ip-resolution-service": "opendns"
 {{- end -}}
 {{- if .TrackSubnets }}
-	"track-subnets": "{{ join .TrackSubnets ", " }}"
+	"track-subnets": "{{ .TrackSubnets }}"
 {{- end }} 
 }
