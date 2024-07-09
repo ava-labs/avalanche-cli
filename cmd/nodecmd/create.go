@@ -576,6 +576,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
+	fmt.Printf("createAWSInstances cloudConfigMap %s \n", cloudConfigMap)
 	if err = ansible.CreateAnsibleHostInventory(inventoryPath, "", cloudService, publicIPMap, cloudConfigMap); err != nil {
 		return err
 	}

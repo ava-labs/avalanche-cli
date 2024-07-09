@@ -219,6 +219,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if err != nil {
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}
+		fmt.Printf("checking for cert name %s, certInSSHDir %s \n", regionConf[region].CertName, certInSSHDir)
 		sgID := ""
 		keyPairName[region] = regionConf[region].Prefix
 		securityGroupName := regionConf[region].SecurityGroupName
@@ -229,10 +230,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if replaceKeyPair && !forMonitoring {
 			// delete existing key pair on AWS console and download the newly created key pair file
 			// in .ssh dir (will overwrite existing file in .ssh dir)
-			privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
-			if err != nil {
-				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-			}
 			if keyPairExists {
 				fmt.Printf("we are deleting existing key pair %s \n", regionConf[region].Prefix)
 				if err := ec2Svc[region].DeleteKeyPair(regionConf[region].Prefix); err != nil {
@@ -245,7 +242,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair file %s in .ssh dir due to %w", privKey, err)
 				}
 			}
-			if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
+			if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 			}
 		} else {
@@ -392,6 +389,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		}
 	}
 	ux.Logger.GreenCheckmarkToUser("New EC2 instance(s) successfully created in AWS!")
+	fmt.Printf("obtained ssh cert path %s \n", sshCertPath)
 	for _, region := range regions {
 		if useSSHAgent {
 			// takes the cert file downloaded from AWS and moves it to .ssh directory
