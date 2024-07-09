@@ -226,7 +226,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if err != nil {
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}
-		if replaceKeyPair {
+		if replaceKeyPair && !forMonitoring {
 			// delete existing key pair on AWS console and download the newly created key pair file
 			// in .ssh dir (will overwrite existing file in .ssh dir)
 			privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
@@ -236,13 +236,13 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			if keyPairExists {
 				fmt.Printf("we are deleting existing key pair %s \n", regionConf[region].Prefix)
 				if err := ec2Svc[region].DeleteKeyPair(regionConf[region].Prefix); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair %s in AWS console due to %s", regionConf[region].Prefix, err)
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair %s in AWS console due to %w", regionConf[region].Prefix, err)
 				}
 			}
 			if utils.FileExists(privKey) {
 				fmt.Printf("ssh file path exists, deleting %s \n", privKey)
 				if err = os.RemoveAll(privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair file %s in .ssh dir due to %s", privKey, err)
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair file %s in .ssh dir due to %w", privKey, err)
 				}
 			}
 			if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
