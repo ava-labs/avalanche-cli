@@ -234,10 +234,8 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair %s in AWS console due to %w", regionConf[region].Prefix, err)
 				}
 			}
-			if utils.FileExists(privKey) {
-				if err = os.RemoveAll(privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair file %s in .ssh dir due to %w", privKey, err)
-				}
+			if err = os.RemoveAll(privKey); err != nil {
+				return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair file %s in .ssh dir due to %w", privKey, err)
 			}
 			if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
 				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
