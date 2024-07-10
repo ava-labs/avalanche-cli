@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
@@ -38,7 +39,7 @@ type scriptInputs struct {
 	IsDevNet                bool
 	IsE2E                   bool
 	NetworkFlag             string
-	SubnetEVMBinaryPath     string
+	VMBinaryPath            string
 	SubnetEVMReleaseURL     string
 	SubnetEVMArchive        string
 	MonitoringDashboardPath string
@@ -51,6 +52,10 @@ type scriptInputs struct {
 	CheckoutCommit          bool
 	LoadTestResultFile      string
 	GrafanaPkg              string
+	CustomVMRepoDir         string
+	CustomVMRepoURL         string
+	CustomVMBranch          string
+	CustomVMBuildScript     string
 }
 
 //go:embed shell/*.sh
@@ -219,7 +224,7 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 		host,
 		constants.SSHScriptTimeout,
 		"shell/upgradeSubnetEVM.sh",
-		scriptInputs{SubnetEVMBinaryPath: subnetEVMBinaryPath},
+		scriptInputs{VMBinaryPath: subnetEVMBinaryPath},
 	)
 }
 
@@ -519,6 +524,67 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 		return err
 	}
 	return host.Upload(nodeConfFile.Name(), remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
+}
+
+// RunSSHCreatePlugin runs script to create plugin
+func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
+	vmID, err := sc.GetVMID()
+	if err != nil {
+		return err
+	}
+	subnetVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
+	hostInstaller := NewHostInstaller(host)
+	tmpDir, err := host.CreateTempDir()
+	if err != nil {
+		return err
+	}
+	defer func(h *models.Host) {
+		_ = h.Remove(tmpDir, true)
+	}(host)
+	switch {
+	case sc.VM == models.CustomVM:
+		if err := RunOverSSH(
+			"Build CustomVMe",
+			host,
+			constants.SSHLongRunningScriptTimeout,
+			"shell/buildCustomVM.sh",
+			scriptInputs{
+				CustomVMRepoDir:     tmpDir,
+				CustomVMRepoURL:     sc.CustomVMRepoURL,
+				CustomVMBranch:      sc.CustomVMBranch,
+				CustomVMBuildScript: sc.CustomVMBuildScript,
+				VMBinaryPath:        subnetVMBinaryPath,
+			},
+		); err != nil {
+			return err
+		}
+
+	case sc.VM == models.SubnetEvm:
+		dl := binutils.NewSubnetEVMDownloader()
+		installURL, _, err := dl.GetDownloadURL(sc.VMVersion, hostInstaller) // extension is tar.gz
+		if err != nil {
+			return err
+		}
+
+		archiveName := "subnet-evm.tar.gz"
+		archiveFullPath := filepath.Join(tmpDir, archiveName)
+
+		// download and install subnet evm
+		if _, err := host.Command(fmt.Sprintf("%s %s -O %s", "busybox wget", installURL, archiveFullPath), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+			return err
+		}
+		if _, err := host.Command(fmt.Sprintf("tar -xzf %s -C %s", archiveFullPath, tmpDir), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+			return err
+		}
+
+		if _, err := host.Command(fmt.Sprintf("mv -f %s/subnet-evm %s", tmpDir, subnetVMBinaryPath), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unexpected error: unsupported VM type: %s", sc.VM)
+	}
+
+	return nil
 }
 
 // RunSSHSyncSubnetData syncs subnet data required

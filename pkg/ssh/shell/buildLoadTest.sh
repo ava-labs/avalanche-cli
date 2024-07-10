@@ -2,7 +2,7 @@
 # delete existing repo directory if it exists
 # choosing to delete and re-clone to avoid merge conflicts
 if [ -d {{ .LoadTestRepoDir }} ]; then
-  rm -r {{ .LoadTestRepoDir }}
+  rm -rf {{ .LoadTestRepoDir }}
 fi
 git clone {{ .LoadTestRepo }}
 echo "getting load test repo ..."

@@ -9,9 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/plugins"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -86,13 +84,9 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+// prepareSubnetPlugin creates subnet plugin to all nodes in the cluster
 func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
-	pluginDir := app.GetTmpPluginDir()
 	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-	vmPath, err := plugins.CreatePlugin(app, sc.Name, pluginDir)
 	if err != nil {
 		return err
 	}
@@ -102,7 +96,7 @@ func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			if err := host.Upload(vmPath, constants.CloudNodePluginsPath, constants.SSHFileOpsTimeout); err != nil {
+			if err := ssh.RunSSHCreatePlugin(host, sc); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 		}(&wgResults, host)
