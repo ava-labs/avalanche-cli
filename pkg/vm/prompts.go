@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package subnetcmd
+package vm
 
 import (
 	"fmt"
@@ -12,14 +12,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
-const explainOption = "Explain the difference"
+const (
+	latest        = "latest"
+	preRelease    = "pre-release"
+	explainOption = "Explain the difference"
+)
 
 type InitialTokenAllocation struct {
 	allocToNewKey bool
@@ -44,24 +47,28 @@ type FeeConfig struct {
 
 type SubnetEVMGenesisParams struct {
 	chainID                             uint64
-	useTeleporter                       bool
-	useExternalGasToken                 bool
+	UseTeleporter                       bool
+	UseExternalGasToken                 bool
 	initialTokenAllocation              InitialTokenAllocation
 	feeConfig                           FeeConfig
 	enableNativeMinterPrecompile        bool
-	nativeMinterPrecompileAllowList     vm.AllowList
+	nativeMinterPrecompileAllowList     AllowList
 	enableFeeManagerPrecompile          bool
-	feeManagerPrecompileAllowList       vm.AllowList
+	feeManagerPrecompileAllowList       AllowList
 	enableRewardManagerPrecompile       bool
-	rewardManagerPrecompileAllowList    vm.AllowList
+	rewardManagerPrecompileAllowList    AllowList
 	enableTransactionPrecompile         bool
-	transactionPrecompileAllowList      vm.AllowList
+	transactionPrecompileAllowList      AllowList
 	enableContractDeployerPrecompile    bool
-	contractDeployerPrecompileAllowList vm.AllowList
+	contractDeployerPrecompileAllowList AllowList
 	enableWarpPrecompile                bool
 }
 
-func promptVMType(useSubnetEvm bool, useCustom bool) (models.VMType, error) {
+func PromptVMType(
+	app *application.Avalanche,
+	useSubnetEvm bool,
+	useCustom bool,
+) (models.VMType, error) {
 	if useSubnetEvm {
 		return models.SubnetEvm, nil
 	}
@@ -113,7 +120,8 @@ func promptVMType(useSubnetEvm bool, useCustom bool) (models.VMType, error) {
 //
 // prompts the user for chainID, tokenSymbol, and useTeleporter, unless
 // provided in call args
-func promptSubnetEVMGenesisParams(
+func PromptSubnetEVMGenesisParams(
+	app *application.Avalanche,
 	version string,
 	chainID uint64,
 	tokenSymbol string,
@@ -134,27 +142,27 @@ func promptSubnetEVMGenesisParams(
 		}
 	}
 	// Gas Token
-	params, tokenSymbol, err = promptGasToken(version, tokenSymbol, useDefaults, params)
+	params, tokenSymbol, err = promptGasToken(app, version, tokenSymbol, useDefaults, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 	// Transaction / Gas Fees
-	params, err = promptFeeConfig(version, useDefaults, params)
+	params, err = promptFeeConfig(app, version, useDefaults, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 	// Interoperability
-	params, err = promptInteropt(useTeleporter, useDefaults, params)
+	params, err = promptInteropt(app, useTeleporter, useDefaults, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 	// Warp
 	params.enableWarpPrecompile = useWarp
-	if (params.useTeleporter || params.useExternalGasToken) && !params.enableWarpPrecompile {
+	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
 		return SubnetEVMGenesisParams{}, "", fmt.Errorf("warp should be enabled for teleporter to work")
 	}
 	// Permissioning
-	params, err = promptPermissioning(version, useDefaults, params)
+	params, err = promptPermissioning(app, version, useDefaults, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
@@ -171,6 +179,7 @@ func promptSubnetEVMGenesisParams(
 // - use native gas token, allocating 1m to a newly created key
 // - disable native minter precompile
 func promptGasToken(
+	app *application.Avalanche,
 	version string,
 	tokenSymbol string,
 	useDefaults bool,
@@ -203,7 +212,7 @@ func promptGasToken(
 		}
 		switch option {
 		case externalTokenOption:
-			params.useExternalGasToken = true
+			params.UseExternalGasToken = true
 		case nativeTokenOption:
 			if tokenSymbol == "" {
 				tokenSymbol, err = app.Prompt.CaptureString("Token Symbol")
@@ -251,7 +260,7 @@ func promptGasToken(
 				switch option {
 				case fixedSupplyOption:
 				case dynamicSupplyOption:
-					params.nativeMinterPrecompileAllowList, cancel, err = vm.GenerateAllowList(app, "mint native tokens", version)
+					params.nativeMinterPrecompileAllowList, cancel, err = GenerateAllowList(app, "mint native tokens", version)
 					if err != nil {
 						return SubnetEVMGenesisParams{}, "", err
 					}
@@ -287,6 +296,7 @@ func promptGasToken(
 // - disable fee manager precompile
 // - disable reward manager precompile
 func promptFeeConfig(
+	app *application.Avalanche,
 	version string,
 	useDefaults bool,
 	params SubnetEVMGenesisParams,
@@ -383,7 +393,7 @@ func promptFeeConfig(
 		switch option {
 		case dontChangeFeeSettingsOption:
 		case changeFeeSettingsOption:
-			params.feeManagerPrecompileAllowList, cancel, err = vm.GenerateAllowList(app, "adjust the gas fees", version)
+			params.feeManagerPrecompileAllowList, cancel, err = GenerateAllowList(app, "adjust the gas fees", version)
 			if err != nil {
 				return SubnetEVMGenesisParams{}, err
 			}
@@ -411,7 +421,7 @@ func promptFeeConfig(
 		switch option {
 		case burnFees:
 		case distributeFees:
-			params.rewardManagerPrecompileAllowList, cancel, err = vm.GenerateAllowList(app, "customize gas fees distribution", version)
+			params.rewardManagerPrecompileAllowList, cancel, err = GenerateAllowList(app, "customize gas fees distribution", version)
 			if err != nil {
 				return SubnetEVMGenesisParams{}, err
 			}
@@ -433,16 +443,17 @@ func promptFeeConfig(
 // if using external gas token, will assume teleporter to be enabled
 // if other cases, prompts the user for wether to enable teleporter
 func promptInteropt(
+	app *application.Avalanche,
 	useTeleporter *bool,
 	useDefaults bool,
 	params SubnetEVMGenesisParams,
 ) (SubnetEVMGenesisParams, error) {
 	switch {
 	case useTeleporter != nil:
-		params.useTeleporter = *useTeleporter
+		params.UseTeleporter = *useTeleporter
 	case useDefaults:
-		params.useTeleporter = true
-	case params.useExternalGasToken:
+		params.UseTeleporter = true
+	case params.UseExternalGasToken:
 	default:
 		interoperatingBlockchainOption := "Yes, I want my blockchain to be able to interoperate with other blockchains and the C-Chain"
 		isolatedBlockchainOption := "No, I want to run my blockchain isolated"
@@ -458,7 +469,7 @@ func promptInteropt(
 			switch option {
 			case isolatedBlockchainOption:
 			case interoperatingBlockchainOption:
-				params.useTeleporter = true
+				params.UseTeleporter = true
 			case explainOption:
 				ux.Logger.PrintToUser("Avalanche enables native interoperability between blockchains with the VM-agnostic Avalanche Warp Messaging protocol (AWM). Teleporter is a messaging protocol built on top of AWM that provides a developer-friendly interface for sending and receiving cross-chain messages to and from EVM-compatible blockchains. This communication protocol can be used for bridges and other protocols.")
 				continue
@@ -470,6 +481,7 @@ func promptInteropt(
 }
 
 func promptPermissioning(
+	app *application.Avalanche,
 	version string,
 	useDefaults bool,
 	params SubnetEVMGenesisParams,
@@ -504,7 +516,7 @@ func promptPermissioning(
 				}
 				switch option {
 				case approvedCanSubmitTransactionsOption:
-					params.transactionPrecompileAllowList, cancel, err = vm.GenerateAllowList(app, "issue transactions", version)
+					params.transactionPrecompileAllowList, cancel, err = GenerateAllowList(app, "issue transactions", version)
 					if err != nil {
 						return SubnetEVMGenesisParams{}, err
 					}
@@ -533,7 +545,7 @@ func promptPermissioning(
 				}
 				switch option {
 				case approvedCanDeployContractsOption:
-					params.contractDeployerPrecompileAllowList, cancel, err = vm.GenerateAllowList(app, "deploy smart contracts", version)
+					params.contractDeployerPrecompileAllowList, cancel, err = GenerateAllowList(app, "deploy smart contracts", version)
 					if err != nil {
 						return SubnetEVMGenesisParams{}, err
 					}
@@ -558,7 +570,7 @@ func promptPermissioning(
 	return params, nil
 }
 
-func promptVMVersion(
+func PromptVMVersion(
 	app *application.Avalanche,
 	repoName string,
 	vmVersion string,
