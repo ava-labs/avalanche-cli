@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -225,49 +226,65 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if err != nil {
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}
-		if !keyPairExists {
-			switch {
-			case useSSHAgent:
-				ux.Logger.PrintToUser("Using ssh agent identity %s to create key pair %s in AWS[%s]", sshIdentity, keyPairName[region], region)
-				if err := ec2Svc[region].UploadSSHIdentityKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-			case !useSSHAgent && certInSSHDir:
-				ux.Logger.PrintToUser("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix)
-				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region)
-				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
-				if err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-			case !useSSHAgent && !certInSSHDir:
-				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+		if replaceKeyPair && !forMonitoring {
+			// delete existing key pair on AWS console and download the newly created key pair file
+			// in .ssh dir (will overwrite existing file in .ssh dir)
+			if keyPairExists {
+				if err := ec2Svc[region].DeleteKeyPair(regionConf[region].Prefix); err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair %s in AWS console due to %w", regionConf[region].Prefix, err)
 				}
 			}
+			if err = os.RemoveAll(privKey); err != nil {
+				return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair file %s in .ssh dir due to %w", privKey, err)
+			}
+			if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+			}
 		} else {
-			// keypair exists
-			switch {
-			case useSSHAgent:
-				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s] via ssh-agent", keyPairName[region], region)
-			case !useSSHAgent && certInSSHDir:
-				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
-			case !useSSHAgent && !certInSSHDir:
-				ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
-				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName[region])
-				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
-				if err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+			if !keyPairExists {
+				switch {
+				case useSSHAgent:
+					ux.Logger.PrintToUser("Using ssh agent identity %s to create key pair %s in AWS[%s]", sshIdentity, keyPairName[region], region)
+					if err := ec2Svc[region].UploadSSHIdentityKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+				case !useSSHAgent && certInSSHDir:
+					ux.Logger.PrintToUser("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix)
+					ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region)
+					keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+				case !useSSHAgent && !certInSSHDir:
+					ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
-				privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
-				if err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+			} else {
+				// keypair exists
+				switch {
+				case useSSHAgent:
+					ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s] via ssh-agent", keyPairName[region], region)
+				case !useSSHAgent && certInSSHDir:
+					ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
+				case !useSSHAgent && !certInSSHDir:
+					ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
+					ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName[region])
+					keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
 			}
 		}

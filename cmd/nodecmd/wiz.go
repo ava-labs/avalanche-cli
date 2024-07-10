@@ -72,6 +72,7 @@ var (
 	teleporterRegistryBydecodePath         string
 	deployTeleporterMessenger              bool
 	deployTeleporterRegistry               bool
+	replaceKeyPair                         bool
 )
 
 func newWizCmd() *cobra.Command {
@@ -139,6 +140,7 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&teleporterRegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
 	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Teleporter Registry")
+	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	return cmd
 }
 

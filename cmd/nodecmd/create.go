@@ -128,6 +128,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntVar(&throughput, "aws-volume-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
+	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	return cmd
 }
 
