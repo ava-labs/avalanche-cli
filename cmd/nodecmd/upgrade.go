@@ -68,7 +68,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 	for host, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading avalanchego to version %s...", upgradeInfo.AvalancheGoVersion)))
-			//check if host is API host
+			// check if host is API host
 
 			if err := upgradeAvalancheGo(host, network, upgradeInfo.AvalancheGoVersion, clusterConfig.IsAPIHost(host.GetCloudID())); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
