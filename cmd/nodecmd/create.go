@@ -718,7 +718,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring); err != nil {
+			// check if host is a API host
+			isAPIHost := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID())
+			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring, isAPIHost); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
