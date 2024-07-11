@@ -874,7 +874,7 @@ func genesisFileExists(host *models.Host) bool {
 }
 
 func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error) {
-	//get remote node.json file
+	// get remote node.json file
 	nodeJSONPath := filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
 	tmpFile, err := os.CreateTemp("", "avalanchecli-node-*.json")
 	if err != nil {
@@ -884,7 +884,7 @@ func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error)
 	if err := host.Download(nodeJSONPath, tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
 		return nil, err
 	}
-	//parse node.json file
+	// parse node.json file
 	nodeJSON, err := os.ReadFile(tmpFile.Name())
 	if err != nil {
 		return nil, err
