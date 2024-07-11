@@ -3,14 +3,14 @@
 	"api-admin-enabled": {{.APIAdminEnabled}},
 	"index-enabled": {{.IndexEnabled}},
 	"network-id": "{{if .NetworkID}}{{.NetworkID}}{{else}}fuji{{end}}",
-	"db-dir": "{{.DBDir}}",
-	"log-dir": "{{.LogDir}}",
-{{- if .PublicIP -}}
-    "public-ip": "{{.PublicIP}}"
-{{- else -}}
-    "public-ip-resolution-service": "opendns"
-{{- end -}}
+{{- if .PublicIP }}
+    "public-ip": "{{.PublicIP}}",
+{{- else }}
+    "public-ip-resolution-service": "opendns",
+{{- end }}
 {{- if .TrackSubnets }}
-	"track-subnets": "{{ .TrackSubnets }}"
-{{- end }} 
+	"track-subnets": "{{ .TrackSubnets }}",
+{{- end }}
+	"db-dir": "{{.DBDir}}",
+	"log-dir": "{{.LogDir}}"
 }
