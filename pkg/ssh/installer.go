@@ -3,6 +3,8 @@
 package ssh
 
 import (
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 )
@@ -24,5 +26,5 @@ func (h *HostInstaller) GetArch() (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	return string(goArhBytes), string(goOSBytes)
+	return strings.TrimSpace(string(goArhBytes)), strings.TrimSpace(string(goOSBytes))
 }
