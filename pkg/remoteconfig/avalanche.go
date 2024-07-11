@@ -92,6 +92,7 @@ func AvalancheFolderToCreate() []string {
 		"/home/ubuntu/.avalanchego/db",
 		"/home/ubuntu/.avalanchego/logs",
 		"/home/ubuntu/.avalanchego/configs",
+		"/home/ubuntu/.avalanchego/configs/subnets/",
 		"/home/ubuntu/.avalanchego/configs/chains/C",
 		"/home/ubuntu/.avalanchego/staking",
 		"/home/ubuntu/.avalanchego/plugins",
