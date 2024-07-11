@@ -558,7 +558,7 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 	switch {
 	case sc.VM == models.CustomVM:
 		if err := RunOverSSH(
-			"Build CustomVMe",
+			"Build CustomVM",
 			host,
 			constants.SSHLongRunningScriptTimeout,
 			"shell/buildCustomVM.sh",

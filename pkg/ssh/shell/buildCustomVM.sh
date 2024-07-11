@@ -10,7 +10,7 @@ git remote add origin {{ .CustomVMRepoURL }}
 git fetch --depth 1 origin {{ .CustomVMBranch }} -q
 git checkout {{ .CustomVMBranch }}
 chmod +x {{ .CustomVMBuildScript }}
-./{{ .CustomVMBuildScript }} {{ .CustomVMPath }}
-echo {{ .CustomVMPath }} [ok]
+./{{ .CustomVMBuildScript }} {{ .VMBinaryPath }}
+echo {{ .VMBinaryPath }} [ok]
 
 
