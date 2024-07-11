@@ -616,14 +616,14 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 	// genesis config
 	genesisFilename := filepath.Join(app.GetNodesDir(), host.GetCloudID(), constants.GenesisFileName)
 	if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
-		return err
+		return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err
 	}
 	// end genesis config
 	// subnet config
 	if app.AvagoSubnetConfigExists(subnetName) {
 		subnetConfig, err := app.LoadRawAvagoSubnetConfig(subnetName)
 		if err != nil {
-			return err
+			return fmt.Errorf("error loading subnet config: %w", err)
 		}
 		subnetConfigFile, err := os.CreateTemp("", "avalanchecli-subnet-*.json")
 		if err != nil {
@@ -638,7 +638,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 			return err
 		}
 		if err := host.Upload(subnetConfigFile.Name(), subnetConfigPath, constants.SSHFileOpsTimeout); err != nil {
-			return err
+			return fmt.Errorf("error uploading subnet config to %s: %w", subnetConfigPath, err)
 		}
 	}
 	// end subnet config
@@ -652,7 +652,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 		defer os.Remove(chainConfigFile.Name())
 		chainConfig, err := app.LoadRawChainConfig(subnetName)
 		if err != nil {
-			return err
+			return fmt.Errorf("error loading chain config: %w", err)
 		}
 		if err := os.WriteFile(chainConfigFile.Name(), chainConfig, constants.WriteReadUserOnlyPerms); err != nil {
 			return err
@@ -662,7 +662,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 			return err
 		}
 		if err := host.Upload(chainConfigFile.Name(), chainConfigPath, constants.SSHFileOpsTimeout); err != nil {
-			return err
+			return fmt.Errorf("error uploading chain config to %s: %w", chainConfigPath, err)
 		}
 	}
 	// end chain config
@@ -676,7 +676,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 		defer os.Remove(networkUpgradesFile.Name())
 		networkUpgrades, err := app.LoadRawNetworkUpgrades(subnetName)
 		if err != nil {
-			return err
+			return fmt.Errorf("error loading network upgrades: %w", err)
 		}
 		if err := os.WriteFile(networkUpgradesFile.Name(), networkUpgrades, constants.WriteReadUserOnlyPerms); err != nil {
 			return err
@@ -686,7 +686,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 			return err
 		}
 		if err := host.Upload(networkUpgradesFile.Name(), networkUpgradesPath, constants.SSHFileOpsTimeout); err != nil {
-			return err
+			return fmt.Errorf("error uploading network upgrades to %s: %w", networkUpgradesPath, err)
 		}
 	}
 	// end network upgrade
