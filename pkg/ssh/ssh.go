@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -518,7 +519,7 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), subnetIDs)
 	// make sure that genesis and bootstrap data is preserved
 	if genesisFileExists(host) {
-		avagoConf.GenesisPath = filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)
+		avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 	}
 	remoteAvagoConfFile, err := getAvalancheGoConfigData(host)
 	if err != nil {
@@ -607,25 +608,14 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 		return err
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
-	/*if subnetID == ids.Empty {
+	if subnetID == ids.Empty {
 		return errors.New("subnet id is empty")
-	}*/
+	}
 	subnetIDStr := subnetID.String()
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	// genesis config
-	genData, err := app.LoadRawGenesis(subnetName)
-	if err != nil {
-		return err
-	}
-	genesisFile, err := os.CreateTemp("", "avalanchecli-genesis-*.json")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(genesisFile.Name())
-	if err := os.WriteFile(genesisFile.Name(), genData, constants.WriteReadUserOnlyPerms); err != nil {
-		return err
-	}
-	if err := host.Upload(genesisFile.Name(), remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
+	genesisFilename := filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)
+	if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
 	// end genesis config
@@ -643,7 +633,6 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 		if err := os.WriteFile(subnetConfigFile.Name(), subnetConfig, constants.WriteReadUserOnlyPerms); err != nil {
 			return err
 		}
-
 		subnetConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", subnetIDStr+".json")
 		if err := host.MkdirAll(filepath.Base(subnetConfigPath), constants.SSHDirOpsTimeout); err != nil {
 			return err
