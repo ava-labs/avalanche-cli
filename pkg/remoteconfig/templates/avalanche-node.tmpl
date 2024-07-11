@@ -3,6 +3,15 @@
 	"api-admin-enabled": {{.APIAdminEnabled}},
 	"index-enabled": {{.IndexEnabled}},
 	"network-id": "{{if .NetworkID}}{{.NetworkID}}{{else}}fuji{{end}}",
+{{- if .BootstrapIDs }}
+	"bootstrap-ids": "{{ .BootstrapIDs }}",
+{{- end }}
+{{- if .BootstrapIPs }}
+	"bootstrap-ips": "{{ .BootstrapIPs }}",
+{{- end }}
+{{- if .GenesisPath }}
+	"genesis-file": "{{ .GenesisPath }}",
+{{- end }}
 {{- if .PublicIP }}
 	"public-ip": "{{.PublicIP}}",
 {{- else }}

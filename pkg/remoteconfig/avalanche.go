@@ -23,6 +23,9 @@ type AvalancheConfigInputs struct {
 	StateSyncEnabled bool
 	PruningEnabled   bool
 	TrackSubnets     string
+	BootstrapIDs     string
+	BootstrapIPs     string
+	GenesisPath      string
 }
 
 func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {

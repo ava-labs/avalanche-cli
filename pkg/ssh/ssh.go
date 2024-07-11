@@ -5,6 +5,7 @@ package ssh
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -515,6 +516,19 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 	defer os.Remove(nodeConfFile.Name())
 
 	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), subnetIDs)
+	// make sure that genesis and bootstrap data is preserved
+	if genesisFileExists(host) {
+		avagoConf.GenesisPath = filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)
+	}
+	remoteAvagoConfFile, err := getAvalancheGoConfigData(host)
+	if err != nil {
+		return err
+	}
+	bootstrapIDs, _ := utils.GetValueString(remoteAvagoConfFile, "bootstrap-ids")
+	bootstrapIPs, _ := utils.GetValueString(remoteAvagoConfFile, "bootstrap-ips")
+	avagoConf.BootstrapIDs = bootstrapIDs
+	avagoConf.BootstrapIPs = bootstrapIPs
+	// ready to render node config
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {
 		return err
@@ -852,4 +866,32 @@ func RunSSHUpsizeRootDisk(host *models.Host) error {
 func composeFileExists(host *models.Host) bool {
 	composeFileExists, _ := host.FileExists(utils.GetRemoteComposeFile())
 	return composeFileExists
+}
+
+func genesisFileExists(host *models.Host) bool {
+	genesisFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName))
+	return genesisFileExists
+}
+
+func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error) {
+	//get remote node.json file
+	nodeJSONPath := filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
+	tmpFile, err := os.CreateTemp("", "avalanchecli-node-*.json")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tmpFile.Name())
+	if err := host.Download(nodeJSONPath, tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
+		return nil, err
+	}
+	//parse node.json file
+	nodeJSON, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return nil, err
+	}
+	var avagoConfig map[string]interface{}
+	if err := json.Unmarshal(nodeJSON, &avagoConfig); err != nil {
+		return nil, err
+	}
+	return avagoConfig, nil
 }
