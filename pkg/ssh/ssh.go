@@ -5,7 +5,6 @@ package ssh
 import (
 	"bytes"
 	"embed"
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -495,14 +494,14 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 }
 
 // RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
-func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, networkID string, trackSubnets []string) error {
+func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, network models.Network, trackSubnets []string) error {
 	// get subnet ids
 	subnetIDs, err := utils.MapWithError(trackSubnets, func(subnetName string) (string, error) {
 		sc, err := app.LoadSidecar(subnetName)
 		if err != nil {
 			return "", err
 		} else {
-			return sc.Networks[networkID].SubnetID.String(), nil
+			return sc.Networks[network.Name()].SubnetID.String(), nil
 		}
 	})
 	if err != nil {
@@ -515,7 +514,7 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 	}
 	defer os.Remove(nodeConfFile.Name())
 
-	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, networkID, subnetIDs)
+	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), subnetIDs)
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {
 		return err
@@ -588,17 +587,17 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 }
 
 // RunSSHSyncSubnetData syncs subnet data required
-func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, networkID string, subnetName string) error {
+func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network models.Network, subnetName string) error {
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
-	subnetID := sc.Networks[networkID].SubnetID
-	if subnetID == ids.Empty {
+	subnetID := sc.Networks[network.Name()].SubnetID
+	/*if subnetID == ids.Empty {
 		return errors.New("subnet id is empty")
-	}
+	}*/
 	subnetIDStr := subnetID.String()
-	blockchainID := sc.Networks[networkID].BlockchainID
+	blockchainID := sc.Networks[network.Name()].BlockchainID
 	// genesis config
 	genData, err := app.LoadRawGenesis(subnetName)
 	if err != nil {

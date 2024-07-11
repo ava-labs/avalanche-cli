@@ -72,7 +72,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := prepareSubnetPlugin(hosts, subnetName); err != nil {
 		return err
 	}
-	untrackedNodes, err := trackSubnet(hosts, clusterName, clusterConfig.Network.NetworkIDFlagValue(), subnetName)
+	untrackedNodes, err := trackSubnet(hosts, clusterName, clusterConfig.Network, subnetName)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
 func trackSubnet(
 	hosts []*models.Host,
 	clusterName string,
-	networkID string,
+	network models.Network,
 	subnetName string,
 ) ([]string, error) {
 	// load cluster config
@@ -133,10 +133,10 @@ func trackSubnet(
 			if err := ssh.RunSSHStopNode(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, networkID, allSubnets); err != nil {
+			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHSyncSubnetData(app, host, networkID, subnetName); err != nil {
+			if err := ssh.RunSSHSyncSubnetData(app, host, network, subnetName); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 			if err := ssh.RunSSHStartNode(host); err != nil {

@@ -58,7 +58,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
 		return err
 	}
-	nonUpdatedNodes, err := doUpdateSubnet(hosts, clusterName, clusterConfig.Network.NetworkIDFlagValue(), subnetName)
+	nonUpdatedNodes, err := doUpdateSubnet(hosts, clusterName, clusterConfig.Network, subnetName)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 func doUpdateSubnet(
 	hosts []*models.Host,
 	clusterName string,
-	networkID string,
+	network models.Network,
 	subnetName string,
 ) ([]string, error) {
 	// load cluster config
@@ -95,10 +95,10 @@ func doUpdateSubnet(
 			if err := ssh.RunSSHStopNode(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, networkID, allSubnets); err != nil {
+			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHSyncSubnetData(app, host, networkID, subnetName); err != nil {
+			if err := ssh.RunSSHSyncSubnetData(app, host, network, subnetName); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 			if err := ssh.RunSSHStartNode(host); err != nil {

@@ -4,7 +4,7 @@
 	"index-enabled": {{.IndexEnabled}},
 	"network-id": "{{if .NetworkID}}{{.NetworkID}}{{else}}fuji{{end}}",
 {{- if .PublicIP }}
-    "public-ip": "{{.PublicIP}}",
+	"public-ip": "{{.PublicIP}}",
 {{- else }}
     "public-ip-resolution-service": "opendns",
 {{- end }}
