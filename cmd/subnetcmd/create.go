@@ -267,24 +267,33 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			true,
 		)
 	} else {
-		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
+		genesisBytes, err = vm.LoadCustomGenesis(app, genesisFile)
+		if err != nil {
+			return err
+		}
+		var tokenSymbol string
+		if evmCompatibleGenesis := utils.ByteSliceIsSubnetEvmGenesis(genesisBytes); evmCompatibleGenesis {
+			tokenSymbol, err = vm.PromptTokenSymbol(app, createFlags.tokenSymbol)
+			if err != nil {
+				return err
+			}
+			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
+			if err != nil {
+				return err
+			}
+		}
+		sc, err = vm.CreateCustomSidecar(
 			app,
 			subnetName,
-			genesisFile,
 			useRepo,
 			customVMRepoURL,
 			customVMBranch,
 			customVMBuildScript,
 			vmFile,
+			tokenSymbol,
 		)
 		if err != nil {
 			return err
-		}
-		if evmCompatibleGenesis := utils.ByteSliceIsSubnetEvmGenesis(genesisBytes); evmCompatibleGenesis {
-			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
-			if err != nil {
-				return err
-			}
 		}
 	}
 
