@@ -450,6 +450,14 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 	return nil
 }
 
+// DeleteKeyPair deletes an existing key pair in AWS console
+func (c *AwsCloud) DeleteKeyPair(keyName string) error {
+	_, err := c.ec2Client.DeleteKeyPair(c.ctx, &ec2.DeleteKeyPairInput{
+		KeyName: aws.String(keyName),
+	})
+	return err
+}
+
 // UploadSSHIdentityKeyPair uploads a key pair from ssh-agent identity to the AWS cloud.
 func (c *AwsCloud) UploadSSHIdentityKeyPair(keyName string, identity string) error {
 	identityValid, err := utils.IsSSHAgentIdentityValid(identity)
