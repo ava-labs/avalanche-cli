@@ -299,6 +299,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 	if deployTeleporter || useExternalGasToken {
 		sc.TeleporterReady = true
+		sc.RunRelayer = true // TODO: remove this once deploy asks if deploying relayer
 		sc.ExternalToken = useExternalGasToken
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
