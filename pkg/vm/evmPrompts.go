@@ -162,7 +162,7 @@ func PromptSubnetEVMGenesisParams(
 		return SubnetEVMGenesisParams{}, "", err
 	}
 	// Interoperability
-	params, err = promptInteropt(app, useTeleporter, useDefaults, params)
+	params.UseTeleporter, err = PromptInteropt(app, useTeleporter, useDefaults, params.UseExternalGasToken)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
@@ -448,18 +448,19 @@ func promptFeeConfig(
 // is useDefaults is true, will enable teleporter
 // if using external gas token, will assume teleporter to be enabled
 // if other cases, prompts the user for wether to enable teleporter
-func promptInteropt(
+func PromptInteropt(
 	app *application.Avalanche,
-	useTeleporter *bool,
+	useTeleporterFlag *bool,
 	useDefaults bool,
-	params SubnetEVMGenesisParams,
-) (SubnetEVMGenesisParams, error) {
+	useExternalGasToken bool,
+) (bool, error) {
 	switch {
-	case useTeleporter != nil:
-		params.UseTeleporter = *useTeleporter
+	case useTeleporterFlag != nil:
+		return *useTeleporterFlag, nil
 	case useDefaults:
-		params.UseTeleporter = true
-	case params.UseExternalGasToken:
+		return true, nil
+	case useExternalGasToken:
+		return true, nil
 	default:
 		interoperatingBlockchainOption := "Yes, I want my blockchain to be able to interoperate with other blockchains and the C-Chain"
 		isolatedBlockchainOption := "No, I want to run my blockchain isolated"
@@ -470,20 +471,19 @@ func promptInteropt(
 				options,
 			)
 			if err != nil {
-				return SubnetEVMGenesisParams{}, err
+				return false, err
 			}
 			switch option {
 			case isolatedBlockchainOption:
+				return false, nil
 			case interoperatingBlockchainOption:
-				params.UseTeleporter = true
+				return true, nil
 			case explainOption:
 				ux.Logger.PrintToUser("Avalanche enables native interoperability between blockchains with the VM-agnostic Avalanche Warp Messaging protocol (AWM). Teleporter is a messaging protocol built on top of AWM that provides a developer-friendly interface for sending and receiving cross-chain messages to and from EVM-compatible blockchains. This communication protocol can be used for bridges and other protocols.")
 				continue
 			}
-			break
 		}
 	}
-	return params, nil
 }
 
 func promptPermissioning(

@@ -177,11 +177,22 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	var (
-		genesisBytes []byte
-		sc           *models.Sidecar
+		genesisBytes        []byte
+		sc                  *models.Sidecar
+		useTeleporterFlag   *bool
+		deployTeleporter    bool
+		useExternalGasToken bool
 	)
 
-	var teleporterInfo *teleporter.Info
+	flagName := "teleporter"
+	if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
+		useTeleporterFlag = &createFlags.useTeleporter
+	}
+
+	teleporterInfo, err := teleporter.GetInfo(app)
+	if err != nil {
+		return err
+	}
 
 	if vmType == models.SubnetEvm {
 		// get vm version
@@ -200,14 +211,19 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		var tokenSymbol string
+
 		if genesisFile != "" {
-			// load given genesis
 			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
 				return err
 			} else if !evmCompatibleGenesis {
 				return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
 			}
-			tokenSymbol, err := vm.PromptTokenSymbol(app, createFlags.tokenSymbol)
+			tokenSymbol, err = vm.PromptTokenSymbol(app, createFlags.tokenSymbol)
+			if err != nil {
+				return err
+			}
+			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
 			if err != nil {
 				return err
 			}
@@ -216,20 +232,9 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			sc, err = vm.CreateEvmSidecar(
-				app,
-				subnetName,
-				vmVersion,
-				tokenSymbol,
-				true,
-			)
 		} else {
-			var useTeleporterFlag *bool
-			flagName := "teleporter"
-			if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
-				useTeleporterFlag = &createFlags.useTeleporter
-			}
-			params, tokenSymbol, err := vm.PromptSubnetEVMGenesisParams(
+			var params vm.SubnetEVMGenesisParams
+			params, tokenSymbol, err = vm.PromptSubnetEVMGenesisParams(
 				app,
 				vmVersion,
 				createFlags.chainID,
@@ -241,14 +246,8 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-
-			if params.UseTeleporter || params.UseExternalGasToken {
-				teleporterInfo, err = teleporter.GetInfo(app)
-				if err != nil {
-					return err
-				}
-			}
-
+			deployTeleporter = params.UseTeleporter
+			useExternalGasToken = params.UseExternalGasToken
 			genesisBytes, err = vm.CreateEvmGenesis(
 				app,
 				subnetName,
@@ -259,15 +258,14 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-
-			sc, err = vm.CreateEvmSidecar(
-				app,
-				subnetName,
-				vmVersion,
-				tokenSymbol,
-				true,
-			)
 		}
+		sc, err = vm.CreateEvmSidecar(
+			app,
+			subnetName,
+			vmVersion,
+			tokenSymbol,
+			true,
+		)
 	} else {
 		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
 			app,
@@ -282,10 +280,15 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
+		if err != nil {
+			return err
+		}
 	}
 
-	if teleporterInfo != nil {
+	if deployTeleporter || useExternalGasToken {
 		sc.TeleporterReady = true
+		sc.ExternalToken = useExternalGasToken
 		sc.TeleporterKey = constants.TeleporterKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
 		if genesisFile != "" {
