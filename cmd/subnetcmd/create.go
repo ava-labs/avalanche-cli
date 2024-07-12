@@ -280,9 +280,11 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
-		if err != nil {
-			return err
+		if evmCompatibleGenesis := utils.ByteSliceIsSubnetEvmGenesis(genesisBytes); evmCompatibleGenesis {
+			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
