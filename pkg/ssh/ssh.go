@@ -31,7 +31,6 @@ import (
 
 type scriptInputs struct {
 	AvalancheGoVersion      string
-	CLIVersion              string
 	SubnetExportFileName    string
 	SubnetName              string
 	ClusterName             string
@@ -111,13 +110,13 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
+func RunSSHSetupNode(host *models.Host, configPath string) error {
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{CLIVersion: cliVersion, IsE2E: utils.IsE2E()},
+		scriptInputs{IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
