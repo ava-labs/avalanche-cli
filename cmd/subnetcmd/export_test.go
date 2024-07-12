@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -34,18 +35,16 @@ func TestExportImportSubnet(t *testing.T) {
 
 	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
-	genBytes, err := vm.CreateEvmGenesis(
+	genBytes, err := vm.LoadCustomGenesis(
 		app,
-		testSubnet,
-		vm.SubnetEVMGenesisParams{},
-		nil,
+		"../../"+utils.SubnetEvmGenesisPath,
 	)
 	require.NoError(err)
 	sc, err := vm.CreateEvmSidecar(
 		app,
 		testSubnet,
 		vmVersion,
-		"",
+		"Test",
 		false,
 	)
 	require.NoError(err)
@@ -81,7 +80,7 @@ func TestExportImportSubnet(t *testing.T) {
 	require.Equal(control["VMVersion"], vmVersion)
 	require.Equal(control["Subnet"], testSubnet)
 	require.Equal(control["TokenName"], "Test Token")
-	require.Equal(control["TokenSymbol"], "TEST")
+	require.Equal(control["TokenSymbol"], "Test")
 	require.Equal(control["Version"], constants.SidecarVersion)
 	require.Equal(control["Networks"], nil)
 
