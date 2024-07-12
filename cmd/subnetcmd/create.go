@@ -55,7 +55,7 @@ var (
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions   = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
-	errMutuallyExclusiveVMConfigOptions = errors.New("specifying --genesis flag disable flags --evm-chain-id,--evm-token,--evm-defaults")
+	errMutuallyExclusiveVMConfigOptions = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults")
 )
 
 // avalanche subnet create
@@ -156,7 +156,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// genesis flags exclusiveness
-	if genesisFile != "" && (createFlags.chainID != 0 || createFlags.tokenSymbol != "" || createFlags.useDefaults) {
+	if genesisFile != "" && (createFlags.chainID != 0 || createFlags.useDefaults) {
 		return errMutuallyExclusiveVMConfigOptions
 	}
 
