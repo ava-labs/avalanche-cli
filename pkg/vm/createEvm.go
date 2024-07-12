@@ -105,8 +105,12 @@ func CreateEvmGenesis(
 		return nil, err
 	}
 
+	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
+		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but warp precompile is disabled")
+	}
+
 	if (params.UseTeleporter || params.UseExternalGasToken) && teleporterInfo == nil {
-		return nil, fmt.Errorf("teleporter info not provided but a teleporter ready blockchain was requested")
+		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but no teleporter info was provided")
 	}
 
 	if params.UseTeleporter || params.UseExternalGasToken {
@@ -121,10 +125,15 @@ func CreateEvmGenesis(
 		)
 	}
 
-	*conf, _, err = getPrecompiles(*conf, app, &genesis.Timestamp, useSubnetEVMDefaults, useWarp, subnetEVMVersion)
-	if err != nil {
-		return nil, err
+	if params.UseExternalGasToken {
+		params.enableNativeMinterPrecompile = true
+		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
+			params.nativeMinterPrecompileAllowList.AdminAddresses,
+			common.HexToAddress(teleporterInfo.FundedAddress),
+		)
 	}
+
+	getPrecompiles(conf, params, &genesis.Timestamp)
 
 	if params.UseTeleporter || params.UseExternalGasToken {
 		addTeleporterAddressesToAllowLists(
