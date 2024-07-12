@@ -29,12 +29,10 @@ const (
 )
 
 var (
-	messengerDeployerRequiredBalance = big.NewInt(0).
-						Mul(big.NewInt(1e18), big.NewInt(10))
 	// 10 AVAX
-	TeleporterPrefundedAddressBalance = big.NewInt(0).
-						Mul(big.NewInt(1e18), big.NewInt(600))
+	messengerDeployerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(10))
 	// 600 AVAX
+	TeleporterPrefundedAddressBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600))
 )
 
 func getTeleporterURLs(version string) (string, string, string, string) {

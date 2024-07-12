@@ -22,6 +22,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+var (
+	// 600 AVAX: to deploy teleporter contract, registry contract, and fund
+	// starting relayer operations
+	teleporterBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600))
+	// 1000 AVAX: to deploy teleporter contract, registry contract, fund
+	// starting relayer operations, deploy bridge contracts
+	externalGasTokenBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1000))
+)
+
 func CreateEvmSidecar(
 	app *application.Avalanche,
 	subnetName string,
@@ -85,23 +94,30 @@ func CreateEvmGenesis(
 
 	setFeeConfig(params, conf)
 
-	allocation, _, err := getAllocation(
+	allocations, err := getAllocation(
+		params,
 		app,
 		subnetName,
 		defaultEvmAirdropAmount,
 		oneAvax,
-		fmt.Sprintf("Amount to airdrop (in %s units)", tokenSymbol),
-		useSubnetEVMDefaults,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	if teleporterInfo != nil {
-		allocation = addTeleporterAddressToAllocations(
-			allocation,
+	if (params.UseTeleporter || params.UseExternalGasToken) && teleporterInfo == nil {
+		return nil, fmt.Errorf("teleporter info not provided but a teleporter ready blockchain was requested")
+	}
+
+	if params.UseTeleporter || params.UseExternalGasToken {
+		balance := teleporterBalance
+		if params.UseExternalGasToken {
+			balance = externalGasTokenBalance
+		}
+		allocations = addTeleporterAllocation(
+			allocations,
 			teleporterInfo.FundedAddress,
-			teleporterInfo.FundedBalance,
+			balance,
 		)
 	}
 
@@ -110,9 +126,9 @@ func CreateEvmGenesis(
 		return nil, err
 	}
 
-	if teleporterInfo != nil {
-		*conf = addTeleporterAddressesToAllowLists(
-			*conf,
+	if params.UseTeleporter || params.UseExternalGasToken {
+		addTeleporterAddressesToAllowLists(
+			conf,
 			teleporterInfo.FundedAddress,
 			teleporterInfo.MessengerDeployerAddress,
 			teleporterInfo.RelayerAddress,
@@ -129,13 +145,13 @@ func CreateEvmGenesis(
 		}
 		if err := ensureAdminsHaveBalance(
 			allowListCfg.AdminAddresses,
-			allocation,
+			allocations,
 		); err != nil {
 			return nil, err
 		}
 	}
 
-	genesis.Alloc = allocation
+	genesis.Alloc = allocations
 	genesis.Config = conf
 	genesis.Difficulty = Difficulty
 	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()

@@ -211,19 +211,19 @@ func removePrecompile(arr []string, s string) ([]string, error) {
 // adds teleporter-related addresses (main funded key, messenger deploy key, relayer key)
 // to the allow list of relevant enabled precompiles
 func addTeleporterAddressesToAllowLists(
-	config params.ChainConfig,
+	config *params.ChainConfig,
 	teleporterAddress string,
 	teleporterMessengerDeployerAddress string,
 	relayerAddress string,
-) params.ChainConfig {
+) {
 	// tx allow list:
 	// teleporterAddress funds the other two and also deploys the registry
 	// teleporterMessengerDeployerAddress deploys the messenger
 	// relayerAddress is used by the relayer to send txs to the target chain
-	for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
-		precompileConfig := config.GenesisPrecompiles[txallowlist.ConfigKey]
-		if precompileConfig != nil {
-			txAllowListConfig := precompileConfig.(*txallowlist.Config)
+	precompileConfig := config.GenesisPrecompiles[txallowlist.ConfigKey]
+	if precompileConfig != nil {
+		txAllowListConfig := precompileConfig.(*txallowlist.Config)
+		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
 			txAllowListConfig.AllowListConfig = addAddressToAllowed(
 				txAllowListConfig.AllowListConfig,
 				address,
@@ -233,17 +233,16 @@ func addTeleporterAddressesToAllowLists(
 	// contract deploy allow list:
 	// teleporterAddress deploys the registry
 	// teleporterMessengerDeployerAddress deploys the messenger
-	for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress} {
-		precompileConfig := config.GenesisPrecompiles[deployerallowlist.ConfigKey]
-		if precompileConfig != nil {
-			txAllowListConfig := precompileConfig.(*deployerallowlist.Config)
-			txAllowListConfig.AllowListConfig = addAddressToAllowed(
-				txAllowListConfig.AllowListConfig,
+	precompileConfig = config.GenesisPrecompiles[deployerallowlist.ConfigKey]
+	if precompileConfig != nil {
+		deployerAllowListConfig := precompileConfig.(*deployerallowlist.Config)
+		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress} {
+			deployerAllowListConfig.AllowListConfig = addAddressToAllowed(
+				deployerAllowListConfig.AllowListConfig,
 				address,
 			)
 		}
 	}
-	return config
 }
 
 // adds an address to the given allowlist, as an Allowed address,
