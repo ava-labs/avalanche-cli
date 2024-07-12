@@ -556,6 +556,8 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 	}(host)
 	switch {
 	case sc.VM == models.CustomVM:
+		ux.Logger.Info("Building Custom VM for %s to %s", host.NodeID, subnetVMBinaryPath)
+		ux.Logger.Info("Custom VM Params: repo %s branch %s via %s", sc.CustomVMRepoURL, sc.CustomVMBranch, sc.CustomVMBuildScript)
 		if err := RunOverSSH(
 			"Build CustomVM",
 			host,
@@ -573,6 +575,7 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 		}
 
 	case sc.VM == models.SubnetEvm:
+		ux.Logger.Info("Installing Subnet EVM for %s", host.NodeID)
 		dl := binutils.NewSubnetEVMDownloader()
 		installURL, _, err := dl.GetDownloadURL(sc.VMVersion, hostInstaller) // extension is tar.gz
 		if err != nil {
@@ -630,7 +633,7 @@ func mergeSubnetNodeConfig(host *models.Host, subnetNodeConfigPath string) error
 		return fmt.Errorf("error unmarshalling subnet node config: %w", err)
 	}
 	mergedNodeConfig := utils.MergeJSONMaps(remoteNodeConfig, subnetNodeConfig)
-	mergedNodeConfigBytes, err := json.Marshal(mergedNodeConfig)
+	mergedNodeConfigBytes, err := json.MarshalIndent(mergedNodeConfig, "", " ")
 	if err != nil {
 		return fmt.Errorf("error creating merged node config: %w", err)
 	}

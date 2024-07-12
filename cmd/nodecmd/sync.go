@@ -90,6 +90,7 @@ func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
 	if err != nil {
 		return err
 	}
+	ux.Logger.Info("Creating subnet %s plugin for hosts: %s", subnetName, hosts)
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
