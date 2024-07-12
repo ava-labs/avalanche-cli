@@ -634,7 +634,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 			return err
 		}
 		subnetConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", subnetIDStr+".json")
-		if err := host.MkdirAll(filepath.Base(subnetConfigPath), constants.SSHDirOpsTimeout); err != nil {
+		if err := host.MkdirAll(filepath.Dir(subnetConfigPath), constants.SSHDirOpsTimeout); err != nil {
 			return err
 		}
 		if err := host.Upload(subnetConfigFile.Name(), subnetConfigPath, constants.SSHFileOpsTimeout); err != nil {
@@ -658,7 +658,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 			return err
 		}
 		chainConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", "chains", blockchainID.String(), "config.json")
-		if err := host.MkdirAll(filepath.Base(chainConfigPath), constants.SSHDirOpsTimeout); err != nil {
+		if err := host.MkdirAll(filepath.Dir(chainConfigPath), constants.SSHDirOpsTimeout); err != nil {
 			return err
 		}
 		if err := host.Upload(chainConfigFile.Name(), chainConfigPath, constants.SSHFileOpsTimeout); err != nil {
@@ -682,7 +682,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 			return err
 		}
 		networkUpgradesPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", "chains", blockchainID.String(), "upgrade.json")
-		if err := host.MkdirAll(filepath.Base(networkUpgradesPath), constants.SSHDirOpsTimeout); err != nil {
+		if err := host.MkdirAll(filepath.Dir(networkUpgradesPath), constants.SSHDirOpsTimeout); err != nil {
 			return err
 		}
 		if err := host.Upload(networkUpgradesFile.Name(), networkUpgradesPath, constants.SSHFileOpsTimeout); err != nil {
