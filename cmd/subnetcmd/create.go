@@ -184,11 +184,13 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		useExternalGasToken bool
 	)
 
+	// get teleporter flag as a pointer (3 values: undef/true/false)
 	flagName := "teleporter"
 	if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
 		useTeleporterFlag = &createFlags.useTeleporter
 	}
 
+	// get teleporter info
 	teleporterInfo, err := teleporter.GetInfo(app)
 	if err != nil {
 		return err
