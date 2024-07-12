@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/statemachine"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
@@ -38,20 +37,20 @@ func CreateEvmSidecar(
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
 		if err != nil {
-			return &models.Sidecar{}, fmt.Errorf("failed to install subnet-evm: %w", err)
+			return nil, fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
 		rpcVersion, err = GetVMBinaryProtocolVersion(vmBin)
 		if err != nil {
-			return &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+			return nil, fmt.Errorf("unable to get RPC version: %w", err)
 		}
 	} else {
 		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
-			return &models.Sidecar{}, err
+			return nil, err
 		}
 	}
 
-	sc := &models.Sidecar{
+	sc := models.Sidecar{
 		Name:        subnetName,
 		VM:          models.SubnetEvm,
 		VMVersion:   subnetEVMVersion,
@@ -61,7 +60,7 @@ func CreateEvmSidecar(
 		TokenName:   tokenSymbol + " Token",
 	}
 
-	return sc, nil
+	return &sc, nil
 }
 
 func CreateEvmGenesis(
@@ -69,7 +68,6 @@ func CreateEvmGenesis(
 	subnetName string,
 	params SubnetEVMGenesisParams,
 	subnetEVMVersion string,
-	subnetEVMChainID uint64,
 	tokenSymbol string,
 	useSubnetEVMDefaults bool,
 	useWarp bool,
@@ -85,15 +83,9 @@ func CreateEvmGenesis(
 	chainID := new(big.Int).SetUint64(params.chainID)
 	conf.ChainID = chainID
 
-	var (
-		allocation core.GenesisAlloc
-		direction  statemachine.StateDirection
-		err        error
-	)
+	setFeeConfig(params, conf)
 
-	*conf, direction, err = GetFeeConfig(*conf, app, useSubnetEVMDefaults)
-
-	allocation, direction, err = getAllocation(
+	allocation, _, err := getAllocation(
 		app,
 		subnetName,
 		defaultEvmAirdropAmount,
@@ -101,6 +93,10 @@ func CreateEvmGenesis(
 		fmt.Sprintf("Amount to airdrop (in %s units)", tokenSymbol),
 		useSubnetEVMDefaults,
 	)
+	if err != nil {
+		return nil, err
+	}
+
 	if teleporterInfo != nil {
 		allocation = addTeleporterAddressToAllocations(
 			allocation,
@@ -108,7 +104,12 @@ func CreateEvmGenesis(
 			teleporterInfo.FundedBalance,
 		)
 	}
-	*conf, direction, err = getPrecompiles(*conf, app, &genesis.Timestamp, useSubnetEVMDefaults, useWarp, subnetEVMVersion)
+
+	*conf, _, err = getPrecompiles(*conf, app, &genesis.Timestamp, useSubnetEVMDefaults, useWarp, subnetEVMVersion)
+	if err != nil {
+		return nil, err
+	}
+
 	if teleporterInfo != nil {
 		*conf = addTeleporterAddressesToAllowLists(
 			*conf,
@@ -126,10 +127,10 @@ func CreateEvmGenesis(
 				allowListCfg,
 			)
 		}
-
 		if err := ensureAdminsHaveBalance(
 			allowListCfg.AdminAddresses,
-			allocation); err != nil {
+			allocation,
+		); err != nil {
 			return nil, err
 		}
 	}
