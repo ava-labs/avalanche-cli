@@ -64,6 +64,16 @@ type SubnetEVMGenesisParams struct {
 	enableWarpPrecompile                bool
 }
 
+func PromptTokenSymbol(
+	app *application.Avalanche,
+	tokenSymbol string,
+) (string, error) {
+	if tokenSymbol != "" {
+		return tokenSymbol, nil
+	}
+	return app.Prompt.CaptureString("Token Symbol")
+}
+
 func PromptVMType(
 	app *application.Avalanche,
 	useSubnetEvm bool,
@@ -190,11 +200,9 @@ func promptGasToken(
 		cancel bool
 	)
 	if useDefaults {
-		if tokenSymbol == "" {
-			tokenSymbol, err = app.Prompt.CaptureString("Token Symbol")
-			if err != nil {
-				return SubnetEVMGenesisParams{}, "", err
-			}
+		tokenSymbol, err = PromptTokenSymbol(app, tokenSymbol)
+		if err != nil {
+			return SubnetEVMGenesisParams{}, "", err
 		}
 		params.initialTokenAllocation.allocToNewKey = true
 		return params, tokenSymbol, nil
@@ -214,11 +222,9 @@ func promptGasToken(
 		case externalTokenOption:
 			params.UseExternalGasToken = true
 		case nativeTokenOption:
-			if tokenSymbol == "" {
-				tokenSymbol, err = app.Prompt.CaptureString("Token Symbol")
-				if err != nil {
-					return SubnetEVMGenesisParams{}, "", err
-				}
+			tokenSymbol, err = PromptTokenSymbol(app, tokenSymbol)
+			if err != nil {
+				return SubnetEVMGenesisParams{}, "", err
 			}
 			allocateToNewKeyOption := "Allocate 1m tokens to a newly created account"
 			allocateToEwoqOption := "Allocate 1m to the ewoq account 0x8db...2FC (Only recommended for testing, not recommended for production)"

@@ -43,6 +43,12 @@ const (
 	enabledLabel = "enabled"
 	managerLabel = "manager"
 	adminLabel   = "admin"
+
+	NativeMint        = "Native Minting"
+	ContractAllowList = "Contract Deployment Allow List"
+	TxAllowList       = "Transaction Allow List"
+	FeeManager        = "Adjust Fee Settings Post Deploy"
+	RewardManager     = "Customize Fees Distribution"
 )
 
 var subnetName string
@@ -92,11 +98,11 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 	}
 
 	allPreComps := []string{
-		vm.ContractAllowList,
-		vm.FeeManager,
-		vm.NativeMint,
-		vm.TxAllowList,
-		vm.RewardManager,
+		ContractAllowList,
+		FeeManager,
+		NativeMint,
+		TxAllowList,
+		RewardManager,
 	}
 
 	fmt.Println()
@@ -197,15 +203,15 @@ func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) (bool
 		return false, err
 	}
 	switch precomp {
-	case vm.ContractAllowList:
+	case ContractAllowList:
 		return promptContractAllowListParams(&sc, precompiles, date)
-	case vm.TxAllowList:
+	case TxAllowList:
 		return promptTxAllowListParams(&sc, precompiles, date)
-	case vm.NativeMint:
+	case NativeMint:
 		return promptNativeMintParams(&sc, precompiles, date)
-	case vm.FeeManager:
+	case FeeManager:
 		return promptFeeManagerParams(&sc, precompiles, date)
-	case vm.RewardManager:
+	case RewardManager:
 		return promptRewardManagerParams(&sc, precompiles, date)
 	default:
 		return false, fmt.Errorf("unexpected precompile identifier: %q", precomp)
@@ -277,7 +283,7 @@ func promptRewardManagerParams(
 	if cancelled || err != nil {
 		return cancelled, err
 	}
-	initialConfig, err := vm.ConfigureInitialRewardConfig(app)
+	initialConfig, err := ConfigureInitialRewardConfig()
 	if err != nil {
 		return false, err
 	}
@@ -293,6 +299,37 @@ func promptRewardManagerParams(
 	}
 	*precompiles = append(*precompiles, upgrade)
 	return false, nil
+}
+
+func ConfigureInitialRewardConfig() (*rewardmanager.InitialRewardConfig, error) {
+	config := &rewardmanager.InitialRewardConfig{}
+
+	burnPrompt := "Should fees be burnt?"
+	burnFees, err := app.Prompt.CaptureYesNo(burnPrompt)
+	if err != nil {
+		return config, err
+	}
+	if burnFees {
+		return config, nil
+	}
+
+	feeRcpdPrompt := "Allow block producers to claim fees?"
+	allowFeeRecipients, err := app.Prompt.CaptureYesNo(feeRcpdPrompt)
+	if err != nil {
+		return config, err
+	}
+	if allowFeeRecipients {
+		config.AllowFeeRecipients = true
+		return config, nil
+	}
+
+	rewardPrompt := "Provide the address to which fees will be sent to"
+	rewardAddress, err := app.Prompt.CaptureAddress(rewardPrompt)
+	if err != nil {
+		return config, err
+	}
+	config.RewardAddress = rewardAddress
+	return config, nil
 }
 
 func promptFeeManagerParams(
@@ -311,7 +348,7 @@ func promptFeeManagerParams(
 	}
 	var feeConfig *commontype.FeeConfig
 	if yes {
-		chainConfig, _, err := vm.GetFeeConfig(params.ChainConfig{}, app, false)
+		chainConfig, err := GetFeeConfig(params.ChainConfig{}, false)
 		if err != nil {
 			return false, err
 		}
@@ -331,6 +368,112 @@ func promptFeeManagerParams(
 	return false, nil
 }
 
+func GetFeeConfig(config params.ChainConfig, useDefault bool) (
+	params.ChainConfig,
+	error,
+) {
+	const (
+		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
+		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
+		useSlow   = "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
+		customFee = "Customize fee config"
+
+		setGasLimit                 = "Set gas limit"
+		setBlockRate                = "Set target block rate"
+		setMinBaseFee               = "Set min base fee"
+		setTargetGas                = "Set target gas"
+		setBaseFeeChangeDenominator = "Set base fee change denominator"
+		setMinBlockGas              = "Set min block gas cost"
+		setMaxBlockGas              = "Set max block gas cost"
+		setGasStep                  = "Set block gas cost step"
+	)
+
+	config.FeeConfig = vm.StarterFeeConfig
+
+	if useDefault {
+		config.FeeConfig.TargetGas = vm.LowTarget
+		return config, nil
+	}
+
+	feeConfigOptions := []string{useSlow, useMedium, useFast, customFee}
+
+	feeDefault, err := app.Prompt.CaptureList(
+		"How would you like to set fees",
+		feeConfigOptions,
+	)
+	if err != nil {
+		return config, err
+	}
+
+	switch feeDefault {
+	case useFast:
+		config.FeeConfig.TargetGas = vm.HighTarget
+		return config, nil
+	case useMedium:
+		config.FeeConfig.TargetGas = vm.MediumTarget
+		return config, nil
+	case useSlow:
+		config.FeeConfig.TargetGas = vm.LowTarget
+		return config, nil
+	default:
+		ux.Logger.PrintToUser("Customizing fee config")
+	}
+
+	gasLimit, err := app.Prompt.CapturePositiveBigInt(setGasLimit)
+	if err != nil {
+		return config, err
+	}
+
+	blockRate, err := app.Prompt.CapturePositiveBigInt(setBlockRate)
+	if err != nil {
+		return config, err
+	}
+
+	minBaseFee, err := app.Prompt.CapturePositiveBigInt(setMinBaseFee)
+	if err != nil {
+		return config, err
+	}
+
+	targetGas, err := app.Prompt.CapturePositiveBigInt(setTargetGas)
+	if err != nil {
+		return config, err
+	}
+
+	baseDenominator, err := app.Prompt.CapturePositiveBigInt(setBaseFeeChangeDenominator)
+	if err != nil {
+		return config, err
+	}
+
+	minBlockGas, err := app.Prompt.CapturePositiveBigInt(setMinBlockGas)
+	if err != nil {
+		return config, err
+	}
+
+	maxBlockGas, err := app.Prompt.CapturePositiveBigInt(setMaxBlockGas)
+	if err != nil {
+		return config, err
+	}
+
+	gasStep, err := app.Prompt.CapturePositiveBigInt(setGasStep)
+	if err != nil {
+		return config, err
+	}
+
+	feeConf := commontype.FeeConfig{
+		GasLimit:                 gasLimit,
+		TargetBlockRate:          blockRate.Uint64(),
+		MinBaseFee:               minBaseFee,
+		TargetGas:                targetGas,
+		BaseFeeChangeDenominator: baseDenominator,
+		MinBlockGasCost:          minBlockGas,
+		MaxBlockGasCost:          maxBlockGas,
+		BlockGasCostStep:         gasStep,
+	}
+
+	config.FeeConfig = feeConf
+
+	return config, nil
+}
 func promptContractAllowListParams(
 	sc *models.Sidecar,
 	precompiles *[]params.PrecompileUpgrade,

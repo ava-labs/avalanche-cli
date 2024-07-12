@@ -16,11 +16,11 @@ func setFeeConfig(
 
 	switch {
 	case params.feeConfig.highThroughput:
-		config.FeeConfig.TargetGas = highTarget
+		config.FeeConfig.TargetGas = HighTarget
 	case params.feeConfig.mediumThroughput:
-		config.FeeConfig.TargetGas = mediumTarget
+		config.FeeConfig.TargetGas = MediumTarget
 	case params.feeConfig.lowThroughput:
-		config.FeeConfig.TargetGas = lowTarget
+		config.FeeConfig.TargetGas = LowTarget
 	default:
 		setCustomFeeConfig(params, config)
 	}

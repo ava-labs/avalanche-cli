@@ -207,11 +207,22 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			} else if !evmCompatibleGenesis {
 				return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
 			}
+			tokenSymbol, err := vm.PromptTokenSymbol(app, createFlags.tokenSymbol)
+			if err != nil {
+				return err
+			}
 			ux.Logger.PrintToUser("importing genesis for subnet %s", subnetName)
 			genesisBytes, err = os.ReadFile(genesisFile)
 			if err != nil {
 				return err
 			}
+			sc, err = vm.CreateEvmSidecar(
+				app,
+				subnetName,
+				vmVersion,
+				tokenSymbol,
+				true,
+			)
 		} else {
 			var useTeleporterFlag *bool
 			flagName := "teleporter"
@@ -238,21 +249,24 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				}
 			}
 
-			genesisBytes, sc, err = vm.CreateEvmSubnetConfig(
+			genesisBytes, err = vm.CreateEvmGenesis(
 				app,
 				subnetName,
-				genesisFile,
-				vmVersion,
-				true,
-				createFlags.chainID,
+				params,
 				tokenSymbol,
-				createFlags.useDefaults,
-				createFlags.useWarp,
 				teleporterInfo,
 			)
 			if err != nil {
 				return err
 			}
+
+			sc, err = vm.CreateEvmSidecar(
+				app,
+				subnetName,
+				vmVersion,
+				tokenSymbol,
+				true,
+			)
 		}
 	} else {
 		genesisBytes, sc, err = vm.CreateCustomSubnetConfig(
@@ -291,7 +305,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	sc.ImportedFromAPM = false
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
