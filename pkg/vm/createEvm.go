@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	subnetevmparams "github.com/ava-labs/subnet-evm/params"
-	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -27,7 +26,7 @@ var (
 	// starting relayer operations
 	teleporterBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600))
 	// 1000 AVAX: to deploy teleporter contract, registry contract, fund
-	// starting relayer operations, deploy bridge contracts
+	// starting relayer operations, and deploy bridge contracts
 	externalGasTokenBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1000))
 )
 
@@ -105,6 +104,12 @@ func CreateEvmGenesis(
 		return nil, err
 	}
 
+	if params.enableTransactionPrecompile {
+		if !someAllowedHasBalance(params.transactionPrecompileAllowList, allocations) {
+			return nil, errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Allocate some funds to one of the allow list addresses to continue")
+		}
+	}
+
 	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
 		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but warp precompile is disabled")
 	}
@@ -144,22 +149,6 @@ func CreateEvmGenesis(
 		)
 	}
 
-	if conf != nil && conf.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
-		allowListCfg, ok := conf.GenesisPrecompiles[txallowlist.ConfigKey].(*txallowlist.Config)
-		if !ok {
-			return nil, fmt.Errorf(
-				"expected config of type txallowlist.AllowListConfig, but got %T",
-				allowListCfg,
-			)
-		}
-		if err := ensureAdminsHaveBalance(
-			allowListCfg.AdminAddresses,
-			allocations,
-		); err != nil {
-			return nil, err
-		}
-	}
-
 	genesis.Alloc = allocations
 	genesis.Config = conf
 	genesis.Difficulty = Difficulty
@@ -179,20 +168,15 @@ func CreateEvmGenesis(
 	return prettyJSON.Bytes(), nil
 }
 
-func ensureAdminsHaveBalance(admins []common.Address, alloc core.GenesisAlloc) error {
-	if len(admins) < 1 {
-		return nil
-	}
-
-	for _, admin := range admins {
-		// we can break at the first admin who has a non-zero balance
-		if bal, ok := alloc[admin]; ok &&
+func someAllowedHasBalance(allowList AllowList, allocations core.GenesisAlloc) bool {
+	addrs := append(append(allowList.AdminAddresses, allowList.ManagerAddresses...), allowList.EnabledAddresses...)
+	for _, addr := range addrs {
+		// we can break at the first address that has a non-zero balance
+		if bal, ok := allocations[addr]; ok &&
 			bal.Balance != nil &&
 			bal.Balance.Uint64() > uint64(0) {
-			return nil
+			return true
 		}
 	}
-	return errors.New(
-		"none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Airdrop some funds to one of the allow list addresses to continue",
-	)
+	return false
 }
