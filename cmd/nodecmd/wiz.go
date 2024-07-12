@@ -72,6 +72,7 @@ var (
 	teleporterRegistryBydecodePath         string
 	deployTeleporterMessenger              bool
 	deployTeleporterRegistry               bool
+	depricatedRemoteCLIVersion             string
 )
 
 func newWizCmd() *cobra.Command {
@@ -98,7 +99,6 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
-
 	cmd.Flags().BoolVar(&forceSubnetCreate, "force-subnet-create", false, "overwrite the existing subnet configuration if one exists")
 	cmd.Flags().StringVar(&subnetGenesisFile, "subnet-genesis", "", "file path of the subnet genesis")
 	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
@@ -138,6 +138,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&teleporterRegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
 	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Teleporter Registry")
+
+	cmd.Flags().StringVar(&depricatedRemoteCLIVersion, "remote-cli-version", "", "[depricated] install given CLI version on remote nodes.")
 	return cmd
 }
 
@@ -158,6 +160,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	if clusterAlreadyExists && subnetName == "" {
 		return fmt.Errorf("expecting to add subnet to existing cluster but no subnet-name was provided")
+	}
+	if depricatedRemoteCLIVersion != "" {
+		ux.Logger.PrintToUser("remote-cli-version flag is depricated and will be removed in future releases. Ignoring it.")
 	}
 	if subnetName != "" && (!app.SidecarExists(subnetName) || forceSubnetCreate) {
 		ux.Logger.PrintToUser("")

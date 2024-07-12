@@ -600,6 +600,46 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 	return nil
 }
 
+// RunSSHMergeSubnetNodeConfig merges subnet node config to the node config on the remote host
+func mergeSubnetNodeConfig(host *models.Host, subnetNodeConfigPath string) error {
+	if subnetNodeConfigPath == "" {
+		return fmt.Errorf("subnet node config path is empty")
+	}
+	tmpFile, err := os.CreateTemp("", "avalanchecli-subnet-node-*.yml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmpFile.Name())
+	if err := host.Download(remoteconfig.GetRemoteAvalancheNodeConfig(), tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	remoteNodeConfigBytes, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return fmt.Errorf("error reading remote node config: %w", err)
+	}
+	var remoteNodeConfig map[string]interface{}
+	if err := json.Unmarshal(remoteNodeConfigBytes, &remoteNodeConfig); err != nil {
+		return fmt.Errorf("error unmarshalling remote node config: %w", err)
+	}
+	subnetNodeConfigBytes, err := os.ReadFile(subnetNodeConfigPath)
+	if err != nil {
+		return fmt.Errorf("error reading subnet node config: %w", err)
+	}
+	var subnetNodeConfig map[string]interface{}
+	if err := json.Unmarshal(subnetNodeConfigBytes, &subnetNodeConfig); err != nil {
+		return fmt.Errorf("error unmarshalling subnet node config: %w", err)
+	}
+	mergedNodeConfig := utils.MergeJSONMaps(remoteNodeConfig, subnetNodeConfig)
+	mergedNodeConfigBytes, err := json.Marshal(mergedNodeConfig)
+	if err != nil {
+		return fmt.Errorf("error creating merged node config: %w", err)
+	}
+	if err := os.WriteFile(tmpFile.Name(), mergedNodeConfigBytes, constants.WriteReadUserOnlyPerms); err != nil {
+		return err
+	}
+	return host.Upload(tmpFile.Name(), remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
+}
+
 // RunSSHSyncSubnetData syncs subnet data required
 func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network models.Network, subnetName string) error {
 	sc, err := app.LoadSidecar(subnetName)
@@ -618,6 +658,13 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 		return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
 	}
 	// end genesis config
+	// subnet node config
+	subnetNodeConfigPath := app.GetAvagoNodeConfigPath(subnetName)
+	if utils.FileExists(subnetNodeConfigPath) {
+		if err := mergeSubnetNodeConfig(host, subnetNodeConfigPath); err != nil {
+			return err
+		}
+	}
 	// subnet config
 	if app.AvagoSubnetConfigExists(subnetName) {
 		subnetConfig, err := app.LoadRawAvagoSubnetConfig(subnetName)
@@ -656,7 +703,7 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 		if err := os.WriteFile(chainConfigFile.Name(), chainConfig, constants.WriteReadUserOnlyPerms); err != nil {
 			return err
 		}
-		chainConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", "chains", blockchainID.String(), "config.json")
+		chainConfigPath := filepath.Join(constants.CloudNodeConfigPath, "chains", blockchainID.String(), "config.json")
 		if err := host.MkdirAll(filepath.Dir(chainConfigPath), constants.SSHDirOpsTimeout); err != nil {
 			return err
 		}
