@@ -75,7 +75,6 @@ func CreateEvmGenesis(
 	app *application.Avalanche,
 	subnetName string,
 	params SubnetEVMGenesisParams,
-	tokenSymbol string,
 	teleporterInfo *teleporter.Info,
 ) ([]byte, error) {
 	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)

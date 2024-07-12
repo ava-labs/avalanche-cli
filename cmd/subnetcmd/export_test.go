@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -35,17 +34,19 @@ func TestExportImportSubnet(t *testing.T) {
 
 	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
-	genBytes, sc, err := vm.CreateEvmSubnetConfig(
+	genBytes, err := vm.CreateEvmGenesis(
 		app,
 		testSubnet,
-		"../../"+utils.SubnetEvmGenesisPath,
+		vm.SubnetEVMGenesisParams{},
+		nil,
+	)
+	require.NoError(err)
+	sc, err := vm.CreateEvmSidecar(
+		app,
+		testSubnet,
 		vmVersion,
-		false,
-		0,
 		"",
 		false,
-		false,
-		nil,
 	)
 	require.NoError(err)
 	err = app.WriteGenesisFile(testSubnet, genBytes)

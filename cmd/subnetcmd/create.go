@@ -254,7 +254,6 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				app,
 				subnetName,
 				params,
-				tokenSymbol,
 				teleporterInfo,
 			)
 			if err != nil {
@@ -268,6 +267,9 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			tokenSymbol,
 			true,
 		)
+		if err != nil {
+			return err
+		}
 	} else {
 		genesisBytes, err = vm.LoadCustomGenesis(app, genesisFile)
 		if err != nil {

@@ -474,6 +474,7 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 
 	return config, nil
 }
+
 func promptContractAllowListParams(
 	sc *models.Sidecar,
 	precompiles *[]params.PrecompileUpgrade,
