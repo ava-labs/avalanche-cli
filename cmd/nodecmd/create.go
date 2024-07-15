@@ -479,7 +479,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("obtained image ID %s \n", imageID)
 			numNodesMetricsMap = numNodesMap
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = maps.Keys(numNodesMap)[0]
