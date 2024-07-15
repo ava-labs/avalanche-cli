@@ -27,10 +27,15 @@ type HomeFlags struct {
 	erc20Address string
 }
 
+type RemoteFlags struct {
+	chainFlags contract.ChainFlags
+	native     bool
+}
+
 type DeployFlags struct {
 	Network     networkoptions.NetworkFlags
 	homeFlags   HomeFlags
-	remoteFlags contract.ChainFlags
+	remoteFlags RemoteFlags
 	version     string
 }
 
@@ -62,7 +67,7 @@ func NewDeployCmd() *cobra.Command {
 	)
 	contract.AddChainFlagsToCmd(
 		cmd,
-		&deployFlags.remoteFlags,
+		&deployFlags.remoteFlags.chainFlags,
 		"set the Transferrer's Remote Chain",
 		"remote-subnet",
 		"c-chain-remote",
@@ -71,6 +76,7 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
 	return cmd
 }
 
@@ -108,7 +114,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}) {
 		return fmt.Errorf("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
 	}
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.remoteFlags.SubnetName != "", flags.remoteFlags.CChain}) {
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.remoteFlags.chainFlags.SubnetName != "", flags.remoteFlags.chainFlags.CChain}) {
 		return fmt.Errorf("--remote-subnet and --c-chain-remote are mutually exclusive flags")
 	}
 
@@ -281,9 +287,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Prompts
-	if !flags.remoteFlags.CChain && flags.remoteFlags.SubnetName == "" {
+	if !flags.remoteFlags.chainFlags.CChain && flags.remoteFlags.chainFlags.SubnetName == "" {
 		prompt := "Where should the token be available as an ERC-20?"
-		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags); err != nil {
+		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags.chainFlags); err != nil {
 			return err
 		} else if cancel {
 			return nil
@@ -291,15 +297,15 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Validations
-	if flags.remoteFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.remoteFlags.SubnetName); err != nil {
+	if flags.remoteFlags.chainFlags.SubnetName != "" {
+		if err := validateSubnet(network, flags.remoteFlags.chainFlags.SubnetName); err != nil {
 			return err
 		}
-		if flags.remoteFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
+		if flags.remoteFlags.chainFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
 			return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 		}
 	}
-	if flags.remoteFlags.CChain && flags.homeFlags.chainFlags.CChain {
+	if flags.remoteFlags.chainFlags.CChain && flags.homeFlags.chainFlags.CChain {
 		return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 	}
 
@@ -436,8 +442,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
-		flags.remoteFlags.SubnetName,
-		flags.remoteFlags.CChain,
+		flags.remoteFlags.chainFlags.SubnetName,
+		flags.remoteFlags.chainFlags.CChain,
 	)
 	if err != nil {
 		return err
