@@ -148,21 +148,23 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 }
 
 func wiz(cmd *cobra.Command, args []string) error {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		for sig := range c {
-			fmt.Printf("Received signal: %s\n", sig)
-			// Perform cleanup or other necessary tasks
-			fmt.Println("Cleaning up and exiting...")
-			os.Exit(0)
-		}
-	}()
 	clusterName := args[0]
 	subnetName := ""
 	if len(args) > 1 {
 		subnetName = args[1]
 	}
+	c := make(chan os.Signal, 1)
+	// Destroy cluster if user calls ctrl ^ c
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range c {
+			if err := CallDestroyNode(clusterName); err != nil {
+				ux.Logger.RedXToUser("Unable to delete cluster %s due to %s", clusterName, err)
+				ux.Logger.RedXToUser("Please try again by calling avalanche node destroy %s", clusterName)
+			}
+			os.Exit(0)
+		}
+	}()
 	clusterAlreadyExists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
