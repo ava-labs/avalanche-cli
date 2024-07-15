@@ -4,9 +4,12 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
@@ -145,6 +148,16 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 }
 
 func wiz(cmd *cobra.Command, args []string) error {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for sig := range c {
+			fmt.Printf("Received signal: %s\n", sig)
+			// Perform cleanup or other necessary tasks
+			fmt.Println("Cleaning up and exiting...")
+			os.Exit(0)
+		}
+	}()
 	clusterName := args[0]
 	subnetName := ""
 	if len(args) > 1 {
