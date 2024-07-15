@@ -94,21 +94,51 @@ func GetEVMSubnetPrefundedKey(
 	isCChain bool,
 	blockchainID string,
 ) (string, string, error) {
+	genesisData, err := GetEVMSubnetGenesis(
+		app,
+		network,
+		subnetName,
+		isCChain,
+		blockchainID,
+	)
+	if err != nil {
+		return "", "", err
+	}
+	_, genesisAddress, genesisPrivateKey, err := GetSubnetAirdropKeyInfo(
+		app,
+		network,
+		subnetName,
+		genesisData,
+	)
+	if err != nil {
+		return "", "", err
+	}
+	return genesisAddress, genesisPrivateKey, nil
+}
+
+// get the deployed subnet genesis
+func GetEVMSubnetGenesis(
+	app *application.Avalanche,
+	network models.Network,
+	subnetName string,
+	isCChain bool,
+	blockchainID string,
+) ([]byte, error) {
 	if blockchainID == "" {
 		if isCChain {
 			blockchainID = "C"
 		} else {
 			sc, err := app.LoadSidecar(subnetName)
 			if err != nil {
-				return "", "", fmt.Errorf("failed to load sidecar: %w", err)
+				return nil, fmt.Errorf("failed to load sidecar: %w", err)
 			}
 			if b, _, err := app.HasSubnetEVMGenesis(subnetName); err != nil {
-				return "", "", err
+				return nil, err
 			} else if !b {
-				return "", "", fmt.Errorf("search for prefunded key is only supported on EVM based vms")
+				return nil, fmt.Errorf("search for prefunded key is only supported on EVM based vms")
 			}
 			if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-				return "", "", fmt.Errorf("subnet has not been deployed to %s", network.Name())
+				return nil, fmt.Errorf("subnet has not been deployed to %s", network.Name())
 			}
 			blockchainID = sc.Networks[network.Name()].BlockchainID.String()
 		}
@@ -120,29 +150,20 @@ func GetEVMSubnetPrefundedKey(
 	if isCChain || !network.StandardPublicEndpoint() {
 		chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
 	} else {
 		chainID, err = ids.FromString(blockchainID)
 		if err != nil {
-			return "", "", err
+			return nil, err
 		}
 	}
 	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(createChainTx.GenesisData) {
-		return "", "", fmt.Errorf("search for prefunded key is only supported on EVM based vms")
+		return nil, fmt.Errorf("search for prefunded key is only supported on EVM based vms")
 	}
-	_, genesisAddress, genesisPrivateKey, err := GetSubnetAirdropKeyInfo(
-		app,
-		network,
-		subnetName,
-		createChainTx.GenesisData,
-	)
-	if err != nil {
-		return "", "", err
-	}
-	return genesisAddress, genesisPrivateKey, nil
+	return createChainTx.GenesisData, err
 }

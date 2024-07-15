@@ -449,20 +449,26 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	remoteAddress, err := ictt.DeployERC20Remote(
-		icttSrcDir,
-		remoteEndpoint,
-		remoteKey.PrivKeyHex(),
-		common.HexToAddress(remoteRegistryAddress),
-		common.HexToAddress(remoteKey.C()),
-		homeBlockchainID,
-		homeAddress,
-		tokenName,
-		tokenSymbol,
-		tokenDecimals,
-	)
-	if err != nil {
-		return err
+	var remoteAddress common.Address
+
+	if !flags.remoteFlags.native {
+		remoteAddress, err = ictt.DeployERC20Remote(
+			icttSrcDir,
+			remoteEndpoint,
+			remoteKey.PrivKeyHex(),
+			common.HexToAddress(remoteRegistryAddress),
+			common.HexToAddress(remoteKey.C()),
+			homeBlockchainID,
+			homeAddress,
+			tokenName,
+			tokenSymbol,
+			tokenDecimals,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+
 	}
 
 	if err := ictt.RegisterERC20Remote(
