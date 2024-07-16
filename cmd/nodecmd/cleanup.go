@@ -48,7 +48,7 @@ func cleanup(_ *cobra.Command, _ []string) error {
 	for _, clusterName := range clusterNames {
 		if err = CallDestroyNode(clusterName, false); err != nil {
 			if strings.Contains(err.Error(), "invalid cloud credentials") {
-				return fmt.Errorf("invalid AWS credentials %s \n", clusterName)
+				return fmt.Errorf("invalid AWS credentials")
 			}
 		}
 	}
