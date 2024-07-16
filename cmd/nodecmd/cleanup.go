@@ -4,12 +4,13 @@ package nodecmd
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
-	"strings"
 )
 
 func CallCleanup() error {
