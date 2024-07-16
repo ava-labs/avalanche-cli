@@ -12,6 +12,10 @@ import (
 	"strings"
 )
 
+func CallCleanup() error {
+	return cleanup(nil, nil)
+}
+
 func newCleanupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cleanup",
