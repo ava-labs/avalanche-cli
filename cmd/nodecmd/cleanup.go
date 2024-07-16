@@ -47,6 +47,9 @@ func cleanup(_ *cobra.Command, _ []string) error {
 	clusterNames := maps.Keys(clustersConfig.Clusters)
 	for _, clusterName := range clusterNames {
 		if err = CallDestroyNode(clusterName, false); err != nil {
+			// we only return error for invalid cloud credentials
+			// silence for other errors
+			// TODO: differentiate between AWS and GCP credentials
 			if strings.Contains(err.Error(), "invalid cloud credentials") {
 				return fmt.Errorf("invalid AWS credentials")
 			}
