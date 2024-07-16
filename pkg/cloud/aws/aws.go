@@ -347,10 +347,12 @@ func (c *AwsCloud) checkInstanceIsRunning(nodeID string) (bool, error) {
 }
 
 // DestroyAWSNode terminates an EC2 instance with the given ID.
-func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string) error {
+func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName string, enableLogs bool) error {
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
-		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
+		if enableLogs {
+			ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
+		}
 		return err
 	}
 	if !isRunning {

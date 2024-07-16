@@ -217,7 +217,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
-		if err = ec2Svc.DestroyAWSNode(nodeConfig, ""); err != nil {
+		if err = ec2Svc.DestroyAWSNode(nodeConfig, "", enableLogs); err != nil {
 			if isExpiredCredentialError(err) {
 				ux.Logger.PrintToUser("")
 				printExpiredCredentialsOutput(awsProfile)
