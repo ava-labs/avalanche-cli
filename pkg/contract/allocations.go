@@ -4,6 +4,7 @@ package contract
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -166,4 +167,38 @@ func GetEVMSubnetGenesis(
 		return nil, fmt.Errorf("search for prefunded key is only supported on EVM based vms")
 	}
 	return createChainTx.GenesisData, err
+}
+
+func sumGenesisSupply(
+	genesisData []byte,
+) (*big.Int, error) {
+	sum := new(big.Int)
+	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
+	if err != nil {
+		return sum, err
+	}
+	for _, allocation := range genesis.Alloc {
+		sum.Add(sum, allocation.Balance)
+	}
+	return sum, nil
+}
+
+func GetEVMSubnetGenesisSupply(
+	app *application.Avalanche,
+	network models.Network,
+	subnetName string,
+	isCChain bool,
+	blockchainID string,
+) (*big.Int, error) {
+	genesisData, err := GetEVMSubnetGenesis(
+		app,
+		network,
+		subnetName,
+		isCChain,
+		blockchainID,
+	)
+	if err != nil {
+		return new(big.Int), err
+	}
+	return sumGenesisSupply(genesisData)
 }

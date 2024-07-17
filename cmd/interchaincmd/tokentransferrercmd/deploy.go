@@ -5,6 +5,7 @@ package tokentransferrercmd
 import (
 	_ "embed"
 	"fmt"
+	"math/big"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -468,7 +469,39 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	} else {
-
+		nativeTokenSymbol, err := getNativeTokenSymbol(
+			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.CChain,
+		)
+		if err != nil {
+			return err
+		}
+		supply, err := contract.GetEVMSubnetGenesisSupply(
+			app,
+			network,
+			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.CChain,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		remoteAddress, err = ictt.DeployNativeRemote(
+			icttSrcDir,
+			remoteEndpoint,
+			remoteKey.PrivKeyHex(),
+			common.HexToAddress(remoteRegistryAddress),
+			common.HexToAddress(remoteKey.C()),
+			homeBlockchainID,
+			homeAddress,
+			tokenDecimals,
+			nativeTokenSymbol,
+			supply,
+			big.NewInt(0),
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := ictt.RegisterERC20Remote(
