@@ -10,6 +10,7 @@ import (
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -538,6 +539,47 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)
 	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
+	_, privKeyToUse, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		flags.remoteFlags.chainFlags.SubnetName,
+		flags.remoteFlags.chainFlags.CChain,
+		"",
+	)
+	if err != nil {
+		return err
+	}
+	_ = privKeyToUse
+
+	if err := ictt.EnableMinter(
+		remoteEndpoint,
+		//remoteKey.PrivKeyHex(),
+		privKeyToUse,
+		remoteAddress,
+	); err != nil {
+		return err
+	}
+
+	homeClient, err := evm.GetClient(homeEndpoint)
+	if err != nil {
+		return err
+	}
+	remoteClient, err := evm.GetClient(remoteEndpoint)
+	if err != nil {
+		return err
+	}
+
+	balance, err := evm.GetAddressBalance(homeClient, homeKey.C())
+	if err != nil {
+		return err
+	}
+	fmt.Println(balance)
+	balance, err = evm.GetAddressBalance(remoteClient, homeKey.C())
+	if err != nil {
+		return err
+	}
+	fmt.Println(balance)
+
 	registeredRemote, err = ictt.TokenHomeGetRegisteredRemote(
 		homeEndpoint,
 		homeAddress,
@@ -589,5 +631,50 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 	fmt.Println(isCollateralized)
+
+	err = ictt.Send(
+		homeEndpoint,
+		homeAddress,
+		homeKey.PrivKeyHex(),
+		remoteBlockchainID,
+		remoteAddress,
+		common.HexToAddress(homeKey.C()),
+		big.NewInt(1000),
+	)
+	if err != nil {
+		return err
+	}
+
+	registeredRemote, err = ictt.TokenHomeGetRegisteredRemote(
+		homeEndpoint,
+		homeAddress,
+		remoteBlockchainID,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%#v\n", registeredRemote)
+
+	isCollateralized, err = ictt.TokenRemoteIsCollateralized(
+		remoteEndpoint,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(isCollateralized)
+
+	balance, err = evm.GetAddressBalance(homeClient, homeKey.C())
+	if err != nil {
+		return err
+	}
+	fmt.Println(balance)
+	balance, err = evm.GetAddressBalance(remoteClient, homeKey.C())
+	if err != nil {
+		return err
+	}
+	fmt.Println(balance)
+
 	return nil
 }

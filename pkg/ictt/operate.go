@@ -331,3 +331,71 @@ func TokenHomeAddCollateral(
 	)
 	return err
 }
+
+func Send(
+	rpcURL string,
+	address common.Address,
+	privateKey string,
+	destinationBlockchainID ids.ID,
+	destinationAddress common.Address,
+	amountRecipient common.Address,
+	amount *big.Int,
+) error {
+	endpointKind, err := GetEndpointKind(
+		rpcURL,
+		address,
+	)
+	if err != nil {
+		return err
+	}
+	switch endpointKind {
+	case ERC20TokenRemote:
+		return ERC20TokenRemoteSend(
+			rpcURL,
+			address,
+			privateKey,
+			destinationBlockchainID,
+			destinationAddress,
+			amountRecipient,
+			amount,
+		)
+	case ERC20TokenHome:
+		return ERC20TokenHomeSend(
+			rpcURL,
+			address,
+			privateKey,
+			destinationBlockchainID,
+			destinationAddress,
+			amountRecipient,
+			amount,
+		)
+	case NativeTokenHome:
+		return NativeTokenHomeSend(
+			rpcURL,
+			address,
+			privateKey,
+			destinationBlockchainID,
+			destinationAddress,
+			amountRecipient,
+			amount,
+		)
+	}
+	return fmt.Errorf("unknown ictt endpoint")
+}
+
+func EnableMinter(
+	rpcURL string,
+	privateKey string,
+	toEnableAddress common.Address,
+) error {
+	address := common.HexToAddress("0x0200000000000000000000000000000000000001")
+	_, _, err := contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		address,
+		nil,
+		"setEnabled(address)",
+		toEnableAddress,
+	)
+	return err
+}
