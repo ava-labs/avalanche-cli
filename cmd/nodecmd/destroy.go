@@ -100,6 +100,21 @@ func CallDestroyNode(clusterName string, logs bool) error {
 	return destroyNodes(nil, []string{clusterName})
 }
 
+func getFirstAvailableNode(nodesToStop []string) string {
+	firstAvailableNode := nodesToStop[0]
+	for _, node := range nodesToStop {
+		fmt.Printf("we here GetNodeConfigPath\n")
+		nodeConfigPath := app.GetNodeConfigPath(node)
+		_, err := os.Stat(nodeConfigPath)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+		}
+		firstAvailableNode = node
+	}
+	return firstAvailableNode
+}
 func destroyNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
@@ -120,10 +135,12 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("we here \n")
 	monitoringNode, err := getClusterMonitoringNode(clusterName)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("we here 2 \n")
 	if monitoringNode != "" {
 		nodesToStop = append(nodesToStop, monitoringNode)
 	}
@@ -132,6 +149,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("we here 3 \n")
 	for _, loadTestName := range ltHosts {
 		ltInstance, err := getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
@@ -139,12 +157,16 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		}
 		nodesToStop = append(nodesToStop, ltInstance)
 	}
+	fmt.Printf("we here 4 \n")
 	nodeErrors := map[string]error{}
 	cloudSecurityGroupList, err := getCloudSecurityGroupList(nodesToStop)
 	if err != nil {
 		return err
 	}
-	nodeToStopConfig, err := app.LoadClusterNodeConfig(nodesToStop[0])
+	fmt.Printf("we here \n")
+	firstAvailableNodes := getFirstAvailableNode(nodesToStop)
+	fmt.Printf("firstAvailableNodes %s \n", firstAvailableNodes)
+	nodeToStopConfig, err := app.LoadClusterNodeConfig(firstAvailableNodes)
 	if err != nil {
 		return err
 	}
