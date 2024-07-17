@@ -76,6 +76,71 @@ func NativeTokenHomeGetTokenAddress(
 	return tokenAddress, nil
 }
 
+func TokenRemoteIsCollateralized(
+	rpcURL string,
+	address common.Address,
+) (bool, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"isCollateralized()->(bool)",
+	)
+	if err != nil {
+		return false, err
+	}
+	isCollateralized, b := out[0].(bool)
+	if !b {
+		return false, fmt.Errorf("error at isCollateralized call, expected bool, got %T", out[0])
+	}
+	return isCollateralized, nil
+}
+
+type RegisteredRemote struct {
+	Registered       bool
+	CollateralNeeded *big.Int
+	TokenMultiplier  *big.Int
+	MultiplyOnRemote bool
+}
+
+func TokenHomeGetRegisteredRemote(
+	rpcURL string,
+	address common.Address,
+	remoteBlockchainID [32]byte,
+	remoteAddress common.Address,
+) (RegisteredRemote, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"registeredRemotes(bytes32, address)->(bool,uint256,uint256,bool)",
+		remoteBlockchainID,
+		remoteAddress,
+	)
+	if err != nil {
+		return RegisteredRemote{}, err
+	}
+	var (
+		registeredRemote RegisteredRemote
+		b                bool
+	)
+	registeredRemote.Registered, b = out[0].(bool)
+	if !b {
+		return RegisteredRemote{}, fmt.Errorf("error at registeredRemotes call, expected bool, got %T", out[0])
+	}
+	registeredRemote.CollateralNeeded, b = out[1].(*big.Int)
+	if !b {
+		return RegisteredRemote{}, fmt.Errorf("error at registeredRemotes call, expected *big.Int, got %T", out[1])
+	}
+	registeredRemote.TokenMultiplier, b = out[2].(*big.Int)
+	if !b {
+		return RegisteredRemote{}, fmt.Errorf("error at registeredRemotes call, expected *big.Int, got %T", out[2])
+	}
+	registeredRemote.MultiplyOnRemote, b = out[3].(bool)
+	if !b {
+		return RegisteredRemote{}, fmt.Errorf("error at registeredRemotes call, expected bool, got %T", out[3])
+	}
+	return registeredRemote, nil
+}
+
 func ERC20TokenRemoteGetTokenHomeAddress(
 	rpcURL string,
 	address common.Address,
@@ -243,6 +308,26 @@ func ERC20TokenRemoteSend(
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)",
 		params,
 		amount,
+	)
+	return err
+}
+
+func TokenHomeAddCollateral(
+	rpcURL string,
+	homeAddress common.Address,
+	privateKey string,
+	remoteBlockchainID [32]byte,
+	remoteAddress common.Address,
+	amount *big.Int,
+) error {
+	_, _, err := contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		homeAddress,
+		amount,
+		"addCollateral(bytes32, address)",
+		remoteBlockchainID,
+		remoteAddress,
 	)
 	return err
 }

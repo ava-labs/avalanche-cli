@@ -440,7 +440,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Deploy
-	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
+	remoteEndpoint, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
 		flags.remoteFlags.chainFlags.SubnetName,
@@ -450,7 +450,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	var remoteAddress common.Address
+	var (
+		remoteAddress common.Address
+		remoteSupply  *big.Int
+	)
 
 	if !flags.remoteFlags.native {
 		remoteAddress, err = ictt.DeployERC20Remote(
@@ -476,7 +479,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		supply, err := contract.GetEVMSubnetGenesisSupply(
+		remoteSupply, err = contract.GetEVMSubnetGenesisSupply(
 			app,
 			network,
 			flags.remoteFlags.chainFlags.SubnetName,
@@ -496,13 +499,33 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			homeAddress,
 			tokenDecimals,
 			nativeTokenSymbol,
-			supply,
+			remoteSupply,
 			big.NewInt(0),
 		)
 		if err != nil {
 			return err
 		}
 	}
+
+	registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
+		homeEndpoint,
+		homeAddress,
+		remoteBlockchainID,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%#v\n", registeredRemote)
+
+	isCollateralized, err := ictt.TokenRemoteIsCollateralized(
+		remoteEndpoint,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(isCollateralized)
 
 	if err := ictt.RegisterERC20Remote(
 		remoteEndpoint,
@@ -515,5 +538,56 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)
 	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
+	registeredRemote, err = ictt.TokenHomeGetRegisteredRemote(
+		homeEndpoint,
+		homeAddress,
+		remoteBlockchainID,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%#v\n", registeredRemote)
+
+	isCollateralized, err = ictt.TokenRemoteIsCollateralized(
+		remoteEndpoint,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(isCollateralized)
+
+	err = ictt.TokenHomeAddCollateral(
+		homeEndpoint,
+		homeAddress,
+		homeKey.PrivKeyHex(),
+		remoteBlockchainID,
+		remoteAddress,
+		remoteSupply,
+	)
+	if err != nil {
+		return err
+	}
+
+	registeredRemote, err = ictt.TokenHomeGetRegisteredRemote(
+		homeEndpoint,
+		homeAddress,
+		remoteBlockchainID,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%#v\n", registeredRemote)
+
+	isCollateralized, err = ictt.TokenRemoteIsCollateralized(
+		remoteEndpoint,
+		remoteAddress,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(isCollateralized)
 	return nil
 }
