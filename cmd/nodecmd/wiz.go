@@ -73,7 +73,6 @@ var (
 	deployTeleporterMessenger              bool
 	deployTeleporterRegistry               bool
 	replaceKeyPair                         bool
-	depricatedRemoteCLIVersion             string
 )
 
 func newWizCmd() *cobra.Command {
@@ -140,7 +139,6 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Teleporter Registry")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
-	cmd.Flags().StringVar(&depricatedRemoteCLIVersion, "remote-cli-version", "", "[depricated] install given CLI version on remote nodes.")
 	return cmd
 }
 
@@ -161,9 +159,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	if clusterAlreadyExists && subnetName == "" {
 		return fmt.Errorf("expecting to add subnet to existing cluster but no subnet-name was provided")
-	}
-	if depricatedRemoteCLIVersion != "" {
-		ux.Logger.PrintToUser("remote-cli-version flag is depricated and will be removed in future releases. Ignoring it.")
 	}
 	if subnetName != "" && (!app.SidecarExists(subnetName) || forceSubnetCreate) {
 		ux.Logger.PrintToUser("")
