@@ -204,6 +204,10 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	if err != nil {
 		return err
 	}
+	// make sure that custom genesis is saved to the subnet dir
+	if err := os.WriteFile(app.GetGenesisPath(subnetName), genesisBytes, constants.WriteReadReadPerms); err != nil {
+		return err
+	}
 
 	// create avalanchego conf node.json at each node dir
 	bootstrapIPs := []string{}

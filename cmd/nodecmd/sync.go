@@ -4,15 +4,14 @@ package nodecmd
 
 import (
 	"fmt"
-	"path/filepath"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -41,6 +40,10 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
 	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
@@ -66,7 +69,10 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	untrackedNodes, err := trackSubnet(hosts, clusterName, subnetName)
+	if err := prepareSubnetPlugin(hosts, subnetName); err != nil {
+		return err
+	}
+	untrackedNodes, err := trackSubnet(hosts, clusterName, clusterConfig.Network, subnetName)
 	if err != nil {
 		return err
 	}
@@ -78,17 +84,11 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-// trackSubnet exports deployed subnet in user's local machine to cloud server and calls node to
-// start tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
-func trackSubnet(
-	hosts []*models.Host,
-	clusterName string,
-	subnetName string,
-) ([]string, error) {
-	subnetPath := "/tmp/" + subnetName + constants.ExportSubnetSuffix
-	networkFlag := "--cluster " + clusterName
-	if err := subnetcmd.CallExportSubnet(subnetName, subnetPath); err != nil {
-		return nil, err
+// prepareSubnetPlugin creates subnet plugin to all nodes in the cluster
+func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
 	}
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -96,16 +96,50 @@ func trackSubnet(
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			subnetExportPath := filepath.Join("/tmp", filepath.Base(subnetPath))
-			if err := ssh.RunSSHExportSubnet(host, subnetPath, subnetExportPath); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := ssh.RunSSHUploadClustersConfig(host, app.GetClustersConfigPath()); err != nil {
+			if err := ssh.RunSSHCreatePlugin(host, sc); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
+		}(&wgResults, host)
+	}
+	wg.Wait()
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to upload plugin to node(s) %s", wgResults.GetErrorHostMap())
+	}
+	return nil
+}
 
-			if err := ssh.RunSSHTrackSubnet(host, subnetName, subnetExportPath, networkFlag); err != nil {
+// trackSubnet exports deployed subnet in user's local machine to cloud server and calls node to
+// start tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
+func trackSubnet(
+	hosts []*models.Host,
+	clusterName string,
+	network models.Network,
+	subnetName string,
+) ([]string, error) {
+	// load cluster config
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	// and get list of subnets
+	allSubnets := utils.Unique(append(clusterConf.Subnets, subnetName))
+
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	for _, host := range hosts {
+		wg.Add(1)
+		go func(nodeResults *models.NodeResults, host *models.Host) {
+			defer wg.Done()
+			if err := ssh.RunSSHStopNode(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+			if err := ssh.RunSSHSyncSubnetData(app, host, network, subnetName); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+			if err := ssh.RunSSHStartNode(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				return
 			}
