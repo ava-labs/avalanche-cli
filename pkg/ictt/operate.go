@@ -375,7 +375,7 @@ func NativeTokenRemoteSend(
 	return err
 }
 
-func TokenHomeAddCollateral(
+func NativeTokenHomeAddCollateral(
 	rpcURL string,
 	homeAddress common.Address,
 	privateKey string,
@@ -393,6 +393,84 @@ func TokenHomeAddCollateral(
 		remoteAddress,
 	)
 	return err
+}
+
+func ERC20TokenHomeAddCollateral(
+	rpcURL string,
+	homeAddress common.Address,
+	privateKey string,
+	remoteBlockchainID [32]byte,
+	remoteAddress common.Address,
+	amount *big.Int,
+) error {
+	tokenAddress, err := ERC20TokenHomeGetTokenAddress(rpcURL, homeAddress)
+	if err != nil {
+		return err
+	}
+	if _, _, err := contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		tokenAddress,
+		nil,
+		"approve(address, uint256)->(bool)",
+		homeAddress,
+		amount,
+	); err != nil {
+		return err
+	}
+	_, _, err = contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		homeAddress,
+		nil,
+		"addCollateral(bytes32, address, uint256)",
+		remoteBlockchainID,
+		remoteAddress,
+		amount,
+	)
+	return err
+}
+
+func TokenHomeAddCollateral(
+	rpcURL string,
+	homeAddress common.Address,
+	privateKey string,
+	remoteBlockchainID [32]byte,
+	remoteAddress common.Address,
+	amount *big.Int,
+) error {
+	endpointKind, err := GetEndpointKind(
+		rpcURL,
+		homeAddress,
+	)
+	if err != nil {
+		return err
+	}
+	switch endpointKind {
+	case ERC20TokenHome:
+		return ERC20TokenHomeAddCollateral(
+			rpcURL,
+			homeAddress,
+			privateKey,
+			remoteBlockchainID,
+			remoteAddress,
+			amount,
+		)
+	case NativeTokenHome:
+		return NativeTokenHomeAddCollateral(
+			rpcURL,
+			homeAddress,
+			privateKey,
+			remoteBlockchainID,
+			remoteAddress,
+			amount,
+		)
+	case ERC20TokenRemote:
+		return fmt.Errorf("trying to add collateral to an erc20 token remote endpoint")
+	case NativeTokenRemote:
+		return fmt.Errorf("trying to add collateral to a native token remote endpoint")
+	}
+	return fmt.Errorf("unknown ictt endpoint")
 }
 
 func Send(
