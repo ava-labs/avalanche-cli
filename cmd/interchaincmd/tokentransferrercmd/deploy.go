@@ -11,6 +11,7 @@ import (
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -590,6 +591,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 
+		client, err := evm.GetClient(remoteEndpoint)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(evm.GetAddressBalance(client, homeKey.C()))
+
 		err = ictt.Send(
 			homeEndpoint,
 			homeAddress,
@@ -602,6 +610,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
+
 		t0 := time.Now()
 		for {
 			isCollateralized, err := ictt.TokenRemoteIsCollateralized(
@@ -620,6 +629,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			}
 			time.Sleep(checkInterval)
 		}
+		fmt.Println(evm.GetAddressBalance(client, homeKey.C()))
 	}
 
 	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)

@@ -49,6 +49,7 @@ var (
 	cchain          bool
 	xchain          bool
 	useNanoAvax     bool
+	useGwei         bool
 	ledgerIndices   []uint
 	keys            []string
 	tokenAddresses  []string
@@ -99,6 +100,12 @@ keys or for the ledger addresses associated to certain indices.`,
 		"n",
 		false,
 		"use nano Avax for balances",
+	)
+	cmd.Flags().BoolVar(
+		&useGwei,
+		"use-gwei",
+		false,
+		"use gwei for EVM balances",
 	)
 	cmd.Flags().UintSliceVarP(
 		&ledgerIndices,
@@ -595,6 +602,9 @@ func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, erro
 }
 
 func formatCChainBalance(balance *big.Int) (string, error) {
+	if useGwei {
+		return fmt.Sprintf("%d", balance), nil
+	}
 	// convert to nAvax
 	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
 	if balance.Cmp(big.NewInt(0)) == 0 {
