@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"html/template"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
@@ -21,9 +22,13 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
+	TrackSubnets     string
+	BootstrapIDs     string
+	BootstrapIPs     string
+	GenesisPath      string
 }
 
-func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfigInputs {
+func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
 		HTTPHost:         "127.0.0.1",
 		NetworkID:        networkID,
@@ -32,6 +37,7 @@ func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfi
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
+		TrackSubnets:     strings.Join(subnets, ","),
 	}
 }
 
@@ -77,11 +83,16 @@ func GetRemoteAvalancheCChainConfig() string {
 	return filepath.Join(constants.CloudNodeConfigPath, "chains", "C", "config.json")
 }
 
+func GetRemoteAvalancheGenesis() string {
+	return filepath.Join(constants.CloudNodeConfigPath, "genesis.json")
+}
+
 func AvalancheFolderToCreate() []string {
 	return []string{
 		"/home/ubuntu/.avalanchego/db",
 		"/home/ubuntu/.avalanchego/logs",
 		"/home/ubuntu/.avalanchego/configs",
+		"/home/ubuntu/.avalanchego/configs/subnets/",
 		"/home/ubuntu/.avalanchego/configs/chains/C",
 		"/home/ubuntu/.avalanchego/staking",
 		"/home/ubuntu/.avalanchego/plugins",

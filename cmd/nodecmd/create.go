@@ -38,7 +38,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"golang.org/x/mod/semver"
 )
 
 const (
@@ -60,7 +59,6 @@ var (
 	useLatestAvalanchegoPreReleaseVersion bool
 	useCustomAvalanchegoVersion           string
 	useAvalanchegoVersionFromSubnet       string
-	remoteCLIVersion                      string
 	cmdLineGCPCredentialsPath             string
 	cmdLineGCPProjectName                 string
 	cmdLineAlternativeKeyPairName         string
@@ -113,7 +111,6 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
-	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
@@ -128,6 +125,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntVar(&throughput, "aws-volume-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
+	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	return cmd
 }
 
@@ -172,11 +170,6 @@ func preCreateChecks(clusterName string) error {
 			if num <= 0 {
 				return fmt.Errorf("number of API nodes per region must be greater than 0")
 			}
-		}
-	}
-	if remoteCLIVersion != "" {
-		if !semver.IsValid(remoteCLIVersion) {
-			return fmt.Errorf("invalid semantic version for CLI on hosts")
 		}
 	}
 	if customGrafanaDashboardPath != "" && !utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
@@ -691,7 +684,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return
 			}
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), remoteCLIVersion); err != nil {
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath()); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return

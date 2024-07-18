@@ -13,7 +13,7 @@ import (
 )
 
 func prepareAvalanchegoConfig(host *models.Host, network models.Network, isAPIHost bool) (string, string, error) {
-	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, network.ShortID())
+	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.ShortID(), nil)
 	if network.PublicAPI || isAPIHost || utils.IsE2E() {
 		avagoConf.HTTPHost = "0.0.0.0"
 	}
