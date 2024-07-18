@@ -19,6 +19,7 @@ const (
 	ERC20TokenHome
 	NativeTokenHome
 	ERC20TokenRemote
+	NativeTokenRemote
 )
 
 func GetEndpointKind(
@@ -30,6 +31,9 @@ func GetEndpointKind(
 	}
 	if _, err := NativeTokenHomeGetTokenAddress(rpcURL, address); err == nil {
 		return NativeTokenHome, nil
+	}
+	if _, err := NativeTokenRemoteGetTotalNativeAssetSupply(rpcURL, address); err == nil {
+		return NativeTokenRemote, nil
 	}
 	if _, err := ERC20TokenRemoteGetTokenHomeAddress(rpcURL, address); err == nil {
 		return ERC20TokenRemote, nil
@@ -158,6 +162,25 @@ func ERC20TokenRemoteGetTokenHomeAddress(
 		return common.Address{}, fmt.Errorf("error at tokenHubAddress call, expected common.Address, got %T", out[0])
 	}
 	return tokenHubAddress, nil
+}
+
+func NativeTokenRemoteGetTotalNativeAssetSupply(
+	rpcURL string,
+	address common.Address,
+) (*big.Int, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"totalNativeAssetSupply()->(uint256)",
+	)
+	if err != nil {
+		return nil, err
+	}
+	supply, b := out[0].(*big.Int)
+	if !b {
+		return nil, fmt.Errorf("error at totalNativeAssetSupply, expected *big.Int, got %T", out[0])
+	}
+	return supply, nil
 }
 
 func ERC20TokenHomeSend(
@@ -312,6 +335,46 @@ func ERC20TokenRemoteSend(
 	return err
 }
 
+func NativeTokenRemoteSend(
+	rpcURL string,
+	remoteAddress common.Address,
+	privateKey string,
+	destinationBlockchainID ids.ID,
+	destinationICTTEndpoint common.Address,
+	amountRecipient common.Address,
+	amount *big.Int,
+) error {
+	type Params struct {
+		DestinationBlockchainID [32]byte
+		DestinationICTTEndpoint common.Address
+		AmountRecipient         common.Address
+		PrimaryFeeTokenAddress  common.Address
+		PrimaryFee              *big.Int
+		SecondaryFee            *big.Int
+		RequiredGasLimit        *big.Int
+		MultiHopFallback        common.Address
+	}
+	params := Params{
+		DestinationBlockchainID: destinationBlockchainID,
+		DestinationICTTEndpoint: destinationICTTEndpoint,
+		AmountRecipient:         amountRecipient,
+		PrimaryFeeTokenAddress:  remoteAddress, // in theory this is optional
+		PrimaryFee:              big.NewInt(0),
+		SecondaryFee:            big.NewInt(0),
+		RequiredGasLimit:        big.NewInt(250000),
+		MultiHopFallback:        common.Address{},
+	}
+	_, _, err := contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		remoteAddress,
+		amount,
+		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
+		params,
+	)
+	return err
+}
+
 func TokenHomeAddCollateral(
 	rpcURL string,
 	homeAddress common.Address,
@@ -371,6 +434,16 @@ func Send(
 		)
 	case NativeTokenHome:
 		return NativeTokenHomeSend(
+			rpcURL,
+			address,
+			privateKey,
+			destinationBlockchainID,
+			destinationAddress,
+			amountRecipient,
+			amount,
+		)
+	case NativeTokenRemote:
+		return NativeTokenRemoteSend(
 			rpcURL,
 			address,
 			privateKey,

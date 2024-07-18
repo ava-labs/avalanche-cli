@@ -6,11 +6,11 @@ import (
 	_ "embed"
 	"fmt"
 	"math/big"
+	"time"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -335,7 +335,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		tokenAddress  common.Address
 	)
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
-	homeEndpoint, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
+	homeEndpoint, _, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
 		flags.homeFlags.chainFlags.SubnetName,
@@ -441,7 +441,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Deploy
-	remoteEndpoint, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
+	remoteEndpoint, remoteBlockchainName, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
 		flags.remoteFlags.chainFlags.SubnetName,
@@ -508,26 +508,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
-		homeEndpoint,
-		homeAddress,
-		remoteBlockchainID,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%#v\n", registeredRemote)
-
-	isCollateralized, err := ictt.TokenRemoteIsCollateralized(
-		remoteEndpoint,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println(isCollateralized)
-
 	if err := ictt.RegisterERC20Remote(
 		remoteEndpoint,
 		remoteKey.PrivKeyHex(),
@@ -536,145 +516,114 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
+	checkInterval := 100 * time.Millisecond
+	checkTimeout := 10 * time.Second
+	t0 := time.Now()
+	for {
+		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
+			homeEndpoint,
+			homeAddress,
+			remoteBlockchainID,
+			remoteAddress,
+		)
+		if err != nil {
+			return err
+		}
+		if registeredRemote.Registered {
+			break
+		}
+		elapsed := time.Since(t0)
+		if elapsed > checkTimeout {
+			return fmt.Errorf("timeout waiting for remote endpoint registration")
+		}
+		time.Sleep(checkInterval)
+	}
+
+	if flags.remoteFlags.native {
+		err = ictt.TokenHomeAddCollateral(
+			homeEndpoint,
+			homeAddress,
+			homeKey.PrivKeyHex(),
+			remoteBlockchainID,
+			remoteAddress,
+			remoteSupply,
+		)
+		if err != nil {
+			return err
+		}
+
+		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
+			homeEndpoint,
+			homeAddress,
+			remoteBlockchainID,
+			remoteAddress,
+		)
+		if err != nil {
+			return err
+		}
+		if registeredRemote.CollateralNeeded.Cmp(big.NewInt(0)) != 0 {
+			return fmt.Errorf("failure setting collateral in home endpoint: remaining collateral=%d", registeredRemote.CollateralNeeded)
+		}
+
+		minterAdminFound, managedMinterAdmin, _, minterAdminAddress, minterAdminPrivKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
+			app,
+			network,
+			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.CChain,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		if !minterAdminFound {
+			return fmt.Errorf("there is no native minter precompile admin on subnet %s", remoteBlockchainName)
+		}
+		if !managedMinterAdmin {
+			return fmt.Errorf("no managed key found for native minter admin %s subnet %s", minterAdminAddress, remoteBlockchainName)
+		}
+
+		if err := ictt.EnableMinter(
+			remoteEndpoint,
+			minterAdminPrivKey,
+			remoteAddress,
+		); err != nil {
+			return err
+		}
+
+		err = ictt.Send(
+			homeEndpoint,
+			homeAddress,
+			homeKey.PrivKeyHex(),
+			remoteBlockchainID,
+			remoteAddress,
+			common.HexToAddress(homeKey.C()),
+			big.NewInt(1),
+		)
+		if err != nil {
+			return err
+		}
+		t0 := time.Now()
+		for {
+			isCollateralized, err := ictt.TokenRemoteIsCollateralized(
+				remoteEndpoint,
+				remoteAddress,
+			)
+			if err != nil {
+				return err
+			}
+			if isCollateralized {
+				break
+			}
+			elapsed := time.Since(t0)
+			if elapsed > checkTimeout {
+				return fmt.Errorf("timeout waiting for remote endpoint collateralization")
+			}
+			time.Sleep(checkInterval)
+		}
+	}
+
 	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)
 	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
-
-	_, privKeyToUse, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		flags.remoteFlags.chainFlags.SubnetName,
-		flags.remoteFlags.chainFlags.CChain,
-		"",
-	)
-	if err != nil {
-		return err
-	}
-	_ = privKeyToUse
-
-	if err := ictt.EnableMinter(
-		remoteEndpoint,
-		//remoteKey.PrivKeyHex(),
-		privKeyToUse,
-		remoteAddress,
-	); err != nil {
-		return err
-	}
-
-	homeClient, err := evm.GetClient(homeEndpoint)
-	if err != nil {
-		return err
-	}
-	remoteClient, err := evm.GetClient(remoteEndpoint)
-	if err != nil {
-		return err
-	}
-
-	balance, err := evm.GetAddressBalance(homeClient, homeKey.C())
-	if err != nil {
-		return err
-	}
-	fmt.Println(balance)
-	balance, err = evm.GetAddressBalance(remoteClient, homeKey.C())
-	if err != nil {
-		return err
-	}
-	fmt.Println(balance)
-
-	registeredRemote, err = ictt.TokenHomeGetRegisteredRemote(
-		homeEndpoint,
-		homeAddress,
-		remoteBlockchainID,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%#v\n", registeredRemote)
-
-	isCollateralized, err = ictt.TokenRemoteIsCollateralized(
-		remoteEndpoint,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println(isCollateralized)
-
-	err = ictt.TokenHomeAddCollateral(
-		homeEndpoint,
-		homeAddress,
-		homeKey.PrivKeyHex(),
-		remoteBlockchainID,
-		remoteAddress,
-		remoteSupply,
-	)
-	if err != nil {
-		return err
-	}
-
-	registeredRemote, err = ictt.TokenHomeGetRegisteredRemote(
-		homeEndpoint,
-		homeAddress,
-		remoteBlockchainID,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%#v\n", registeredRemote)
-
-	isCollateralized, err = ictt.TokenRemoteIsCollateralized(
-		remoteEndpoint,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println(isCollateralized)
-
-	err = ictt.Send(
-		homeEndpoint,
-		homeAddress,
-		homeKey.PrivKeyHex(),
-		remoteBlockchainID,
-		remoteAddress,
-		common.HexToAddress(homeKey.C()),
-		big.NewInt(1000),
-	)
-	if err != nil {
-		return err
-	}
-
-	registeredRemote, err = ictt.TokenHomeGetRegisteredRemote(
-		homeEndpoint,
-		homeAddress,
-		remoteBlockchainID,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%#v\n", registeredRemote)
-
-	isCollateralized, err = ictt.TokenRemoteIsCollateralized(
-		remoteEndpoint,
-		remoteAddress,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println(isCollateralized)
-
-	balance, err = evm.GetAddressBalance(homeClient, homeKey.C())
-	if err != nil {
-		return err
-	}
-	fmt.Println(balance)
-	balance, err = evm.GetAddressBalance(remoteClient, homeKey.C())
-	if err != nil {
-		return err
-	}
-	fmt.Println(balance)
 
 	return nil
 }
