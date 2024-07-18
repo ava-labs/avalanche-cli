@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/bridge"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -63,12 +63,12 @@ var (
 	receiveRecoveryStep uint64
 	PToX                bool
 	PToP                bool
-	// bridge experimental
-	originSubnet             string
-	destinationSubnet        string
-	originBridgeAddress      string
-	destinationBridgeAddress string
-	destinationKeyName       string
+	// token transferrer experimental
+	originSubnet                  string
+	destinationSubnet             string
+	originTransferrerAddress      string
+	destinationTransferrerAddress string
+	destinationKeyName            string
 )
 
 func newTransferCmd() *cobra.Command {
@@ -157,25 +157,25 @@ func newTransferCmd() *cobra.Command {
 		&originSubnet,
 		"origin-subnet",
 		"",
-		"subnet where the funds belong (bridge experimental)",
+		"subnet where the funds belong (token transferrer experimental)",
 	)
 	cmd.Flags().StringVar(
 		&destinationSubnet,
 		"destination-subnet",
 		"",
-		"subnet where the funds will be sent (bridge experimental)",
+		"subnet where the funds will be sent (token transferrer experimental)",
 	)
 	cmd.Flags().StringVar(
-		&originBridgeAddress,
-		"origin-bridge-address",
+		&originTransferrerAddress,
+		"origin-transferrer-address",
 		"",
-		"bridge address at the origin subnet (bridge experimental)",
+		"token transferrer address at the origin subnet (token transferrer experimental)",
 	)
 	cmd.Flags().StringVar(
-		&destinationBridgeAddress,
-		"destination-bridge-address",
+		&destinationTransferrerAddress,
+		"destination-transferrer-address",
 		"",
-		"bridge address at the destination subnet (bridge experimental)",
+		"token transferrer address at the destination subnet (token transferrer experimental)",
 	)
 	return cmd
 }
@@ -244,7 +244,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	// bridge experimental
+	// token transferrer experimental
 	if originSubnet != "" {
 		if destinationSubnet == "" {
 			prompt := "Where are the funds going to?"
@@ -302,29 +302,29 @@ func transferF(*cobra.Command, []string) error {
 			}
 			destinationBlockchainID = blockchainID
 		}
-		if originBridgeAddress == "" {
+		if originTransferrerAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Bridge on %s", originSubnet),
+				fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
 			)
 			if err != nil {
 				return err
 			}
-			originBridgeAddress = addr.Hex()
+			originTransferrerAddress = addr.Hex()
 		} else {
-			if err := prompts.ValidateAddress(originBridgeAddress); err != nil {
+			if err := prompts.ValidateAddress(originTransferrerAddress); err != nil {
 				return err
 			}
 		}
-		if destinationBridgeAddress == "" {
+		if destinationTransferrerAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Bridge on %s", destinationSubnet),
+				fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
 			)
 			if err != nil {
 				return err
 			}
-			destinationBridgeAddress = addr.Hex()
+			destinationTransferrerAddress = addr.Hex()
 		} else {
-			if err := prompts.ValidateAddress(destinationBridgeAddress); err != nil {
+			if err := prompts.ValidateAddress(destinationTransferrerAddress); err != nil {
 				return err
 			}
 		}
@@ -390,41 +390,41 @@ func transferF(*cobra.Command, []string) error {
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amountInt, _ := amount.Int(nil)
-		endpointKind, err := bridge.GetEndpointKind(
+		endpointKind, err := ictt.GetEndpointKind(
 			originURL,
-			goethereumcommon.HexToAddress(originBridgeAddress),
+			goethereumcommon.HexToAddress(originTransferrerAddress),
 		)
 		if err != nil {
 			return err
 		}
 		switch endpointKind {
-		case bridge.ERC20TokenSpoke:
-			return bridge.ERC20TokenSpokeSend(
+		case ictt.ERC20TokenRemote:
+			return ictt.ERC20TokenRemoteSend(
 				originURL,
-				goethereumcommon.HexToAddress(originBridgeAddress),
+				goethereumcommon.HexToAddress(originTransferrerAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				goethereumcommon.HexToAddress(destinationTransferrerAddress),
 				destinationAddr,
 				amountInt,
 			)
-		case bridge.ERC20TokenHub:
-			return bridge.ERC20TokenHubSend(
+		case ictt.ERC20TokenHome:
+			return ictt.ERC20TokenHomeSend(
 				originURL,
-				goethereumcommon.HexToAddress(originBridgeAddress),
+				goethereumcommon.HexToAddress(originTransferrerAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				goethereumcommon.HexToAddress(destinationTransferrerAddress),
 				destinationAddr,
 				amountInt,
 			)
-		case bridge.NativeTokenHub:
-			return bridge.NativeTokenHubSend(
+		case ictt.NativeTokenHome:
+			return ictt.NativeTokenHomeSend(
 				originURL,
-				goethereumcommon.HexToAddress(originBridgeAddress),
+				goethereumcommon.HexToAddress(originTransferrerAddress),
 				privateKey,
 				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationBridgeAddress),
+				goethereumcommon.HexToAddress(destinationTransferrerAddress),
 				destinationAddr,
 				amountInt,
 			)

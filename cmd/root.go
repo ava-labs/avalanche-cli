@@ -11,15 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
-
-	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
-
-	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
-
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
@@ -35,6 +34,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -97,6 +97,12 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add teleporter command
 	rootCmd.AddCommand(teleportercmd.NewCmd(app))
+
+	// add interchain command
+	rootCmd.AddCommand(interchaincmd.NewCmd(app))
+
+	// add contract command
+	rootCmd.AddCommand(contractcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 

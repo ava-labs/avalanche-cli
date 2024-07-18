@@ -22,7 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/localnetworkinterface"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -90,6 +90,15 @@ type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, erro
 
 type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 
+type TeleporterEsp struct {
+	SkipDeploy                   bool
+	Version                      string
+	MessengerContractAddressPath string
+	MessengerDeployerAddressPath string
+	MessengerDeployerTxPath      string
+	RegistryBydecodePath         string
+}
+
 type DeployInfo struct {
 	SubnetID                   ids.ID
 	BlockchainID               ids.ID
@@ -100,11 +109,11 @@ type DeployInfo struct {
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, chainGenesis, genesisPath, skipTeleporter, subnetIDStr)
+	return d.doDeploy(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
 }
 
 func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
@@ -370,7 +379,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, skipTeleporter bool, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -444,7 +453,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	}
 
 	// latest check for rpc compatibility
-	statusChecker := localnetworkinterface.NewStatusChecker()
+	statusChecker := localnet.NewStatusChecker()
 	_, avagoRPCVersion, _, err := statusChecker.GetCurrentNetworkVersion()
 	if err != nil {
 		return nil, err
@@ -564,7 +573,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		teleporterMessengerAddress string
 		teleporterRegistryAddress  string
 	)
-	if sc.TeleporterReady && !skipTeleporter {
+	if sc.TeleporterReady && !teleporterEsp.SkipDeploy {
 		network := models.NewLocalNetwork()
 		// get relayer address
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
@@ -578,9 +587,40 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
+		td := teleporter.Deployer{}
+		if teleporterEsp.MessengerContractAddressPath != "" {
+			if err := td.SetAssetsFromPaths(
+				teleporterEsp.MessengerContractAddressPath,
+				teleporterEsp.MessengerDeployerAddressPath,
+				teleporterEsp.MessengerDeployerTxPath,
+				teleporterEsp.RegistryBydecodePath,
+			); err != nil {
+				return nil, err
+			}
+		} else {
+			teleporterVersion := ""
+			switch {
+			case teleporterEsp.Version != "" && teleporterEsp.Version != "latest":
+				teleporterVersion = teleporterEsp.Version
+			case sc.TeleporterVersion != "":
+				teleporterVersion = sc.TeleporterVersion
+			default:
+				teleporterInfo, err := teleporter.GetInfo(d.app)
+				if err != nil {
+					return nil, err
+				}
+				teleporterVersion = teleporterInfo.Version
+			}
+			if err := td.DownloadAssets(
+				d.app.GetTeleporterBinDir(),
+				teleporterVersion,
+			); err != nil {
+				return nil, err
+			}
+		}
 		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
 			d.app,
-			sc.TeleporterVersion,
+			&td,
 			network,
 			"c-chain",
 			"C",
@@ -607,7 +647,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 			); err != nil {
 				return nil, err
 			}
-			if err := WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
+			if err := localnet.WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
 				return nil, err
 			}
 		}
@@ -630,7 +670,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		}
 		_, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
 			d.app,
-			sc.TeleporterVersion,
+			&td,
 			network,
 			chain,
 			blockchainID,
@@ -1093,20 +1133,6 @@ func GetLocallyDeployedSubnets() (map[string]struct{}, error) {
 	return deployedNames, nil
 }
 
-func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
-	cli, err := binutils.NewGRPCClient()
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	resp, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return resp.GetClusterInfo(), nil
-}
-
 func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID ids.NodeID) (ids.ID, error) {
 	ctx := context.Background()
 	api := constants.LocalAPIEndpoint
@@ -1154,63 +1180,11 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 	return false, nil
 }
 
-type ExtraLocalNetworkData struct {
-	CChainTeleporterMessengerAddress string
-	CChainTeleporterRegistryAddress  string
-}
-
 func GetAWMRelayerConfigPath() (bool, string, error) {
-	clusterInfo, err := GetClusterInfo()
+	clusterInfo, err := localnet.GetClusterInfo()
 	if err != nil {
 		return false, "", err
 	}
 	relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
-}
-
-func GetExtraLocalNetworkData() (bool, ExtraLocalNetworkData, error) {
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
-	if !utils.FileExists(extraLocalNetworkDataPath) {
-		return false, extraLocalNetworkData, nil
-	}
-	bs, err := os.ReadFile(extraLocalNetworkDataPath)
-	if err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	return true, extraLocalNetworkData, nil
-}
-
-func WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress string, cchainTeleporterRegistryAddress string) error {
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return err
-	}
-	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	if utils.FileExists(extraLocalNetworkDataPath) {
-		var err error
-		_, extraLocalNetworkData, err = GetExtraLocalNetworkData()
-		if err != nil {
-			return err
-		}
-	}
-	if cchainTeleporterMessengerAddress != "" {
-		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainTeleporterMessengerAddress
-	}
-	if cchainTeleporterRegistryAddress != "" {
-		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainTeleporterRegistryAddress
-	}
-	bs, err := json.Marshal(&extraLocalNetworkData)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
 }

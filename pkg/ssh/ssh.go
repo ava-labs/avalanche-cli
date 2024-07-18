@@ -5,6 +5,8 @@ package ssh
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,11 +16,14 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -26,7 +31,6 @@ import (
 
 type scriptInputs struct {
 	AvalancheGoVersion      string
-	CLIVersion              string
 	SubnetExportFileName    string
 	SubnetName              string
 	ClusterName             string
@@ -35,7 +39,7 @@ type scriptInputs struct {
 	IsDevNet                bool
 	IsE2E                   bool
 	NetworkFlag             string
-	SubnetEVMBinaryPath     string
+	VMBinaryPath            string
 	SubnetEVMReleaseURL     string
 	SubnetEVMArchive        string
 	MonitoringDashboardPath string
@@ -48,6 +52,10 @@ type scriptInputs struct {
 	CheckoutCommit          bool
 	LoadTestResultFile      string
 	GrafanaPkg              string
+	CustomVMRepoDir         string
+	CustomVMRepoURL         string
+	CustomVMBranch          string
+	CustomVMBuildScript     string
 }
 
 //go:embed shell/*.sh
@@ -102,13 +110,13 @@ func PostOverSSH(host *models.Host, path string, requestBody string) ([]byte, er
 }
 
 // RunSSHSetupNode runs script to setup node
-func RunSSHSetupNode(host *models.Host, configPath, cliVersion string) error {
+func RunSSHSetupNode(host *models.Host, configPath string) error {
 	if err := RunOverSSH(
 		"Setup Node",
 		host,
 		constants.SSHLongRunningScriptTimeout,
 		"shell/setupNode.sh",
-		scriptInputs{CLIVersion: cliVersion, IsE2E: utils.IsE2E()},
+		scriptInputs{IsE2E: utils.IsE2E()},
 	); err != nil {
 		return err
 	}
@@ -216,7 +224,7 @@ func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error
 		host,
 		constants.SSHScriptTimeout,
 		"shell/upgradeSubnetEVM.sh",
-		scriptInputs{SubnetEVMBinaryPath: subnetEVMBinaryPath},
+		scriptInputs{VMBinaryPath: subnetEVMBinaryPath},
 	)
 }
 
@@ -457,22 +465,6 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	return docker.StartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
 }
 
-func RunSSHUploadClustersConfig(host *models.Host, localClustersConfigPath string) error {
-	remoteNodesDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.NodesDir)
-	if err := host.MkdirAll(
-		remoteNodesDir,
-		constants.SSHDirOpsTimeout,
-	); err != nil {
-		return err
-	}
-	remoteClustersConfigPath := filepath.Join(remoteNodesDir, constants.ClustersConfigFileName)
-	return host.Upload(
-		localClustersConfigPath,
-		remoteClustersConfigPath,
-		constants.SSHFileOpsTimeout,
-	)
-}
-
 // RunSSHUploadStakingFiles uploads staking files to a remote host via SSH.
 func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) error {
 	if err := host.MkdirAll(
@@ -502,46 +494,253 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
-// RunSSHExportSubnet exports deployed Subnet from local machine to cloud server
-func RunSSHExportSubnet(host *models.Host, exportPath, cloudServerSubnetPath string) error {
-	// name: copy exported subnet VM spec to cloud server
-	return host.Upload(
-		exportPath,
-		cloudServerSubnetPath,
-		constants.SSHFileOpsTimeout,
-	)
+// RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
+func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, network models.Network, trackSubnets []string) error {
+	// get subnet ids
+	subnetIDs, err := utils.MapWithError(trackSubnets, func(subnetName string) (string, error) {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return "", err
+		} else {
+			return sc.Networks[network.Name()].SubnetID.String(), nil
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	nodeConfFile, err := os.CreateTemp("", "avalanchecli-node-*.yml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(nodeConfFile.Name())
+
+	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), subnetIDs)
+	// make sure that genesis and bootstrap data is preserved
+	if genesisFileExists(host) {
+		avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
+	}
+	remoteAvagoConfFile, err := getAvalancheGoConfigData(host)
+	if err != nil {
+		return err
+	}
+	bootstrapIDs, _ := utils.GetValueString(remoteAvagoConfFile, "bootstrap-ids")
+	bootstrapIPs, _ := utils.GetValueString(remoteAvagoConfFile, "bootstrap-ips")
+	avagoConf.BootstrapIDs = bootstrapIDs
+	avagoConf.BootstrapIPs = bootstrapIPs
+	// ready to render node config
+	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(nodeConfFile.Name(), nodeConf, constants.WriteReadUserOnlyPerms); err != nil {
+		return err
+	}
+	return host.Upload(nodeConfFile.Name(), remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
 }
 
-// RunSSHTrackSubnet enables tracking of specified subnet
-func RunSSHTrackSubnet(host *models.Host, subnetName, subnetAlias, importPath, networkFlag string) error {
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
+// RunSSHCreatePlugin runs script to create plugin
+func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
+	vmID, err := sc.GetVMID()
+	if err != nil {
 		return err
 	}
-	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
+	subnetVMBinaryPath := fmt.Sprintf(constants.CloudNodeSubnetEvmBinaryPath, vmID)
+	hostInstaller := NewHostInstaller(host)
+	tmpDir, err := host.CreateTempDir()
+	if err != nil {
 		return err
 	}
-	additionalFlags := ""
-	if subnetAlias != "" {
-		additionalFlags += fmt.Sprintf("--subnet-alias %s", subnetAlias)
+	defer func(h *models.Host) {
+		_ = h.Remove(tmpDir, true)
+	}(host)
+	switch {
+	case sc.VM == models.CustomVM:
+		ux.Logger.Info("Building Custom VM for %s to %s", host.NodeID, subnetVMBinaryPath)
+		ux.Logger.Info("Custom VM Params: repo %s branch %s via %s", sc.CustomVMRepoURL, sc.CustomVMBranch, sc.CustomVMBuildScript)
+		if err := RunOverSSH(
+			"Build CustomVM",
+			host,
+			constants.SSHLongRunningScriptTimeout,
+			"shell/buildCustomVM.sh",
+			scriptInputs{
+				CustomVMRepoDir:     tmpDir,
+				CustomVMRepoURL:     sc.CustomVMRepoURL,
+				CustomVMBranch:      sc.CustomVMBranch,
+				CustomVMBuildScript: sc.CustomVMBuildScript,
+				VMBinaryPath:        subnetVMBinaryPath,
+			},
+		); err != nil {
+			return err
+		}
+
+	case sc.VM == models.SubnetEvm:
+		ux.Logger.Info("Installing Subnet EVM for %s", host.NodeID)
+		dl := binutils.NewSubnetEVMDownloader()
+		installURL, _, err := dl.GetDownloadURL(sc.VMVersion, hostInstaller) // extension is tar.gz
+		if err != nil {
+			return err
+		}
+
+		archiveName := "subnet-evm.tar.gz"
+		archiveFullPath := filepath.Join(tmpDir, archiveName)
+
+		// download and install subnet evm
+		if _, err := host.Command(fmt.Sprintf("%s %s -O %s", "busybox wget", installURL, archiveFullPath), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+			return err
+		}
+		if _, err := host.Command(fmt.Sprintf("tar -xzf %s -C %s", archiveFullPath, tmpDir), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+			return err
+		}
+
+		if _, err := host.Command(fmt.Sprintf("mv -f %s/subnet-evm %s", tmpDir, subnetVMBinaryPath), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unexpected error: unsupported VM type: %s", sc.VM)
 	}
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s %s --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName, networkFlag), nil, constants.SSHScriptTimeout); err != nil {
-		return err
-	}
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
+
+	return nil
 }
 
-// RunSSHUpdateSubnet runs avalanche subnet join <subnetName> in cloud server using update subnet info
-func RunSSHUpdateSubnet(host *models.Host, subnetName, importPath string) error {
-	if err := docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout); err != nil {
+// RunSSHMergeSubnetNodeConfig merges subnet node config to the node config on the remote host
+func mergeSubnetNodeConfig(host *models.Host, subnetNodeConfigPath string) error {
+	if subnetNodeConfigPath == "" {
+		return fmt.Errorf("subnet node config path is empty")
+	}
+	tmpFile, err := os.CreateTemp("", "avalanchecli-subnet-node-*.yml")
+	if err != nil {
 		return err
 	}
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet import file %s --force", importPath), nil, constants.SSHScriptTimeout); err != nil {
+	defer os.Remove(tmpFile.Name())
+	if err := host.Download(remoteconfig.GetRemoteAvalancheNodeConfig(), tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
-	if _, err := host.Command(fmt.Sprintf("/home/ubuntu/bin/avalanche subnet join %s --fuji --avalanchego-config /home/ubuntu/.avalanchego/configs/node.json --plugin-dir /home/ubuntu/.avalanchego/plugins --force-write", subnetName), nil, constants.SSHScriptTimeout); err != nil {
+	remoteNodeConfigBytes, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return fmt.Errorf("error reading remote node config: %w", err)
+	}
+	var remoteNodeConfig map[string]interface{}
+	if err := json.Unmarshal(remoteNodeConfigBytes, &remoteNodeConfig); err != nil {
+		return fmt.Errorf("error unmarshalling remote node config: %w", err)
+	}
+	subnetNodeConfigBytes, err := os.ReadFile(subnetNodeConfigPath)
+	if err != nil {
+		return fmt.Errorf("error reading subnet node config: %w", err)
+	}
+	var subnetNodeConfig map[string]interface{}
+	if err := json.Unmarshal(subnetNodeConfigBytes, &subnetNodeConfig); err != nil {
+		return fmt.Errorf("error unmarshalling subnet node config: %w", err)
+	}
+	mergedNodeConfig := utils.MergeJSONMaps(remoteNodeConfig, subnetNodeConfig)
+	mergedNodeConfigBytes, err := json.MarshalIndent(mergedNodeConfig, "", " ")
+	if err != nil {
+		return fmt.Errorf("error creating merged node config: %w", err)
+	}
+	if err := os.WriteFile(tmpFile.Name(), mergedNodeConfigBytes, constants.WriteReadUserOnlyPerms); err != nil {
 		return err
 	}
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
+	return host.Upload(tmpFile.Name(), remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
+}
+
+// RunSSHSyncSubnetData syncs subnet data required
+func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network models.Network, subnetName string) error {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errors.New("subnet id is empty")
+	}
+	subnetIDStr := subnetID.String()
+	blockchainID := sc.Networks[network.Name()].BlockchainID
+	// genesis config
+	genesisFilename := filepath.Join(app.GetNodesDir(), host.GetCloudID(), constants.GenesisFileName)
+	if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
+		return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
+	}
+	// end genesis config
+	// subnet node config
+	subnetNodeConfigPath := app.GetAvagoNodeConfigPath(subnetName)
+	if utils.FileExists(subnetNodeConfigPath) {
+		if err := mergeSubnetNodeConfig(host, subnetNodeConfigPath); err != nil {
+			return err
+		}
+	}
+	// subnet config
+	if app.AvagoSubnetConfigExists(subnetName) {
+		subnetConfig, err := app.LoadRawAvagoSubnetConfig(subnetName)
+		if err != nil {
+			return fmt.Errorf("error loading subnet config: %w", err)
+		}
+		subnetConfigFile, err := os.CreateTemp("", "avalanchecli-subnet-*.json")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(subnetConfigFile.Name())
+		if err := os.WriteFile(subnetConfigFile.Name(), subnetConfig, constants.WriteReadUserOnlyPerms); err != nil {
+			return err
+		}
+		subnetConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", subnetIDStr+".json")
+		if err := host.MkdirAll(filepath.Dir(subnetConfigPath), constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+		if err := host.Upload(subnetConfigFile.Name(), subnetConfigPath, constants.SSHFileOpsTimeout); err != nil {
+			return fmt.Errorf("error uploading subnet config to %s: %w", subnetConfigPath, err)
+		}
+	}
+	// end subnet config
+
+	// chain config
+	if blockchainID != ids.Empty && app.ChainConfigExists(subnetName) {
+		chainConfigFile, err := os.CreateTemp("", "avalanchecli-chain-*.json")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(chainConfigFile.Name())
+		chainConfig, err := app.LoadRawChainConfig(subnetName)
+		if err != nil {
+			return fmt.Errorf("error loading chain config: %w", err)
+		}
+		if err := os.WriteFile(chainConfigFile.Name(), chainConfig, constants.WriteReadUserOnlyPerms); err != nil {
+			return err
+		}
+		chainConfigPath := filepath.Join(constants.CloudNodeConfigPath, "chains", blockchainID.String(), "config.json")
+		if err := host.MkdirAll(filepath.Dir(chainConfigPath), constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+		if err := host.Upload(chainConfigFile.Name(), chainConfigPath, constants.SSHFileOpsTimeout); err != nil {
+			return fmt.Errorf("error uploading chain config to %s: %w", chainConfigPath, err)
+		}
+	}
+	// end chain config
+
+	// network upgrade
+	if app.NetworkUpgradeExists(subnetName) {
+		networkUpgradesFile, err := os.CreateTemp("", "avalanchecli-network-*.json")
+		if err != nil {
+			return err
+		}
+		defer os.Remove(networkUpgradesFile.Name())
+		networkUpgrades, err := app.LoadRawNetworkUpgrades(subnetName)
+		if err != nil {
+			return fmt.Errorf("error loading network upgrades: %w", err)
+		}
+		if err := os.WriteFile(networkUpgradesFile.Name(), networkUpgrades, constants.WriteReadUserOnlyPerms); err != nil {
+			return err
+		}
+		networkUpgradesPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", "chains", blockchainID.String(), "upgrade.json")
+		if err := host.MkdirAll(filepath.Dir(networkUpgradesPath), constants.SSHDirOpsTimeout); err != nil {
+			return err
+		}
+		if err := host.Upload(networkUpgradesFile.Name(), networkUpgradesPath, constants.SSHFileOpsTimeout); err != nil {
+			return fmt.Errorf("error uploading network upgrades to %s: %w", networkUpgradesPath, err)
+		}
+	}
+	// end network upgrade
+
+	return nil
 }
 
 func RunSSHBuildLoadTestCode(host *models.Host, loadTestRepo, loadTestPath, loadTestGitCommit, repoDirName, loadTestBranch string, checkoutCommit bool) error {
@@ -705,4 +904,32 @@ func RunSSHUpsizeRootDisk(host *models.Host) error {
 func composeFileExists(host *models.Host) bool {
 	composeFileExists, _ := host.FileExists(utils.GetRemoteComposeFile())
 	return composeFileExists
+}
+
+func genesisFileExists(host *models.Host) bool {
+	genesisFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName))
+	return genesisFileExists
+}
+
+func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error) {
+	// get remote node.json file
+	nodeJSONPath := filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
+	tmpFile, err := os.CreateTemp("", "avalanchecli-node-*.json")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tmpFile.Name())
+	if err := host.Download(nodeJSONPath, tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
+		return nil, err
+	}
+	// parse node.json file
+	nodeJSON, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		return nil, err
+	}
+	var avagoConfig map[string]interface{}
+	if err := json.Unmarshal(nodeJSON, &avagoConfig); err != nil {
+		return nil, err
+	}
+	return avagoConfig, nil
 }

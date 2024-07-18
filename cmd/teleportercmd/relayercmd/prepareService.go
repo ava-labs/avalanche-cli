@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleportercmd
+package relayercmd
 
 import (
 	_ "embed"
@@ -19,18 +19,18 @@ import (
 var awmRelayerServiceTemplate []byte
 
 // avalanche teleporter msg
-func newPrepareRelayerServiceCmd() *cobra.Command {
+func newPrepareServiceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "prepareService",
 		Short: "Installs AWM relayer as a service",
 		Long:  `Installs AWM relayer as a service. Disabled by default.`,
-		RunE:  prepareRelayerService,
+		RunE:  prepareService,
 		Args:  cobrautils.ExactArgs(0),
 	}
 	return cmd
 }
 
-func prepareRelayerService(_ *cobra.Command, _ []string) error {
+func prepareService(_ *cobra.Command, _ []string) error {
 	relayerBin, err := teleporter.InstallRelayer(app.GetAWMRelayerBinDir())
 	if err != nil {
 		return err

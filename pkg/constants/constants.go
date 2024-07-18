@@ -216,6 +216,7 @@ const (
 	CloudNodeSubnetEvmBinaryPath  = "/home/ubuntu/.avalanchego/plugins/%s"
 	CloudNodeStakingPath          = "/home/ubuntu/.avalanchego/staking/"
 	CloudNodeConfigPath           = "/home/ubuntu/.avalanchego/configs/"
+	CloudNodePluginsPath          = "/home/ubuntu/.avalanchego/plugins/"
 	DockerNodeConfigPath          = "/.avalanchego/configs/"
 	CloudNodePrometheusConfigPath = "/etc/prometheus/prometheus.yml"
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
@@ -346,8 +347,8 @@ const (
 	// Docker
 	RemoteDockeSocketPath = "/var/run/docker.sock"
 
-	// Bridge
-	BridgeDir    = "teleporter-token-bridge"
-	BridgeURL    = "https://github.com/ava-labs/teleporter-token-bridge"
-	BridgeBranch = "main"
+	// Avalanche InterChain Token Transfer
+	ICTTDir    = "avalanche-interchain-token-transfer"
+	ICTTURL    = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
+	ICTTBranch = "main"
 )

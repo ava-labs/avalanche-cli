@@ -3,22 +3,20 @@
 package bridgecmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"
 )
 
-var app *application.Avalanche
-
 // avalanche teleporter bridge
-func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
+func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bridge",
-		Short: "Manage Teleporter Bridges",
-		Long:  `The bridge command suite provides tools to deploy and manage Teleporter Bridges.`,
-		RunE:  cobrautils.CommandSuiteUsage,
+		Short: "Manage Teleporter Bridges (deprecation notice: use 'avalanche interchain tokenTransferrer')",
+		Long: `The bridge command suite provides tools to deploy and manage Teleporter Bridges.
+
+Deprecation notice: use avalanche interchain tokenTransferrer' instead`,
+		RunE: cobrautils.CommandSuiteUsage,
 	}
-	app = injectedApp
 	// contract deploy
 	cmd.AddCommand(newDeployCmd())
 	return cmd

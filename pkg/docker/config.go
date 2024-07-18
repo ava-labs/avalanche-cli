@@ -12,7 +12,7 @@ import (
 )
 
 func prepareAvalanchegoConfig(host *models.Host, networkID string) (string, string, error) {
-	avagoConf := remoteconfig.DefaultCliAvalancheConfig(host.IP, networkID)
+	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, networkID, nil)
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {
 		return "", "", err
