@@ -533,20 +533,3 @@ func Send(
 	}
 	return fmt.Errorf("unknown ictt endpoint")
 }
-
-func EnableMinter(
-	rpcURL string,
-	privateKey string,
-	toEnableAddress common.Address,
-) error {
-	address := common.HexToAddress("0x0200000000000000000000000000000000000001")
-	_, _, err := contract.TxToMethod(
-		rpcURL,
-		privateKey,
-		address,
-		nil,
-		"setEnabled(address)",
-		toEnableAddress,
-	)
-	return err
-}

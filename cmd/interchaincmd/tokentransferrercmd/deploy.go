@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -30,8 +31,9 @@ type HomeFlags struct {
 }
 
 type RemoteFlags struct {
-	chainFlags contract.ChainFlags
-	native     bool
+	chainFlags        contract.ChainFlags
+	native            bool
+	removeMinterAdmin bool
 }
 
 type DeployFlags struct {
@@ -79,6 +81,7 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", true, "remove the native minter precompile admin found on remote blockchain genesis")
 	return cmd
 }
 
@@ -582,8 +585,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return fmt.Errorf("no managed key found for native minter admin %s subnet %s", minterAdminAddress, remoteBlockchainName)
 		}
 
-		if err := ictt.EnableMinter(
+		if err := precompiles.SetEnabled(
 			remoteEndpoint,
+			precompiles.NativeMinterPrecompile,
 			minterAdminPrivKey,
 			remoteAddress,
 		); err != nil {
@@ -620,6 +624,17 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				return fmt.Errorf("timeout waiting for remote endpoint collateralization")
 			}
 			time.Sleep(checkInterval)
+		}
+
+		if flags.remoteFlags.removeMinterAdmin {
+			if err := precompiles.SetNone(
+				remoteEndpoint,
+				precompiles.NativeMinterPrecompile,
+				minterAdminPrivKey,
+				common.HexToAddress(minterAdminAddress),
+			); err != nil {
+				return err
+			}
 		}
 	}
 
