@@ -92,7 +92,6 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().StringVar(&subnetAlias, "subnet-alias", "", "subnet alias to be used for RPC calls. defaults to subnet blockchain ID")
 	return cmd
 }
 
@@ -276,7 +275,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	//render alias file is subnetAlias is set
+	// render alias file is subnetAlias is set
 	if subnetAlias != "" {
 		writeAvagoAliasConfigFile(
 			sc.Networks[network.Name()].BlockchainID.String(),

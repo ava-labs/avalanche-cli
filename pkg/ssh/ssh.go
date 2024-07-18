@@ -494,6 +494,34 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
+// RunSSHRenderAvagoAliasConfigFile renders avalanche alias config to a remote host via SSH.
+func RunSSHRenderAvagoAliasConfigFile(
+	host *models.Host,
+	blockchainID string,
+	subnetAlias string,
+) error {
+	aliasConf, err := remoteconfig.RenderAvalancheAliasesConfig(remoteconfig.AvalancheConfigInputs{
+		BlockChainID: blockchainID,
+		Alias:        subnetAlias,
+	})
+	if err != nil {
+		return err
+	}
+	aliasConfFile, err := os.CreateTemp("", "avalanchecli-alias-*.yml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(aliasConfFile.Name())
+	if err := os.WriteFile(aliasConfFile.Name(), aliasConf, constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	if err := host.Upload(aliasConfFile.Name(), remoteconfig.GetRemoteAvalancheAliasesConfig(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
 func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, network models.Network, trackSubnets []string) error {
 	// get subnet ids

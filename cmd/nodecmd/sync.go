@@ -73,7 +73,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := prepareSubnetPlugin(hosts, subnetName); err != nil {
 		return err
 	}
-	untrackedNodes, err := trackSubnet(hosts, clusterName, clusterConfig.Network, subnetName, subnetAlias)
+	untrackedNodes, err := trackSubnet(hosts, clusterName, clusterConfig.Network, subnetName)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,6 @@ func trackSubnet(
 	clusterName string,
 	network models.Network,
 	subnetName string,
-	subnetAlias string,
 ) ([]string, error) {
 	// load cluster config
 	clusterConf, err := app.GetClusterConfig(clusterName)
@@ -126,6 +125,13 @@ func trackSubnet(
 	// and get list of subnets
 	allSubnets := utils.Unique(append(clusterConf.Subnets, subnetName))
 
+	// load sidecar to get subnet blockchain ID
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return nil, err
+	}
+	blockchainID := sc.Networks[network.Name()].BlockchainID
+
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -134,6 +140,11 @@ func trackSubnet(
 			defer wg.Done()
 			if err := ssh.RunSSHStopNode(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+			if subnetAlias != "" {
+				if err := ssh.RunSSHRenderAvagoAliasConfigFile(host, blockchainID.String(), subnetAlias); err != nil {
+					nodeResults.AddResult(host.NodeID, nil, err)
+				}
 			}
 			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
