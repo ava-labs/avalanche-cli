@@ -143,7 +143,7 @@ func TestDeployToLocal(t *testing.T) {
 	teleporterEsp := TeleporterEsp{
 		SkipDeploy: true,
 	}
-	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, []byte(genesis), testGenesis.Name(), teleporterEsp, "")
+	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, testGenesis.Name(), teleporterEsp, "")
 	require.NoError(err)
 	require.Equal(testSubnetID2, deployInfo.SubnetID.String())
 	require.Equal(testBlockChainID2, deployInfo.BlockchainID.String())

@@ -370,7 +370,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, teleporterEsp, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
