@@ -411,7 +411,6 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 	fmt.Println(t.Render())
 
 	// teleporter
-	fmt.Println()
 	t = table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -420,15 +419,21 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 		{Number: 1, AutoMerge: true},
 	})
 	t.SetTitle("Teleporter")
+	hasTeleporterInfo := false
 	for net, data := range sc.Networks {
 		if data.TeleporterMessengerAddress != "" {
 			t.AppendRow(table.Row{net, "Teleporter Messenger Address", data.TeleporterMessengerAddress})
+			hasTeleporterInfo = true
 		}
 		if data.TeleporterRegistryAddress != "" {
 			t.AppendRow(table.Row{net, "Teleporter Registry Address", data.TeleporterRegistryAddress})
+			hasTeleporterInfo = true
 		}
 	}
-	fmt.Println(t.Render())
+	if hasTeleporterInfo {
+		fmt.Println()
+		fmt.Println(t.Render())
+	}
 
 	// token
 	fmt.Println()
@@ -509,7 +514,7 @@ func printPrecompiles(genesis core.Genesis) {
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle("Precompiles")
+	t.SetTitle("Initial Precompile Configs")
 	t.AppendHeader(table.Row{"Precompile", "Admin Addresses", "Manager Addresses", "Enabled Addresses"})
 
 	precompileSet := false
