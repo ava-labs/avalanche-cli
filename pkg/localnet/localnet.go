@@ -14,7 +14,9 @@ import (
 )
 
 func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
-	cli, err := binutils.NewGRPCClient()
+	cli, err := binutils.NewGRPCClient(
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
 	if err != nil {
 		return nil, err
 	}
