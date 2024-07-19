@@ -344,7 +344,7 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 		return err
 	}
 
-	return newPrintDetails(genesis, sc)
+	return newPrintDetails(sc)
 
 	if err := printDetails(genesis, sc); err != nil {
 		return err
@@ -359,17 +359,17 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 	return nil
 }
 
-func newPrintDetails(genesis core.Genesis, sc models.Sidecar) error {
+func newPrintDetails(sc models.Sidecar) error {
 	// Networks, Subnets, Blockchains
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
 	t.Style().Options.SeparateRows = true
-	t.SetTitle(sc.Name)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
 	rowConfig := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
+	t.SetTitle(sc.Name)
 	t.AppendRow(table.Row{"Name", sc.Name, sc.Name}, rowConfig)
 	vmIDstr := sc.ImportedVMID
 	if vmIDstr == "" {
@@ -387,7 +387,7 @@ func newPrintDetails(genesis core.Genesis, sc models.Sidecar) error {
 		if err != nil {
 			return err
 		}
-		genesisBytes, err := contract.GetEVMSubnetGenesis(
+		genesisBytes, err := contract.GetBlockchainGenesis(
 			app,
 			network,
 			sc.Name,
@@ -397,11 +397,13 @@ func newPrintDetails(genesis core.Genesis, sc models.Sidecar) error {
 		if err != nil {
 			return err
 		}
-		genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
-		if err != nil {
-			return err
+		if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
+			genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
+			if err != nil {
+				return err
+			}
+			t.AppendRow(table.Row{net, "ChainID", genesis.Config.ChainID.String()})
 		}
-		t.AppendRow(table.Row{net, "ChainID", genesis.Config.ChainID.String()})
 		if data.SubnetID != ids.Empty {
 			t.AppendRow(table.Row{net, "SubnetID", data.SubnetID.String()})
 			isPermissioned, owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
@@ -426,7 +428,6 @@ func newPrintDetails(genesis core.Genesis, sc models.Sidecar) error {
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
 	t.Style().Options.SeparateRows = true
-	t.SetTitle(sc.Name)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
@@ -440,6 +441,18 @@ func newPrintDetails(genesis core.Genesis, sc models.Sidecar) error {
 		}
 	}
 	fmt.Println(t.Render())
+
+	// token
+	fmt.Println()
+	t = table.NewWriter()
+	t.Style().Title.Align = text.AlignCenter
+	t.Style().Title.Format = text.FormatUpper
+	t.Style().Options.SeparateRows = true
+	t.SetTitle("Token")
+	t.AppendRow(table.Row{"Token Name", sc.TokenName})
+	t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
+	fmt.Println(t.Render())
+
 	return nil
 }
 
