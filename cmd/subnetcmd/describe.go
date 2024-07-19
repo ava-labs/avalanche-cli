@@ -558,10 +558,10 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 			privKey := ""
 			switch address.Hex() {
 			case teleporterKeyAddress:
-				description = fmt.Sprintf("%s\n%s", sc.TeleporterKey, logging.Green.Wrap("Teleporter Deploys"))
+				description = fmt.Sprintf("%s\n%s", sc.TeleporterKey, logging.Orange.Wrap("Teleporter Deploys"))
 				privKey = teleporterPrivKey
 			case subnetAirdropAddress:
-				description = fmt.Sprintf("%s\n%s", subnetAirdropKeyName, logging.Green.Wrap("Main funded account"))
+				description = fmt.Sprintf("%s\n%s", subnetAirdropKeyName, logging.Orange.Wrap("Main funded account"))
 				privKey = subnetAirdropPrivKey
 			case vm.PrefundedEwoqAddress.Hex():
 				description = "Main funded account EWOQ"
