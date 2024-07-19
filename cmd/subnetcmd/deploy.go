@@ -370,7 +370,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, teleporterEsp, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -382,7 +382,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.MetricsNetwork] = network.Name()
 		metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
-		return app.UpdateSidecarNetworks(
+		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
 			deployInfo.SubnetID,
@@ -390,7 +390,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.TeleporterMessengerAddress,
 			deployInfo.TeleporterRegistryAddress,
-		)
+		); err != nil {
+			return err
+		}
+		return PrintSubnetInfo(subnetName, true)
 	}
 
 	// from here on we are assuming a public deploy
@@ -456,9 +459,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Blue.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		var isPermissioned bool
+		isPermissioned, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
+		}
+		if !isPermissioned {
+			return ErrNotPermissionedSubnet
 		}
 	}
 
@@ -494,7 +501,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}

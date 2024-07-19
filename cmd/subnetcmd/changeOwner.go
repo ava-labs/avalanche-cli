@@ -99,9 +99,12 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	}
 	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return ErrNotPermissionedSubnet
 	}
 
 	// add control keys to the keychain whenever possible

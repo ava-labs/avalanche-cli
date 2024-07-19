@@ -3,10 +3,8 @@
 package networkcmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/spf13/cobra"
@@ -25,16 +23,7 @@ network is running and some basic stats about the network.`,
 }
 
 func networkStatus(*cobra.Command, []string) error {
-	cli, err := binutils.NewGRPCClient(
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
+	clusterInfo, err := localnet.GetClusterInfo()
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
 			ux.Logger.PrintToUser("No local network running")
@@ -42,15 +31,14 @@ func networkStatus(*cobra.Command, []string) error {
 		}
 		return err
 	}
-
-	if status != nil && status.ClusterInfo != nil {
+	if clusterInfo != nil {
 		ux.Logger.PrintToUser("Network is Up:")
-		ux.Logger.PrintToUser("  Number of Nodes: %d", len(status.ClusterInfo.NodeNames))
-		ux.Logger.PrintToUser("  Number of Custom VMs: %d", len(status.ClusterInfo.CustomChains))
-		ux.Logger.PrintToUser("  Network Healthy: %t", status.ClusterInfo.Healthy)
-		ux.Logger.PrintToUser("  Custom VMs Healthy: %t", status.ClusterInfo.CustomChainsHealthy)
+		ux.Logger.PrintToUser("  Number of Nodes: %d", len(clusterInfo.NodeNames))
+		ux.Logger.PrintToUser("  Number of Custom VMs: %d", len(clusterInfo.CustomChains))
+		ux.Logger.PrintToUser("  Network Healthy: %t", clusterInfo.Healthy)
+		ux.Logger.PrintToUser("  Custom VMs Healthy: %t", clusterInfo.CustomChainsHealthy)
 		ux.Logger.PrintToUser("")
-		if err := ux.PrintLocalNetworkEndpointsInfo(status.ClusterInfo); err != nil {
+		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
 			return err
 		}
 	} else {
