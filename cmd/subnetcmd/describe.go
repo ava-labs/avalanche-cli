@@ -371,6 +371,7 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
 	networkToGenesis := map[models.Network][]byte{}
 	localIsUp := false
+	localChainID := ""
 	for net, data := range sc.Networks {
 		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
 		if err != nil {
@@ -402,6 +403,9 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 				return err
 			}
 			t.AppendRow(table.Row{net, "ChainID", genesis.Config.ChainID.String()})
+			if network.Kind == models.Local {
+				localChainID = genesis.Config.ChainID.String()
+			}
 		}
 		if data.SubnetID != ids.Empty {
 			t.AppendRow(table.Row{net, "SubnetID", data.SubnetID.String()})
@@ -494,6 +498,31 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 				return err
 			}
 		}
+
+		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(sc.Name)
+		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
+		if err != nil {
+			return err
+		}
+		if codespaceEndpoint != "" {
+			localEndpoint = codespaceEndpoint + "\n" + logging.Orange.Wrap("Please make sure to set visibility of port 9650 to public")
+		}
+
+		// wallet
+		fmt.Println()
+		t = table.NewWriter()
+		t.Style().Title.Align = text.AlignCenter
+		t.Style().Title.Format = text.FormatUpper
+		t.Style().Options.SeparateRows = true
+		t.SetTitle("Wallet Connection")
+		t.AppendRow(table.Row{"Network RPC URL", localEndpoint})
+		t.AppendRow(table.Row{"Network Name", sc.Name})
+		t.AppendRow(table.Row{"Chain ID", localChainID})
+		t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
+		t.AppendRow(table.Row{"Token Name", sc.TokenName})
+		fmt.Println()
+		fmt.Println(t.Render())
+
 	}
 
 	return nil
