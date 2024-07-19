@@ -35,7 +35,6 @@ type scriptInputs struct {
 	SubnetName              string
 	ClusterName             string
 	GoVersion               string
-	CliBranch               string
 	IsDevNet                bool
 	IsE2E                   bool
 	NetworkFlag             string
@@ -778,24 +777,6 @@ func RunSSHRunLoadTest(host *models.Host, loadTestCommand, loadTestName string) 
 			LoadTestCommand:    loadTestCommand,
 			LoadTestResultFile: fmt.Sprintf("/home/ubuntu/.avalanchego/logs/loadtest_%s.txt", loadTestName),
 		},
-	)
-}
-
-// RunSSHSetupCLIFromSource installs any CLI branch from source
-func RunSSHSetupCLIFromSource(host *models.Host, cliBranch string) error {
-	if !constants.EnableSetupCLIFromSource {
-		return nil
-	}
-	timeout := constants.SSHLongRunningScriptTimeout
-	if utils.IsE2E() && utils.E2EDocker() {
-		timeout = 10 * time.Minute
-	}
-	return RunOverSSH(
-		"Setup CLI From Source",
-		host,
-		timeout,
-		"shell/setupCLIFromSource.sh",
-		scriptInputs{CliBranch: cliBranch},
 	)
 }
 
