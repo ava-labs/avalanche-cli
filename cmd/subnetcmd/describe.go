@@ -240,7 +240,6 @@ func printDetails(sc models.Sidecar) error {
 		}
 
 		// wallet
-		fmt.Println()
 		t = table.NewWriter()
 		t.Style().Title.Align = text.AlignCenter
 		t.Style().Title.Format = text.FormatUpper

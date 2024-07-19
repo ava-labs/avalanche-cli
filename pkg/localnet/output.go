@@ -78,7 +78,7 @@ func PrintSubnetEndpoints(
 		t.AppendRow(table.Row{"Codespace", aliasedURL})
 		t.AppendRow(table.Row{"Codespace", blockchainIDURL})
 	}
-	printFunc(t.Render() + "\n")
+	printFunc(t.Render())
 	return nil
 }
 
@@ -117,6 +117,6 @@ func PrintNetworkEndpoints(
 		}
 		t.AppendRow(row)
 	}
-	printFunc(t.Render() + "\n")
+	printFunc(t.Render())
 	return nil
 }
