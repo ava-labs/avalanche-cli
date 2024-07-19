@@ -687,16 +687,27 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 	label := "Control key"
 	info := "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
 		"Only private keys which control such addresses are allowed to make changes on the subnet"
-	addressPrompt := "Enter P-Chain address (Example: P-...)"
+	customPrompt := "Enter P-Chain address (Example: P-...)"
 	return prompts.CaptureListDecision(
 		// we need this to be able to mock test
 		app.Prompt,
 		// the main prompt for entering address keys
 		controlKeysPrompt,
 		// the Capture function to use
-		func(s string) (string, error) { return app.Prompt.CapturePChainAddress(s, network) },
+		func(_ string) (string, error) {
+			return prompts.PromptAddress(
+				app.Prompt,
+				"be set as a subnet control key",
+				app.GetKeyDir(),
+				app.GetKey,
+				"",
+				network,
+				prompts.PChainFormat,
+				customPrompt,
+			)
+		},
 		// the prompt for each address
-		addressPrompt,
+		"",
 		// label describes the entity we are prompting for (e.g. address, control key, etc.)
 		label,
 		// optional parameter to allow the user to print the info string for more information
@@ -932,7 +943,7 @@ func promptOwners(
 			return nil, 0, err
 		}
 		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
+			ux.Logger.PrintToUser("User cancelled. No operation was performed")
 			return nil, 0, fmt.Errorf("user cancelled operation")
 		}
 	}

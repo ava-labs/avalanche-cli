@@ -139,7 +139,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	switch network.Kind {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
 			if err != nil {
 				return err
 			}
