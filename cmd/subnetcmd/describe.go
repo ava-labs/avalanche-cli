@@ -309,44 +309,49 @@ func printPrecompiles(genesis core.Genesis) {
 	t.SetTitle("Initial Precompile Configs")
 	t.AppendHeader(table.Row{"Precompile", "Admin Addresses", "Manager Addresses", "Enabled Addresses"})
 
-	precompileSet := false
+	warpSet := false
+	allowListSet := false
 	// Warp
 	if genesis.Config.GenesisPrecompiles[warp.ConfigKey] != nil {
 		t.AppendRow(table.Row{"Warp", "n/a", "n/a", "n/a"})
-		precompileSet = true
+		warpSet = true
 	}
 	// Native Minting
 	if genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
 		addPrecompileAllowListToTable(t, "Native Minter", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		precompileSet = true
+		allowListSet = true
 	}
 	// Contract allow list
 	if genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
 		addPrecompileAllowListToTable(t, "Contract Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		precompileSet = true
+		allowListSet = true
 	}
 	// TX allow list
 	if genesis.Config.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
 		addPrecompileAllowListToTable(t, "Tx Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		precompileSet = true
+		allowListSet = true
 	}
 	// Fee config allow list
 	if genesis.Config.GenesisPrecompiles[feemanager.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
 		addPrecompileAllowListToTable(t, "Fee Config Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		precompileSet = true
+		allowListSet = true
 	}
 	// Reward config allow list
 	if genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
 		cfg := genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
 		addPrecompileAllowListToTable(t, "Reward Manager Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
-		precompileSet = true
+		allowListSet = true
 	}
-	if precompileSet {
+	if warpSet || allowListSet {
 		ux.Logger.PrintToUser(t.Render())
+		if allowListSet {
+			note := logging.Orange.Wrap("The allowlist is taken from the genesis and is not being updated if you make adjustments\nvia the precompile. Use readAllowList(address) instead.")
+			ux.Logger.PrintToUser(note)
+		}
 	}
 }
 
