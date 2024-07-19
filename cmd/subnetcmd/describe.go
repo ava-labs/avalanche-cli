@@ -33,6 +33,8 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -48,7 +50,7 @@ func newDescribeCmd() *cobra.Command {
 		Long: `The subnet describe command prints the details of a Subnet configuration to the console.
 By default, the command prints a summary of the configuration. By providing the --genesis
 flag, the command instead prints out the raw genesis file.`,
-		RunE: readGenesis,
+		RunE: describe,
 		Args: cobrautils.ExactArgs(1),
 	}
 	cmd.Flags().BoolVarP(
@@ -117,12 +119,14 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 		}
 		if data.SubnetID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s Subnet ID", net), data.SubnetID.String()})
-			owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
+			isPermissioned, owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
 			if err != nil {
 				return err
 			}
-			table.Append([]string{fmt.Sprintf("%s Subnet Owners", net), strings.Join(owners, "\n")})
-			table.Append([]string{fmt.Sprintf("%s Subnet Threshold", net), fmt.Sprint(threshold)})
+			if isPermissioned {
+				table.Append([]string{fmt.Sprintf("%s Subnet Owners", net), strings.Join(owners, "\n")})
+				table.Append([]string{fmt.Sprintf("%s Subnet Threshold", net), fmt.Sprint(threshold)})
+			}
 		}
 		if data.BlockchainID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s RPC URL", net), network.BlockchainEndpoint(data.BlockchainID.String())})
@@ -339,6 +343,8 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 		return err
 	}
 
+	return newPrintDetails(genesis, sc)
+
 	if err := printDetails(genesis, sc); err != nil {
 		return err
 	}
@@ -352,7 +358,77 @@ func describeSubnetEvmGenesis(sc models.Sidecar) error {
 	return nil
 }
 
-func readGenesis(_ *cobra.Command, args []string) error {
+func newPrintDetails(genesis core.Genesis, sc models.Sidecar) error {
+	// Networks, Subnets, Blockchains
+	t := table.NewWriter()
+	t.Style().Title.Align = text.AlignCenter
+	t.Style().Title.Format = text.FormatUpper
+	t.Style().Options.SeparateRows = true
+	t.SetTitle(sc.Name)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+	rowConfig := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
+	t.AppendRow(table.Row{"Name", sc.Name, sc.Name}, rowConfig)
+	vmIDstr := sc.ImportedVMID
+	if vmIDstr == "" {
+		vmID, err := anr_utils.VMID(sc.Name)
+		if err == nil {
+			vmIDstr = vmID.String()
+		} else {
+			vmIDstr = constants.NotAvailableLabel
+		}
+	}
+	t.AppendRow(table.Row{"VM ID", vmIDstr, vmIDstr}, rowConfig)
+	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
+	for net, data := range sc.Networks {
+		t.AppendRow(table.Row{net, "ChainID", genesis.Config.ChainID.String()})
+		if data.SubnetID != ids.Empty {
+			t.AppendRow(table.Row{net, "SubnetID", data.SubnetID.String()})
+			network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+			if err != nil {
+				return err
+			}
+			isPermissioned, owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
+			if err != nil {
+				return err
+			}
+			if isPermissioned {
+				t.AppendRow(table.Row{net, fmt.Sprintf("Owners (Threhold=%d)", threshold), strings.Join(owners, "\n")})
+			}
+		}
+		if data.BlockchainID != ids.Empty {
+			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
+			t.AppendRow(table.Row{net, "BlockchainID (CB58)", data.BlockchainID.String()})
+			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
+		}
+	}
+	fmt.Println(t.Render())
+
+	// teleporter
+	fmt.Println()
+	t = table.NewWriter()
+	t.Style().Title.Align = text.AlignCenter
+	t.Style().Title.Format = text.FormatUpper
+	t.Style().Options.SeparateRows = true
+	t.SetTitle(sc.Name)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+	t.SetTitle("Teleporter")
+	for net, data := range sc.Networks {
+		if data.TeleporterMessengerAddress != "" {
+			t.AppendRow(table.Row{net, "Teleporter Messenger Address", data.TeleporterMessengerAddress})
+		}
+		if data.TeleporterRegistryAddress != "" {
+			t.AppendRow(table.Row{net, "Teleporter Registry Address", data.TeleporterRegistryAddress})
+		}
+	}
+	fmt.Println(t.Render())
+	return nil
+}
+
+func describe(_ *cobra.Command, args []string) error {
 	subnetName := args[0]
 	if !app.GenesisExists(subnetName) {
 		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
@@ -365,7 +441,6 @@ func readGenesis(_ *cobra.Command, args []string) error {
 	if printGenesisOnly {
 		return printGenesis(sc, subnetName)
 	}
-
 	isEVM, _, err := app.HasSubnetEVMGenesis(subnetName)
 	if err != nil {
 		return err

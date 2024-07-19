@@ -315,9 +315,12 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return ErrNotPermissionedSubnet
 	}
 
 	// add control keys to the keychain whenever possible
