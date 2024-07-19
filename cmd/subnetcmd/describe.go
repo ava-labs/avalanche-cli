@@ -338,28 +338,14 @@ func appendToAddressTable(
 }
 
 func describeSubnetEvmGenesis(sc models.Sidecar) error {
-	// Load genesis
-	genesis, err := app.LoadEvmGenesis(sc.Subnet)
+	genesisBytes, err := app.LoadRawGenesis(sc.Subnet)
 	if err != nil {
 		return err
 	}
-
-	return newPrintDetails(sc)
-
-	if err := printDetails(genesis, sc); err != nil {
-		return err
-	}
-	// Write gas table
-	printGasTable(genesis)
-	// fmt.Printf("\n\n")
-	if err := printAirdropTable(genesis, sc); err != nil {
-		return err
-	}
-	printPrecompileTable(genesis)
-	return nil
+	return newPrintDetails(sc, genesisBytes)
 }
 
-func newPrintDetails(sc models.Sidecar) error {
+func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 	// Networks, Subnets, Blockchains
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
@@ -382,6 +368,7 @@ func newPrintDetails(sc models.Sidecar) error {
 	}
 	t.AppendRow(table.Row{"VM ID", vmIDstr, vmIDstr}, rowConfig)
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
+	networkToGenesis := map[models.Network][]byte{}
 	for net, data := range sc.Networks {
 		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
 		if err != nil {
@@ -397,6 +384,7 @@ func newPrintDetails(sc models.Sidecar) error {
 		if err != nil {
 			return err
 		}
+		networkToGenesis[network] = genesisBytes
 		if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
 			genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
 			if err != nil {
@@ -453,7 +441,143 @@ func newPrintDetails(sc models.Sidecar) error {
 	t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
 	fmt.Println(t.Render())
 
+	if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
+		genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
+		if err != nil {
+			return err
+		}
+		if err := printAllocations(sc, genesis); err != nil {
+			return err
+		}
+		printPrecompiles(genesis)
+	}
+
 	return nil
+}
+
+func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
+	teleporterKeyAddress := ""
+	teleporterPrivKey := ""
+	if sc.TeleporterReady {
+		k, err := key.LoadSoft(models.NewLocalNetwork().ID, app.GetKeyPath(sc.TeleporterKey))
+		if err != nil {
+			return err
+		}
+		teleporterKeyAddress = k.C()
+		teleporterPrivKey = k.PrivKeyHex()
+	}
+	subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, sc.Name)
+	if err != nil {
+		return err
+	}
+	if len(genesis.Alloc) > 0 {
+		fmt.Println()
+		t := table.NewWriter()
+		t.Style().Title.Align = text.AlignCenter
+		t.Style().Title.Format = text.FormatUpper
+		t.Style().Options.SeparateRows = true
+		t.SetTitle("Initial Token Allocation")
+		t.AppendHeader(table.Row{"Description", "Address and Private Key", "Amount (10^18)", "Amount (wei)"})
+		for address := range genesis.Alloc {
+			amount := genesis.Alloc[address].Balance
+			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
+			description := ""
+			privKey := ""
+			switch address.Hex() {
+			case teleporterKeyAddress:
+				description = fmt.Sprintf("%s\n%s", sc.TeleporterKey, logging.Green.Wrap("Teleporter Deploys"))
+				privKey = teleporterPrivKey
+			case subnetAirdropAddress:
+				description = fmt.Sprintf("%s\n%s", subnetAirdropKeyName, logging.Green.Wrap("Main funded account"))
+				privKey = subnetAirdropPrivKey
+			case vm.PrefundedEwoqAddress.Hex():
+				description = "Main funded account EWOQ"
+				privKey = vm.PrefundedEwoqPrivate
+			}
+			t.AppendRow(table.Row{description, address.Hex() + "\n" + privKey, formattedAmount.String(), amount.String()})
+		}
+		fmt.Println(t.Render())
+	}
+	return nil
+}
+
+func printPrecompiles(genesis core.Genesis) {
+	fmt.Println()
+	t := table.NewWriter()
+	t.Style().Title.Align = text.AlignCenter
+	t.Style().Title.Format = text.FormatUpper
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+	})
+	t.SetTitle("Precompiles")
+	t.AppendHeader(table.Row{"Precompile", "Admin Addresses", "Manager Addresses", "Enabled Addresses"})
+
+	precompileSet := false
+	// Warp
+	if genesis.Config.GenesisPrecompiles[warp.ConfigKey] != nil {
+		t.AppendRow(table.Row{"Warp", "n/a", "n/a", "n/a"})
+		precompileSet = true
+	}
+	// Native Minting
+	if genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+		addPrecompileAllowList(t, "Native Minter", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+		precompileSet = true
+	}
+	// Contract allow list
+	if genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[deployerallowlist.ConfigKey].(*deployerallowlist.Config)
+		addPrecompileAllowList(t, "Contract Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+		precompileSet = true
+	}
+	// TX allow list
+	if genesis.Config.GenesisPrecompiles[txallowlist.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[txallowlist.Module.ConfigKey].(*txallowlist.Config)
+		addPrecompileAllowList(t, "Tx Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+		precompileSet = true
+	}
+	// Fee config allow list
+	if genesis.Config.GenesisPrecompiles[feemanager.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[feemanager.ConfigKey].(*feemanager.Config)
+		addPrecompileAllowList(t, "Fee Config Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+		precompileSet = true
+	}
+	// Reward config allow list
+	if genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey] != nil {
+		cfg := genesis.Config.GenesisPrecompiles[rewardmanager.ConfigKey].(*rewardmanager.Config)
+		addPrecompileAllowList(t, "Reward Manager Allow List", cfg.AdminAddresses, cfg.ManagerAddresses, cfg.EnabledAddresses)
+		precompileSet = true
+	}
+	if precompileSet {
+		fmt.Println(t.Render())
+	}
+}
+
+func addPrecompileAllowList(
+	t table.Writer,
+	label string,
+	adminAddresses []common.Address,
+	managerAddresses []common.Address,
+	enabledAddresses []common.Address,
+) {
+	t.AppendSeparator()
+	admins := len(adminAddresses)
+	managers := len(managerAddresses)
+	enabled := len(enabledAddresses)
+	max := max(admins, managers, enabled)
+	for i := 0; i < max; i++ {
+		var admin, manager, enable string
+		if i < len(adminAddresses) && adminAddresses[i] != (common.Address{}) {
+			admin = adminAddresses[i].Hex()
+		}
+		if i < len(managerAddresses) && managerAddresses[i] != (common.Address{}) {
+			manager = managerAddresses[i].Hex()
+		}
+		if i < len(enabledAddresses) && enabledAddresses[i] != (common.Address{}) {
+			enable = enabledAddresses[i].Hex()
+		}
+		t.AppendRow(table.Row{label, admin, manager, enable})
+	}
 }
 
 func describe(_ *cobra.Command, args []string) error {
