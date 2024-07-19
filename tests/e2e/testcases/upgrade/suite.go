@@ -31,8 +31,8 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 
-	subnetEVMVersion1 = "v0.5.5"
-	subnetEVMVersion2 = "v0.5.6"
+	subnetEVMVersion1 = "v0.6.5"
+	subnetEVMVersion2 = "v0.6.6"
 
 	avagoRPC1Version = "v1.10.11"
 	avagoRPC2Version = "v1.10.12"
