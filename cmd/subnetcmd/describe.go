@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -382,13 +383,27 @@ func newPrintDetails(genesis core.Genesis, sc models.Sidecar) error {
 	t.AppendRow(table.Row{"VM ID", vmIDstr, vmIDstr}, rowConfig)
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
 	for net, data := range sc.Networks {
+		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		if err != nil {
+			return err
+		}
+		genesisBytes, err := contract.GetEVMSubnetGenesis(
+			app,
+			network,
+			sc.Name,
+			false,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
+		if err != nil {
+			return err
+		}
 		t.AppendRow(table.Row{net, "ChainID", genesis.Config.ChainID.String()})
 		if data.SubnetID != ids.Empty {
 			t.AppendRow(table.Row{net, "SubnetID", data.SubnetID.String()})
-			network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
-			if err != nil {
-				return err
-			}
 			isPermissioned, owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
 			if err != nil {
 				return err
