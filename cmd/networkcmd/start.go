@@ -159,7 +159,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
-	if err := ux.PrintLocalNetworkEndpointsInfo(resp.ClusterInfo); err != nil {
+	if err := ux.PrintLocalNetworkEndpointsInfo("", resp.ClusterInfo); err != nil {
 		return err
 	}
 

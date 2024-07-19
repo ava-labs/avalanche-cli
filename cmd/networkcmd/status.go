@@ -31,7 +31,6 @@ func networkStatus(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	status, err := cli.Status(ctx)
@@ -42,7 +41,6 @@ func networkStatus(*cobra.Command, []string) error {
 		}
 		return err
 	}
-
 	if status != nil && status.ClusterInfo != nil {
 		ux.Logger.PrintToUser("Network is Up:")
 		ux.Logger.PrintToUser("  Number of Nodes: %d", len(status.ClusterInfo.NodeNames))
@@ -50,7 +48,7 @@ func networkStatus(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("  Network Healthy: %t", status.ClusterInfo.Healthy)
 		ux.Logger.PrintToUser("  Custom VMs Healthy: %t", status.ClusterInfo.CustomChainsHealthy)
 		ux.Logger.PrintToUser("")
-		if err := ux.PrintLocalNetworkEndpointsInfo(status.ClusterInfo); err != nil {
+		if err := ux.PrintLocalNetworkEndpointsInfo("", status.ClusterInfo); err != nil {
 			return err
 		}
 	} else {

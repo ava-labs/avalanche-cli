@@ -223,7 +223,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.Logger.PrintToUser("")
-		if err := ux.PrintLocalNetworkEndpointsInfo(clusterInfo); err != nil {
+		if err := ux.PrintLocalNetworkEndpointsInfo(subnetName, clusterInfo); err != nil {
 			return err
 		}
 

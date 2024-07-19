@@ -710,7 +710,7 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Blockchain ready to use")
 	ux.Logger.PrintToUser("")
-	if err := ux.PrintLocalNetworkEndpointsInfo(clusterInfo); err != nil {
+	if err := ux.PrintLocalNetworkEndpointsInfo(chain, clusterInfo); err != nil {
 		return nil, err
 	}
 	ux.Logger.PrintToUser("")

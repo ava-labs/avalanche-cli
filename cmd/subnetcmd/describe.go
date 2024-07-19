@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -369,10 +370,20 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 	t.AppendRow(table.Row{"VM ID", vmIDstr, vmIDstr}, rowConfig)
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
 	networkToGenesis := map[models.Network][]byte{}
+	localIsUp := false
 	for net, data := range sc.Networks {
 		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
 		if err != nil {
 			return err
+		}
+		if _, err := utils.GetChainID(network.Endpoint, "C"); err != nil {
+			if strings.Contains(err.Error(), "connection refused") {
+				continue
+			}
+			return err
+		}
+		if network.Kind == models.Local {
+			localIsUp = true
 		}
 		genesisBytes, err := contract.GetBlockchainGenesis(
 			app,
@@ -421,6 +432,13 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 	t.SetTitle("Teleporter")
 	hasTeleporterInfo := false
 	for net, data := range sc.Networks {
+		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		if err != nil {
+			return err
+		}
+		if network.Kind == models.Local && !localIsUp {
+			continue
+		}
 		if data.TeleporterMessengerAddress != "" {
 			t.AppendRow(table.Row{net, "Teleporter Messenger Address", data.TeleporterMessengerAddress})
 			hasTeleporterInfo = true
@@ -455,6 +473,27 @@ func newPrintDetails(sc models.Sidecar, genesisBytes []byte) error {
 			return err
 		}
 		printPrecompiles(genesis)
+	}
+
+	if localIsUp {
+		cli, err := binutils.NewGRPCClient(
+			binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+		)
+		if err != nil {
+			return err
+		}
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		status, err := cli.Status(ctx)
+		if err != nil {
+			return err
+		}
+		if status != nil && status.ClusterInfo != nil {
+			fmt.Println()
+			if err := ux.PrintLocalNetworkEndpointsInfo(sc.Name, status.ClusterInfo); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
