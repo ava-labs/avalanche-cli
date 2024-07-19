@@ -1014,7 +1014,11 @@ func PromptAddress(
 	}
 	switch keyOption {
 	case cliKeyOpt:
-		keyName, err := CaptureKeyName(prompter, goal, keyDir, true)
+		includeEwoq := true
+		if network.Kind == models.Fuji {
+			includeEwoq = false
+		}
+		keyName, err := CaptureKeyName(prompter, goal, keyDir, includeEwoq)
 		if err != nil {
 			return "", err
 		}
