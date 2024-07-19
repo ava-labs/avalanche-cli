@@ -113,7 +113,7 @@ func GetEVMSubnetPrefundedKey(
 	isCChain bool,
 	blockchainID string,
 ) (string, string, error) {
-	genesisData, err := GetEVMSubnetGenesis(
+	genesisData, err := GetBlockchainGenesis(
 		app,
 		network,
 		subnetName,
@@ -122,6 +122,9 @@ func GetEVMSubnetPrefundedKey(
 	)
 	if err != nil {
 		return "", "", err
+	}
+	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
+		return "", "", fmt.Errorf("search for prefunded key is only supported on EVM based vms")
 	}
 	_, genesisAddress, genesisPrivateKey, err := GetSubnetAirdropKeyInfo(
 		app,
@@ -135,8 +138,8 @@ func GetEVMSubnetPrefundedKey(
 	return genesisAddress, genesisPrivateKey, nil
 }
 
-// get the deployed subnet genesis
-func GetEVMSubnetGenesis(
+// get the deployed blockchain genesis
+func GetBlockchainGenesis(
 	app *application.Avalanche,
 	network models.Network,
 	subnetName string,
@@ -181,9 +184,6 @@ func GetEVMSubnetGenesis(
 	if err != nil {
 		return nil, err
 	}
-	if !utils.ByteSliceIsSubnetEvmGenesis(createChainTx.GenesisData) {
-		return nil, fmt.Errorf("search for prefunded key is only supported on EVM based vms")
-	}
 	return createChainTx.GenesisData, err
 }
 
@@ -208,7 +208,7 @@ func GetEVMSubnetGenesisSupply(
 	isCChain bool,
 	blockchainID string,
 ) (*big.Int, error) {
-	genesisData, err := GetEVMSubnetGenesis(
+	genesisData, err := GetBlockchainGenesis(
 		app,
 		network,
 		subnetName,
@@ -216,7 +216,10 @@ func GetEVMSubnetGenesisSupply(
 		blockchainID,
 	)
 	if err != nil {
-		return new(big.Int), err
+		return nil, err
+	}
+	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
+		return nil, fmt.Errorf("genesis supply calculation is only supported on EVM based vms")
 	}
 	return sumGenesisSupply(genesisData)
 }
@@ -262,7 +265,7 @@ func GetEVMSubnetGenesisNativeMinterAdmin(
 	isCChain bool,
 	blockchainID string,
 ) (bool, bool, string, string, string, error) {
-	genesisData, err := GetEVMSubnetGenesis(
+	genesisData, err := GetBlockchainGenesis(
 		app,
 		network,
 		subnetName,
@@ -271,6 +274,9 @@ func GetEVMSubnetGenesisNativeMinterAdmin(
 	)
 	if err != nil {
 		return false, false, "", "", "", err
+	}
+	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
+		return false, false, "", "", "", fmt.Errorf("genesis native minter admin query is only supported on EVM based vms")
 	}
 	return getGenesisNativeMinterAdmin(app, network, genesisData)
 }
