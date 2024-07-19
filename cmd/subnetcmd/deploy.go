@@ -382,7 +382,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.MetricsNetwork] = network.Name()
 		metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
-		return app.UpdateSidecarNetworks(
+		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
 			deployInfo.SubnetID,
@@ -390,7 +390,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.TeleporterMessengerAddress,
 			deployInfo.TeleporterRegistryAddress,
-		)
+		); err != nil {
+			return err
+		}
+		return PrintSubnetInfo(subnetName, true)
 	}
 
 	// from here on we are assuming a public deploy

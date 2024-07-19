@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -69,18 +68,23 @@ func printGenesis(subnetName string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println()
-	fmt.Println(string(gen))
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(string(gen))
 	return nil
 }
 
-func printDetails(sc models.Sidecar) error {
+func PrintSubnetInfo(subnetName string, onlyLocalnetInfo bool) error {
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
+
 	genesisBytes, err := app.LoadRawGenesis(sc.Subnet)
 	if err != nil {
 		return err
 	}
 
-	// Networks, Subnets, Blockchains
+	// VM/Deploys
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -102,21 +106,23 @@ func printDetails(sc models.Sidecar) error {
 	}
 	t.AppendRow(table.Row{"VM ID", vmIDstr, vmIDstr}, rowConfig)
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
-	localIsUp := false
+
+	locallyDeployed, err := localnet.Deployed(sc.Name)
+	if err != nil {
+		return err
+	}
+
 	localChainID := ""
 	for net, data := range sc.Networks {
 		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
 		if err != nil {
 			return err
 		}
-		if _, err := utils.GetChainID(network.Endpoint, "C"); err != nil {
-			if strings.Contains(err.Error(), "connection refused") {
-				continue
-			}
-			return err
+		if network.Kind == models.Local && !locallyDeployed {
+			continue
 		}
-		if network.Kind == models.Local {
-			localIsUp = true
+		if network.Kind != models.Local && onlyLocalnetInfo {
+			continue
 		}
 		genesisBytes, err := contract.GetBlockchainGenesis(
 			app,
@@ -154,9 +160,9 @@ func printDetails(sc models.Sidecar) error {
 			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
 		}
 	}
-	fmt.Println(t.Render())
+	ux.Logger.PrintToUser(t.Render())
 
-	// teleporter
+	// Teleporter
 	t = table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -171,7 +177,10 @@ func printDetails(sc models.Sidecar) error {
 		if err != nil {
 			return err
 		}
-		if network.Kind == models.Local && !localIsUp {
+		if network.Kind == models.Local && !locallyDeployed {
+			continue
+		}
+		if network.Kind != models.Local && onlyLocalnetInfo {
 			continue
 		}
 		if data.TeleporterMessengerAddress != "" {
@@ -184,12 +193,12 @@ func printDetails(sc models.Sidecar) error {
 		}
 	}
 	if hasTeleporterInfo {
-		fmt.Println()
-		fmt.Println(t.Render())
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(t.Render())
 	}
 
 	// Token
-	fmt.Println()
+	ux.Logger.PrintToUser("")
 	t = table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -197,7 +206,7 @@ func printDetails(sc models.Sidecar) error {
 	t.SetTitle("Token")
 	t.AppendRow(table.Row{"Token Name", sc.TokenName})
 	t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
-	fmt.Println(t.Render())
+	ux.Logger.PrintToUser(t.Render())
 
 	if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
 		genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
@@ -210,24 +219,10 @@ func printDetails(sc models.Sidecar) error {
 		printPrecompiles(genesis)
 	}
 
-	if localIsUp {
-		cli, err := binutils.NewGRPCClient(
-			binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-		)
-		if err != nil {
+	if locallyDeployed {
+		ux.Logger.PrintToUser("")
+		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, sc.Name); err != nil {
 			return err
-		}
-		ctx, cancel := utils.GetAPIContext()
-		defer cancel()
-		status, err := cli.Status(ctx)
-		if err != nil {
-			return err
-		}
-		if status != nil && status.ClusterInfo != nil {
-			fmt.Println()
-			if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, sc.Name); err != nil {
-				return err
-			}
 		}
 
 		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(sc.Name)
@@ -239,7 +234,7 @@ func printDetails(sc models.Sidecar) error {
 			localEndpoint = codespaceEndpoint + "\n" + logging.Orange.Wrap("Please make sure to set visibility of port 9650 to public")
 		}
 
-		// wallet
+		// Wallet
 		t = table.NewWriter()
 		t.Style().Title.Align = text.AlignCenter
 		t.Style().Title.Format = text.FormatUpper
@@ -250,8 +245,8 @@ func printDetails(sc models.Sidecar) error {
 		t.AppendRow(table.Row{"Chain ID", localChainID})
 		t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
 		t.AppendRow(table.Row{"Token Name", sc.TokenName})
-		fmt.Println()
-		fmt.Println(t.Render())
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(t.Render())
 	}
 
 	return nil
@@ -273,7 +268,7 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 		return err
 	}
 	if len(genesis.Alloc) > 0 {
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		t := table.NewWriter()
 		t.Style().Title.Align = text.AlignCenter
 		t.Style().Title.Format = text.FormatUpper
@@ -298,13 +293,13 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 			}
 			t.AppendRow(table.Row{description, address.Hex() + "\n" + privKey, formattedAmount.String(), amount.String()})
 		}
-		fmt.Println(t.Render())
+		ux.Logger.PrintToUser(t.Render())
 	}
 	return nil
 }
 
 func printPrecompiles(genesis core.Genesis) {
-	fmt.Println()
+	ux.Logger.PrintToUser("")
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -351,7 +346,7 @@ func printPrecompiles(genesis core.Genesis) {
 		precompileSet = true
 	}
 	if precompileSet {
-		fmt.Println(t.Render())
+		ux.Logger.PrintToUser(t.Render())
 	}
 }
 
@@ -388,21 +383,21 @@ func describe(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
 		return nil
 	}
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
 	if printGenesisOnly {
 		return printGenesis(subnetName)
 	}
-	if err := printDetails(sc); err != nil {
+	if err := PrintSubnetInfo(subnetName, false); err != nil {
 		return err
 	}
 	if isEVM, _, err := app.HasSubnetEVMGenesis(subnetName); err != nil {
 		return err
 	} else if !isEVM {
+		sc, err := app.LoadSidecar(subnetName)
+		if err != nil {
+			return err
+		}
 		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Printing genesis")
 		return printGenesis(subnetName)
 	}
