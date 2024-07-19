@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -16,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -114,7 +116,13 @@ func printDetails(genesis core.Genesis, sc models.Sidecar) error {
 			return err
 		}
 		if data.SubnetID != ids.Empty {
-			table.Append([]string{fmt.Sprintf("%s SubnetID", net), data.SubnetID.String()})
+			table.Append([]string{fmt.Sprintf("%s Subnet ID", net), data.SubnetID.String()})
+			owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
+			if err != nil {
+				return err
+			}
+			table.Append([]string{fmt.Sprintf("%s Subnet Owners", net), strings.Join(owners, "\n")})
+			table.Append([]string{fmt.Sprintf("%s Subnet Threshold", net), fmt.Sprint(threshold)})
 		}
 		if data.BlockchainID != ids.Empty {
 			table.Append([]string{fmt.Sprintf("%s RPC URL", net), network.BlockchainEndpoint(data.BlockchainID.String())})
