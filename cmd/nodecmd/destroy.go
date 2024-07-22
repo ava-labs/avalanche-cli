@@ -254,6 +254,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		}
 		invalidCloudCredentials := false
 		for node, nodeErr := range nodeErrors {
+			fmt.Printf("nodeErrorrs %s \n", nodeErr)
 			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
 				ux.Logger.RedXToUser("Node is destroyed, but failed to release static ip address for node %s due to %s", node, nodeErr)
 			} else {

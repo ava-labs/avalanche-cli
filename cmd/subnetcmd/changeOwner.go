@@ -59,7 +59,23 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return err
+	}
 
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
+
+	currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("current contorl keys %s \n", currentControlKeys)
+	fmt.Printf("current currentThreshold %s \n", currentThreshold)
 	fee := network.GenesisParams().TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -88,18 +104,18 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
-		return err
-	}
-
-	subnetID := sc.Networks[network.Name()].SubnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
-	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
-
-	currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
+	//sc, err := app.LoadSidecar(subnetName)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//subnetID := sc.Networks[network.Name()].SubnetID
+	//if subnetID == ids.Empty {
+	//	return errNoSubnetID
+	//}
+	//transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
+	//
+	//currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}

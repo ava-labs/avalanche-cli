@@ -353,6 +353,9 @@ func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName stri
 		if enableLogs {
 			ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
 		}
+		if errors.Is(err, ErrNoInstanceState) {
+			return nil
+		}
 		return err
 	}
 	if !isRunning {

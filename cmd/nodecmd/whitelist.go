@@ -3,7 +3,9 @@
 package nodecmd
 
 import (
+	goError "errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -286,6 +288,12 @@ func whitelistSSHPubKey(clusterName string, pubkey string) error {
 func getCloudSecurityGroupList(clusterNodes []string) ([]regionSecurityGroup, error) {
 	cloudSecurityGroupList := []regionSecurityGroup{}
 	for _, node := range clusterNodes {
+		_, err := os.Stat(app.GetNodeConfigPath(node))
+		if err != nil {
+			if goError.Is(err, os.ErrNotExist) {
+				continue
+			}
+		}
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())
