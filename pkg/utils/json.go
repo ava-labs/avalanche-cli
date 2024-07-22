@@ -5,6 +5,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 )
 
@@ -28,11 +29,6 @@ func ValidateJSON(path string) ([]byte, error) {
 
 // MergeJsonMaps merges two maps of type map[string]interface{}
 func MergeJSONMaps(a, b map[string]interface{}) map[string]interface{} {
-	for k, v := range b {
-		if _, ok := a[k]; !ok {
-			a[k] = v
-		}
-		// skip if key already exists in a
-	}
-	return a
+	maps.Copy(b, a)
+	return b
 }
