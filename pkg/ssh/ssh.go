@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -620,8 +621,8 @@ func mergeSubnetNodeConfig(host *models.Host, subnetNodeConfigPath string) error
 	if err := json.Unmarshal(subnetNodeConfigBytes, &subnetNodeConfig); err != nil {
 		return fmt.Errorf("error unmarshalling subnet node config: %w", err)
 	}
-	mergedNodeConfig := utils.MergeJSONMaps(remoteNodeConfig, subnetNodeConfig)
-	mergedNodeConfigBytes, err := json.MarshalIndent(mergedNodeConfig, "", " ")
+	maps.Copy(remoteNodeConfig, subnetNodeConfig) // merge remote config into local subnet config. subnetNodeConfig takes precedence
+	mergedNodeConfigBytes, err := json.MarshalIndent(remoteNodeConfig, "", " ")
 	if err != nil {
 		return fmt.Errorf("error creating merged node config: %w", err)
 	}
