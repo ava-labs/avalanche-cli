@@ -222,11 +222,8 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		if !isExternalCluster {
 			// if we can't find node config path, that means node already deleted on console
 			// but we didn't get to delete the node from cluster config file
-			_, err := os.Stat(app.GetNodeConfigPath(node))
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					continue
-				}
+			if utils.FileExists(app.GetNodeConfigPath(node)) {
+				continue
 			}
 			nodeConfig, err := app.LoadClusterNodeConfig(node)
 			if err != nil {

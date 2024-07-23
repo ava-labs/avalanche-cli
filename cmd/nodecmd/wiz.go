@@ -136,7 +136,6 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().IntVar(&throughput, "aws-volume-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
-	cmd.Flags().BoolVar(&cleanupNodes, "cleanup", false, "clean up all existing instances created by Avalanche CLI")
 	cmd.Flags().StringVar(&grafanaPkg, "grafana-pkg", "", "use grafana pkg instead of apt repo(by default), for example https://dl.grafana.com/oss/release/grafana_10.4.1_amd64.deb")
 	cmd.Flags().StringVar(&teleporterVersion, "teleporter-version", "latest", "teleporter version to deploy")
 	cmd.Flags().StringVar(&teleporterMessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
@@ -167,12 +166,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 			os.Exit(0)
 		}
 	}()
-	// clean up all existing instances previously created by Avalanche CLI
-	if cleanupNodes {
-		if err := Cleanup(); err != nil {
-			return err
-		}
-	}
 	clusterAlreadyExists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
