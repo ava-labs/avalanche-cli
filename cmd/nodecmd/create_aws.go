@@ -523,9 +523,7 @@ func createAWSInstances(
 		if len(failedNodes) > 0 {
 			ux.Logger.PrintToUser("Failed nodes: ")
 			for node, err := range failedNodes {
-				if enableLogs {
-					ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
-				}
+				ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", node, err))
 			}
 			ux.Logger.PrintToUser("Destroy the above instance(s) on AWS console to prevent charges")
 			return models.CloudConfig{}, fmt.Errorf("failed to destroy node(s) %s", failedNodes)

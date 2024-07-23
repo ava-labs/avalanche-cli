@@ -160,7 +160,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for range c {
-			if err := CallDestroyNode(clusterName, true); err != nil {
+			if err := CallDestroyNode(clusterName); err != nil {
 				ux.Logger.RedXToUser("Unable to delete cluster %s due to %s", clusterName, err)
 				ux.Logger.RedXToUser("Please try again by calling avalanche node destroy %s", clusterName)
 			}

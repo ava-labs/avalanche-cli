@@ -24,7 +24,6 @@ import (
 var (
 	authorizeRemove bool
 	authorizeAll    bool
-	enableLogs      bool
 	destroyAll      bool
 )
 
@@ -43,7 +42,6 @@ If there is a static IP address attached, it will be released.`,
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
 	cmd.Flags().BoolVarP(&authorizeAll, "authorize-all", "y", false, "authorize all CLI requests")
-	cmd.Flags().BoolVar(&enableLogs, "enable-logs", true, "enable logs")
 	cmd.Flags().BoolVar(&destroyAll, "all", false, "destroy all existing clusters created by Avalanche CLI")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 
@@ -97,9 +95,8 @@ func removeClustersConfigFiles(clusterName string) error {
 	return removeNodeFromClustersConfig(clusterName)
 }
 
-func CallDestroyNode(clusterName string, logs bool) error {
+func CallDestroyNode(clusterName string) error {
 	authorizeAll = true
-	enableLogs = logs
 	return destroyNodes(nil, []string{clusterName})
 }
 
@@ -133,7 +130,7 @@ func Cleanup() error {
 	}
 	clusterNames := maps.Keys(clustersConfig.Clusters)
 	for _, clusterName := range clusterNames {
-		if err = CallDestroyNode(clusterName, false); err != nil {
+		if err = CallDestroyNode(clusterName); err != nil {
 			// we only return error for invalid cloud credentials
 			// silence for other errors
 			// TODO: differentiate between AWS and GCP credentials
@@ -234,16 +231,14 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 			nodeConfig, err := app.LoadClusterNodeConfig(node)
 			if err != nil {
 				nodeErrors[node] = err
-				if enableLogs {
-					ux.Logger.RedXToUser("Failed to destroy node %s due to %s", node, err.Error())
-				}
+				ux.Logger.RedXToUser("Failed to destroy node %s due to %s", node, err.Error())
 				continue
 			}
 			if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 				if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 					return fmt.Errorf("cloud access is required")
 				}
-				if err = ec2SvcMap[nodeConfig.Region].DestroyAWSNode(nodeConfig, clusterName, enableLogs); err != nil {
+				if err = ec2SvcMap[nodeConfig.Region].DestroyAWSNode(nodeConfig, clusterName); err != nil {
 					if isExpiredCredentialError(err) {
 						ux.Logger.PrintToUser("")
 						printExpiredCredentialsOutput(awsProfile)
@@ -291,9 +286,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		}
 	}
 	if len(nodeErrors) > 0 {
-		if enableLogs {
-			ux.Logger.PrintToUser("Failed nodes: ")
-		}
+		ux.Logger.PrintToUser("Failed nodes: ")
 		invalidCloudCredentials := false
 		for node, nodeErr := range nodeErrors {
 			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
@@ -302,9 +295,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				if strings.Contains(nodeErr.Error(), "AuthFailure") {
 					invalidCloudCredentials = true
 				}
-				if enableLogs {
-					ux.Logger.RedXToUser("Failed to destroy node %s due to %s", node, nodeErr)
-				}
+				ux.Logger.RedXToUser("Failed to destroy node %s due to %s", node, nodeErr)
 			}
 		}
 		if invalidCloudCredentials {
