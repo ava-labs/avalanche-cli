@@ -135,6 +135,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		sameControlKey,
 		threshold,
 		nil,
+		false,
 	)
 	if err != nil {
 		return err

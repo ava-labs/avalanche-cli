@@ -17,13 +17,74 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
+func promptOwners(
+	kc *keychain.Keychain,
+	controlKeys []string,
+	sameControlKey bool,
+	threshold uint32,
+	subnetAuthKeys []string,
+	creatingBlockchain bool,
+) ([]string, uint32, error) {
+	var err error
+	// accept only one control keys specification
+	if len(controlKeys) > 0 && sameControlKey {
+		return nil, 0, errMutuallyExlusiveControlKeys
+	}
+	// use first fee-paying key as control key
+	if sameControlKey {
+		kcKeys, err := kc.PChainFormattedStrAddresses()
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(kcKeys) == 0 {
+			return nil, 0, fmt.Errorf("no keys found on keychain")
+		}
+		controlKeys = kcKeys[:1]
+	}
+	// prompt for control keys
+	if controlKeys == nil {
+		var cancelled bool
+		controlKeys, cancelled, err = getControlKeys(kc, creatingBlockchain)
+		if err != nil {
+			return nil, 0, err
+		}
+		if cancelled {
+			ux.Logger.PrintToUser("User cancelled. No operation was performed")
+			return nil, 0, fmt.Errorf("user cancelled operation")
+		}
+	}
+	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+	// validate and prompt for threshold
+	if threshold == 0 && subnetAuthKeys != nil {
+		threshold = uint32(len(subnetAuthKeys))
+	}
+	if threshold > uint32(len(controlKeys)) {
+		return nil, 0, fmt.Errorf("given threshold is greater than number of control keys")
+	}
+	if threshold == 0 {
+		threshold, err = getThreshold(len(controlKeys))
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+	return controlKeys, threshold, nil
+}
+
+func getControlKeys(kc *keychain.Keychain, creatingBlockchain bool) ([]string, bool, error) {
 	controlKeysInitialPrompt := "Configure which addresses may make changes to the subnet.\n" +
 		"These addresses are known as your control keys. You will also\n" +
 		"set how many control keys are required to make a subnet change (the threshold)."
-	moreKeysPrompt := "How would you like to set your control keys?"
-
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
+
+	if creatingBlockchain {
+		return getControlKeysForDeploy(kc)
+	} else {
+		return getControlKeysForChangeOwner(kc.Network)
+	}
+}
+
+func getControlKeysForDeploy(kc *keychain.Keychain) ([]string, bool, error) {
+	moreKeysPrompt := "How would you like to set your control keys?"
 
 	const (
 		useAll = "Use all stored keys"
@@ -68,6 +129,52 @@ func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
 		keys, err = useAllKeys(kc.Network)
 	case custom:
 		keys, cancelled, err = enterCustomKeys(kc.Network)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	if cancelled {
+		return nil, true, nil
+	}
+	return keys, false, nil
+}
+
+func getControlKeysForChangeOwner(network models.Network) ([]string, bool, error) {
+	moreKeysPrompt := "Which control keys would you like to set as the new subnet owners?"
+
+	const (
+		getFromStored = "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
+		custom        = "Custom"
+	)
+
+	listOptions := []string{getFromStored, custom}
+
+	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var (
+		keys      []string
+		cancelled bool
+	)
+
+	switch listDecision {
+	case getFromStored:
+		key, err := prompts.CaptureKeyAddress(
+			app.Prompt,
+			"be set as a subnet control key",
+			app.GetKeyDir(),
+			app.GetKey,
+			network,
+			prompts.PChainFormat,
+		)
+		if err != nil {
+			return nil, false, err
+		}
+		keys = []string{key}
+	case custom:
+		keys, cancelled, err = enterCustomKeys(network)
 	}
 	if err != nil {
 		return nil, false, err
@@ -181,56 +288,4 @@ func getThreshold(maxLen int) (uint32, error) {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(intTh), err
-}
-
-func promptOwners(
-	kc *keychain.Keychain,
-	controlKeys []string,
-	sameControlKey bool,
-	threshold uint32,
-	subnetAuthKeys []string,
-) ([]string, uint32, error) {
-	var err error
-	// accept only one control keys specification
-	if len(controlKeys) > 0 && sameControlKey {
-		return nil, 0, errMutuallyExlusiveControlKeys
-	}
-	// use first fee-paying key as control key
-	if sameControlKey {
-		kcKeys, err := kc.PChainFormattedStrAddresses()
-		if err != nil {
-			return nil, 0, err
-		}
-		if len(kcKeys) == 0 {
-			return nil, 0, fmt.Errorf("no keys found on keychain")
-		}
-		controlKeys = kcKeys[:1]
-	}
-	// prompt for control keys
-	if controlKeys == nil {
-		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(kc)
-		if err != nil {
-			return nil, 0, err
-		}
-		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. No operation was performed")
-			return nil, 0, fmt.Errorf("user cancelled operation")
-		}
-	}
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-	// validate and prompt for threshold
-	if threshold == 0 && subnetAuthKeys != nil {
-		threshold = uint32(len(subnetAuthKeys))
-	}
-	if threshold > uint32(len(controlKeys)) {
-		return nil, 0, fmt.Errorf("given threshold is greater than number of control keys")
-	}
-	if threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-	return controlKeys, threshold, nil
 }

@@ -449,6 +449,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			sameControlKey,
 			threshold,
 			subnetAuthKeys,
+			true,
 		)
 		if err != nil {
 			return err

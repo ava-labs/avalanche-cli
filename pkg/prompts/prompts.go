@@ -1014,23 +1014,16 @@ func PromptAddress(
 	}
 	switch keyOption {
 	case cliKeyOpt:
-		includeEwoq := true
-		if network.Kind == models.Fuji {
-			includeEwoq = false
-		}
-		keyName, err := CaptureKeyName(prompter, goal, keyDir, includeEwoq)
+		address, err = CaptureKeyAddress(
+			prompter,
+			goal,
+			keyDir,
+			getKey,
+			network,
+			format,
+		)
 		if err != nil {
 			return "", err
-		}
-		k, err := getKey(keyName, network, false)
-		if err != nil {
-			return "", err
-		}
-		switch format {
-		case PChainFormat:
-			address = k.P()[0]
-		case EVMFormat:
-			address = k.C()
 		}
 	case customKeyOpt:
 		switch format {
@@ -1050,4 +1043,33 @@ func PromptAddress(
 		address = genesisAddress
 	}
 	return address, nil
+}
+
+func CaptureKeyAddress(
+	prompter Prompter,
+	goal string,
+	keyDir string,
+	getKey func(string, models.Network, bool) (*key.SoftKey, error),
+	network models.Network,
+	format AddressFormat,
+) (string, error) {
+	includeEwoq := true
+	if network.Kind == models.Fuji {
+		includeEwoq = false
+	}
+	keyName, err := CaptureKeyName(prompter, goal, keyDir, includeEwoq)
+	if err != nil {
+		return "", err
+	}
+	k, err := getKey(keyName, network, false)
+	if err != nil {
+		return "", err
+	}
+	switch format {
+	case PChainFormat:
+		return k.P()[0], nil
+	case EVMFormat:
+		return k.C(), nil
+	}
+	return "", nil
 }
