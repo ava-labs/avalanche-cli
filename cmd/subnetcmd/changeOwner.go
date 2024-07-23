@@ -62,7 +62,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	fee := network.GenesisParams().TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
-		"pay fees and be a subnet owner change authorizer",
+		"pay fees",
 		network,
 		keyName,
 		useEwoq,
