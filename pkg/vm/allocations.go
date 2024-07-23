@@ -70,18 +70,19 @@ func getAllocation(
 	subnetName string,
 	defaultAirdropAmount string,
 	multiplier *big.Int,
+	useExternalGasToken bool,
 ) (core.GenesisAlloc, error) {
-	if params.initialTokenAllocation.allocToNewKey {
-		return getNewAllocation(app, subnetName, defaultAirdropAmount)
-	}
-
-	if params.initialTokenAllocation.allocToEwoq {
-		return getEwoqAllocation(defaultAirdropAmount)
-	}
-
 	allocations := core.GenesisAlloc{}
-	amount := new(big.Int).SetUint64(params.initialTokenAllocation.customBalance)
-	amount = amount.Mul(amount, multiplier)
-	addAllocation(allocations, params.initialTokenAllocation.customAddress.Hex(), amount)
+	if !useExternalGasToken {
+		if params.initialTokenAllocation.allocToNewKey {
+			return getNewAllocation(app, subnetName, defaultAirdropAmount)
+		}
+		if params.initialTokenAllocation.allocToEwoq {
+			return getEwoqAllocation(defaultAirdropAmount)
+		}
+		amount := new(big.Int).SetUint64(params.initialTokenAllocation.customBalance)
+		amount = amount.Mul(amount, multiplier)
+		addAllocation(allocations, params.initialTokenAllocation.customAddress.Hex(), amount)
+	}
 	return allocations, nil
 }
