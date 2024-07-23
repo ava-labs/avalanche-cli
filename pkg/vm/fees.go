@@ -19,7 +19,7 @@ func setStandardGas(
 ) {
 	config.FeeConfig.GasLimit = gasLimit
 	config.FeeConfig.TargetGas = targetGas
-	if useDynamicFees {
+	if !useDynamicFees {
 		config.FeeConfig.TargetGas = config.FeeConfig.TargetGas.Mul(config.FeeConfig.GasLimit, NoDynamicFeesGasLimitToTargetGasFactor)
 	}
 }
