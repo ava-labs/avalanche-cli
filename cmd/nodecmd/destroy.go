@@ -118,6 +118,7 @@ func getFirstAvailableNode(nodesToStop []string) (string, bool) {
 	}
 	return firstAvailableNode, noAvailableNodesFound
 }
+
 func destroyNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
