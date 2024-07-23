@@ -73,9 +73,16 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 	switch network.Kind {
-	case models.Fuji, models.Local:
+	case models.Local:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir(), true)
+			if err != nil {
+				return err
+			}
+		}
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir(), false)
 			if err != nil {
 				return err
 			}
