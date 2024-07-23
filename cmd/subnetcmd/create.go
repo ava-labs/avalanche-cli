@@ -199,9 +199,17 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if vmType == models.SubnetEvm {
+		if genesisFile == "" {
+			// Default
+			createFlags.useDefaults, err = vm.PromptDefaults(app, createFlags.useDefaults)
+			if err != nil {
+				return err
+			}
+		}
+
 		// get vm version
 		vmVersion := createFlags.vmVersion
-		if createFlags.useLatestReleasedVMVersion {
+		if createFlags.useLatestReleasedVMVersion || createFlags.useDefaults {
 			vmVersion = latest
 		}
 		if createFlags.useLatestPreReleasedVMVersion {

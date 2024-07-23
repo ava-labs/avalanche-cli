@@ -154,11 +154,6 @@ func PromptSubnetEVMGenesisParams(
 			return SubnetEVMGenesisParams{}, "", err
 		}
 	}
-	// Defaults
-	useDefaults, err = promptDefaults(app, useDefaults)
-	if err != nil {
-		return SubnetEVMGenesisParams{}, "", err
-	}
 	// Gas Kind
 	params, err = promptGasTokenKind(app, useDefaults, useExternalGasToken, params)
 	if err != nil {
@@ -244,17 +239,17 @@ func promptGasTokenKind(
 }
 
 // prompts for wether to use defaults to build the config
-func promptDefaults(
+func PromptDefaults(
 	app *application.Avalanche,
 	useDefaults bool,
 ) (bool, error) {
 	if !useDefaults {
-		specifyMyValuesOption := "No, I want to set each config value"
 		useDefaultsOption := "Yes, I want to use CLI default values"
-		options := []string{specifyMyValuesOption, useDefaultsOption, explainOption}
+		specifyMyValuesOption := "No, I want to set each config value"
+		options := []string{useDefaultsOption, specifyMyValuesOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"Do you want to use CLI defaults for most common blockchain options?",
+				"Do you want to use CLI defaults for common blockchain options?",
 				options,
 			)
 			if err != nil {
@@ -266,7 +261,7 @@ func promptDefaults(
 			case specifyMyValuesOption:
 				useDefaults = false
 			case explainOption:
-				ux.Logger.PrintToUser("You can either let CLI set default values for token allocation, gas fees, precompiles\nand interop, or you can set your own config values if you need so.\n\nCLI defaults involve:\n- allocating 1m tokens to a newly created key\n- disable addicional minting of tokens besides the allocated ones\n- customize gas fee config for low throughput\n- disable further changes in gas fee config\n- always burn fees\n- enable interoperation of the blockchain with other blockchains\n- disable permissioned controls over transaction submission and contracts deployment")
+				ux.Logger.PrintToUser("You can either let CLI set default values for token allocation, gas fees, precompiles\nand interop, or you can set your own config values if you need so.\n\nCLI defaults involve:\n-downloading latest release\n- allocating 1m tokens to a newly created key\n- disable addicional minting of tokens besides the allocated ones\n- customize gas fee config for low throughput\n- disable further changes in gas fee config\n- always burn fees\n- enable interoperation of the blockchain with other blockchains\n- disable permissioned controls over transaction submission and contracts deployment")
 				continue
 			}
 			break
