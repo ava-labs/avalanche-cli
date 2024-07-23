@@ -261,7 +261,7 @@ func PromptDefaults(
 			case specifyMyValuesOption:
 				useDefaults = false
 			case explainOption:
-				ux.Logger.PrintToUser("You can either let CLI set default values for token allocation, gas fees, precompiles\nand interop, or you can set your own config values if you need so.\n\nCLI defaults involve:\n-downloading latest release\n- allocating 1m tokens to a newly created key\n- disable addicional minting of tokens besides the allocated ones\n- customize gas fee config for low throughput\n- disable further changes in gas fee config\n- always burn fees\n- enable interoperation of the blockchain with other blockchains\n- disable permissioned controls over transaction submission and contracts deployment")
+				ux.Logger.PrintToUser("You can either let CLI set default values for token allocation, gas fees, precompiles\nand interop, or you can set your own config values if you need so.\n\nCLI defaults involve:\n-downloading latest release\n- allocating 1m tokens to a newly created key\n- disable addicional minting of tokens besides the allocated ones\n- customize gas fee config for low throughput\n- have constant gas price\n- disable further changes in gas fee config\n- always burn fees\n- enable interoperation of the blockchain with other blockchains\n- disable permissioned controls over transaction submission and contracts deployment")
 				continue
 			}
 			break
@@ -365,6 +365,7 @@ func promptFeeConfig(
 ) (SubnetEVMGenesisParams, error) {
 	if useDefaults {
 		params.feeConfig.lowThroughput = true
+		params.feeConfig.useDynamicFees = false
 		return params, nil
 	}
 	var cancel bool

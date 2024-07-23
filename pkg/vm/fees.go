@@ -10,8 +10,7 @@ import (
 	"github.com/ava-labs/subnet-evm/params"
 )
 
-func setStandardGas(
-	params SubnetEVMGenesisParams,
+func SetStandardGas(
 	config *params.ChainConfig,
 	gasLimit *big.Int,
 	targetGas *big.Int,
@@ -32,11 +31,11 @@ func setFeeConfig(
 
 	switch {
 	case params.feeConfig.lowThroughput:
-		setStandardGas(params, config, LowGasLimit, LowTargetGas, params.feeConfig.useDynamicFees)
+		SetStandardGas(config, LowGasLimit, LowTargetGas, params.feeConfig.useDynamicFees)
 	case params.feeConfig.mediumThroughput:
-		setStandardGas(params, config, MediumGasLimit, MediumTargetGas, params.feeConfig.useDynamicFees)
+		SetStandardGas(config, MediumGasLimit, MediumTargetGas, params.feeConfig.useDynamicFees)
 	case params.feeConfig.highThroughput:
-		setStandardGas(params, config, HighGasLimit, HighTargetGas, params.feeConfig.useDynamicFees)
+		SetStandardGas(config, HighGasLimit, HighTargetGas, params.feeConfig.useDynamicFees)
 	default:
 		setCustomFeeConfig(params, config)
 	}
