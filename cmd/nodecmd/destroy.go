@@ -100,20 +100,23 @@ func CallDestroyNode(clusterName string, logs bool) error {
 	return destroyNodes(nil, []string{clusterName})
 }
 
-func getFirstAvailableNode(nodesToStop []string) string {
+func getFirstAvailableNode(nodesToStop []string) (string, bool) {
 	firstAvailableNode := nodesToStop[0]
-	for _, node := range nodesToStop {
-		fmt.Printf("we here GetNodeConfigPath\n")
+	noAvailableNodesFound := false
+	for index, node := range nodesToStop {
 		nodeConfigPath := app.GetNodeConfigPath(node)
 		_, err := os.Stat(nodeConfigPath)
 		if err != nil {
+			if index == len(nodesToStop)-1 {
+				noAvailableNodesFound = true
+			}
 			if errors.Is(err, os.ErrNotExist) {
 				continue
 			}
 		}
 		firstAvailableNode = node
 	}
-	return firstAvailableNode
+	return firstAvailableNode, noAvailableNodesFound
 }
 func destroyNodes(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
@@ -135,12 +138,10 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("we here \n")
 	monitoringNode, err := getClusterMonitoringNode(clusterName)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("we here 2 \n")
 	if monitoringNode != "" {
 		nodesToStop = append(nodesToStop, monitoringNode)
 	}
@@ -149,7 +150,6 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("we here 3 \n")
 	for _, loadTestName := range ltHosts {
 		ltInstance, err := getExistingLoadTestInstance(clusterName, loadTestName)
 		if err != nil {
@@ -157,15 +157,15 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		}
 		nodesToStop = append(nodesToStop, ltInstance)
 	}
-	fmt.Printf("we here 4 \n")
 	nodeErrors := map[string]error{}
 	cloudSecurityGroupList, err := getCloudSecurityGroupList(nodesToStop)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("we here \n")
-	firstAvailableNodes := getFirstAvailableNode(nodesToStop)
-	fmt.Printf("firstAvailableNodes %s \n", firstAvailableNodes)
+	firstAvailableNodes, noAvailableNodesFound := getFirstAvailableNode(nodesToStop)
+	if noAvailableNodesFound {
+		return removeClustersConfigFiles(clusterName)
+	}
 	nodeToStopConfig, err := app.LoadClusterNodeConfig(firstAvailableNodes)
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					if isExpiredCredentialError(err) {
 						ux.Logger.PrintToUser("")
 						printExpiredCredentialsOutput(awsProfile)
-						return nil
+						return fmt.Errorf("invalid cloud credentials")
 					}
 					if !errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) {
 						nodeErrors[node] = err
@@ -254,7 +254,6 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		}
 		invalidCloudCredentials := false
 		for node, nodeErr := range nodeErrors {
-			fmt.Printf("nodeErrorrs %s \n", nodeErr)
 			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
 				ux.Logger.RedXToUser("Node is destroyed, but failed to release static ip address for node %s due to %s", node, nodeErr)
 			} else {
