@@ -35,6 +35,7 @@ type FeeConfig struct {
 	lowThroughput    bool
 	mediumThroughput bool
 	highThroughput   bool
+	useDynamicFees   bool
 	gasLimit         *big.Int
 	blockRate        *big.Int
 	minBaseFee       *big.Int
@@ -313,9 +314,9 @@ func promptFeeConfig(
 	}
 	var cancel bool
 	customizeOption := "Customize fee config"
-	lowOption := "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
-	mediumOption := "Medium disk use / Medium Throughput 2 mil   gas/s"
-	highOption := "High disk use   / High Throughput   5 mil   gas/s"
+	lowOption := "Low block size    / Low Throughput    12 mil gas per block"
+	mediumOption := "Medium block size / Medium Throughput 15 mil gas per block (C-Chain's setting)"
+	highOption := "High block size   / High Throughput   20 mil gas per block"
 	options := []string{lowOption, mediumOption, highOption, customizeOption, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
@@ -381,6 +382,28 @@ func promptFeeConfig(
 			ux.Logger.PrintToUser("By increasing the gas limit, you can fit more transactions into a single block which in turn increases your max throughput. Increasing the gas target has the same effect; if the targeted amount of gas is not consumed, the dynamic fee algorithm will decrease the base fee until it reaches the minimum.")
 			ux.Logger.PrintToUser(" ")
 			ux.Logger.PrintToUser("There is a long-term risk of increasing your gas parameters. By allowing more transactions to occur on your network, the network state will increase at a faster rate, meaning infrastructure costs and requirements will increase.")
+			continue
+		}
+		break
+	}
+	dontUseDynamicFeesOption := "No, I prefer to have constant gas prices"
+	useDynamicFeesOption := "Yes, I would like my blockchain to have dynamic fees"
+	options = []string{dontUseDynamicFeesOption, useDynamicFeesOption, explainOption}
+	for {
+		option, err := app.Prompt.CaptureList(
+			"Do you want dynamic fees on your blockchain?",
+			options,
+		)
+		if err != nil {
+			return SubnetEVMGenesisParams{}, err
+		}
+		switch option {
+		case dontUseDynamicFeesOption:
+			params.feeConfig.useDynamicFees = false
+		case useDynamicFeesOption:
+			params.feeConfig.useDynamicFees = true
+		case explainOption:
+			ux.Logger.PrintToUser("By disabling dynamic fees you effectively make your gas fees constant. In that case, you may\nwant to have your own congestion control, by fully controlling activity on the chain.\nIf setting dynamic fees, gas fees will be automatically adjusted giving automatic congestion control.")
 			continue
 		}
 		break

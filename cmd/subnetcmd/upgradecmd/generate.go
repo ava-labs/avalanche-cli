@@ -391,7 +391,7 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 	config.FeeConfig = vm.StarterFeeConfig
 
 	if useDefault {
-		config.FeeConfig.TargetGas = vm.LowTarget
+		config.FeeConfig.TargetGas = vm.LowTargetGas
 		return config, nil
 	}
 
@@ -407,13 +407,13 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 
 	switch feeDefault {
 	case useFast:
-		config.FeeConfig.TargetGas = vm.HighTarget
+		config.FeeConfig.TargetGas = vm.HighTargetGas
 		return config, nil
 	case useMedium:
-		config.FeeConfig.TargetGas = vm.MediumTarget
+		config.FeeConfig.TargetGas = vm.MediumTargetGas
 		return config, nil
 	case useSlow:
-		config.FeeConfig.TargetGas = vm.LowTarget
+		config.FeeConfig.TargetGas = vm.LowTargetGas
 		return config, nil
 	default:
 		ux.Logger.PrintToUser("Customizing fee config")
