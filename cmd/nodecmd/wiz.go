@@ -76,7 +76,6 @@ var (
 	deployTeleporterMessenger              bool
 	deployTeleporterRegistry               bool
 	replaceKeyPair                         bool
-	cleanupNodes                           bool
 )
 
 func newWizCmd() *cobra.Command {
