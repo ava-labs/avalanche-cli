@@ -265,14 +265,14 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 }
 
 // getThreshold prompts for the threshold of addresses as a number
-func getThreshold(maxLen uint) (uint32, error) {
+func getThreshold(maxLen int) (uint32, error) {
 	if maxLen == 1 {
 		return uint32(1), nil
 	}
 	// create a list of indexes so the user only has the option to choose what is the threshold
 	// instead of entering
 	indexList := make([]string, maxLen)
-	for i := 0; i < int(maxLen); i++ {
+	for i := 0; i < maxLen; i++ {
 		indexList[i] = strconv.Itoa(i + 1)
 	}
 	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to make a subnet change", indexList)
