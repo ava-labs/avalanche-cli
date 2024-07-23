@@ -217,17 +217,6 @@ func RunSSHStopNode(host *models.Host) error {
 	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "avalanchego", constants.SSHLongRunningScriptTimeout)
 }
 
-// RunSSHUpgradeSubnetEVM runs script to upgrade subnet evm
-func RunSSHUpgradeSubnetEVM(host *models.Host, subnetEVMBinaryPath string) error {
-	return RunOverSSH(
-		"Upgrade Subnet EVM",
-		host,
-		constants.SSHScriptTimeout,
-		"shell/upgradeSubnetEVM.sh",
-		scriptInputs{VMBinaryPath: subnetEVMBinaryPath},
-	)
-}
-
 func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID string) error {
 	content, err := os.ReadFile(customGrafanaDashboardFileName)
 	if err != nil {
