@@ -169,7 +169,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}()
 	// clean up all existing instances previously created by Avalanche CLI
 	if cleanupNodes {
-		if err := CallCleanup(); err != nil {
+		if err := Cleanup(); err != nil {
 			return err
 		}
 	}

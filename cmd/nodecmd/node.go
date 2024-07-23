@@ -58,7 +58,5 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newExportCmd())
 	// node import
 	cmd.AddCommand(newImportCmd())
-	// node cleanup
-	cmd.AddCommand(newCleanupCmd())
 	return cmd
 }
