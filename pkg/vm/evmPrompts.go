@@ -244,12 +244,12 @@ func PromptDefaults(
 	useDefaults bool,
 ) (bool, error) {
 	if !useDefaults {
-		useDefaultsOption := "Yes, I want to use CLI default values"
-		specifyMyValuesOption := "No, I want to set each config value"
+		useDefaultsOption := "Use default values"
+		specifyMyValuesOption := "Don't use default values"
 		options := []string{useDefaultsOption, specifyMyValuesOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"Do you want to use CLI defaults for common blockchain options?",
+				"Do you want to use default values for the Blockchain configuration?",
 				options,
 			)
 			if err != nil {
