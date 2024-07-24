@@ -73,8 +73,9 @@ var (
 	versionComments                       = map[string]string{
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
-	grafanaPkg string
-	wizSubnet  string
+	grafanaPkg           string
+	wizSubnet            string
+	publicHTTPPortAccess bool
 )
 
 func newCreateCmd() *cobra.Command {
@@ -126,6 +127,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
+	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
 	return cmd
 }
 
@@ -402,14 +404,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = regions[0]
 			}
-			cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false)
+			cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false, publicHTTPPortAccess)
 			if err != nil {
 				return err
 			}
 			monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 			if addMonitoring && existingMonitoringInstance == "" {
 				monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
-				monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, []string{monitoringHostRegion}, ami, true)
+				monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, []string{monitoringHostRegion}, ami, true, publicHTTPPortAccess)
 				if err != nil {
 					return err
 				}
@@ -711,7 +713,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring); err != nil {
+			// check if host is a API host
+			publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
+			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring, publicAccessToHTTPPort); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -906,6 +910,7 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	if network != models.UndefinedNetwork {
 		clusterConfig.Network = network
 	}
+	clusterConfig.HTTPAccess = constants.Visibility(publicHTTPPortAccess)
 	if clusterConfig.LoadTestInstance == nil {
 		clusterConfig.LoadTestInstance = make(map[string]string)
 	}
@@ -993,6 +998,10 @@ func provideStakingCertAndKey(host *models.Host) error {
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
 func getAvalancheGoVersion() (string, error) {
+	// skip this logic if custom-avalanchego-version flag is set
+	if useCustomAvalanchegoVersion != "" {
+		return useCustomAvalanchegoVersion, nil
+	}
 	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,

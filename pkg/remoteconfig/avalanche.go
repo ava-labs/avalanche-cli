@@ -32,7 +32,7 @@ type AvalancheConfigInputs struct {
 
 func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
-		HTTPHost:         "0.0.0.0",
+		HTTPHost:         "127.0.0.1",
 		NetworkID:        networkID,
 		DBDir:            "/.avalanchego/db/",
 		LogDir:           "/.avalanchego/logs/",

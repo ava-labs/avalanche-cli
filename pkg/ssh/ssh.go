@@ -177,13 +177,13 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string) error {
+func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string, publicAccessToHTTPPort bool) error {
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err
 	}
 
-	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring); err != nil {
+	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring, publicAccessToHTTPPort); err != nil {
 		return err
 	}
 	return docker.RestartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
