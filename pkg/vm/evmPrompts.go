@@ -243,12 +243,12 @@ func PromptDefaults(
 	useDefaults bool,
 ) (bool, error) {
 	if !useDefaults {
-		useDefaultsOption := "Yes, I want to use CLI default values"
-		specifyMyValuesOption := "No, I want to set each config value"
+		useDefaultsOption := "Use default values"
+		specifyMyValuesOption := "Don't use default values"
 		options := []string{useDefaultsOption, specifyMyValuesOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"Do you want to use CLI defaults for common blockchain options?",
+				"Do you want to use default values for the Blockchain configuration?",
 				options,
 			)
 			if err != nil {
@@ -260,7 +260,7 @@ func PromptDefaults(
 			case specifyMyValuesOption:
 				useDefaults = false
 			case explainOption:
-				ux.Logger.PrintToUser("You can either let CLI set default values for token allocation, gas fees, precompiles\nand interop, or you can set your own config values if you need so.\n\nCLI defaults involve:\n-downloading latest release\n- allocating 1m tokens to a newly created key\n- disable addicional minting of tokens besides the allocated ones\n- customize gas fee config for low throughput\n- disable further changes in gas fee config\n- always burn fees\n- enable interoperation of the blockchain with other blockchains\n- disable permissioned controls over transaction submission and contracts deployment")
+				ux.Logger.PrintToUser("Subnet configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to a newly created key\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.")
 				continue
 			}
 			break
