@@ -12,9 +12,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
-func prepareAvalanchegoConfig(host *models.Host, network models.Network, isAPIHost bool) (string, string, error) {
-	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.ShortID(), nil)
-	if network.PublicAPI || isAPIHost || utils.IsE2E() {
+func prepareAvalanchegoConfig(host *models.Host, network models.Network, publicAccess bool) (string, string, error) {
+	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), nil)
+	if publicAccess || utils.IsE2E() {
 		avagoConf.HTTPHost = "0.0.0.0"
 	}
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)

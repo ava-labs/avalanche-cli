@@ -69,8 +69,8 @@ func upgrade(_ *cobra.Command, args []string) error {
 		if upgradeInfo.AvalancheGoVersion != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading avalanchego to version %s...", upgradeInfo.AvalancheGoVersion)))
 			// check if host is API host
-
-			if err := upgradeAvalancheGo(host, network, upgradeInfo.AvalancheGoVersion, clusterConfig.IsAPIHost(host.GetCloudID())); err != nil {
+			publicAccessToHTTPPort := clusterConfig.IsAPIHost(host.GetCloudID()) || clusterConfig.HTTPAccess == constants.PublicAccess
+			if err := upgradeAvalancheGo(host, network, upgradeInfo.AvalancheGoVersion, publicAccessToHTTPPort); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -218,9 +218,9 @@ func upgradeAvalancheGo(
 	host *models.Host,
 	network models.Network,
 	avaGoVersionToUpdateTo string,
-	isAPIHost bool,
+	publicAccessToHTTPPort bool,
 ) error {
-	if err := ssh.RunSSHUpgradeAvalanchego(host, network, avaGoVersionToUpdateTo, isAPIHost); err != nil {
+	if err := ssh.RunSSHUpgradeAvalanchego(host, network, avaGoVersionToUpdateTo, publicAccessToHTTPPort); err != nil {
 		return err
 	}
 	return nil

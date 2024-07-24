@@ -25,7 +25,7 @@ func ValidateComposeFile(host *models.Host, composeFile string, timeout time.Dur
 }
 
 // ComposeSSHSetupNode sets up an AvalancheGo node and dependencies on a remote host over SSH.
-func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool, isAPI bool) error {
+func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool, publicAccessToHTTPPort bool) error {
 	startTime := time.Now()
 	folderStructure := remoteconfig.RemoteFoldersToCreateAvalanchego()
 	for _, dir := range folderStructure {
@@ -41,7 +41,7 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 		return err
 	}
 	ux.Logger.Info("AvalancheGo Docker image %s ready on %s[%s] after %s", avagoDockerImage, host.NodeID, host.IP, time.Since(startTime))
-	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(host, network, isAPI)
+	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(host, network, publicAccessToHTTPPort)
 	if err != nil {
 		return err
 	}

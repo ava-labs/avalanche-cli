@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type Visibility bool
+
 const (
 	DefaultPerms755        = 0o755
 	WriteReadReadPerms     = 0o644
@@ -68,10 +70,10 @@ const (
 	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 
-	PublicAPI          = true
-	PrivateAPI         = false
-	FujiAPIEndpoint    = "https://api.avax-test.network"
-	MainnetAPIEndpoint = "https://api.avax.network"
+	PublicAccess       Visibility = true
+	PrivateAccess      Visibility = false
+	FujiAPIEndpoint               = "https://api.avax-test.network"
+	MainnetAPIEndpoint            = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
