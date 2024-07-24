@@ -31,7 +31,7 @@ severarl statistics about them.`,
 		RunE: printValidators,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, validatorsSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, validatorsSupportedNetworkOptions)
 	return cmd
 }
 

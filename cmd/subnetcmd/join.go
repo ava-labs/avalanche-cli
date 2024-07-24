@@ -77,7 +77,7 @@ This command currently only supports Subnets deployed on the Fuji Testnet and Ma
 		RunE: joinCmd,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, joinAllSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, joinAllSupportedNetworkOptions)
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().StringVar(&dataDir, "data-dir", "", "path of avalanchego's data dir directory")

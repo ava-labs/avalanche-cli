@@ -59,7 +59,7 @@ func newDeployCmd() *cobra.Command {
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, false, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "to fund teleporter deploy")
 	cmd.Flags().StringVar(&deployFlags.SubnetName, "subnet", "", "deploy teleporter into the given CLI subnet")
 	cmd.Flags().StringVar(&deployFlags.BlockchainID, "blockchain-id", "", "deploy teleporter into the given blockchain ID/Alias")

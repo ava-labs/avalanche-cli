@@ -56,7 +56,7 @@ in the Primary Network`,
 		RunE: addValidator,
 		Args: cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, addValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, addValidatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")

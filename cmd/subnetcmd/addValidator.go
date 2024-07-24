@@ -60,7 +60,7 @@ Testnet or Mainnet.`,
 		RunE: addValidator,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, false, addValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")

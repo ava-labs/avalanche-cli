@@ -64,7 +64,7 @@ mechanics will work.`,
 		RunE:              transformElasticSubnet,
 		PersistentPostRun: handlePostRun,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, elasticSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, elasticSupportedNetworkOptions)
 	cmd.Flags().StringVar(&tokenNameFlag, "tokenName", "", "specify the token name")
 	cmd.Flags().StringVar(&tokenSymbolFlag, "tokenSymbol", "", "specify the token symbol")
 	cmd.Flags().BoolVar(&useDefaultConfig, "default", false, "use default elastic subnet config values")

@@ -37,7 +37,7 @@ these prompts by providing the values with flags.`,
 		RunE: removeValidator,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, false, removeValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, removeValidatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to remove")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate the removeValidator tx")

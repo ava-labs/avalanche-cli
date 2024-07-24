@@ -31,7 +31,7 @@ func newStartCmd() *cobra.Command {
 		RunE:  start,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, false, startNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startNetworkOptions)
 	return cmd
 }
 
