@@ -105,7 +105,8 @@ func CallDestroyNode(clusterName string) error {
 // This is because some nodes might have had their node_config.json file deleted as part of
 // deletion process but if an error occurs during deletion process, the node might still exist
 // as part of the cluster in cluster_config.json
-// getFirstAvailableNode
+// If all nodes in the cluster no longer have their node_config.json files, getFirstAvailableNode
+// will return false in its second return value
 func getFirstAvailableNode(nodesToStop []string) (string, bool) {
 	firstAvailableNode := nodesToStop[0]
 	noAvailableNodesFound := false
