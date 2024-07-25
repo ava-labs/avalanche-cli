@@ -499,24 +499,22 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 	}
 
 	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), subnetIDs)
-	// make sure that genesis and bootstrap data is preserved
-	if genesisFileExists(host) {
-		avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
+	// preserve remote configuration if it exists
+	if nodeConfigFileExists(host) {
+		// make sure that genesis and bootstrap data is preserved
+		if genesisFileExists(host) {
+			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
+		}
+		remoteAvagoConf, err := getAvalancheGoConfigData(host)
+		if err != nil {
+			return err
+		}
+		// ignore errors if bootstrap configuration is not present - it's fine
+		bootstrapIDs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ids")
+		bootstrapIPs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ips")
+		avagoConf.BootstrapIDs = bootstrapIDs
+		avagoConf.BootstrapIPs = bootstrapIPs
 	}
-	remoteAvagoConf, err := getAvalancheGoConfigData(host)
-	if err != nil {
-		return err
-	}
-	bootstrapIDs, err := utils.StringValue(remoteAvagoConf, "bootstrap-ids")
-	if err != nil {
-		return err
-	}
-	bootstrapIPs, err := utils.StringValue(remoteAvagoConf, "bootstrap-ips")
-	if err != nil {
-		return err
-	}
-	avagoConf.BootstrapIDs = bootstrapIDs
-	avagoConf.BootstrapIPs = bootstrapIPs
 	// ready to render node config
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {
@@ -842,6 +840,11 @@ func composeFileExists(host *models.Host) bool {
 func genesisFileExists(host *models.Host) bool {
 	genesisFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName))
 	return genesisFileExists
+}
+
+func nodeConfigFileExists(host *models.Host) bool {
+	nodeConfigFileExists, _ := host.FileExists(remoteconfig.GetRemoteAvalancheNodeConfig())
+	return nodeConfigFileExists
 }
 
 func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error) {
