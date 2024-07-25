@@ -267,28 +267,28 @@ var _ = ginkgo.Describe("[Local Subnet]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfig(secondSubnetName, utils.SubnetEvmGenesis2Path)
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		rpcs1, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		gomega.Expect(rpcs1).Should(gomega.HaveLen(1))
 
 		deployOutput = commands.DeploySubnetLocally(secondSubnetName)
-		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
+		rpcs2, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(2))
+		gomega.Expect(rpcs2).Should(gomega.HaveLen(1))
 
-		err = utils.SetHardhatRPC(rpcs[0])
+		err = utils.SetHardhatRPC(rpcs1[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		err = utils.SetHardhatRPC(rpcs[1])
+		err = utils.SetHardhatRPC(rpcs2[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.RunHardhatTests(utils.BaseTest)
@@ -445,7 +445,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can deploy a subnet-evm with old version", func() {
-		subnetEVMVersion := "v0.5.5"
+		subnetEVMVersion := "v0.6.6"
 
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
 		deployOutput := commands.DeploySubnetLocally(subnetName)
@@ -468,8 +468,8 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 
 	ginkgo.It("can't deploy conflicting vm versions", func() {
 		// TODO: These shouldn't be hardcoded either
-		subnetEVMVersion1 := "v0.5.6"
-		subnetEVMVersion2 := "v0.5.3"
+		subnetEVMVersion1 := "v0.6.6"
+		subnetEVMVersion2 := "v0.6.2"
 
 		commands.CreateSubnetEvmConfigWithVersion(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)

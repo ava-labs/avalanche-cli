@@ -159,6 +159,9 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
+			network,
+			prompts.EVMFormat,
+			"Address",
 		)
 		if err != nil {
 			return err

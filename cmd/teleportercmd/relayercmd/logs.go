@@ -116,7 +116,7 @@ func logs(_ *cobra.Command, _ []string) error {
 			timeStampStr, b := logMap["timestamp"].(string)
 			timeStr := ""
 			if b {
-				t, err := time.Parse("2006-01-02T15:04:05.000-0700", timeStampStr)
+				t, err := time.Parse("2006-01-02T15:04:05.000Z0700", timeStampStr)
 				if err != nil {
 					return err
 				}

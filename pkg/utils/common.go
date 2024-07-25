@@ -559,3 +559,11 @@ func Command(cmdLine string, params ...string) *exec.Cmd {
 	c.Env = os.Environ()
 	return c
 }
+
+// StringValue returns the value of a key in a map as a string.
+func StringValue(data map[string]interface{}, key string) (string, error) {
+	if value, ok := data[key]; ok {
+		return fmt.Sprintf("%v", value), nil
+	}
+	return "", fmt.Errorf("key %s not found", key)
+}

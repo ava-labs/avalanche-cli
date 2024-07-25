@@ -40,6 +40,7 @@ var (
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
 	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
+	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 )
 
 // avalanche subnet addValidator
@@ -177,9 +178,12 @@ func CallAddValidator(
 	}
 	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return ErrNotPermissionedSubnet
 	}
 
 	kcKeys, err := kc.PChainFormattedStrAddresses()

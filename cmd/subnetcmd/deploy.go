@@ -8,13 +8,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
@@ -370,7 +368,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, teleporterEsp, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -382,7 +380,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.MetricsNetwork] = network.Name()
 		metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
-		return app.UpdateSidecarNetworks(
+		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
 			deployInfo.SubnetID,
@@ -390,7 +388,10 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.TeleporterMessengerAddress,
 			deployInfo.TeleporterRegistryAddress,
-		)
+		); err != nil {
+			return err
+		}
+		return PrintSubnetInfo(subnetName, true)
 	}
 
 	// from here on we are assuming a public deploy
@@ -448,6 +449,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			sameControlKey,
 			threshold,
 			subnetAuthKeys,
+			true,
 		)
 		if err != nil {
 			return err
@@ -456,9 +458,13 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Blue.Wrap(
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		var isPermissioned bool
+		isPermissioned, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
+		}
+		if !isPermissioned {
+			return ErrNotPermissionedSubnet
 		}
 	}
 
@@ -494,7 +500,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		// get the control keys in the same order as the tx
-		controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -566,161 +572,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID, "", "")
-}
-
-func getControlKeys(kc *keychain.Keychain) ([]string, bool, error) {
-	controlKeysInitialPrompt := "Configure which addresses may make changes to the subnet.\n" +
-		"These addresses are known as your control keys. You will also\n" +
-		"set how many control keys are required to make a subnet change (the threshold)."
-	moreKeysPrompt := "How would you like to set your control keys?"
-
-	ux.Logger.PrintToUser(controlKeysInitialPrompt)
-
-	const (
-		useAll = "Use all stored keys"
-		custom = "Custom list"
-	)
-
-	var feePaying string
-	var listOptions []string
-	if kc.UsesLedger {
-		feePaying = "Use ledger address"
-	} else {
-		feePaying = "Use fee-paying key"
-	}
-	if kc.Network.Kind == models.Mainnet {
-		listOptions = []string{feePaying, custom}
-	} else {
-		listOptions = []string{feePaying, useAll, custom}
-	}
-
-	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
-	if err != nil {
-		return nil, false, err
-	}
-
-	var (
-		keys      []string
-		cancelled bool
-	)
-
-	switch listDecision {
-	case feePaying:
-		var kcKeys []string
-		kcKeys, err = kc.PChainFormattedStrAddresses()
-		if err != nil {
-			return nil, false, err
-		}
-		if len(kcKeys) == 0 {
-			return nil, false, fmt.Errorf("no keys found on keychain")
-		}
-		keys = kcKeys[:1]
-	case useAll:
-		keys, err = useAllKeys(kc.Network)
-	case custom:
-		keys, cancelled, err = enterCustomKeys(kc.Network)
-	}
-	if err != nil {
-		return nil, false, err
-	}
-	if cancelled {
-		return nil, true, nil
-	}
-	return keys, false, nil
-}
-
-func useAllKeys(network models.Network) ([]string, error) {
-	existing := []string{}
-
-	files, err := os.ReadDir(app.GetKeyDir())
-	if err != nil {
-		return nil, err
-	}
-
-	keyPaths := make([]string, 0, len(files))
-
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), constants.KeySuffix) {
-			keyPaths = append(keyPaths, filepath.Join(app.GetKeyDir(), f.Name()))
-		}
-	}
-
-	for _, kp := range keyPaths {
-		k, err := key.LoadSoft(network.ID, kp)
-		if err != nil {
-			return nil, err
-		}
-
-		existing = append(existing, k.P()...)
-	}
-
-	return existing, nil
-}
-
-func enterCustomKeys(network models.Network) ([]string, bool, error) {
-	controlKeysPrompt := "Enter control keys"
-	for {
-		// ask in a loop so that if some condition is not met we can keep asking
-		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
-		if err != nil {
-			return nil, false, err
-		}
-		if cancelled {
-			return nil, cancelled, nil
-		}
-		if len(controlKeys) != 0 {
-			return controlKeys, false, nil
-		}
-		ux.Logger.PrintToUser("This tool does not allow to proceed without any control key set")
-	}
-}
-
-// controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
-func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string, bool, error) {
-	label := "Control key"
-	info := "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
-		"Only private keys which control such addresses are allowed to make changes on the subnet"
-	addressPrompt := "Enter P-Chain address (Example: P-...)"
-	return prompts.CaptureListDecision(
-		// we need this to be able to mock test
-		app.Prompt,
-		// the main prompt for entering address keys
-		controlKeysPrompt,
-		// the Capture function to use
-		func(s string) (string, error) { return app.Prompt.CapturePChainAddress(s, network) },
-		// the prompt for each address
-		addressPrompt,
-		// label describes the entity we are prompting for (e.g. address, control key, etc.)
-		label,
-		// optional parameter to allow the user to print the info string for more information
-		info,
-	)
-}
-
-// getThreshold prompts for the threshold of addresses as a number
-func getThreshold(maxLen int) (uint32, error) {
-	if maxLen == 1 {
-		return uint32(1), nil
-	}
-	// create a list of indexes so the user only has the option to choose what is the threshold
-	// instead of entering
-	indexList := make([]string, maxLen)
-	for i := 0; i < maxLen; i++ {
-		indexList[i] = strconv.Itoa(i + 1)
-	}
-	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to make a subnet change", indexList)
-	if err != nil {
-		return 0, err
-	}
-	intTh, err := strconv.ParseUint(threshold, 0, 32)
-	if err != nil {
-		return 0, err
-	}
-	// this now should technically not happen anymore, but let's leave it as a double stitch
-	if int(intTh) > maxLen {
-		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
-	}
-	return uint32(intTh), err
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
@@ -892,56 +743,4 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 		}
 	}
 	return desiredAvagoVersion, nil
-}
-
-func promptOwners(
-	kc *keychain.Keychain,
-	controlKeys []string,
-	sameControlKey bool,
-	threshold uint32,
-	subnetAuthKeys []string,
-) ([]string, uint32, error) {
-	var err error
-	// accept only one control keys specification
-	if len(controlKeys) > 0 && sameControlKey {
-		return nil, 0, errMutuallyExlusiveControlKeys
-	}
-	// use first fee-paying key as control key
-	if sameControlKey {
-		kcKeys, err := kc.PChainFormattedStrAddresses()
-		if err != nil {
-			return nil, 0, err
-		}
-		if len(kcKeys) == 0 {
-			return nil, 0, fmt.Errorf("no keys found on keychain")
-		}
-		controlKeys = kcKeys[:1]
-	}
-	// prompt for control keys
-	if controlKeys == nil {
-		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(kc)
-		if err != nil {
-			return nil, 0, err
-		}
-		if cancelled {
-			ux.Logger.PrintToUser("User cancelled. No subnet deployed")
-			return nil, 0, fmt.Errorf("user cancelled operation")
-		}
-	}
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
-	// validate and prompt for threshold
-	if threshold == 0 && subnetAuthKeys != nil {
-		threshold = uint32(len(subnetAuthKeys))
-	}
-	if threshold > uint32(len(controlKeys)) {
-		return nil, 0, fmt.Errorf("given threshold is greater than number of control keys")
-	}
-	if threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-	return controlKeys, threshold, nil
 }

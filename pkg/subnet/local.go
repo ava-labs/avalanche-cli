@@ -4,11 +4,9 @@ package subnet
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"os"
 	"os/exec"
@@ -27,7 +25,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -48,8 +45,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
-	"github.com/ava-labs/coreth/params"
-	"github.com/ava-labs/subnet-evm/core"
 	"go.uber.org/zap"
 )
 
@@ -109,11 +104,11 @@ type DeployInfo struct {
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(chain string, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, chainGenesis, genesisPath, teleporterEsp, subnetIDStr)
+	return d.doDeploy(chain, genesisPath, teleporterEsp, subnetIDStr)
 }
 
 func getAssetID(wallet primary.Wallet, tokenName string, tokenSymbol string, maxSupply uint64) (ids.ID, error) {
@@ -379,7 +374,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -710,33 +705,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Blockchain ready to use")
 	ux.Logger.PrintToUser("")
-	if err := ux.PrintLocalNetworkEndpointsInfo(clusterInfo); err != nil {
-		return nil, err
-	}
-	ux.Logger.PrintToUser("")
-
-	endpoint := GetFirstEndpoint(clusterInfo, chain)
-	ux.Logger.PrintToUser("Browser Extension connection details (any node URL from above works):")
-	rpcURL := endpoint[strings.LastIndex(endpoint, "http"):]
-	ux.Logger.PrintToUser("RPC URL:           %s", rpcURL)
-	codespaceURL, err := utils.GetCodespaceURL(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	if codespaceURL != "" {
-		ux.Logger.PrintToUser("Codespace RPC URL: %s", codespaceURL)
-	}
-
-	if sc.VM == models.SubnetEvm {
-		_, subnetAirdropAddress, subnetAirdropPrivKey, err := GetDefaultSubnetAirdropKeyInfo(d.app, chain)
-		if err != nil {
-			ux.Logger.PrintToUser("failure loading subnet airdrop info: %s", err)
-		}
-		if err := d.printExtraEvmInfo(chain, chainGenesis, subnetAirdropAddress, subnetAirdropPrivKey); err != nil {
-			// not supposed to happen due to genesis pre validation
-			return nil, nil
-		}
-	}
 
 	// we can safely ignore errors here as the subnets have already been generated
 	subnetID, _ := ids.FromString(subnetIDStr)
@@ -752,34 +720,6 @@ func (d *LocalDeployer) doDeploy(chain string, chainGenesis []byte, genesisPath 
 		TeleporterMessengerAddress: teleporterMessengerAddress,
 		TeleporterRegistryAddress:  teleporterRegistryAddress,
 	}, nil
-}
-
-func (d *LocalDeployer) printExtraEvmInfo(
-	chain string,
-	chainGenesis []byte,
-	subnetAirdropAddress string,
-	subnetAirdropPrivKey string,
-) error {
-	var evmGenesis core.Genesis
-	if err := json.Unmarshal(chainGenesis, &evmGenesis); err != nil {
-		return fmt.Errorf("failed to unmarshall genesis: %w", err)
-	}
-	for address := range evmGenesis.Alloc {
-		amount := evmGenesis.Alloc[address].Balance
-		formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
-		switch address.Hex() {
-		case vm.PrefundedEwoqAddress.Hex():
-			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18) - private key: %s", address, formattedAmount.String(), vm.PrefundedEwoqPrivate)
-		case subnetAirdropAddress:
-			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18) - private key: %s", address, formattedAmount.String(), subnetAirdropPrivKey)
-		default:
-			ux.Logger.PrintToUser("Funded address:    %s with %s (10^18)", address, formattedAmount.String())
-		}
-	}
-	ux.Logger.PrintToUser("Network name:      %s", chain)
-	ux.Logger.PrintToUser("Chain ID:          %s", evmGenesis.Config.ChainID)
-	ux.Logger.PrintToUser("Currency Symbol:   %s", d.app.GetTokenSymbol(chain))
-	return nil
 }
 
 // SetupLocalEnv also does some heavy lifting:
