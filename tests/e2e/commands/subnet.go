@@ -47,6 +47,8 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 		subnetName,
 		"--" + constants.SkipUpdateFlag,
 		"--teleporter=false",
+		"--evm-token",
+		"TOK",
 	}
 	if version == "" {
 		cmdArgs = append(cmdArgs, "--latest")
@@ -128,6 +130,8 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		vmPath,
 		"--"+constants.SkipUpdateFlag,
 		"--teleporter=false",
+		"--evm-token",
+		"TOK",
 	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

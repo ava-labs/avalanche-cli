@@ -493,6 +493,7 @@ func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	pathStr = utils.ExpandHome(pathStr)
 
 	return pathStr, nil
 }

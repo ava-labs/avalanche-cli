@@ -16,27 +16,27 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func CreateCustomSubnetConfig(
+func CreateCustomSidecar(
 	app *application.Avalanche,
 	subnetName string,
-	genesisPath string,
 	useRepo bool,
 	customVMRepoURL string,
 	customVMBranch string,
 	customVMBuildScript string,
 	vmPath string,
-) ([]byte, *models.Sidecar, error) {
+	tokenSymbol string,
+) (*models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
-
-	genesisBytes, err := loadCustomGenesis(app, genesisPath)
-	if err != nil {
-		return nil, &models.Sidecar{}, err
-	}
 
 	sc := &models.Sidecar{
 		Name:   subnetName,
 		VM:     models.CustomVM,
 		Subnet: subnetName,
+	}
+
+	if tokenSymbol != "" {
+		sc.TokenSymbol = tokenSymbol
+		sc.TokenName = tokenSymbol + " Token"
 	}
 
 	if customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
@@ -48,42 +48,42 @@ func CreateCustomSubnetConfig(
 		options := []string{githubOption, localOption}
 		option, err := app.Prompt.CaptureList("How do you want to set up the VM binary?", options)
 		if err != nil {
-			return nil, &models.Sidecar{}, err
+			return &models.Sidecar{}, err
 		}
 		if option == githubOption {
 			useRepo = true
 		} else {
 			vmPath, err = app.Prompt.CaptureExistingFilepath("Enter path to VM binary")
 			if err != nil {
-				return nil, &models.Sidecar{}, err
+				return &models.Sidecar{}, err
 			}
 		}
 	}
 	if useRepo {
 		if err := SetCustomVMSourceCodeFields(app, sc, customVMRepoURL, customVMBranch, customVMBuildScript); err != nil {
-			return nil, &models.Sidecar{}, err
+			return &models.Sidecar{}, err
 		}
 		if err := BuildCustomVM(app, sc); err != nil {
-			return nil, &models.Sidecar{}, err
+			return &models.Sidecar{}, err
 		}
 		vmPath = app.GetCustomVMPath(subnetName)
 	} else {
 		if err := app.CopyVMBinary(vmPath, subnetName); err != nil {
-			return nil, &models.Sidecar{}, err
+			return &models.Sidecar{}, err
 		}
 	}
 
 	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
 	if err != nil {
-		return nil, &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+		return &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
 	}
 
 	sc.RPCVersion = rpcVersion
 
-	return genesisBytes, sc, nil
+	return sc, nil
 }
 
-func loadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, error) {
+func LoadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, error) {
 	var err error
 	if genesisPath == "" {
 		genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")

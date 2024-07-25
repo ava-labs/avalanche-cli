@@ -3,7 +3,6 @@
 package vm
 
 import (
-	"errors"
 	"math/big"
 	"testing"
 
@@ -20,7 +19,7 @@ func Test_ensureAdminsFunded(t *testing.T) {
 	type test struct {
 		name       string
 		alloc      core.GenesisAlloc
-		admins     []common.Address
+		allowList  AllowList
 		shouldFail bool
 	}
 	tests := []test{
@@ -33,7 +32,9 @@ func Test_ensureAdminsFunded(t *testing.T) {
 				},
 				addrs[2]: {},
 			},
-			admins:     []common.Address{addrs[1]},
+			allowList: AllowList{
+				AdminAddresses: []common.Address{addrs[1]},
+			},
 			shouldFail: false,
 		},
 		{
@@ -47,7 +48,9 @@ func Test_ensureAdminsFunded(t *testing.T) {
 					Balance: big.NewInt(42),
 				},
 			},
-			admins:     []common.Address{addrs[3], addrs[4]},
+			allowList: AllowList{
+				AdminAddresses: []common.Address{addrs[3], addrs[4]},
+			},
 			shouldFail: false,
 		},
 		{
@@ -59,7 +62,9 @@ func Test_ensureAdminsFunded(t *testing.T) {
 				addrs[1]: {},
 				addrs[2]: {},
 			},
-			admins:     []common.Address{addrs[0], addrs[2]},
+			allowList: AllowList{
+				AdminAddresses: []common.Address{addrs[0], addrs[2]},
+			},
 			shouldFail: true,
 		},
 		{
@@ -69,7 +74,9 @@ func Test_ensureAdminsFunded(t *testing.T) {
 				addrs[1]: {},
 				addrs[2]: {},
 			},
-			admins:     []common.Address{addrs[3], addrs[4]},
+			allowList: AllowList{
+				AdminAddresses: []common.Address{addrs[3], addrs[4]},
+			},
 			shouldFail: true,
 		},
 	}
@@ -77,59 +84,12 @@ func Test_ensureAdminsFunded(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-
-			err := ensureAdminsHaveBalance(tt.admins, tt.alloc)
+			b := someAllowedHasBalance(tt.allowList, tt.alloc)
 			if tt.shouldFail {
-				require.Error(err)
+				require.Equal(b, false)
 			} else {
-				require.NoError(err)
+				require.Equal(b, true)
 			}
-		})
-	}
-}
-
-func Test_removePrecompile(t *testing.T) {
-	allowList := "allow list"
-	minter := "minter"
-
-	type test struct {
-		name           string
-		precompileList []string
-		toRemove       string
-		expectedResult []string
-		expectedErr    error
-	}
-	tests := []test{
-		{
-			name:           "Success",
-			precompileList: []string{allowList, minter},
-			toRemove:       allowList,
-			expectedResult: []string{minter},
-			expectedErr:    nil,
-		},
-		{
-			name:           "Success reverse",
-			precompileList: []string{allowList, minter},
-			toRemove:       minter,
-			expectedResult: []string{allowList},
-			expectedErr:    nil,
-		},
-		{
-			name:           "Failure",
-			precompileList: []string{minter},
-			toRemove:       allowList,
-			expectedResult: []string{minter},
-			expectedErr:    errors.New("string not in array"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
-
-			// Check how many selected
-			shortenedList, err := removePrecompile(tt.precompileList, tt.toRemove)
-			require.Equal(tt.expectedResult, shortenedList)
-			require.Equal(tt.expectedErr, err)
 		})
 	}
 }
