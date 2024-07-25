@@ -120,7 +120,7 @@ func CreateEvmGenesis(
 		if params.UseExternalGasToken {
 			balance = externalGasTokenBalance
 		}
-		allocations = addTeleporterAllocation(
+		allocations = addInterchainMessagingAllocation(
 			allocations,
 			teleporterInfo.FundedAddress,
 			balance,
