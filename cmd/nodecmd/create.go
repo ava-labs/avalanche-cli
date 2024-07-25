@@ -19,8 +19,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -1078,7 +1078,7 @@ func promptAvalancheGoVersionChoice(latestReleaseVersion string, latestPreReleas
 			if err != nil {
 				return err
 			}
-			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{useAvalanchegoVersionFromSubnet})
+			_, err = blockchaincmd.ValidateSubnetNameAndGetChains([]string{useAvalanchegoVersionFromSubnet})
 			if err == nil {
 				break
 			}
