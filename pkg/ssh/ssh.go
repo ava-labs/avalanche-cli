@@ -520,6 +520,10 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 	if genesisFileExists(host) {
 		avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 	}
+	// make sure that wiz works. TODO switch to RPC over SSH client to access 127.0.0.1 instead
+	if network.Kind == models.Local || network.Kind == models.Devnet {
+		avagoConf.HTTPHost = "0.0.0.0"
+	}
 	remoteAvagoConfFile, err := getAvalancheGoConfigData(host)
 	if err != nil {
 		return err
