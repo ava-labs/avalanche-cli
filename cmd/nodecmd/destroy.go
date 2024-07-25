@@ -71,6 +71,10 @@ func removeClusterInventoryDir(clusterName string) error {
 	return os.RemoveAll(app.GetAnsibleInventoryDirPath(clusterName))
 }
 
+func removeSecurityGroup() {
+
+}
+
 func getDeleteConfigConfirmation() error {
 	if authorizeRemove {
 		return nil
