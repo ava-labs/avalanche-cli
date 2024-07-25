@@ -239,7 +239,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ux.Logger.PrintToUser("importing genesis for subnet %s", subnetName)
+			ux.Logger.PrintToUser("importing genesis for blockchain %s", subnetName)
 			genesisBytes, err = os.ReadFile(genesisFile)
 			if err != nil {
 				return err
@@ -344,7 +344,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.GreenCheckmarkToUser("Successfully created subnet configuration")
+	ux.Logger.GreenCheckmarkToUser("Successfully created blockchain configuration")
 	return nil
 }
 
