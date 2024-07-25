@@ -294,6 +294,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// Remote Chain Prompts
 	if !flags.remoteFlags.chainFlags.CChain && flags.remoteFlags.chainFlags.SubnetName == "" {
 		prompt := "Where should the token be available as an ERC-20?"
+		if flags.remoteFlags.native {
+			prompt = "Where should the token be available as a Native Token?"
+		}
 		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags.chainFlags); err != nil {
 			return err
 		} else if cancel {
