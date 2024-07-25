@@ -35,17 +35,17 @@ func TestExportImportSubnet(t *testing.T) {
 
 	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
-	genBytes, sc, err := vm.CreateEvmSubnetConfig(
+	genBytes, err := vm.LoadCustomGenesis(
+		app,
+		"../../"+utils.SubnetEvmGenesisPath,
+	)
+	require.NoError(err)
+	sc, err := vm.CreateEvmSidecar(
 		app,
 		testSubnet,
-		"../../"+utils.SubnetEvmGenesisPath,
 		vmVersion,
+		"Test",
 		false,
-		0,
-		"",
-		false,
-		false,
-		nil,
 	)
 	require.NoError(err)
 	err = app.WriteGenesisFile(testSubnet, genBytes)
@@ -80,7 +80,7 @@ func TestExportImportSubnet(t *testing.T) {
 	require.Equal(control["VMVersion"], vmVersion)
 	require.Equal(control["Subnet"], testSubnet)
 	require.Equal(control["TokenName"], "Test Token")
-	require.Equal(control["TokenSymbol"], "TEST")
+	require.Equal(control["TokenSymbol"], "Test")
 	require.Equal(control["Version"], constants.SidecarVersion)
 	require.Equal(control["Networks"], nil)
 

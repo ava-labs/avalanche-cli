@@ -68,6 +68,8 @@ const (
 	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 
+	OperateOfflineEnvVarName = "CLIOFFLINE"
+
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
 

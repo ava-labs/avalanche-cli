@@ -484,7 +484,7 @@ func ByteSliceIsSubnetEvmGenesis(bs []byte) bool {
 	return err == nil
 }
 
-func PathIsSubnetEVMGenesis(genesisPath string) (bool, error) {
+func FileIsSubnetEVMGenesis(genesisPath string) (bool, error) {
 	genesisBytes, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return false, err
