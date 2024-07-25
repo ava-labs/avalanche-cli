@@ -277,10 +277,12 @@ func joinCmd(_ *cobra.Command, args []string) error {
 
 	// render alias file is subnetAlias is set
 	if subnetAlias != "" {
-		writeAvagoAliasConfigFile(
+		if err := writeAvagoAliasConfigFile(
 			sc.Networks[network.Name()].BlockchainID.String(),
 			subnetAlias,
-		)
+		); err != nil {
+			return err
+		}
 	}
 
 	return nil
