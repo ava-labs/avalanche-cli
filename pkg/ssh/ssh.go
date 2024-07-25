@@ -509,7 +509,7 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 		if err != nil {
 			return err
 		}
-		//ignore errors if bootstrap configuration is not present - it's fine
+		// ignore errors if bootstrap configuration is not present - it's fine
 		bootstrapIDs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ids")
 		bootstrapIPs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ips")
 		avagoConf.BootstrapIDs = bootstrapIDs
