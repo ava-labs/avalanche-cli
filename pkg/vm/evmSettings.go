@@ -18,13 +18,19 @@ const (
 var (
 	Difficulty = big.NewInt(0)
 
-	LowTarget    = big.NewInt(15_000_000)
-	MediumTarget = big.NewInt(20_000_000)
-	HighTarget   = big.NewInt(50_000_000)
+	// current avacloud settings
+	LowGasLimit     = big.NewInt(12_000_000)
+	MediumGasLimit  = big.NewInt(15_000_000) // C-Chain value
+	HighGasLimit    = big.NewInt(20_000_000)
+	LowTargetGas    = big.NewInt(25_000_000) // ~ 2.1x of gas limit
+	MediumTargetGas = big.NewInt(45_000_000) // 3x of gas limit (also, 3x bigger than C-Chain)
+	HighTargetGas   = big.NewInt(60_000_000) // 3x of gas limit
+
+	NoDynamicFeesGasLimitToTargetGasFactor = big.NewInt(5)
 
 	// This is the current c-chain gas config
 	StarterFeeConfig = commontype.FeeConfig{
-		GasLimit:                 big.NewInt(8_000_000),
+		GasLimit:                 big.NewInt(15_000_000),
 		MinBaseFee:               big.NewInt(25_000_000_000),
 		TargetGas:                big.NewInt(15_000_000),
 		BaseFeeChangeDenominator: big.NewInt(36),
