@@ -53,7 +53,7 @@ func getEwoqAllocation(defaultAirdropAmount string) (core.GenesisAlloc, error) {
 	return allocations, nil
 }
 
-func addTeleporterAllocation(
+func addInterchainMessagingAllocation(
 	allocations core.GenesisAlloc,
 	teleporterKeyAddress string,
 	teleporterKeyBalance *big.Int,

@@ -91,7 +91,7 @@ func PromptVMType(
 	var subnetTypeStr string
 	for {
 		option, err := app.Prompt.CaptureList(
-			"VM",
+			"Which Virtual Machine would you like to use?",
 			options,
 		)
 		if err != nil {
@@ -104,10 +104,10 @@ func PromptVMType(
 			subnetTypeStr = models.CustomVM
 		case explainOption:
 			ux.Logger.PrintToUser("Virtual machines are the blueprint the defines the application-level logic of a blockchain. It determines the language and rules for writing and executing smart contracts, as well as other blockchain logic.")
-			ux.Logger.PrintToUser(" ")
-			ux.Logger.PrintToUser("Subnet-EVM is a EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-box solution for Subnet deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. Subnet-EVM can be configured with this CLI to meet the developers requirements without writing code. For more information, please visit: https://github.com/ava-labs/subnet-evm")
-			ux.Logger.PrintToUser(" ")
-			ux.Logger.PrintToUser("Custom VMs created with SDKs such as the Precompile-EVM, HyperSDK, Rust-SDK and that are written in golang or rust can be deployed on Avalanche using the second option. You can provide the path to the binary directly or provide the code as well as the build script. In addition to the VM you need to provide the genesis file. More information can be found in the docs at https://docs.avax.network/learn/avalanche/virtual-machines.")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("Subnet-EVM is an EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-the-box solution for Subnet deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. For more information, please visit: https://github.com/ava-labs/subnet-evm")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("Custom VMs are virtual machines created using SDKs such as Precompile-EVM, HyperSDK, Rust-SDK. For more information please visit: https://docs.avax.network/learn/avalanche/virtual-machines.")
 			continue
 		}
 		break
@@ -226,7 +226,7 @@ func promptGasToken(
 			if err != nil {
 				return SubnetEVMGenesisParams{}, "", err
 			}
-			allocateToNewKeyOption := "Allocate 1m tokens to a newly created account"
+			allocateToNewKeyOption := "Allocate 1m tokens to a new account"
 			allocateToEwoqOption := "Allocate 1m to the ewoq account 0x8db...2FC (Only recommended for testing, not recommended for production)"
 			customAllocationOption := "Define a custom allocation (Recommended for production)"
 			options := []string{allocateToNewKeyOption, allocateToEwoqOption, customAllocationOption}
@@ -253,11 +253,11 @@ func promptGasToken(
 				}
 			}
 			for {
-				fixedSupplyOption := "No, I want the supply of the native token be hard-capped. (Native Minter Precompile OFF)"
-				dynamicSupplyOption := "Yes, I want to be able to mint additional the native tokens. (Native Minter Precompile ON)"
+				fixedSupplyOption := "No, I want the supply of the native tokens be hard-capped"
+				dynamicSupplyOption := "Yes, I want to be able to mint additional the native tokens (Native Minter Precompile ON)"
 				options = []string{fixedSupplyOption, dynamicSupplyOption}
 				option, err = app.Prompt.CaptureList(
-					"Allow minting new native Tokens? (Native Minter Precompile)",
+					"Allow minting of new native tokens?",
 					options,
 				)
 				if err != nil {
@@ -279,14 +279,14 @@ func promptGasToken(
 			}
 		case explainOption:
 			ux.Logger.PrintToUser("Every blockchain uses a token to manage access to its limited resources. For example, ETH is the native token of Ethereum, and AVAX is the native token of the Avalanche C-Chain. Users pay transaction fees with these tokens. If demand exceeds capacity, transaction fees increase, requiring users to pay more tokens for their transactions.")
-			ux.Logger.PrintToUser(" ")
+			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(logging.Bold.Wrap("The blockchain's native token"))
 			ux.Logger.PrintToUser("Each blockchain on Avalanche has its own transaction fee token. To issue transactions users don't need to acquire ETH or AVAX and therefore the transaction fees are completely isolated.")
-			ux.Logger.PrintToUser(" ")
+			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(logging.Bold.Wrap("A token from another blockchain"))
-			ux.Logger.PrintToUser("You can use an ERC-20 token (e.g., USDC, WETH) or the native token (e.g., AVAX) of another blockchain within the Avalanche network as the transaction fee token. This is achieved through a bridge contract and the Native Minter Precompile. When a user bridges a token from another blockchain, it is locked on the home chain, a message is relayed to the Subnet, and the token is minted to the sender’s account.")
-			ux.Logger.PrintToUser(" ")
-			ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter is required and activated automatically.")
+			ux.Logger.PrintToUser("Use an ERC-20 token (USDC, WETH, etc.) or the native token (e.g. AVAX) of another blockchain within the Avalanche network as the transaction fee token.")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter will be activated automatically. For more info on Teleporter, visit: https://github.com/ava-labs/teleporter")
 			continue
 		}
 		break
@@ -376,21 +376,21 @@ func promptFeeConfig(
 				return SubnetEVMGenesisParams{}, err
 			}
 		case explainOption:
-			ux.Logger.PrintToUser("The two gas fee variables that have the largest impact on performance are the gas limit, the maximum amount of gas that fits in a block, and the gas target, the expected amount of gas consumed in a rolling ten-second period.")
-			ux.Logger.PrintToUser(" ")
-			ux.Logger.PrintToUser("By increasing the gas limit, you can fit more transactions into a single block which in turn increases your max throughput. Increasing the gas target has the same effect; if the targeted amount of gas is not consumed, the dynamic fee algorithm will decrease the base fee until it reaches the minimum.")
-			ux.Logger.PrintToUser(" ")
-			ux.Logger.PrintToUser("There is a long-term risk of increasing your gas parameters. By allowing more transactions to occur on your network, the network state will increase at a faster rate, meaning infrastructure costs and requirements will increase.")
+			ux.Logger.PrintToUser("Gas limit is the maximum amount of gas that fits in a block and gas target is the expected amount of gas consumed in a rolling ten-second period")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("Higher gas limit and higher gas target both increase your max throughput. If the targeted amount of gas is not consumed, the dynamic fee algorithm will decrease the base fee until it reaches the minimum.")
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("By allowing more transactions to occur on your network, the network state will increase at a faster rate, which will lead to higher infrastructure costs.")
 			continue
 		}
 		break
 	}
-	dontChangeFeeSettingsOption := "No, use the transaction fee configuration set in the genesis block. (Fee Manager Precompile OFF)"
-	changeFeeSettingsOption := "Yes, allow adjustment of the transaction fee configuration as needed. Recommended for production. (Fee Manager Precompile ON)"
+	dontChangeFeeSettingsOption := "No, use the transaction fee configuration set in the genesis block"
+	changeFeeSettingsOption := "Yes, allow adjustment of the transaction fee configuration as needed. Recommended for production (Fee Manager Precompile ON)"
 	options = []string{dontChangeFeeSettingsOption, changeFeeSettingsOption, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
-			"Should transaction fees be adjustable without a network upgrade? (Fee Manager Precompile)",
+			"Should transaction fees be adjustable without a network upgrade?",
 			options,
 		)
 		if err != nil {
@@ -408,17 +408,17 @@ func promptFeeConfig(
 			}
 			params.enableFeeManagerPrecompile = true
 		case explainOption:
-			ux.Logger.PrintToUser("The Fee Manager Precompile enables you to give certain account the right to change the fee parameters set in the previous step on the fly without a network upgrade. This list can be dynamically changed by calling the precompile.")
+			ux.Logger.PrintToUser("The Fee Manager Precompile enables specified accounts to change the fee parameters without a network upgrade.")
 			continue
 		}
 		break
 	}
-	burnFees := "Yes, I am fine with transaction fees being burned (Reward Manager Precompile OFF)"
+	burnFees := "Yes, I want the transaction fees to be burned"
 	distributeFees := "No, I want to customize accumulated transaction fees distribution (Reward Manager Precompile ON)"
 	options = []string{burnFees, distributeFees, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
-			"By default, all transaction fees on Avalanche are burned (sent to a blackhole address). Should the fees be burned??",
+			"Do you want the transaction fees to be burned (sent to a blackhole address)? All transaction fees on Avalanche are burned by default",
 			options,
 		)
 		if err != nil {
@@ -436,7 +436,7 @@ func promptFeeConfig(
 			}
 			params.enableRewardManagerPrecompile = true
 		case explainOption:
-			ux.Logger.PrintToUser("The fee reward mechanism can be configured with a stateful precompile contract called the RewardManager. The configuration can include burning fees, sending fees to a predefined address, or enabling fees to be collected by block producers. For more info, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#changing-fee-reward-mechanisms")
+			ux.Logger.PrintToUser("Fee reward mechanism is configured with stateful precompile contract RewardManager. The configuration can include burning fees, sending fees to a predefined address, or enabling fees to be collected by block producers. For more info, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#changing-fee-reward-mechanisms")
 			continue
 		}
 		break
@@ -462,12 +462,12 @@ func PromptInteropt(
 	case useExternalGasToken:
 		return true, nil
 	default:
-		interoperatingBlockchainOption := "Yes, I want my blockchain to be able to interoperate with other blockchains and the C-Chain"
+		interoperatingBlockchainOption := "Yes, I want to enable my blockchain to interoperate with other blockchains and the C-Chain"
 		isolatedBlockchainOption := "No, I want to run my blockchain isolated"
 		options := []string{interoperatingBlockchainOption, isolatedBlockchainOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
-				"Do you want to connect your blockchain with other blockchains or the C-Chain? (Deploy Teleporter along with its Registry)",
+				"Do you want to connect your blockchain with other blockchains or the C-Chain?",
 				options,
 			)
 			if err != nil {
@@ -479,7 +479,7 @@ func PromptInteropt(
 			case interoperatingBlockchainOption:
 				return true, nil
 			case explainOption:
-				ux.Logger.PrintToUser("Avalanche enables native interoperability between blockchains with the VM-agnostic Avalanche Warp Messaging protocol (AWM). Teleporter is a messaging protocol built on top of AWM that provides a developer-friendly interface for sending and receiving cross-chain messages to and from EVM-compatible blockchains. This communication protocol can be used for bridges and other protocols.")
+				ux.Logger.PrintToUser("Avalanche enables native interoperability between blockchains through Avalanche Warp Messaging protocol (AWM). For more information about interoperability in Avalanche, please visit: https://docs.avax.network/build/cross-chain/awm/overview")
 				continue
 			}
 		}
@@ -498,23 +498,23 @@ func promptPermissioning(
 	var cancel bool
 	noOption := "No"
 	yesOption := "Yes"
-	options := []string{noOption, yesOption, explainOption}
+	options := []string{yesOption, noOption, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
-			"Do you want to add permissioning to your blockchain?",
+			"Do you want to enable anyone to issue transactions and deploy smart contracts to your blockchain?",
 			options,
 		)
 		if err != nil {
 			return SubnetEVMGenesisParams{}, err
 		}
 		switch option {
-		case yesOption:
-			anyoneCanSubmitTransactionsOption := "No, I want anyone to be able to issue transactions on my blockchain. (Transaction Allow List OFF)"
-			approvedCanSubmitTransactionsOption := "Yes, I want only approved addresses to issue transactions on my blockchain. (Transaction Allow List ON)"
+		case noOption:
+			anyoneCanSubmitTransactionsOption := "Yes, I want anyone to be able to issue transactions on my blockchain"
+			approvedCanSubmitTransactionsOption := "No, I want only approved addresses to issue transactions on my blockchain (Transaction Allow List ON)"
 			options := []string{anyoneCanSubmitTransactionsOption, approvedCanSubmitTransactionsOption, explainOption}
 			for {
 				option, err := app.Prompt.CaptureList(
-					"Do you want to allow only certain addresses to issue transactions? (Transaction Allow List Precompile)",
+					"Do you want to enable anyone to issue transactions to your blockchain?",
 					options,
 				)
 				if err != nil {
@@ -532,18 +532,18 @@ func promptPermissioning(
 					params.enableTransactionPrecompile = true
 				case explainOption:
 					ux.Logger.PrintToUser("The Transaction Allow List is a precompile contract that allows you to specify a list of addresses that are allowed to submit transactions to your blockchain. This list can be dynamically changed by calling the precompile.")
-					ux.Logger.PrintToUser(" ")
+					ux.Logger.PrintToUser("")
 					ux.Logger.PrintToUser("This feature is useful for permissioning your blockchain and lets you easiliy implement KYC measures. Only authorized users can send transactions or deploy smart contracts on your blockchain. For more information, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#restricting-who-can-submit-transactions.")
 					continue
 				}
 				break
 			}
-			anyoneCanDeployContractsOption := "No, I want anyone to be able to deploy smart contracts on my blockchain. (Smart Contract Deployer Allow List OFF)"
-			approvedCanDeployContractsOption := "Yes, I want only approved addresses to deploy smart contracts on my blockchain. (Smart Contract Deployer Allow List ON)"
+			anyoneCanDeployContractsOption := "Yes, I want anyone to be able to deploy smart contracts on my blockchain"
+			approvedCanDeployContractsOption := "No, I want only approved addresses to deploy smart contracts on my blockchain (Smart Contract Deployer Allow List ON)"
 			options = []string{anyoneCanDeployContractsOption, approvedCanDeployContractsOption, explainOption}
 			for {
 				option, err := app.Prompt.CaptureList(
-					"Do you want to allow only certain addresses to deploy smart contracts on your blockchain? (Smart Contract Deployer Allow List Precompile)",
+					"Do you want to enable anyone to deploy smart contracts on your blockchain?",
 					options,
 				)
 				if err != nil {
@@ -561,7 +561,7 @@ func promptPermissioning(
 					params.enableContractDeployerPrecompile = true
 				case explainOption:
 					ux.Logger.PrintToUser("While you may wish to allow anyone to interact with the contract on your blockchain to your blockchain, you may want to restrict who can deploy smart contracts and create dApps on your chain.")
-					ux.Logger.PrintToUser(" ")
+					ux.Logger.PrintToUser("")
 					ux.Logger.PrintToUser("The Smart Contract Deployer Allow List is a precompile contract that allows you to specify a list of addresses that are allowed to deploy smart contracts on your blockchain. For more information, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#restricting-smart-contract-deployers.")
 					continue
 				}
