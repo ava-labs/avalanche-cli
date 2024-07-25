@@ -102,7 +102,8 @@ func CreateEvmGenesis(
 	}
 
 	if params.enableTransactionPrecompile {
-		if !someAllowedHasBalance(params.transactionPrecompileAllowList, allocations) {
+		if someoneWasAllowed(params.transactionPrecompileAllowList) &&
+			!someAllowedHasBalance(params.transactionPrecompileAllowList, allocations) {
 			return nil, errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Allocate some funds to one of the allow list addresses to continue")
 		}
 	}
@@ -163,6 +164,11 @@ func CreateEvmGenesis(
 	}
 
 	return prettyJSON.Bytes(), nil
+}
+
+func someoneWasAllowed(allowList AllowList) bool {
+	addrs := append(append(allowList.AdminAddresses, allowList.ManagerAddresses...), allowList.EnabledAddresses...)
+	return len(addrs) > 0
 }
 
 func someAllowedHasBalance(allowList AllowList, allocations core.GenesisAlloc) bool {
