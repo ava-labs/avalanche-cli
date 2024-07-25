@@ -100,19 +100,22 @@ func CallDestroyNode(clusterName string) error {
 	return destroyNodes(nil, []string{clusterName})
 }
 
+// We need to get which cloud service is being used on a cluster
+// getFirstAvailableNode gets first node in the cluster that still has its node_config.json
+// This is because some nodes might have had their node_config.json file deleted as part of
+// deletion process but if an error occurs during deletion process, the node might still exist
+// as part of the cluster in cluster_config.json
+// getFirstAvailableNode
 func getFirstAvailableNode(nodesToStop []string) (string, bool) {
 	firstAvailableNode := nodesToStop[0]
 	noAvailableNodesFound := false
 	for index, node := range nodesToStop {
 		nodeConfigPath := app.GetNodeConfigPath(node)
-		_, err := os.Stat(nodeConfigPath)
-		if err != nil {
+		if !utils.FileExists(nodeConfigPath) {
 			if index == len(nodesToStop)-1 {
 				noAvailableNodesFound = true
 			}
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
+			continue
 		}
 		firstAvailableNode = node
 	}
