@@ -304,12 +304,17 @@ func promptRewardManagerParams(
 func ConfigureInitialRewardConfig() (*rewardmanager.InitialRewardConfig, error) {
 	config := &rewardmanager.InitialRewardConfig{}
 
-	burnPrompt := "Should fees be burnt?"
-	burnFees, err := app.Prompt.CaptureYesNo(burnPrompt)
+	burnFees := "I am fine with transaction fees being burned (Reward Manager Precompile OFF)"
+	distributeFees := "I want to customize the transaction fee distribution (Reward Manager Precompile ON)"
+	options := []string{burnFees, distributeFees}
+	option, err := app.Prompt.CaptureList(
+		"By default, all transaction fees on Avalanche are burned (sent to a blackhole address). (Reward Manager Precompile)",
+		options,
+	)
 	if err != nil {
 		return config, err
 	}
-	if burnFees {
+	if option == burnFees {
 		return config, nil
 	}
 
