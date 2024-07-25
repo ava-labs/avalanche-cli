@@ -95,6 +95,7 @@ func CreateEvmGenesis(
 		subnetName,
 		defaultEvmAirdropAmount,
 		oneAvax,
+		params.UseExternalGasToken,
 	)
 	if err != nil {
 		return nil, err

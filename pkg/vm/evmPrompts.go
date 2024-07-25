@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	latest        = "latest"
-	preRelease    = "pre-release"
-	explainOption = "Explain the difference"
+	latest                       = "latest"
+	preRelease                   = "pre-release"
+	explainOption                = "Explain the difference"
+	enableExternalGasTokenPrompt = false
 )
 
 type InitialTokenAllocation struct {
@@ -35,6 +36,7 @@ type FeeConfig struct {
 	lowThroughput    bool
 	mediumThroughput bool
 	highThroughput   bool
+	useDynamicFees   bool
 	gasLimit         *big.Int
 	blockRate        *big.Int
 	minBaseFee       *big.Int
@@ -138,6 +140,7 @@ func PromptSubnetEVMGenesisParams(
 	useTeleporter *bool,
 	useDefaults bool,
 	useWarp bool,
+	useExternalGasToken bool,
 ) (SubnetEVMGenesisParams, string, error) {
 	var (
 		err    error
@@ -151,10 +154,17 @@ func PromptSubnetEVMGenesisParams(
 			return SubnetEVMGenesisParams{}, "", err
 		}
 	}
-	// Gas Token
-	params, tokenSymbol, err = promptGasToken(app, version, tokenSymbol, useDefaults, params)
+	// Gas Kind
+	params, err = promptGasTokenKind(app, useDefaults, useExternalGasToken, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
+	}
+	// Native Gas Details
+	if !params.UseExternalGasToken {
+		params, tokenSymbol, err = promptNativeGasToken(app, version, tokenSymbol, useDefaults, params)
+		if err != nil {
+			return SubnetEVMGenesisParams{}, "", err
+		}
 	}
 	// Transaction / Gas Fees
 	params, err = promptFeeConfig(app, version, useDefaults, params)
@@ -179,16 +189,95 @@ func PromptSubnetEVMGenesisParams(
 	return params, tokenSymbol, nil
 }
 
-// prompts for wether to use a remote or native gas token,
-// and in the case of native, also prompts for token symbol,
-// initial token allocation, and native minter precompile
+// prompts for wether to use a remote or native gas token
+func promptGasTokenKind(
+	app *application.Avalanche,
+	useDefaults bool,
+	useExternalGasToken bool,
+	params SubnetEVMGenesisParams,
+) (SubnetEVMGenesisParams, error) {
+	if useExternalGasToken {
+		params.UseExternalGasToken = true
+	} else if enableExternalGasTokenPrompt && !useDefaults {
+		var err error
+		nativeTokenOption := "The blockchain's native token"
+		externalTokenOption := "A token from another blockchain"
+		options := []string{nativeTokenOption, externalTokenOption, explainOption}
+		for {
+			var option string
+			if enableExternalGasTokenPrompt {
+				option, err = app.Prompt.CaptureList(
+					"Which token will be used for transaction fee payments?",
+					options,
+				)
+				if err != nil {
+					return SubnetEVMGenesisParams{}, err
+				}
+			} else {
+				option = nativeTokenOption
+			}
+			switch option {
+			case externalTokenOption:
+				params.UseExternalGasToken = true
+			case nativeTokenOption:
+			case explainOption:
+				ux.Logger.PrintToUser("Every blockchain uses a token to manage access to its limited resources. For example, ETH is the native token of Ethereum, and AVAX is the native token of the Avalanche C-Chain. Users pay transaction fees with these tokens. If demand exceeds capacity, transaction fees increase, requiring users to pay more tokens for their transactions.")
+				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser(logging.Bold.Wrap("The blockchain's native token"))
+				ux.Logger.PrintToUser("Each blockchain on Avalanche has its own transaction fee token. To issue transactions users don't need to acquire ETH or AVAX and therefore the transaction fees are completely isolated.")
+				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser(logging.Bold.Wrap("A token from another blockchain"))
+				ux.Logger.PrintToUser("Use an ERC-20 token (USDC, WETH, etc.) or the native token (e.g. AVAX) of another blockchain within the Avalanche network as the transaction fee token.")
+				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter will be activated automatically. For more info on Teleporter, visit: https://github.com/ava-labs/teleporter")
+				continue
+			}
+			break
+		}
+	}
+	return params, nil
+}
+
+// prompts for wether to use defaults to build the config
+func PromptDefaults(
+	app *application.Avalanche,
+	useDefaults bool,
+) (bool, error) {
+	if !useDefaults {
+		useDefaultsOption := "Use default values"
+		specifyMyValuesOption := "Don't use default values"
+		options := []string{useDefaultsOption, specifyMyValuesOption, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				"Do you want to use default values for the Blockchain configuration?",
+				options,
+			)
+			if err != nil {
+				return false, err
+			}
+			switch option {
+			case useDefaultsOption:
+				useDefaults = true
+			case specifyMyValuesOption:
+				useDefaults = false
+			case explainOption:
+				ux.Logger.PrintToUser("Subnet configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to a newly created key\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Use constant gas prices\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.")
+				continue
+			}
+			break
+		}
+	}
+	return useDefaults, nil
+}
+
+// prompts for token symbol, initial token allocation, and native minter precompile
 // configuration
 //
 // if tokenSymbol is not defined, will prompt for it
 // is useDefaults is true, will:
 // - use native gas token, allocating 1m to a newly created key
 // - disable native minter precompile
-func promptGasToken(
+func promptNativeGasToken(
 	app *application.Avalanche,
 	version string,
 	tokenSymbol string,
@@ -199,97 +288,64 @@ func promptGasToken(
 		err    error
 		cancel bool
 	)
-	if useDefaults {
-		tokenSymbol, err = PromptTokenSymbol(app, tokenSymbol)
-		if err != nil {
-			return SubnetEVMGenesisParams{}, "", err
-		}
-		params.initialTokenAllocation.allocToNewKey = true
-		return params, tokenSymbol, nil
+	tokenSymbol, err = PromptTokenSymbol(app, tokenSymbol)
+	if err != nil {
+		return SubnetEVMGenesisParams{}, "", err
 	}
-	nativeTokenOption := "The blockchain's native token"
-	externalTokenOption := "A token from another blockchain"
-	options := []string{nativeTokenOption, externalTokenOption, explainOption}
-	for {
+	if useDefaults {
+		params.initialTokenAllocation.allocToNewKey = true
+	} else {
+		allocateToNewKeyOption := "Allocate 1m tokens to a new account"
+		allocateToEwoqOption := "Allocate 1m to the ewoq account 0x8db...2FC (Only recommended for testing, not recommended for production)"
+		customAllocationOption := "Define a custom allocation (Recommended for production)"
+		options := []string{allocateToNewKeyOption, allocateToEwoqOption, customAllocationOption}
 		option, err := app.Prompt.CaptureList(
-			"Which token will be used for transaction fee payments?",
+			"How should the initial token allocation be structured?",
 			options,
 		)
 		if err != nil {
 			return SubnetEVMGenesisParams{}, "", err
 		}
 		switch option {
-		case externalTokenOption:
-			params.UseExternalGasToken = true
-		case nativeTokenOption:
-			tokenSymbol, err = PromptTokenSymbol(app, tokenSymbol)
+		case allocateToNewKeyOption:
+			params.initialTokenAllocation.allocToNewKey = true
+		case allocateToEwoqOption:
+			params.initialTokenAllocation.allocToEwoq = true
+		case customAllocationOption:
+			params.initialTokenAllocation.customAddress, err = app.Prompt.CaptureAddress("Address to allocate to")
 			if err != nil {
 				return SubnetEVMGenesisParams{}, "", err
 			}
-			allocateToNewKeyOption := "Allocate 1m tokens to a new account"
-			allocateToEwoqOption := "Allocate 1m to the ewoq account 0x8db...2FC (Only recommended for testing, not recommended for production)"
-			customAllocationOption := "Define a custom allocation (Recommended for production)"
-			options := []string{allocateToNewKeyOption, allocateToEwoqOption, customAllocationOption}
-			option, err := app.Prompt.CaptureList(
-				"How should the initial token allocation be structured?",
+			params.initialTokenAllocation.customBalance, err = app.Prompt.CaptureUint64(fmt.Sprintf("Amount to allocate (in %s units)", tokenSymbol))
+			if err != nil {
+				return SubnetEVMGenesisParams{}, "", err
+			}
+		}
+		for {
+			fixedSupplyOption := "No, I want the supply of the native tokens be hard-capped"
+			dynamicSupplyOption := "Yes, I want to be able to mint additional the native tokens (Native Minter Precompile ON)"
+			options = []string{fixedSupplyOption, dynamicSupplyOption}
+			option, err = app.Prompt.CaptureList(
+				"Allow minting of new native tokens?",
 				options,
 			)
 			if err != nil {
 				return SubnetEVMGenesisParams{}, "", err
 			}
 			switch option {
-			case allocateToNewKeyOption:
-				params.initialTokenAllocation.allocToNewKey = true
-			case allocateToEwoqOption:
-				params.initialTokenAllocation.allocToEwoq = true
-			case customAllocationOption:
-				params.initialTokenAllocation.customAddress, err = app.Prompt.CaptureAddress("Address to allocate to")
+			case fixedSupplyOption:
+			case dynamicSupplyOption:
+				params.nativeMinterPrecompileAllowList, cancel, err = GenerateAllowList(app, "mint native tokens", version)
 				if err != nil {
 					return SubnetEVMGenesisParams{}, "", err
 				}
-				params.initialTokenAllocation.customBalance, err = app.Prompt.CaptureUint64(fmt.Sprintf("Amount to allocate (in %s units)", tokenSymbol))
-				if err != nil {
-					return SubnetEVMGenesisParams{}, "", err
+				if cancel {
+					continue
 				}
+				params.enableNativeMinterPrecompile = true
 			}
-			for {
-				fixedSupplyOption := "No, I want the supply of the native tokens be hard-capped"
-				dynamicSupplyOption := "Yes, I want to be able to mint additional the native tokens (Native Minter Precompile ON)"
-				options = []string{fixedSupplyOption, dynamicSupplyOption}
-				option, err = app.Prompt.CaptureList(
-					"Allow minting of new native tokens?",
-					options,
-				)
-				if err != nil {
-					return SubnetEVMGenesisParams{}, "", err
-				}
-				switch option {
-				case fixedSupplyOption:
-				case dynamicSupplyOption:
-					params.nativeMinterPrecompileAllowList, cancel, err = GenerateAllowList(app, "mint native tokens", version)
-					if err != nil {
-						return SubnetEVMGenesisParams{}, "", err
-					}
-					if cancel {
-						continue
-					}
-					params.enableNativeMinterPrecompile = true
-				}
-				break
-			}
-		case explainOption:
-			ux.Logger.PrintToUser("Every blockchain uses a token to manage access to its limited resources. For example, ETH is the native token of Ethereum, and AVAX is the native token of the Avalanche C-Chain. Users pay transaction fees with these tokens. If demand exceeds capacity, transaction fees increase, requiring users to pay more tokens for their transactions.")
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(logging.Bold.Wrap("The blockchain's native token"))
-			ux.Logger.PrintToUser("Each blockchain on Avalanche has its own transaction fee token. To issue transactions users don't need to acquire ETH or AVAX and therefore the transaction fees are completely isolated.")
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser(logging.Bold.Wrap("A token from another blockchain"))
-			ux.Logger.PrintToUser("Use an ERC-20 token (USDC, WETH, etc.) or the native token (e.g. AVAX) of another blockchain within the Avalanche network as the transaction fee token.")
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter will be activated automatically. For more info on Teleporter, visit: https://github.com/ava-labs/teleporter")
-			continue
+			break
 		}
-		break
 	}
 	return params, tokenSymbol, nil
 }
@@ -309,13 +365,14 @@ func promptFeeConfig(
 ) (SubnetEVMGenesisParams, error) {
 	if useDefaults {
 		params.feeConfig.lowThroughput = true
+		params.feeConfig.useDynamicFees = false
 		return params, nil
 	}
 	var cancel bool
 	customizeOption := "Customize fee config"
-	lowOption := "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
-	mediumOption := "Medium disk use / Medium Throughput 2 mil   gas/s"
-	highOption := "High disk use   / High Throughput   5 mil   gas/s"
+	lowOption := "Low block size    / Low Throughput    12 mil gas per block"
+	mediumOption := "Medium block size / Medium Throughput 15 mil gas per block (C-Chain's setting)"
+	highOption := "High block size   / High Throughput   20 mil gas per block"
 	options := []string{lowOption, mediumOption, highOption, customizeOption, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
@@ -381,6 +438,28 @@ func promptFeeConfig(
 			ux.Logger.PrintToUser("Higher gas limit and higher gas target both increase your max throughput. If the targeted amount of gas is not consumed, the dynamic fee algorithm will decrease the base fee until it reaches the minimum.")
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("By allowing more transactions to occur on your network, the network state will increase at a faster rate, which will lead to higher infrastructure costs.")
+			continue
+		}
+		break
+	}
+	dontUseDynamicFeesOption := "No, I prefer to have constant gas prices"
+	useDynamicFeesOption := "Yes, I would like my blockchain to have dynamic fees"
+	options = []string{dontUseDynamicFeesOption, useDynamicFeesOption, explainOption}
+	for {
+		option, err := app.Prompt.CaptureList(
+			"Do you want dynamic fees on your blockchain?",
+			options,
+		)
+		if err != nil {
+			return SubnetEVMGenesisParams{}, err
+		}
+		switch option {
+		case dontUseDynamicFeesOption:
+			params.feeConfig.useDynamicFees = false
+		case useDynamicFeesOption:
+			params.feeConfig.useDynamicFees = true
+		case explainOption:
+			ux.Logger.PrintToUser("By disabling dynamic fees you effectively make your gas fees constant. In that case, you may\nwant to have your own congestion control, by fully controlling activity on the chain.\nIf setting dynamic fees, gas fees will be automatically adjusted giving automatic congestion control.")
 			continue
 		}
 		break

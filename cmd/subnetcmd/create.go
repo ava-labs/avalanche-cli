@@ -43,6 +43,7 @@ type CreateFlags struct {
 	vmVersion                     string
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
+	useExternalGasToken           bool
 }
 
 var (
@@ -96,6 +97,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
+	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
 	return cmd
 }
 
@@ -197,9 +199,17 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if vmType == models.SubnetEvm {
+		if genesisFile == "" {
+			// Default
+			createFlags.useDefaults, err = vm.PromptDefaults(app, createFlags.useDefaults)
+			if err != nil {
+				return err
+			}
+		}
+
 		// get vm version
 		vmVersion := createFlags.vmVersion
-		if createFlags.useLatestReleasedVMVersion {
+		if createFlags.useLatestReleasedVMVersion || createFlags.useDefaults {
 			vmVersion = latest
 		}
 		if createFlags.useLatestPreReleasedVMVersion {
@@ -244,6 +254,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				useTeleporterFlag,
 				createFlags.useDefaults,
 				createFlags.useWarp,
+				createFlags.useExternalGasToken,
 			)
 			if err != nil {
 				return err

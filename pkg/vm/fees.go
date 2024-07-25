@@ -4,9 +4,24 @@
 package vm
 
 import (
+	"math/big"
+
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
 )
+
+func SetStandardGas(
+	config *params.ChainConfig,
+	gasLimit *big.Int,
+	targetGas *big.Int,
+	useDynamicFees bool,
+) {
+	config.FeeConfig.GasLimit = gasLimit
+	config.FeeConfig.TargetGas = targetGas
+	if !useDynamicFees {
+		config.FeeConfig.TargetGas = config.FeeConfig.TargetGas.Mul(config.FeeConfig.GasLimit, NoDynamicFeesGasLimitToTargetGasFactor)
+	}
+}
 
 func setFeeConfig(
 	params SubnetEVMGenesisParams,
@@ -15,12 +30,12 @@ func setFeeConfig(
 	config.FeeConfig = StarterFeeConfig
 
 	switch {
-	case params.feeConfig.highThroughput:
-		config.FeeConfig.TargetGas = HighTarget
-	case params.feeConfig.mediumThroughput:
-		config.FeeConfig.TargetGas = MediumTarget
 	case params.feeConfig.lowThroughput:
-		config.FeeConfig.TargetGas = LowTarget
+		SetStandardGas(config, LowGasLimit, LowTargetGas, params.feeConfig.useDynamicFees)
+	case params.feeConfig.mediumThroughput:
+		SetStandardGas(config, MediumGasLimit, MediumTargetGas, params.feeConfig.useDynamicFees)
+	case params.feeConfig.highThroughput:
+		SetStandardGas(config, HighGasLimit, HighTargetGas, params.feeConfig.useDynamicFees)
 	default:
 		setCustomFeeConfig(params, config)
 	}

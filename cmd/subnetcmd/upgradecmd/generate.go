@@ -378,10 +378,10 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 	error,
 ) {
 	const (
-		useFast   = "High disk use   / High Throughput   5 mil   gas/s"
-		useMedium = "Medium disk use / Medium Throughput 2 mil   gas/s"
-		useSlow   = "Low disk use    / Low Throughput    1.5 mil gas/s (C-Chain's setting)"
-		customFee = "Customize fee config"
+		lowOption    = "Low block size    / Low Throughput    12 mil gas per block"
+		mediumOption = "Medium block size / Medium Throughput 15 mil gas per block (C-Chain's setting)"
+		highOption   = "High block size   / High Throughput   20 mil gas per block"
+		customFee    = "Customize fee config"
 
 		setGasLimit                 = "Set gas limit"
 		setBlockRate                = "Set target block rate"
@@ -396,11 +396,12 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 	config.FeeConfig = vm.StarterFeeConfig
 
 	if useDefault {
-		config.FeeConfig.TargetGas = vm.LowTarget
+		config.FeeConfig.GasLimit = vm.LowGasLimit
+		config.FeeConfig.TargetGas = config.FeeConfig.TargetGas.Mul(config.FeeConfig.GasLimit, vm.NoDynamicFeesGasLimitToTargetGasFactor)
 		return config, nil
 	}
 
-	feeConfigOptions := []string{useSlow, useMedium, useFast, customFee}
+	feeConfigOptions := []string{lowOption, mediumOption, highOption, customFee}
 
 	feeDefault, err := app.Prompt.CaptureList(
 		"How would you like to set fees",
@@ -410,16 +411,24 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 		return config, err
 	}
 
+	useDynamicFees := false
+	if feeDefault != customFee {
+		useDynamicFees, err = app.Prompt.CaptureYesNo("Do you want to enable dynamic fees?")
+		if err != nil {
+			return config, err
+		}
+	}
+
 	switch feeDefault {
-	case useFast:
-		config.FeeConfig.TargetGas = vm.HighTarget
+	case lowOption:
+		vm.SetStandardGas(&config, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
 		return config, nil
-	case useMedium:
-		config.FeeConfig.TargetGas = vm.MediumTarget
-		return config, nil
-	case useSlow:
-		config.FeeConfig.TargetGas = vm.LowTarget
-		return config, nil
+	case mediumOption:
+		vm.SetStandardGas(&config, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
+		return config, err
+	case highOption:
+		vm.SetStandardGas(&config, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
+		return config, err
 	default:
 		ux.Logger.PrintToUser("Customizing fee config")
 	}
