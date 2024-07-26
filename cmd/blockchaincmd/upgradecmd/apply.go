@@ -60,8 +60,8 @@ var (
 func newUpgradeApplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "apply [blockchainName]",
-		Short: "Apply upgrade bytes onto subnet nodes",
-		Long: `Apply generated upgrade bytes to running Subnet nodes to trigger a network upgrade.
+		Short: "Apply upgrade bytes onto blockchain nodes",
+		Long: `Apply generated upgrade bytes to running Blockchain nodes to trigger a network upgrade.
 
 For public networks (Fuji Testnet or Mainnet), to complete this process,
 you must have access to the machine running your validator.

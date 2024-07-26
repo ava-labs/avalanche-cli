@@ -57,8 +57,8 @@ var blockchainName string
 func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate [blockchainName]",
-		Short: "Generate the configuration file to upgrade subnet nodes",
-		Long: `The subnet upgrade generate command builds a new upgrade.json file to customize your Subnet. It
+		Short: "Generate the configuration file to upgrade blockchain nodes",
+		Long: `The blockchain upgrade generate command builds a new upgrade.json file to customize your Blockchain. It
 guides the user through the process using an interactive wizard.`,
 		RunE: upgradeGenerateCmd,
 		Args: cobrautils.ExactArgs(1),

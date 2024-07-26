@@ -44,9 +44,9 @@ var (
 func newUpgradeVMCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vm [blockchainName]",
-		Short: "Upgrade a subnet's binary",
-		Long: `The subnet upgrade vm command enables the user to upgrade their Subnet's VM binary. The command
-can upgrade both local Subnets and publicly deployed Subnets on Fuji and Mainnet.
+		Short: "Upgrade a blockchain's binary",
+		Long: `The blockchain upgrade vm command enables the user to upgrade their Blockchain's VM binary. The command
+can upgrade both local Blockchains and publicly deployed Blockchains on Fuji and Mainnet.
 
 The command walks the user through an interactive wizard. The user can skip the wizard by providing
 command line flags.`,

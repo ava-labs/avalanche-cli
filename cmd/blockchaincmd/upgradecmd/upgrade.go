@@ -14,9 +14,9 @@ var app *application.Avalanche
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade",
-		Short: "Upgrade your Subnets",
-		Long: `The subnet upgrade command suite provides a collection of tools for
-updating your developmental and deployed Subnets.`,
+		Short: "Upgrade your Blockchains",
+		Long: `The blockchain upgrade command suite provides a collection of tools for
+updating your developmental and deployed Blockchains.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
