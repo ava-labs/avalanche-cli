@@ -5,12 +5,15 @@ package tokentransferrercmd
 import (
 	_ "embed"
 	"fmt"
+	"math/big"
+	"time"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -27,10 +30,16 @@ type HomeFlags struct {
 	erc20Address string
 }
 
+type RemoteFlags struct {
+	chainFlags        contract.ChainFlags
+	native            bool
+	removeMinterAdmin bool
+}
+
 type DeployFlags struct {
 	Network     networkoptions.NetworkFlags
 	homeFlags   HomeFlags
-	remoteFlags contract.ChainFlags
+	remoteFlags RemoteFlags
 	version     string
 }
 
@@ -62,7 +71,7 @@ func NewDeployCmd() *cobra.Command {
 	)
 	contract.AddChainFlagsToCmd(
 		cmd,
-		&deployFlags.remoteFlags,
+		&deployFlags.remoteFlags.chainFlags,
 		"set the Transferrer's Remote Chain",
 		"remote-subnet",
 		"c-chain-remote",
@@ -71,6 +80,8 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", true, "remove the native minter precompile admin found on remote blockchain genesis")
 	return cmd
 }
 
@@ -108,7 +119,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}) {
 		return fmt.Errorf("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
 	}
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.remoteFlags.SubnetName != "", flags.remoteFlags.CChain}) {
+	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.remoteFlags.chainFlags.SubnetName != "", flags.remoteFlags.chainFlags.CChain}) {
 		return fmt.Errorf("--remote-subnet and --c-chain-remote are mutually exclusive flags")
 	}
 
@@ -281,9 +292,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Prompts
-	if !flags.remoteFlags.CChain && flags.remoteFlags.SubnetName == "" {
+	if !flags.remoteFlags.chainFlags.CChain && flags.remoteFlags.chainFlags.SubnetName == "" {
 		prompt := "Where should the token be available as an ERC-20?"
-		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags); err != nil {
+		if flags.remoteFlags.native {
+			prompt = "Where should the token be available as a Native Token?"
+		}
+		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags.chainFlags); err != nil {
 			return err
 		} else if cancel {
 			return nil
@@ -291,15 +305,15 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Validations
-	if flags.remoteFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.remoteFlags.SubnetName); err != nil {
+	if flags.remoteFlags.chainFlags.SubnetName != "" {
+		if err := validateSubnet(network, flags.remoteFlags.chainFlags.SubnetName); err != nil {
 			return err
 		}
-		if flags.remoteFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
+		if flags.remoteFlags.chainFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
 			return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 		}
 	}
-	if flags.remoteFlags.CChain && flags.homeFlags.chainFlags.CChain {
+	if flags.remoteFlags.chainFlags.CChain && flags.homeFlags.chainFlags.CChain {
 		return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 	}
 
@@ -327,7 +341,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		tokenAddress  common.Address
 	)
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
-	homeEndpoint, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
+	homeEndpoint, _, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
 		flags.homeFlags.chainFlags.SubnetName,
@@ -433,30 +447,71 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Deploy
-	remoteEndpoint, _, _, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
+	remoteEndpoint, remoteBlockchainName, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
-		flags.remoteFlags.SubnetName,
-		flags.remoteFlags.CChain,
+		flags.remoteFlags.chainFlags.SubnetName,
+		flags.remoteFlags.chainFlags.CChain,
 	)
 	if err != nil {
 		return err
 	}
 
-	remoteAddress, err := ictt.DeployERC20Remote(
-		icttSrcDir,
-		remoteEndpoint,
-		remoteKey.PrivKeyHex(),
-		common.HexToAddress(remoteRegistryAddress),
-		common.HexToAddress(remoteKey.C()),
-		homeBlockchainID,
-		homeAddress,
-		tokenName,
-		tokenSymbol,
-		tokenDecimals,
+	var (
+		remoteAddress common.Address
+		remoteSupply  *big.Int
 	)
-	if err != nil {
-		return err
+
+	if !flags.remoteFlags.native {
+		remoteAddress, err = ictt.DeployERC20Remote(
+			icttSrcDir,
+			remoteEndpoint,
+			remoteKey.PrivKeyHex(),
+			common.HexToAddress(remoteRegistryAddress),
+			common.HexToAddress(remoteKey.C()),
+			homeBlockchainID,
+			homeAddress,
+			tokenName,
+			tokenSymbol,
+			tokenDecimals,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		nativeTokenSymbol, err := getNativeTokenSymbol(
+			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.CChain,
+		)
+		if err != nil {
+			return err
+		}
+		remoteSupply, err = contract.GetEVMSubnetGenesisSupply(
+			app,
+			network,
+			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.CChain,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		remoteAddress, err = ictt.DeployNativeRemote(
+			icttSrcDir,
+			remoteEndpoint,
+			remoteKey.PrivKeyHex(),
+			common.HexToAddress(remoteRegistryAddress),
+			common.HexToAddress(remoteKey.C()),
+			homeBlockchainID,
+			homeAddress,
+			tokenDecimals,
+			nativeTokenSymbol,
+			remoteSupply,
+			big.NewInt(0),
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := ictt.RegisterERC20Remote(
@@ -465,6 +520,125 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteAddress,
 	); err != nil {
 		return err
+	}
+
+	checkInterval := 100 * time.Millisecond
+	checkTimeout := 10 * time.Second
+	t0 := time.Now()
+	for {
+		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
+			homeEndpoint,
+			homeAddress,
+			remoteBlockchainID,
+			remoteAddress,
+		)
+		if err != nil {
+			return err
+		}
+		if registeredRemote.Registered {
+			break
+		}
+		elapsed := time.Since(t0)
+		if elapsed > checkTimeout {
+			return fmt.Errorf("timeout waiting for remote endpoint registration")
+		}
+		time.Sleep(checkInterval)
+	}
+
+	if flags.remoteFlags.native {
+		err = ictt.TokenHomeAddCollateral(
+			homeEndpoint,
+			homeAddress,
+			homeKey.PrivKeyHex(),
+			remoteBlockchainID,
+			remoteAddress,
+			remoteSupply,
+		)
+		if err != nil {
+			return err
+		}
+
+		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
+			homeEndpoint,
+			homeAddress,
+			remoteBlockchainID,
+			remoteAddress,
+		)
+		if err != nil {
+			return err
+		}
+		if registeredRemote.CollateralNeeded.Cmp(big.NewInt(0)) != 0 {
+			return fmt.Errorf("failure setting collateral in home endpoint: remaining collateral=%d", registeredRemote.CollateralNeeded)
+		}
+
+		minterAdminFound, managedMinterAdmin, _, minterAdminAddress, minterAdminPrivKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
+			app,
+			network,
+			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.CChain,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		if !minterAdminFound {
+			return fmt.Errorf("there is no native minter precompile admin on subnet %s", remoteBlockchainName)
+		}
+		if !managedMinterAdmin {
+			return fmt.Errorf("no managed key found for native minter admin %s subnet %s", minterAdminAddress, remoteBlockchainName)
+		}
+
+		if err := precompiles.SetEnabled(
+			remoteEndpoint,
+			precompiles.NativeMinterPrecompile,
+			minterAdminPrivKey,
+			remoteAddress,
+		); err != nil {
+			return err
+		}
+
+		err = ictt.Send(
+			homeEndpoint,
+			homeAddress,
+			homeKey.PrivKeyHex(),
+			remoteBlockchainID,
+			remoteAddress,
+			common.HexToAddress(homeKey.C()),
+			big.NewInt(1),
+		)
+		if err != nil {
+			return err
+		}
+
+		t0 := time.Now()
+		for {
+			isCollateralized, err := ictt.TokenRemoteIsCollateralized(
+				remoteEndpoint,
+				remoteAddress,
+			)
+			if err != nil {
+				return err
+			}
+			if isCollateralized {
+				break
+			}
+			elapsed := time.Since(t0)
+			if elapsed > checkTimeout {
+				return fmt.Errorf("timeout waiting for remote endpoint collateralization")
+			}
+			time.Sleep(checkInterval)
+		}
+
+		if flags.remoteFlags.removeMinterAdmin {
+			if err := precompiles.SetNone(
+				remoteEndpoint,
+				precompiles.NativeMinterPrecompile,
+				minterAdminPrivKey,
+				common.HexToAddress(minterAdminAddress),
+			); err != nil {
+				return err
+			}
+		}
 	}
 
 	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)

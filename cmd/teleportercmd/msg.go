@@ -109,7 +109,7 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	_, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetSubnetParams(
+	_, _, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetSubnetParams(
 		app,
 		network,
 		sourceSubnetName,
@@ -118,7 +118,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	_, _, destBlockchainID, destMessengerAddress, _, _, err := teleporter.GetSubnetParams(
+	_, _, _, destBlockchainID, destMessengerAddress, _, _, err := teleporter.GetSubnetParams(
 		app,
 		network,
 		destSubnetName,
