@@ -24,10 +24,10 @@ import (
 
 var statsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
 
-// avalanche subnet stats
+// avalanche blockchain stats
 func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stats [subnetName]",
+		Use:   "stats [blockchainName]",
 		Short: "Show validator statistics for the given subnet",
 		Long:  `The subnet stats command prints validator statistics for the given Subnet.`,
 		Args:  cobrautils.ExactArgs(1),
@@ -55,9 +55,9 @@ func stats(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetName := chains[0]
+	blockchainName := chains[0]
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}

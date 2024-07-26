@@ -13,10 +13,10 @@ import (
 
 var force bool
 
-// avalanche subnet upgrade import
+// avalanche blockchain upgrade import
 func newUpgradeExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "export [subnetName]",
+		Use:   "export [blockchainName]",
 		Short: "Export the upgrade bytes file to a location of choice on disk",
 		Long:  `Export the upgrade bytes file to a location of choice on disk`,
 		RunE:  upgradeExportCmd,
@@ -30,9 +30,9 @@ func newUpgradeExportCmd() *cobra.Command {
 }
 
 func upgradeExportCmd(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
-	if !app.GenesisExists(subnetName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+	blockchainName := args[0]
+	if !app.GenesisExists(blockchainName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", blockchainName)
 		return nil
 	}
 
@@ -59,7 +59,7 @@ func upgradeExportCmd(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	fileBytes, err := app.ReadUpgradeFile(subnetName)
+	fileBytes, err := app.ReadUpgradeFile(blockchainName)
 	if err != nil {
 		return err
 	}

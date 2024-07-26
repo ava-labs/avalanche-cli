@@ -15,10 +15,10 @@ var upgradeBytesFilePath string
 
 const upgradeBytesFilePathKey = "upgrade-filepath"
 
-// avalanche subnet upgrade import
+// avalanche blockchain upgrade import
 func newUpgradeImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "import [subnetName]",
+		Use:   "import [blockchainName]",
 		Short: "Import the upgrade bytes file into the local environment",
 		Long:  `Import the upgrade bytes file into the local environment`,
 		RunE:  upgradeImportCmd,
@@ -31,9 +31,9 @@ func newUpgradeImportCmd() *cobra.Command {
 }
 
 func upgradeImportCmd(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
-	if !app.GenesisExists(subnetName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+	blockchainName := args[0]
+	if !app.GenesisExists(blockchainName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", blockchainName)
 		return nil
 	}
 
@@ -57,5 +57,5 @@ func upgradeImportCmd(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read the provided upgrade file: %w", err)
 	}
 
-	return app.WriteUpgradeFile(subnetName, fileBytes)
+	return app.WriteUpgradeFile(blockchainName, fileBytes)
 }

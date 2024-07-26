@@ -27,7 +27,7 @@ var (
 	branch          string
 )
 
-// avalanche subnet import
+// avalanche blockchain import file
 func newImportFileCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "file [subnetPath]",
@@ -116,12 +116,12 @@ func importFromFile(importPath string) error {
 		return err
 	}
 
-	subnetName := importable.Sidecar.Name
-	if subnetName == "" {
+	blockchainName := importable.Sidecar.Name
+	if blockchainName == "" {
 		return errors.New("export data is malformed: missing subnet name")
 	}
 
-	if app.GenesisExists(subnetName) && !overwriteImport {
+	if app.GenesisExists(blockchainName) && !overwriteImport {
 		return errors.New("subnet already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
@@ -140,7 +140,7 @@ func importFromFile(importPath string) error {
 			return err
 		}
 
-		vmPath := app.GetCustomVMPath(subnetName)
+		vmPath := app.GetCustomVMPath(blockchainName)
 		rpcVersion, err := vm.GetVMBinaryProtocolVersion(vmPath)
 		if err != nil {
 			return fmt.Errorf("unable to get custom binary RPC version: %w", err)
@@ -150,40 +150,40 @@ func importFromFile(importPath string) error {
 		}
 	}
 
-	if err := app.WriteGenesisFile(subnetName, importable.Genesis); err != nil {
+	if err := app.WriteGenesisFile(blockchainName, importable.Genesis); err != nil {
 		return err
 	}
 
 	if importable.NodeConfig != nil {
-		if err := app.WriteAvagoNodeConfigFile(subnetName, importable.NodeConfig); err != nil {
+		if err := app.WriteAvagoNodeConfigFile(blockchainName, importable.NodeConfig); err != nil {
 			return err
 		}
 	} else {
-		_ = os.RemoveAll(app.GetAvagoNodeConfigPath(subnetName))
+		_ = os.RemoveAll(app.GetAvagoNodeConfigPath(blockchainName))
 	}
 
 	if importable.ChainConfig != nil {
-		if err := app.WriteChainConfigFile(subnetName, importable.ChainConfig); err != nil {
+		if err := app.WriteChainConfigFile(blockchainName, importable.ChainConfig); err != nil {
 			return err
 		}
 	} else {
-		_ = os.RemoveAll(app.GetChainConfigPath(subnetName))
+		_ = os.RemoveAll(app.GetChainConfigPath(blockchainName))
 	}
 
 	if importable.SubnetConfig != nil {
-		if err := app.WriteAvagoSubnetConfigFile(subnetName, importable.SubnetConfig); err != nil {
+		if err := app.WriteAvagoSubnetConfigFile(blockchainName, importable.SubnetConfig); err != nil {
 			return err
 		}
 	} else {
-		_ = os.RemoveAll(app.GetAvagoSubnetConfigPath(subnetName))
+		_ = os.RemoveAll(app.GetAvagoSubnetConfigPath(blockchainName))
 	}
 
 	if importable.NetworkUpgrades != nil {
-		if err := app.WriteNetworkUpgradesFile(subnetName, importable.NetworkUpgrades); err != nil {
+		if err := app.WriteNetworkUpgradesFile(blockchainName, importable.NetworkUpgrades); err != nil {
 			return err
 		}
 	} else {
-		_ = os.RemoveAll(app.GetUpgradeBytesFilepath(subnetName))
+		_ = os.RemoveAll(app.GetUpgradeBytesFilepath(blockchainName))
 	}
 
 	if err := app.CreateSidecar(&importable.Sidecar); err != nil {

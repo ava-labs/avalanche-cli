@@ -40,10 +40,10 @@ var (
 	binaryPathArg string
 )
 
-// avalanche subnet update vm
+// avalanche blockchain upgrade vm
 func newUpgradeVMCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "vm [subnetName]",
+		Use:   "vm [blockchainName]",
 		Short: "Upgrade a subnet's binary",
 		Long: `The subnet upgrade vm command enables the user to upgrade their Subnet's VM binary. The command
 can upgrade both local Subnets and publicly deployed Subnets on Fuji and Mainnet.
@@ -97,13 +97,13 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 		return errors.New("--print and --plugin-dir are mutually exclusive")
 	}
 
-	subnetName := args[0]
+	blockchainName := args[0]
 
-	if !app.SubnetConfigExists(subnetName) {
+	if !app.SubnetConfigExists(blockchainName) {
 		return errors.New("subnet does not exist")
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}

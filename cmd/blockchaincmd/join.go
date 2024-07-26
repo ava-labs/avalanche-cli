@@ -55,10 +55,10 @@ var (
 	stakeAmount uint64
 )
 
-// avalanche subnet join
+// avalanche blockchain join
 func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "join [subnetName]",
+		Use:   "join [blockchainName]",
 		Short: "Configure your validator node to begin validating a new subnet",
 		Long: `The subnet join command configures your validator node to begin validating a new Subnet.
 
@@ -104,9 +104,9 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetName := chains[0]
+	blockchainName := chains[0]
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 	}
 
 	if joinElastic {
-		return handleValidatorJoinElasticSubnet(sc, network, subnetName)
+		return handleValidatorJoinElasticSubnet(sc, network, blockchainName)
 	}
 
 	network.HandlePublicNetworkSimulation()
@@ -253,14 +253,14 @@ func joinCmd(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("VM binary written to %s", vmPath)
 
 	if forceWrite {
-		if err := writeAvagoChainConfigFiles(app, dataDir, subnetName, sc, network); err != nil {
+		if err := writeAvagoChainConfigFiles(app, dataDir, blockchainName, sc, network); err != nil {
 			return err
 		}
 	}
 
 	subnetAvagoConfigFile := ""
-	if app.AvagoNodeConfigExists(subnetName) {
-		subnetAvagoConfigFile = app.GetAvagoNodeConfigPath(subnetName)
+	if app.AvagoNodeConfigExists(blockchainName) {
+		subnetAvagoConfigFile = app.GetAvagoNodeConfigPath(blockchainName)
 	}
 
 	if err := plugins.EditConfigFile(
@@ -280,7 +280,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 func writeAvagoChainConfigFiles(
 	app *application.Avalanche,
 	dataDir string,
-	subnetName string,
+	blockchainName string,
 	sc models.Sidecar,
 	network models.Network,
 ) error {
@@ -299,11 +299,11 @@ func writeAvagoChainConfigFiles(
 
 	subnetConfigsPath := filepath.Join(configsPath, "subnets")
 	subnetConfigPath := filepath.Join(subnetConfigsPath, subnetIDStr+".json")
-	if app.AvagoSubnetConfigExists(subnetName) {
+	if app.AvagoSubnetConfigExists(blockchainName) {
 		if err := os.MkdirAll(subnetConfigsPath, constants.DefaultPerms755); err != nil {
 			return err
 		}
-		subnetConfig, err := app.LoadRawAvagoSubnetConfig(subnetName)
+		subnetConfig, err := app.LoadRawAvagoSubnetConfig(blockchainName)
 		if err != nil {
 			return err
 		}
@@ -314,14 +314,14 @@ func writeAvagoChainConfigFiles(
 		_ = os.RemoveAll(subnetConfigPath)
 	}
 
-	if blockchainID != ids.Empty && app.ChainConfigExists(subnetName) || app.NetworkUpgradeExists(subnetName) {
+	if blockchainID != ids.Empty && app.ChainConfigExists(blockchainName) || app.NetworkUpgradeExists(blockchainName) {
 		chainConfigsPath := filepath.Join(configsPath, "chains", blockchainID.String())
 		if err := os.MkdirAll(chainConfigsPath, constants.DefaultPerms755); err != nil {
 			return err
 		}
 		chainConfigPath := filepath.Join(chainConfigsPath, "config.json")
-		if app.ChainConfigExists(subnetName) {
-			chainConfig, err := app.LoadRawChainConfig(subnetName)
+		if app.ChainConfigExists(blockchainName) {
+			chainConfig, err := app.LoadRawChainConfig(blockchainName)
 			if err != nil {
 				return err
 			}
@@ -332,8 +332,8 @@ func writeAvagoChainConfigFiles(
 			_ = os.RemoveAll(chainConfigPath)
 		}
 		networkUpgradesPath := filepath.Join(chainConfigsPath, "upgrade.json")
-		if app.NetworkUpgradeExists(subnetName) {
-			networkUpgrades, err := app.LoadRawNetworkUpgrades(subnetName)
+		if app.NetworkUpgradeExists(blockchainName) {
+			networkUpgrades, err := app.LoadRawNetworkUpgrades(blockchainName)
 			if err != nil {
 				return err
 			}
@@ -348,7 +348,7 @@ func writeAvagoChainConfigFiles(
 	return nil
 }
 
-func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, subnetName string) error {
+func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network, blockchainName string) error {
 	var err error
 	if len(ledgerAddresses) > 0 {
 		useLedger = true
@@ -370,7 +370,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	if err != nil {
 		return err
 	}
-	stakedTokenAmount, err := promptStakeAmount(subnetName, true, network)
+	stakedTokenAmount, err := promptStakeAmount(blockchainName, true, network)
 	if err != nil {
 		return err
 	}
@@ -383,7 +383,7 @@ func handleValidatorJoinElasticSubnet(sc models.Sidecar, network models.Network,
 	ux.Logger.PrintToUser("")
 	switch network.Kind {
 	case models.Local:
-		return handleValidatorJoinElasticSubnetLocal(sc, network, subnetName, nodeID, stakedTokenAmount, start, endTime)
+		return handleValidatorJoinElasticSubnetLocal(sc, network, blockchainName, nodeID, stakedTokenAmount, start, endTime)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
@@ -444,14 +444,14 @@ func printAddPermissionlessValOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
 }
 
-func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Network, subnetName string, nodeID ids.NodeID,
+func handleValidatorJoinElasticSubnetLocal(sc models.Sidecar, network models.Network, blockchainName string, nodeID ids.NodeID,
 	stakedTokenAmount uint64, start time.Time, endTime time.Time,
 ) error {
 	if network.Kind != models.Local {
 		return errors.New("unsupported network")
 	}
 	if !checkIfSubnetIsElasticOnLocal(sc) {
-		return fmt.Errorf("%s is not an elastic subnet", subnetName)
+		return fmt.Errorf("%s is not an elastic subnet", blockchainName)
 	}
 	assetID := sc.ElasticSubnet[models.Local.String()].AssetID
 	testKey := genesis.EWOQKey
@@ -564,12 +564,12 @@ func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network
 	return nodeID, nil
 }
 
-func promptStakeAmount(subnetName string, isValidator bool, network models.Network) (uint64, error) {
+func promptStakeAmount(blockchainName string, isValidator bool, network models.Network) (uint64, error) {
 	if stakeAmount > 0 {
 		return stakeAmount, nil
 	}
 	if network.Kind == models.Local {
-		esc, err := app.LoadElasticSubnetConfig(subnetName)
+		esc, err := app.LoadElasticSubnetConfig(blockchainName)
 		if err != nil {
 			return 0, err
 		}

@@ -24,12 +24,12 @@ import (
 
 var addPermissionlessDelegatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet}
 
-// avalanche subnet addPermissionlessDelegator
+// avalanche blockchain addPermissionlessDelegator
 func newAddPermissionlessDelegatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "addPermissionlessDelegator [subnetName]",
+		Use:   "addPermissionlessDelegator [blockchainName]",
 		Short: "Allow a node join an existing subnet validator as a delegator",
-		Long: `The subnet addDelegator enables a node (the delegator) to stake 
+		Long: `The blockchain addDelegator enables a node (the delegator) to stake 
 AVAX and specify a validator (the delegatee) to validate on their behalf. The 
 delegatee has an increased probability of being sampled by other validators 
 (weight) in proportion to the stake delegated to them.
@@ -66,8 +66,8 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetName := chains[0]
-	sc, err := app.LoadSidecar(subnetName)
+	blockchainName := chains[0]
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	stakedTokenAmount, err := promptStakeAmount(subnetName, false, network)
+	stakedTokenAmount, err := promptStakeAmount(blockchainName, false, network)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func addPermissionlessDelegator(_ *cobra.Command, args []string) error {
 
 	switch network.Kind {
 	case models.Local:
-		return handleAddPermissionlessDelegatorLocal(subnetName, network, nodeID, stakedTokenAmount, start, endTime)
+		return handleAddPermissionlessDelegatorLocal(blockchainName, network, nodeID, stakedTokenAmount, start, endTime)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
@@ -167,16 +167,16 @@ func printAddPermissionlessDelOutput(txID ids.ID, nodeID ids.NodeID, network mod
 	ux.Logger.PrintToUser("Stake Amount: %d", stakedTokenAmount)
 }
 
-func handleAddPermissionlessDelegatorLocal(subnetName string, network models.Network, nodeID ids.NodeID,
+func handleAddPermissionlessDelegatorLocal(blockchainName string, network models.Network, nodeID ids.NodeID,
 	stakedTokenAmount uint64, start time.Time, endTime time.Time,
 ) error {
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
 
 	if !checkIfSubnetIsElasticOnLocal(sc) {
-		return fmt.Errorf("%s is not an elastic subnet", subnetName)
+		return fmt.Errorf("%s is not an elastic subnet", blockchainName)
 	}
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction addPermissionlessDelegatorTx...")
 	ux.Logger.PrintToUser("")

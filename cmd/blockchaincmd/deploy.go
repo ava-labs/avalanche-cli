@@ -60,12 +60,12 @@ var (
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
 
-// avalanche subnet deploy
+// avalanche blockchain deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deploy [subnetName]",
-		Short: "Deploys a subnet configuration",
-		Long: `The subnet deploy command deploys your Subnet configuration locally, to Fuji Testnet, or to Mainnet.
+		Use:   "deploy [blockchainName]",
+		Short: "Deploys a blockchain configuration",
+		Long: `The blockchain deploy command deploys your Blockchain configuration locally, to Fuji Testnet, or to Mainnet.
 
 At the end of the call, the command prints the RPC URL you can use to interact with the Subnet.
 
@@ -107,7 +107,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 func CallDeploy(
 	cmd *cobra.Command,
 	subnetOnlyParam bool,
-	subnetName string,
+	blockchainName string,
 	networkFlags networkoptions.NetworkFlags,
 	keyNameParam string,
 	useLedgerParam bool,
@@ -120,10 +120,10 @@ func CallDeploy(
 	keyName = keyNameParam
 	useLedger = useLedgerParam
 	useEwoq = useEwoqParam
-	return deploySubnet(cmd, []string{subnetName})
+	return deploySubnet(cmd, []string{blockchainName})
 }
 
-func getChainsInSubnet(subnetName string) ([]string, error) {
+func getChainsInSubnet(blockchainName string) ([]string, error) {
 	subnets, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read baseDir: %w", err)
@@ -148,7 +148,7 @@ func getChainsInSubnet(subnetName string) ([]string, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed unmarshaling file %s: %w", sidecarFile, err)
 			}
-			if sc.Subnet == subnetName {
+			if sc.Subnet == blockchainName {
 				chains = append(chains, sc.Name)
 			}
 		}
@@ -197,9 +197,9 @@ func updateSubnetEVMGenesisChainID(genesisBytes []byte, newChainID uint) ([]byte
 
 // updates sidecar with genesis mainnet id to use
 // given either by cmdline flag, original genesis id, or id obtained from the user
-func getSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
+func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error {
 	// get original chain id
-	evmGenesis, err := app.LoadEvmGenesis(subnetName)
+	evmGenesis, err := app.LoadEvmGenesis(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -258,9 +258,9 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, subnetName string) error {
 
 // deploySubnet is the cobra command run for deploying subnets
 func deploySubnet(cmd *cobra.Command, args []string) error {
-	subnetName := args[0]
+	blockchainName := args[0]
 
-	if err := CreateSubnetFirst(cmd, subnetName, skipCreatePrompt); err != nil {
+	if err := CreateSubnetFirst(cmd, blockchainName, skipCreatePrompt); err != nil {
 		return err
 	}
 
@@ -391,7 +391,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-		return PrintSubnetInfo(subnetName, true)
+		return PrintSubnetInfo(blockchainName, true)
 	}
 
 	// from here on we are assuming a public deploy
@@ -556,8 +556,8 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := utils.GetIndexInSlice(clusterConfig.Subnets, subnetName); err != nil {
-				clusterConfig.Subnets = append(clusterConfig.Subnets, subnetName)
+			if _, err := utils.GetIndexInSlice(clusterConfig.Subnets, blockchainName); err != nil {
+				clusterConfig.Subnets = append(clusterConfig.Subnets, blockchainName)
 			}
 			if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
 				return err

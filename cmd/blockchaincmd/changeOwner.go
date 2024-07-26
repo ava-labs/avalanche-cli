@@ -19,16 +19,14 @@ import (
 
 var changeOwnerSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
 
-// avalanche subnet changeOwner
+// avalanche blockchain changeOwner
 func newChangeOwnerCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "changeOwner [subnetName]",
+		Use:   "changeOwner [blockchainName]",
 		Short: "Change owner of the subnet",
-		Long: `The subnet changeOwner changes the owner of the deployed Subnet.
-
-This command currently only works on Subnets deployed to Devnet, Fuji or Mainnet.`,
-		RunE: changeOwner,
-		Args: cobrautils.ExactArgs(1),
+		Long:  `The blockchain changeOwner changes the owner of the deployed Subnet.`,
+		RunE:  changeOwner,
+		Args:  cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, changeOwnerSupportedNetworkOptions)
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -44,7 +42,7 @@ This command currently only works on Subnets deployed to Devnet, Fuji or Mainnet
 }
 
 func changeOwner(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
+	blockchainName := args[0]
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -82,12 +80,12 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	_, err = ValidateSubnetNameAndGetChains([]string{subnetName})
+	_, err = ValidateSubnetNameAndGetChains([]string{blockchainName})
 	if err != nil {
 		return err
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -157,7 +155,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		if err := SaveNotFullySignedTx(
 			"Transfer Subnet Ownership",
 			tx,
-			subnetName,
+			blockchainName,
 			subnetAuthKeys,
 			remainingSubnetAuthKeys,
 			outputTxPath,

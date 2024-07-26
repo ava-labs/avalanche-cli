@@ -28,7 +28,7 @@ var (
 	useCustomVM                         bool
 )
 
-// avalanche subnet import public
+// avalanche blockchain import public
 func newImportPublicCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "public [subnetPath]",
@@ -123,13 +123,13 @@ func importPublic(*cobra.Command, []string) error {
 
 	vmID := createChainTx.VMID
 	subnetID := createChainTx.SubnetID
-	subnetName := createChainTx.ChainName
+	blockchainName := createChainTx.ChainName
 	genBytes := createChainTx.GenesisData
 
 	ux.Logger.PrintToUser("Retrieved information. BlockchainID: %s, SubnetID: %s, Name: %s, VMID: %s",
 		blockchainID.String(),
 		subnetID.String(),
-		subnetName,
+		blockchainName,
 		vmID.String(),
 	)
 	// TODO: it's probably possible to deploy VMs with the same name on a public network
@@ -143,7 +143,7 @@ func importPublic(*cobra.Command, []string) error {
 	vmIDstr := vmID.String()
 
 	sc := &models.Sidecar{
-		Name: subnetName,
+		Name: blockchainName,
 		VM:   vmType,
 		Networks: map[string]models.NetworkData{
 			network.Name(): {
@@ -151,7 +151,7 @@ func importPublic(*cobra.Command, []string) error {
 				BlockchainID: blockchainID,
 			},
 		},
-		Subnet:       subnetName,
+		Subnet:       blockchainName,
 		Version:      constants.SidecarVersion,
 		TokenName:    constants.DefaultTokenName,
 		TokenSymbol:  constants.DefaultTokenSymbol,
@@ -203,7 +203,7 @@ func importPublic(*cobra.Command, []string) error {
 		return fmt.Errorf("failed creating the sidecar for import: %w", err)
 	}
 
-	if err = app.WriteGenesisFile(subnetName, genBytes); err != nil {
+	if err = app.WriteGenesisFile(blockchainName, genBytes); err != nil {
 		return err
 	}
 

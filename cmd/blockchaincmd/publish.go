@@ -40,10 +40,10 @@ var (
 
 type newPublisherFunc func(string, string, string) subnet.Publisher
 
-// avalanche subnet publish
+// avalanche blockchain publish
 func newPublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "publish [subnetName]",
+		Use:   "publish [blockchainName]",
 		Short: "Publish the subnet's VM to a repository",
 		Long:  `The subnet publish command publishes the Subnet's VM to a repository.`,
 		RunE:  publish,
@@ -68,15 +68,15 @@ func publish(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetName := chains[0]
-	sc, err := app.LoadSidecar(subnetName)
+	blockchainName := chains[0]
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
 	if !isReadyToPublish(&sc) {
 		return errSubnetNotDeployed
 	}
-	return doPublish(&sc, subnetName, subnet.NewPublisher)
+	return doPublish(&sc, blockchainName, subnet.NewPublisher)
 }
 
 // isReadyToPublish currently means if deployed to fuji and/or main
@@ -92,7 +92,7 @@ func isReadyToPublish(sc *models.Sidecar) bool {
 	return false
 }
 
-func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPublisherFunc) (err error) {
+func doPublish(sc *models.Sidecar, blockchainName string, publisherCreateFunc newPublisherFunc) (err error) {
 	reposDir := app.GetReposDir()
 	// iterate the reposDir to check what repos already exist locally
 	// if nothing is found, prompt the user for an alias for a new repo
@@ -111,7 +111,7 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 
 	if !forceWrite && noRepoPath == "" {
 		// if forceWrite is present, we don't need to check if it has been previously published, we just do
-		published, err := isAlreadyPublished(subnetName)
+		published, err := isAlreadyPublished(blockchainName)
 		if err != nil {
 			return err
 		}
@@ -168,7 +168,7 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 			ux.Logger.PrintToUser(
 				"The given --no-repo-path at %s did not exist; created it with permissions %o", noRepoPath, constants.DefaultPerms755)
 		}
-		subnetFile := filepath.Join(noRepoPath, constants.SubnetDir, subnetName+constants.YAMLSuffix)
+		subnetFile := filepath.Join(noRepoPath, constants.SubnetDir, blockchainName+constants.YAMLSuffix)
 		vmFile := filepath.Join(noRepoPath, constants.VMDir, vm.Alias+constants.YAMLSuffix)
 		if !forceWrite {
 			// do not automatically overwrite
@@ -200,7 +200,7 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 	}
 
 	// TODO: if not published? New commit? Etc...
-	if err = publisher.Publish(repo, subnetName, vm.Alias, subnetYAML, vmYAML); err != nil {
+	if err = publisher.Publish(repo, blockchainName, vm.Alias, subnetYAML, vmYAML); err != nil {
 		return err
 	}
 
@@ -209,8 +209,8 @@ func doPublish(sc *models.Sidecar, subnetName string, publisherCreateFunc newPub
 }
 
 // current simplistic approach:
-// just search any folder names `subnetName` inside the reposDir's `subnets` folder
-func isAlreadyPublished(subnetName string) (bool, error) {
+// just search any folder names `blockchainName` inside the reposDir's `subnets` folder
+func isAlreadyPublished(blockchainName string) (bool, error) {
 	reposDir := app.GetReposDir()
 
 	found := false
@@ -220,7 +220,7 @@ func isAlreadyPublished(subnetName string) (bool, error) {
 			if filepath.Base(path) == constants.VMDir {
 				return filepath.SkipDir
 			}
-			if !d.IsDir() && d.Name() == subnetName {
+			if !d.IsDir() && d.Name() == blockchainName {
 				found = true
 			}
 		}

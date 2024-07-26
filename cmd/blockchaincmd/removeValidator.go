@@ -24,10 +24,10 @@ import (
 
 var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet}
 
-// avalanche subnet removeValidator
+// avalanche blockchain removeValidator
 func newRemoveValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "removeValidator [subnetName]",
+		Use:   "removeValidator [blockchainName]",
 		Short: "Remove a permissioned validator from your subnet",
 		Long: `The subnet removeValidator command stops a whitelisted, subnet network validator from
 validating your deployed Subnet.
@@ -84,11 +84,11 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetName := chains[0]
+	blockchainName := chains[0]
 
 	switch network.Kind {
 	case models.Local:
-		return removeFromLocal(subnetName)
+		return removeFromLocal(blockchainName)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
@@ -114,7 +114,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 
 	network.HandlePublicNetworkSimulation()
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -197,7 +197,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		if err := SaveNotFullySignedTx(
 			"Remove Validator",
 			tx,
-			subnetName,
+			blockchainName,
 			subnetAuthKeys,
 			remainingSubnetAuthKeys,
 			outputTxPath,
@@ -210,8 +210,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	return err
 }
 
-func removeFromLocal(subnetName string) error {
-	sc, err := app.LoadSidecar(subnetName)
+func removeFromLocal(blockchainName string) error {
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}

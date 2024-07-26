@@ -50,10 +50,10 @@ var (
 	denominationFlag               int
 )
 
-// avalanche subnet elastic
+// avalanche blockchain elastic
 func newElasticCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "elastic [subnetName]",
+		Use:   "elastic [blockchainName]",
 		Short: "Transforms a subnet into elastic subnet",
 		Long: `The elastic command enables anyone to be a validator of a Subnet by simply staking its token on the 
 P-Chain. When enabling Elastic Validation, the creator permanently locks the Subnet from future modification 
@@ -143,13 +143,13 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 }
 
 func transformElasticSubnet(cmd *cobra.Command, args []string) error {
-	subnetName := args[0]
+	blockchainName := args[0]
 
-	if err := DeploySubnetFirst(cmd, subnetName, false, elasticSupportedNetworkOptions); err != nil {
+	if err := DeploySubnetFirst(cmd, blockchainName, false, elasticSupportedNetworkOptions); err != nil {
 		return err
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
@@ -161,7 +161,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		true,
 		false,
 		elasticSupportedNetworkOptions,
-		subnetName,
+		blockchainName,
 	)
 	if err != nil {
 		return err
@@ -239,7 +239,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 
 	switch network.Kind {
 	case models.Local:
-		return transformElasticSubnetLocal(sc, subnetName, tokenName, tokenSymbol, elasticSubnetConfig, cmd)
+		return transformElasticSubnetLocal(sc, blockchainName, tokenName, tokenSymbol, elasticSubnetConfig, cmd)
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
@@ -369,7 +369,7 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		if err := SaveNotFullySignedTx(
 			"Transform Subnet",
 			tx,
-			subnetName,
+			blockchainName,
 			subnetAuthKeys,
 			remainingSubnetAuthKeys,
 			outputTxPath,
@@ -379,20 +379,20 @@ func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		elasticSubnetConfig.AssetID = assetID
-		if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
+		if err = app.CreateElasticSubnetConfig(blockchainName, &elasticSubnetConfig); err != nil {
 			return err
 		}
 		if err = app.UpdateSidecarElasticSubnet(&sc, network, subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
 			return fmt.Errorf("elastic subnet transformation was successful, but failed to update sidecar: %w", err)
 		}
-		PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
+		PrintTransformResults(blockchainName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	}
 	return nil
 }
 
-func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName string, tokenSymbol string, elasticSubnetConfig models.ElasticSubnetConfig, cmd *cobra.Command) error {
+func transformElasticSubnetLocal(sc models.Sidecar, blockchainName string, tokenName string, tokenSymbol string, elasticSubnetConfig models.ElasticSubnetConfig, cmd *cobra.Command) error {
 	if checkIfSubnetIsElasticOnLocal(sc) {
-		return fmt.Errorf("%s is already an elastic subnet", subnetName)
+		return fmt.Errorf("%s is already an elastic subnet", blockchainName)
 	}
 	var err error
 	subnetID := sc.Networks[models.Local.String()].SubnetID
@@ -424,7 +424,7 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 	ux.Logger.PrintToUser("Subnet Successfully Transformed To Elastic Subnet!")
 
 	elasticSubnetConfig.AssetID = assetID
-	if err = app.CreateElasticSubnetConfig(subnetName, &elasticSubnetConfig); err != nil {
+	if err = app.CreateElasticSubnetConfig(blockchainName, &elasticSubnetConfig); err != nil {
 		return err
 	}
 	if err = app.UpdateSidecarElasticSubnet(&sc, models.NewLocalNetwork(), subnetID, assetID, txID, tokenName, tokenSymbol); err != nil {
@@ -442,18 +442,18 @@ func transformElasticSubnetLocal(sc models.Sidecar, subnetName string, tokenName
 				return nil
 			}
 			ux.Logger.PrintToUser("Transforming validators to permissionless validators")
-			if err = transformValidatorsToPermissionlessLocal(sc, subnetID, subnetName); err != nil {
+			if err = transformValidatorsToPermissionlessLocal(sc, subnetID, blockchainName); err != nil {
 				return err
 			}
 		}
 	} else {
 		ux.Logger.PrintToUser("Transforming validators to permissionless validators")
-		if err = transformValidatorsToPermissionlessLocal(sc, subnetID, subnetName); err != nil {
+		if err = transformValidatorsToPermissionlessLocal(sc, subnetID, blockchainName); err != nil {
 			return err
 		}
 	}
 
-	PrintTransformResults(subnetName, txID, subnetID, tokenName, tokenSymbol, assetID)
+	PrintTransformResults(blockchainName, txID, subnetID, tokenName, tokenSymbol, assetID)
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = models.Local.String()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetElasticCommand, app, flags)
@@ -527,8 +527,8 @@ func checkAllLocalNodesAreCurrentValidators(subnetID ids.ID) error {
 	return nil
 }
 
-func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, subnetName string) error {
-	stakedTokenAmount, err := promptStakeAmount(subnetName, true, models.NewLocalNetwork())
+func transformValidatorsToPermissionlessLocal(sc models.Sidecar, subnetID ids.ID, blockchainName string) error {
+	stakedTokenAmount, err := promptStakeAmount(blockchainName, true, models.NewLocalNetwork())
 	if err != nil {
 		return err
 	}

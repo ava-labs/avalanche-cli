@@ -11,7 +11,7 @@ import (
 
 var app *application.Avalanche
 
-// avalanche subnet
+// avalanche blockchain
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "blockchain",

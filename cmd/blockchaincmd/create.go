@@ -59,10 +59,10 @@ var (
 	errMutuallyExclusiveVMConfigOptions = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults")
 )
 
-// avalanche subnet create
+// avalanche blockchain create
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create [subnetName]",
+		Use:   "create [blockchainName]",
 		Short: "Create a new subnet configuration",
 		Long: `The subnet create command builds a new genesis file to configure your Subnet.
 By default, the command runs an interactive wizard. It walks you through
@@ -72,7 +72,7 @@ The tool supports deploying Subnet-EVM, and custom VMs. You
 can create a custom, user-generated genesis with a custom VM by providing
 the path to your genesis and VM binaries with the --genesis and --vm flags.
 
-By default, running the command with a subnetName that already exists
+By default, running the command with a blockchainName that already exists
 causes the command to fail. If you'd like to overwrite an existing
 configuration, pass the -f flag.`,
 		Args:              cobrautils.ExactArgs(1),
@@ -103,7 +103,7 @@ configuration, pass the -f flag.`,
 
 func CallCreate(
 	cmd *cobra.Command,
-	subnetName string,
+	blockchainName string,
 	forceCreateParam bool,
 	genesisFileParam string,
 	useSubnetEvmParam bool,
@@ -131,21 +131,21 @@ func CallCreate(
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
 	customVMBuildScript = customVMBuildScriptParam
-	return createSubnetConfig(cmd, []string{subnetName})
+	return createSubnetConfig(cmd, []string{blockchainName})
 }
 
 // override postrun function from root.go, so that we don't double send metrics for the same command
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func createSubnetConfig(cmd *cobra.Command, args []string) error {
-	subnetName := args[0]
+	blockchainName := args[0]
 
-	if app.GenesisExists(subnetName) && !forceCreate {
+	if app.GenesisExists(blockchainName) && !forceCreate {
 		return errors.New("configuration already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
-	if err := checkInvalidSubnetNames(subnetName); err != nil {
-		return fmt.Errorf("subnet name %q is invalid: %w", subnetName, err)
+	if err := checkInvalidSubnetNames(blockchainName); err != nil {
+		return fmt.Errorf("subnet name %q is invalid: %w", blockchainName, err)
 	}
 
 	// version flags exclusiveness
@@ -239,7 +239,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ux.Logger.PrintToUser("importing genesis for blockchain %s", subnetName)
+			ux.Logger.PrintToUser("importing genesis for blockchain %s", blockchainName)
 			genesisBytes, err = os.ReadFile(genesisFile)
 			if err != nil {
 				return err
@@ -263,7 +263,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			useExternalGasToken = params.UseExternalGasToken
 			genesisBytes, err = vm.CreateEvmGenesis(
 				app,
-				subnetName,
+				blockchainName,
 				params,
 				teleporterInfo,
 			)
@@ -273,7 +273,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 		sc, err = vm.CreateEvmSidecar(
 			app,
-			subnetName,
+			blockchainName,
 			vmVersion,
 			tokenSymbol,
 			true,
@@ -299,7 +299,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 		sc, err = vm.CreateCustomSidecar(
 			app,
-			subnetName,
+			blockchainName,
 			useRepo,
 			customVMRepoURL,
 			customVMBranch,
@@ -331,7 +331,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err = app.WriteGenesisFile(subnetName, genesisBytes); err != nil {
+	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
 
@@ -339,7 +339,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if vmType == models.SubnetEvm {
-		err = sendMetrics(cmd, vmType.RepoName(), subnetName)
+		err = sendMetrics(cmd, vmType.RepoName(), blockchainName)
 		if err != nil {
 			return err
 		}
@@ -369,10 +369,10 @@ func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, ba
 	return json.MarshalIndent(genesisMap, "", "  ")
 }
 
-func sendMetrics(cmd *cobra.Command, repoName, subnetName string) error {
+func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
 	flags := make(map[string]string)
 	flags[constants.SubnetType] = repoName
-	genesis, err := app.LoadEvmGenesis(subnetName)
+	genesis, err := app.LoadEvmGenesis(blockchainName)
 	if err != nil {
 		return err
 	}

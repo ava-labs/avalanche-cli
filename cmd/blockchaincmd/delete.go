@@ -14,28 +14,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche subnet delete
+// avalanche blockchain delete
 func newDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete [subnetName]",
-		Short: "Delete a subnet configuration",
-		Long:  "The subnet delete command deletes an existing subnet configuration.",
-		RunE:  deleteSubnet,
+		Use:   "delete [blockchainName]",
+		Short: "Delete a blockchain configuration",
+		Long:  "The blockchain delete command deletes an existing blockchain configuration.",
+		RunE:  deleteBlockchain,
 		Args:  cobrautils.ExactArgs(1),
 	}
 }
 
-func deleteSubnet(_ *cobra.Command, args []string) error {
+func deleteBlockchain(_ *cobra.Command, args []string) error {
 	// TODO sanitize this input
-	subnetName := args[0]
+	blockchainName := args[0]
 
-	sidecar, err := app.LoadSidecar(subnetName)
+	sidecar, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
 
 	if sidecar.VM == models.CustomVM {
-		customVMPath := app.GetCustomVMPath(subnetName)
+		customVMPath := app.GetCustomVMPath(blockchainName)
 		if _, err := os.Stat(customVMPath); err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
 				return err
@@ -56,7 +56,7 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 	// but only if no other subnet is using it.
 	// More info: https://github.com/ava-labs/avalanche-cli/issues/246
 
-	subnetDir := filepath.Join(app.GetSubnetDir(), subnetName)
+	subnetDir := filepath.Join(app.GetSubnetDir(), blockchainName)
 	if _, err := os.Stat(subnetDir); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
@@ -66,7 +66,7 @@ func deleteSubnet(_ *cobra.Command, args []string) error {
 	}
 
 	// rm airdrop key if exists
-	airdropKeyName, _, _, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, subnetName)
+	airdropKeyName, _, _, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, blockchainName)
 	if err != nil {
 		return err
 	}

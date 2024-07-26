@@ -51,12 +51,12 @@ const (
 	RewardManager     = "Customize Fees Distribution"
 )
 
-var subnetName string
+var blockchainName string
 
-// avalanche subnet upgrade generate
+// avalanche blockchain upgrade generate
 func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "generate [subnetName]",
+		Use:   "generate [blockchainName]",
 		Short: "Generate the configuration file to upgrade subnet nodes",
 		Long: `The subnet upgrade generate command builds a new upgrade.json file to customize your Subnet. It
 guides the user through the process using an interactive wizard.`,
@@ -67,9 +67,9 @@ guides the user through the process using an interactive wizard.`,
 }
 
 func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
-	subnetName = args[0]
-	if !app.GenesisExists(subnetName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+	blockchainName = args[0]
+	if !app.GenesisExists(blockchainName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", blockchainName)
 		return nil
 	}
 	// print some warning/info message
@@ -152,7 +152,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return app.WriteUpgradeFile(subnetName, jsonBytes)
+	return app.WriteUpgradeFile(blockchainName, jsonBytes)
 }
 
 func queryActivationTimestamp() (time.Time, error) {
@@ -194,7 +194,7 @@ func queryActivationTimestamp() (time.Time, error) {
 }
 
 func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) (bool, error) {
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return false, err
 	}

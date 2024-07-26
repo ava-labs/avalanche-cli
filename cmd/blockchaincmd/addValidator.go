@@ -43,16 +43,16 @@ var (
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 )
 
-// avalanche subnet addValidator
+// avalanche blockchain addValidator
 func newAddValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "addValidator [subnetName]",
+		Use:   "addValidator [blockchainName]",
 		Short: "Allow a validator to validate your subnet",
-		Long: `The subnet addValidator command whitelists a primary network validator to
+		Long: `The blockchain addValidator command whitelists a primary network validator to
 validate the provided deployed Subnet.
 
 To add the validator to the Subnet's allow list, you first need to provide
-the subnetName and the validator's unique NodeID. The command then prompts
+the blockchainName and the validator's unique NodeID. The command then prompts
 for the validation start time, duration, and stake weight. You can bypass
 these prompts by providing the values with flags.
 
@@ -85,7 +85,7 @@ Testnet or Mainnet.`,
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
+	blockchainName := args[0]
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -113,11 +113,11 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	network.HandlePublicNetworkSimulation()
-	if err := UpdateKeychainWithSubnetControlKeys(kc, network, subnetName); err != nil {
+	if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	return CallAddValidator(deployer, network, kc, useLedger, subnetName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
+	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 }
 
 func CallAddValidator(
@@ -125,7 +125,7 @@ func CallAddValidator(
 	network models.Network,
 	kc *keychain.Keychain,
 	useLedgerSetting bool,
-	subnetName string,
+	blockchainName string,
 	nodeIDStr string,
 	defaultValidatorParamsSetting bool,
 	waitForTxAcceptanceSetting bool,
@@ -162,12 +162,12 @@ func CallAddValidator(
 		}
 	}
 
-	_, err = ValidateSubnetNameAndGetChains([]string{subnetName})
+	_, err = ValidateSubnetNameAndGetChains([]string{blockchainName})
 	if err != nil {
 		return err
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -254,7 +254,7 @@ func CallAddValidator(
 		if err := SaveNotFullySignedTx(
 			"Add Validator",
 			tx,
-			subnetName,
+			blockchainName,
 			subnetAuthKeys,
 			remainingSubnetAuthKeys,
 			outputTxPath,

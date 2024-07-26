@@ -22,12 +22,12 @@ var (
 	customVMBuildScript string
 )
 
-// avalanche subnet list
+// avalanche blockchain export
 func newExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "export [subnetName]",
+		Use:   "export [blockchainName]",
 		Short: "Export deployment details",
-		Long: `The subnet export command write the details of an existing Subnet deploy to a file.
+		Long: `The blockchain export command write the details of an existing Subnet deploy to a file.
 
 The command prompts for an output path. You can also provide one with
 the --output flag.`,
@@ -48,9 +48,9 @@ the --output flag.`,
 	return cmd
 }
 
-func CallExportSubnet(subnetName, exportPath string) error {
+func CallExportSubnet(blockchainName, exportPath string) error {
 	exportOutput = exportPath
-	return exportSubnet(nil, []string{subnetName})
+	return exportSubnet(nil, []string{blockchainName})
 }
 
 func exportSubnet(_ *cobra.Command, args []string) error {
@@ -63,13 +63,13 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	subnetName := args[0]
+	blockchainName := args[0]
 
-	if !app.SidecarExists(subnetName) {
-		return fmt.Errorf("invalid subnet %q", subnetName)
+	if !app.SidecarExists(blockchainName) {
+		return fmt.Errorf("invalid subnet %q", blockchainName)
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -125,33 +125,33 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	gen, err := app.LoadRawGenesis(subnetName)
+	gen, err := app.LoadRawGenesis(blockchainName)
 	if err != nil {
 		return err
 	}
 
 	var nodeConfig, chainConfig, subnetConfig, networkUpgrades []byte
 
-	if app.AvagoNodeConfigExists(subnetName) {
-		nodeConfig, err = app.LoadRawAvagoNodeConfig(subnetName)
+	if app.AvagoNodeConfigExists(blockchainName) {
+		nodeConfig, err = app.LoadRawAvagoNodeConfig(blockchainName)
 		if err != nil {
 			return err
 		}
 	}
-	if app.ChainConfigExists(subnetName) {
-		chainConfig, err = app.LoadRawChainConfig(subnetName)
+	if app.ChainConfigExists(blockchainName) {
+		chainConfig, err = app.LoadRawChainConfig(blockchainName)
 		if err != nil {
 			return err
 		}
 	}
-	if app.AvagoSubnetConfigExists(subnetName) {
-		subnetConfig, err = app.LoadRawAvagoSubnetConfig(subnetName)
+	if app.AvagoSubnetConfigExists(blockchainName) {
+		subnetConfig, err = app.LoadRawAvagoSubnetConfig(blockchainName)
 		if err != nil {
 			return err
 		}
 	}
-	if app.NetworkUpgradeExists(subnetName) {
-		networkUpgrades, err = app.LoadRawNetworkUpgrades(subnetName)
+	if app.NetworkUpgradeExists(blockchainName) {
+		networkUpgrades, err = app.LoadRawNetworkUpgrades(blockchainName)
 		if err != nil {
 			return err
 		}

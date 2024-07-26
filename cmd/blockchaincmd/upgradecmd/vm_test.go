@@ -288,13 +288,13 @@ func TestUpdateToCustomBin(t *testing.T) {
 	assert := require.New(t)
 	testDir := t.TempDir()
 
-	subnetName := "testSubnet"
+	blockchainName := "testSubnet"
 	sc := models.Sidecar{
-		Name:       subnetName,
+		Name:       blockchainName,
 		VM:         models.SubnetEvm,
 		VMVersion:  "v3.0.0",
 		RPCVersion: 20,
-		Subnet:     subnetName,
+		Subnet:     blockchainName,
 	}
 	networkToUpgrade := futureDeployment
 
@@ -325,7 +325,7 @@ func TestUpdateToCustomBin(t *testing.T) {
 	assert.NoError(err)
 
 	// check new binary exists and matches
-	placedBinaryPath := app.GetCustomVMPath(subnetName)
+	placedBinaryPath := app.GetCustomVMPath(blockchainName)
 	assert.FileExists(placedBinaryPath)
 	expectedHash, err := utils.GetSHA256FromDisk(binaryPath)
 	assert.NoError(err)
@@ -336,7 +336,7 @@ func TestUpdateToCustomBin(t *testing.T) {
 	assert.Equal(expectedHash, actualHash)
 
 	// check sidecar
-	diskSC, err := app.LoadSidecar(subnetName)
+	diskSC, err := app.LoadSidecar(blockchainName)
 	assert.NoError(err)
 	assert.Equal(models.VMTypeFromString(models.CustomVM), diskSC.VM)
 	assert.Empty(diskSC.VMVersion)

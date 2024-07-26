@@ -56,10 +56,10 @@ var (
 	print bool
 )
 
-// avalanche subnet upgrade apply
+// avalanche blockchain upgrade apply
 func newUpgradeApplyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "apply [subnetName]",
+		Use:   "apply [blockchainName]",
 		Short: "Apply upgrade bytes onto subnet nodes",
 		Long: `Apply generated upgrade bytes to running Subnet nodes to trigger a network upgrade.
 
@@ -89,13 +89,13 @@ Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chai
 }
 
 func applyCmd(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
+	blockchainName := args[0]
 
-	if !app.SubnetConfigExists(subnetName) {
+	if !app.SubnetConfigExists(blockchainName) {
 		return errors.New("subnet does not exist")
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return fmt.Errorf("unable to load sidecar: %w", err)
 	}
@@ -108,11 +108,11 @@ func applyCmd(_ *cobra.Command, args []string) error {
 	switch networkToUpgrade {
 	// update a locally running network
 	case localDeployment:
-		return applyLocalNetworkUpgrade(subnetName, models.Local.String(), &sc)
+		return applyLocalNetworkUpgrade(blockchainName, models.Local.String(), &sc)
 	case fujiDeployment:
-		return applyPublicNetworkUpgrade(subnetName, models.Fuji.String(), &sc)
+		return applyPublicNetworkUpgrade(blockchainName, models.Fuji.String(), &sc)
 	case mainnetDeployment:
-		return applyPublicNetworkUpgrade(subnetName, models.Mainnet.String(), &sc)
+		return applyPublicNetworkUpgrade(blockchainName, models.Mainnet.String(), &sc)
 	}
 
 	return nil
@@ -131,11 +131,11 @@ func applyCmd(_ *cobra.Command, args []string) error {
 
 // For a already deployed subnet, the supported scheme is to
 // save a snapshot, and to load the snapshot with the upgrade
-func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar) error {
+func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Sidecar) error {
 	if print {
 		ux.Logger.PrintToUser("The --print flag is ignored on local networks. Continuing.")
 	}
-	precmpUpgrades, strNetUpgrades, err := validateUpgrade(subnetName, networkKey, sc, force)
+	precmpUpgrades, strNetUpgrades, err := validateUpgrade(blockchainName, networkKey, sc, force)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 	defer cancel()
 
 	// save a temporary snapshot
-	snapName := subnetName + tmpSnapshotInfix + time.Now().Format(timestampFormat)
+	snapName := blockchainName + tmpSnapshotInfix + time.Now().Format(timestampFormat)
 	app.Log.Debug("saving temporary snapshot for upgrade bytes", zap.String("snapshot-name", snapName))
 	_, err = cli.SaveSnapshot(ctx, snapName, false)
 	if err != nil {
@@ -224,11 +224,11 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, subnetName); err != nil {
+		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, blockchainName); err != nil {
 			return err
 		}
 
-		return writeLockFile(precmpUpgrades, subnetName)
+		return writeLockFile(precmpUpgrades, blockchainName)
 	}
 
 	return errors.New("unexpected network size of zero nodes")
@@ -249,7 +249,7 @@ func applyLocalNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar)
 //
 // For public networks we therefore limit ourselves to just "apply" the upgrades
 // This also means we are *ignoring* the lock file here!
-func applyPublicNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar) error {
+func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sidecar) error {
 	if print {
 		blockchainIDstr := "<your-blockchain-id>"
 		if sc.Networks != nil &&
@@ -264,7 +264,7 @@ func applyPublicNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar
 		ux.Logger.PrintToUser("   If you are using a different chain config dir for your node, use that one.")
 		ux.Logger.PrintToUser("2. Create a directory with the blockchainID in the configured chain-config-dir (e.g. $HOME/.avalanchego/chains/%s) if doesn't already exist.", blockchainIDstr)
 		ux.Logger.PrintToUser("3. Create an `upgrade.json` file in the blockchain directory with the content of your upgrade file.")
-		upgr, err := app.ReadUpgradeFile(subnetName)
+		upgr, err := app.ReadUpgradeFile(blockchainName)
 		if err == nil {
 			var prettyJSON bytes.Buffer
 			if err := json.Indent(&prettyJSON, upgr, "", "    "); err == nil {
@@ -281,7 +281,7 @@ func applyPublicNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar
 		ux.Logger.PrintToUser("   *************************************************************************************************************")
 		return nil
 	}
-	_, _, err := validateUpgrade(subnetName, networkKey, sc, force)
+	_, _, err := validateUpgrade(blockchainName, networkKey, sc, force)
 	if err != nil {
 		return err
 	}
@@ -309,14 +309,14 @@ func applyPublicNetworkUpgrade(subnetName, networkKey string, sc *models.Sidecar
 		return fmt.Errorf("failed to create blockchain directory: %w", err)
 	}
 
-	if err := binutils.CopyFile(app.GetUpgradeBytesFilePath(subnetName), destPath); err != nil {
+	if err := binutils.CopyFile(app.GetUpgradeBytesFilePath(blockchainName), destPath); err != nil {
 		return fmt.Errorf("failed to install the upgrades path at the provided destination: %w", err)
 	}
 	ux.Logger.PrintToUser("Successfully installed upgrade file")
 	return nil
 }
 
-func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipPrompting bool) ([]params.PrecompileUpgrade, string, error) {
+func validateUpgrade(blockchainName, networkKey string, sc *models.Sidecar, skipPrompting bool) ([]params.PrecompileUpgrade, string, error) {
 	// if there's no entry in the Sidecar, we assume there hasn't been a deploy yet
 	if sc.Networks[networkKey] == (models.NetworkData{}) {
 		return nil, "", subnetNotYetDeployed()
@@ -326,7 +326,7 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 		return nil, "", errors.New(ErrSubnetNotDeployedOutput)
 	}
 	// let's check update bytes actually exist
-	netUpgradeBytes, err := app.ReadUpgradeFile(subnetName)
+	netUpgradeBytes, err := app.ReadUpgradeFile(blockchainName)
 	if err != nil {
 		if err == os.ErrNotExist {
 			ux.Logger.PrintToUser("No file with upgrade specs for the given subnet has been found")
@@ -337,7 +337,7 @@ func validateUpgrade(subnetName, networkKey string, sc *models.Sidecar, skipProm
 	}
 
 	// read the lock file right away
-	lockUpgradeBytes, err := app.ReadLockUpgradeFile(subnetName)
+	lockUpgradeBytes, err := app.ReadLockUpgradeFile(blockchainName)
 	if err != nil {
 		// if the file doesn't exist, that's ok
 		if !os.IsNotExist(err) {
@@ -375,7 +375,7 @@ func subnetNotYetDeployed() error {
 	return errSubnetNotYetDeployed
 }
 
-func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, subnetName string) error {
+func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, blockchainName string) error {
 	// it seems all went well this far, now we try to write/update the lock file
 	// if this fails, we probably don't want to cause an error to the user?
 	// so we are silently failing, just write a log entry
@@ -386,7 +386,7 @@ func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, subnetName string)
 	if err != nil {
 		app.Log.Debug("failed to marshaling upgrades lock file content", zap.Error(err))
 	}
-	if err := app.WriteLockUpgradeFile(subnetName, jsonBytes); err != nil {
+	if err := app.WriteLockUpgradeFile(blockchainName, jsonBytes); err != nil {
 		app.Log.Debug("failed to write upgrades lock file", zap.Error(err))
 	}
 

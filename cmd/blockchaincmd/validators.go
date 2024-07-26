@@ -21,10 +21,10 @@ import (
 
 var validatorsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Cluster, networkoptions.Devnet}
 
-// avalanche subnet validators
+// avalanche blockchain validators
 func newValidatorsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "validators [subnetName]",
+		Use:   "validators [blockchainName]",
 		Short: "List a subnet's validators",
 		Long: `The subnet validators command lists the validators of a subnet and provides
 severarl statistics about them.`,
@@ -36,7 +36,7 @@ severarl statistics about them.`,
 }
 
 func printValidators(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
+	blockchainName := args[0]
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -45,14 +45,14 @@ func printValidators(_ *cobra.Command, args []string) error {
 		false,
 		false,
 		validatorsSupportedNetworkOptions,
-		subnetName,
+		blockchainName,
 	)
 	if err != nil {
 		return err
 	}
 
 	// get the subnetID
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}

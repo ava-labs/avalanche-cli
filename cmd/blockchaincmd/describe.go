@@ -41,12 +41,12 @@ import (
 
 var printGenesisOnly bool
 
-// avalanche subnet describe
+// avalanche blockchain describe
 func newDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "describe [subnetName]",
-		Short: "Print a summary of the subnet’s configuration",
-		Long: `The subnet describe command prints the details of a Subnet configuration to the console.
+		Use:   "describe [blockchainName]",
+		Short: "Print a summary of the blockchain’s configuration",
+		Long: `The blockchain describe command prints the details of a Blockchain configuration to the console.
 By default, the command prints a summary of the configuration. By providing the --genesis
 flag, the command instead prints out the raw genesis file.`,
 		RunE: describe,
@@ -62,8 +62,8 @@ flag, the command instead prints out the raw genesis file.`,
 	return cmd
 }
 
-func printGenesis(subnetName string) error {
-	genesisFile := app.GetGenesisPath(subnetName)
+func printGenesis(blockchainName string) error {
+	genesisFile := app.GetGenesisPath(blockchainName)
 	gen, err := os.ReadFile(genesisFile)
 	if err != nil {
 		return err
@@ -73,8 +73,8 @@ func printGenesis(subnetName string) error {
 	return nil
 }
 
-func PrintSubnetInfo(subnetName string, onlyLocalnetInfo bool) error {
-	sc, err := app.LoadSidecar(subnetName)
+func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -383,28 +383,28 @@ func addPrecompileAllowListToTable(
 }
 
 func describe(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
-	if !app.GenesisExists(subnetName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+	blockchainName := args[0]
+	if !app.GenesisExists(blockchainName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", blockchainName)
 		return nil
 	}
 	if printGenesisOnly {
-		return printGenesis(subnetName)
+		return printGenesis(blockchainName)
 	}
-	if err := PrintSubnetInfo(subnetName, false); err != nil {
+	if err := PrintSubnetInfo(blockchainName, false); err != nil {
 		return err
 	}
-	if isEVM, _, err := app.HasSubnetEVMGenesis(subnetName); err != nil {
+	if isEVM, _, err := app.HasSubnetEVMGenesis(blockchainName); err != nil {
 		return err
 	} else if !isEVM {
-		sc, err := app.LoadSidecar(subnetName)
+		sc, err := app.LoadSidecar(blockchainName)
 		if err != nil {
 			return err
 		}
 		app.Log.Warn("Unknown genesis format", zap.Any("vm-type", sc.VM))
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Printing genesis")
-		return printGenesis(subnetName)
+		return printGenesis(blockchainName)
 	}
 	return nil
 }

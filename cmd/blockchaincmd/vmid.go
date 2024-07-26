@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche subnet create
+// avalanche blockchain vmid
 func vmidCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vmid [vmName]",

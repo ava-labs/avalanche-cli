@@ -11,10 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche subnet upgrade import
+// avalanche blockchain upgrade print
 func newUpgradePrintCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "print [subnetName]",
+		Use:   "print [blockchainName]",
 		Short: "Print the upgrade.json file content",
 		Long:  `Print the upgrade.json file content`,
 		RunE:  upgradePrintCmd,
@@ -25,13 +25,13 @@ func newUpgradePrintCmd() *cobra.Command {
 }
 
 func upgradePrintCmd(_ *cobra.Command, args []string) error {
-	subnetName := args[0]
-	if !app.GenesisExists(subnetName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", subnetName)
+	blockchainName := args[0]
+	if !app.GenesisExists(blockchainName) {
+		ux.Logger.PrintToUser("The provided subnet name %q does not exist", blockchainName)
 		return nil
 	}
 
-	fileBytes, err := app.ReadUpgradeFile(subnetName)
+	fileBytes, err := app.ReadUpgradeFile(blockchainName)
 	if err != nil {
 		return err
 	}

@@ -22,10 +22,10 @@ var (
 	perNodeChainConf string
 )
 
-// avalanche subnet configure
+// avalanche blockchain configure
 func newConfigureCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "configure [subnetName]",
+		Use:   "configure [blockchainName]",
 		Short: "Adds additional config files for the avalanchego nodes",
 		Long: `AvalancheGo nodes support several different configuration files. Subnets have their own
 Subnet config which applies to all chains/VMs in the Subnet. Each chain within the Subnet
@@ -44,7 +44,7 @@ configuration itself. This command allows you to set all those files.`,
 
 func CallConfigure(
 	cmd *cobra.Command,
-	subnetName string,
+	blockchainName string,
 	chainConfParam string,
 	subnetConfParam string,
 	nodeConfParam string,
@@ -52,7 +52,7 @@ func CallConfigure(
 	chainConf = chainConfParam
 	subnetConf = subnetConfParam
 	nodeConf = nodeConfParam
-	return configure(cmd, []string{subnetName})
+	return configure(cmd, []string{blockchainName})
 }
 
 func configure(_ *cobra.Command, args []string) error {
@@ -60,7 +60,7 @@ func configure(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetName := chains[0]
+	blockchainName := chains[0]
 
 	const (
 		chainLabel        = constants.ChainConfigFileName
@@ -114,7 +114,7 @@ func configure(_ *cobra.Command, args []string) error {
 
 	// load each provided file
 	for filename, configPath := range configsToLoad {
-		if err = updateConf(subnetName, configPath, filename); err != nil {
+		if err = updateConf(blockchainName, configPath, filename); err != nil {
 			return err
 		}
 	}
