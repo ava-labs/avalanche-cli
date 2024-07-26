@@ -18,6 +18,14 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
+type DefaultsKind uint
+
+const (
+	NoDefaults DefaultsKind = iota
+	TestDefaults
+	ProductionDefaults
+)
+
 const (
 	latest                       = "latest"
 	preRelease                   = "pre-release"
@@ -138,7 +146,7 @@ func PromptSubnetEVMGenesisParams(
 	chainID uint64,
 	tokenSymbol string,
 	useTeleporter *bool,
-	useDefaults bool,
+	defaultsKind DefaultsKind,
 	useWarp bool,
 	useExternalGasToken bool,
 ) (SubnetEVMGenesisParams, string, error) {
@@ -155,24 +163,24 @@ func PromptSubnetEVMGenesisParams(
 		}
 	}
 	// Gas Kind
-	params, err = promptGasTokenKind(app, useDefaults, useExternalGasToken, params)
+	params, err = promptGasTokenKind(app, defaultsKind, useExternalGasToken, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 	// Native Gas Details
 	if !params.UseExternalGasToken {
-		params, tokenSymbol, err = promptNativeGasToken(app, version, tokenSymbol, useDefaults, params)
+		params, tokenSymbol, err = promptNativeGasToken(app, version, tokenSymbol, defaultsKind, params)
 		if err != nil {
 			return SubnetEVMGenesisParams{}, "", err
 		}
 	}
 	// Transaction / Gas Fees
-	params, err = promptFeeConfig(app, version, useDefaults, params)
+	params, err = promptFeeConfig(app, version, defaultsKind, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 	// Interoperability
-	params.UseTeleporter, err = PromptInteropt(app, useTeleporter, useDefaults, params.UseExternalGasToken)
+	params.UseTeleporter, err = PromptInteropt(app, useTeleporter, defaultsKind, params.UseExternalGasToken)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
@@ -182,7 +190,7 @@ func PromptSubnetEVMGenesisParams(
 		return SubnetEVMGenesisParams{}, "", fmt.Errorf("warp should be enabled for teleporter to work")
 	}
 	// Permissioning
-	params, err = promptPermissioning(app, version, useDefaults, params)
+	params, err = promptPermissioning(app, version, defaultsKind, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
@@ -192,13 +200,13 @@ func PromptSubnetEVMGenesisParams(
 // prompts for wether to use a remote or native gas token
 func promptGasTokenKind(
 	app *application.Avalanche,
-	useDefaults bool,
+	defaultsKind DefaultsKind,
 	useExternalGasToken bool,
 	params SubnetEVMGenesisParams,
 ) (SubnetEVMGenesisParams, error) {
 	if useExternalGasToken {
 		params.UseExternalGasToken = true
-	} else if enableExternalGasTokenPrompt && !useDefaults {
+	} else if enableExternalGasTokenPrompt && defaultsKind == NoDefaults {
 		var err error
 		nativeTokenOption := "The blockchain's native token"
 		externalTokenOption := "A token from another blockchain"
@@ -241,33 +249,36 @@ func promptGasTokenKind(
 // prompts for wether to use defaults to build the config
 func PromptDefaults(
 	app *application.Avalanche,
-	useDefaults bool,
-) (bool, error) {
-	if !useDefaults {
-		useDefaultsOption := "Use default values"
-		specifyMyValuesOption := "Don't use default values"
-		options := []string{useDefaultsOption, specifyMyValuesOption, explainOption}
+	defaultsKind DefaultsKind,
+) (DefaultsKind, error) {
+	if defaultsKind == NoDefaults {
+		useTestDefaultsOption := "I want to use defaults for a test environment"
+		useProductionDefaultsOption := "I want to use defaults for a production environment"
+		specifyMyValuesOption := "I don't want to use default values"
+		options := []string{useTestDefaultsOption, useProductionDefaultsOption, specifyMyValuesOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
 				"Do you want to use default values for the Blockchain configuration?",
 				options,
 			)
 			if err != nil {
-				return false, err
+				return NoDefaults, err
 			}
 			switch option {
-			case useDefaultsOption:
-				useDefaults = true
+			case useTestDefaultsOption:
+				defaultsKind = TestDefaults
+			case useProductionDefaultsOption:
+				defaultsKind = ProductionDefaults
 			case specifyMyValuesOption:
-				useDefaults = false
+				defaultsKind = NoDefaults
 			case explainOption:
-				ux.Logger.PrintToUser("Subnet configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to a newly created key\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Use constant gas prices\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.")
+				ux.Logger.PrintToUser("Subnet configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to:\n   - a newly created key (production)\n   - ewoq (test)\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Use constant gas prices\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.\n")
 				continue
 			}
 			break
 		}
 	}
-	return useDefaults, nil
+	return defaultsKind, nil
 }
 
 // prompts for token symbol, initial token allocation, and native minter precompile
@@ -281,7 +292,7 @@ func promptNativeGasToken(
 	app *application.Avalanche,
 	version string,
 	tokenSymbol string,
-	useDefaults bool,
+	defaultsKind DefaultsKind,
 	params SubnetEVMGenesisParams,
 ) (SubnetEVMGenesisParams, string, error) {
 	var (
@@ -292,9 +303,12 @@ func promptNativeGasToken(
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
-	if useDefaults {
+	switch defaultsKind {
+	case TestDefaults:
+		params.initialTokenAllocation.allocToEwoq = true
+	case ProductionDefaults:
 		params.initialTokenAllocation.allocToNewKey = true
-	} else {
+	default:
 		allocateToNewKeyOption := "Allocate 1m tokens to a new account"
 		allocateToEwoqOption := "Allocate 1m to the ewoq account 0x8db...2FC (Only recommended for testing, not recommended for production)"
 		customAllocationOption := "Define a custom allocation (Recommended for production)"
@@ -360,10 +374,10 @@ func promptNativeGasToken(
 func promptFeeConfig(
 	app *application.Avalanche,
 	version string,
-	useDefaults bool,
+	defaultsKind DefaultsKind,
 	params SubnetEVMGenesisParams,
 ) (SubnetEVMGenesisParams, error) {
-	if useDefaults {
+	if defaultsKind != NoDefaults {
 		params.feeConfig.lowThroughput = true
 		params.feeConfig.useDynamicFees = false
 		return params, nil
@@ -530,13 +544,13 @@ func promptFeeConfig(
 func PromptInteropt(
 	app *application.Avalanche,
 	useTeleporterFlag *bool,
-	useDefaults bool,
+	defaultsKind DefaultsKind,
 	useExternalGasToken bool,
 ) (bool, error) {
 	switch {
 	case useTeleporterFlag != nil:
 		return *useTeleporterFlag, nil
-	case useDefaults:
+	case defaultsKind != NoDefaults:
 		return true, nil
 	case useExternalGasToken:
 		return true, nil
@@ -568,10 +582,10 @@ func PromptInteropt(
 func promptPermissioning(
 	app *application.Avalanche,
 	version string,
-	useDefaults bool,
+	defaultsKind DefaultsKind,
 	params SubnetEVMGenesisParams,
 ) (SubnetEVMGenesisParams, error) {
-	if useDefaults {
+	if defaultsKind != NoDefaults {
 		return params, nil
 	}
 	var cancel bool
