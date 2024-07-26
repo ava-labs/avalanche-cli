@@ -189,7 +189,7 @@ func PromptSubnetEVMGenesisParams(
 	return params, tokenSymbol, nil
 }
 
-// prompts for wether to use a remote or native gas token
+// prompts for whether to use a remote or native gas token
 func promptGasTokenKind(
 	app *application.Avalanche,
 	useDefaults bool,
@@ -238,7 +238,7 @@ func promptGasTokenKind(
 	return params, nil
 }
 
-// prompts for wether to use defaults to build the config
+// prompts for whether to use defaults to build the config
 func PromptDefaults(
 	app *application.Avalanche,
 	useDefaults bool,
@@ -526,7 +526,7 @@ func promptFeeConfig(
 // if useTeleporter is defined, will enable/disable teleporter based on it
 // is useDefaults is true, will enable teleporter
 // if using external gas token, will assume teleporter to be enabled
-// if other cases, prompts the user for wether to enable teleporter
+// if other cases, prompts the user for whether to enable teleporter
 func PromptInteropt(
 	app *application.Avalanche,
 	useTeleporterFlag *bool,
@@ -612,7 +612,7 @@ func promptPermissioning(
 				case explainOption:
 					ux.Logger.PrintToUser("The Transaction Allow List is a precompile contract that allows you to specify a list of addresses that are allowed to submit transactions to your blockchain. This list can be dynamically changed by calling the precompile.")
 					ux.Logger.PrintToUser("")
-					ux.Logger.PrintToUser("This feature is useful for permissioning your blockchain and lets you easiliy implement KYC measures. Only authorized users can send transactions or deploy smart contracts on your blockchain. For more information, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#restricting-who-can-submit-transactions.")
+					ux.Logger.PrintToUser("This feature is useful for permissioning your blockchain and lets you easily implement KYC measures. Only authorized users can send transactions or deploy smart contracts on your blockchain. For more information, please visit: https://docs.avax.network/build/subnet/upgrade/customize-a-subnet#restricting-who-can-submit-transactions.")
 					continue
 				}
 				break
