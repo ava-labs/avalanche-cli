@@ -151,7 +151,7 @@ func PrintSubnetInfo(subnetName string, onlyLocalnetInfo bool) error {
 				return err
 			}
 			if isPermissioned {
-				t.AppendRow(table.Row{net, fmt.Sprintf("Owners (Threhold=%d)", threshold), strings.Join(owners, "\n")})
+				t.AppendRow(table.Row{net, fmt.Sprintf("Owners (Threshold=%d)", threshold), strings.Join(owners, "\n")})
 			}
 		}
 		if data.BlockchainID != ids.Empty {
