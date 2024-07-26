@@ -57,7 +57,7 @@ var (
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions   = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
-	errMutuallyExclusiveVMConfigOptions = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults")
+	errMutuallyExclusiveVMConfigOptions = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 )
 
 // avalanche subnet create
@@ -88,7 +88,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useLatestReleasedVMVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
-	cmd.Flags().BoolVar(&createFlags.useProductionDefaults, "evm-defaults", false, "use default production settings with Subnet-EVM")
+	cmd.Flags().BoolVar(&createFlags.useProductionDefaults, "evm-defaults", false, "deprecation notice: use '--production-defaults'")
 	cmd.Flags().BoolVar(&createFlags.useProductionDefaults, "production-defaults", false, "use default production settings for your blockchain")
 	cmd.Flags().BoolVar(&createFlags.useTestDefaults, "test-defaults", false, "use default test settings for your blockchain")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
