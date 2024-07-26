@@ -162,7 +162,7 @@ func preCreateChecks(clusterName string) error {
 	if len(numAPINodes) > 0 && !globalNetworkFlags.UseDevnet {
 		return fmt.Errorf("API nodes can only be created in Devnet")
 	}
-	if globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes) {
+	if globalNetworkFlags.UseDevnet && len(numAPINodes) > 0 && len(numAPINodes) != len(numValidatorsNodes) {
 		return fmt.Errorf("API nodes and Validator nodes must be deployed to same number of regions")
 	}
 	if len(numAPINodes) > 0 {
