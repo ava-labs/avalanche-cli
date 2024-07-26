@@ -272,7 +272,7 @@ func PromptDefaults(
 			case specifyMyValuesOption:
 				defaultsKind = NoDefaults
 			case explainOption:
-				ux.Logger.PrintToUser("Subnet configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to a newly created key\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Use constant gas prices\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.")
+				ux.Logger.PrintToUser("Subnet configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to:\n   - a newly created key (production setting)\n   - ewoq (test setting)\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Use constant gas prices\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.")
 				continue
 			}
 			break
