@@ -26,43 +26,43 @@ manage your Blockchain configurations and live deployments.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
-	// subnet create
+	// blockchain create
 	cmd.AddCommand(newCreateCmd())
-	// subnet delete
+	// blockchain delete
 	cmd.AddCommand(newDeleteCmd())
-	// subnet deploy
+	// blockchain deploy
 	cmd.AddCommand(newDeployCmd())
-	// subnet describe
+	// blockchain describe
 	cmd.AddCommand(newDescribeCmd())
-	// subnet list
+	// blockchain list
 	cmd.AddCommand(newListCmd())
-	// subnet join
+	// blockchain join
 	cmd.AddCommand(newJoinCmd())
-	// subnet addValidator
+	// blockchain addValidator
 	cmd.AddCommand(newAddValidatorCmd())
-	// subnet export
+	// blockchain export
 	cmd.AddCommand(newExportCmd())
-	// subnet import
+	// blockchain import
 	cmd.AddCommand(newImportCmd())
-	// subnet publish
+	// blockchain publish
 	cmd.AddCommand(newPublishCmd())
-	// subnet upgrade
+	// blockchain upgrade
 	cmd.AddCommand(upgradecmd.NewCmd(app))
-	// subnet stats
+	// blockchain stats
 	cmd.AddCommand(newStatsCmd())
-	// subnet configure
+	// blockchain configure
 	cmd.AddCommand(newConfigureCmd())
-	// subnet VMID
+	// blockchain VMID
 	cmd.AddCommand(vmidCmd())
-	// subnet removeValidator
+	// blockchain removeValidator
 	cmd.AddCommand(newRemoveValidatorCmd())
-	// subnet elastic
+	// blockchain elastic
 	cmd.AddCommand(newElasticCmd())
-	// subnet validators
+	// blockchain validators
 	cmd.AddCommand(newValidatorsCmd())
-	// subnet addPermissionlessDelegator
+	// blockchain addPermissionlessDelegator
 	cmd.AddCommand(newAddPermissionlessDelegatorCmd())
-	// subnet changeOwner
+	// blockchain changeOwner
 	cmd.AddCommand(newChangeOwnerCmd())
 	return cmd
 }

@@ -59,8 +59,8 @@ var (
 func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "join [blockchainName]",
-		Short: "Configure your validator node to begin validating a new subnet",
-		Long: `The subnet join command configures your validator node to begin validating a new Subnet.
+		Short: "Configure your validator node to begin validating a new blockchain",
+		Long: `The subnet join command configures your validator node to begin validating a new Blockchain.
 
 To complete this process, you must have access to the machine running your validator. If the
 CLI is running on the same machine as your validator, it can generate or update your node's
@@ -73,7 +73,7 @@ After you update your validator's config, you need to restart your validator man
 you provide the --avalanchego-config flag, this command attempts to edit the config file
 at that path.
 
-This command currently only supports Subnets deployed on the Fuji Testnet and Mainnet.`,
+This command currently only supports Blockchains deployed on the Fuji Testnet and Mainnet.`,
 		RunE: joinCmd,
 		Args: cobrautils.ExactArgs(1),
 	}

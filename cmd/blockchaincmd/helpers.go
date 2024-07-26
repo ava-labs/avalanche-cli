@@ -15,32 +15,32 @@ import (
 
 var globalNetworkFlags networkoptions.NetworkFlags
 
-func CreateSubnetFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool) error {
-	if !app.SubnetConfigExists(blockchainName) {
+func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool) error {
+	if !app.BlockchainConfigExists(blockchainName) {
 		if !skipPrompt {
-			yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Subnet %s is not created yet. Do you want to create it first?", blockchainName))
+			yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Blockchain %s is not created yet. Do you want to create it first?", blockchainName))
 			if err != nil {
 				return err
 			}
 			if !yes {
-				return fmt.Errorf("subnet not available and not being created first")
+				return fmt.Errorf("blockchain not available and not being created first")
 			}
 		}
-		return createSubnetConfig(cmd, []string{blockchainName})
+		return createBlockchainConfig(cmd, []string{blockchainName})
 	}
 	return nil
 }
 
-func DeploySubnetFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool, supportedNetworkOptions []networkoptions.NetworkOption) error {
+func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool, supportedNetworkOptions []networkoptions.NetworkOption) error {
 	var (
 		doDeploy       bool
 		msg            string
 		errIfNoChoosen error
 	)
-	if !app.SubnetConfigExists(blockchainName) {
+	if !app.BlockchainConfigExists(blockchainName) {
 		doDeploy = true
-		msg = fmt.Sprintf("Subnet %s is not created yet. Do you want to create it first?", blockchainName)
-		errIfNoChoosen = fmt.Errorf("subnet not available and not being created first")
+		msg = fmt.Sprintf("Blockchain %s is not created yet. Do you want to create it first?", blockchainName)
+		errIfNoChoosen = fmt.Errorf("blockchain not available and not being created first")
 	} else {
 		filteredSupportedNetworkOptions, _, _, err := networkoptions.GetSupportedNetworkOptionsForSubnet(app, blockchainName, supportedNetworkOptions)
 		if err != nil {
@@ -48,8 +48,8 @@ func DeploySubnetFirst(cmd *cobra.Command, blockchainName string, skipPrompt boo
 		}
 		if len(filteredSupportedNetworkOptions) == 0 {
 			doDeploy = true
-			msg = fmt.Sprintf("Subnet %s is not deployed yet to a supported network. Do you want to deploy it first?", blockchainName)
-			errIfNoChoosen = fmt.Errorf("subnet not deployed and not being deployed first")
+			msg = fmt.Sprintf("Blockchain %s is not deployed yet to a supported network. Do you want to deploy it first?", blockchainName)
+			errIfNoChoosen = fmt.Errorf("blockchain not deployed and not being deployed first")
 		}
 	}
 	if doDeploy {

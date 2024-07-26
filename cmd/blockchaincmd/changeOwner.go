@@ -23,8 +23,8 @@ var changeOwnerSupportedNetworkOptions = []networkoptions.NetworkOption{networko
 func newChangeOwnerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "changeOwner [blockchainName]",
-		Short: "Change owner of the subnet",
-		Long:  `The blockchain changeOwner changes the owner of the deployed Subnet.`,
+		Short: "Change owner of the blockchain's subnet",
+		Long:  `The blockchain changeOwner changes the owner of the subnet of the deployed Blockchain.`,
 		RunE:  changeOwner,
 		Args:  cobrautils.ExactArgs(1),
 	}

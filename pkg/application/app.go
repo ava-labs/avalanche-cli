@@ -146,36 +146,36 @@ func (app *Avalanche) GetSubnetEVMBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.SubnetEVMInstallDir)
 }
 
-func (app *Avalanche) GetUpgradeBytesFilepath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
+func (app *Avalanche) GetUpgradeBytesFilepath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
 }
 
-func (app *Avalanche) GetCustomVMPath(subnetName string) string {
-	return filepath.Join(app.GetCustomVMDir(), subnetName)
+func (app *Avalanche) GetCustomVMPath(blockchainName string) string {
+	return filepath.Join(app.GetCustomVMDir(), blockchainName)
 }
 
 func (app *Avalanche) GetAPMVMPath(vmid string) string {
 	return filepath.Join(app.GetAPMPluginDir(), vmid)
 }
 
-func (app *Avalanche) GetGenesisPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.GenesisFileName)
+func (app *Avalanche) GetGenesisPath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.GenesisFileName)
 }
 
-func (app *Avalanche) GetAvagoNodeConfigPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.NodeConfigFileName)
+func (app *Avalanche) GetAvagoNodeConfigPath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.NodeConfigFileName)
 }
 
-func (app *Avalanche) GetChainConfigPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.ChainConfigFileName)
+func (app *Avalanche) GetChainConfigPath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.ChainConfigFileName)
 }
 
-func (app *Avalanche) GetAvagoSubnetConfigPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SubnetConfigFileName)
+func (app *Avalanche) GetAvagoSubnetConfigPath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.SubnetConfigFileName)
 }
 
-func (app *Avalanche) GetSidecarPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.SidecarFileName)
+func (app *Avalanche) GetSidecarPath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.SidecarFileName)
 }
 
 func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
@@ -236,8 +236,8 @@ func (app *Avalanche) GetNodeBLSSecretKeyPath(instanceID string) string {
 	return filepath.Join(app.GetNodeInstanceDirPath(instanceID), constants.BLSKeyFileName)
 }
 
-func (app *Avalanche) GetElasticSubnetConfigPath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.ElasticSubnetConfigFileName)
+func (app *Avalanche) GetElasticSubnetConfigPath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.ElasticSubnetConfigFileName)
 }
 
 func (app *Avalanche) GetKeyDir() string {
@@ -276,8 +276,8 @@ func (app *Avalanche) GetKey(keyName string, network models.Network, createIfMis
 	}
 }
 
-func (app *Avalanche) GetUpgradeBytesFilePath(subnetName string) string {
-	return filepath.Join(app.GetSubnetDir(), subnetName, constants.UpgradeBytesFileName)
+func (app *Avalanche) GetUpgradeBytesFilePath(blockchainName string) string {
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
 }
 
 func (app *Avalanche) GetDownloader() Downloader {
@@ -288,82 +288,82 @@ func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 
-func (app *Avalanche) ReadUpgradeFile(subnetName string) ([]byte, error) {
-	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
+func (app *Avalanche) ReadUpgradeFile(blockchainName string) ([]byte, error) {
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(blockchainName)
 
 	return app.readFile(upgradeBytesFilePath)
 }
 
-func (app *Avalanche) ReadLockUpgradeFile(subnetName string) ([]byte, error) {
-	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(subnetName) + constants.UpgradeBytesLockExtension
+func (app *Avalanche) ReadLockUpgradeFile(blockchainName string) ([]byte, error) {
+	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(blockchainName) + constants.UpgradeBytesLockExtension
 
 	return app.readFile(upgradeBytesLockFilePath)
 }
 
-func (app *Avalanche) WriteUpgradeFile(subnetName string, bytes []byte) error {
-	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(subnetName)
+func (app *Avalanche) WriteUpgradeFile(blockchainName string, bytes []byte) error {
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(blockchainName)
 
 	return app.writeFile(upgradeBytesFilePath, bytes)
 }
 
-func (app *Avalanche) WriteLockUpgradeFile(subnetName string, bytes []byte) error {
-	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(subnetName) + constants.UpgradeBytesLockExtension
+func (app *Avalanche) WriteLockUpgradeFile(blockchainName string, bytes []byte) error {
+	upgradeBytesLockFilePath := app.GetUpgradeBytesFilePath(blockchainName) + constants.UpgradeBytesLockExtension
 
 	return app.writeFile(upgradeBytesLockFilePath, bytes)
 }
 
-func (app *Avalanche) WriteGenesisFile(subnetName string, genesisBytes []byte) error {
-	genesisPath := app.GetGenesisPath(subnetName)
+func (app *Avalanche) WriteGenesisFile(blockchainName string, genesisBytes []byte) error {
+	genesisPath := app.GetGenesisPath(blockchainName)
 
 	return app.writeFile(genesisPath, genesisBytes)
 }
 
-func (app *Avalanche) WriteAvagoNodeConfigFile(subnetName string, bs []byte) error {
-	path := app.GetAvagoNodeConfigPath(subnetName)
+func (app *Avalanche) WriteAvagoNodeConfigFile(blockchainName string, bs []byte) error {
+	path := app.GetAvagoNodeConfigPath(blockchainName)
 	return app.writeFile(path, bs)
 }
 
-func (app *Avalanche) WriteChainConfigFile(subnetName string, bs []byte) error {
-	path := app.GetChainConfigPath(subnetName)
+func (app *Avalanche) WriteChainConfigFile(blockchainName string, bs []byte) error {
+	path := app.GetChainConfigPath(blockchainName)
 	return app.writeFile(path, bs)
 }
 
-func (app *Avalanche) WriteAvagoSubnetConfigFile(subnetName string, bs []byte) error {
-	path := app.GetAvagoSubnetConfigPath(subnetName)
+func (app *Avalanche) WriteAvagoSubnetConfigFile(blockchainName string, bs []byte) error {
+	path := app.GetAvagoSubnetConfigPath(blockchainName)
 	return app.writeFile(path, bs)
 }
 
-func (app *Avalanche) WriteNetworkUpgradesFile(subnetName string, bs []byte) error {
-	path := app.GetUpgradeBytesFilepath(subnetName)
+func (app *Avalanche) WriteNetworkUpgradesFile(blockchainName string, bs []byte) error {
+	path := app.GetUpgradeBytesFilepath(blockchainName)
 	return app.writeFile(path, bs)
 }
 
-func (app *Avalanche) GenesisExists(subnetName string) bool {
-	genesisPath := app.GetGenesisPath(subnetName)
+func (app *Avalanche) GenesisExists(blockchainName string) bool {
+	genesisPath := app.GetGenesisPath(blockchainName)
 	_, err := os.Stat(genesisPath)
 	return err == nil
 }
 
-func (app *Avalanche) AvagoNodeConfigExists(subnetName string) bool {
-	path := app.GetAvagoNodeConfigPath(subnetName)
+func (app *Avalanche) AvagoNodeConfigExists(blockchainName string) bool {
+	path := app.GetAvagoNodeConfigPath(blockchainName)
 	_, err := os.Stat(path)
 	return err == nil
 }
 
-func (app *Avalanche) ChainConfigExists(subnetName string) bool {
-	path := app.GetChainConfigPath(subnetName)
+func (app *Avalanche) ChainConfigExists(blockchainName string) bool {
+	path := app.GetChainConfigPath(blockchainName)
 	_, err := os.Stat(path)
 	return err == nil
 }
 
-func (app *Avalanche) AvagoSubnetConfigExists(subnetName string) bool {
-	path := app.GetAvagoSubnetConfigPath(subnetName)
+func (app *Avalanche) AvagoSubnetConfigExists(blockchainName string) bool {
+	path := app.GetAvagoSubnetConfigPath(blockchainName)
 	_, err := os.Stat(path)
 	return err == nil
 }
 
-func (app *Avalanche) NetworkUpgradeExists(subnetName string) bool {
-	path := app.GetUpgradeBytesFilepath(subnetName)
+func (app *Avalanche) NetworkUpgradeExists(blockchainName string) bool {
+	path := app.GetUpgradeBytesFilepath(blockchainName)
 	_, err := os.Stat(path)
 	return err == nil
 }
@@ -373,15 +373,15 @@ func (app *Avalanche) ClustersConfigExists() bool {
 	return err == nil
 }
 
-func (app *Avalanche) SidecarExists(subnetName string) bool {
-	sidecarPath := app.GetSidecarPath(subnetName)
+func (app *Avalanche) SidecarExists(blockchainName string) bool {
+	sidecarPath := app.GetSidecarPath(blockchainName)
 	_, err := os.Stat(sidecarPath)
 	return err == nil
 }
 
-func (app *Avalanche) SubnetConfigExists(subnetName string) bool {
-	// There's always a sidecar, but imported subnets don't have a genesis right now
-	return app.SidecarExists(subnetName)
+func (app *Avalanche) BlockchainConfigExists(blockchainName string) bool {
+	// There's always a sidecar, but imported blockchains don't have a genesis right now
+	return app.SidecarExists(blockchainName)
 }
 
 func (app *Avalanche) KeyExists(keyName string) bool {
@@ -390,12 +390,12 @@ func (app *Avalanche) KeyExists(keyName string) bool {
 	return err == nil
 }
 
-func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) error {
+func (app *Avalanche) CopyGenesisFile(inputFilename string, blockchainName string) error {
 	genesisBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
 		return err
 	}
-	genesisPath := app.GetGenesisPath(subnetName)
+	genesisPath := app.GetGenesisPath(blockchainName)
 	if err := os.MkdirAll(filepath.Dir(genesisPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
@@ -403,12 +403,12 @@ func (app *Avalanche) CopyGenesisFile(inputFilename string, subnetName string) e
 	return os.WriteFile(genesisPath, genesisBytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) CopyVMBinary(inputFilename string, subnetName string) error {
+func (app *Avalanche) CopyVMBinary(inputFilename string, blockchainName string) error {
 	vmBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
 		return err
 	}
-	vmPath := app.GetCustomVMPath(subnetName)
+	vmPath := app.GetCustomVMPath(blockchainName)
 	return os.WriteFile(vmPath, vmBytes, constants.DefaultPerms755)
 }
 
@@ -421,20 +421,20 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	return os.WriteFile(keyPath, keyBytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) HasSubnetEVMGenesis(subnetName string) (bool, error, error) {
-	if _, err := app.LoadRawGenesis(subnetName); err != nil {
+func (app *Avalanche) HasSubnetEVMGenesis(blockchainName string) (bool, error, error) {
+	if _, err := app.LoadRawGenesis(blockchainName); err != nil {
 		return false, nil, err
 	}
 	// from here, we are sure to have a genesis file
-	_, err := app.LoadEvmGenesis(subnetName)
+	_, err := app.LoadEvmGenesis(blockchainName)
 	if err != nil {
 		return false, err, nil
 	}
 	return true, nil, nil
 }
 
-func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
-	genesisPath := app.GetGenesisPath(subnetName)
+func (app *Avalanche) LoadEvmGenesis(blockchainName string) (core.Genesis, error) {
+	genesisPath := app.GetGenesisPath(blockchainName)
 	bs, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return core.Genesis{}, err
@@ -442,25 +442,25 @@ func (app *Avalanche) LoadEvmGenesis(subnetName string) (core.Genesis, error) {
 	return utils.ByteSliceToSubnetEvmGenesis(bs)
 }
 
-func (app *Avalanche) LoadRawGenesis(subnetName string) ([]byte, error) {
-	genesisPath := app.GetGenesisPath(subnetName)
+func (app *Avalanche) LoadRawGenesis(blockchainName string) ([]byte, error) {
+	genesisPath := app.GetGenesisPath(blockchainName)
 	return os.ReadFile(genesisPath)
 }
 
-func (app *Avalanche) LoadRawAvagoNodeConfig(subnetName string) ([]byte, error) {
-	return os.ReadFile(app.GetAvagoNodeConfigPath(subnetName))
+func (app *Avalanche) LoadRawAvagoNodeConfig(blockchainName string) ([]byte, error) {
+	return os.ReadFile(app.GetAvagoNodeConfigPath(blockchainName))
 }
 
-func (app *Avalanche) LoadRawChainConfig(subnetName string) ([]byte, error) {
-	return os.ReadFile(app.GetChainConfigPath(subnetName))
+func (app *Avalanche) LoadRawChainConfig(blockchainName string) ([]byte, error) {
+	return os.ReadFile(app.GetChainConfigPath(blockchainName))
 }
 
-func (app *Avalanche) LoadRawAvagoSubnetConfig(subnetName string) ([]byte, error) {
-	return os.ReadFile(app.GetAvagoSubnetConfigPath(subnetName))
+func (app *Avalanche) LoadRawAvagoSubnetConfig(blockchainName string) ([]byte, error) {
+	return os.ReadFile(app.GetAvagoSubnetConfigPath(blockchainName))
 }
 
-func (app *Avalanche) LoadRawNetworkUpgrades(subnetName string) ([]byte, error) {
-	return os.ReadFile(app.GetUpgradeBytesFilepath(subnetName))
+func (app *Avalanche) LoadRawNetworkUpgrades(blockchainName string) ([]byte, error) {
+	return os.ReadFile(app.GetUpgradeBytesFilepath(blockchainName))
 }
 
 func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
@@ -484,12 +484,12 @@ func (app *Avalanche) CreateSidecar(sc *models.Sidecar) error {
 	return os.WriteFile(sidecarPath, scBytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) LoadSidecar(subnetName string) (models.Sidecar, error) {
-	if !app.SidecarExists(subnetName) {
-		return models.Sidecar{}, fmt.Errorf("subnet %q does not exist", subnetName)
+func (app *Avalanche) LoadSidecar(blockchainName string) (models.Sidecar, error) {
+	if !app.SidecarExists(blockchainName) {
+		return models.Sidecar{}, fmt.Errorf("subnet %q does not exist", blockchainName)
 	}
 
-	sidecarPath := app.GetSidecarPath(subnetName)
+	sidecarPath := app.GetSidecarPath(blockchainName)
 	jsonBytes, err := os.ReadFile(sidecarPath)
 	if err != nil {
 		return models.Sidecar{}, err
@@ -608,16 +608,16 @@ func (app *Avalanche) UpdateSidecarElasticSubnetPartialTx(
 	return app.UpdateSidecar(sc)
 }
 
-func (app *Avalanche) GetTokenName(subnetName string) string {
-	sidecar, err := app.LoadSidecar(subnetName)
+func (app *Avalanche) GetTokenName(blockchainName string) string {
+	sidecar, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return constants.DefaultTokenName
 	}
 	return sidecar.TokenName
 }
 
-func (app *Avalanche) GetTokenSymbol(subnetName string) string {
-	sidecar, err := app.LoadSidecar(subnetName)
+func (app *Avalanche) GetTokenSymbol(blockchainName string) string {
+	sidecar, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return constants.DefaultTokenSymbol
 	}
@@ -644,18 +644,18 @@ func (app *Avalanche) GetSubnetNames() ([]string, error) {
 }
 
 func (app *Avalanche) GetSubnetNamesOnNetwork(network models.Network) ([]string, error) {
-	subnetNames, err := app.GetSubnetNames()
+	blockchainNames, err := app.GetSubnetNames()
 	if err != nil {
 		return nil, err
 	}
 	filtered := []string{}
-	for _, subnetName := range subnetNames {
-		sc, err := app.LoadSidecar(subnetName)
+	for _, blockchainName := range blockchainNames {
+		sc, err := app.LoadSidecar(blockchainName)
 		if err != nil {
 			return nil, err
 		}
 		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
-			filtered = append(filtered, subnetName)
+			filtered = append(filtered, blockchainName)
 		}
 	}
 	return filtered, nil
@@ -691,8 +691,8 @@ func (app *Avalanche) CreateNodeCloudConfigFile(nodeName string, nodeConfig *mod
 	return os.WriteFile(nodeConfigPath, esBytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.ElasticSubnetConfig) error {
-	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+func (app *Avalanche) CreateElasticSubnetConfig(blockchainName string, es *models.ElasticSubnetConfig) error {
+	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(blockchainName)
 	if err := os.MkdirAll(filepath.Dir(elasticSubetConfigPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
@@ -705,8 +705,8 @@ func (app *Avalanche) CreateElasticSubnetConfig(subnetName string, es *models.El
 	return os.WriteFile(elasticSubetConfigPath, esBytes, constants.WriteReadReadPerms)
 }
 
-func (app *Avalanche) LoadElasticSubnetConfig(subnetName string) (models.ElasticSubnetConfig, error) {
-	elasticSubnetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
+func (app *Avalanche) LoadElasticSubnetConfig(blockchainName string) (models.ElasticSubnetConfig, error) {
+	elasticSubnetConfigPath := app.GetElasticSubnetConfigPath(blockchainName)
 	jsonBytes, err := os.ReadFile(elasticSubnetConfigPath)
 	if err != nil {
 		return models.ElasticSubnetConfig{}, err

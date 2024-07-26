@@ -44,8 +44,8 @@ type newPublisherFunc func(string, string, string) subnet.Publisher
 func newPublishCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "publish [blockchainName]",
-		Short: "Publish the subnet's VM to a repository",
-		Long:  `The subnet publish command publishes the Subnet's VM to a repository.`,
+		Short: "Publish the blockchain's VM to a repository",
+		Long:  `The blockchain publish command publishes the Blockchain's VM to a repository.`,
 		RunE:  publish,
 		Args:  cobrautils.ExactArgs(1),
 	}

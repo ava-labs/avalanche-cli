@@ -99,8 +99,8 @@ func upgradeVM(_ *cobra.Command, args []string) error {
 
 	blockchainName := args[0]
 
-	if !app.SubnetConfigExists(blockchainName) {
-		return errors.New("subnet does not exist")
+	if !app.BlockchainConfigExists(blockchainName) {
+		return errors.New("blockchain does not exist")
 	}
 
 	sc, err := app.LoadSidecar(blockchainName)

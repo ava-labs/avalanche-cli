@@ -54,7 +54,7 @@ var (
 func newElasticCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "elastic [blockchainName]",
-		Short: "Transforms a subnet into elastic subnet",
+		Short: "Transforms a blockchain's subnet into elastic subnet",
 		Long: `The elastic command enables anyone to be a validator of a Subnet by simply staking its token on the 
 P-Chain. When enabling Elastic Validation, the creator permanently locks the Subnet from future modification 
 (they relinquish their control keys), specifies an Avalanche Native Token (ANT) that validators must use for staking 
@@ -145,7 +145,7 @@ func importFromXChain(deployer *subnet.PublicDeployer,
 func transformElasticSubnet(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
-	if err := DeploySubnetFirst(cmd, blockchainName, false, elasticSupportedNetworkOptions); err != nil {
+	if err := DeployBlockchainFirst(cmd, blockchainName, false, elasticSupportedNetworkOptions); err != nil {
 		return err
 	}
 

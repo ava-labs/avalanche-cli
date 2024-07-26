@@ -11,17 +11,17 @@ import (
 func newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import",
-		Short: "Import subnets into avalanche-cli",
-		Long: `Import subnet configurations into avalanche-cli.
+		Short: "Import blockchains into avalanche-cli",
+		Long: `Import blockchain configurations into avalanche-cli.
 
 This command suite supports importing from a file created on another computer,
-or importing from subnets running public networks
+or importing from blockchains running public networks
 (e.g. created manually or with the deprecated subnet-cli)`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
-	// subnet import file
+	// blockchain import file
 	cmd.AddCommand(newImportFileCmd())
-	// subnet import public
+	// blockchain import public
 	cmd.AddCommand(newImportPublicCmd())
 	return cmd
 }

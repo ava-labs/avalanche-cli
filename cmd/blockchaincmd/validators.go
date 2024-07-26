@@ -25,8 +25,8 @@ var validatorsSupportedNetworkOptions = []networkoptions.NetworkOption{networkop
 func newValidatorsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validators [blockchainName]",
-		Short: "List a subnet's validators",
-		Long: `The subnet validators command lists the validators of a subnet and provides
+		Short: "List subnets validators of a blockchain",
+		Long: `The blockchain validators command lists the validators of a blockchain's subnet and provides
 severarl statistics about them.`,
 		RunE: printValidators,
 		Args: cobrautils.ExactArgs(1),

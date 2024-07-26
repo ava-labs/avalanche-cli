@@ -63,10 +63,10 @@ var (
 func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [blockchainName]",
-		Short: "Create a new subnet configuration",
-		Long: `The subnet create command builds a new genesis file to configure your Subnet.
+		Short: "Create a new blockchain configuration",
+		Long: `The blockchain create command builds a new genesis file to configure your Blockchain.
 By default, the command runs an interactive wizard. It walks you through
-all the steps you need to create your first Subnet.
+all the steps you need to create your first Blockchain.
 
 The tool supports deploying Subnet-EVM, and custom VMs. You
 can create a custom, user-generated genesis with a custom VM by providing
@@ -76,7 +76,7 @@ By default, running the command with a blockchainName that already exists
 causes the command to fail. If you'd like to overwrite an existing
 configuration, pass the -f flag.`,
 		Args:              cobrautils.ExactArgs(1),
-		RunE:              createSubnetConfig,
+		RunE:              createBlockchainConfig,
 		PersistentPostRun: handlePostRun,
 	}
 	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
@@ -131,13 +131,13 @@ func CallCreate(
 	customVMRepoURL = customVMRepoURLParam
 	customVMBranch = customVMBranchParam
 	customVMBuildScript = customVMBuildScriptParam
-	return createSubnetConfig(cmd, []string{blockchainName})
+	return createBlockchainConfig(cmd, []string{blockchainName})
 }
 
 // override postrun function from root.go, so that we don't double send metrics for the same command
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
-func createSubnetConfig(cmd *cobra.Command, args []string) error {
+func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
 	if app.GenesisExists(blockchainName) && !forceCreate {

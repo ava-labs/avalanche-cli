@@ -27,7 +27,7 @@ func newExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export [blockchainName]",
 		Short: "Export deployment details",
-		Long: `The blockchain export command write the details of an existing Subnet deploy to a file.
+		Long: `The blockchain export command write the details of an existing Blockchain deploy to a file.
 
 The command prompts for an output path. You can also provide one with
 the --output flag.`,

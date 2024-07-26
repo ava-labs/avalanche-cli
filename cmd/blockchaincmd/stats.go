@@ -28,8 +28,8 @@ var statsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions
 func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stats [blockchainName]",
-		Short: "Show validator statistics for the given subnet",
-		Long:  `The subnet stats command prints validator statistics for the given Subnet.`,
+		Short: "Show validator statistics for the given blockchain",
+		Long:  `The blockchain stats command prints validator statistics for the given Blockchain.`,
 		Args:  cobrautils.ExactArgs(1),
 		RunE:  stats,
 	}

@@ -28,9 +28,9 @@ var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{netw
 func newRemoveValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "removeValidator [blockchainName]",
-		Short: "Remove a permissioned validator from your subnet",
-		Long: `The subnet removeValidator command stops a whitelisted, subnet network validator from
-validating your deployed Subnet.
+		Short: "Remove a permissioned validator from your blockchain's subnet",
+		Long: `The blockchain removeValidator command stops a whitelisted, subnet network validator from
+validating your deployed Blockchain.
 
 To remove the validator from the Subnet's allow list, provide the validator's unique NodeID. You can bypass
 these prompts by providing the values with flags.`,

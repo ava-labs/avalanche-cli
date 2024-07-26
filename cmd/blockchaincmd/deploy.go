@@ -69,13 +69,13 @@ func newDeployCmd() *cobra.Command {
 
 At the end of the call, the command prints the RPC URL you can use to interact with the Subnet.
 
-Avalanche-CLI only supports deploying an individual Subnet once per network. Subsequent
-attempts to deploy the same Subnet to the same network (local, Fuji, Mainnet) aren't
-allowed. If you'd like to redeploy a Subnet locally for testing, you must first call
+Avalanche-CLI only supports deploying an individual Blockchain once per network. Subsequent
+attempts to deploy the same Blockchain to the same network (local, Fuji, Mainnet) aren't
+allowed. If you'd like to redeploy a Blockchain locally for testing, you must first call
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
-redeploy the chain with fresh state. You can deploy the same Subnet to multiple networks,
+redeploy the chain with fresh state. You can deploy the same Blockchain to multiple networks,
 so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
-		RunE:              deploySubnet,
+		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
 		Args:              cobrautils.ExactArgs(1),
 	}
@@ -120,7 +120,7 @@ func CallDeploy(
 	keyName = keyNameParam
 	useLedger = useLedgerParam
 	useEwoq = useEwoqParam
-	return deploySubnet(cmd, []string{blockchainName})
+	return deployBlockchain(cmd, []string{blockchainName})
 }
 
 func getChainsInSubnet(blockchainName string) ([]string, error) {
@@ -175,7 +175,7 @@ func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string
 func runDeploy(cmd *cobra.Command, args []string, supportedNetworkOptions []networkoptions.NetworkOption) error {
 	skipCreatePrompt = true
 	deploySupportedNetworkOptions = supportedNetworkOptions
-	return deploySubnet(cmd, args)
+	return deployBlockchain(cmd, args)
 }
 
 func updateSubnetEVMGenesisChainID(genesisBytes []byte, newChainID uint) ([]byte, error) {
@@ -256,11 +256,11 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 	return app.UpdateSidecar(sc)
 }
 
-// deploySubnet is the cobra command run for deploying subnets
-func deploySubnet(cmd *cobra.Command, args []string) error {
+// deployBlockchain is the cobra command run for deploying subnets
+func deployBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
-	if err := CreateSubnetFirst(cmd, blockchainName, skipCreatePrompt); err != nil {
+	if err := CreateBlockchainFirst(cmd, blockchainName, skipCreatePrompt); err != nil {
 		return err
 	}
 

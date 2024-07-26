@@ -42,7 +42,7 @@ The delegation period must be a subset of the period that the delegatee
 validates the Primary Network.
 
 To add a node as a delegator, you first need to provide
-the subnetID and the validator's unique NodeID. The command then prompts
+the validator's unique NodeID. The command then prompts
 for the validation start time, duration, and stake weight. You can bypass
 these prompts by providing the values with flags.`,
 		RunE: addPermissionlessDelegator,

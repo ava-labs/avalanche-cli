@@ -30,16 +30,16 @@ var (
 // avalanche blockchain import file
 func newImportFileCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "file [subnetPath]",
-		Short: "Import an existing subnet config",
-		RunE:  importSubnet,
+		Use:   "file [blockchainPath]",
+		Short: "Import an existing blockchain config",
+		RunE:  importBlockchain,
 		Args:  cobrautils.MaximumNArgs(1),
-		Long: `The subnet import command will import a subnet configuration from a file or a git repository.
+		Long: `The blockchain import command will import a blockchain configuration from a file or a git repository.
 
 To import from a file, you can optionally provide the path as a command-line argument.
 Alternatively, running the command without any arguments triggers an interactive wizard.
-To import from a repository, go through the wizard. By default, an imported Subnet doesn't 
-overwrite an existing Subnet with the same name. To allow overwrites, provide the --force
+To import from a repository, go through the wizard. By default, an imported Blockchain doesn't 
+overwrite an existing Blockchain with the same name. To allow overwrites, provide the --force
 flag.`,
 	}
 	cmd.Flags().BoolVarP(
@@ -70,7 +70,7 @@ flag.`,
 	return cmd
 }
 
-func importSubnet(_ *cobra.Command, args []string) error {
+func importBlockchain(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		importPath := args[0]
 		return importFromFile(importPath)

@@ -25,11 +25,11 @@ var deployed bool
 func newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all created Subnet configurations",
-		Long: `The subnet list command prints the names of all created Subnet configurations. Without any flags,
-it prints some general, static information about the Subnet. With the --deployed flag, the command
+		Short: "List all created Blockchain configurations",
+		Long: `The blockchain list command prints the names of all created Blockchain configurations. Without any flags,
+it prints some general, static information about the Blockchain. With the --deployed flag, the command
 shows additional information including the VMID, BlockchainID and SubnetID.`,
-		RunE: listSubnets,
+		RunE: listBlockchains,
 	}
 	cmd.Flags().BoolVar(&deployed, "deployed", false, "show additional deploy information")
 	return cmd
@@ -50,7 +50,7 @@ func (c subnetMatrix) Less(i, j int) bool {
 	return strings.Compare(c[i][0], c[j][0]) == -1
 }
 
-func listSubnets(cmd *cobra.Command, args []string) error {
+func listBlockchains(cmd *cobra.Command, args []string) error {
 	if deployed {
 		return listDeployInfo(cmd, args)
 	}

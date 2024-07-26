@@ -31,14 +31,14 @@ var (
 // avalanche blockchain import public
 func newImportPublicCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "public [subnetPath]",
-		Short: "Import an existing subnet config from running subnets on a public network",
+		Use:   "public [blockchainPath]",
+		Short: "Import an existing blockchain config from running blockchains on a public network",
 		RunE:  importPublic,
 		Args:  cobrautils.MaximumNArgs(1),
-		Long: `The subnet import public command imports a Subnet configuration from a running network.
+		Long: `The blockchain import public command imports a Blockchain configuration from a running network.
 
-The genesis file should be available from the disk for this to work. By default, an imported Subnet
-doesn't overwrite an existing Subnet with the same name. To allow overwrites, provide the --force
+The genesis file should be available from the disk for this to work. By default, an imported Blockchain
+doesn't overwrite an existing Blockchain with the same name. To allow overwrites, provide the --force
 flag.`,
 	}
 
