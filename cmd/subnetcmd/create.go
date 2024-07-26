@@ -37,7 +37,8 @@ type CreateFlags struct {
 	useCustomVM                   bool
 	chainID                       uint64
 	tokenSymbol                   string
-	useDefaults                   bool
+	useTestDefaults               bool
+	useProductionDefaults         bool
 	useWarp                       bool
 	useTeleporter                 bool
 	vmVersion                     string
@@ -87,7 +88,9 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useLatestReleasedVMVersion, latest, false, "use latest Subnet-EVM released version, takes precedence over --vm-version")
 	cmd.Flags().Uint64Var(&createFlags.chainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&createFlags.tokenSymbol, "evm-token", "", "token symbol to use with Subnet-EVM")
-	cmd.Flags().BoolVar(&createFlags.useDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles/teleporter with Subnet-EVM")
+	cmd.Flags().BoolVar(&createFlags.useProductionDefaults, "evm-defaults", false, "use default production settings with Subnet-EVM")
+	cmd.Flags().BoolVar(&createFlags.useProductionDefaults, "production-defaults", false, "use default production settings for your blockchain")
+	cmd.Flags().BoolVar(&createFlags.useTestDefaults, "test-defaults", false, "use default test settings for your blockchain")
 	cmd.Flags().BoolVarP(&forceCreate, forceFlag, "f", false, "overwrite the existing configuration if one exists")
 	cmd.Flags().StringVar(&vmFile, "vm", "", "file path of custom vm to use. alias to custom-vm-path")
 	cmd.Flags().StringVar(&vmFile, "custom-vm-path", "", "file path of custom vm to use")
@@ -111,7 +114,8 @@ func CallCreate(
 	vmVersionParam string,
 	evmChainIDParam uint64,
 	tokenSymbolParam string,
-	useDefaultsParam bool,
+	useProductionDefaultsParam bool,
+	useTestDefaultsParam bool,
 	useLatestReleasedVMVersionParam bool,
 	useLatestPreReleasedVMVersionParam bool,
 	customVMRepoURLParam string,
@@ -124,7 +128,8 @@ func CallCreate(
 	createFlags.vmVersion = vmVersionParam
 	createFlags.chainID = evmChainIDParam
 	createFlags.tokenSymbol = tokenSymbolParam
-	createFlags.useDefaults = useDefaultsParam
+	createFlags.useProductionDefaults = useProductionDefaultsParam
+	createFlags.useTestDefaults = useTestDefaultsParam
 	createFlags.useLatestReleasedVMVersion = useLatestReleasedVMVersionParam
 	createFlags.useLatestPreReleasedVMVersion = useLatestPreReleasedVMVersionParam
 	createFlags.useCustomVM = useCustomParam
@@ -157,8 +162,16 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 		return errMutuallyExlusiveVersionOptions
 	}
 
+	defaultsKind := vm.NoDefaults
+	if createFlags.useTestDefaults {
+		defaultsKind = vm.TestDefaults
+	}
+	if createFlags.useProductionDefaults {
+		defaultsKind = vm.ProductionDefaults
+	}
+
 	// genesis flags exclusiveness
-	if genesisFile != "" && (createFlags.chainID != 0 || createFlags.useDefaults) {
+	if genesisFile != "" && (createFlags.chainID != 0 || defaultsKind != vm.NoDefaults) {
 		return errMutuallyExclusiveVMConfigOptions
 	}
 
@@ -201,7 +214,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 	if vmType == models.SubnetEvm {
 		if genesisFile == "" {
 			// Default
-			createFlags.useDefaults, err = vm.PromptDefaults(app, createFlags.useDefaults)
+			defaultsKind, err = vm.PromptDefaults(app, defaultsKind)
 			if err != nil {
 				return err
 			}
@@ -209,7 +222,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 
 		// get vm version
 		vmVersion := createFlags.vmVersion
-		if createFlags.useLatestReleasedVMVersion || createFlags.useDefaults {
+		if createFlags.useLatestReleasedVMVersion || defaultsKind != vm.NoDefaults {
 			vmVersion = latest
 		}
 		if createFlags.useLatestPreReleasedVMVersion {
@@ -235,7 +248,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
+			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
@@ -252,7 +265,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 				createFlags.chainID,
 				createFlags.tokenSymbol,
 				useTeleporterFlag,
-				createFlags.useDefaults,
+				defaultsKind,
 				createFlags.useWarp,
 				createFlags.useExternalGasToken,
 			)
@@ -292,7 +305,7 @@ func createSubnetConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, createFlags.useDefaults, false)
+			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
