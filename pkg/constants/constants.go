@@ -350,7 +350,8 @@ const (
 	RemoteDockeSocketPath = "/var/run/docker.sock"
 
 	// Avalanche InterChain Token Transfer
-	ICTTDir    = "avalanche-interchain-token-transfer"
-	ICTTURL    = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
-	ICTTBranch = "main"
+	ICTTDir     = "avalanche-interchain-token-transfer"
+	ICTTURL     = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
+	ICTTBranch  = "main"
+	ICTTVersion = "v1.0.0"
 )
