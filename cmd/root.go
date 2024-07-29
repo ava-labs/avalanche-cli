@@ -12,14 +12,15 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
@@ -75,7 +76,7 @@ in with avalanche subnet create myNewSubnet.`,
 		BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
 	// add sub commands
-	rootCmd.AddCommand(subnetcmd.NewCmd(app))
+	rootCmd.AddCommand(blockchaincmd.NewCmd(app))
 	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
@@ -100,6 +101,28 @@ in with avalanche subnet create myNewSubnet.`,
 
 	// add interchain command
 	rootCmd.AddCommand(interchaincmd.NewCmd(app))
+
+	// add ictt command
+	subcmd := tokentransferrercmd.NewCmd(app)
+	subcmd.Use = "ictt"
+	subcmd.Short = "Manage Interchain Token Transferrers (shorthand for `interchain TokenTransferrer`)"
+	subcmd.Long = "The ictt command suite provides tools to deploy and manage Interchain Token Transferrers."
+	rootCmd.AddCommand(subcmd)
+
+	// add subnet command
+	subcmd = blockchaincmd.NewCmd(app)
+	subcmd.Use = "subnet"
+	subcmd.Short = "Create and deploy blockchains (deprecation notice: use 'avalanche blockchain')"
+	subcmd.Long = `The subnet command suite provides a collection of tools for developing
+and deploying Blockchains.
+
+To get started, use the subnet create command wizard to walk through the
+configuration of your very first Blockchain. Then, go ahead and deploy it
+with the subnet deploy command. You can use the rest of the commands to
+manage your Blockchain configurations and live deployments.
+
+Deprecation notice: use 'avalanche blockchain'`
+	rootCmd.AddCommand(subcmd)
 
 	// add contract command
 	rootCmd.AddCommand(contractcmd.NewCmd(app))

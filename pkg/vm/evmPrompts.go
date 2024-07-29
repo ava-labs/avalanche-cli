@@ -115,7 +115,7 @@ func PromptVMType(
 		case explainOption:
 			ux.Logger.PrintToUser("Virtual machines are the blueprint the defines the application-level logic of a blockchain. It determines the language and rules for writing and executing smart contracts, as well as other blockchain logic.")
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("Subnet-EVM is an EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-the-box solution for Subnet deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. For more information, please visit: https://github.com/ava-labs/subnet-evm")
+			ux.Logger.PrintToUser("Subnet-EVM is an EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-the-box solution for Blockchain deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. For more information, please visit: https://github.com/ava-labs/subnet-evm")
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("Custom VMs are virtual machines created using SDKs such as Precompile-EVM, HyperSDK, Rust-SDK. For more information please visit: https://docs.avax.network/learn/avalanche/virtual-machines.")
 			continue
@@ -272,7 +272,7 @@ func PromptDefaults(
 			case specifyMyValuesOption:
 				defaultsKind = NoDefaults
 			case explainOption:
-				ux.Logger.PrintToUser("Subnet configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to:\n   - a newly created key (production)\n   - ewoq (test)\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Use constant gas prices\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.\n")
+				ux.Logger.PrintToUser("Blockchain configuration default values:\n- Use latest Subnet-EVM release\n- Allocate 1 million tokens to:\n   - a newly created key (production)\n   - ewoq - %s (test)\n- Supply of the native token will be hard-capped\n- Set gas fee config as low throughput (12 mil gas per block)\n- Use constant gas prices\n- Disable further adjustments in transaction fee configuration\n- Transaction fees are burned\n- Enable interoperation with other blockchains\n- Allow any user to deploy smart contracts, send transactions, and interact with your blockchain.\n", PrefundedEwoqAddress.Hex())
 				continue
 			}
 			break
