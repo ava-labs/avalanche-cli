@@ -9,16 +9,13 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/plugins"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -26,13 +23,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const ewoqPChainAddr = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-
 var (
 	joinAllSupportedNetworkOptions        = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
 	joinNonElasticSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
-	joinElasticSupportedNetworkOptions    = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji}
-
 	// path to avalanchego config file
 	avagoConfigPath string
 	// path to avalanchego plugin dir
@@ -347,84 +340,6 @@ func checkIsValidating(subnetID ids.ID, nodeID ids.NodeID, pClient platformvm.Cl
 		}
 	}
 	return false, nil
-}
-
-func getLocalNetworkIDs() ([]string, error) {
-	var localNodeIDs []string
-	cli, err := binutils.NewGRPCClient()
-	if err != nil {
-		return nil, err
-	}
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser("No local network running")
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	if status != nil && status.ClusterInfo != nil {
-		for _, val := range status.ClusterInfo.NodeInfos {
-			localNodeIDs = append(localNodeIDs, val.Id)
-		}
-	}
-	return localNodeIDs, nil
-}
-
-func promptNodeIDToAdd(subnetID ids.ID, isValidator bool, network models.Network) (ids.NodeID, error) {
-	if nodeIDStr == "" {
-		if network.Kind != models.Local {
-			promptStr := "Please enter the Node ID of the node that you would like to add to the elastic subnet"
-			if !isValidator {
-				promptStr = "Please enter the Node ID of the validator that you would like to delegate to"
-			}
-			ux.Logger.PrintToUser(promptStr)
-			return app.Prompt.CaptureNodeID("Node ID (format it as NodeID-<node_id>)")
-		}
-		defaultLocalNetworkNodeIDs, err := getLocalNetworkIDs()
-		if err != nil {
-			return ids.EmptyNodeID, err
-		}
-		// Get NodeIDs of all validators on the subnet
-		validators, err := subnet.GetSubnetValidators(subnetID)
-		if err != nil {
-			return ids.EmptyNodeID, err
-		}
-		// construct list of validators to choose from
-		var validatorList []string
-		valNodeIDsMap := make(map[string]bool)
-		for _, val := range validators {
-			valNodeIDsMap[val.NodeID.String()] = true
-		}
-		if !isValidator {
-			for _, v := range validators {
-				validatorList = append(validatorList, v.NodeID.String())
-			}
-		} else {
-			for _, localNodeID := range defaultLocalNetworkNodeIDs {
-				if _, ok := valNodeIDsMap[localNodeID]; !ok {
-					validatorList = append(validatorList, localNodeID)
-				}
-			}
-		}
-		promptStr := "Which validator you'd like to join this elastic subnet?"
-		if !isValidator {
-			promptStr = "Which validator would you like to delegate to?"
-		}
-		nodeIDStr, err = app.Prompt.CaptureList(promptStr, validatorList)
-		if err != nil {
-			return ids.EmptyNodeID, err
-		}
-	}
-	nodeID, err := ids.NodeIDFromString(nodeIDStr)
-	if err != nil {
-		return ids.NodeID{}, err
-	}
-	return nodeID, nil
 }
 
 func printJoinCmd(subnetID string, network models.Network, vmPath string) {

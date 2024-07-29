@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -177,18 +176,6 @@ func DeleteSubnetConfig(subnetName string) {
 	exists, err = utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
-}
-
-func DeleteElasticSubnetConfig(subnetName string) {
-	var err error
-	elasticSubnetConfig := filepath.Join(utils.GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
-	if _, err = os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
-		// does *not* exist
-		err = nil
-	} else {
-		err = os.Remove(elasticSubnetConfig)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
 }
 
 // Returns the deploy output

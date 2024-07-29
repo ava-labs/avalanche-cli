@@ -6,8 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"time"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
