@@ -103,7 +103,7 @@ func GetNetworkFromSidecarNetworkName(
 	networkName string,
 ) (models.Network, error) {
 	switch {
-	case strings.HasPrefix(networkName, Local.String()):
+	case networkName == models.Local.String():
 		return models.NewLocalNetwork(), nil
 	case strings.HasPrefix(networkName, Cluster.String()):
 		parts := strings.Split(networkName, " ")
@@ -111,9 +111,9 @@ func GetNetworkFromSidecarNetworkName(
 			return models.UndefinedNetwork, fmt.Errorf("expected 'Cluster clusterName' on network name %s", networkName)
 		}
 		return app.GetClusterNetwork(parts[1])
-	case strings.HasPrefix(networkName, Fuji.String()):
+	case networkName == models.Fuji.String():
 		return models.NewFujiNetwork(), nil
-	case strings.HasPrefix(networkName, Mainnet.String()):
+	case networkName == models.Mainnet.String():
 		return models.NewMainnetNetwork(), nil
 	}
 	return models.UndefinedNetwork, fmt.Errorf("unsupported network name")

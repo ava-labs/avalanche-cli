@@ -116,7 +116,7 @@ func logs(_ *cobra.Command, _ []string) error {
 			timeStampStr, b := logMap["timestamp"].(string)
 			timeStr := ""
 			if b {
-				t, err := time.Parse("2006-01-02T15:04:05.000-0700", timeStampStr)
+				t, err := time.Parse("2006-01-02T15:04:05.000Z0700", timeStampStr)
 				if err != nil {
 					return err
 				}
@@ -198,13 +198,13 @@ func getBlockchainIDToSubnetNameMap(network models.Network) (map[string]string, 
 	}
 	blockchainIDToSubnetName := map[string]string{}
 	for _, subnetName := range subnetNames {
-		_, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, subnetName, false)
+		_, _, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, subnetName, false)
 		if err != nil {
 			return nil, err
 		}
 		blockchainIDToSubnetName[blockchainID.String()] = subnetName
 	}
-	_, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, "", true)
+	_, _, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, "", true)
 	if err != nil {
 		return nil, err
 	}

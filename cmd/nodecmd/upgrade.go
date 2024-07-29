@@ -230,7 +230,7 @@ func upgradeSubnetEVM(
 	host *models.Host,
 	subnetEVMBinaryPath string,
 ) error {
-	if err := ssh.RunSSHUpgradeSubnetEVM(host, subnetEVMBinaryPath); err != nil {
+	if _, err := host.Command(fmt.Sprintf("cp -f subnet-evm %s", subnetEVMBinaryPath), nil, constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
 	return nil
