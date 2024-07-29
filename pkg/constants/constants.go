@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type Visibility bool
+type HTTPAccess bool
 
 const (
 	DefaultPerms755        = 0o755
@@ -70,8 +70,8 @@ const (
 	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 
-	PublicAccess       Visibility = true
-	PrivateAccess      Visibility = false
+	PublicAccess       HTTPAccess = true
+	PrivateAccess      HTTPAccess = false
 	FujiAPIEndpoint               = "https://api.avax-test.network"
 	MainnetAPIEndpoint            = "https://api.avax.network"
 

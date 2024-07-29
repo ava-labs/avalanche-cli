@@ -910,7 +910,7 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	if network != models.UndefinedNetwork {
 		clusterConfig.Network = network
 	}
-	clusterConfig.HTTPAccess = constants.Visibility(publicHTTPPortAccess)
+	clusterConfig.HTTPAccess = constants.HTTPAccess(publicHTTPPortAccess)
 	if clusterConfig.LoadTestInstance == nil {
 		clusterConfig.LoadTestInstance = make(map[string]string)
 	}
