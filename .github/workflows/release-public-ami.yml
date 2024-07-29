@@ -7,6 +7,10 @@ on:
     tags:
       - "*"
 
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
+
 env:
   PACKER_VERSION: "1.10.2"
 
@@ -32,20 +36,18 @@ jobs:
       - name: install npx aws-amicleaner
         run: npm install -g aws-amicleaner
       
-      - name: clean up old AMIs
-        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 1 --exclude-days 2 --region="*" --force
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.EXPERIMENTAL_AWS_ACCESS_KEY_PACKER }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.EXPERIMENTAL_AWS_SECRET_KEY_PACKER }}
-          AWS_REGION: us-east-1
+
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.EXPERIMENTAL_AWS_ACCESS_KEY_PACKER }}
-          aws-secret-access-key: ${{ secrets.EXPERIMENTAL_AWS_SECRET_KEY_PACKER }}
-          #aws-session-token: ${{ secrets.EXPERIMENTAL_AWS_SESSION_TOKEN_PACKER }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: us-east-1
+
+      - name: clean up old AMIs
+        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 1 --exclude-days 2 --region="*" --force
+        env:
+          AWS_REGION: us-east-1
 
       - name: Configure GCP credentials
         uses: google-github-actions/auth@v2
