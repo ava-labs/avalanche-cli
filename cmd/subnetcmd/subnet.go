@@ -56,12 +56,8 @@ manage your Subnet configurations and live deployments.`,
 	cmd.AddCommand(vmidCmd())
 	// subnet removeValidator
 	cmd.AddCommand(newRemoveValidatorCmd())
-	// subnet elastic
-	cmd.AddCommand(newElasticCmd())
 	// subnet validators
 	cmd.AddCommand(newValidatorsCmd())
-	// subnet addPermissionlessDelegator
-	cmd.AddCommand(newAddPermissionlessDelegatorCmd())
 	// subnet changeOwner
 	cmd.AddCommand(newChangeOwnerCmd())
 	return cmd
