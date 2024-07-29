@@ -10,6 +10,7 @@ import (
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -319,7 +320,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Setup Contracts
 	ux.Logger.PrintToUser("Downloading Avalanche InterChain Token Transfer Contracts")
-	if err := ictt.DownloadRepo(app, flags.version); err != nil {
+	version := constants.ICTTVersion
+	if flags.version != "" {
+		version = flags.version
+	}
+	if err := ictt.DownloadRepo(app, version); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Compiling Avalanche InterChain Token Transfer")
