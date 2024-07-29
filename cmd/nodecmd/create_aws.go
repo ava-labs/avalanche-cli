@@ -103,9 +103,9 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
-	case globalNetworkFlags.UseDevnet && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and regions should be the same")
-	case globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(numValidatorsNodes):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
@@ -128,7 +128,7 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			if globalNetworkFlags.UseDevnet {
+			if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 			} else {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], 0}
@@ -193,6 +193,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	regions []string,
 	regionConf map[string]models.RegionConfig,
 	forMonitoring bool,
+	publicHTTPPortAccess bool,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
 	if !forMonitoring {
 		ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
@@ -299,6 +300,12 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			} else {
 				sgID = newSGID
 			}
+			// allow public access to API avalanchego port
+			if publicHTTPPortAccess {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort); err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
+			}
 		} else {
 			sgID = *sg.GroupId
 			ux.Logger.PrintToUser(fmt.Sprintf("Using existing security group %s in AWS[%s]", securityGroupName, region))
@@ -331,6 +338,15 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			if !ipInLoki {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoLokiPort); err != nil {
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
+			}
+			// check for public access to API port if flag is set
+			if publicHTTPPortAccess {
+				ipInPublicAPI := awsAPI.CheckIPInSg(&sg, "0.0.0.0/0", constants.AvalanchegoAPIPort)
+				if !ipInPublicAPI {
+					if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
 			}
 		}
@@ -482,7 +498,8 @@ func createAWSInstances(
 	numNodes map[string]NumNodes,
 	regions []string,
 	ami map[string]string,
-	forMonitoring bool) (
+	forMonitoring bool,
+	publicHTTPPortAccess bool) (
 	models.CloudConfig, error,
 ) {
 	regionConf := map[string]models.RegionConfig{}
@@ -501,7 +518,7 @@ func createAWSInstances(
 		}
 	}
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf, forMonitoring)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf, forMonitoring, publicHTTPPortAccess)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")

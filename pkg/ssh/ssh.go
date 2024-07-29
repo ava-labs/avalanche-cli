@@ -177,13 +177,13 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string) error {
+func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string, publicAccessToHTTPPort bool) error {
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err
 	}
 
-	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring); err != nil {
+	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring, publicAccessToHTTPPort); err != nil {
 		return err
 	}
 	return docker.RestartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
@@ -504,6 +504,10 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 		// make sure that genesis and bootstrap data is preserved
 		if genesisFileExists(host) {
 			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
+		}
+		// make sure that wiz works. TODO switch to RPC over SSH client to access 127.0.0.1 instead
+		if network.Kind == models.Local || network.Kind == models.Devnet {
+			avagoConf.HTTPHost = "0.0.0.0"
 		}
 		remoteAvagoConf, err := getAvalancheGoConfigData(host)
 		if err != nil {

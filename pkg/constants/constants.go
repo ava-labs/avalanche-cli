@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type HTTPAccess bool
+
 const (
 	DefaultPerms755        = 0o755
 	WriteReadReadPerms     = 0o644
@@ -70,8 +72,10 @@ const (
 
 	OperateOfflineEnvVarName = "CLIOFFLINE"
 
-	FujiAPIEndpoint    = "https://api.avax-test.network"
-	MainnetAPIEndpoint = "https://api.avax.network"
+	PublicAccess       HTTPAccess = true
+	PrivateAccess      HTTPAccess = false
+	FujiAPIEndpoint               = "https://api.avax-test.network"
+	MainnetAPIEndpoint            = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint = "http://127.0.0.1:9650"
@@ -350,7 +354,8 @@ const (
 	RemoteDockeSocketPath = "/var/run/docker.sock"
 
 	// Avalanche InterChain Token Transfer
-	ICTTDir    = "avalanche-interchain-token-transfer"
-	ICTTURL    = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
-	ICTTBranch = "main"
+	ICTTDir     = "avalanche-interchain-token-transfer"
+	ICTTURL     = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
+	ICTTBranch  = "main"
+	ICTTVersion = "v1.0.0"
 )
