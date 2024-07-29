@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type HTTPAccess bool
+
 const (
 	DefaultPerms755        = 0o755
 	WriteReadReadPerms     = 0o644
@@ -70,8 +72,10 @@ const (
 
 	OperateOfflineEnvVarName = "CLIOFFLINE"
 
-	FujiAPIEndpoint    = "https://api.avax-test.network"
-	MainnetAPIEndpoint = "https://api.avax.network"
+	PublicAccess       HTTPAccess = true
+	PrivateAccess      HTTPAccess = false
+	FujiAPIEndpoint               = "https://api.avax-test.network"
+	MainnetAPIEndpoint            = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint = "http://127.0.0.1:9650"

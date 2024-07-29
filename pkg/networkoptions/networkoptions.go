@@ -71,8 +71,7 @@ type NetworkFlags struct {
 	ClusterName string
 }
 
-func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, alwaysAddEndpoint bool, supportedNetworkOptions []NetworkOption) {
-	addEndpoint := alwaysAddEndpoint
+func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEndpoint bool, supportedNetworkOptions []NetworkOption) {
 	addCluster := false
 	for _, networkOption := range supportedNetworkOptions {
 		switch networkOption {
