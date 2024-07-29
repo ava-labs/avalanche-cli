@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/spf13/cobra"
@@ -95,8 +94,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	var supportedNetworkOptions []networkoptions.NetworkOption
-	supportedNetworkOptions = joinNonElasticSupportedNetworkOptions
+	supportedNetworkOptions := joinNonElasticSupportedNetworkOptions
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -377,19 +375,4 @@ After you update your config, you will need to restart your node for the changes
 take effect.`
 
 	ux.Logger.PrintToUser(msg, vmPath, subnetID, network.NetworkIDFlagValue(), subnetID, subnetID)
-}
-
-func getAssetBalance(pClient platformvm.Client, addr string, assetID ids.ID) (uint64, error) {
-	pID, err := address.ParseToID(addr)
-	if err != nil {
-		return 0, err
-	}
-	ctx, cancel := utils.GetAPIContext()
-	resp, err := pClient.GetBalance(ctx, []ids.ShortID{pID})
-	cancel()
-	if err != nil {
-		return 0, err
-	}
-	assetIDBalance := resp.Balances[assetID]
-	return uint64(assetIDBalance), nil
 }
