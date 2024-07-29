@@ -6,16 +6,14 @@ package commands
 import (
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"time"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/onsi/gomega"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 const subnetEVMMainnetChainID = 11
@@ -567,103 +565,6 @@ func SimulateFujiRemoveValidator(
 	return string(output)
 }
 
-func SimulateFujiTransformSubnet(
-	subnetName string,
-	key string,
-) (string, error) {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	// enable simulation of public network execution paths on a local network
-	err = os.Setenv(constants.SimulatePublicNetwork, "true")
-	gomega.Expect(err).Should(gomega.BeNil())
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		ElasticTransformCmd,
-		"--fuji",
-		"--key",
-		key,
-		"--tokenName",
-		"BLIZZARD",
-		"--tokenSymbol",
-		"BRRR",
-		"--denomination",
-		"0",
-		"--default",
-		"--force",
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-		err2 := os.Unsetenv(constants.SimulatePublicNetwork)
-		gomega.Expect(err2).Should(gomega.BeNil())
-		return "", err
-	}
-
-	// disable simulation of public network execution paths on a local network
-	err = os.Unsetenv(constants.SimulatePublicNetwork)
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return string(output), nil
-}
-
-func SimulateFujiAddPermissionlessValidator(
-	subnetName string,
-	key string,
-	nodeID string,
-	stakeAmount string,
-	stakingPeriod string,
-) (string, error) {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	// enable simulation of public network execution paths on a local network
-	err = os.Setenv(constants.SimulatePublicNetwork, "true")
-	gomega.Expect(err).Should(gomega.BeNil())
-	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		JoinCmd,
-		"--fuji",
-		"--key",
-		key,
-		"--elastic",
-		"--nodeID",
-		nodeID,
-		"--stake-amount",
-		stakeAmount,
-		"--start-time",
-		startTimeStr,
-		"--staking-period",
-		stakingPeriod,
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-		err2 := os.Unsetenv(constants.SimulatePublicNetwork)
-		gomega.Expect(err2).Should(gomega.BeNil())
-		return "", err
-	}
-
-	// disable simulation of public network execution paths on a local network
-	err = os.Unsetenv(constants.SimulatePublicNetwork)
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return string(output), nil
-}
-
 // simulates mainnet add validator execution path on a local network
 /* #nosec G204 */
 func SimulateMainnetAddValidator(
@@ -948,126 +849,6 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	return string(output)
 }
 
-func TransformElasticSubnetLocally(subnetName string) (string, error) {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		ElasticTransformCmd,
-		"--local",
-		"--tokenName",
-		"BLIZZARD",
-		"--tokenSymbol",
-		"BRRR",
-		"--default",
-		"--force",
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		var stderr string
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-		fmt.Println(stderr)
-	}
-	return string(output), err
-}
-
-func TransformElasticSubnetLocallyandTransformValidators(subnetName string, stakeAmount string) (string, error) {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		ElasticTransformCmd,
-		"--local",
-		"--tokenName",
-		"BLIZZARD",
-		"--tokenSymbol",
-		"BRRR",
-		"--default",
-		"--force",
-		"--transform-validators",
-		"--stake-amount",
-		stakeAmount,
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		var stderr string
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-		fmt.Println(stderr)
-	}
-	return string(output), err
-}
-
-func RemoveValidator(subnetName string, nodeID string) (string, error) {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		RemoveValidatorCmd,
-		"--local",
-		"--nodeID",
-		nodeID,
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		var stderr string
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-		fmt.Println(stderr)
-	}
-	return string(output), err
-}
-
-func AddPermissionlessValidator(subnetName string, nodeID string, stakeAmount string, stakingPeriod string) (string, error) {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-
-	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		JoinCmd,
-		"--local",
-		"--elastic",
-		"--nodeID",
-		nodeID,
-		"--stake-amount",
-		stakeAmount,
-		"--start-time",
-		startTimeStr,
-		"--staking-period",
-		stakingPeriod,
-		subnetName,
-	)
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		var stderr string
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-		fmt.Println(stderr)
-	}
-	return string(output), err
-}
-
 /* #nosec G204 */
 func ListValidators(subnetName string, network string) (string, error) {
 	// Create config
@@ -1082,36 +863,4 @@ func ListValidators(subnetName string, network string) (string, error) {
 
 	out, err := cmd.CombinedOutput()
 	return string(out), err
-}
-
-func AddPermissionlessDelegator(subnetName string, nodeID string, stakeAmount string, stakingPeriod string) (string, error) {
-	// Check config exists
-	exists, err := utils.SubnetConfigExists(subnetName)
-	gomega.Expect(err).Should(gomega.BeNil())
-	gomega.Expect(exists).Should(gomega.BeTrue())
-	startTimeStr := time.Now().Add(constants.StakingStartLeadTime).UTC().Format(constants.TimeParseLayout)
-
-	cmd := exec.Command(
-		CLIBinary,
-		SubnetCmd,
-		AddPermissionlessDelegatorCmd,
-		"--local",
-		"--nodeID",
-		nodeID,
-		"--stake-amount",
-		stakeAmount,
-		"--start-time",
-		startTimeStr,
-		"--staking-period",
-		stakingPeriod,
-		subnetName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		var stderr string
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-		fmt.Println(stderr)
-	}
-	return string(output), err
 }

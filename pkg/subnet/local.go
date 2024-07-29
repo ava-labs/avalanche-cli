@@ -178,62 +178,6 @@ func importFromXChain(wallet primary.Wallet, owner *secp256k1fx.OutputOwners) er
 	return err
 }
 
-func IssueTransformSubnetTx(
-	elasticSubnetConfig models.ElasticSubnetConfig,
-	kc keychain.Keychain,
-	subnetID ids.ID,
-	tokenName string,
-	tokenSymbol string,
-	maxSupply uint64,
-) (ids.ID, ids.ID, error) {
-	ctx := context.Background()
-	api := constants.LocalAPIEndpoint
-	wallet, err := primary.MakeWallet(
-		ctx,
-		&primary.WalletConfig{
-			URI:              api,
-			AVAXKeychain:     kc,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: set.Of(subnetID),
-		},
-	)
-	if err != nil {
-		return ids.Empty, ids.Empty, err
-	}
-	subnetAssetID, err := getAssetID(wallet, tokenName, tokenSymbol, maxSupply)
-	if err != nil {
-		return ids.Empty, ids.Empty, err
-	}
-	owner := &secp256k1fx.OutputOwners{
-		Threshold: 1,
-		Addrs: []ids.ShortID{
-			genesis.EWOQKey.PublicKey().Address(),
-		},
-	}
-	err = exportToPChain(wallet, owner, subnetAssetID, maxSupply)
-	if err != nil {
-		return ids.Empty, ids.Empty, err
-	}
-	err = importFromXChain(wallet, owner)
-	if err != nil {
-		return ids.Empty, ids.Empty, err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
-	transformSubnetTx, err := wallet.P().IssueTransformSubnetTx(elasticSubnetConfig.SubnetID, subnetAssetID,
-		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
-		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
-		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement,
-		common.WithContext(ctx),
-	)
-	defer cancel()
-	if err != nil {
-		return ids.Empty, ids.Empty, err
-	}
-	return transformSubnetTx.ID(), subnetAssetID, err
-}
-
 func IssueAddPermissionlessValidatorTx(
 	kc keychain.Keychain,
 	subnetID ids.ID,
@@ -279,51 +223,6 @@ func IssueAddPermissionlessValidatorTx(
 		owner,
 		owner,
 		reward.PercentDenominator,
-		common.WithContext(ctx),
-	)
-	defer cancel()
-	if err != nil {
-		return ids.Empty, err
-	}
-	return tx.ID(), err
-}
-
-func IssueAddPermissionlessDelegatorTx(
-	kc keychain.Keychain,
-	subnetID ids.ID,
-	nodeID ids.NodeID,
-	stakeAmount uint64,
-	assetID ids.ID,
-	startTime uint64,
-	endTime uint64,
-) (ids.ID, error) {
-	ctx := context.Background()
-	api := constants.LocalAPIEndpoint
-	wallet, err := primary.MakeWallet(
-		ctx,
-		&primary.WalletConfig{
-			URI:              api,
-			AVAXKeychain:     kc,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: set.Of(subnetID),
-		},
-	)
-	if err != nil {
-		return ids.Empty, err
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultConfirmTxTimeout)
-	tx, err := wallet.P().IssueAddPermissionlessDelegatorTx(
-		&txs.SubnetValidator{
-			Validator: txs.Validator{
-				NodeID: nodeID,
-				Start:  startTime,
-				End:    endTime,
-				Wght:   stakeAmount,
-			},
-			Subnet: subnetID,
-		},
-		assetID,
-		&secp256k1fx.OutputOwners{},
 		common.WithContext(ctx),
 	)
 	defer cancel()

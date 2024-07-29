@@ -138,16 +138,6 @@ func ElasticSubnetConfigExists(subnetName string) (bool, error) {
 	return elasticSubnetConfigExists, nil
 }
 
-func PermissionlessValidatorExistsInSidecar(subnetName string, nodeID string, network string) (bool, error) {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
-	_, ok := elasticSubnetValidators[nodeID]
-	return ok, nil
-}
-
 func SubnetConfigExists(subnetName string) (bool, error) {
 	gen, err := genesisExists(subnetName)
 	if err != nil {
@@ -1008,21 +998,6 @@ func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
 		}
 		if !currentValidator {
 			return false, fmt.Errorf("%s is still not a current validator of the elastic subnet", nodeIDstr)
-		}
-	}
-	return true, nil
-}
-
-func AllPermissionlessValidatorExistsInSidecar(subnetName string, network string) (bool, error) {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
-	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
-		_, ok := elasticSubnetValidators[nodeIDstr]
-		if !ok {
-			return false, err
 		}
 	}
 	return true, nil

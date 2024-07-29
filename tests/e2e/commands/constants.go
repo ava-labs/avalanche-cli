@@ -4,13 +4,11 @@
 package commands
 
 const (
-	CLIBinary                     = "./bin/avalanche"
-	SubnetCmd                     = "subnet"
-	NetworkCmd                    = "network"
-	KeyCmd                        = "key"
-	UpgradeCmd                    = "upgrade"
-	ElasticTransformCmd           = "elastic"
-	JoinCmd                       = "join"
-	RemoveValidatorCmd            = "removeValidator"
-	AddPermissionlessDelegatorCmd = "addPermissionlessDelegator"
+	CLIBinary           = "./bin/avalanche"
+	SubnetCmd           = "subnet"
+	NetworkCmd          = "network"
+	KeyCmd              = "key"
+	UpgradeCmd          = "upgrade"
+	ElasticTransformCmd = "elastic"
+	RemoveValidatorCmd  = "removeValidator"
 )
