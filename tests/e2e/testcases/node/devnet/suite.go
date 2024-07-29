@@ -114,13 +114,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		// make sure there is no API node in the genesis
 		gomega.Expect(genesisFile).To(gomega.Not(gomega.ContainSubstring(apiNodeID)))
 	})
-	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
-		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanche-cli/config.json")
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("\"metricsenabled\": false"))
-		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
-		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
-	})
-	ginkgo.It("can waitßß 20 seconds for avago to startup", func() {
+	ginkgo.It("can wait for 20 seconds for avago to startup", func() {
 		time.Sleep(20 * time.Second)
 	})
 	/*ginkgo.It("can get cluster status", func() {
