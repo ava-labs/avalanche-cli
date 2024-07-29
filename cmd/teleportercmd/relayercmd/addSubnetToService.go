@@ -62,7 +62,7 @@ func CallAddSubnetToService(subnetName string, flags AddSubnetToServiceFlags) er
 		return err
 	}
 
-	_, subnetID, chainID, messengerAddress, registryAddress, _, err := teleporter.GetSubnetParams(app, network, "", true)
+	_, _, subnetID, chainID, messengerAddress, registryAddress, _, err := teleporter.GetSubnetParams(app, network, "", true)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func CallAddSubnetToService(subnetName string, flags AddSubnetToServiceFlags) er
 		return err
 	}
 
-	_, subnetID, chainID, messengerAddress, registryAddress, _, err = teleporter.GetSubnetParams(app, network, subnetName, false)
+	_, _, subnetID, chainID, messengerAddress, registryAddress, _, err = teleporter.GetSubnetParams(app, network, subnetName, false)
 	if err != nil {
 		return err
 	}

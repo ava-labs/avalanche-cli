@@ -73,9 +73,16 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 	switch network.Kind {
-	case models.Fuji, models.Local:
+	case models.Local:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir(), true)
+			if err != nil {
+				return err
+			}
+		}
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir(), false)
 			if err != nil {
 				return err
 			}
@@ -109,9 +116,12 @@ func signTx(_ *cobra.Command, args []string) error {
 		subnetID = subnetIDFromTX
 	}
 
-	controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return subnetcmd.ErrNotPermissionedSubnet
 	}
 
 	// get the remaining tx signers so as to check that the wallet does contain an expected signer

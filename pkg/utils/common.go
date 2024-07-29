@@ -484,7 +484,7 @@ func ByteSliceIsSubnetEvmGenesis(bs []byte) bool {
 	return err == nil
 }
 
-func PathIsSubnetEVMGenesis(genesisPath string) (bool, error) {
+func FileIsSubnetEVMGenesis(genesisPath string) (bool, error) {
 	genesisBytes, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return false, err
@@ -560,8 +560,8 @@ func Command(cmdLine string, params ...string) *exec.Cmd {
 	return c
 }
 
-// GetValueString returns the value of a key in a map as a string.
-func GetValueString(data map[string]interface{}, key string) (string, error) {
+// StringValue returns the value of a key in a map as a string.
+func StringValue(data map[string]interface{}, key string) (string, error) {
 	if value, ok := data[key]; ok {
 		return fmt.Sprintf("%v", value), nil
 	}

@@ -35,6 +35,7 @@ type Sidecar struct {
 	VMVersion           string
 	RPCVersion          int
 	Subnet              string
+	ExternalToken       bool
 	TokenName           string
 	TokenSymbol         string
 	ChainID             string

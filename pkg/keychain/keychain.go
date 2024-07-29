@@ -125,8 +125,16 @@ func GetKeychainFromCmdLineFlags(
 	if !flags.EnsureMutuallyExclusive([]bool{useLedger, useEwoq, keyName != ""}) {
 		return nil, ErrMutuallyExlusiveKeySource
 	}
-
 	switch {
+	case network.Kind == models.Local:
+		// prompt the user if no key source was provided
+		if !useEwoq && !useLedger && keyName == "" {
+			var err error
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), true)
+			if err != nil {
+				return nil, err
+			}
+		}
 	case network.Kind == models.Devnet:
 		// going to just use ewoq atm
 		useEwoq = true
@@ -140,7 +148,7 @@ func GetKeychainFromCmdLineFlags(
 		// prompt the user if no key source was provided
 		if !useLedger && keyName == "" {
 			var err error
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), false)
 			if err != nil {
 				return nil, err
 			}
@@ -168,6 +176,9 @@ func GetKeychain(
 	network models.Network,
 	requiredFunds uint64,
 ) (*Keychain, error) {
+	if !useEwoq && !useLedger && keyName == "" {
+		return nil, fmt.Errorf("one of the options ewoq/ledger/keyName must be provided")
+	}
 	// get keychain accessor
 	if useLedger {
 		ledgerDevice, err := ledger.New()

@@ -390,45 +390,15 @@ func transferF(*cobra.Command, []string) error {
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amountInt, _ := amount.Int(nil)
-		endpointKind, err := ictt.GetEndpointKind(
+		return ictt.Send(
 			originURL,
 			goethereumcommon.HexToAddress(originTransferrerAddress),
+			privateKey,
+			destinationBlockchainID,
+			goethereumcommon.HexToAddress(destinationTransferrerAddress),
+			destinationAddr,
+			amountInt,
 		)
-		if err != nil {
-			return err
-		}
-		switch endpointKind {
-		case ictt.ERC20TokenRemote:
-			return ictt.ERC20TokenRemoteSend(
-				originURL,
-				goethereumcommon.HexToAddress(originTransferrerAddress),
-				privateKey,
-				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationTransferrerAddress),
-				destinationAddr,
-				amountInt,
-			)
-		case ictt.ERC20TokenHome:
-			return ictt.ERC20TokenHomeSend(
-				originURL,
-				goethereumcommon.HexToAddress(originTransferrerAddress),
-				privateKey,
-				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationTransferrerAddress),
-				destinationAddr,
-				amountInt,
-			)
-		case ictt.NativeTokenHome:
-			return ictt.NativeTokenHomeSend(
-				originURL,
-				goethereumcommon.HexToAddress(originTransferrerAddress),
-				privateKey,
-				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationTransferrerAddress),
-				destinationAddr,
-				amountInt,
-			)
-		}
 	}
 
 	if !send && !receive {
@@ -454,7 +424,7 @@ func transferF(*cobra.Command, []string) error {
 		} else {
 			goalStr = " for the destination address"
 		}
-		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir())
+		useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir(), true)
 		if err != nil {
 			return err
 		}

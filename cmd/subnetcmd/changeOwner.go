@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -63,7 +62,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	fee := network.GenesisParams().TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
-		constants.PayTxsFeesMsg,
+		"pay fees",
 		network,
 		keyName,
 		useEwoq,
@@ -99,9 +98,12 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	}
 	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return ErrNotPermissionedSubnet
 	}
 
 	// add control keys to the keychain whenever possible
@@ -133,6 +135,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		sameControlKey,
 		threshold,
 		nil,
+		false,
 	)
 	if err != nil {
 		return err

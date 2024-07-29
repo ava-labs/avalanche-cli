@@ -59,9 +59,12 @@ func commitTx(_ *cobra.Command, args []string) error {
 	}
 	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return subnetcmd.ErrNotPermissionedSubnet
 	}
 	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
@@ -88,6 +91,8 @@ func commitTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
+
 	if txutils.IsCreateChainTx(tx) {
 		// TODO: teleporter for multisig
 		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
@@ -95,13 +100,13 @@ func commitTx(_ *cobra.Command, args []string) error {
 		}
 		return app.UpdateSidecarNetworks(&sc, network, subnetID, transferSubnetOwnershipTxID, txID, "", "")
 	}
+
 	if txutils.IsTransferSubnetOwnershipTx(tx) {
 		networkData := sc.Networks[network.Name()]
 		networkData.TransferSubnetOwnershipTxID = txID
 		sc.Networks[network.Name()] = networkData
 		return app.UpdateSidecar(&sc)
 	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 
 	return nil
 }

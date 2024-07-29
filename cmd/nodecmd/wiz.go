@@ -52,7 +52,8 @@ var (
 	evmVersion                             string
 	evmChainID                             uint64
 	evmToken                               string
-	evmDefaults                            bool
+	evmTestDefaults                        bool
+	evmProductionDefaults                  bool
 	useLatestEvmReleasedVersion            bool
 	useLatestEvmPreReleasedVersion         bool
 	customVMRepoURL                        string
@@ -108,7 +109,9 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&evmVersion, "evm-version", "", "version of Subnet-EVM to use")
 	cmd.Flags().Uint64Var(&evmChainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token name to use with Subnet-EVM")
-	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles with Subnet-EVM")
+	cmd.Flags().BoolVar(&evmProductionDefaults, "evm-defaults", false, "use default production settings with Subnet-EVM")
+	cmd.Flags().BoolVar(&evmProductionDefaults, "evm-production-defaults", false, "use default production settings for your blockchain")
+	cmd.Flags().BoolVar(&evmTestDefaults, "evm-test-defaults", false, "use default test settings for your blockchain")
 	cmd.Flags().BoolVar(&useLatestEvmReleasedVersion, "latest-evm-version", false, "use latest Subnet-EVM released version")
 	cmd.Flags().BoolVar(&useLatestEvmPreReleasedVersion, "latest-pre-released-evm-version", false, "use latest Subnet-EVM pre-released version")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
@@ -139,8 +142,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Teleporter Registry")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
-	cmd.Flags().StringVar(&subnetAlias, "subnet-alias", "", "subnet alias to be used for RPC calls. defaults to subnet blockchain ID")
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
+	cmd.Flags().StringVar(&subnetAlias, "subnet-alias", "", "subnet alias to be used for RPC calls. defaults to subnet blockchain ID")
 	return cmd
 }
 
@@ -176,7 +179,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 			evmVersion,
 			evmChainID,
 			evmToken,
-			evmDefaults,
+			evmProductionDefaults,
+			evmTestDefaults,
 			useLatestEvmReleasedVersion,
 			useLatestEvmPreReleasedVersion,
 			customVMRepoURL,
