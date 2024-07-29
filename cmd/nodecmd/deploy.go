@@ -15,9 +15,9 @@ import (
 )
 
 var (
-	subnetOnly  bool
-	avoidChecks bool
-	subnetAlias string
+	subnetOnly              bool
+	avoidChecks             bool
+	additionalsubnetAliases []string
 )
 
 func newDeployCmd() *cobra.Command {
@@ -34,7 +34,7 @@ It saves the deploy info both locally and remotely.
 	}
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
 	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for healthy status or rpc compatibility of nodes against subnet")
-	cmd.Flags().StringVar(&subnetAlias, "subnet-alias", "", "subnet alias to be used for RPC calls. defaults to subnet blockchain ID")
+	cmd.Flags().StringSliceVar(&additionalsubnetAliases, "subnet-alias", nil, "additional subnet aliases to be used for RPC calls in addition to subnet blockchain name")
 	return cmd
 }
 
