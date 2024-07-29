@@ -26,7 +26,6 @@ const (
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
 	GenesisFileName              = "genesis.json"
-	ElasticSubnetConfigFileName  = "elastic_subnet_config.json"
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"
@@ -289,7 +288,6 @@ const (
 	MetricsNodeDevnetWizCommand = "avalanche node devnet wiz"
 	MetricsSubnetDeployCommand  = "avalanche subnet deploy"
 	MetricsSubnetCreateCommand  = "avalanche subnet create"
-	MetricsSubnetElasticCommand = "avalanche subnet elastic"
 	SubnetType                  = "subnet type"
 	PrecompileType              = "precompile type"
 	CustomAirdrop               = "custom-airdrop"

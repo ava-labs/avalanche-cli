@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/elasticsubnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -79,9 +78,6 @@ func clean(*cobra.Command, []string) error {
 	if err := removeLocalDeployInfoFromSidecars(); err != nil {
 		return err
 	}
-	if err := removeLocalElasticSubnetInfoFromSidecars(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -102,38 +98,6 @@ func removeLocalDeployInfoFromSidecars() error {
 		if err = app.UpdateSidecar(&sc); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func removeLocalElasticSubnetInfoFromSidecars() error {
-	// Remove all local elastic subnet info from sidecar files
-	elasticSubnets, err := elasticsubnet.GetLocalElasticSubnetsFromFile(app)
-	if err != nil {
-		return err
-	}
-
-	for _, subnet := range elasticSubnets {
-		sc, err := app.LoadSidecar(subnet)
-		if err != nil {
-			return err
-		}
-
-		delete(sc.ElasticSubnet, models.Local.String())
-		if err = app.UpdateSidecar(&sc); err != nil {
-			return err
-		}
-		if err = deleteElasticSubnetConfigFile(subnet); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func deleteElasticSubnetConfigFile(subnetName string) error {
-	elasticSubetConfigPath := app.GetElasticSubnetConfigPath(subnetName)
-	if err := os.Remove(elasticSubetConfigPath); err != nil {
-		return err
 	}
 	return nil
 }

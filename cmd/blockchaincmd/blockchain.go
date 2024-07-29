@@ -56,13 +56,9 @@ manage your Blockchain configurations and live deployments.`,
 	cmd.AddCommand(vmidCmd())
 	// blockchain removeValidator
 	cmd.AddCommand(newRemoveValidatorCmd())
-	// blockchain elastic
-	cmd.AddCommand(newElasticCmd())
-	// blockchain validators
+	// subnet validators
 	cmd.AddCommand(newValidatorsCmd())
-	// blockchain addPermissionlessDelegator
-	cmd.AddCommand(newAddPermissionlessDelegatorCmd())
-	// blockchain changeOwner
+	// subnet changeOwner
 	cmd.AddCommand(newChangeOwnerCmd())
 	return cmd
 }
