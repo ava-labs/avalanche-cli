@@ -123,7 +123,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
 	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
@@ -187,7 +186,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		controlKeys,
 		subnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 		nodeID,
 	)
 	if err != nil {

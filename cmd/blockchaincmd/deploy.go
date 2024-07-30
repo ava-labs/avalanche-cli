@@ -384,7 +384,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			&sidecar,
 			network,
 			deployInfo.SubnetID,
-			ids.Empty,
 			deployInfo.BlockchainID,
 			deployInfo.TeleporterMessengerAddress,
 			deployInfo.TeleporterRegistryAddress,
@@ -400,7 +399,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	createSubnet := true
-	var subnetID, transferSubnetOwnershipTxID ids.ID
+	var subnetID ids.ID
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -412,7 +411,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
-				transferSubnetOwnershipTxID = model.TransferSubnetOwnershipTxID
 				createSubnet = false
 			}
 		}
@@ -519,7 +517,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
-			transferSubnetOwnershipTxID,
 			chain,
 			chainGenesis,
 		)
@@ -571,7 +568,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID, "", "")
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "")
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
