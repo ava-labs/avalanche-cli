@@ -22,7 +22,7 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
-	Alias            string
+	Aliases          string
 	BlockChainID     string
 	TrackSubnets     string
 	BootstrapIDs     string
@@ -40,7 +40,7 @@ func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string)
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
 		TrackSubnets:     strings.Join(subnets, ","),
-		Alias:            "",
+		Aliases:          "",
 		BlockChainID:     "",
 	}
 }
@@ -88,7 +88,7 @@ func RenderAvalancheAliasesConfig(config AvalancheConfigInputs) ([]byte, error) 
 }
 
 func GetRemoteAvalancheNodeConfig() string {
-	return filepath.Join(constants.CloudNodeConfigPath, "node.json")
+	return filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
 }
 
 func GetRemoteAvalancheCChainConfig() string {
@@ -96,11 +96,11 @@ func GetRemoteAvalancheCChainConfig() string {
 }
 
 func GetRemoteAvalancheGenesis() string {
-	return filepath.Join(constants.CloudNodeConfigPath, "genesis.json")
+	return filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)
 }
 
 func GetRemoteAvalancheAliasesConfig() string {
-	return filepath.Join(constants.CloudNodeConfigPath, "chains", "aliases.json")
+	return filepath.Join(constants.CloudNodeConfigPath, "chains", constants.AliasesFileName)
 }
 
 func AvalancheFolderToCreate() []string {
