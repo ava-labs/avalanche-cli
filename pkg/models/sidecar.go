@@ -16,19 +16,6 @@ type NetworkData struct {
 	TeleporterRegistryAddress   string
 }
 
-type PermissionlessValidators struct {
-	TxID ids.ID
-}
-type ElasticSubnet struct {
-	SubnetID    ids.ID
-	AssetID     ids.ID
-	PChainTXID  ids.ID
-	TokenName   string
-	TokenSymbol string
-	Validators  map[string]PermissionlessValidators
-	Txs         map[string]ids.ID
-}
-
 type Sidecar struct {
 	Name                string
 	VM                  VMType
@@ -41,7 +28,6 @@ type Sidecar struct {
 	ChainID             string
 	Version             string
 	Networks            map[string]NetworkData
-	ElasticSubnet       map[string]ElasticSubnet
 	ImportedFromAPM     bool
 	ImportedVMID        string
 	CustomVMRepoURL     string
