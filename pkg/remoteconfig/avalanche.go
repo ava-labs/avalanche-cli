@@ -5,9 +5,9 @@ package remoteconfig
 
 import (
 	"bytes"
-	"html/template"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
