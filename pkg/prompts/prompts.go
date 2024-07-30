@@ -917,7 +917,7 @@ func PromptChain(
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
 	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
-	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Subnet " + s })...)
+	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	subnetOptions = append(subnetOptions, notListedOption)
 	subnetOption, err := prompter.CaptureListWithSize(
 		prompt,
@@ -939,7 +939,7 @@ func PromptChain(
 	case cChainOption:
 		return false, false, false, true, "", nil
 	default:
-		return false, false, false, false, strings.TrimPrefix(subnetOption, "Subnet "), nil
+		return false, false, false, false, strings.TrimPrefix(subnetOption, "Blockchain "), nil
 	}
 }
 

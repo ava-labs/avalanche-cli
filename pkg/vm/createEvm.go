@@ -77,7 +77,7 @@ func CreateEvmGenesis(
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
 ) ([]byte, error) {
-	ux.Logger.PrintToUser("creating genesis for subnet %s", subnetName)
+	ux.Logger.PrintToUser("creating genesis for blockchain %s", subnetName)
 
 	genesis := core.Genesis{}
 	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())

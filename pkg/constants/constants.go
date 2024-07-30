@@ -26,7 +26,6 @@ const (
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
 	GenesisFileName              = "genesis.json"
-	ElasticSubnetConfigFileName  = "elastic_subnet_config.json"
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"
@@ -289,7 +288,6 @@ const (
 	MetricsNodeDevnetWizCommand = "avalanche node devnet wiz"
 	MetricsSubnetDeployCommand  = "avalanche subnet deploy"
 	MetricsSubnetCreateCommand  = "avalanche subnet create"
-	MetricsSubnetElasticCommand = "avalanche subnet elastic"
 	SubnetType                  = "subnet type"
 	PrecompileType              = "precompile type"
 	CustomAirdrop               = "custom-airdrop"
@@ -354,7 +352,8 @@ const (
 	RemoteDockeSocketPath = "/var/run/docker.sock"
 
 	// Avalanche InterChain Token Transfer
-	ICTTDir    = "avalanche-interchain-token-transfer"
-	ICTTURL    = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
-	ICTTBranch = "main"
+	ICTTDir     = "avalanche-interchain-token-transfer"
+	ICTTURL     = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
+	ICTTBranch  = "main"
+	ICTTVersion = "v1.0.0"
 )

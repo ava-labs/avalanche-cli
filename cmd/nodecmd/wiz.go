@@ -11,7 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -168,7 +168,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
 		ux.Logger.PrintToUser("")
-		if err := subnetcmd.CallCreate(
+		if err := blockchaincmd.CallCreate(
 			cmd,
 			subnetName,
 			forceSubnetCreate,
@@ -189,7 +189,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if chainConf != "" || subnetConf != "" || nodeConf != "" {
-			if err := subnetcmd.CallConfigure(
+			if err := blockchaincmd.CallConfigure(
 				cmd,
 				subnetName,
 				chainConf,

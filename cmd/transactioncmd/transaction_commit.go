@@ -5,7 +5,7 @@ package transactioncmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -64,7 +64,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if !isPermissioned {
-		return subnetcmd.ErrNotPermissionedSubnet
+		return blockchaincmd.ErrNotPermissionedSubnet
 	}
 	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
@@ -74,7 +74,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 	if len(remainingSubnetAuthKeys) != 0 {
 		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 		ux.Logger.PrintToUser("%d of %d required signatures have been signed.", signedCount, len(subnetAuthKeys))
-		subnetcmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys, inputTxPath)
+		blockchaincmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys, inputTxPath)
 		return fmt.Errorf("tx is not fully signed")
 	}
 
@@ -95,7 +95,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 
 	if txutils.IsCreateChainTx(tx) {
 		// TODO: teleporter for multisig
-		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
+		if err := blockchaincmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
 		return app.UpdateSidecarNetworks(&sc, network, subnetID, transferSubnetOwnershipTxID, txID, "", "")

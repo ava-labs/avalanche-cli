@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -96,7 +96,7 @@ func addNodeAsSubnetValidator(
 	}
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	defer ux.Logger.PrintLineSeparator()
-	if err := subnetcmd.CallAddValidator(
+	if err := blockchaincmd.CallAddValidator(
 		deployer,
 		network,
 		kc,
@@ -176,7 +176,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
+	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
 
@@ -225,7 +225,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := subnetcmd.UpdateKeychainWithSubnetControlKeys(kc, network, subnetName); err != nil {
+	if err := blockchaincmd.UpdateKeychainWithSubnetControlKeys(kc, network, subnetName); err != nil {
 		return err
 	}
 

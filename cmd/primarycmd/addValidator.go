@@ -9,8 +9,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -154,7 +154,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	}
 
 	if nodeIDStr == "" {
-		nodeID, err = subnetcmd.PromptNodeID()
+		nodeID, err = blockchaincmd.PromptNodeID()
 		if err != nil {
 			return err
 		}

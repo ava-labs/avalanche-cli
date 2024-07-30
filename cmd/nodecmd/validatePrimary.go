@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	subnetcmd "github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -204,7 +204,7 @@ func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, vali
 		}
 	default:
 		useCustomDuration = true
-		duration, err = subnetcmd.PromptDuration(start, network)
+		duration, err = blockchaincmd.PromptDuration(start, network)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
