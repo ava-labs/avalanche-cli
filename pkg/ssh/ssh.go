@@ -491,7 +491,7 @@ func RunSSHRenderAvagoAliasConfigFile(
 ) error {
 	aliasConf, err := remoteconfig.RenderAvalancheAliasesConfig(remoteconfig.AvalancheConfigInputs{
 		BlockChainID: blockchainID,
-		Aliases:      strings.Join(subnetAliases, ","),
+		Aliases:      subnetAliases,
 	})
 	if err != nil {
 		return err

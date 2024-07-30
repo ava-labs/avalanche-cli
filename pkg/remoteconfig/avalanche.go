@@ -22,7 +22,7 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
-	Aliases          string
+	Aliases          []string
 	BlockChainID     string
 	TrackSubnets     string
 	BootstrapIDs     string
@@ -40,7 +40,7 @@ func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string)
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
 		TrackSubnets:     strings.Join(subnets, ","),
-		Aliases:          "",
+		Aliases:          nil,
 		BlockChainID:     "",
 	}
 }
