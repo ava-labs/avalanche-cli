@@ -50,7 +50,10 @@ func RenderAvalancheTemplate(templateName string, config AvalancheConfigInputs) 
 	if err != nil {
 		return nil, err
 	}
-	tmpl, err := template.New("config").Parse(string(templateBytes))
+	helperFuncs := template.FuncMap{
+		"join": strings.Join,
+	}
+	tmpl, err := template.New("config").Funcs(helperFuncs).Parse(string(templateBytes))
 	if err != nil {
 		return nil, err
 	}
