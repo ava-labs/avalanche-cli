@@ -4,9 +4,12 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
@@ -152,6 +155,18 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 {
 		subnetName = args[1]
 	}
+	c := make(chan os.Signal, 1)
+	// Destroy cluster if user calls ctrl ^ c
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range c {
+			if err := CallDestroyNode(clusterName); err != nil {
+				ux.Logger.RedXToUser("Unable to delete cluster %s due to %s", clusterName, err)
+				ux.Logger.RedXToUser("Please try again by calling avalanche node destroy %s", clusterName)
+			}
+			os.Exit(0)
+		}
+	}()
 	clusterAlreadyExists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
