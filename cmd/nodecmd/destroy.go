@@ -24,6 +24,7 @@ import (
 var (
 	authorizeRemove bool
 	authorizeAll    bool
+	destroyAll      bool
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -35,12 +36,13 @@ func newDestroyCmd() *cobra.Command {
 The node destroy command terminates all running nodes in cloud server and deletes all storage disks.
 
 If there is a static IP address attached, it will be released.`,
-		Args: cobrautils.ExactArgs(1),
+		Args: cobrautils.MinimumNArgs(0),
 		RunE: destroyNodes,
 	}
 	cmd.Flags().BoolVar(&authorizeAccess, "authorize-access", false, "authorize CLI to release cloud resources")
 	cmd.Flags().BoolVar(&authorizeRemove, "authorize-remove", false, "authorize CLI to remove all local files related to cloud nodes")
 	cmd.Flags().BoolVarP(&authorizeAll, "authorize-all", "y", false, "authorize all CLI requests")
+	cmd.Flags().BoolVar(&destroyAll, "all", false, "destroy all existing clusters created by Avalanche CLI")
 	cmd.Flags().StringVar(&awsProfile, "aws-profile", constants.AWSDefaultCredential, "aws profile to use")
 
 	return cmd
@@ -98,7 +100,60 @@ func CallDestroyNode(clusterName string) error {
 	return destroyNodes(nil, []string{clusterName})
 }
 
+// We need to get which cloud service is being used on a cluster
+// getFirstAvailableNode gets first node in the cluster that still has its node_config.json
+// This is because some nodes might have had their node_config.json file deleted as part of
+// deletion process but if an error occurs during deletion process, the node might still exist
+// as part of the cluster in cluster_config.json
+// If all nodes in the cluster no longer have their node_config.json files, getFirstAvailableNode
+// will return false in its second return value
+func getFirstAvailableNode(nodesToStop []string) (string, bool) {
+	firstAvailableNode := nodesToStop[0]
+	noAvailableNodesFound := false
+	for index, node := range nodesToStop {
+		nodeConfigPath := app.GetNodeConfigPath(node)
+		if !utils.FileExists(nodeConfigPath) {
+			if index == len(nodesToStop)-1 {
+				noAvailableNodesFound = true
+			}
+			continue
+		}
+		firstAvailableNode = node
+	}
+	return firstAvailableNode, noAvailableNodesFound
+}
+
+func Cleanup() error {
+	var err error
+	clustersConfig := models.ClustersConfig{}
+	if app.ClustersConfigExists() {
+		clustersConfig, err = app.LoadClustersConfig()
+		if err != nil {
+			return err
+		}
+	}
+	clusterNames := maps.Keys(clustersConfig.Clusters)
+	for _, clusterName := range clusterNames {
+		if err = CallDestroyNode(clusterName); err != nil {
+			// we only return error for invalid cloud credentials
+			// silence for other errors
+			// TODO: differentiate between AWS and GCP credentials
+			if strings.Contains(err.Error(), "invalid cloud credentials") {
+				return fmt.Errorf("invalid AWS credentials")
+			}
+		}
+	}
+	ux.Logger.PrintToUser("all existing instances created by Avalanche CLI successfully destroyed")
+	return nil
+}
+
 func destroyNodes(_ *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		if !destroyAll {
+			return fmt.Errorf("to destroy all existing clusters created by Avalanche CLI, call avalanche node destroy --all. To destroy a specified cluster, call avalanche node destroy CLUSTERNAME")
+		}
+		return Cleanup()
+	}
 	clusterName := args[0]
 	if err := checkCluster(clusterName); err != nil {
 		return err
@@ -142,7 +197,11 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	nodeToStopConfig, err := app.LoadClusterNodeConfig(nodesToStop[0])
+	firstAvailableNodes, noAvailableNodesFound := getFirstAvailableNode(nodesToStop)
+	if noAvailableNodesFound {
+		return removeClustersConfigFiles(clusterName)
+	}
+	nodeToStopConfig, err := app.LoadClusterNodeConfig(firstAvailableNodes)
 	if err != nil {
 		return err
 	}
@@ -165,6 +224,11 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	}
 	for _, node := range nodesToStop {
 		if !isExternalCluster {
+			// if we can't find node config path, that means node already deleted on console
+			// but we didn't get to delete the node from cluster config file
+			if !utils.FileExists(app.GetNodeConfigPath(node)) {
+				continue
+			}
 			nodeConfig, err := app.LoadClusterNodeConfig(node)
 			if err != nil {
 				nodeErrors[node] = err
@@ -179,7 +243,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					if isExpiredCredentialError(err) {
 						ux.Logger.PrintToUser("")
 						printExpiredCredentialsOutput(awsProfile)
-						return nil
+						return fmt.Errorf("invalid cloud credentials")
 					}
 					if !errors.Is(err, awsAPI.ErrNodeNotFoundToBeRunning) {
 						nodeErrors[node] = err
@@ -224,12 +288,19 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	}
 	if len(nodeErrors) > 0 {
 		ux.Logger.PrintToUser("Failed nodes: ")
+		invalidCloudCredentials := false
 		for node, nodeErr := range nodeErrors {
 			if strings.Contains(nodeErr.Error(), constants.ErrReleasingGCPStaticIP) {
 				ux.Logger.RedXToUser("Node is destroyed, but failed to release static ip address for node %s due to %s", node, nodeErr)
 			} else {
+				if strings.Contains(nodeErr.Error(), "AuthFailure") {
+					invalidCloudCredentials = true
+				}
 				ux.Logger.RedXToUser("Failed to destroy node %s due to %s", node, nodeErr)
 			}
+		}
+		if invalidCloudCredentials {
+			return fmt.Errorf("failed to destroy node(s) due to invalid cloud credentials %s", maps.Keys(nodeErrors))
 		}
 		return fmt.Errorf("failed to destroy node(s) %s", maps.Keys(nodeErrors))
 	} else {
