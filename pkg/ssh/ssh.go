@@ -557,6 +557,7 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 				CustomVMBranch:      sc.CustomVMBranch,
 				CustomVMBuildScript: sc.CustomVMBuildScript,
 				VMBinaryPath:        subnetVMBinaryPath,
+				GoVersion:           constants.BuildEnvGolangVersion,
 			},
 		); err != nil {
 			return err
