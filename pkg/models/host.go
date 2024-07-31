@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/melbahja/goph"
 	"golang.org/x/crypto/ssh"
 )
@@ -235,6 +236,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	ux.Logger.Info("Command on host %s: %s", h.IP, script)
 	cmd, err := h.Connection.CommandContext(ctx, "", script)
 	if err != nil {
 		return nil, err
