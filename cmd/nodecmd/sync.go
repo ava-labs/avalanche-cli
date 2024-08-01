@@ -30,6 +30,7 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 
 	cmd.Flags().StringSliceVar(&validators, "validators", []string{}, "sync subnet into given comma separated list of validators. defaults to all cluster nodes")
 	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for bootstrapped/healthy status or rpc compatibility of nodes against subnet")
+	cmd.Flags().StringSliceVar(&subnetAliases, "subnet-aliases", nil, "subnet alias to be used for RPC calls. defaults to subnet blockchain ID")
 
 	return cmd
 }
@@ -124,13 +125,25 @@ func trackSubnet(
 	// and get list of subnets
 	allSubnets := utils.Unique(append(clusterConf.Subnets, subnetName))
 
+	// load sidecar to get subnet blockchain ID
+	sc, err := app.LoadSidecar(subnetName)
+	if err != nil {
+		return nil, err
+	}
+	blockchainID := sc.Networks[network.Name()].BlockchainID
+
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
+	subnetAliases := append([]string{subnetName}, subnetAliases...)
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
 			if err := ssh.RunSSHStopNode(host); err != nil {
+				nodeResults.AddResult(host.NodeID, nil, err)
+			}
+
+			if err := ssh.RunSSHRenderAvagoAliasConfigFile(host, blockchainID.String(), subnetAliases); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {

@@ -483,6 +483,51 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
+// RunSSHRenderAvagoAliasConfigFile renders avalanche alias config to a remote host via SSH.
+func RunSSHRenderAvagoAliasConfigFile(
+	host *models.Host,
+	blockchainID string,
+	subnetAliases []string,
+) error {
+	aliasConf, err := remoteconfig.RenderAvalancheAliasesConfig(remoteconfig.AvalancheConfigInputs{
+		BlockChainID: blockchainID,
+		Aliases:      subnetAliases,
+	})
+	if err != nil {
+		return err
+	}
+	// merge alias config into remote config
+	if aliasConfigFileExists(host) {
+		// read remote aliases
+		remoteAliases, err := getAvalancheGoAliasData(host)
+		if err != nil {
+			return err
+		}
+		localAliases := make(map[string]interface{})
+		if err := json.Unmarshal(aliasConf, &localAliases); err != nil {
+			return err
+		}
+		// merge with local aliases presedence. Result is in remoteAliases
+		maps.Copy(remoteAliases, localAliases)
+		aliasConf, err = json.MarshalIndent(remoteAliases, "", "  ")
+		if err != nil {
+			return err
+		}
+	}
+	aliasConfFile, err := os.CreateTemp("", "avalanchecli-alias-*.yml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(aliasConfFile.Name())
+	if err := os.WriteFile(aliasConfFile.Name(), aliasConf, constants.DefaultPerms755); err != nil {
+		return err
+	}
+	if err := host.Upload(aliasConfFile.Name(), remoteconfig.GetRemoteAvalancheAliasesConfig(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
 func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, network models.Network, trackSubnets []string) error {
 	// get subnet ids
@@ -851,9 +896,14 @@ func nodeConfigFileExists(host *models.Host) bool {
 	return nodeConfigFileExists
 }
 
+func aliasConfigFileExists(host *models.Host) bool {
+	aliasConfigFileExists, _ := host.FileExists(remoteconfig.GetRemoteAvalancheAliasesConfig())
+	return aliasConfigFileExists
+}
+
 func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error) {
 	// get remote node.json file
-	nodeJSONPath := filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
+	nodeJSONPath := filepath.Join(constants.CloudNodeConfigPath, constants.NodeConfigJSONFile)
 	// parse node.json file
 	nodeJSON, err := host.ReadFileBytes(nodeJSONPath, constants.SSHFileOpsTimeout)
 	if err != nil {
@@ -864,4 +914,17 @@ func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error)
 		return nil, err
 	}
 	return avagoConfig, nil
+}
+
+func getAvalancheGoAliasData(host *models.Host) (map[string]interface{}, error) {
+	// parse aliases.json file
+	aliasesJSON, err := host.ReadFileBytes(remoteconfig.GetRemoteAvalancheAliasesConfig(), constants.SSHFileOpsTimeout)
+	if err != nil {
+		return nil, err
+	}
+	var aliases map[string]interface{}
+	if err := json.Unmarshal(aliasesJSON, &aliases); err != nil {
+		return nil, err
+	}
+	return aliases, nil
 }

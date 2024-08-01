@@ -5,9 +5,9 @@ package remoteconfig
 
 import (
 	"bytes"
-	"html/template"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
@@ -22,6 +22,8 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
+	Aliases          []string
+	BlockChainID     string
 	TrackSubnets     string
 	BootstrapIDs     string
 	BootstrapIPs     string
@@ -38,6 +40,8 @@ func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string)
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
 		TrackSubnets:     strings.Join(subnets, ","),
+		Aliases:          nil,
+		BlockChainID:     "",
 	}
 }
 
@@ -46,7 +50,10 @@ func RenderAvalancheTemplate(templateName string, config AvalancheConfigInputs) 
 	if err != nil {
 		return nil, err
 	}
-	tmpl, err := template.New("config").Parse(string(templateBytes))
+	helperFuncs := template.FuncMap{
+		"join": strings.Join,
+	}
+	tmpl, err := template.New("config").Funcs(helperFuncs).Parse(string(templateBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +82,16 @@ func RenderAvalancheCChainConfig(config AvalancheConfigInputs) ([]byte, error) {
 	}
 }
 
+func RenderAvalancheAliasesConfig(config AvalancheConfigInputs) ([]byte, error) {
+	if output, err := RenderAvalancheTemplate("templates/avalanche-aliases.tmpl", config); err != nil {
+		return nil, err
+	} else {
+		return output, nil
+	}
+}
+
 func GetRemoteAvalancheNodeConfig() string {
-	return filepath.Join(constants.CloudNodeConfigPath, "node.json")
+	return filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
 }
 
 func GetRemoteAvalancheCChainConfig() string {
@@ -84,7 +99,11 @@ func GetRemoteAvalancheCChainConfig() string {
 }
 
 func GetRemoteAvalancheGenesis() string {
-	return filepath.Join(constants.CloudNodeConfigPath, "genesis.json")
+	return filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)
+}
+
+func GetRemoteAvalancheAliasesConfig() string {
+	return filepath.Join(constants.CloudNodeConfigPath, "chains", constants.AliasesFileName)
 }
 
 func AvalancheFolderToCreate() []string {
