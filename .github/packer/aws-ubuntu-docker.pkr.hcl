@@ -118,7 +118,8 @@ build {
             "docker pull prom/node-exporter:v1.7.0",
             "docker pull grafana/grafana:10.4.1",
             "docker pull prom/prometheus:v2.51.2",
-            "docker pull avaplatform/awm-relayer"
+            "docker pull avaplatform/awm-relayer",
+            "docker pull golang:1.22.1-bullseye"
         ]
    }
 
