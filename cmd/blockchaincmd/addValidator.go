@@ -98,7 +98,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fee := network.GenesisParams().AddSubnetValidatorFee
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		constants.PayTxsFeesMsg,
