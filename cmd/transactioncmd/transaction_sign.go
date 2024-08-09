@@ -106,7 +106,6 @@ func signTx(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
 	subnetIDFromTX, err := txutils.GetSubnetID(tx)
 	if err != nil {
@@ -152,7 +151,6 @@ func signTx(_ *cobra.Command, args []string) error {
 		tx,
 		remainingSubnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 	); err != nil {
 		if errors.Is(err, subnet.ErrNoSubnetAuthKeysInWallet) {
 			ux.Logger.PrintToUser("There are no required subnet auth keys present in the wallet")

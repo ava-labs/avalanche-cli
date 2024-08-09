@@ -98,7 +98,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fee := network.GenesisParams().AddSubnetValidatorFee
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		constants.PayTxsFeesMsg,
@@ -176,7 +176,6 @@ func CallAddValidator(
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
 	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
@@ -241,7 +240,6 @@ func CallAddValidator(
 		controlKeys,
 		subnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 		nodeID,
 		selectedWeight,
 		start,

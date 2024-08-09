@@ -31,8 +31,8 @@ import (
 var (
 	testBlockChainID1 = ids.GenerateTestID().String()
 	testBlockChainID2 = ids.GenerateTestID().String()
-	testSubnetID1     = ids.GenerateTestID().String()
 	testSubnetID2     = ids.GenerateTestID().String()
+	testSubnetID1     = ids.GenerateTestID().String()
 
 	testVMID      = "tGBrM2SXkAdNsqzb3SaFZZWMNdzjjFEUKteheTa4dhUwnfQyu" // VM ID of "test"
 	testChainName = "test"

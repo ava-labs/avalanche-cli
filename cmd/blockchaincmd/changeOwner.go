@@ -57,7 +57,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fee := network.GenesisParams().TxFee
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"pay fees",
@@ -94,7 +94,6 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
 	isPermissioned, currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
@@ -144,7 +143,6 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		currentControlKeys,
 		subnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 		controlKeys,
 		threshold,
 	)
@@ -163,14 +161,6 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-	} else {
-		networkData := sc.Networks[network.Name()]
-		networkData.TransferSubnetOwnershipTxID = tx.ID()
-		sc.Networks[network.Name()] = networkData
-		if err := app.UpdateSidecar(&sc); err != nil {
-			return fmt.Errorf("change of subnet owner was successful, but failed to update sidecar: %w", err)
-		}
 	}
-
 	return nil
 }

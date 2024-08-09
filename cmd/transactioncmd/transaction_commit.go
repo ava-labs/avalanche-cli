@@ -57,7 +57,6 @@ func commitTx(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
 	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
@@ -98,14 +97,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 		if err := blockchaincmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, transferSubnetOwnershipTxID, txID, "", "")
-	}
-
-	if txutils.IsTransferSubnetOwnershipTx(tx) {
-		networkData := sc.Networks[network.Name()]
-		networkData.TransferSubnetOwnershipTxID = txID
-		sc.Networks[network.Name()] = networkData
-		return app.UpdateSidecar(&sc)
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "")
 	}
 
 	return nil
