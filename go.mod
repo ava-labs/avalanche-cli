@@ -4,13 +4,15 @@ go 1.21.12
 
 toolchain go1.22.3
 
+replace github.com/ava-labs/subnet-evm => ../subnet-evm
+
 require (
 	github.com/ava-labs/apm v1.0.0
-	github.com/ava-labs/avalanche-network-runner v1.8.3-0.20240809155747-90421d314622
-	github.com/ava-labs/avalanchego v1.11.11-0.20240809151225-4e5bb870c134
+	github.com/ava-labs/avalanche-network-runner v1.8.3-0.20240814102125-03d6cb76b53f
+	github.com/ava-labs/avalanchego v1.11.11-0.20240814014627-2eef64141457
 	github.com/ava-labs/awm-relayer v1.3.0
-	github.com/ava-labs/coreth v0.13.8-0.20240802110637-b3e5088d062d
-	github.com/ava-labs/subnet-evm v0.6.9-0.20240806212213-c2da67db92f8
+	github.com/ava-labs/coreth v0.13.8-fixed-genesis-upgrade.0.20240813194342-7635a96aa180
+	github.com/ava-labs/subnet-evm v0.6.9-0.20240813152854-1bba2c8090c2
 	github.com/aws/aws-sdk-go-v2 v1.30.3
 	github.com/aws/aws-sdk-go-v2/config v1.27.26
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.162.0

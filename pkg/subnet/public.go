@@ -428,17 +428,17 @@ func (d *PublicDeployer) Sign(
 	return nil
 }
 
-func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
+func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 	// filter out ids.Empty txs
-	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
+	filteredTxs := utils.Filter(subnetIDs, func(e ids.ID) bool { return e != ids.Empty })
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{
-			URI:              d.network.Endpoint,
-			AVAXKeychain:     d.kc.Keychain,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: set.Of(filteredTxs...),
+			URI:          d.network.Endpoint,
+			AVAXKeychain: d.kc.Keychain,
+			EthKeychain:  secp256k1fx.NewKeychain(),
+			SubnetIDs:    filteredTxs,
 		},
 	)
 	if err != nil {
