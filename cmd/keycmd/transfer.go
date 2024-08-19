@@ -492,6 +492,8 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
+	usingLedger := ledgerIndex != wrongLedgerIndexVal
+
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("this operation is going to:")
 	if send {
@@ -505,6 +507,9 @@ func transferF(*cobra.Command, []string) error {
 		}
 		ux.Logger.PrintToUser("- send %.9f AVAX from %s to destination address %s", float64(amount)/float64(units.Avax), addrStr, destinationAddrStr)
 		totalFee := 4 * fee
+		if !usingLedger {
+			totalFee = fee
+		}
 		if PToX {
 			totalFee = 2 * fee
 		}
@@ -544,7 +549,7 @@ func transferF(*cobra.Command, []string) error {
 			return err
 		}
 		amountPlusFee := amount + fee*3
-		if PToX {
+		if PToX || !usingLedger {
 			amountPlusFee = amount + fee
 		}
 		output := &avax.TransferableOutput{
@@ -555,17 +560,27 @@ func transferF(*cobra.Command, []string) error {
 			},
 		}
 		outputs := []*avax.TransferableOutput{output}
-		ux.Logger.PrintToUser("Issuing ExportTx P -> X")
-
-		if ledgerIndex != wrongLedgerIndexVal {
-			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
-		}
-		unsignedTx, err := wallet.P().Builder().NewExportTx(
-			wallet.X().Builder().Context().BlockchainID,
-			outputs,
-		)
-		if err != nil {
-			return fmt.Errorf("error building tx: %w", err)
+		var unsignedTx txs.UnsignedTx
+		if PToP && !usingLedger {
+			ux.Logger.PrintToUser("Issuing BaseTx P -> P")
+			unsignedTx, err = wallet.P().Builder().NewBaseTx(
+				outputs,
+			)
+			if err != nil {
+				return fmt.Errorf("error building tx: %w", err)
+			}
+		} else {
+			ux.Logger.PrintToUser("Issuing ExportTx P -> X")
+			if usingLedger {
+				ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+			}
+			unsignedTx, err = wallet.P().Builder().NewExportTx(
+				wallet.X().Builder().Context().BlockchainID,
+				outputs,
+			)
+			if err != nil {
+				return fmt.Errorf("error building tx: %w", err)
+			}
 		}
 		tx := txs.Tx{Unsigned: unsignedTx}
 		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
@@ -601,7 +616,7 @@ func transferF(*cobra.Command, []string) error {
 				return err
 			}
 			ux.Logger.PrintToUser("Issuing ImportTx P -> X")
-			if ledgerIndex != wrongLedgerIndexVal {
+			if usingLedger {
 				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 			}
 			unsignedTx, err := wallet.X().Builder().NewImportTx(
@@ -657,7 +672,7 @@ func transferF(*cobra.Command, []string) error {
 			ux.Logger.PrintToUser("Issuing ExportTx X -> P")
 			_, err = subnet.IssueXToPExportTx(
 				wallet,
-				ledgerIndex != wrongLedgerIndexVal,
+				usingLedger,
 				true,
 				wallet.P().Builder().Context().AVAXAssetID,
 				amount+fee*1,
@@ -686,7 +701,7 @@ func transferF(*cobra.Command, []string) error {
 			ux.Logger.PrintToUser("Issuing ImportTx X -> P")
 			_, err = subnet.IssuePFromXImportTx(
 				wallet,
-				ledgerIndex != wrongLedgerIndexVal,
+				usingLedger,
 				true,
 				&to,
 			)
