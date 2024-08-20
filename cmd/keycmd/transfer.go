@@ -548,9 +548,14 @@ func transferF(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		amountPlusFee := amount + fee*3
-		if PToX || !usingLedger {
-			amountPlusFee = amount + fee
+		amountPlusFee := amount
+		if PToP {
+			if usingLedger {
+				amountPlusFee += fee * 3
+			}
+		}
+		if PToX {
+			amountPlusFee += fee
 		}
 		output := &avax.TransferableOutput{
 			Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
