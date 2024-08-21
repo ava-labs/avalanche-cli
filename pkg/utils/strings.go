@@ -4,6 +4,7 @@ package utils
 
 import (
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -59,4 +60,12 @@ func CleanupString(s string) string {
 // CleanupStrings cleans up a slice of strings by trimming \r and \n characters.
 func CleanupStrings(s []string) []string {
 	return Map(s, CleanupString)
+}
+
+// Formats an amount of base units as a string representing the amount in the given denomination.
+func FormatAmount(amount *big.Int, decimals uint8) string {
+	amountFloat := new(big.Float).SetInt(amount)
+	divisor := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil))
+	val := new(big.Float).Quo(amountFloat, divisor)
+	return fmt.Sprintf(fmt.Sprintf("%%.%df", decimals), val)
 }
