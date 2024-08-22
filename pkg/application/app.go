@@ -517,7 +517,6 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	sc *models.Sidecar,
 	network models.Network,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	blockchainID ids.ID,
 	teleporterMessengerAddress string,
 	teleporterRegistryAddress string,
@@ -526,12 +525,11 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		sc.Networks = make(map[string]models.NetworkData)
 	}
 	sc.Networks[network.Name()] = models.NetworkData{
-		SubnetID:                    subnetID,
-		TransferSubnetOwnershipTxID: transferSubnetOwnershipTxID,
-		BlockchainID:                blockchainID,
-		RPCVersion:                  sc.RPCVersion,
-		TeleporterMessengerAddress:  teleporterMessengerAddress,
-		TeleporterRegistryAddress:   teleporterRegistryAddress,
+		SubnetID:                   subnetID,
+		BlockchainID:               blockchainID,
+		RPCVersion:                 sc.RPCVersion,
+		TeleporterMessengerAddress: teleporterMessengerAddress,
+		TeleporterRegistryAddress:  teleporterRegistryAddress,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)

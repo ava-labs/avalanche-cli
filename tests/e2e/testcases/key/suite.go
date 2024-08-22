@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("[Key]", func() {
 
 		amount := 0.2
 		amountStr := fmt.Sprintf("%.2f", amount)
-		feeNAvax := genesis.LocalParams.StaticConfig.TxFee * 1
+		feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
 		amountNAvax := uint64(amount * float64(units.Avax))
 
 		// send/receive without recovery

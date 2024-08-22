@@ -444,7 +444,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	fee := network.GenesisParams().TxFee
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 
 	var kc keychain.Keychain
 	if keyName != "" {

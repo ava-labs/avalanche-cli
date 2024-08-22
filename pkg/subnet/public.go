@@ -63,13 +63,12 @@ func (d *PublicDeployer) AddValidator(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	nodeID ids.NodeID,
 	weight uint64,
 	startTime time.Time,
 	duration time.Duration,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -122,11 +121,10 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	newControlKeys []string,
 	newThreshold uint32,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -225,10 +223,9 @@ func (d *PublicDeployer) RemoveValidator(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	nodeID ids.NodeID,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -319,13 +316,12 @@ func (d *PublicDeployer) DeployBlockchain(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	chain string,
 	genesis []byte,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -406,9 +402,8 @@ func (d *PublicDeployer) Sign(
 	tx *txs.Tx,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 ) error {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return err
 	}
@@ -433,17 +428,17 @@ func (d *PublicDeployer) Sign(
 	return nil
 }
 
-func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
+func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 	// filter out ids.Empty txs
-	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
+	filteredTxs := utils.Filter(subnetIDs, func(e ids.ID) bool { return e != ids.Empty })
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{
-			URI:              d.network.Endpoint,
-			AVAXKeychain:     d.kc.Keychain,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: set.Of(filteredTxs...),
+			URI:          d.network.Endpoint,
+			AVAXKeychain: d.kc.Keychain,
+			EthKeychain:  secp256k1fx.NewKeychain(),
+			SubnetIDs:    filteredTxs,
 		},
 	)
 	if err != nil {
