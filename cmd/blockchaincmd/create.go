@@ -275,8 +275,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 			deployTeleporter = params.UseTeleporter
 			useExternalGasToken = params.UseExternalGasToken
-			genesisBytes, err = vm.CreateEvmGenesis(
-				app,
+			genesisBytes, err = vm.CreateEVMGenesis(
 				blockchainName,
 				params,
 				teleporterInfo,

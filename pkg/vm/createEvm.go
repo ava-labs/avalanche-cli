@@ -71,8 +71,7 @@ func CreateEvmSidecar(
 	return &sc, nil
 }
 
-func CreateEvmGenesis(
-	app *application.Avalanche,
+func CreateEVMGenesis(
 	blockchainName string,
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,

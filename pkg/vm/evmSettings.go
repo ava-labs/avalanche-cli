@@ -10,10 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const (
-	goBackMsg = "Go back to previous step"
-)
-
 var (
 	Difficulty = big.NewInt(0)
 

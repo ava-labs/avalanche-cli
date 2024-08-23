@@ -52,13 +52,11 @@ const (
 	confirmAddressAllocationOption = "Confirm and finalize the initial token allocation"
 )
 
-var (
-	DefaultEwoqAllocation = core.GenesisAlloc{
-		PrefundedEwoqAddress: {
-			Balance: defaultEVMAirdropAmount,
-		},
-	}
-)
+var DefaultEwoqAllocation = core.GenesisAlloc{
+	PrefundedEwoqAddress: {
+		Balance: defaultEVMAirdropAmount,
+	},
+}
 
 type FeeConfig struct {
 	lowThroughput    bool
@@ -380,7 +378,8 @@ func getNativeGasTokenAllocationConfig(
 				return core.GenesisAlloc{}, err
 			}
 
-			if action == addAddressAllocationOption {
+			switch action {
+			case addAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to allocate to")
 				if err != nil {
 					return core.GenesisAlloc{}, err
@@ -400,7 +399,7 @@ func getNativeGasTokenAllocationConfig(
 				res[address] = core.GenesisAccount{
 					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), oneAvax),
 				}
-			} else if action == changeAddressAllocationOption {
+			case changeAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to update the allocation of")
 				if err != nil {
 					return core.GenesisAlloc{}, err
@@ -419,7 +418,7 @@ func getNativeGasTokenAllocationConfig(
 				res[address] = core.GenesisAccount{
 					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), oneAvax),
 				}
-			} else if action == removeAddressAllocationOption {
+			case removeAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to remove from the allocation list")
 				if err != nil {
 					return core.GenesisAlloc{}, err
@@ -432,9 +431,9 @@ func getNativeGasTokenAllocationConfig(
 				}
 
 				delete(res, address)
-			} else if action == previewAddressAllocationOption {
+			case previewAddressAllocationOption:
 				displayAllocations(res)
-			} else if action == confirmAddressAllocationOption {
+			case confirmAddressAllocationOption:
 				displayAllocations(res)
 				confirm, err := app.Prompt.CaptureYesNo("Are you sure you want to finalize this allocation list?")
 				if err != nil {
@@ -443,7 +442,7 @@ func getNativeGasTokenAllocationConfig(
 				if confirm {
 					return res, nil
 				}
-			} else {
+			default:
 				return core.GenesisAlloc{}, fmt.Errorf("invalid allocation modification option")
 			}
 		}

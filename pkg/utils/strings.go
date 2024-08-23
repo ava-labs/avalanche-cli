@@ -4,6 +4,7 @@ package utils
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"strconv"
 	"strings"
@@ -65,7 +66,7 @@ func CleanupStrings(s []string) []string {
 // Formats an amount of base units as a string representing the amount in the given denomination.
 func FormatAmount(amount *big.Int, decimals uint8) string {
 	amountFloat := new(big.Float).SetInt(amount)
-	divisor := new(big.Float).SetInt(new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(decimals)), nil))
+	divisor := new(big.Float).SetFloat64(math.Pow10(int(decimals)))
 	val := new(big.Float).Quo(amountFloat, divisor)
-	return fmt.Sprintf(fmt.Sprintf("%%.%df", decimals), val)
+	return fmt.Sprintf("%.*f", decimals, val)
 }
