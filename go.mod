@@ -31,7 +31,7 @@ require (
 	github.com/onsi/gomega v1.33.1
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
-	github.com/posthog/posthog-go v0.0.0-20221221115252-24dfed35d71a
+	github.com/posthog/posthog-go v1.2.19
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/cobra v1.8.0
@@ -201,7 +201,6 @@ require (
 	github.com/urfave/cli/v2 v2.25.7 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zondax/hid v0.9.2 // indirect
 	github.com/zondax/ledger-go v0.14.3 // indirect
