@@ -25,5 +25,6 @@ and configuring an AWM relayer on localhost.`,
 	cmd.AddCommand(newStopCmd())
 	cmd.AddCommand(newStartCmd())
 	cmd.AddCommand(newLogsCmd())
+	cmd.AddCommand(newDeployCmd())
 	return cmd
 }
