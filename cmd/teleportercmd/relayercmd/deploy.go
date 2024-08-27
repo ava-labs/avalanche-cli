@@ -3,10 +3,14 @@
 package relayercmd
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -125,36 +129,56 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
+	networkUP := true
+	_, err = utils.GetChainID(network.Endpoint, "C")
+	if err != nil {
+		if !strings.Contains(err.Error(), "connection refused") {
+			return err
+		}
+		networkUP = false
+	}
+
 	configureBlockchains := false
-	prompt = "Do you want to add blockchain information to your relayer?"
-	yesOption := "Yes, I want to configure source and destination blockchains"
-	noOption := "No, I prefer to configure the relayer later on"
-	explainOption := "Explain the difference"
-	options = []string{yesOption, noOption, explainOption}
-	for {
-		option, err := app.Prompt.CaptureList(
-			prompt,
-			options,
-		)
+	if networkUP {
+		prompt = "Do you want to add blockchain information to your relayer?"
+		yesOption := "Yes, I want to configure source and destination blockchains"
+		noOption := "No, I prefer to configure the relayer later on"
+		explainOption := "Explain the difference"
+		options = []string{yesOption, noOption, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				prompt,
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case yesOption:
+				configureBlockchains = true
+			case noOption:
+			case explainOption:
+				ux.Logger.PrintToUser("You can configure a list of source and destination blockchains, so that the")
+				ux.Logger.PrintToUser("relayer will listen for new messages on each source, and deliver them to the")
+				ux.Logger.PrintToUser("destinations.")
+				ux.Logger.PrintToUser("Or you can not configure those later on, by using the 'relayer config' cmd.")
+				continue
+			}
+			break
+		}
+	}
+
+	if configureBlockchains {
+		configEsp, cancel, err := GenerateConfigEsp(network)
+		if cancel {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
-		switch option {
-		case yesOption:
-			configureBlockchains = true
-		case noOption:
-		case explainOption:
-			ux.Logger.PrintToUser("You can configure a list of source and destination blockchains, so that the")
-			ux.Logger.PrintToUser("relayer will listen for new messages on each source, and deliver them to the")
-			ux.Logger.PrintToUser("destinations.")
-			ux.Logger.PrintToUser("Or you can not configure those later on, by using the 'relayer config' cmd.")
-			continue
-		}
-		break
+		fmt.Println(configEsp)
 	}
 
-	// create conf
-	//
 	// if local relayer
 	// download if needed. copy if needed.
 	// start process (verify seconds)
@@ -167,7 +191,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	_ = deployToRemote
 	_ = logLevel
-	_ = configureBlockchains
 
 	return nil
 }

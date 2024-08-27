@@ -41,11 +41,15 @@ func preview(configEsp ConfigEsp) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
-	for _, source := range configEsp.sources {
-		table.Append([]string{"Source", source.blockchainDesc})
+	if len(configEsp.sources) > 0 {
+		for _, source := range configEsp.sources {
+			table.Append([]string{"Source", source.blockchainDesc})
+		}
 	}
-	for _, destination := range configEsp.sources {
-		table.Append([]string{"Destination", destination.blockchainDesc})
+	if len(configEsp.destinations) > 0 {
+		for _, destination := range configEsp.sources {
+			table.Append([]string{"Destination", destination.blockchainDesc})
+		}
 	}
 	table.Render()
 	fmt.Println()
@@ -118,10 +122,10 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 		return ConfigEsp{}, err
 	}
 	rewardAddress := ""
-	prompt := "Do you want to add a rewards address at source?"
-	noOption := "No, I don't need to set a rewards address"
+	prompt := "Do you want to add a reward address at source?"
+	noOption := "No, I don't need to set a reward address"
 	yesOption := "Yes, I want to configure a reward address at source"
-	options := []string{yesOption, noOption, explainOption}
+	options := []string{noOption, yesOption, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
 			prompt,
@@ -232,6 +236,8 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 		}
 		if len(configEsp.sources) == 0 && len(configEsp.destinations) == 0 {
 			options = utils.RemoveFromSlice(options, removeOption)
+			options = utils.RemoveFromSlice(options, previewOption)
+			options = utils.RemoveFromSlice(options, confirmOption)
 		}
 		option, err := app.Prompt.CaptureList(prompt, options)
 		if err != nil {
@@ -256,7 +262,15 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 						return ConfigEsp{}, false, err
 					}
 				case addSourceOption:
+					configEsp, err = addSource(network, configEsp, contract.ChainSpec{})
+					if err != nil {
+						return ConfigEsp{}, false, err
+					}
 				case addDestinationOption:
+					configEsp, err = addDestination(network, configEsp, contract.ChainSpec{})
+					if err != nil {
+						return ConfigEsp{}, false, err
+					}
 				case explainOption:
 					ux.Logger.PrintToUser("A source blockchain is going to be listened by the relayer to check for new")
 					ux.Logger.PrintToUser("messages. You need to specify blockchain ID, teleporter addresses.")
