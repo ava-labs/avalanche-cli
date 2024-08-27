@@ -358,7 +358,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		tokenAddress  common.Address
 	)
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
-	homeEndpoint, _, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
+	homeEndpoint, _, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetBlockchainParams(
 		app,
 		network,
 		flags.homeFlags.chainFlags.BlockchainName,
@@ -464,7 +464,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Deploy
-	remoteEndpoint, remoteBlockchainName, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
+	remoteEndpoint, remoteBlockchainName, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetBlockchainParams(
 		app,
 		network,
 		flags.remoteFlags.chainFlags.BlockchainName,

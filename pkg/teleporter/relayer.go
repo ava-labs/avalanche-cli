@@ -30,6 +30,7 @@ import (
 )
 
 const (
+	localRelayerSetupTime     = 2 * time.Second
 	localRelayerCheckPoolTime = 100 * time.Millisecond
 	localRelayerCheckTimeout  = 3 * time.Second
 )
@@ -124,19 +125,24 @@ func RelayerIsUp(runFilePath string) (bool, int, *os.Process, error) {
 	if err := json.Unmarshal(bs, &rf); err != nil {
 		return false, 0, nil, err
 	}
-	proc, err := os.FindProcess(rf.Pid)
+	proc, err := GetProcess(rf.Pid)
 	if err != nil {
 		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
-		err := removeRelayerRunFile(runFilePath)
-		return false, 0, nil, err
-	}
-	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		// after a reboot without network cleanup, it is expected that the file pid will exist but the process not
-		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
-		err := removeRelayerRunFile(runFilePath)
-		return false, 0, nil, err
+		return false, 0, nil, removeRelayerRunFile(runFilePath)
 	}
 	return true, rf.Pid, proc, nil
+}
+
+func GetProcess(pid int) (*os.Process, error) {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return nil, err
+	}
+	if err := proc.Signal(syscall.Signal(0)); err != nil {
+		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
+		return nil, err
+	}
+	return proc, nil
 }
 
 func RelayerCleanup(runFilePath string, storageDir string) error {
@@ -245,6 +251,11 @@ func executeRelayer(binPath string, configPath string, logFile string) (int, err
 	cmd.Stderr = logWriter
 	if err := cmd.Start(); err != nil {
 		return 0, err
+	}
+
+	time.Sleep(localRelayerSetupTime)
+	if _, err := GetProcess(cmd.Process.Pid); err != nil {
+		return 0, fmt.Errorf("relayer process failed during setup")
 	}
 
 	return cmd.Process.Pid, nil

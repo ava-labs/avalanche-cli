@@ -39,7 +39,7 @@ var (
 // avalanche teleporter msg
 func newMsgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "msg [sourceSubnetName] [destinationSubnetName] [messageContent]",
+		Use:   "msg [sourceBlockchainName] [destinationBlockchainName] [messageContent]",
 		Short: "Verifies exchange of teleporter message between two subnets",
 		Long:  `Sends and wait reception for a teleporter msg between two subnets (Currently only for local network).`,
 		RunE:  msg,
@@ -53,16 +53,16 @@ func newMsgCmd() *cobra.Command {
 }
 
 func msg(_ *cobra.Command, args []string) error {
-	sourceSubnetName := args[0]
-	destSubnetName := args[1]
+	sourceBlockchainName := args[0]
+	destBlockchainName := args[1]
 	message := args[2]
 
 	subnetNameToGetNetworkFrom := ""
-	if !isCChain(sourceSubnetName) {
-		subnetNameToGetNetworkFrom = sourceSubnetName
+	if !isCChain(sourceBlockchainName) {
+		subnetNameToGetNetworkFrom = sourceBlockchainName
 	}
-	if !isCChain(destSubnetName) {
-		subnetNameToGetNetworkFrom = destSubnetName
+	if !isCChain(destBlockchainName) {
+		subnetNameToGetNetworkFrom = destBlockchainName
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -81,8 +81,8 @@ func msg(_ *cobra.Command, args []string) error {
 		app,
 		network,
 		contract.ChainSpec{
-			BlockchainName: sourceSubnetName,
-			CChain:         isCChain(sourceSubnetName),
+			BlockchainName: sourceBlockchainName,
+			CChain:         isCChain(sourceBlockchainName),
 		},
 	)
 	if err != nil {
@@ -99,7 +99,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"send the message",
+			"pay for fees at source blockchain",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -110,20 +110,20 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	_, _, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetSubnetParams(
+	_, _, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetBlockchainParams(
 		app,
 		network,
-		sourceSubnetName,
-		isCChain(sourceSubnetName),
+		sourceBlockchainName,
+		isCChain(sourceBlockchainName),
 	)
 	if err != nil {
 		return err
 	}
-	_, _, _, destBlockchainID, destMessengerAddress, _, _, err := teleporter.GetSubnetParams(
+	_, _, _, destBlockchainID, destMessengerAddress, _, _, err := teleporter.GetBlockchainParams(
 		app,
 		network,
-		destSubnetName,
-		isCChain(destSubnetName),
+		destBlockchainName,
+		isCChain(destBlockchainName),
 	)
 	if err != nil {
 		return err
@@ -145,7 +145,7 @@ func msg(_ *cobra.Command, args []string) error {
 		destAddr = common.HexToAddress(msgFlags.DestinationAddress)
 	}
 	// send tx to the teleporter contract at the source
-	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
+	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
 	tx, receipt, err := teleporter.SendCrossChainMessage(
 		network.BlockchainEndpoint(sourceBlockchainID.String()),
 		common.HexToAddress(sourceMessengerAddress),
@@ -185,7 +185,7 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destSubnetName, destBlockchainID)
+	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destBlockchainName, destBlockchainID)
 
 	arrivalCheckInterval := 100 * time.Millisecond
 	arrivalCheckTimeout := 10 * time.Second

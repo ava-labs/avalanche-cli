@@ -198,13 +198,13 @@ func getBlockchainIDToSubnetNameMap(network models.Network) (map[string]string, 
 	}
 	blockchainIDToSubnetName := map[string]string{}
 	for _, subnetName := range subnetNames {
-		_, _, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, subnetName, false)
+		_, _, _, blockchainID, _, _, _, err := teleporter.GetBlockchainParams(app, network, subnetName, false)
 		if err != nil {
 			return nil, err
 		}
 		blockchainIDToSubnetName[blockchainID.String()] = subnetName
 	}
-	_, _, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, "", true)
+	_, _, _, blockchainID, _, _, _, err := teleporter.GetBlockchainParams(app, network, "", true)
 	if err != nil {
 		return nil, err
 	}

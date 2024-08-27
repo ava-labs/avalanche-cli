@@ -8,11 +8,14 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/spf13/cobra"
 )
@@ -57,7 +60,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
 	// flag for binary to use
 	// flag for local process vs cloud
-	//
+	// flag for provided config file (may need to change tmp dir)
 	return cmd
 }
 
@@ -84,7 +87,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		prompt := "Do you want to deploy the relayer to a remote or a local host?"
 		remoteHostOption := "I want to deploy the relayer into a remote node in the cloud"
 		localHostOption := "I prefer to deploy into a localhost process"
-		explainOption := "Explain the difference"
 		options := []string{remoteHostOption, localHostOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -143,7 +145,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		prompt = "Do you want to add blockchain information to your relayer?"
 		yesOption := "Yes, I want to configure source and destination blockchains"
 		noOption := "No, I prefer to configure the relayer later on"
-		explainOption := "Explain the difference"
 		options = []string{yesOption, noOption, explainOption}
 		for {
 			option, err := app.Prompt.CaptureList(
@@ -168,15 +169,134 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
+	var configEsp ConfigEsp
 	if configureBlockchains {
-		configEsp, cancel, err := GenerateConfigEsp(network)
+		// TODO: this is the base for a 'relayer config' cmd
+		// that should load the current config, generate a configEsp for that,
+		// and use this to change the config, before saving it
+		// most probably, also, relayer config should restart the relayer
+		var cancel bool
+		configEsp, cancel, err = GenerateConfigEsp(network)
 		if cancel {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		fmt.Println(configEsp)
+	}
+
+	fundBlockchains := false
+	if networkUP && len(configEsp.destinations) > 0 {
+		// TODO: this (and the next section) are the base for a 'relayer fund' cmd
+		// it must be based on relayer conf, and try to gather a nice blockchain desc
+		// from the blockchain id (as relayer logs cmd)
+		ux.Logger.PrintToUser("")
+		for _, destination := range configEsp.destinations {
+			pk, err := crypto.HexToECDSA(destination.privateKey)
+			if err != nil {
+				return err
+			}
+			addr := crypto.PubkeyToAddress(pk.PublicKey)
+			client, err := evm.GetClient(network.BlockchainEndpoint(destination.blockchainID))
+			if err != nil {
+				return err
+			}
+			balance, err := evm.GetAddressBalance(client, addr.Hex())
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser("Relayer private key on destination %s has a balance of %s", destination.blockchainDesc, balance)
+		}
+		ux.Logger.PrintToUser("")
+
+		prompt = "Do you want to fund relayer destinations?"
+		yesOption := "Yes, I want to fund destination blockchains"
+		noOption := "No, I prefer to fund the relayer later on"
+		options = []string{yesOption, noOption, explainOption}
+		for {
+			option, err := app.Prompt.CaptureList(
+				prompt,
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case yesOption:
+				fundBlockchains = true
+			case noOption:
+			case explainOption:
+				ux.Logger.PrintToUser("You need to set some balance on the destination addresses")
+				ux.Logger.PrintToUser("so the relayer can pay for fees when delivering messages.")
+				continue
+			}
+			break
+		}
+	}
+
+	if fundBlockchains {
+		for _, destination := range configEsp.destinations {
+			pk, err := crypto.HexToECDSA(destination.privateKey)
+			if err != nil {
+				return err
+			}
+			addr := crypto.PubkeyToAddress(pk.PublicKey)
+			client, err := evm.GetClient(network.BlockchainEndpoint(destination.blockchainID))
+			if err != nil {
+				return err
+			}
+			balance, err := evm.GetAddressBalance(client, addr.Hex())
+			if err != nil {
+				return err
+			}
+			prompt = fmt.Sprintf("Do you want to fund relayer for destination %s (balance=%s)?", destination.blockchainDesc, balance)
+			yesOption := "Yes, I will send funds to it"
+			noOption := "Not yet"
+			options = []string{yesOption, noOption}
+			doPay := false
+			option, err := app.Prompt.CaptureList(
+				prompt,
+				options,
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case yesOption:
+				doPay = true
+			case noOption:
+			}
+			if doPay {
+				genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+					app,
+					network,
+					contract.ChainSpec{
+						BlockchainID: destination.blockchainID,
+					},
+				)
+				if err != nil {
+					return err
+				}
+				privateKey, err := prompts.PromptPrivateKey(
+					app.Prompt,
+					fmt.Sprintf("fund the relayer destination %s", destination.blockchainDesc),
+					app.GetKeyDir(),
+					app.GetKey,
+					genesisAddress,
+					genesisPrivateKey,
+				)
+				if err != nil {
+					return err
+				}
+				amount, err := app.Prompt.CapturePositiveBigInt("Amount to transfer")
+				if err != nil {
+					return err
+				}
+				if err := evm.FundAddress(client, privateKey, addr.Hex(), amount); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
 	// if local relayer
@@ -189,6 +309,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// create cluster
 	// set conf
 
+	_ = configEsp
 	_ = deployToRemote
 	_ = logLevel
 

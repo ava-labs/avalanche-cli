@@ -406,7 +406,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		if err := updateAWMRelayerFunds(network, sc, blockchainID); err != nil {
 			return err
 		}
-		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
+		if err := updateAWMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
 			return err
 		}
 	}
@@ -511,15 +511,9 @@ func setAWMRelayerHost(host *models.Host) error {
 	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
-func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
-	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
-	flags := relayercmd.AddSubnetToServiceFlags{
-		Network: networkoptions.NetworkFlags{
-			ClusterName: clusterName,
-		},
-		CloudNodeID: host.GetCloudID(),
-	}
-	if err := relayercmd.CallAddSubnetToService(subnetName, flags); err != nil {
+func updateAWMRelayerHostConfig(network models.Network, host *models.Host, blockchainName string) error {
+	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay blockchain %s", host.GetCloudID(), blockchainName)
+	if err := relayercmd.AddBlockchainToClusterConf(network, host.GetCloudID(), blockchainName); err != nil {
 		return err
 	}
 	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {

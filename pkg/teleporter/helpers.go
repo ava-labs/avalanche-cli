@@ -21,10 +21,10 @@ import (
 // - messenger address
 // - registry address
 // - preconfigured key for interchain
-func GetSubnetParams(
+func GetBlockchainParams(
 	app *application.Avalanche,
 	network models.Network,
-	subnetName string,
+	blockchainName string,
 	isCChain bool,
 ) (string, string, ids.ID, ids.ID, string, string, *key.SoftKey, error) {
 	var (
@@ -68,12 +68,12 @@ func GetSubnetParams(
 		endpoint = network.CChainEndpoint()
 		name = "C-Chain"
 	} else {
-		sc, err := app.LoadSidecar(subnetName)
+		sc, err := app.LoadSidecar(blockchainName)
 		if err != nil {
 			return "", "", ids.Empty, ids.Empty, "", "", nil, err
 		}
 		if !sc.TeleporterReady {
-			return "", "", ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("subnet %s is not enabled for teleporter", subnetName)
+			return "", "", ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("subnet %s is not enabled for teleporter", blockchainName)
 		}
 		subnetID = sc.Networks[network.Name()].SubnetID
 		chainID = sc.Networks[network.Name()].BlockchainID
@@ -85,13 +85,13 @@ func GetSubnetParams(
 			return "", "", ids.Empty, ids.Empty, "", "", nil, err
 		}
 		endpoint = network.BlockchainEndpoint(chainID.String())
-		name = subnetName
+		name = blockchainName
 	}
 	if chainID == ids.Empty {
-		return "", "", ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("chainID for subnet %s not found on network %s", subnetName, network.Name())
+		return "", "", ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("chainID for subnet %s not found on network %s", blockchainName, network.Name())
 	}
 	if teleporterMessengerAddress == "" {
-		return "", "", ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", subnetName, network.Name())
+		return "", "", ids.Empty, ids.Empty, "", "", nil, fmt.Errorf("teleporter messenger address for subnet %s not found on network %s", blockchainName, network.Name())
 	}
 	return endpoint, name, subnetID, chainID, teleporterMessengerAddress, teleporterRegistryAddress, k, nil
 }
