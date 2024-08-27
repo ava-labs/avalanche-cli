@@ -47,7 +47,7 @@ func preview(configEsp ConfigEsp) {
 		}
 	}
 	if len(configEsp.destinations) > 0 {
-		for _, destination := range configEsp.sources {
+		for _, destination := range configEsp.destinations {
 			table.Append([]string{"Destination", destination.blockchainDesc})
 		}
 	}
