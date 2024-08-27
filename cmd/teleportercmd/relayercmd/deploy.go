@@ -299,18 +299,16 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	// if local relayer
-	// download if needed. copy if needed.
-	// start process (verify seconds)
-	// save version of filename in run file or whichever
-
-	// if remote relayer
-	// ask for relayer name
-	// create cluster
-	// set conf
+	if !deployToRemote {
+		// download if needed. copy if needed.
+		// save version of filename in run file or whichever
+	} else {
+		// ask for relayer name
+		// create cluster
+		// set conf
+	}
 
 	_ = configEsp
-	_ = deployToRemote
 	_ = logLevel
 
 	return nil
