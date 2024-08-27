@@ -192,7 +192,7 @@ func getLogSubnet(
 }
 
 func getBlockchainIDToSubnetNameMap(network models.Network) (map[string]string, error) {
-	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	subnetNames, err := app.GetBlockchainNamesOnNetwork(network)
 	if err != nil {
 		return nil, err
 	}

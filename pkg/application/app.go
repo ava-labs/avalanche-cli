@@ -553,7 +553,7 @@ func (app *Avalanche) GetTokenSymbol(blockchainName string) string {
 	return sidecar.TokenSymbol
 }
 
-func (app *Avalanche) GetSubnetNames() ([]string, error) {
+func (app *Avalanche) GetBlockchainNames() ([]string, error) {
 	matches, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, err
@@ -572,8 +572,8 @@ func (app *Avalanche) GetSubnetNames() ([]string, error) {
 	return names, nil
 }
 
-func (app *Avalanche) GetSubnetNamesOnNetwork(network models.Network) ([]string, error) {
-	blockchainNames, err := app.GetSubnetNames()
+func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]string, error) {
+	blockchainNames, err := app.GetBlockchainNames()
 	if err != nil {
 		return nil, err
 	}

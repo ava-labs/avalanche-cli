@@ -202,14 +202,14 @@ func transferF(*cobra.Command, []string) error {
 		return err
 	}
 
-	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	subnetNames, err := app.GetBlockchainNamesOnNetwork(network)
 	if err != nil {
 		return err
 	}
 
 	if originSubnet == "" && !PToX && !PToP {
 		prompt := "Where are the funds to transfer?"
-		cancel, pChainChoosen, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+		cancel, pChainChoosen, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 			app.Prompt,
 			prompt,
 			subnetNames,
@@ -217,6 +217,7 @@ func transferF(*cobra.Command, []string) error {
 			true,
 			false,
 			"",
+			false,
 		)
 		if err != nil {
 			return err
@@ -252,7 +253,7 @@ func transferF(*cobra.Command, []string) error {
 			if originSubnet == cChain {
 				avoidSubnet = ""
 			}
-			cancel, _, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+			cancel, _, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 				app.Prompt,
 				prompt,
 				subnetNames,
@@ -260,6 +261,7 @@ func transferF(*cobra.Command, []string) error {
 				true,
 				originSubnet == cChain,
 				avoidSubnet,
+				false,
 			)
 			if err != nil {
 				return err

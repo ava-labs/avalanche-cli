@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -20,7 +19,7 @@ import (
 type DeployERC20Flags struct {
 	Network         networkoptions.NetworkFlags
 	PrivateKeyFlags contract.PrivateKeyFlags
-	chainFlags      contract.ChainFlags
+	chainFlags      contract.ChainSpec
 	symbol          string
 	funded          string
 	supply          uint64
@@ -46,12 +45,14 @@ func newDeployERC20Cmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
 	contract.AddPrivateKeyFlagsToCmd(cmd, &deployERC20Flags.PrivateKeyFlags, "as contract deployer")
-	contract.AddChainFlagsToCmd(
+	contract.AddChainSpecToCmd(
 		cmd,
 		&deployERC20Flags.chainFlags,
 		"deploy the ERC20 contract",
 		"",
 		"",
+		"",
+		true,
 	)
 	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the token symbol")
 	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the token supply")
@@ -73,41 +74,20 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	// flags exclusiveness
-	if !cmdflags.EnsureMutuallyExclusive([]bool{
-		deployERC20Flags.chainFlags.SubnetName != "",
-		deployERC20Flags.chainFlags.CChain,
-	}) {
-		return fmt.Errorf("--subnet and --c-chain are mutually exclusive flags")
+	if !contract.MutuallyExclusiveChainSpecFields(deployERC20Flags.chainFlags) {
+		return fmt.Errorf("--blockchaion, --blockchain-id and --c-chain are mutually exclusive flags")
 	}
-	if deployERC20Flags.chainFlags.SubnetName == "" && !deployERC20Flags.chainFlags.CChain {
-		subnetNames, err := app.GetSubnetNamesOnNetwork(network)
-		if err != nil {
-			return err
-		}
+	if !contract.DefinedChainSpec(deployERC20Flags.chainFlags) {
 		prompt := "Where do you want to Deploy the ERC-20 Token?"
-		cancel, _, _, cChain, subnetName, err := prompts.PromptChain(
-			app.Prompt,
-			prompt,
-			subnetNames,
-			true,
-			true,
-			false,
-			"",
-		)
-		if cancel {
-			return nil
-		}
-		if err == nil {
-			deployERC20Flags.chainFlags.SubnetName = subnetName
-			deployERC20Flags.chainFlags.CChain = cChain
+		cancel, err := contract.PromptChain(app, network, prompt, false, "", true, &deployERC20Flags.chainFlags)
+		if cancel || err != nil {
+			return err
 		}
 	}
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
-		deployERC20Flags.chainFlags.SubnetName,
-		deployERC20Flags.chainFlags.CChain,
-		"",
+		deployERC20Flags.chainFlags,
 	)
 	if err != nil {
 		return err
@@ -170,8 +150,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	rpcURL, err := contract.GetRPCURL(
 		app,
 		network,
-		deployERC20Flags.chainFlags.SubnetName,
-		deployERC20Flags.chainFlags.CChain,
+		deployERC20Flags.chainFlags,
 	)
 	if err != nil {
 		return err

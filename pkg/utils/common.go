@@ -523,8 +523,8 @@ func GetKeyNames(keyDir string, addEwoq bool) ([]string, error) {
 	return names, nil
 }
 
-func GetDefaultSubnetAirdropKeyName(subnetName string) string {
-	return "subnet_" + subnetName + "_airdrop"
+func GetDefaultBlockchainAirdropKeyName(blockchainName string) string {
+	return "subnet_" + blockchainName + "_airdrop"
 }
 
 // AppendSlices appends multiple slices into a single slice.

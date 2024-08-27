@@ -26,7 +26,7 @@ func getNewAllocation(
 	subnetName string,
 	defaultAirdropAmount string,
 ) (core.GenesisAlloc, error) {
-	keyName := utils.GetDefaultSubnetAirdropKeyName(subnetName)
+	keyName := utils.GetDefaultBlockchainAirdropKeyName(subnetName)
 	k, err := app.GetKey(keyName, models.NewLocalNetwork(), true)
 	if err != nil {
 		return core.GenesisAlloc{}, err

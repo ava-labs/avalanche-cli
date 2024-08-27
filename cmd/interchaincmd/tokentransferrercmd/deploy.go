@@ -25,14 +25,14 @@ import (
 )
 
 type HomeFlags struct {
-	chainFlags   contract.ChainFlags
+	chainFlags   contract.ChainSpec
 	homeAddress  string
 	native       bool
 	erc20Address string
 }
 
 type RemoteFlags struct {
-	chainFlags        contract.ChainFlags
+	chainFlags        contract.ChainSpec
 	native            bool
 	removeMinterAdmin bool
 }
@@ -63,19 +63,23 @@ func NewDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	contract.AddChainFlagsToCmd(
+	contract.AddChainSpecToCmd(
 		cmd,
 		&deployFlags.homeFlags.chainFlags,
 		"set the Transferrer's Home Chain",
 		"home-subnet",
 		"c-chain-home",
+		"",
+		false,
 	)
-	contract.AddChainFlagsToCmd(
+	contract.AddChainSpecToCmd(
 		cmd,
 		&deployFlags.remoteFlags.chainFlags,
 		"set the Transferrer's Remote Chain",
 		"remote-subnet",
 		"c-chain-remote",
+		"",
+		false,
 	)
 	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
@@ -110,7 +114,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// flags exclusiveness
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.homeFlags.chainFlags.SubnetName != "", flags.homeFlags.chainFlags.CChain}) {
+	if !contract.MutuallyExclusiveChainSpecFields(flags.homeFlags.chainFlags) {
 		return fmt.Errorf("--home-subnet and --c-chain-home are mutually exclusive flags")
 	}
 	if !cmdflags.EnsureMutuallyExclusive([]bool{
@@ -120,14 +124,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}) {
 		return fmt.Errorf("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
 	}
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.remoteFlags.chainFlags.SubnetName != "", flags.remoteFlags.chainFlags.CChain}) {
+	if !contract.MutuallyExclusiveChainSpecFields(flags.remoteFlags.chainFlags) {
 		return fmt.Errorf("--remote-subnet and --c-chain-remote are mutually exclusive flags")
 	}
 
 	// Home Chain Prompts
-	if flags.homeFlags.chainFlags.SubnetName == "" && !flags.homeFlags.chainFlags.CChain {
+	if !contract.DefinedChainSpec(flags.homeFlags.chainFlags) {
 		prompt := "Where is the Token origin?"
-		if cancel, err := promptChain(prompt, network, false, "", &flags.homeFlags.chainFlags); err != nil {
+		if cancel, err := contract.PromptChain(app, network, prompt, false, "", false, &flags.homeFlags.chainFlags); err != nil {
 			return err
 		} else if cancel {
 			return nil
@@ -135,8 +139,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Home Chain Validations
-	if flags.homeFlags.chainFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.homeFlags.chainFlags.SubnetName); err != nil {
+	if flags.homeFlags.chainFlags.BlockchainName != "" {
+		if err := validateSubnet(network, flags.homeFlags.chainFlags.BlockchainName); err != nil {
 			return err
 		}
 	}
@@ -144,7 +148,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// Home Contract Prompts
 	if flags.homeFlags.homeAddress == "" && flags.homeFlags.erc20Address == "" && !flags.homeFlags.native {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.homeFlags.chainFlags.SubnetName,
+			flags.homeFlags.chainFlags.BlockchainName,
 			flags.homeFlags.chainFlags.CChain,
 		)
 		if err != nil {
@@ -158,7 +162,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		goBackOption := "Go Back"
 		homeChain := "C-Chain"
 		if !flags.homeFlags.chainFlags.CChain {
-			homeChain = flags.homeFlags.chainFlags.SubnetName
+			homeChain = flags.homeFlags.chainFlags.BlockchainName
 		}
 		popularTokensInfo, err := GetPopularTokensInfo(network, homeChain)
 		if err != nil {
@@ -293,12 +297,20 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Prompts
-	if !flags.remoteFlags.chainFlags.CChain && flags.remoteFlags.chainFlags.SubnetName == "" {
+	if !contract.DefinedChainSpec(flags.remoteFlags.chainFlags) {
 		prompt := "Where should the token be available as an ERC-20?"
 		if flags.remoteFlags.native {
 			prompt = "Where should the token be available as a Native Token?"
 		}
-		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags.chainFlags); err != nil {
+		if cancel, err := contract.PromptChain(
+			app,
+			network,
+			prompt,
+			flags.homeFlags.chainFlags.CChain,
+			flags.homeFlags.chainFlags.BlockchainName,
+			false,
+			&flags.remoteFlags.chainFlags,
+		); err != nil {
 			return err
 		} else if cancel {
 			return nil
@@ -306,11 +318,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Validations
-	if flags.remoteFlags.chainFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.remoteFlags.chainFlags.SubnetName); err != nil {
+	if flags.remoteFlags.chainFlags.BlockchainName != "" {
+		if err := validateSubnet(network, flags.remoteFlags.chainFlags.BlockchainName); err != nil {
 			return err
 		}
-		if flags.remoteFlags.chainFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
+		if flags.remoteFlags.chainFlags.BlockchainName == flags.homeFlags.chainFlags.BlockchainName {
 			return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 		}
 	}
@@ -349,7 +361,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	homeEndpoint, _, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
-		flags.homeFlags.chainFlags.SubnetName,
+		flags.homeFlags.chainFlags.BlockchainName,
 		flags.homeFlags.chainFlags.CChain,
 	)
 	if err != nil {
@@ -410,7 +422,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.native {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.homeFlags.chainFlags.SubnetName,
+			flags.homeFlags.chainFlags.BlockchainName,
 			flags.homeFlags.chainFlags.CChain,
 		)
 		if err != nil {
@@ -455,7 +467,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	remoteEndpoint, remoteBlockchainName, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
 		app,
 		network,
-		flags.remoteFlags.chainFlags.SubnetName,
+		flags.remoteFlags.chainFlags.BlockchainName,
 		flags.remoteFlags.chainFlags.CChain,
 	)
 	if err != nil {
@@ -485,7 +497,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	} else {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.BlockchainName,
 			flags.remoteFlags.chainFlags.CChain,
 		)
 		if err != nil {
@@ -494,9 +506,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteSupply, err = contract.GetEVMSubnetGenesisSupply(
 			app,
 			network,
-			flags.remoteFlags.chainFlags.SubnetName,
-			flags.remoteFlags.chainFlags.CChain,
-			"",
+			flags.remoteFlags.chainFlags,
 		)
 		if err != nil {
 			return err
@@ -579,9 +589,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		minterAdminFound, managedMinterAdmin, _, minterAdminAddress, minterAdminPrivKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
 			app,
 			network,
-			flags.remoteFlags.chainFlags.SubnetName,
-			flags.remoteFlags.chainFlags.CChain,
-			"",
+			flags.remoteFlags.chainFlags,
 		)
 		if err != nil {
 			return err

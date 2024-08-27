@@ -15,14 +15,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// returns information for the subnet default allocation key
+// returns information for the blockchain default allocation key
 // if found, returns
 // key name, address, private key
-func GetDefaultSubnetAirdropKeyInfo(
+func GetDefaultBlockchainAirdropKeyInfo(
 	app *application.Avalanche,
-	subnetName string,
+	blockchainName string,
 ) (string, string, string, error) {
-	keyName := utils.GetDefaultSubnetAirdropKeyName(subnetName)
+	keyName := utils.GetDefaultBlockchainAirdropKeyName(blockchainName)
 	keyPath := app.GetKeyPath(keyName)
 	if utils.FileExists(keyPath) {
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
@@ -37,28 +37,28 @@ func GetDefaultSubnetAirdropKeyInfo(
 // from a given genesis, look for known private keys inside it, giving
 // preference to the ones expected to be default
 // it searches for:
-// 1) default CLI allocation key for subnets
+// 1) default CLI allocation key for blockchains
 // 2) ewoq
 // 3) all other stored keys managed by CLI
 // returns address + private key when found
-func GetSubnetAirdropKeyInfo(
+func GetBlockchainAirdropKeyInfo(
 	app *application.Avalanche,
 	network models.Network,
-	subnetName string,
+	blockchainName string,
 	genesisData []byte,
 ) (string, string, string, error) {
 	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
 	if err != nil {
 		return "", "", "", err
 	}
-	if subnetName != "" {
-		subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, err := GetDefaultSubnetAirdropKeyInfo(app, subnetName)
+	if blockchainName != "" {
+		airdropKeyName, airdropAddress, airdropPrivKey, err := GetDefaultBlockchainAirdropKeyInfo(app, blockchainName)
 		if err != nil {
 			return "", "", "", err
 		}
 		for address := range genesis.Alloc {
-			if address.Hex() == subnetAirdropAddress {
-				return subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, nil
+			if address.Hex() == airdropAddress {
+				return airdropKeyName, airdropAddress, airdropPrivKey, nil
 			}
 		}
 	}
@@ -103,22 +103,18 @@ func searchForManagedKey(
 	return false, "", "", "", nil
 }
 
-// get the deployed subnet genesis, and then look for known
+// get the deployed blockchain genesis, and then look for known
 // private keys inside it
 // returns address + private key when found
 func GetEVMSubnetPrefundedKey(
 	app *application.Avalanche,
 	network models.Network,
-	subnetName string,
-	isCChain bool,
-	blockchainID string,
+	chainSpec ChainSpec,
 ) (string, string, error) {
 	genesisData, err := GetBlockchainGenesis(
 		app,
 		network,
-		subnetName,
-		isCChain,
-		blockchainID,
+		chainSpec,
 	)
 	if err != nil {
 		return "", "", err
@@ -126,10 +122,10 @@ func GetEVMSubnetPrefundedKey(
 	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
 		return "", "", fmt.Errorf("search for prefunded key is only supported on EVM based vms")
 	}
-	_, genesisAddress, genesisPrivateKey, err := GetSubnetAirdropKeyInfo(
+	_, genesisAddress, genesisPrivateKey, err := GetBlockchainAirdropKeyInfo(
 		app,
 		network,
-		subnetName,
+		chainSpec.BlockchainName,
 		genesisData,
 	)
 	if err != nil {
@@ -142,43 +138,15 @@ func GetEVMSubnetPrefundedKey(
 func GetBlockchainGenesis(
 	app *application.Avalanche,
 	network models.Network,
-	subnetName string,
-	isCChain bool,
-	blockchainID string,
+	chainSpec ChainSpec,
 ) ([]byte, error) {
-	if blockchainID == "" {
-		if isCChain {
-			blockchainID = "C"
-		} else {
-			sc, err := app.LoadSidecar(subnetName)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load sidecar: %w", err)
-			}
-			if b, _, err := app.HasSubnetEVMGenesis(subnetName); err != nil {
-				return nil, err
-			} else if !b {
-				return nil, fmt.Errorf("search for prefunded key is only supported on EVM based vms")
-			}
-			if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-				return nil, fmt.Errorf("subnet has not been deployed to %s", network.Name())
-			}
-			blockchainID = sc.Networks[network.Name()].BlockchainID.String()
-		}
+	blockchainID, err := GetBlockchainID(app, network, chainSpec)
+	if err != nil {
+		return nil, err
 	}
-	var (
-		err     error
-		chainID ids.ID
-	)
-	if isCChain || !network.StandardPublicEndpoint() {
-		chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		chainID, err = ids.FromString(blockchainID)
-		if err != nil {
-			return nil, err
-		}
+	chainID, err := ids.FromString(blockchainID)
+	if err != nil {
+		return nil, err
 	}
 	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
 	if err != nil {
@@ -204,16 +172,12 @@ func sumGenesisSupply(
 func GetEVMSubnetGenesisSupply(
 	app *application.Avalanche,
 	network models.Network,
-	subnetName string,
-	isCChain bool,
-	blockchainID string,
+	chainSpec ChainSpec,
 ) (*big.Int, error) {
 	genesisData, err := GetBlockchainGenesis(
 		app,
 		network,
-		subnetName,
-		isCChain,
-		blockchainID,
+		chainSpec,
 	)
 	if err != nil {
 		return nil, err
@@ -261,16 +225,12 @@ func getGenesisNativeMinterAdmin(
 func GetEVMSubnetGenesisNativeMinterAdmin(
 	app *application.Avalanche,
 	network models.Network,
-	subnetName string,
-	isCChain bool,
-	blockchainID string,
+	chainSpec ChainSpec,
 ) (bool, bool, string, string, string, error) {
 	genesisData, err := GetBlockchainGenesis(
 		app,
 		network,
-		subnetName,
-		isCChain,
-		blockchainID,
+		chainSpec,
 	)
 	if err != nil {
 		return false, false, "", "", "", err

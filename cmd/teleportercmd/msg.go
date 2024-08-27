@@ -80,9 +80,10 @@ func msg(_ *cobra.Command, args []string) error {
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
-		sourceSubnetName,
-		isCChain(sourceSubnetName),
-		"",
+		contract.ChainSpec{
+			BlockchainName: sourceSubnetName,
+			CChain:         isCChain(sourceSubnetName),
+		},
 	)
 	if err != nil {
 		return err

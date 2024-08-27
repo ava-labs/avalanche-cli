@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
@@ -382,7 +383,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
 		ux.Logger.PrintToUser("")
 		flags := teleportercmd.DeployFlags{
-			SubnetName: subnetName,
+			ChainFlags: contract.ChainSpec{
+				BlockchainName: subnetName,
+			},
 			Network: networkoptions.NetworkFlags{
 				ClusterName: clusterName,
 			},
