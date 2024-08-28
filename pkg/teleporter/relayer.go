@@ -24,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/awm-relayer/config"
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
 )
@@ -93,6 +92,7 @@ type relayerRunFile struct {
 }
 
 func DeployRelayer(
+	version string,
 	binDir string,
 	configPath string,
 	logFilePath string,
@@ -102,7 +102,7 @@ func DeployRelayer(
 	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
 		return err
 	}
-	binPath, err := InstallRelayer(binDir)
+	binPath, err := InstallRelayer(binDir, version)
 	if err != nil {
 		return err
 	}
@@ -207,23 +207,22 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 	return nil
 }
 
-func InstallRelayer(binDir string) (string, error) {
-	downloader := application.NewDownloader()
-	version, err := downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
-	if err != nil {
-		return "", err
+func InstallRelayer(binDir, version string) (string, error) {
+	if version == "" || version == "latest" {
+		downloader := application.NewDownloader()
+		var err error
+		version, err = downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+		if err != nil {
+			return "", err
+		}
 	}
-	ux.Logger.PrintToUser("using awm-relayer version (%s)", version)
+	ux.Logger.PrintToUser("Relayer version %s", version)
 	versionBinDir := filepath.Join(binDir, version)
-	return installRelayer(versionBinDir, version)
-}
-
-func installRelayer(binDir, version string) (string, error) {
-	binPath := filepath.Join(binDir, constants.AWMRelayerBin)
+	binPath := filepath.Join(versionBinDir, constants.AWMRelayerBin)
 	if utils.IsExecutable(binPath) {
 		return binPath, nil
 	}
-	ux.Logger.PrintToUser("Installing AWM-Relayer %s", version)
+	ux.Logger.PrintToUser("Installing Relayer")
 	url, err := getRelayerURL(version)
 	if err != nil {
 		return "", err
@@ -232,7 +231,7 @@ func installRelayer(binDir, version string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := binutils.InstallArchive("tar.gz", bs, binDir); err != nil {
+	if err := binutils.InstallArchive("tar.gz", bs, versionBinDir); err != nil {
 		return "", err
 	}
 	return binPath, nil
@@ -244,7 +243,7 @@ func executeRelayer(binPath string, configPath string, logFile string) (int, err
 		return 0, err
 	}
 
-	ux.Logger.PrintToUser("Executing AWM-Relayer...")
+	ux.Logger.PrintToUser("Executing Relayer")
 
 	cmd := exec.Command(binPath, "--config-file", configPath)
 	cmd.Stdout = logWriter
@@ -253,9 +252,16 @@ func executeRelayer(binPath string, configPath string, logFile string) (int, err
 		return 0, err
 	}
 
+	ch := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		ch <- struct{}{}
+	}()
 	time.Sleep(localRelayerSetupTime)
-	if _, err := GetProcess(cmd.Process.Pid); err != nil {
+	select {
+	case <-ch:
 		return 0, fmt.Errorf("relayer process failed during setup")
+	default:
 	}
 
 	return cmd.Process.Pid, nil
@@ -278,71 +284,57 @@ func getRelayerURL(version string) (string, error) {
 	), nil
 }
 
-func UpdateRelayerConfig(
-	relayerConfigPath string,
-	relayerStorageDir string,
-	relayerAddress string,
-	relayerPrivateKey string,
-	network models.Network,
-	subnetID string,
-	blockchainID string,
-	teleporterContractAddress string,
-	teleporterRegistryAddress string,
-) error {
+func loadRelayerConfig(relayerConfigPath string) (*config.Config, error) {
 	awmRelayerConfig := config.Config{}
-	if utils.FileExists(relayerConfigPath) {
-		bs, err := os.ReadFile(relayerConfigPath)
-		if err != nil {
-			return err
-		}
-		if err := json.Unmarshal(bs, &awmRelayerConfig); err != nil {
-			return err
-		}
-	} else {
-		awmRelayerConfig = createRelayerConfig(
-			logging.Info.LowerString(),
-			relayerStorageDir,
-			network.Endpoint,
+	bs, err := os.ReadFile(relayerConfigPath)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(bs, &awmRelayerConfig); err != nil {
+		return nil, err
+	}
+	return &awmRelayerConfig, nil
+}
+
+func saveRelayerConfig(relayerConfig *config.Config, relayerConfigPath string) error {
+	bs, err := json.MarshalIndent(relayerConfig, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(relayerConfigPath, bs, constants.WriteReadReadPerms)
+}
+
+func CreateBaseRelayerConfigIfMissing(
+	relayerConfigPath string,
+	logLevel string,
+	storageLocation string,
+	network models.Network,
+) error {
+	if !utils.FileExists(relayerConfigPath) {
+		return CreateBaseRelayerConfig(
+			relayerConfigPath,
+			logLevel,
+			storageLocation,
+			network,
 		)
-	}
-	host, port, _, err := utils.GetURIHostPortAndPath(network.Endpoint)
-	if err != nil {
-		return err
-	}
-	addChainToRelayerConfig(
-		&awmRelayerConfig,
-		host,
-		port,
-		subnetID,
-		blockchainID,
-		teleporterContractAddress,
-		teleporterRegistryAddress,
-		relayerAddress,
-		relayerPrivateKey,
-	)
-	bs, err := json.MarshalIndent(awmRelayerConfig, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(relayerConfigPath, bs, constants.WriteReadReadPerms); err != nil {
-		return err
 	}
 	return nil
 }
 
-func createRelayerConfig(
+func CreateBaseRelayerConfig(
+	relayerConfigPath string,
 	logLevel string,
 	storageLocation string,
-	endpoint string,
-) config.Config {
-	return config.Config{
+	network models.Network,
+) error {
+	awmRelayerConfig := &config.Config{
 		LogLevel: logLevel,
 		PChainAPI: &config.APIConfig{
-			BaseURL:     endpoint,
+			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
 		InfoAPI: &config.APIConfig{
-			BaseURL:     endpoint,
+			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
 		StorageLocation:        storageLocation,
@@ -351,31 +343,109 @@ func createRelayerConfig(
 		DestinationBlockchains: []*config.DestinationBlockchain{},
 		MetricsPort:            constants.AWMRelayerMetricsPort,
 	}
+	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }
 
-func addChainToRelayerConfig(
-	relayerConfig *config.Config,
-	host string,
-	port uint32,
+func AddSourceAndDestinationToRelayerConfig(
+	relayerConfigPath string,
+	network models.Network,
 	subnetID string,
 	blockchainID string,
-	teleporterContractAddress string,
-	teleporterRegistryAddress string,
+	icmRegistryAddress string,
+	icmMessengerAddress string,
 	relayerRewardAddress string,
-	relayerFundedAddressKey string,
+	relayerPrivateKey string,
+) error {
+	awmRelayerConfig, err := loadRelayerConfig(relayerConfigPath)
+	if err != nil {
+		return err
+	}
+	addSourceToRelayerConfig(
+		awmRelayerConfig,
+		network,
+		subnetID,
+		blockchainID,
+		icmRegistryAddress,
+		icmMessengerAddress,
+		relayerRewardAddress,
+	)
+	addDestinationToRelayerConfig(
+		awmRelayerConfig,
+		network,
+		subnetID,
+		blockchainID,
+		relayerPrivateKey,
+	)
+	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
+}
+
+func AddSourceToRelayerConfig(
+	relayerConfigPath string,
+	network models.Network,
+	subnetID string,
+	blockchainID string,
+	icmRegistryAddress string,
+	icmMessengerAddress string,
+	relayerRewardAddress string,
+) error {
+	awmRelayerConfig, err := loadRelayerConfig(relayerConfigPath)
+	if err != nil {
+		return err
+	}
+	addSourceToRelayerConfig(
+		awmRelayerConfig,
+		network,
+		subnetID,
+		blockchainID,
+		icmRegistryAddress,
+		icmMessengerAddress,
+		relayerRewardAddress,
+	)
+	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
+}
+
+func AddDestinationToRelayerConfig(
+	relayerConfigPath string,
+	network models.Network,
+	subnetID string,
+	blockchainID string,
+	relayerPrivateKey string,
+) error {
+	awmRelayerConfig, err := loadRelayerConfig(relayerConfigPath)
+	if err != nil {
+		return err
+	}
+	addDestinationToRelayerConfig(
+		awmRelayerConfig,
+		network,
+		subnetID,
+		blockchainID,
+		relayerPrivateKey,
+	)
+	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
+}
+
+func addSourceToRelayerConfig(
+	relayerConfig *config.Config,
+	network models.Network,
+	subnetID string,
+	blockchainID string,
+	icmRegistryAddress string,
+	icmMessengerAddress string,
+	relayerRewardAddress string,
 ) {
 	source := &config.SourceBlockchain{
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
 		RPCEndpoint: config.APIConfig{
-			BaseURL: fmt.Sprintf("http://%s:%d/ext/bc/%s/rpc", host, port, blockchainID),
+			BaseURL: network.BlockchainEndpoint(blockchainID),
 		},
 		WSEndpoint: config.APIConfig{
-			BaseURL: fmt.Sprintf("ws://%s:%d/ext/bc/%s/ws", host, port, blockchainID),
+			BaseURL: network.BlockchainWSEndpoint(blockchainID),
 		},
 		MessageContracts: map[string]config.MessageProtocolConfig{
-			teleporterContractAddress: {
+			icmMessengerAddress: {
 				MessageFormat: config.TELEPORTER.String(),
 				Settings: map[string]interface{}{
 					"reward-address": relayerRewardAddress,
@@ -384,22 +454,31 @@ func addChainToRelayerConfig(
 			offchainregistry.OffChainRegistrySourceAddress.Hex(): {
 				MessageFormat: config.OFF_CHAIN_REGISTRY.String(),
 				Settings: map[string]interface{}{
-					"teleporter-registry-address": teleporterRegistryAddress,
+					"teleporter-registry-address": icmRegistryAddress,
 				},
 			},
 		},
 	}
+	if !utils.Any(relayerConfig.SourceBlockchains, func(s *config.SourceBlockchain) bool { return s.BlockchainID == blockchainID }) {
+		relayerConfig.SourceBlockchains = append(relayerConfig.SourceBlockchains, source)
+	}
+}
+
+func addDestinationToRelayerConfig(
+	relayerConfig *config.Config,
+	network models.Network,
+	subnetID string,
+	blockchainID string,
+	relayerFundedAddressKey string,
+) {
 	destination := &config.DestinationBlockchain{
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
 		RPCEndpoint: config.APIConfig{
-			BaseURL: fmt.Sprintf("http://%s:%d/ext/bc/%s/rpc", host, port, blockchainID),
+			BaseURL: network.BlockchainEndpoint(blockchainID),
 		},
 		AccountPrivateKey: relayerFundedAddressKey,
-	}
-	if !utils.Any(relayerConfig.SourceBlockchains, func(s *config.SourceBlockchain) bool { return s.BlockchainID == blockchainID }) {
-		relayerConfig.SourceBlockchains = append(relayerConfig.SourceBlockchains, source)
 	}
 	if !utils.Any(relayerConfig.DestinationBlockchains, func(s *config.DestinationBlockchain) bool { return s.BlockchainID == blockchainID }) {
 		relayerConfig.DestinationBlockchains = append(relayerConfig.DestinationBlockchains, destination)

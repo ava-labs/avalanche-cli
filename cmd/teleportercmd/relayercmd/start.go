@@ -62,6 +62,7 @@ func start(_ *cobra.Command, _ []string) error {
 		} else if !b {
 			return fmt.Errorf("there is no relayer configuration available")
 		} else if err := teleporter.DeployRelayer(
+			"latest",
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
 			app.GetAWMRelayerLogPath(),

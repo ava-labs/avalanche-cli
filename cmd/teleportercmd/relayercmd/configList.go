@@ -121,34 +121,23 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	rewardAddress := ""
-	prompt := "Do you want to add a reward address at source?"
-	noOption := "No, I don't need to set a reward address"
-	yesOption := "Yes, I want to configure a reward address at source"
-	options := []string{noOption, yesOption, explainOption}
-	for {
-		option, err := app.Prompt.CaptureList(
-			prompt,
-			options,
-		)
-		if err != nil {
-			return ConfigEsp{}, err
-		}
-		switch option {
-		case yesOption:
-			addr, err := app.Prompt.CaptureAddress("Which is the reward address?")
-			if err != nil {
-				return ConfigEsp{}, err
-			}
-			rewardAddress = addr.Hex()
-		case noOption:
-		case explainOption:
-			ux.Logger.PrintToUser("You can configure a reward address that may get paid at source")
-			ux.Logger.PrintToUser("after a successful message delivery from the relayer.")
-			ux.Logger.PrintToUser("The availability of payment depend on source blockchain configuration.")
-			continue
-		}
-		break
+	genesisAddress, _, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		chainSpec,
+	)
+	rewardAddress, err := prompts.PromptAddress(
+		app.Prompt,
+		fmt.Sprintf("receive relayer rewards on %s", blockchainDesc),
+		app.GetKeyDir(),
+		app.GetKey,
+		genesisAddress,
+		network,
+		prompts.EVMFormat,
+		"Address",
+	)
+	if err != nil {
+		return ConfigEsp{}, err
 	}
 	configEsp.sources = append(configEsp.sources, SourceEsp{
 		blockchainDesc:      blockchainDesc,
@@ -215,15 +204,61 @@ func addDestination(network models.Network, configEsp ConfigEsp, chainSpec contr
 	return configEsp, nil
 }
 
+func removeSource(
+	configEsp ConfigEsp,
+) (ConfigEsp, bool, error) {
+	if len(configEsp.sources) == 0 {
+		ux.Logger.PrintToUser("There are no sources to remove")
+		ux.Logger.PrintToUser("")
+		return configEsp, true, nil
+	}
+	cancelOption := "Cancel"
+	prompt := "Select the source you want to remove"
+	options := utils.Map(configEsp.sources, func(s SourceEsp) string { return s.blockchainDesc })
+	options = append(options, cancelOption)
+	opt, err := app.Prompt.CaptureList(prompt, options)
+	if err != nil {
+		return configEsp, false, err
+	}
+	if opt != cancelOption {
+		configEsp.sources = utils.Filter(configEsp.sources, func(s SourceEsp) bool { return s.blockchainDesc != opt })
+		return configEsp, false, nil
+	}
+	return configEsp, true, nil
+}
+
+func removeDestination(
+	configEsp ConfigEsp,
+) (ConfigEsp, bool, error) {
+	if len(configEsp.destinations) == 0 {
+		ux.Logger.PrintToUser("There are no destinations to remove")
+		ux.Logger.PrintToUser("")
+		return configEsp, true, nil
+	}
+	cancelOption := "Cancel"
+	prompt := "Select the destination you want to remove"
+	options := utils.Map(configEsp.destinations, func(d DestinationEsp) string { return d.blockchainDesc })
+	options = append(options, cancelOption)
+	opt, err := app.Prompt.CaptureList(prompt, options)
+	if err != nil {
+		return configEsp, false, err
+	}
+	if opt != cancelOption {
+		configEsp.destinations = utils.Filter(configEsp.destinations, func(d DestinationEsp) bool { return d.blockchainDesc != opt })
+		return configEsp, false, nil
+	}
+	return configEsp, true, nil
+}
+
 func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 	configEsp := ConfigEsp{}
 
 	prompt := "Configure the blockchains that will be interconnected by the relayer"
 
-	addOption := "Add a source or destination blockchain"
-	removeOption := "Remove a source or destination blockchain"
-	previewOption := "Preview Config"
-	confirmOption := "Confirm Config"
+	addOption := "Add a blockchain"
+	removeOption := "Remove a blockchain"
+	previewOption := "Preview"
+	confirmOption := "Confirm"
 	cancelOption := "Cancel"
 
 	for {
@@ -246,9 +281,9 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 		switch option {
 		case addOption:
 			addPrompt := "What role should the blockchain have?"
-			addBothOption := "Add a blockchain both as source and destination"
-			addSourceOption := "Add a source blockchain"
-			addDestinationOption := "Add a destination blockchain"
+			addBothOption := "Source and Destination"
+			addSourceOption := "Source only"
+			addDestinationOption := "Destination only"
 			for {
 				options := []string{addBothOption, addSourceOption, addDestinationOption, explainOption, cancelOption}
 				roleOption, err := app.Prompt.CaptureList(addPrompt, options)
@@ -284,9 +319,9 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 		case removeOption:
 			keepAsking := true
 			for keepAsking {
-				removePrompt := "Which kind of blockchain to you want to remove?"
-				removeSourceOption := "Remove a source blockchain"
-				removeDestinationOption := "Remove a destination blockchain"
+				removePrompt := "Which role do you want to remove?"
+				removeSourceOption := "Source"
+				removeDestinationOption := "Destination"
 				options := []string{}
 				if len(configEsp.sources) != 0 {
 					options = append(options, removeSourceOption)
@@ -301,7 +336,15 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 				}
 				switch kindOption {
 				case removeSourceOption:
+					configEsp, keepAsking, err = removeSource(configEsp)
+					if err != nil {
+						return ConfigEsp{}, false, err
+					}
 				case removeDestinationOption:
+					configEsp, keepAsking, err = removeDestination(configEsp)
+					if err != nil {
+						return ConfigEsp{}, false, err
+					}
 				case cancelOption:
 					keepAsking = false
 				}

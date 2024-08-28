@@ -170,6 +170,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	} else if b {
 		ux.Logger.PrintToUser("")
 		if err := teleporter.DeployRelayer(
+			"latest",
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
 			app.GetAWMRelayerLogPath(),

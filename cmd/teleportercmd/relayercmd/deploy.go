@@ -4,6 +4,8 @@ package relayercmd
 
 import (
 	"fmt"
+	"math/big"
+	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -12,8 +14,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -21,21 +26,8 @@ import (
 )
 
 type DeployFlags struct {
-	Network                      networkoptions.NetworkFlags
-	SubnetName                   string
-	BlockchainID                 string
-	CChain                       bool
-	KeyName                      string
-	GenesisKey                   bool
-	DeployMessenger              bool
-	DeployRegistry               bool
-	RPCURL                       string
-	Version                      string
-	MessengerContractAddressPath string
-	MessengerDeployerAddressPath string
-	MessengerDeployerTxPath      string
-	RegistryBydecodePath         string
-	PrivateKeyFlags              contract.PrivateKeyFlags
+	Network networkoptions.NetworkFlags
+	Version string
 }
 
 var (
@@ -114,14 +106,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// TODO: put in prompts
 	prompt := "Which log level do you prefer for your relayer?"
 	options := []string{
-		logging.Info.String(),
-		logging.Warn.String(),
-		logging.Error.String(),
-		logging.Off.String(),
-		logging.Fatal.String(),
-		logging.Debug.String(),
-		logging.Trace.String(),
-		logging.Verbo.String(),
+		logging.Info.LowerString(),
+		logging.Warn.LowerString(),
+		logging.Error.LowerString(),
+		logging.Off.LowerString(),
+		logging.Fatal.LowerString(),
+		logging.Debug.LowerString(),
+		logging.Trace.LowerString(),
+		logging.Verbo.LowerString(),
 	}
 	logLevel, err := app.Prompt.CaptureList(
 		prompt,
@@ -205,7 +197,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			if err != nil {
 				return err
 			}
-			ux.Logger.PrintToUser("Relayer private key on destination %s has a balance of %s", destination.blockchainDesc, balance)
+			balanceFlt := new(big.Float).SetInt(balance)
+			balanceFlt = balanceFlt.Quo(balanceFlt, new(big.Float).SetInt(vm.OneAvax))
+			ux.Logger.PrintToUser("Relayer private key on destination %s has a balance of %.9f", destination.blockchainDesc, balanceFlt)
 		}
 		ux.Logger.PrintToUser("")
 
@@ -249,9 +243,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			if err != nil {
 				return err
 			}
-			prompt = fmt.Sprintf("Do you want to fund relayer for destination %s (balance=%s)?", destination.blockchainDesc, balance)
+			balanceFlt := new(big.Float).SetInt(balance)
+			balanceFlt = balanceFlt.Quo(balanceFlt, new(big.Float).SetInt(vm.OneAvax))
+			prompt = fmt.Sprintf("Do you want to fund relayer for destination %s (balance=%.9f)?", destination.blockchainDesc, balanceFlt)
 			yesOption := "Yes, I will send funds to it"
-			noOption := "Not yet"
+			noOption := "Not now"
 			options = []string{yesOption, noOption}
 			doPay := false
 			option, err := app.Prompt.CaptureList(
@@ -288,10 +284,21 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				if err != nil {
 					return err
 				}
-				amount, err := app.Prompt.CapturePositiveBigInt("Amount to transfer")
+				amountFlt, err := app.Prompt.CaptureFloat(
+					"Amount to transfer",
+					func(f float64) error {
+						if f <= 0 {
+							return fmt.Errorf("not positive")
+						}
+						return nil
+					},
+				)
 				if err != nil {
 					return err
 				}
+				amountBigFlt := new(big.Float).SetFloat64(amountFlt)
+				amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
+				amount, _ := amountBigFlt.Int(nil)
 				if err := evm.FundAddress(client, privateKey, addr.Hex(), amount); err != nil {
 					return err
 				}
@@ -299,17 +306,67 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	if !deployToRemote {
-		// download if needed. copy if needed.
-		// save version of filename in run file or whichever
-	} else {
-		// ask for relayer name
-		// create cluster
-		// set conf
+	if deployToRemote {
+		return nil
 	}
 
-	_ = configEsp
-	_ = logLevel
+	runFilePath := app.GetAWMRelayerRunPath()
+	storageDir := app.GetAWMRelayerStorageDir()
+	_, configPath, err := subnet.GetAWMRelayerConfigPath()
+	if err != nil {
+		return err
+	}
+	logPath := app.GetAWMRelayerLogPath()
+
+	// create config
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Generating relayer config file at %s", configPath)
+	if err := teleporter.CreateBaseRelayerConfig(configPath, logLevel, storageDir, network); err != nil {
+		return err
+	}
+	for _, source := range configEsp.sources {
+		if err := teleporter.AddSourceToRelayerConfig(
+			configPath,
+			network,
+			source.subnetID,
+			source.blockchainID,
+			source.icmRegistryAddress,
+			source.icmMessengerAddress,
+			source.rewardAddress,
+		); err != nil {
+			return err
+		}
+	}
+	for _, destination := range configEsp.destinations {
+		if err := teleporter.AddDestinationToRelayerConfig(
+			configPath,
+			network,
+			destination.subnetID,
+			destination.blockchainID,
+			destination.privateKey,
+		); err != nil {
+			return err
+		}
+	}
+
+	if len(configEsp.sources) > 0 && len(configEsp.destinations) > 0 {
+		// relayer fails for empty configs
+		err := teleporter.DeployRelayer(
+			flags.Version,
+			app.GetAWMRelayerBinDir(),
+			configPath,
+			logPath,
+			runFilePath,
+			storageDir,
+		)
+		if err != nil {
+			if bs, err := os.ReadFile(logPath); err == nil {
+				ux.Logger.PrintToUser("")
+				ux.Logger.PrintToUser(string(bs))
+			}
+		}
+		return err
+	}
 
 	return nil
 }

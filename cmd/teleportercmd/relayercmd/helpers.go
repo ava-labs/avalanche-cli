@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 func AddBlockchainToClusterConf(network models.Network, cloudNodeID string, blockchainName string) error {
@@ -32,16 +33,23 @@ func AddBlockchainToClusterConf(network models.Network, cloudNodeID string, bloc
 	}
 	ux.Logger.PrintToUser("updating configuration file %s", configPath)
 
-	if err = teleporter.UpdateRelayerConfig(
+	if err := teleporter.CreateBaseRelayerConfigIfMissing(
 		configPath,
+		logging.Info.LowerString(),
 		app.GetAWMRelayerServiceStorageDir(storageBasePath),
-		relayerAddress,
-		relayerPrivateKey,
+		network,
+	); err != nil {
+		return err
+	}
+	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+		configPath,
 		network,
 		subnetID.String(),
 		chainID.String(),
-		messengerAddress,
 		registryAddress,
+		messengerAddress,
+		relayerAddress,
+		relayerPrivateKey,
 	); err != nil {
 		return err
 	}
@@ -51,16 +59,15 @@ func AddBlockchainToClusterConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
-	if err = teleporter.UpdateRelayerConfig(
+	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
 		configPath,
-		app.GetAWMRelayerServiceStorageDir(storageBasePath),
-		relayerAddress,
-		relayerPrivateKey,
 		network,
 		subnetID.String(),
 		chainID.String(),
-		messengerAddress,
 		registryAddress,
+		messengerAddress,
+		relayerAddress,
+		relayerPrivateKey,
 	); err != nil {
 		return err
 	}

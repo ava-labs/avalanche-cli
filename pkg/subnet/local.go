@@ -350,6 +350,14 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 		if err != nil {
 			return nil, err
 		}
+		if err = teleporter.CreateBaseRelayerConfigIfMissing(
+			relayerConfigPath,
+			logging.Info.LowerString(),
+			d.app.GetAWMRelayerStorageDir(),
+			network,
+		); err != nil {
+			return nil, err
+		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
 		td := teleporter.Deployer{}
@@ -399,16 +407,15 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 			if err != nil {
 				return nil, err
 			}
-			if err = teleporter.UpdateRelayerConfig(
+			if err = teleporter.AddSourceAndDestinationToRelayerConfig(
 				relayerConfigPath,
-				d.app.GetAWMRelayerStorageDir(),
-				relayerAddress,
-				relayerPrivateKey,
 				network,
 				subnetID,
 				blockchainID,
-				cchainTeleporterMessengerAddress,
 				cchainTeleporterRegistryAddress,
+				cchainTeleporterMessengerAddress,
+				relayerAddress,
+				relayerPrivateKey,
 			); err != nil {
 				return nil, err
 			}
@@ -444,16 +451,15 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 		if err != nil {
 			return nil, err
 		}
-		if err = teleporter.UpdateRelayerConfig(
+		if err = teleporter.AddSourceAndDestinationToRelayerConfig(
 			relayerConfigPath,
-			d.app.GetAWMRelayerStorageDir(),
-			relayerAddress,
-			relayerPrivateKey,
 			network,
 			subnetID,
 			blockchainID,
-			teleporterMessengerAddress,
 			teleporterRegistryAddress,
+			teleporterMessengerAddress,
+			relayerAddress,
+			relayerPrivateKey,
 		); err != nil {
 			return nil, err
 		}
@@ -461,6 +467,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 			ux.Logger.PrintToUser("")
 			// start relayer
 			if err := teleporter.DeployRelayer(
+				"latest",
 				d.app.GetAWMRelayerBinDir(),
 				relayerConfigPath,
 				d.app.GetAWMRelayerLogPath(),
