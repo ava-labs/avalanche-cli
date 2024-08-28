@@ -74,6 +74,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
+	if network.Kind == models.Local {
+		if isUP, _, _, err := teleporter.RelayerIsUp(app.GetAWMRelayerRunPath()); err != nil {
+			return err
+		} else if isUP {
+			return fmt.Errorf("there is already a relayer deployed to local network")
+		}
+	}
+
 	deployToRemote := false
 	if network.Kind != models.Local {
 		prompt := "Do you want to deploy the relayer to a remote or a local host?"

@@ -186,7 +186,7 @@ func addDestination(network models.Network, configEsp ConfigEsp, chainSpec contr
 	}
 	privateKey, err := prompts.PromptPrivateKey(
 		app.Prompt,
-		fmt.Sprintf("pay relayer fees on blockchain %s", blockchainDesc),
+		fmt.Sprintf("pay relayer fees on %s", blockchainDesc),
 		app.GetKeyDir(),
 		app.GetKey,
 		genesisAddress,
