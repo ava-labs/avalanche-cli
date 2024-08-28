@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -77,8 +78,9 @@ type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, erro
 
 type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 
-type TeleporterEsp struct {
-	SkipDeploy                   bool
+type ICMEsp struct {
+	SkipICMDeploy                bool
+	SkipRelayerDeploy            bool
 	Version                      string
 	MessengerContractAddressPath string
 	MessengerDeployerAddressPath string
@@ -87,20 +89,25 @@ type TeleporterEsp struct {
 }
 
 type DeployInfo struct {
-	SubnetID                   ids.ID
-	BlockchainID               ids.ID
-	TeleporterMessengerAddress string
-	TeleporterRegistryAddress  string
+	SubnetID            ids.ID
+	BlockchainID        ids.ID
+	ICMMessengerAddress string
+	ICMRegistryAddress  string
 }
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(
+	chain string,
+	genesisPath string,
+	icmEsp ICMEsp,
+	subnetIDStr string,
+) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, genesisPath, teleporterEsp, subnetIDStr)
+	return d.doDeploy(chain, genesisPath, icmEsp, subnetIDStr)
 }
 
 func (d *LocalDeployer) StartServer() error {
@@ -144,7 +151,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -191,12 +198,15 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
-	// cleanup if neeeded in the case relayer is registered to current blockchains
-	if err := teleporter.RelayerCleanup(
-		d.app.GetAWMRelayerRunPath(),
-		d.app.GetAWMRelayerStorageDir(),
-	); err != nil {
-		return nil, err
+	if sc.RunRelayer && !icmEsp.SkipRelayerDeploy {
+		// relayer stop/cleanup is neeeded in the case it is registered to blockchains
+		// if not, network restart fails
+		if err := teleporter.RelayerCleanup(
+			d.app.GetAWMRelayerRunPath(),
+			d.app.GetAWMRelayerStorageDir(),
+		); err != nil {
+			return nil, err
+		}
 	}
 
 	if networkBooted && needsRestart {
@@ -335,10 +345,10 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 	}
 
 	var (
-		teleporterMessengerAddress string
-		teleporterRegistryAddress  string
+		icmMessengerAddress string
+		icmRegistryAddress  string
 	)
-	if sc.TeleporterReady && !teleporterEsp.SkipDeploy {
+	if sc.TeleporterReady && !icmEsp.SkipICMDeploy {
 		network := models.NewLocalNetwork()
 		// get relayer address
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
@@ -361,65 +371,52 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
 		td := teleporter.Deployer{}
-		if teleporterEsp.MessengerContractAddressPath != "" {
+		if icmEsp.MessengerContractAddressPath != "" {
 			if err := td.SetAssetsFromPaths(
-				teleporterEsp.MessengerContractAddressPath,
-				teleporterEsp.MessengerDeployerAddressPath,
-				teleporterEsp.MessengerDeployerTxPath,
-				teleporterEsp.RegistryBydecodePath,
+				icmEsp.MessengerContractAddressPath,
+				icmEsp.MessengerDeployerAddressPath,
+				icmEsp.MessengerDeployerTxPath,
+				icmEsp.RegistryBydecodePath,
 			); err != nil {
 				return nil, err
 			}
 		} else {
-			teleporterVersion := ""
+			icmVersion := ""
 			switch {
-			case teleporterEsp.Version != "" && teleporterEsp.Version != "latest":
-				teleporterVersion = teleporterEsp.Version
+			case icmEsp.Version != "" && icmEsp.Version != "latest":
+				icmVersion = icmEsp.Version
 			case sc.TeleporterVersion != "":
-				teleporterVersion = sc.TeleporterVersion
+				icmVersion = sc.TeleporterVersion
 			default:
-				teleporterInfo, err := teleporter.GetInfo(d.app)
+				icmInfo, err := teleporter.GetInfo(d.app)
 				if err != nil {
 					return nil, err
 				}
-				teleporterVersion = teleporterInfo.Version
+				icmVersion = icmInfo.Version
 			}
 			if err := td.DownloadAssets(
 				d.app.GetTeleporterBinDir(),
-				teleporterVersion,
+				icmVersion,
 			); err != nil {
 				return nil, err
 			}
 		}
-		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
-			d.app,
-			&td,
-			network,
+		cChainKey, err := key.LoadEwoq(network.ID)
+		if err != nil {
+			return nil, err
+		}
+		cchainAlreadyDeployed, cchainIcmMessengerAddress, cchainIcmRegistryAddress, err := td.Deploy(
 			"c-chain",
-			"C",
-			"",
+			network.BlockchainEndpoint("C"),
+			cChainKey.PrivKeyHex(),
+			true,
+			true,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if !alreadyDeployed {
-			subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, "C-Chain")
-			if err != nil {
-				return nil, err
-			}
-			if err = teleporter.AddSourceAndDestinationToRelayerConfig(
-				relayerConfigPath,
-				network,
-				subnetID,
-				blockchainID,
-				cchainTeleporterRegistryAddress,
-				cchainTeleporterMessengerAddress,
-				relayerAddress,
-				relayerPrivateKey,
-			); err != nil {
-				return nil, err
-			}
-			if err := localnet.WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
+		if !cchainAlreadyDeployed {
+			if err := localnet.WriteExtraLocalNetworkData(cchainIcmMessengerAddress, cchainIcmRegistryAddress); err != nil {
 				return nil, err
 			}
 		}
@@ -440,30 +437,65 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 				return nil, err
 			}
 		}
-		_, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
-			d.app,
-			&td,
-			network,
+		blockchainKey, err := key.LoadSoft(network.ID, d.app.GetKeyPath(teleporterKeyName))
+		if err != nil {
+			return nil, err
+		}
+		_, icmMessengerAddress, icmRegistryAddress, err = td.Deploy(
 			chain,
-			blockchainID,
-			teleporterKeyName,
+			network.BlockchainEndpoint(blockchainID),
+			blockchainKey.PrivKeyHex(),
+			true,
+			true,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if err = teleporter.AddSourceAndDestinationToRelayerConfig(
-			relayerConfigPath,
-			network,
-			subnetID,
-			blockchainID,
-			teleporterRegistryAddress,
-			teleporterMessengerAddress,
-			relayerAddress,
-			relayerPrivateKey,
-		); err != nil {
-			return nil, err
-		}
-		if sc.RunRelayer {
+		if sc.RunRelayer && !icmEsp.SkipRelayerDeploy {
+			if !cchainAlreadyDeployed {
+				if err := teleporter.FundRelayer(
+					network.BlockchainEndpoint("C"),
+					cChainKey.PrivKeyHex(),
+					relayerAddress,
+				); err != nil {
+					return nil, err
+				}
+				cchainSubnetID, cchainBlockchainID, err := utils.GetChainIDs(network.Endpoint, "C-Chain")
+				if err != nil {
+					return nil, err
+				}
+				if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+					relayerConfigPath,
+					network,
+					cchainSubnetID,
+					cchainBlockchainID,
+					cchainIcmRegistryAddress,
+					cchainIcmMessengerAddress,
+					relayerAddress,
+					relayerPrivateKey,
+				); err != nil {
+					return nil, err
+				}
+			}
+			if err := teleporter.FundRelayer(
+				network.BlockchainEndpoint(blockchainID),
+				blockchainKey.PrivKeyHex(),
+				relayerAddress,
+			); err != nil {
+				return nil, err
+			}
+			if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+				relayerConfigPath,
+				network,
+				subnetID,
+				blockchainID,
+				icmRegistryAddress,
+				icmMessengerAddress,
+				relayerAddress,
+				relayerPrivateKey,
+			); err != nil {
+				return nil, err
+			}
 			ux.Logger.PrintToUser("")
 			// start relayer
 			if err := teleporter.DeployRelayer(
@@ -492,10 +524,10 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 		}
 	}
 	return &DeployInfo{
-		SubnetID:                   subnetID,
-		BlockchainID:               blockchainID,
-		TeleporterMessengerAddress: teleporterMessengerAddress,
-		TeleporterRegistryAddress:  teleporterRegistryAddress,
+		SubnetID:            subnetID,
+		BlockchainID:        blockchainID,
+		ICMMessengerAddress: icmMessengerAddress,
+		ICMRegistryAddress:  icmRegistryAddress,
 	}, nil
 }
 

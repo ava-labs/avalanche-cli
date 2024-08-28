@@ -52,7 +52,7 @@ var (
 	skipCreatePrompt         bool
 	avagoBinaryPath          string
 	subnetOnly               bool
-	teleporterEsp            subnet.TeleporterEsp
+	icmEsp                   subnet.ICMEsp
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -94,13 +94,14 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
-	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
-	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
-	cmd.Flags().StringVar(&teleporterEsp.Version, "teleporter-version", "latest", "teleporter version to deploy")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
-	cmd.Flags().StringVar(&teleporterEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
+	cmd.Flags().BoolVar(&icmEsp.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
+	cmd.Flags().BoolVar(&icmEsp.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
+	cmd.Flags().BoolVar(&icmEsp.SkipRelayerDeploy, "skip-relayer-deploy", false, "skip automatic relayer deploy")
+	cmd.Flags().StringVar(&icmEsp.Version, "teleporter-version", "latest", "teleporter version to deploy")
+	cmd.Flags().StringVar(&icmEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
+	cmd.Flags().StringVar(&icmEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
+	cmd.Flags().StringVar(&icmEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
+	cmd.Flags().StringVar(&icmEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
 	return cmd
 }
 
@@ -269,8 +270,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if teleporterEsp.MessengerContractAddressPath != "" || teleporterEsp.MessengerDeployerAddressPath != "" || teleporterEsp.MessengerDeployerTxPath != "" || teleporterEsp.RegistryBydecodePath != "" {
-		if teleporterEsp.MessengerContractAddressPath == "" || teleporterEsp.MessengerDeployerAddressPath == "" || teleporterEsp.MessengerDeployerTxPath == "" || teleporterEsp.RegistryBydecodePath == "" {
+	if icmEsp.MessengerContractAddressPath != "" || icmEsp.MessengerDeployerAddressPath != "" || icmEsp.MessengerDeployerTxPath != "" || icmEsp.RegistryBydecodePath != "" {
+		if icmEsp.MessengerContractAddressPath == "" || icmEsp.MessengerDeployerAddressPath == "" || icmEsp.MessengerDeployerTxPath == "" || icmEsp.RegistryBydecodePath == "" {
 			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
 		}
 	}
@@ -368,7 +369,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, teleporterEsp, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, icmEsp, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -385,8 +386,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			network,
 			deployInfo.SubnetID,
 			deployInfo.BlockchainID,
-			deployInfo.TeleporterMessengerAddress,
-			deployInfo.TeleporterRegistryAddress,
+			deployInfo.ICMMessengerAddress,
+			deployInfo.ICMRegistryAddress,
 		); err != nil {
 			return err
 		}
