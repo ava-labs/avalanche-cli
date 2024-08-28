@@ -679,9 +679,11 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 	subnetIDStr := subnetID.String()
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	// genesis config
-	genesisFilename := filepath.Join(app.GetNodesDir(), host.GetCloudID(), constants.GenesisFileName)
-	if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
-		return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
+	if network.Kind == models.Devnet {
+		genesisFilename := filepath.Join(app.GetNodesDir(), host.GetCloudID(), constants.GenesisFileName)
+		if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
+			return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
+		}
 	}
 	// end genesis config
 	// subnet node config
