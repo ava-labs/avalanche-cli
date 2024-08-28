@@ -100,7 +100,7 @@ func doUpdateSubnet(
 				host,
 				network,
 				allSubnets,
-				clusterConf.IsAPIHost(host.NodeID),
+				clusterConf.IsAPIHost(host.GetCloudID()),
 			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
