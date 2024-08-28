@@ -95,7 +95,13 @@ func doUpdateSubnet(
 			if err := ssh.RunSSHStopNode(host); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {
+			if err := ssh.RunSSHRenderAvalancheNodeConfig(
+				app,
+				host,
+				network,
+				allSubnets,
+				clusterConf.IsAPIHost(host.NodeID),
+			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 			if err := ssh.RunSSHSyncSubnetData(app, host, network, subnetName); err != nil {
