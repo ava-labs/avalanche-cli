@@ -35,7 +35,10 @@ type ConfigEsp struct {
 	destinations []DestinationEsp
 }
 
-const explainOption = "Explain the difference"
+const (
+	explainOption = "Explain the difference"
+	cancelOption  = "Cancel"
+)
 
 func preview(configEsp ConfigEsp) {
 	table := tablewriter.NewWriter(os.Stdout)
@@ -126,6 +129,9 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 		network,
 		chainSpec,
 	)
+	if err != nil {
+		return ConfigEsp{}, err
+	}
 	rewardAddress, err := prompts.PromptAddress(
 		app.Prompt,
 		fmt.Sprintf("receive relayer rewards on %s", blockchainDesc),
@@ -212,7 +218,6 @@ func removeSource(
 		ux.Logger.PrintToUser("")
 		return configEsp, true, nil
 	}
-	cancelOption := "Cancel"
 	prompt := "Select the source you want to remove"
 	options := utils.Map(configEsp.sources, func(s SourceEsp) string { return s.blockchainDesc })
 	options = append(options, cancelOption)
@@ -235,7 +240,6 @@ func removeDestination(
 		ux.Logger.PrintToUser("")
 		return configEsp, true, nil
 	}
-	cancelOption := "Cancel"
 	prompt := "Select the destination you want to remove"
 	options := utils.Map(configEsp.destinations, func(d DestinationEsp) string { return d.blockchainDesc })
 	options = append(options, cancelOption)
@@ -259,7 +263,6 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 	removeOption := "Remove a blockchain"
 	previewOption := "Preview"
 	confirmOption := "Confirm"
-	cancelOption := "Cancel"
 
 	for {
 		options := []string{

@@ -140,10 +140,10 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
 	require.NoError(err)
 	// test actual deploy
-	teleporterEsp := TeleporterEsp{
-		SkipDeploy: true,
+	icmEsp := ICMEsp{
+		SkipICMDeploy: true,
 	}
-	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, testGenesis.Name(), teleporterEsp, "")
+	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, testGenesis.Name(), icmEsp, "")
 	require.NoError(err)
 	require.Equal(testSubnetID2, deployInfo.SubnetID.String())
 	require.Equal(testBlockChainID2, deployInfo.BlockchainID.String())
