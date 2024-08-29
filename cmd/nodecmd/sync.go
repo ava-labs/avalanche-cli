@@ -143,10 +143,20 @@ func trackSubnet(
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 
-			if err := ssh.RunSSHRenderAvagoAliasConfigFile(host, blockchainID.String(), subnetAliases); err != nil {
+			if err := ssh.RunSSHRenderAvagoAliasConfigFile(
+				host,
+				blockchainID.String(),
+				subnetAliases,
+			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {
+			if err := ssh.RunSSHRenderAvalancheNodeConfig(
+				app,
+				host,
+				network,
+				allSubnets,
+				clusterConf.IsAPIHost(host.GetCloudID()),
+			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 			if err := ssh.RunSSHSyncSubnetData(app, host, network, subnetName); err != nil {

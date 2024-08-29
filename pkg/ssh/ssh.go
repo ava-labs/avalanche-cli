@@ -529,7 +529,13 @@ func RunSSHRenderAvagoAliasConfigFile(
 }
 
 // RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
-func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, network models.Network, trackSubnets []string) error {
+func RunSSHRenderAvalancheNodeConfig(
+	app *application.Avalanche,
+	host *models.Host,
+	network models.Network,
+	trackSubnets []string,
+	isAPIHost bool,
+) error {
 	// get subnet ids
 	subnetIDs, err := utils.MapWithError(trackSubnets, func(subnetName string) (string, error) {
 		sc, err := app.LoadSidecar(subnetName)
@@ -550,8 +556,7 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 		if genesisFileExists(host) {
 			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 		}
-		// make sure that wiz works. TODO switch to RPC over SSH client to access 127.0.0.1 instead
-		if network.Kind == models.Local || network.Kind == models.Devnet {
+		if network.Kind == models.Local || network.Kind == models.Devnet || isAPIHost {
 			avagoConf.HTTPHost = "0.0.0.0"
 		}
 		remoteAvagoConf, err := getAvalancheGoConfigData(host)
