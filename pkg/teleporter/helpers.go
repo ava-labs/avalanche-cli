@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -43,7 +44,8 @@ func GetBlockchainParams(
 		if err != nil {
 			return "", "", ids.Empty, ids.Empty, "", "", nil, err
 		}
-		if network.Kind == models.Local {
+		switch {
+		case network.Kind == models.Local:
 			b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData()
 			if err != nil {
 				return "", "", ids.Empty, ids.Empty, "", "", nil, err
@@ -53,13 +55,19 @@ func GetBlockchainParams(
 			}
 			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
 			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
-		} else if network.ClusterName != "" {
+		case network.ClusterName != "":
 			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
 			if err != nil {
 				return "", "", ids.Empty, ids.Empty, "", "", nil, err
 			}
 			teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+		case network.Kind == models.Fuji:
+			teleporterMessengerAddress = constants.DefaultTeleporterMessengerAddress
+			teleporterRegistryAddress = constants.FujiCChainTeleporterRegistryAddress
+		case network.Kind == models.Mainnet:
+			teleporterMessengerAddress = constants.DefaultTeleporterMessengerAddress
+			teleporterRegistryAddress = constants.MainnetCChainTeleporterRegistryAddress
 		}
 		k, err = key.LoadEwoq(network.ID)
 		if err != nil {

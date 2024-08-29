@@ -7,6 +7,7 @@ import (
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -91,32 +92,32 @@ func GetBlockchainID(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec ChainSpec,
-) (string, error) {
-	blockchainID := ""
+) (ids.ID, error) {
+	var blockchainID ids.ID
 	switch {
 	case chainSpec.BlockchainID != "":
 		chainID, err := utils.GetChainID(network.Endpoint, chainSpec.BlockchainID)
 		if err != nil {
-			return "", err
+			return ids.Empty, err
 		}
-		blockchainID = chainID.String()
+		blockchainID = chainID
 	case chainSpec.CChain:
 		chainID, err := utils.GetChainID(network.Endpoint, "C")
 		if err != nil {
-			return "", err
+			return ids.Empty, err
 		}
-		blockchainID = chainID.String()
+		blockchainID = chainID
 	case chainSpec.BlockchainName != "":
 		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
 		if err != nil {
-			return "", fmt.Errorf("failed to load sidecar: %w", err)
+			return ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
 		}
 		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-			return "", fmt.Errorf("blockchain has not been deployed to %s", network.Name())
+			return ids.Empty, fmt.Errorf("blockchain has not been deployed to %s", network.Name())
 		}
-		blockchainID = sc.Networks[network.Name()].BlockchainID.String()
+		blockchainID = sc.Networks[network.Name()].BlockchainID
 	default:
-		return "", fmt.Errorf("blockchain is not defined")
+		return ids.Empty, fmt.Errorf("blockchain is not defined")
 	}
 	return blockchainID, nil
 }
@@ -125,32 +126,32 @@ func GetSubnetID(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec ChainSpec,
-) (string, error) {
-	subnetID := ""
+) (ids.ID, error) {
+	var subnetID ids.ID
 	switch {
 	case chainSpec.CChain:
-		subnetID = ids.Empty.String()
+		subnetID = ids.Empty
 	case chainSpec.BlockchainName != "":
 		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
 		if err != nil {
-			return "", fmt.Errorf("failed to load sidecar: %w", err)
+			return ids.Empty, fmt.Errorf("failed to load sidecar: %w", err)
 		}
 		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-			return "", fmt.Errorf("blockchain has not been deployed to %s", network.Name())
+			return ids.Empty, fmt.Errorf("blockchain has not been deployed to %s", network.Name())
 		}
-		subnetID = sc.Networks[network.Name()].SubnetID.String()
+		subnetID = sc.Networks[network.Name()].SubnetID
 	case chainSpec.BlockchainID != "":
 		blockchainID, err := ids.FromString(chainSpec.BlockchainID)
 		if err != nil {
-			return "", fmt.Errorf("failure parsing %s as id: %w", chainSpec.BlockchainID, err)
+			return ids.Empty, fmt.Errorf("failure parsing %s as id: %w", chainSpec.BlockchainID, err)
 		}
 		tx, err := utils.GetBlockchainTx(network.Endpoint, blockchainID)
 		if err != nil {
-			return "", err
+			return ids.Empty, err
 		}
-		subnetID = tx.SubnetID.String()
+		subnetID = tx.SubnetID
 	default:
-		return "", fmt.Errorf("blockchain is not defined")
+		return ids.Empty, fmt.Errorf("blockchain is not defined")
 	}
 	return subnetID, nil
 }
@@ -176,6 +177,9 @@ func GetICMInfo(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec ChainSpec,
+	promptForRegistry bool,
+	promptForMessenger bool,
+	defaultToLatestReleasedMessenger bool,
 ) (string, string, error) {
 	messengerAddress := ""
 	registryAddress := ""
@@ -204,7 +208,7 @@ func GetICMInfo(
 	if err != nil {
 		return "", "", err
 	}
-	if registryAddress == "" {
+	if registryAddress == "" && promptForRegistry {
 		addr, err := app.Prompt.CaptureAddress("Which is the ICM Registry address for " + blockchainDesc)
 		if err != nil {
 			return "", "", err
@@ -212,11 +216,15 @@ func GetICMInfo(
 		registryAddress = addr.Hex()
 	}
 	if messengerAddress == "" {
-		addr, err := app.Prompt.CaptureAddress("Which is the ICM Messenger address for " + blockchainDesc)
-		if err != nil {
-			return "", "", err
+		if promptForMessenger {
+			addr, err := app.Prompt.CaptureAddress("Which is the ICM Messenger address for " + blockchainDesc)
+			if err != nil {
+				return "", "", err
+			}
+			messengerAddress = addr.Hex()
+		} else if defaultToLatestReleasedMessenger {
+			messengerAddress = constants.DefaultTeleporterMessengerAddress
 		}
-		messengerAddress = addr.Hex()
 	}
 	return registryAddress, messengerAddress, nil
 }
@@ -267,7 +275,8 @@ func GetCChainICMInfo(
 ) (string, string, error) {
 	messengerAddress := ""
 	registryAddress := ""
-	if network.Kind == models.Local {
+	switch {
+	case network.Kind == models.Local:
 		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData()
 		if err != nil {
 			return "", "", err
@@ -277,13 +286,19 @@ func GetCChainICMInfo(
 		}
 		messengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
 		registryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
-	} else if network.ClusterName != "" {
+	case network.ClusterName != "":
 		clusterConfig, err := app.GetClusterConfig(network.ClusterName)
 		if err != nil {
 			return "", "", err
 		}
 		messengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 		registryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+	case network.Kind == models.Fuji:
+		messengerAddress = constants.DefaultTeleporterMessengerAddress
+		registryAddress = constants.FujiCChainTeleporterRegistryAddress
+	case network.Kind == models.Mainnet:
+		messengerAddress = constants.DefaultTeleporterMessengerAddress
+		registryAddress = constants.MainnetCChainTeleporterRegistryAddress
 	}
 	return registryAddress, messengerAddress, nil
 }

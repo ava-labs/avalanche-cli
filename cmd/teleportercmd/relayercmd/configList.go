@@ -107,7 +107,7 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	foundSource := utils.Find(configEsp.sources, func(s SourceEsp) bool { return s.blockchainID == blockchainID })
+	foundSource := utils.Find(configEsp.sources, func(s SourceEsp) bool { return s.blockchainID == blockchainID.String() })
 	if foundSource != nil {
 		ux.Logger.PrintToUser("blockchain is already a source")
 		return configEsp, nil
@@ -120,7 +120,7 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	icmRegistryAddress, icmMessengerAddress, err := contract.GetICMInfo(app, network, chainSpec)
+	icmRegistryAddress, icmMessengerAddress, err := contract.GetICMInfo(app, network, chainSpec, true, true, false)
 	if err != nil {
 		return ConfigEsp{}, err
 	}
@@ -147,8 +147,8 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 	}
 	configEsp.sources = append(configEsp.sources, SourceEsp{
 		blockchainDesc:      blockchainDesc,
-		blockchainID:        blockchainID,
-		subnetID:            subnetID,
+		blockchainID:        blockchainID.String(),
+		subnetID:            subnetID.String(),
 		rewardAddress:       rewardAddress,
 		icmRegistryAddress:  icmRegistryAddress,
 		icmMessengerAddress: icmMessengerAddress,
@@ -169,7 +169,7 @@ func addDestination(network models.Network, configEsp ConfigEsp, chainSpec contr
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	foundDestination := utils.Find(configEsp.destinations, func(s DestinationEsp) bool { return s.blockchainID == blockchainID })
+	foundDestination := utils.Find(configEsp.destinations, func(s DestinationEsp) bool { return s.blockchainID == blockchainID.String() })
 	if foundDestination != nil {
 		ux.Logger.PrintToUser("blockchain is already a destination")
 		return configEsp, nil
@@ -203,8 +203,8 @@ func addDestination(network models.Network, configEsp ConfigEsp, chainSpec contr
 	}
 	configEsp.destinations = append(configEsp.destinations, DestinationEsp{
 		blockchainDesc: blockchainDesc,
-		blockchainID:   blockchainID,
-		subnetID:       subnetID,
+		blockchainID:   blockchainID.String(),
+		subnetID:       subnetID.String(),
 		privateKey:     privateKey,
 	})
 	return configEsp, nil

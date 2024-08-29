@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/nativeminter"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -144,11 +143,7 @@ func GetBlockchainGenesis(
 	if err != nil {
 		return nil, err
 	}
-	chainID, err := ids.FromString(blockchainID)
-	if err != nil {
-		return nil, err
-	}
-	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, chainID)
+	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, blockchainID)
 	if err != nil {
 		return nil, err
 	}
