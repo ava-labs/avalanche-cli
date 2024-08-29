@@ -76,8 +76,8 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err := trackSubnet(hosts, clusterName, clusterConfig.Network, blockchainName); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Node(s) successfully started syncing with Subnet!")
-	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, blockchainName))
+	ux.Logger.PrintToUser("Node(s) successfully started syncing with Blockchain!")
+	ux.Logger.PrintToUser(fmt.Sprintf("Check node blockchain syncing status with avalanche node status %s --blockchain %s", clusterName, blockchainName))
 	return nil
 }
 
