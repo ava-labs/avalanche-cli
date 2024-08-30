@@ -21,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
@@ -545,21 +544,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			false,
 		); err != nil {
 			return err
-		}
-	}
-
-	if isFullySigned {
-		if network.ClusterName != "" {
-			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
-			if err != nil {
-				return err
-			}
-			if _, err := utils.GetIndexInSlice(clusterConfig.Subnets, blockchainName); err != nil {
-				clusterConfig.Subnets = append(clusterConfig.Subnets, blockchainName)
-			}
-			if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
-				return err
-			}
 		}
 	}
 

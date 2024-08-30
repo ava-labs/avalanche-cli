@@ -18,12 +18,12 @@ import (
 
 func newSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "sync [clusterName] [subnetName]",
+		Use:   "sync [clusterName] [blockchainName]",
 		Short: "(ALPHA Warning) Sync nodes in a cluster with a subnet",
 		Long: `(ALPHA Warning) This command is currently in experimental mode.
 
-The node sync command enables all nodes in a cluster to be bootstrapped to a Subnet. 
-You can check the subnet bootstrap status by calling avalanche node status <clusterName> --subnet <subnetName>`,
+The node sync command enables all nodes in a cluster to be bootstrapped to a Blockchain.
+You can check the blockchain bootstrap status by calling avalanche node status <clusterName> --blockchain <blockchainName>`,
 		Args: cobrautils.ExactArgs(2),
 		RunE: syncSubnet,
 	}
@@ -37,7 +37,7 @@ You can check the subnet bootstrap status by calling avalanche node status <clus
 
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	subnetName := args[1]
+	blockchainName := args[1]
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
+	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{blockchainName}); err != nil {
 		return err
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
@@ -66,28 +66,24 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 		if err := checkHostsAreHealthy(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
+		if err := checkHostsAreRPCCompatible(hosts, blockchainName); err != nil {
 			return err
 		}
 	}
-	if err := prepareSubnetPlugin(hosts, subnetName); err != nil {
+	if err := prepareSubnetPlugin(hosts, blockchainName); err != nil {
 		return err
 	}
-	untrackedNodes, err := trackSubnet(hosts, clusterName, clusterConfig.Network, subnetName)
-	if err != nil {
+	if err := trackSubnet(hosts, clusterName, clusterConfig.Network, blockchainName); err != nil {
 		return err
 	}
-	if len(untrackedNodes) > 0 {
-		return fmt.Errorf("node(s) %s failed to sync with subnet %s", untrackedNodes, subnetName)
-	}
-	ux.Logger.PrintToUser("Node(s) successfully started syncing with Subnet!")
-	ux.Logger.PrintToUser(fmt.Sprintf("Check node subnet syncing status with avalanche node status %s --subnet %s", clusterName, subnetName))
+	ux.Logger.PrintToUser("Node(s) successfully started syncing with Blockchain!")
+	ux.Logger.PrintToUser(fmt.Sprintf("Check node blockchain syncing status with avalanche node status %s --blockchain %s", clusterName, blockchainName))
 	return nil
 }
 
 // prepareSubnetPlugin creates subnet plugin to all nodes in the cluster
-func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
-	sc, err := app.LoadSidecar(subnetName)
+func prepareSubnetPlugin(hosts []*models.Host, blockchainName string) error {
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -110,31 +106,31 @@ func prepareSubnetPlugin(hosts []*models.Host, subnetName string) error {
 }
 
 // trackSubnet exports deployed subnet in user's local machine to cloud server and calls node to
-// start tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
+// start tracking the specified subnet (similar to avalanche subnet join <blockchainName> command)
 func trackSubnet(
 	hosts []*models.Host,
 	clusterName string,
 	network models.Network,
-	subnetName string,
-) ([]string, error) {
+	blockchainName string,
+) error {
 	// load cluster config
 	clusterConf, err := app.GetClusterConfig(clusterName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// and get list of subnets
-	allSubnets := utils.Unique(append(clusterConf.Subnets, subnetName))
+	allSubnets := utils.Unique(append(clusterConf.Subnets, blockchainName))
 
 	// load sidecar to get subnet blockchain ID
-	sc, err := app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
-	subnetAliases := append([]string{subnetName}, subnetAliases...)
+	subnetAliases := append([]string{blockchainName}, subnetAliases...)
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -143,13 +139,23 @@ func trackSubnet(
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 
-			if err := ssh.RunSSHRenderAvagoAliasConfigFile(host, blockchainID.String(), subnetAliases); err != nil {
+			if err := ssh.RunSSHRenderAvagoAliasConfigFile(
+				host,
+				blockchainID.String(),
+				subnetAliases,
+			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHRenderAvalancheNodeConfig(app, host, network, allSubnets); err != nil {
+			if err := ssh.RunSSHRenderAvalancheNodeConfig(
+				app,
+				host,
+				network,
+				allSubnets,
+				clusterConf.IsAPIHost(host.GetCloudID()),
+			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
-			if err := ssh.RunSSHSyncSubnetData(app, host, network, subnetName); err != nil {
+			if err := ssh.RunSSHSyncSubnetData(app, host, network, blockchainName); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
 			if err := ssh.RunSSHStartNode(host); err != nil {
@@ -160,7 +166,9 @@ func trackSubnet(
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return nil, fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHostMap())
+		return fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHostMap())
 	}
-	return wgResults.GetErrorHosts(), nil
+
+	clusterConf.Subnets = allSubnets
+	return app.SetClusterConfig(network.ClusterName, clusterConf)
 }
