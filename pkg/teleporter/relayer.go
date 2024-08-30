@@ -348,7 +348,8 @@ func CreateBaseRelayerConfig(
 
 func AddSourceAndDestinationToRelayerConfig(
 	relayerConfigPath string,
-	network models.Network,
+	rpcEndpoint string,
+	wsEndpoint string,
 	subnetID string,
 	blockchainID string,
 	icmRegistryAddress string,
@@ -362,7 +363,8 @@ func AddSourceAndDestinationToRelayerConfig(
 	}
 	addSourceToRelayerConfig(
 		awmRelayerConfig,
-		network,
+		rpcEndpoint,
+		wsEndpoint,
 		subnetID,
 		blockchainID,
 		icmRegistryAddress,
@@ -371,7 +373,7 @@ func AddSourceAndDestinationToRelayerConfig(
 	)
 	addDestinationToRelayerConfig(
 		awmRelayerConfig,
-		network,
+		rpcEndpoint,
 		subnetID,
 		blockchainID,
 		relayerPrivateKey,
@@ -381,7 +383,8 @@ func AddSourceAndDestinationToRelayerConfig(
 
 func AddSourceToRelayerConfig(
 	relayerConfigPath string,
-	network models.Network,
+	rpcEndpoint string,
+	wsEndpoint string,
 	subnetID string,
 	blockchainID string,
 	icmRegistryAddress string,
@@ -394,7 +397,8 @@ func AddSourceToRelayerConfig(
 	}
 	addSourceToRelayerConfig(
 		awmRelayerConfig,
-		network,
+		rpcEndpoint,
+		wsEndpoint,
 		subnetID,
 		blockchainID,
 		icmRegistryAddress,
@@ -406,7 +410,7 @@ func AddSourceToRelayerConfig(
 
 func AddDestinationToRelayerConfig(
 	relayerConfigPath string,
-	network models.Network,
+	rpcEndpoint string,
 	subnetID string,
 	blockchainID string,
 	relayerPrivateKey string,
@@ -417,7 +421,7 @@ func AddDestinationToRelayerConfig(
 	}
 	addDestinationToRelayerConfig(
 		awmRelayerConfig,
-		network,
+		rpcEndpoint,
 		subnetID,
 		blockchainID,
 		relayerPrivateKey,
@@ -427,22 +431,29 @@ func AddDestinationToRelayerConfig(
 
 func addSourceToRelayerConfig(
 	relayerConfig *config.Config,
-	network models.Network,
+	rpcEndpoint string,
+	wsEndpoint string,
 	subnetID string,
 	blockchainID string,
 	icmRegistryAddress string,
 	icmMessengerAddress string,
 	relayerRewardAddress string,
 ) {
+	if wsEndpoint == "" {
+		wsEndpoint = strings.TrimPrefix(rpcEndpoint, "https")
+		wsEndpoint = strings.TrimPrefix(wsEndpoint, "http")
+		wsEndpoint = strings.TrimSuffix(wsEndpoint, "rpc")
+		wsEndpoint = fmt.Sprintf("%s%s%s", "ws", wsEndpoint, "ws")
+	}
 	source := &config.SourceBlockchain{
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
 		RPCEndpoint: config.APIConfig{
-			BaseURL: network.BlockchainEndpoint(blockchainID),
+			BaseURL: rpcEndpoint,
 		},
 		WSEndpoint: config.APIConfig{
-			BaseURL: network.BlockchainWSEndpoint(blockchainID),
+			BaseURL: wsEndpoint,
 		},
 		MessageContracts: map[string]config.MessageProtocolConfig{
 			icmMessengerAddress: {
@@ -466,7 +477,7 @@ func addSourceToRelayerConfig(
 
 func addDestinationToRelayerConfig(
 	relayerConfig *config.Config,
-	network models.Network,
+	rpcEndpoint string,
 	subnetID string,
 	blockchainID string,
 	relayerFundedAddressKey string,
@@ -476,7 +487,7 @@ func addDestinationToRelayerConfig(
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
 		RPCEndpoint: config.APIConfig{
-			BaseURL: network.BlockchainEndpoint(blockchainID),
+			BaseURL: rpcEndpoint,
 		},
 		AccountPrivateKey: relayerFundedAddressKey,
 	}

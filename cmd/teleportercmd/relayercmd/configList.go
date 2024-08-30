@@ -16,6 +16,8 @@ import (
 
 type SourceEsp struct {
 	blockchainDesc      string
+	rpcEndpoint         string
+	wsEndpoint          string
 	blockchainID        string
 	subnetID            string
 	rewardAddress       string
@@ -25,6 +27,7 @@ type SourceEsp struct {
 
 type DestinationEsp struct {
 	blockchainDesc string
+	rpcEndpoint    string
 	blockchainID   string
 	subnetID       string
 	privateKey     string

@@ -64,28 +64,19 @@ func AddChainSpecToCmd(
 	}
 }
 
-func GetRPCURL(
+func GetBlockchainEndpoints(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec ChainSpec,
-) (string, error) {
-	switch {
-	case chainSpec.CChain:
-		return network.CChainEndpoint(), nil
-	case chainSpec.BlockchainID != "":
-		return network.BlockchainEndpoint(chainSpec.BlockchainID), nil
-	case chainSpec.BlockchainName != "":
-		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
-		if err != nil {
-			return "", fmt.Errorf("failed to load sidecar: %w", err)
-		}
-		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-			return "", fmt.Errorf("blockchain has not been deployed to %s", network.Name())
-		}
-		return network.BlockchainEndpoint(sc.Networks[network.Name()].BlockchainID.String()), nil
-	default:
-		return "", fmt.Errorf("blockchain is not defined")
+) (string, string, error) {
+	if chainSpec.CChain {
+		return network.CChainEndpoint(), network.CChainWSEndpoint(), nil
 	}
+	blockchainID, err := GetBlockchainID(app, network, chainSpec)
+	if err != nil {
+		return "", "", err
+	}
+	return network.BlockchainEndpoint(blockchainID.String()), network.BlockchainWSEndpoint(blockchainID.String()), nil
 }
 
 func GetBlockchainID(

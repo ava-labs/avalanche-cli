@@ -335,7 +335,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	for _, source := range configEsp.sources {
 		if err := teleporter.AddSourceToRelayerConfig(
 			configPath,
-			network,
+			source.rpcEndpoint,
+			source.wsEndpoint,
 			source.subnetID,
 			source.blockchainID,
 			source.icmRegistryAddress,
@@ -348,7 +349,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	for _, destination := range configEsp.destinations {
 		if err := teleporter.AddDestinationToRelayerConfig(
 			configPath,
-			network,
+			destination.rpcEndpoint,
 			destination.subnetID,
 			destination.blockchainID,
 			destination.privateKey,

@@ -147,7 +147,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
-	rpcURL, err := contract.GetRPCURL(
+	rpcEndpoint, _, err := contract.GetBlockchainEndpoints(
 		app,
 		network,
 		deployERC20Flags.chainFlags,
@@ -156,7 +156,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	address, err := contract.DeployERC20(
-		rpcURL,
+		rpcEndpoint,
 		privateKey,
 		deployERC20Flags.symbol,
 		common.HexToAddress(deployERC20Flags.funded),

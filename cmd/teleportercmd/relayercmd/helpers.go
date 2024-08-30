@@ -43,7 +43,8 @@ func AddBlockchainToClusterConf(network models.Network, cloudNodeID string, bloc
 	}
 	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
 		configPath,
-		network,
+		network.BlockchainEndpoint(chainID.String()),
+		network.BlockchainWSEndpoint(chainID.String()),
 		subnetID.String(),
 		chainID.String(),
 		registryAddress,
@@ -61,7 +62,8 @@ func AddBlockchainToClusterConf(network models.Network, cloudNodeID string, bloc
 
 	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
 		configPath,
-		network,
+		network.BlockchainEndpoint(chainID.String()),
+		network.BlockchainWSEndpoint(chainID.String()),
 		subnetID.String(),
 		chainID.String(),
 		registryAddress,

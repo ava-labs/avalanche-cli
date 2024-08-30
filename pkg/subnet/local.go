@@ -466,7 +466,8 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 				}
 				if err = teleporter.AddSourceAndDestinationToRelayerConfig(
 					relayerConfigPath,
-					network,
+					network.BlockchainEndpoint(cchainBlockchainID),
+					network.BlockchainWSEndpoint(cchainBlockchainID),
 					cchainSubnetID,
 					cchainBlockchainID,
 					cchainIcmRegistryAddress,
@@ -486,7 +487,8 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 			}
 			if err = teleporter.AddSourceAndDestinationToRelayerConfig(
 				relayerConfigPath,
-				network,
+				network.BlockchainEndpoint(blockchainID),
+				network.BlockchainWSEndpoint(blockchainID),
 				subnetID,
 				blockchainID,
 				icmRegistryAddress,
