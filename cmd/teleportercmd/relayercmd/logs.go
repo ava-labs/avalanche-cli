@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -91,7 +91,7 @@ func logs(_ *cobra.Command, _ []string) error {
 		}
 		return nil
 	}
-	blockchainIDToSubnetName, err := getBlockchainIDToSubnetNameMap(network)
+	blockchainIDToBlockchainName, err := getBlockchainIDToBlockchainNameMap(network)
 	if err != nil {
 		return err
 	}
@@ -139,11 +139,11 @@ func logs(_ *cobra.Command, _ []string) error {
 						logMap,
 						k,
 						k,
-						blockchainIDToSubnetName,
+						blockchainIDToBlockchainName,
 					)
 				}
 			}
-			subnet := getLogSubnet(logMap, blockchainIDToSubnetName)
+			subnet := getLogSubnet(logMap, blockchainIDToBlockchainName)
 			t.AppendRow(table.Row{levelEmoji, timeStr, subnet, logMsg})
 		}
 	}
@@ -157,13 +157,13 @@ func addAditionalInfo(
 	logMap map[string]interface{},
 	key string,
 	outputName string,
-	blockchainIDToSubnetName map[string]string,
+	blockchainIDToBlockchainName map[string]string,
 ) string {
 	value, b := logMap[key].(string)
 	if b {
-		subnetName := blockchainIDToSubnetName[value]
-		if subnetName != "" {
-			value = subnetName
+		blockchainName := blockchainIDToBlockchainName[value]
+		if blockchainName != "" {
+			value = blockchainName
 		}
 		logMsg = fmt.Sprintf("%s\n  %s=%s", logMsg, outputName, value)
 	}
@@ -172,7 +172,7 @@ func addAditionalInfo(
 
 func getLogSubnet(
 	logMap map[string]interface{},
-	blockchainIDToSubnetName map[string]string,
+	blockchainIDToBlockchainName map[string]string,
 ) string {
 	for _, key := range []string{
 		"blockchainID",
@@ -182,34 +182,34 @@ func getLogSubnet(
 	} {
 		value, b := logMap[key].(string)
 		if b {
-			subnetName := blockchainIDToSubnetName[value]
-			if subnetName != "" {
-				return subnetName
+			blockchainName := blockchainIDToBlockchainName[value]
+			if blockchainName != "" {
+				return blockchainName
 			}
 		}
 	}
 	return ""
 }
 
-func getBlockchainIDToSubnetNameMap(network models.Network) (map[string]string, error) {
-	subnetNames, err := app.GetBlockchainNamesOnNetwork(network)
+func getBlockchainIDToBlockchainNameMap(network models.Network) (map[string]string, error) {
+	blockchainNames, err := app.GetBlockchainNamesOnNetwork(network)
 	if err != nil {
 		return nil, err
 	}
-	blockchainIDToSubnetName := map[string]string{}
-	for _, subnetName := range subnetNames {
-		_, _, _, blockchainID, _, _, _, err := teleporter.GetBlockchainParams(app, network, subnetName, false)
+	blockchainIDToBlockchainName := map[string]string{}
+	for _, blockchainName := range blockchainNames {
+		blockchainID, err := contract.GetBlockchainID(app, network, contract.ChainSpec{BlockchainName: blockchainName})
 		if err != nil {
 			return nil, err
 		}
-		blockchainIDToSubnetName[blockchainID.String()] = subnetName
+		blockchainIDToBlockchainName[blockchainID.String()] = blockchainName
 	}
-	_, _, _, blockchainID, _, _, _, err := teleporter.GetBlockchainParams(app, network, "", true)
+	blockchainID, err := contract.GetBlockchainID(app, network, contract.ChainSpec{CChain: true})
 	if err != nil {
 		return nil, err
 	}
-	blockchainIDToSubnetName[blockchainID.String()] = "c-chain"
-	return blockchainIDToSubnetName, nil
+	blockchainIDToBlockchainName[blockchainID.String()] = "c-chain"
+	return blockchainIDToBlockchainName, nil
 }
 
 func logLevelToEmoji(logLevel string) (string, error) {

@@ -23,6 +23,7 @@ type DeployERC20Flags struct {
 	symbol          string
 	funded          string
 	supply          uint64
+	rpcEndpoint     string
 }
 
 var (
@@ -44,7 +45,7 @@ func newDeployERC20Cmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &deployERC20Flags.PrivateKeyFlags, "as contract deployer")
+	contract.AddPrivateKeyFlagsToCmd(cmd, &deployERC20Flags.PrivateKeyFlags, "as contract deployer", "", "", "")
 	contract.AddChainSpecToCmd(
 		cmd,
 		&deployERC20Flags.chainFlags,
@@ -57,6 +58,7 @@ func newDeployERC20Cmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the token symbol")
 	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the token supply")
 	cmd.Flags().StringVar(&deployERC20Flags.funded, "funded", "", "set the funded address")
+	cmd.Flags().StringVar(&deployERC20Flags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
 	return cmd
 }
 
@@ -81,6 +83,18 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		prompt := "Where do you want to Deploy the ERC-20 Token?"
 		cancel, err := contract.PromptChain(app, network, prompt, false, "", true, &deployERC20Flags.chainFlags)
 		if cancel || err != nil {
+			return err
+		}
+	}
+	if deployERC20Flags.rpcEndpoint == "" {
+		deployERC20Flags.rpcEndpoint, _, err = contract.GetBlockchainEndpoints(
+			app,
+			network,
+			deployERC20Flags.chainFlags,
+			true,
+			false,
+		)
+		if err != nil {
 			return err
 		}
 	}
@@ -147,16 +161,8 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
-	rpcEndpoint, _, err := contract.GetBlockchainEndpoints(
-		app,
-		network,
-		deployERC20Flags.chainFlags,
-	)
-	if err != nil {
-		return err
-	}
 	address, err := contract.DeployERC20(
-		rpcEndpoint,
+		deployERC20Flags.rpcEndpoint,
 		privateKey,
 		deployERC20Flags.symbol,
 		common.HexToAddress(deployERC20Flags.funded),

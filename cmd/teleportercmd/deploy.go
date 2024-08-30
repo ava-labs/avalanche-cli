@@ -57,7 +57,7 @@ func newDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "to fund teleporter deploy")
+	contract.AddPrivateKeyFlagsToCmd(cmd, &deployFlags.PrivateKeyFlags, "to fund ICM deploy", "", "", "")
 	contract.AddChainSpecToCmd(
 		cmd,
 		&deployFlags.ChainFlags,
@@ -117,16 +117,19 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return nil
 		}
 	}
+	rpcURL := flags.RPCURL
+	if rpcURL == "" {
+		rpcURL, _, err = contract.GetBlockchainEndpoints(app, network, flags.ChainFlags, true, false)
+		if err != nil {
+			return err
+		}
+	}
 
 	var (
-		blockchainID         string
-		teleporterSubnetDesc string
-		privateKey           string
-		teleporterVersion    string
+		privateKey        string
+		teleporterVersion string
 	)
-	switch {
-	case flags.ChainFlags.BlockchainName != "":
-		teleporterSubnetDesc = flags.ChainFlags.BlockchainName
+	if flags.ChainFlags.BlockchainName != "" {
 		sc, err := app.LoadSidecar(flags.ChainFlags.BlockchainName)
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar: %w", err)
@@ -139,7 +142,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
 			return fmt.Errorf("subnet has not been deployed to %s", network.Name())
 		}
-		blockchainID = sc.Networks[network.Name()].BlockchainID.String()
 		if sc.TeleporterVersion != "" {
 			teleporterVersion = sc.TeleporterVersion
 		}
@@ -150,12 +152,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			}
 			privateKey = k.PrivKeyHex()
 		}
-	case flags.ChainFlags.BlockchainID != "":
-		teleporterSubnetDesc = flags.ChainFlags.BlockchainID
-		blockchainID = flags.ChainFlags.BlockchainID
-	case flags.ChainFlags.CChain:
-		teleporterSubnetDesc = cChainName
-		blockchainID = cChainAlias
 	}
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
@@ -168,7 +164,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if privateKey == "" {
 		privateKey, err = contract.GetPrivateKeyFromFlags(
 			app,
-			deployFlags.PrivateKeyFlags,
+			flags.PrivateKeyFlags,
 			genesisPrivateKey,
 		)
 		if err != nil {
@@ -205,10 +201,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		teleporterVersion = teleporterInfo.Version
 	}
 	// deploy to subnet
-	rpcURL := network.BlockchainEndpoint(blockchainID)
-	if flags.RPCURL != "" {
-		rpcURL = flags.RPCURL
-	}
 	td := teleporter.Deployer{}
 	if flags.MessengerContractAddressPath != "" {
 		if err := td.SetAssetsFromPaths(
@@ -227,8 +219,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
+	blockchainDesc, err := contract.GetBlockchainDesc(flags.ChainFlags)
+	if err != nil {
+		return err
+	}
 	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
-		teleporterSubnetDesc,
+		blockchainDesc,
 		rpcURL,
 		privateKey,
 		flags.DeployMessenger,

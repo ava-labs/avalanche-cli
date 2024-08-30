@@ -68,15 +68,52 @@ func GetBlockchainEndpoints(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec ChainSpec,
+	promptForRPCEndpoint bool,
+	promptForWSEndpoint bool,
 ) (string, string, error) {
-	if chainSpec.CChain {
-		return network.CChainEndpoint(), network.CChainWSEndpoint(), nil
+	var (
+		rpcEndpoint string
+		wsEndpoint  string
+	)
+	switch {
+	case chainSpec.CChain:
+		rpcEndpoint = network.CChainEndpoint()
+		wsEndpoint = network.CChainWSEndpoint()
+	case network.Kind == models.Local || network.Kind == models.Devnet:
+		blockchainID, err := GetBlockchainID(app, network, chainSpec)
+		if err != nil {
+			return "", "", err
+		}
+		rpcEndpoint = network.BlockchainEndpoint(blockchainID.String())
+		wsEndpoint = network.BlockchainWSEndpoint(blockchainID.String())
+	case chainSpec.BlockchainName != "":
+		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+			return "", "", fmt.Errorf("blockchain has not been deployed to %s", network.Name())
+		}
+		rpcEndpoint = sc.Networks[network.Name()].RPCEndpoint
+		wsEndpoint = sc.Networks[network.Name()].WSEndpoint
 	}
-	blockchainID, err := GetBlockchainID(app, network, chainSpec)
+	blockchainDesc, err := GetBlockchainDesc(chainSpec)
 	if err != nil {
 		return "", "", err
 	}
-	return network.BlockchainEndpoint(blockchainID.String()), network.BlockchainWSEndpoint(blockchainID.String()), nil
+	if rpcEndpoint == "" && promptForRPCEndpoint {
+		rpcEndpoint, err = app.Prompt.CaptureURL("Which is the RPC endpoint for "+blockchainDesc, false)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	if wsEndpoint == "" && promptForWSEndpoint {
+		wsEndpoint, err = app.Prompt.CaptureURL("Which is the WS endpoint for "+blockchainDesc, false)
+		if err != nil {
+			return "", "", err
+		}
+	}
+	return rpcEndpoint, wsEndpoint, nil
 }
 
 func GetBlockchainID(
@@ -172,8 +209,8 @@ func GetICMInfo(
 	promptForMessenger bool,
 	defaultToLatestReleasedMessenger bool,
 ) (string, string, error) {
-	messengerAddress := ""
 	registryAddress := ""
+	messengerAddress := ""
 	switch {
 	case chainSpec.CChain:
 		var err error
@@ -190,8 +227,8 @@ func GetICMInfo(
 		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
 			return "", "", fmt.Errorf("blockchain has not been deployed to %s", network.Name())
 		}
-		messengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
 		registryAddress = sc.Networks[network.Name()].TeleporterRegistryAddress
+		messengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
 	default:
 		return "", "", fmt.Errorf("blockchain is not defined")
 	}

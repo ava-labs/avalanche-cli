@@ -16,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,16 +24,20 @@ import (
 )
 
 type HomeFlags struct {
-	chainFlags   contract.ChainSpec
-	homeAddress  string
-	native       bool
-	erc20Address string
+	chainFlags      contract.ChainSpec
+	homeAddress     string
+	native          bool
+	erc20Address    string
+	privateKeyFlags contract.PrivateKeyFlags
+	RPCEndpoint     string
 }
 
 type RemoteFlags struct {
 	chainFlags        contract.ChainSpec
 	native            bool
 	removeMinterAdmin bool
+	privateKeyFlags   contract.PrivateKeyFlags
+	RPCEndpoint       string
 }
 
 type DeployFlags struct {
@@ -87,6 +90,24 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", true, "remove the native minter precompile admin found on remote blockchain genesis")
+	contract.AddPrivateKeyFlagsToCmd(
+		cmd,
+		&deployFlags.homeFlags.privateKeyFlags,
+		"to deploy Transferrer Home",
+		"home-private-key",
+		"home-key",
+		"home-genesis-key",
+	)
+	contract.AddPrivateKeyFlagsToCmd(
+		cmd,
+		&deployFlags.remoteFlags.privateKeyFlags,
+		"to deploy Transferrer Remote",
+		"remote-private-key",
+		"remote-key",
+		"remote-genesis-key",
+	)
+	cmd.Flags().StringVar(&deployFlags.homeFlags.RPCEndpoint, "home-rpc", "", "use the given RPC URL to connect to the home blockchain")
+	cmd.Flags().StringVar(&deployFlags.remoteFlags.RPCEndpoint, "remote-rpc", "", "use the given RPC URL to connect to the remote blockchain")
 	return cmd
 }
 
@@ -135,6 +156,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		} else if cancel {
 			return nil
+		}
+	}
+	homeRPCEndpoint := flags.homeFlags.RPCEndpoint
+	if homeRPCEndpoint == "" {
+		homeRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, flags.homeFlags.chainFlags, true, false)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -284,6 +312,40 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
+	var homeKey string
+	if flags.homeFlags.erc20Address != "" {
+		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			flags.homeFlags.chainFlags,
+		)
+		if err != nil {
+			return err
+		}
+		homeKey, err := contract.GetPrivateKeyFromFlags(
+			app,
+			flags.homeFlags.privateKeyFlags,
+			genesisPrivateKey,
+			"--home-private-key, --home-key and --home-genesis-key are mutually exclusive flags",
+		)
+		if err != nil {
+			return err
+		}
+		if homeKey == "" {
+			homeKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"pay for home deploy fees",
+				app.GetKeyDir(),
+				app.GetKey,
+				genesisAddress,
+				genesisPrivateKey,
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	// Home Contract Validations
 	if flags.homeFlags.homeAddress != "" {
 		if err := prompts.ValidateAddress(flags.homeFlags.homeAddress); err != nil {
@@ -314,6 +376,47 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		} else if cancel {
 			return nil
+		}
+	}
+	remoteRPCEndpoint := flags.remoteFlags.RPCEndpoint
+	if remoteRPCEndpoint == "" {
+		remoteRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, flags.remoteFlags.chainFlags, true, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	var remoteKey string
+	if flags.homeFlags.erc20Address != "" {
+		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			flags.remoteFlags.chainFlags,
+		)
+		if err != nil {
+			return err
+		}
+		remoteKey, err := contract.GetPrivateKeyFromFlags(
+			app,
+			flags.remoteFlags.privateKeyFlags,
+			genesisPrivateKey,
+			"--remote-private-key, --remote-key and --remote-genesis-key are mutually exclusive flags",
+		)
+		if err != nil {
+			return err
+		}
+		if remoteKey == "" {
+			remoteKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"pay for home deploy fees",
+				app.GetKeyDir(),
+				app.GetKey,
+				genesisAddress,
+				genesisPrivateKey,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -358,29 +461,28 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		tokenAddress  common.Address
 	)
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
-	homeEndpoint, _, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetBlockchainParams(
-		app,
-		network,
-		flags.homeFlags.chainFlags.BlockchainName,
-		flags.homeFlags.chainFlags.CChain,
-	)
+	homeBlockchainID, err := contract.GetBlockchainID(app, network, flags.homeFlags.chainFlags)
+	if err != nil {
+		return err
+	}
+	homeRegistryAddress, _, err := contract.GetICMInfo(app, network, flags.homeFlags.chainFlags, true, false, true)
 	if err != nil {
 		return err
 	}
 	if flags.homeFlags.homeAddress != "" {
 		homeAddress = common.HexToAddress(flags.homeFlags.homeAddress)
-		endpointKind, err := ictt.GetEndpointKind(homeEndpoint, homeAddress)
+		endpointKind, err := ictt.GetEndpointKind(homeRPCEndpoint, homeAddress)
 		if err != nil {
 			return err
 		}
 		switch endpointKind {
 		case ictt.ERC20TokenHome:
-			tokenAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeEndpoint, homeAddress)
+			tokenAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
 		case ictt.NativeTokenHome:
-			tokenAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeEndpoint, homeAddress)
+			tokenAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
 			if err != nil {
 				return err
 			}
@@ -388,7 +490,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
 		}
 		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
-			homeEndpoint,
+			homeRPCEndpoint,
 			tokenAddress.Hex(),
 		)
 		if err != nil {
@@ -398,7 +500,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if flags.homeFlags.erc20Address != "" {
 		tokenAddress = common.HexToAddress(flags.homeFlags.erc20Address)
 		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
-			homeEndpoint,
+			homeRPCEndpoint,
 			tokenAddress.Hex(),
 		)
 		if err != nil {
@@ -406,7 +508,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		homeAddress, err = ictt.DeployERC20Home(
 			icttSrcDir,
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeKey.PrivKeyHex(),
 			common.HexToAddress(homeRegistryAddress),
 			common.HexToAddress(homeKey.C()),
@@ -416,7 +518,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Home Deployed to %s", homeEndpoint)
+		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
 		ux.Logger.PrintToUser("")
 	}
@@ -430,7 +532,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		wrappedNativeTokenAddress, err := ictt.DeployWrappedNativeToken(
 			icttSrcDir,
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeKey.PrivKeyHex(),
 			nativeTokenSymbol,
 		)
@@ -438,18 +540,18 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
-			homeEndpoint,
+			homeRPCEndpoint,
 			wrappedNativeTokenAddress.Hex(),
 		)
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeEndpoint)
+		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", tokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
 		homeAddress, err = ictt.DeployNativeHome(
 			icttSrcDir,
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeKey.PrivKeyHex(),
 			common.HexToAddress(homeRegistryAddress),
 			common.HexToAddress(homeKey.C()),
@@ -458,18 +560,21 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Home Deployed to %s", homeEndpoint)
+		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
 		ux.Logger.PrintToUser("")
 	}
 
 	// Remote Deploy
-	remoteEndpoint, remoteBlockchainName, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetBlockchainParams(
-		app,
-		network,
-		flags.remoteFlags.chainFlags.BlockchainName,
-		flags.remoteFlags.chainFlags.CChain,
-	)
+	remoteBlockchainDesc, err := contract.GetBlockchainDesc(flags.remoteFlags.chainFlags)
+	if err != nil {
+		return err
+	}
+	remoteBlockchainID, err := contract.GetBlockchainID(app, network, flags.remoteFlags.chainFlags)
+	if err != nil {
+		return err
+	}
+	remoteRegistryAddress, _, err := contract.GetICMInfo(app, network, flags.remoteFlags.chainFlags, true, false, true)
 	if err != nil {
 		return err
 	}
@@ -482,7 +587,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if !flags.remoteFlags.native {
 		remoteAddress, err = ictt.DeployERC20Remote(
 			icttSrcDir,
-			remoteEndpoint,
+			remoteRPCEndpoint,
 			remoteKey.PrivKeyHex(),
 			common.HexToAddress(remoteRegistryAddress),
 			common.HexToAddress(remoteKey.C()),
@@ -513,7 +618,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		remoteAddress, err = ictt.DeployNativeRemote(
 			icttSrcDir,
-			remoteEndpoint,
+			remoteRPCEndpoint,
 			remoteKey.PrivKeyHex(),
 			common.HexToAddress(remoteRegistryAddress),
 			common.HexToAddress(remoteKey.C()),
@@ -530,7 +635,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	if err := ictt.RegisterERC20Remote(
-		remoteEndpoint,
+		remoteRPCEndpoint,
 		remoteKey.PrivKeyHex(),
 		remoteAddress,
 	); err != nil {
@@ -542,7 +647,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	t0 := time.Now()
 	for {
 		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
 			remoteBlockchainID,
 			remoteAddress,
@@ -562,7 +667,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	if flags.remoteFlags.native {
 		err = ictt.TokenHomeAddCollateral(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
 			homeKey.PrivKeyHex(),
 			remoteBlockchainID,
@@ -574,7 +679,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 
 		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
 			remoteBlockchainID,
 			remoteAddress,
@@ -595,14 +700,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if !minterAdminFound {
-			return fmt.Errorf("there is no native minter precompile admin on subnet %s", remoteBlockchainName)
+			return fmt.Errorf("there is no native minter precompile admin on %s", remoteBlockchainDesc)
 		}
 		if !managedMinterAdmin {
-			return fmt.Errorf("no managed key found for native minter admin %s subnet %s", minterAdminAddress, remoteBlockchainName)
+			return fmt.Errorf("no managed key found for native minter admin %s on %s", minterAdminAddress, remoteBlockchainDesc)
 		}
 
 		if err := precompiles.SetEnabled(
-			remoteEndpoint,
+			remoteRPCEndpoint,
 			precompiles.NativeMinterPrecompile,
 			minterAdminPrivKey,
 			remoteAddress,
@@ -611,7 +716,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 
 		err = ictt.Send(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
 			homeKey.PrivKeyHex(),
 			remoteBlockchainID,
@@ -626,7 +731,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		t0 := time.Now()
 		for {
 			isCollateralized, err := ictt.TokenRemoteIsCollateralized(
-				remoteEndpoint,
+				remoteRPCEndpoint,
 				remoteAddress,
 			)
 			if err != nil {
@@ -644,7 +749,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 		if flags.remoteFlags.removeMinterAdmin {
 			if err := precompiles.SetNone(
-				remoteEndpoint,
+				remoteRPCEndpoint,
 				precompiles.NativeMinterPrecompile,
 				minterAdminPrivKey,
 				common.HexToAddress(minterAdminAddress),
@@ -654,7 +759,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)
+	ux.Logger.PrintToUser("Remote Deployed to %s", remoteRPCEndpoint)
 	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
 	return nil

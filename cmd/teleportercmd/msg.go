@@ -48,7 +48,14 @@ func newMsgCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(3),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "as message originator and to pay source blockchain fees")
+	contract.AddPrivateKeyFlagsToCmd(
+		cmd,
+		&msgFlags.PrivateKeyFlags,
+		"as message originator and to pay source blockchain fees",
+		"",
+		"",
+		"",
+	)
 	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
 	cmd.Flags().StringVar(&msgFlags.SourceRPCEndpoint, "source-rpc", "", "use the given source blockchain rpc endpoint")
@@ -74,6 +81,30 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	sourceChainSpec := contract.ChainSpec{
+		BlockchainName: sourceBlockchainName,
+		CChain:         isCChain(sourceBlockchainName),
+	}
+	sourceRPCEndpoint := msgFlags.SourceRPCEndpoint
+	if sourceRPCEndpoint == "" {
+		sourceRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, sourceChainSpec, true, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	destChainSpec := contract.ChainSpec{
+		BlockchainName: destBlockchainName,
+		CChain:         isCChain(destBlockchainName),
+	}
+	destRPCEndpoint := msgFlags.DestRPCEndpoint
+	if destRPCEndpoint == "" {
+		destRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, destChainSpec, true, false)
+		if err != nil {
+			return err
+		}
+	}
+
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
@@ -89,6 +120,7 @@ func msg(_ *cobra.Command, args []string) error {
 		app,
 		msgFlags.PrivateKeyFlags,
 		genesisPrivateKey,
+		"",
 	)
 	if err != nil {
 		return err
@@ -107,10 +139,6 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	sourceChainSpec := contract.ChainSpec{
-		BlockchainName: sourceBlockchainName,
-		CChain:         isCChain(sourceBlockchainName),
-	}
 	sourceBlockchainID, err := contract.GetBlockchainID(app, network, sourceChainSpec)
 	if err != nil {
 		return err
@@ -118,10 +146,6 @@ func msg(_ *cobra.Command, args []string) error {
 	_, sourceMessengerAddress, err := contract.GetICMInfo(app, network, sourceChainSpec, false, false, true)
 	if err != nil {
 		return err
-	}
-	destChainSpec := contract.ChainSpec{
-		BlockchainName: destBlockchainName,
-		CChain:         isCChain(destBlockchainName),
 	}
 	destBlockchainID, err := contract.GetBlockchainID(app, network, destChainSpec)
 	if err != nil {
@@ -149,10 +173,6 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 	// send tx to the teleporter contract at the source
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
-	sourceRPCEndpoint := msgFlags.SourceRPCEndpoint
-	if sourceRPCEndpoint == "" {
-		sourceRPCEndpoint = network.BlockchainEndpoint(sourceBlockchainID.String())
-	}
 	tx, receipt, err := teleporter.SendCrossChainMessage(
 		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
@@ -193,10 +213,6 @@ func msg(_ *cobra.Command, args []string) error {
 
 	// receive and process head from destination
 	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destBlockchainName, destBlockchainID)
-	destRPCEndpoint := msgFlags.DestRPCEndpoint
-	if destRPCEndpoint == "" {
-		destRPCEndpoint = network.BlockchainEndpoint(destBlockchainID.String())
-	}
 
 	arrivalCheckInterval := 100 * time.Millisecond
 	arrivalCheckTimeout := 10 * time.Second

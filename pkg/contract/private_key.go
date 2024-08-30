@@ -22,22 +22,34 @@ func AddPrivateKeyFlagsToCmd(
 	cmd *cobra.Command,
 	privateKeyFlags *PrivateKeyFlags,
 	goal string,
+	privateKeyFlagName string,
+	keyFlagName string,
+	genesisKeyFlagName string,
 ) {
+	if privateKeyFlagName == "" {
+		privateKeyFlagName = "private-key"
+	}
+	if keyFlagName == "" {
+		keyFlagName = "key"
+	}
+	if genesisKeyFlagName == "" {
+		genesisKeyFlagName = "genesis-key"
+	}
 	cmd.Flags().StringVar(
 		&privateKeyFlags.PrivateKey,
-		"private-key",
+		privateKeyFlagName,
 		"",
 		fmt.Sprintf("private key to use %s", goal),
 	)
 	cmd.Flags().StringVar(
 		&privateKeyFlags.KeyName,
-		"key",
+		keyFlagName,
 		"",
 		fmt.Sprintf("CLI stored key to use %s", goal),
 	)
 	cmd.Flags().BoolVar(
 		&privateKeyFlags.GenesisKey,
-		"genesis-key",
+		genesisKeyFlagName,
 		false,
 		fmt.Sprintf("use genesis allocated key %s", goal),
 	)
@@ -47,13 +59,17 @@ func GetPrivateKeyFromFlags(
 	app *application.Avalanche,
 	flags PrivateKeyFlags,
 	genesisPrivateKey string,
+	mutuallyExclusiveErrMsg string,
 ) (string, error) {
+	if mutuallyExclusiveErrMsg == "" {
+		mutuallyExclusiveErrMsg = "--private-key, --key and --genesis-key are mutually exclusive flags"
+	}
 	if !cmdflags.EnsureMutuallyExclusive([]bool{
 		flags.PrivateKey != "",
 		flags.KeyName != "",
 		flags.GenesisKey,
 	}) {
-		return "", fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
+		return "", fmt.Errorf(mutuallyExclusiveErrMsg)
 	}
 	privateKey := flags.PrivateKey
 	if flags.KeyName != "" {

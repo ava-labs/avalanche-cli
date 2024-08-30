@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -513,7 +513,7 @@ func setAWMRelayerHost(host *models.Host) error {
 
 func updateAWMRelayerHostConfig(network models.Network, host *models.Host, blockchainName string) error {
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay blockchain %s", host.GetCloudID(), blockchainName)
-	if err := relayercmd.AddBlockchainToClusterConf(network, host.GetCloudID(), blockchainName); err != nil {
+	if err := addBlockchainToRelayerConf(network, host.GetCloudID(), blockchainName); err != nil {
 		return err
 	}
 	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
@@ -996,5 +996,96 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 		}
 	}
 	spinSession.Stop()
+	return nil
+}
+
+func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, blockchainName string) error {
+	relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	if err != nil {
+		return err
+	}
+
+	storageBasePath := constants.AWMRelayerDockerDir
+	configBasePath := app.GetNodeInstanceDirPath(cloudNodeID)
+
+	configPath := app.GetAWMRelayerServiceConfigPath(configBasePath)
+	if err := os.MkdirAll(filepath.Dir(configPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("updating configuration file %s", configPath)
+
+	if err := teleporter.CreateBaseRelayerConfigIfMissing(
+		configPath,
+		logging.Info.LowerString(),
+		app.GetAWMRelayerServiceStorageDir(storageBasePath),
+		network,
+	); err != nil {
+		return err
+	}
+
+	chainSpec := contract.ChainSpec{CChain: true}
+	subnetID, err := contract.GetSubnetID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	blockchainID, err := contract.GetBlockchainID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	registryAddress, messengerAddress, err := contract.GetICMInfo(app, network, chainSpec, false, false, false)
+	if err != nil {
+		return err
+	}
+	rpcEndpoint, wsEndpoint, err := contract.GetBlockchainEndpoints(app, network, chainSpec, false, false)
+	if err != nil {
+		return err
+	}
+
+	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+		configPath,
+		rpcEndpoint,
+		wsEndpoint,
+		subnetID.String(),
+		blockchainID.String(),
+		registryAddress,
+		messengerAddress,
+		relayerAddress,
+		relayerPrivateKey,
+	); err != nil {
+		return err
+	}
+
+	chainSpec = contract.ChainSpec{BlockchainName: blockchainName}
+	subnetID, err = contract.GetSubnetID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	blockchainID, err = contract.GetBlockchainID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	registryAddress, messengerAddress, err = contract.GetICMInfo(app, network, chainSpec, false, false, false)
+	if err != nil {
+		return err
+	}
+	rpcEndpoint, wsEndpoint, err = contract.GetBlockchainEndpoints(app, network, chainSpec, false, false)
+	if err != nil {
+		return err
+	}
+
+	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+		configPath,
+		rpcEndpoint,
+		wsEndpoint,
+		subnetID.String(),
+		blockchainID.String(),
+		registryAddress,
+		messengerAddress,
+		relayerAddress,
+		relayerPrivateKey,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
