@@ -166,6 +166,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			app,
 			flags.PrivateKeyFlags,
 			genesisPrivateKey,
+			"",
 		)
 		if err != nil {
 			return err

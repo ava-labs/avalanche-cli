@@ -110,6 +110,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		app,
 		deployERC20Flags.PrivateKeyFlags,
 		genesisPrivateKey,
+		"",
 	)
 	if err != nil {
 		return err

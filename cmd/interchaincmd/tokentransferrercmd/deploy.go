@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/spf13/cobra"
 )
@@ -312,8 +313,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	var homeKey string
-	if flags.homeFlags.erc20Address != "" {
+	var (
+		homeKey        string
+		homeKeyAddress string
+	)
+	if flags.homeFlags.homeAddress == "" {
 		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 			app,
 			network,
@@ -344,6 +348,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				return err
 			}
 		}
+		pk, err := crypto.HexToECDSA(homeKey)
+		if err != nil {
+			return err
+		}
+		homeKeyAddress = crypto.PubkeyToAddress(pk.PublicKey).Hex()
 	}
 
 	// Home Contract Validations
@@ -386,39 +395,41 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	var remoteKey string
-	if flags.homeFlags.erc20Address != "" {
-		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-			app,
-			network,
-			flags.remoteFlags.chainFlags,
-		)
-		if err != nil {
-			return err
-		}
-		remoteKey, err := contract.GetPrivateKeyFromFlags(
-			app,
-			flags.remoteFlags.privateKeyFlags,
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		flags.remoteFlags.chainFlags,
+	)
+	if err != nil {
+		return err
+	}
+	remoteKey, err := contract.GetPrivateKeyFromFlags(
+		app,
+		flags.remoteFlags.privateKeyFlags,
+		genesisPrivateKey,
+		"--remote-private-key, --remote-key and --remote-genesis-key are mutually exclusive flags",
+	)
+	if err != nil {
+		return err
+	}
+	if remoteKey == "" {
+		remoteKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for home deploy fees",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
 			genesisPrivateKey,
-			"--remote-private-key, --remote-key and --remote-genesis-key are mutually exclusive flags",
 		)
 		if err != nil {
 			return err
-		}
-		if remoteKey == "" {
-			remoteKey, err = prompts.PromptPrivateKey(
-				app.Prompt,
-				"pay for home deploy fees",
-				app.GetKeyDir(),
-				app.GetKey,
-				genesisAddress,
-				genesisPrivateKey,
-			)
-			if err != nil {
-				return err
-			}
 		}
 	}
+	pk, err := crypto.HexToECDSA(remoteKey)
+	if err != nil {
+		return err
+	}
+	remoteKeyAddress := crypto.PubkeyToAddress(pk.PublicKey).Hex()
 
 	// Remote Chain Validations
 	if flags.remoteFlags.chainFlags.BlockchainName != "" {
@@ -509,9 +520,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		homeAddress, err = ictt.DeployERC20Home(
 			icttSrcDir,
 			homeRPCEndpoint,
-			homeKey.PrivKeyHex(),
+			homeKey,
 			common.HexToAddress(homeRegistryAddress),
-			common.HexToAddress(homeKey.C()),
+			common.HexToAddress(homeKeyAddress),
 			tokenAddress,
 			tokenDecimals,
 		)
@@ -533,7 +544,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		wrappedNativeTokenAddress, err := ictt.DeployWrappedNativeToken(
 			icttSrcDir,
 			homeRPCEndpoint,
-			homeKey.PrivKeyHex(),
+			homeKey,
 			nativeTokenSymbol,
 		)
 		if err != nil {
@@ -552,9 +563,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		homeAddress, err = ictt.DeployNativeHome(
 			icttSrcDir,
 			homeRPCEndpoint,
-			homeKey.PrivKeyHex(),
+			homeKey,
 			common.HexToAddress(homeRegistryAddress),
-			common.HexToAddress(homeKey.C()),
+			common.HexToAddress(homeKeyAddress),
 			wrappedNativeTokenAddress,
 		)
 		if err != nil {
@@ -588,9 +599,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteAddress, err = ictt.DeployERC20Remote(
 			icttSrcDir,
 			remoteRPCEndpoint,
-			remoteKey.PrivKeyHex(),
+			remoteKey,
 			common.HexToAddress(remoteRegistryAddress),
-			common.HexToAddress(remoteKey.C()),
+			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
 			tokenName,
@@ -619,9 +630,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteAddress, err = ictt.DeployNativeRemote(
 			icttSrcDir,
 			remoteRPCEndpoint,
-			remoteKey.PrivKeyHex(),
+			remoteKey,
 			common.HexToAddress(remoteRegistryAddress),
-			common.HexToAddress(remoteKey.C()),
+			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
 			tokenDecimals,
@@ -636,7 +647,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	if err := ictt.RegisterERC20Remote(
 		remoteRPCEndpoint,
-		remoteKey.PrivKeyHex(),
+		remoteKey,
 		remoteAddress,
 	); err != nil {
 		return err
@@ -669,7 +680,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		err = ictt.TokenHomeAddCollateral(
 			homeRPCEndpoint,
 			homeAddress,
-			homeKey.PrivKeyHex(),
+			homeKey,
 			remoteBlockchainID,
 			remoteAddress,
 			remoteSupply,
@@ -718,10 +729,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		err = ictt.Send(
 			homeRPCEndpoint,
 			homeAddress,
-			homeKey.PrivKeyHex(),
+			homeKey,
 			remoteBlockchainID,
 			remoteAddress,
-			common.HexToAddress(homeKey.C()),
+			common.HexToAddress(homeKeyAddress),
 			big.NewInt(1),
 		)
 		if err != nil {
