@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
 )
 
@@ -38,10 +39,6 @@ You can check the blockchain bootstrap status by calling avalanche node status <
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	blockchainName := args[1]
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -49,12 +46,6 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	networkInfo := sc.Networks[clusterConfig.Network.Name()]
-	sc.Networks[clusterConfig.Network.Name()] = networkInfo
-	if err := app.UpdateSidecar(&sc); err != nil {
-		return err
-	}
-	return nil
 	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{blockchainName}); err != nil {
 		return err
 	}
@@ -124,12 +115,12 @@ func trackSubnet(
 	blockchainName string,
 ) error {
 	// load cluster config
-	clusterConf, err := app.GetClusterConfig(clusterName)
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
 	// and get list of subnets
-	allSubnets := utils.Unique(append(clusterConf.Subnets, blockchainName))
+	allSubnets := utils.Unique(append(clusterConfig.Subnets, blockchainName))
 
 	// load sidecar to get subnet blockchain ID
 	sc, err := app.LoadSidecar(blockchainName)
@@ -161,7 +152,7 @@ func trackSubnet(
 				host,
 				network,
 				allSubnets,
-				clusterConf.IsAPIHost(host.GetCloudID()),
+				clusterConfig.IsAPIHost(host.GetCloudID()),
 			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 			}
@@ -179,6 +170,27 @@ func trackSubnet(
 		return fmt.Errorf("failed to track subnet for node(s) %s", wgResults.GetErrorHostMap())
 	}
 
-	clusterConf.Subnets = allSubnets
-	return app.SetClusterConfig(network.ClusterName, clusterConf)
+	// update slice of subnets synced by the cluster
+	clusterConfig.Subnets = allSubnets
+	err = app.SetClusterConfig(network.ClusterName, clusterConfig)
+	if err != nil {
+		return err
+	}
+
+	// update slice of blockchain endpoints with the cluster ones
+	networkInfo := sc.Networks[clusterConfig.Network.Name()]
+	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
+	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
+	publicEndpoints, err := getPublicEndpoints(clusterName)
+	if err != nil {
+		return err
+	}
+	for _, publicEndpoint := range publicEndpoints {
+		rpcEndpoints.Add(getRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+		wsEndpoints.Add(getWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+	}
+	networkInfo.RPCEndpoints = rpcEndpoints.List()
+	networkInfo.WSEndpoints = wsEndpoints.List()
+	sc.Networks[clusterConfig.Network.Name()] = networkInfo
+	return app.UpdateSidecar(&sc)
 }

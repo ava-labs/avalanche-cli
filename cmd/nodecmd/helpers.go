@@ -227,3 +227,35 @@ func checkHostsAreBootstrapped(hosts []*models.Host) error {
 	}
 	return nil
 }
+
+func getEndpoint(ip string) string {
+	return fmt.Sprintf("http://%s:%d", ip, constants.AvalanchegoAPIPort)
+}
+
+func getRPCEndpoint(endpoint string, blockchainID string) string {
+	return models.NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
+}
+
+func getWSEndpoint(endpoint string, blockchainID string) string {
+	return models.NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
+}
+
+func getPublicEndpoints(clusterName string) ([]string, error) {
+	endpoints := []string{}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	publicNodes := clusterConfig.APINodes
+	if clusterConfig.Network.Kind == models.Devnet {
+		publicNodes = clusterConfig.Nodes
+	}
+	for _, cloudID := range publicNodes {
+		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+		if err != nil {
+			return nil, err
+		}
+		endpoints = append(endpoints, getEndpoint(nodeConfig.ElasticIP))
+	}
+	return endpoints, nil
+}
