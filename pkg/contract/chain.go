@@ -94,8 +94,12 @@ func GetBlockchainEndpoints(
 		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
 			return "", "", fmt.Errorf("blockchain has not been deployed to %s", network.Name())
 		}
-		rpcEndpoint = sc.Networks[network.Name()].RPCEndpoint
-		wsEndpoint = sc.Networks[network.Name()].WSEndpoint
+		if len(sc.Networks[network.Name()].RPCEndpoints) > 0 {
+			rpcEndpoint = sc.Networks[network.Name()].RPCEndpoints[0]
+		}
+		if len(sc.Networks[network.Name()].WSEndpoints) > 0 {
+			wsEndpoint = sc.Networks[network.Name()].WSEndpoints[0]
+		}
 	}
 	blockchainDesc, err := GetBlockchainDesc(chainSpec)
 	if err != nil {

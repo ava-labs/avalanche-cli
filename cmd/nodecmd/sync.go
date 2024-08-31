@@ -38,6 +38,10 @@ You can check the blockchain bootstrap status by calling avalanche node status <
 func syncSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	blockchainName := args[1]
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
@@ -45,6 +49,12 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	networkInfo := sc.Networks[clusterConfig.Network.Name()]
+	sc.Networks[clusterConfig.Network.Name()] = networkInfo
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return err
+	}
+	return nil
 	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{blockchainName}); err != nil {
 		return err
 	}
