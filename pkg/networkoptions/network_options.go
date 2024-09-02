@@ -132,11 +132,11 @@ func GetSupportedNetworkOptionsForSubnet(
 	for _, networkOption := range supportedNetworkOptions {
 		isInSidecar := false
 		for networkName := range sc.Networks {
-			if strings.HasPrefix(networkName, networkOption.String()) {
+			if strings.HasPrefix(networkOption.String(), networkName) {
 				isInSidecar = true
 			}
 			if os.Getenv(constants.SimulatePublicNetwork) != "" {
-				if strings.HasPrefix(networkName, Local.String()) {
+				if networkName == Local.String() {
 					if networkOption == Fuji || networkOption == Mainnet {
 						isInSidecar = true
 					}

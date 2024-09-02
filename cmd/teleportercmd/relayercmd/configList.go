@@ -68,11 +68,15 @@ func addBoth(network models.Network, configEsp ConfigEsp) (ConfigEsp, error) {
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	configEsp, err = addSource(network, configEsp, chainSpec)
+	rpcEndpoint, wsEndpoint, err := contract.GetBlockchainEndpoints(app, network, chainSpec, true, true)
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	configEsp, err = addDestination(network, configEsp, chainSpec)
+	configEsp, err = addSource(network, configEsp, chainSpec, rpcEndpoint, wsEndpoint)
+	if err != nil {
+		return ConfigEsp{}, err
+	}
+	configEsp, err = addDestination(network, configEsp, chainSpec, rpcEndpoint)
 	if err != nil {
 		return ConfigEsp{}, err
 	}
@@ -97,11 +101,21 @@ func getBlockchain(network models.Network, prompt string) (contract.ChainSpec, e
 	return chainSpec, nil
 }
 
-func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.ChainSpec) (ConfigEsp, error) {
+func addSource(
+	network models.Network,
+	configEsp ConfigEsp,
+	chainSpec contract.ChainSpec,
+	rpcEndpoint string,
+	wsEndpoint string,
+) (ConfigEsp, error) {
 	if !contract.DefinedChainSpec(chainSpec) {
 		prompt := "Which blockchain do you want to set as source?"
 		var err error
 		chainSpec, err = getBlockchain(network, prompt)
+		if err != nil {
+			return ConfigEsp{}, err
+		}
+		rpcEndpoint, wsEndpoint, err = contract.GetBlockchainEndpoints(app, network, chainSpec, true, true)
 		if err != nil {
 			return ConfigEsp{}, err
 		}
@@ -110,8 +124,7 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	foundSource := utils.Find(configEsp.sources, func(s SourceEsp) bool { return s.blockchainID == blockchainID.String() })
-	if foundSource != nil {
+	if foundSource := utils.Find(configEsp.sources, func(s SourceEsp) bool { return s.blockchainID == blockchainID.String() }); foundSource != nil {
 		ux.Logger.PrintToUser("blockchain is already a source")
 		return configEsp, nil
 	}
@@ -155,15 +168,26 @@ func addSource(network models.Network, configEsp ConfigEsp, chainSpec contract.C
 		rewardAddress:       rewardAddress,
 		icmRegistryAddress:  icmRegistryAddress,
 		icmMessengerAddress: icmMessengerAddress,
+		rpcEndpoint:         rpcEndpoint,
+		wsEndpoint:          wsEndpoint,
 	})
 	return configEsp, nil
 }
 
-func addDestination(network models.Network, configEsp ConfigEsp, chainSpec contract.ChainSpec) (ConfigEsp, error) {
+func addDestination(
+	network models.Network,
+	configEsp ConfigEsp,
+	chainSpec contract.ChainSpec,
+	rpcEndpoint string,
+) (ConfigEsp, error) {
 	if !contract.DefinedChainSpec(chainSpec) {
 		prompt := "Which blockchain do you want to set as destination?"
 		var err error
 		chainSpec, err = getBlockchain(network, prompt)
+		if err != nil {
+			return ConfigEsp{}, err
+		}
+		rpcEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, chainSpec, true, false)
 		if err != nil {
 			return ConfigEsp{}, err
 		}
@@ -172,8 +196,7 @@ func addDestination(network models.Network, configEsp ConfigEsp, chainSpec contr
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	foundDestination := utils.Find(configEsp.destinations, func(s DestinationEsp) bool { return s.blockchainID == blockchainID.String() })
-	if foundDestination != nil {
+	if foundDestination := utils.Find(configEsp.destinations, func(s DestinationEsp) bool { return s.blockchainID == blockchainID.String() }); foundDestination != nil {
 		ux.Logger.PrintToUser("blockchain is already a destination")
 		return configEsp, nil
 	}
@@ -209,6 +232,7 @@ func addDestination(network models.Network, configEsp ConfigEsp, chainSpec contr
 		blockchainID:   blockchainID.String(),
 		subnetID:       subnetID.String(),
 		privateKey:     privateKey,
+		rpcEndpoint:    rpcEndpoint,
 	})
 	return configEsp, nil
 }
@@ -303,12 +327,12 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 						return ConfigEsp{}, false, err
 					}
 				case addSourceOption:
-					configEsp, err = addSource(network, configEsp, contract.ChainSpec{})
+					configEsp, err = addSource(network, configEsp, contract.ChainSpec{}, "", "")
 					if err != nil {
 						return ConfigEsp{}, false, err
 					}
 				case addDestinationOption:
-					configEsp, err = addDestination(network, configEsp, contract.ChainSpec{})
+					configEsp, err = addDestination(network, configEsp, contract.ChainSpec{}, "")
 					if err != nil {
 						return ConfigEsp{}, false, err
 					}
