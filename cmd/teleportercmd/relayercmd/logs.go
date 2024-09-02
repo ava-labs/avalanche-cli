@@ -62,7 +62,7 @@ func logs(_ *cobra.Command, _ []string) error {
 	var logLines []string
 	switch {
 	case network.Kind == models.Local:
-		logsPath := app.GetAWMRelayerLogPath()
+		logsPath := app.GetLocalRelayerLogPath(models.Local)
 		bs, err := os.ReadFile(logsPath)
 		if err != nil {
 			return err

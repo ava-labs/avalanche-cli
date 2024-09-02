@@ -238,6 +238,7 @@ const (
 	AWMRelayerInstallDir          = "awm-relayer"
 	TeleporterInstallDir          = "teleporter"
 	AWMRelayerBin                 = "awm-relayer"
+	LocalRelayerDir               = "local-relayer"
 	AWMRelayerConfigFilename      = "awm-relayer-config.json"
 	AWMRelayerStorageDir          = "awm-relayer-storage"
 	AWMRelayerLogFilename         = "awm-relayer.log"

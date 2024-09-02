@@ -11,10 +11,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -74,14 +74,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 
-	if network.Kind == models.Local {
-		if isUP, _, _, err := teleporter.RelayerIsUp(app.GetAWMRelayerRunPath()); err != nil {
-			return err
-		} else if isUP {
-			return fmt.Errorf("there is already a relayer deployed to local network")
-		}
-	}
-
 	deployToRemote := false
 	if network.Kind != models.Local {
 		prompt := "Do you want to deploy the relayer to a remote or a local host?"
@@ -108,6 +100,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				continue
 			}
 			break
+		}
+	}
+
+	if !deployToRemote {
+		if isUP, _, _, err := teleporter.RelayerIsUp(app.GetLocalRelayerRunPath(network.Kind)); err != nil {
+			return err
+		} else if isUP {
+			return fmt.Errorf("there is already a local relayer deployed for %s", network.Kind.String())
 		}
 	}
 
@@ -318,13 +318,18 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return nil
 	}
 
-	runFilePath := app.GetAWMRelayerRunPath()
-	storageDir := app.GetAWMRelayerStorageDir()
-	_, configPath, err := subnet.GetAWMRelayerConfigPath()
-	if err != nil {
-		return err
+	runFilePath := app.GetLocalRelayerRunPath(network.Kind)
+	storageDir := app.GetLocalRelayerStorageDir(network.Kind)
+	localNetworkRootDir := ""
+	if network.Kind == models.Local {
+		clusterInfo, err := localnet.GetClusterInfo()
+		if err != nil {
+			return err
+		}
+		localNetworkRootDir = clusterInfo.GetRootDataDir()
 	}
-	logPath := app.GetAWMRelayerLogPath()
+	configPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
+	logPath := app.GetLocalRelayerLogPath(network.Kind)
 
 	// create config
 	ux.Logger.PrintToUser("")

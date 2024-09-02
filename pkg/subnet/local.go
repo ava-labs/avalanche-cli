@@ -202,8 +202,8 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 		// relayer stop/cleanup is neeeded in the case it is registered to blockchains
 		// if not, network restart fails
 		if err := teleporter.RelayerCleanup(
-			d.app.GetAWMRelayerRunPath(),
-			d.app.GetAWMRelayerStorageDir(),
+			d.app.GetLocalRelayerRunPath(models.Local),
+			d.app.GetLocalRelayerStorageDir(models.Local),
 		); err != nil {
 			return nil, err
 		}
@@ -356,14 +356,14 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 			return nil, err
 		}
 		// relayer config file
-		_, relayerConfigPath, err := GetAWMRelayerConfigPath()
+		_, relayerConfigPath, err := GetLocalNetworkRelayerConfigPath(d.app)
 		if err != nil {
 			return nil, err
 		}
 		if err = teleporter.CreateBaseRelayerConfigIfMissing(
 			relayerConfigPath,
 			logging.Info.LowerString(),
-			d.app.GetAWMRelayerStorageDir(),
+			d.app.GetLocalRelayerStorageDir(models.Local),
 			network,
 		); err != nil {
 			return nil, err
@@ -504,9 +504,9 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 				"latest",
 				d.app.GetAWMRelayerBinDir(),
 				relayerConfigPath,
-				d.app.GetAWMRelayerLogPath(),
-				d.app.GetAWMRelayerRunPath(),
-				d.app.GetAWMRelayerStorageDir(),
+				d.app.GetLocalRelayerLogPath(models.Local),
+				d.app.GetLocalRelayerRunPath(models.Local),
+				d.app.GetLocalRelayerStorageDir(models.Local),
 			); err != nil {
 				return nil, err
 			}
@@ -931,11 +931,11 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 	return false, nil
 }
 
-func GetAWMRelayerConfigPath() (bool, string, error) {
+func GetLocalNetworkRelayerConfigPath(app *application.Avalanche) (bool, string, error) {
 	clusterInfo, err := localnet.GetClusterInfo()
 	if err != nil {
 		return false, "", err
 	}
-	relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
+	relayerConfigPath := app.GetLocalRelayerConfigPath(models.Local, clusterInfo.GetRootDataDir())
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }

@@ -51,13 +51,13 @@ func start(_ *cobra.Command, _ []string) error {
 	switch {
 	case network.Kind == models.Local:
 		if relayerIsUp, _, _, err := teleporter.RelayerIsUp(
-			app.GetAWMRelayerRunPath(),
+			app.GetLocalRelayerRunPath(models.Local),
 		); err != nil {
 			return err
 		} else if relayerIsUp {
 			return fmt.Errorf("local AWM relayer is already running")
 		}
-		if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+		if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
 			return err
 		} else if !b {
 			return fmt.Errorf("there is no relayer configuration available")
@@ -65,14 +65,14 @@ func start(_ *cobra.Command, _ []string) error {
 			"latest",
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
-			app.GetAWMRelayerLogPath(),
-			app.GetAWMRelayerRunPath(),
-			app.GetAWMRelayerStorageDir(),
+			app.GetLocalRelayerLogPath(models.Local),
+			app.GetLocalRelayerRunPath(models.Local),
+			app.GetLocalRelayerStorageDir(models.Local),
 		); err != nil {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started")
-		ux.Logger.PrintToUser("Logs can be found at %s", app.GetAWMRelayerLogPath())
+		ux.Logger.PrintToUser("Logs can be found at %s", app.GetLocalRelayerLogPath(models.Local))
 	case network.ClusterName != "":
 		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
 		if err != nil {

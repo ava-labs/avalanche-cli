@@ -47,7 +47,7 @@ func stop(_ *cobra.Command, _ []string) error {
 	switch {
 	case network.Kind == models.Local:
 		b, _, _, err := teleporter.RelayerIsUp(
-			app.GetAWMRelayerRunPath(),
+			app.GetLocalRelayerRunPath(models.Local),
 		)
 		if err != nil {
 			return err
@@ -56,8 +56,8 @@ func stop(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("there is no CLI-managed local AWM relayer running")
 		}
 		if err := teleporter.RelayerCleanup(
-			app.GetAWMRelayerRunPath(),
-			app.GetAWMRelayerStorageDir(),
+			app.GetLocalRelayerRunPath(models.Local),
+			app.GetLocalRelayerStorageDir(models.Local),
 		); err != nil {
 			return err
 		}

@@ -165,7 +165,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+	if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
 		return err
 	} else if b {
 		ux.Logger.PrintToUser("")
@@ -173,9 +173,9 @@ func StartNetwork(*cobra.Command, []string) error {
 			"latest",
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
-			app.GetAWMRelayerLogPath(),
-			app.GetAWMRelayerRunPath(),
-			app.GetAWMRelayerStorageDir(),
+			app.GetLocalRelayerLogPath(models.Local),
+			app.GetLocalRelayerRunPath(models.Local),
+			app.GetLocalRelayerStorageDir(models.Local),
 		); err != nil {
 			return err
 		}
