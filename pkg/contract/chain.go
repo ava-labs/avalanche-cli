@@ -128,11 +128,15 @@ func GetBlockchainID(
 	var blockchainID ids.ID
 	switch {
 	case chainSpec.BlockchainID != "":
-		chainID, err := utils.GetChainID(network.Endpoint, chainSpec.BlockchainID)
+		var err error
+		blockchainID, err = ids.FromString(chainSpec.BlockchainID)
 		if err != nil {
-			return ids.Empty, err
+			// it should be an alias at this point
+			blockchainID, err = utils.GetChainID(network.Endpoint, chainSpec.BlockchainID)
+			if err != nil {
+				return ids.Empty, err
+			}
 		}
-		blockchainID = chainID
 	case chainSpec.CChain:
 		chainID, err := utils.GetChainID(network.Endpoint, "C")
 		if err != nil {

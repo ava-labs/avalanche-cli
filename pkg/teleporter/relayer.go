@@ -201,6 +201,9 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 	if err != nil {
 		return err
 	}
+	if err := os.MkdirAll(filepath.Dir(runFilePath), constants.DefaultPerms755); err != nil {
+		return err
+	}
 	if err := os.WriteFile(runFilePath, bs, constants.WriteReadReadPerms); err != nil {
 		return fmt.Errorf("could not write awm relater run file to %s: %w", runFilePath, err)
 	}
@@ -297,6 +300,9 @@ func loadRelayerConfig(relayerConfigPath string) (*config.Config, error) {
 }
 
 func saveRelayerConfig(relayerConfig *config.Config, relayerConfigPath string) error {
+	if err := os.MkdirAll(filepath.Dir(relayerConfigPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
 	bs, err := json.MarshalIndent(relayerConfig, "", "  ")
 	if err != nil {
 		return err

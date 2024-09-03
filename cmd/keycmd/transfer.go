@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -277,15 +278,18 @@ func transferF(*cobra.Command, []string) error {
 		}
 		originURL := network.CChainEndpoint()
 		if strings.ToLower(originSubnet) != cChain {
-			sc, err := app.LoadSidecar(originSubnet)
+			originURL, _, err = contract.GetBlockchainEndpoints(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainName: originSubnet,
+				},
+				true,
+				false,
+			)
 			if err != nil {
 				return err
 			}
-			blockchainID := sc.Networks[network.Name()].BlockchainID
-			if blockchainID == ids.Empty {
-				return fmt.Errorf("subnet %s is not deployed to %s", originSubnet, network.Name())
-			}
-			originURL = network.BlockchainEndpoint(blockchainID.String())
 		}
 		var destinationBlockchainID ids.ID
 		if strings.ToLower(destinationSubnet) == cChain {

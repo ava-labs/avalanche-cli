@@ -197,7 +197,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				return err
 			}
 			addr := crypto.PubkeyToAddress(pk.PublicKey)
-			client, err := evm.GetClient(network.BlockchainEndpoint(destination.blockchainID))
+			client, err := evm.GetClient(destination.rpcEndpoint)
 			if err != nil {
 				return err
 			}
@@ -243,7 +243,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				return err
 			}
 			addr := crypto.PubkeyToAddress(pk.PublicKey)
-			client, err := evm.GetClient(network.BlockchainEndpoint(destination.blockchainID))
+			client, err := evm.GetClient(destination.rpcEndpoint)
 			if err != nil {
 				return err
 			}
