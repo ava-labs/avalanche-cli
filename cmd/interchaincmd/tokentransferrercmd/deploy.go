@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -165,6 +166,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Home RPC Endpoint: %s"), homeRPCEndpoint)
 	}
 
 	// Home Chain Validations
@@ -326,7 +328,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		homeKey, err := contract.GetPrivateKeyFromFlags(
+		homeKey, err = contract.GetPrivateKeyFromFlags(
 			app,
 			flags.homeFlags.privateKeyFlags,
 			genesisPrivateKey,
@@ -393,6 +395,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Remote RPC Endpoint: %s"), homeRPCEndpoint)
 	}
 
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
