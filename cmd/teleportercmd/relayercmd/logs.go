@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	logsNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local}
+	logsNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji}
 	raw                bool
 	last               uint
 	first              uint
@@ -61,8 +61,8 @@ func logs(_ *cobra.Command, _ []string) error {
 	}
 	var logLines []string
 	switch {
-	case network.Kind == models.Local:
-		logsPath := app.GetLocalRelayerLogPath(models.Local)
+	case network.Kind == models.Local || network.Kind == models.Fuji:
+		logsPath := app.GetLocalRelayerLogPath(network.Kind)
 		bs, err := os.ReadFile(logsPath)
 		if err != nil {
 			return err
