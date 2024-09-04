@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -208,21 +209,14 @@ func addDestination(
 	if err != nil {
 		return ConfigEsp{}, err
 	}
-	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return ConfigEsp{}, err
-	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Please provide a key that is not going to be used for any other purpose on destination"))
 	privateKey, err := prompts.PromptPrivateKey(
 		app.Prompt,
 		fmt.Sprintf("pay relayer fees on %s", blockchainDesc),
 		app.GetKeyDir(),
 		app.GetKey,
-		genesisAddress,
-		genesisPrivateKey,
+		"",
+		"",
 	)
 	if err != nil {
 		return ConfigEsp{}, err
