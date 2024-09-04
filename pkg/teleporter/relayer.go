@@ -241,6 +241,9 @@ func InstallRelayer(binDir, version string) (string, error) {
 }
 
 func executeRelayer(binPath string, configPath string, logFile string) (int, error) {
+	if err := os.MkdirAll(filepath.Dir(logFile), constants.DefaultPerms755); err != nil {
+		return 0, err
+	}
 	logWriter, err := os.Create(logFile)
 	if err != nil {
 		return 0, err

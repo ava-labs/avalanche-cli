@@ -386,6 +386,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 			ChainFlags: contract.ChainSpec{
 				BlockchainName: subnetName,
 			},
+			PrivateKeyFlags: contract.PrivateKeyFlags{
+				KeyName: constants.TeleporterKeyName,
+			},
 			Network: networkoptions.NetworkFlags{
 				ClusterName: clusterName,
 			},
