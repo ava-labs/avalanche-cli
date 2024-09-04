@@ -267,7 +267,14 @@ func executeRelayer(binPath string, configPath string, logFile string) (int, err
 	default:
 	}
 
-	return cmd.Process.Pid, nil
+	err = waitForRelayerInitialization(
+		configPath,
+		logFile,
+		0,
+		0,
+	)
+
+	return cmd.Process.Pid, err
 }
 
 func getRelayerURL(version string) (string, error) {
@@ -500,4 +507,50 @@ func addDestinationToRelayerConfig(
 	if !utils.Any(relayerConfig.DestinationBlockchains, func(s *config.DestinationBlockchain) bool { return s.BlockchainID == blockchainID }) {
 		relayerConfig.DestinationBlockchains = append(relayerConfig.DestinationBlockchains, destination)
 	}
+}
+
+func waitForRelayerInitialization(
+	relayerConfigPath string,
+	logPath string,
+	checkInterval time.Duration,
+	checkTimeout time.Duration,
+) error {
+	config, err := loadRelayerConfig(relayerConfigPath)
+	if err != nil {
+		return err
+	}
+	sourceBlockchains := []string{}
+	for _, source := range config.SourceBlockchains {
+		sourceBlockchains = append(sourceBlockchains, source.BlockchainID)
+	}
+	if checkInterval == 0 {
+		checkInterval = 100 * time.Millisecond
+	}
+	if checkTimeout == 0 {
+		checkTimeout = 10 * time.Second
+	}
+	t0 := time.Now()
+	for {
+		bs, err := os.ReadFile(logPath)
+		if err != nil {
+			return err
+		}
+		sourcesInitialized := 0
+		for _, l := range strings.Split(string(bs), "\n") {
+			for _, sourceBlockchain := range sourceBlockchains {
+				if strings.Contains(l, "Listener initialized") && strings.Contains(l, sourceBlockchain) {
+					sourcesInitialized++
+				}
+			}
+		}
+		if sourcesInitialized == len(sourceBlockchains) {
+			break
+		}
+		elapsed := time.Since(t0)
+		if elapsed > checkTimeout {
+			return fmt.Errorf("timeout waiting for relayer initialization")
+		}
+		time.Sleep(checkInterval)
+	}
+	return nil
 }

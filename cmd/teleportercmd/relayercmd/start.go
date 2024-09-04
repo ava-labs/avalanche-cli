@@ -6,19 +6,20 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
 )
 
 var (
-	startNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+	startNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji}
 	globalNetworkFlags  networkoptions.NetworkFlags
 )
 
@@ -49,30 +50,37 @@ func start(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	switch {
-	case network.Kind == models.Local:
+	case network.Kind == models.Local || network.Kind == models.Fuji:
 		if relayerIsUp, _, _, err := teleporter.RelayerIsUp(
-			app.GetLocalRelayerRunPath(models.Local),
+			app.GetLocalRelayerRunPath(network.Kind),
 		); err != nil {
 			return err
 		} else if relayerIsUp {
-			return fmt.Errorf("local AWM relayer is already running")
+			return fmt.Errorf("local AWM relayer is already running for %s", network.Kind)
 		}
-		if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
-			return err
-		} else if !b {
+		localNetworkRootDir := ""
+		if network.Kind == models.Local {
+			clusterInfo, err := localnet.GetClusterInfo()
+			if err != nil {
+				return err
+			}
+			localNetworkRootDir = clusterInfo.GetRootDataDir()
+		}
+		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
+		if !utils.FileExists(relayerConfigPath) {
 			return fmt.Errorf("there is no relayer configuration available")
 		} else if err := teleporter.DeployRelayer(
 			"latest",
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
-			app.GetLocalRelayerLogPath(models.Local),
-			app.GetLocalRelayerRunPath(models.Local),
-			app.GetLocalRelayerStorageDir(models.Local),
+			app.GetLocalRelayerLogPath(network.Kind),
+			app.GetLocalRelayerRunPath(network.Kind),
+			app.GetLocalRelayerStorageDir(network.Kind),
 		); err != nil {
 			return err
 		}
-		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started")
-		ux.Logger.PrintToUser("Logs can be found at %s", app.GetLocalRelayerLogPath(models.Local))
+		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started for %s", network.Kind)
+		ux.Logger.PrintToUser("Logs can be found at %s", app.GetLocalRelayerLogPath(network.Kind))
 	case network.ClusterName != "":
 		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
 		if err != nil {

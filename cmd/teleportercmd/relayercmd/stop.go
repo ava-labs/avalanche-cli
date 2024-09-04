@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var stopNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
+var stopNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji}
 
 // avalanche teleporter relayer stop
 func newStopCmd() *cobra.Command {
@@ -45,23 +45,23 @@ func stop(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	switch {
-	case network.Kind == models.Local:
+	case network.Kind == models.Local || network.Kind == models.Fuji:
 		b, _, _, err := teleporter.RelayerIsUp(
-			app.GetLocalRelayerRunPath(models.Local),
+			app.GetLocalRelayerRunPath(network.Kind),
 		)
 		if err != nil {
 			return err
 		}
 		if !b {
-			return fmt.Errorf("there is no CLI-managed local AWM relayer running")
+			return fmt.Errorf("there is no CLI-managed local AWM relayer running for %s", network.Kind)
 		}
 		if err := teleporter.RelayerCleanup(
-			app.GetLocalRelayerRunPath(models.Local),
-			app.GetLocalRelayerStorageDir(models.Local),
+			app.GetLocalRelayerRunPath(network.Kind),
+			app.GetLocalRelayerStorageDir(network.Kind),
 		); err != nil {
 			return err
 		}
-		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully stopped")
+		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully stopped for %s", network.Kind)
 	case network.ClusterName != "":
 		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
 		if err != nil {
