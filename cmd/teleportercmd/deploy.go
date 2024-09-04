@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/cobra"
@@ -128,34 +127,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 	}
 
-	var (
-		privateKey        string
-		teleporterVersion string
-	)
-	if flags.ChainFlags.BlockchainName != "" {
-		sc, err := app.LoadSidecar(flags.ChainFlags.BlockchainName)
-		if err != nil {
-			return fmt.Errorf("failed to load sidecar: %w", err)
-		}
-		if b, _, err := app.HasSubnetEVMGenesis(flags.ChainFlags.BlockchainName); err != nil {
-			return err
-		} else if !b {
-			return fmt.Errorf("only Subnet-EVM based vms can be used for teleporter")
-		}
-		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-			return fmt.Errorf("subnet has not been deployed to %s", network.Name())
-		}
-		if sc.TeleporterVersion != "" {
-			teleporterVersion = sc.TeleporterVersion
-		}
-		if sc.TeleporterKey != "" {
-			k, err := app.GetKey(sc.TeleporterKey, network, true)
-			if err != nil {
-				return err
-			}
-			privateKey = k.PrivKeyHex()
-		}
-	}
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
@@ -164,39 +135,36 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
+	privateKey, err := contract.GetPrivateKeyFromFlags(
+		app,
+		flags.PrivateKeyFlags,
+		genesisPrivateKey,
+		"",
+	)
+	if err != nil {
+		return err
+	}
 	if privateKey == "" {
-		privateKey, err = contract.GetPrivateKeyFromFlags(
-			app,
-			flags.PrivateKeyFlags,
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"deploy teleporter",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
 			genesisPrivateKey,
-			"",
 		)
 		if err != nil {
 			return err
 		}
-		if privateKey == "" {
-			privateKey, err = prompts.PromptPrivateKey(
-				app.Prompt,
-				"deploy teleporter",
-				app.GetKeyDir(),
-				app.GetKey,
-				genesisAddress,
-				genesisPrivateKey,
-			)
-			if err != nil {
-				return err
-			}
-		}
 	}
+	var teleporterVersion string
 	switch {
 	case flags.MessengerContractAddressPath != "" || flags.MessengerDeployerAddressPath != "" || flags.MessengerDeployerTxPath != "" || flags.RegistryBydecodePath != "":
-		teleporterVersion = ""
 		if flags.MessengerContractAddressPath == "" || flags.MessengerDeployerAddressPath == "" || flags.MessengerDeployerTxPath == "" || flags.RegistryBydecodePath == "" {
 			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
 		}
 	case flags.Version != "" && flags.Version != "latest":
 		teleporterVersion = flags.Version
-	case teleporterVersion != "":
 	default:
 		teleporterInfo, err := teleporter.GetInfo(app)
 		if err != nil {
