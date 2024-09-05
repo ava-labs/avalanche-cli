@@ -19,6 +19,7 @@ import (
 
 func configureContractDeployerAllowList(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) deployerallowlist.Config {
 	return deployerallowlist.Config{
 		AllowListConfig: allowlist.AllowListConfig{
@@ -26,12 +27,15 @@ func configureContractDeployerAllowList(
 			ManagerAddresses: params.contractDeployerPrecompileAllowList.ManagerAddresses,
 			EnabledAddresses: params.contractDeployerPrecompileAllowList.EnabledAddresses,
 		},
-		Upgrade: precompileconfig.Upgrade{},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
 }
 
 func configureTransactionAllowList(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) txallowlist.Config {
 	return txallowlist.Config{
 		AllowListConfig: allowlist.AllowListConfig{
@@ -39,12 +43,15 @@ func configureTransactionAllowList(
 			ManagerAddresses: params.transactionPrecompileAllowList.ManagerAddresses,
 			EnabledAddresses: params.transactionPrecompileAllowList.EnabledAddresses,
 		},
-		Upgrade: precompileconfig.Upgrade{},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
 }
 
 func configureNativeMinter(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) nativeminter.Config {
 	return nativeminter.Config{
 		AllowListConfig: allowlist.AllowListConfig{
@@ -52,12 +59,15 @@ func configureNativeMinter(
 			ManagerAddresses: params.nativeMinterPrecompileAllowList.ManagerAddresses,
 			EnabledAddresses: params.nativeMinterPrecompileAllowList.EnabledAddresses,
 		},
-		Upgrade: precompileconfig.Upgrade{},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
 }
 
 func configureFeeManager(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) feemanager.Config {
 	return feemanager.Config{
 		AllowListConfig: allowlist.AllowListConfig{
@@ -65,12 +75,15 @@ func configureFeeManager(
 			ManagerAddresses: params.feeManagerPrecompileAllowList.ManagerAddresses,
 			EnabledAddresses: params.feeManagerPrecompileAllowList.EnabledAddresses,
 		},
-		Upgrade: precompileconfig.Upgrade{},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
 }
 
 func configureRewardManager(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) rewardmanager.Config {
 	return rewardmanager.Config{
 		AllowListConfig: allowlist.AllowListConfig{
@@ -78,7 +91,9 @@ func configureRewardManager(
 			ManagerAddresses: params.rewardManagerPrecompileAllowList.ManagerAddresses,
 			EnabledAddresses: params.rewardManagerPrecompileAllowList.EnabledAddresses,
 		},
-		Upgrade: precompileconfig.Upgrade{},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
 }
 
@@ -174,24 +189,24 @@ func getPrecompiles(
 	}
 
 	if params.enableNativeMinterPrecompile {
-		mintConfig := configureNativeMinter(params)
+		mintConfig := configureNativeMinter(params, genesisTimestamp)
 		config.GenesisPrecompiles[nativeminter.ConfigKey] = &mintConfig
 	}
 
 	if params.enableContractDeployerPrecompile {
-		contractConfig := configureContractDeployerAllowList(params)
+		contractConfig := configureContractDeployerAllowList(params, genesisTimestamp)
 		config.GenesisPrecompiles[deployerallowlist.ConfigKey] = &contractConfig
 	}
 	if params.enableTransactionPrecompile {
-		txConfig := configureTransactionAllowList(params)
+		txConfig := configureTransactionAllowList(params, genesisTimestamp)
 		config.GenesisPrecompiles[txallowlist.ConfigKey] = &txConfig
 	}
 	if params.enableFeeManagerPrecompile {
-		feeConfig := configureFeeManager(params)
+		feeConfig := configureFeeManager(params, genesisTimestamp)
 		config.GenesisPrecompiles[feemanager.ConfigKey] = &feeConfig
 	}
 	if params.enableRewardManagerPrecompile {
-		rewardManagerConfig := configureRewardManager(params)
+		rewardManagerConfig := configureRewardManager(params, genesisTimestamp)
 		config.GenesisPrecompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
 	}
 }
