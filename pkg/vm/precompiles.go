@@ -104,43 +104,6 @@ func configureWarp(timestamp *uint64) warp.Config {
 	return config
 }
 
-// adds teleporter-related addresses (main funded key, messenger deploy key, relayer key)
-// to the allow list of relevant enabled precompiles
-//func addTeleporterAddressesToAllowLists(
-//	config *params.ChainConfig,
-//	teleporterAddress string,
-//	teleporterMessengerDeployerAddress string,
-//	relayerAddress string,
-//) {
-//	// tx allow list:
-//	// teleporterAddress funds the other two and also deploys the registry
-//	// teleporterMessengerDeployerAddress deploys the messenger
-//	// relayerAddress is used by the relayer to send txs to the target chain
-//	precompileConfig := config.GenesisPrecompiles[txallowlist.ConfigKey]
-//	if precompileConfig != nil {
-//		txAllowListConfig := precompileConfig.(*txallowlist.Config)
-//		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
-//			txAllowListConfig.AllowListConfig = addAddressToAllowed(
-//				txAllowListConfig.AllowListConfig,
-//				address,
-//			)
-//		}
-//	}
-//	// contract deploy allow list:
-//	// teleporterAddress deploys the registry
-//	// teleporterMessengerDeployerAddress deploys the messenger
-//	precompileConfig = config.GenesisPrecompiles[deployerallowlist.ConfigKey]
-//	if precompileConfig != nil {
-//		deployerAllowListConfig := precompileConfig.(*deployerallowlist.Config)
-//		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress} {
-//			deployerAllowListConfig.AllowListConfig = addAddressToAllowed(
-//				deployerAllowListConfig.AllowListConfig,
-//				address,
-//			)
-//		}
-//	}
-//}
-
 func addTeleporterAddressesToAllowLists(
 	precompile *params.Precompiles,
 	teleporterAddress string,
@@ -211,39 +174,6 @@ func addAddressToAllowed(
 	}
 	return allowListConfig
 }
-
-//func getPrecompiles(
-//	config *params.ChainConfig,
-//	params SubnetEVMGenesisParams,
-//	genesisTimestamp *uint64,
-//) {
-//	if params.enableWarpPrecompile {
-//		warpConfig := configureWarp(genesisTimestamp)
-//		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
-//	}
-//
-//	if params.enableNativeMinterPrecompile {
-//		mintConfig := configureNativeMinter(params)
-//		config.GenesisPrecompiles[nativeminter.ConfigKey] = &mintConfig
-//	}
-//
-//	if params.enableContractDeployerPrecompile {
-//		contractConfig := configureContractDeployerAllowList(params)
-//		config.GenesisPrecompiles[deployerallowlist.ConfigKey] = &contractConfig
-//	}
-//	if params.enableTransactionPrecompile {
-//		txConfig := configureTransactionAllowList(params)
-//		config.GenesisPrecompiles[txallowlist.ConfigKey] = &txConfig
-//	}
-//	if params.enableFeeManagerPrecompile {
-//		feeConfig := configureFeeManager(params)
-//		config.GenesisPrecompiles[feemanager.ConfigKey] = &feeConfig
-//	}
-//	if params.enableRewardManagerPrecompile {
-//		rewardManagerConfig := configureRewardManager(params)
-//		config.GenesisPrecompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
-//	}
-//}
 
 func getPrecompiles(
 	subnetEVMGenesisParams SubnetEVMGenesisParams,

@@ -493,7 +493,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
-		//subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
 		subnetParams := subnetSDK.SubnetParams{
 			Name:            blockchainName,
 			GenesisFilePath: app.GetGenesisPath(blockchainName),

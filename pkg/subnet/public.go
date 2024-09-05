@@ -6,10 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ava-labs/avalanche-tooling-sdk-go/multisig"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet"
-	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
@@ -291,24 +292,7 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	return txID, nil
 }
 
-// - creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
-//func (d *PublicDeployer) DeploySubnet(
-//	controlKeys []string,
-//	threshold uint32,
-//) (ids.ID, error) {
-//	wallet, err := d.loadWallet()
-//	if err != nil {
-//		return ids.Empty, err
-//	}
-//	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
-//	if err != nil {
-//		return ids.Empty, err
-//	}
-//	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
-//	time.Sleep(2 * time.Second)
-//	return subnetID, nil
-//}
-
+// DeploySubnet creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
 	subnet subnet.Subnet,
 	controlKeys []string,
