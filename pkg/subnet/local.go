@@ -629,34 +629,36 @@ func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool
 	shaSumURL := ""
 	pathInShaSum := ""
 	if isSingleNode {
-		if isPreCortina17 {
+		switch {
+		case isPreCortina17:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodePreCortina17ArchiveName
 			url = constants.BootstrapSnapshotSingleNodePreCortina17URL
 			shaSumURL = constants.BootstrapSnapshotSingleNodePreCortina17SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotSingleNodePreCortina17LocalPath
-		} else if isPreDurango11 {
+		case isPreDurango11:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodePreDurango11ArchiveName
 			url = constants.BootstrapSnapshotSingleNodePreDurango11URL
 			shaSumURL = constants.BootstrapSnapshotSingleNodePreDurango11SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotSingleNodePreDurango11LocalPath
-		} else {
+		default:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodeArchiveName
 			url = constants.BootstrapSnapshotSingleNodeURL
 			shaSumURL = constants.BootstrapSnapshotSingleNodeSHA256URL
 			pathInShaSum = constants.BootstrapSnapshotSingleNodeLocalPath
 		}
 	} else {
-		if isPreCortina17 {
+		switch {
+		case isPreCortina17:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotPreCortina17ArchiveName
 			url = constants.BootstrapSnapshotPreCortina17URL
 			shaSumURL = constants.BootstrapSnapshotPreCortina17SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotPreCortina17LocalPath
-		} else if isPreDurango11 {
+		case isPreDurango11:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotPreDurango11ArchiveName
 			url = constants.BootstrapSnapshotPreDurango11URL
 			shaSumURL = constants.BootstrapSnapshotPreDurango11SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotPreDurango11LocalPath
-		} else {
+		default:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotArchiveName
 			url = constants.BootstrapSnapshotURL
 			shaSumURL = constants.BootstrapSnapshotSHA256URL
