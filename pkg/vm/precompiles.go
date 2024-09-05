@@ -5,6 +5,7 @@ package vm
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
