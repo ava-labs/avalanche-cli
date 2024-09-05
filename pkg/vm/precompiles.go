@@ -4,8 +4,6 @@
 package vm
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
@@ -207,6 +205,5 @@ func getPrecompiles(
 		rewardManagerConfig := configureRewardManager(subnetEVMGenesisParams)
 		precompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
 	}
-	fmt.Printf("precompiles %s \n", precompiles)
 	return precompiles
 }

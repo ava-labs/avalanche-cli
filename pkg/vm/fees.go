@@ -4,7 +4,6 @@
 package vm
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/subnet-evm/commontype"
@@ -37,7 +36,6 @@ func getFeeConfig(
 	default:
 		feeConfig = getCustomFeeConfig(params)
 	}
-	fmt.Printf("obtained gas limit LowGasLimit %s LowTargetGas %s \n", feeConfig.GasLimit, feeConfig.TargetGas)
 	return feeConfig
 }
 
