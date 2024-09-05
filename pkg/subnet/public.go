@@ -8,10 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanche-tooling-sdk-go/multisig"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
-	"github.com/ava-labs/avalanche-tooling-sdk-go/wallet"
-
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/vms/components/avax"
@@ -292,28 +288,22 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	return txID, nil
 }
 
-// DeploySubnet creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
+// - creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
-	subnet subnet.Subnet,
 	controlKeys []string,
 	threshold uint32,
-) (*multisig.Multisig, error) {
-	wallet, err := d.loadSDKWallet()
+) (ids.ID, error) {
+	wallet, err := d.loadWallet()
 	if err != nil {
-		return nil, err
+		return ids.Empty, err
 	}
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
 	if err != nil {
-		return nil, err
-	}
-	// deploy Subnet returns multisig and error
-	deploySubnetTx, err := subnet.CreateSubnetTx(wallet)
-	if err != nil {
-		return nil, err
+		return ids.Empty, err
 	}
 	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
 	time.Sleep(2 * time.Second)
-	return deploySubnetTx, nil
+	return subnetID, nil
 }
 
 // creates a blockchain for the given [subnetID]
@@ -454,26 +444,6 @@ func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (primary.Wallet, error)
 	if err != nil {
 		return nil, err
 	}
-	return wallet, nil
-}
-
-func (d *PublicDeployer) loadSDKWallet(preloadTxs ...ids.ID) (wallet.Wallet, error) {
-	ctx := context.Background()
-	// filter out ids.Empty txs
-	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
-	primaryWallet, err := primary.MakeWallet(
-		ctx,
-		&primary.WalletConfig{
-			URI:          d.network.Endpoint,
-			AVAXKeychain: d.kc.Keychain,
-			EthKeychain:  secp256k1fx.NewKeychain(),
-			SubnetIDs:    filteredTxs,
-		},
-	)
-	if err != nil {
-		return wallet.Wallet{}, err
-	}
-	wallet := wallet.Wallet{Wallet: primaryWallet}
 	return wallet, nil
 }
 
