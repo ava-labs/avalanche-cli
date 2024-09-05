@@ -148,6 +148,9 @@ func CreateEvmGenesis(
 			},
 			Name: "TestSubnet",
 		})
+	if err != nil {
+		return nil, err
+	}
 
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, subnetConfig.Genesis, "", "    ")
