@@ -7,18 +7,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
-	"time"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	subnetSDK "github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"github.com/ava-labs/subnet-evm/core"
-	subnetevmparams "github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"math/big"
+	"time"
 )
 
 var (
@@ -79,15 +78,7 @@ func CreateEvmGenesis(
 ) ([]byte, error) {
 	ux.Logger.PrintToUser("creating genesis for blockchain %s", subnetName)
 
-	genesis := core.Genesis{}
-	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())
-	conf := subnetevmparams.SubnetEVMDefaultChainConfig
-	conf.NetworkUpgrades = subnetevmparams.NetworkUpgrades{}
-
-	chainID := new(big.Int).SetUint64(params.chainID)
-	conf.ChainID = chainID
-
-	setFeeConfig(params, conf)
+	feeConfig := getFeeConfig(params)
 
 	allocations, err := getAllocation(
 		params,
@@ -136,29 +127,30 @@ func CreateEvmGenesis(
 		)
 	}
 
-	getPrecompiles(conf, params, &genesis.Timestamp)
+	precompiles := getPrecompiles(params, utils.TimeToNewUint64(time.Now()))
 
 	if params.UseTeleporter || params.UseExternalGasToken {
 		addTeleporterAddressesToAllowLists(
-			conf,
+			&precompiles,
 			teleporterInfo.FundedAddress,
 			teleporterInfo.MessengerDeployerAddress,
 			teleporterInfo.RelayerAddress,
 		)
 	}
 
-	genesis.Alloc = allocations
-	genesis.Config = conf
-	genesis.Difficulty = Difficulty
-	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()
-
-	jsonBytes, err := genesis.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
+	subnetConfig, err := subnetSDK.New(
+		&subnetSDK.SubnetParams{
+			SubnetEVM: &subnetSDK.SubnetEVMParams{
+				ChainID:     new(big.Int).SetUint64(params.chainID),
+				FeeConfig:   feeConfig,
+				Allocation:  allocations,
+				Precompiles: precompiles,
+			},
+			Name: "TestSubnet",
+		})
 
 	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
+	err = json.Indent(&prettyJSON, subnetConfig.Genesis, "", "    ")
 	if err != nil {
 		return nil, err
 	}
