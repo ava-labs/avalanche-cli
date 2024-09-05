@@ -99,7 +99,7 @@ const (
 	Cortina17Version = "v1.10.17"
 	Durango11Version = "v1.11.11"
 
-	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/fix-snapshot/"
+	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
 	CurrentBootstrapNamePath = "currentBootstrapName.txt"
 
