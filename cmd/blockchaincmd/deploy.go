@@ -24,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
-	subnetSDK "github.com/ava-labs/avalanche-tooling-sdk-go/subnet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -493,19 +492,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
-		subnetParams := subnetSDK.SubnetParams{
-			Name:            blockchainName,
-			GenesisFilePath: app.GetGenesisPath(blockchainName),
-		}
-		subnet, err := subnetSDK.New(&subnetParams)
-		if err != nil {
-			return err
-		}
-		subnetMultiSig, err := deployer.DeploySubnet(*subnet, controlKeys, threshold)
-		if err != nil {
-			return err
-		}
-		subnetID, err = subnetMultiSig.GetSubnetID()
+		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
 		if err != nil {
 			return err
 		}
