@@ -248,7 +248,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, defaultsKind, false)
+			deployTeleporter, err = vm.PromptInterop(app, useTeleporterFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
@@ -264,6 +264,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				vmVersion,
 				createFlags.chainID,
 				createFlags.tokenSymbol,
+				blockchainName,
 				useTeleporterFlag,
 				defaultsKind,
 				createFlags.useWarp,
@@ -274,8 +275,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 			deployTeleporter = params.UseTeleporter
 			useExternalGasToken = params.UseExternalGasToken
-			genesisBytes, err = vm.CreateEvmGenesis(
-				app,
+			genesisBytes, err = vm.CreateEVMGenesis(
 				blockchainName,
 				params,
 				teleporterInfo,
@@ -305,7 +305,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, defaultsKind, false)
+			deployTeleporter, err = vm.PromptInterop(app, useTeleporterFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
