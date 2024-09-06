@@ -24,7 +24,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var subnetName string
+var blockchainName string
 
 func newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -35,11 +35,12 @@ func newStatusCmd() *cobra.Command {
 The node status command gets the bootstrap status of all nodes in a cluster with the Primary Network. 
 If no cluster is given, defaults to node list behaviour.
 
-To get the bootstrap status of a node with a Subnet, use --subnet flag`,
+To get the bootstrap status of a node with a Blockchain, use --blockchain flag`,
 		Args: cobrautils.MinimumNArgs(0),
 		RunE: statusNode,
 	}
-	cmd.Flags().StringVar(&subnetName, "subnet", "", "specify the subnet the node is syncing with")
+	cmd.Flags().StringVar(&blockchainName, "subnet", "", "specify the blockchain the node is syncing with")
+	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 
 	return cmd
 }
@@ -57,8 +58,8 @@ func statusNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	var blockchainID ids.ID
-	if subnetName != "" {
-		sc, err := app.LoadSidecar(subnetName)
+	if blockchainName != "" {
+		sc, err := app.LoadSidecar(blockchainName)
 		if err != nil {
 			return err
 		}
@@ -75,9 +76,9 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if subnetName != "" {
+	if blockchainName != "" {
 		// check subnet first
-		if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
+		if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{blockchainName}); err != nil {
 			return err
 		}
 	}
@@ -141,7 +142,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	notSyncedNodes := []string{}
 	subnetSyncedNodes := []string{}
 	subnetValidatingNodes := []string{}
-	if subnetName != "" {
+	if blockchainName != "" {
 		hostsToCheckSyncStatus := []string{}
 		for _, hostID := range hostIDs {
 			if slices.Contains(notBootstrappedNodes, hostID) {
@@ -211,7 +212,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		subnetSyncedNodes,
 		subnetValidatingNodes,
 		clusterName,
-		subnetName,
+		blockchainName,
 		nodeConfigs,
 	)
 	return nil
@@ -228,22 +229,22 @@ func printOutput(
 	subnetSyncedHosts []string,
 	subnetValidatingHosts []string,
 	clusterName string,
-	subnetName string,
+	blockchainName string,
 	nodeConfigs []models.NodeConfig,
 ) {
 	if clusterConf.External {
 		ux.Logger.PrintToUser("Cluster %s (%s) is EXTERNAL", logging.LightBlue.Wrap(clusterName), clusterConf.Network.Kind.String())
 	}
-	if subnetName == "" && len(notBootstrappedHosts) == 0 {
+	if blockchainName == "" && len(notBootstrappedHosts) == 0 {
 		ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
 	}
-	if subnetName != "" && len(notSyncedHosts) == 0 {
+	if blockchainName != "" && len(notSyncedHosts) == 0 {
 		// all nodes are either synced to or validating subnet
 		status := "synced to"
 		if len(subnetSyncedHosts) == 0 {
 			status = "validators of"
 		}
-		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", logging.LightBlue.Wrap(clusterName), status, subnetName)
+		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", logging.LightBlue.Wrap(clusterName), status, blockchainName)
 	}
 	ux.Logger.PrintToUser("")
 	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", logging.LightBlue.Wrap(clusterName))
@@ -251,8 +252,8 @@ func printOutput(
 	ux.Logger.PrintToUser(strings.Repeat("=", len(removeColors(tit))))
 	ux.Logger.PrintToUser("")
 	header := []string{"Cloud ID", "Node ID", "IP", "Network", "Role", "Avago Version", "Primary Network", "Healthy"}
-	if subnetName != "" {
-		header = append(header, "Subnet "+subnetName)
+	if blockchainName != "" {
+		header = append(header, "Subnet "+blockchainName)
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
@@ -285,7 +286,7 @@ func printOutput(
 			boostrappedStatus,
 			healthyStatus,
 		}
-		if subnetName != "" {
+		if blockchainName != "" {
 			syncedStatus := ""
 			if clusterConf.MonitoringInstance != cloudID {
 				syncedStatus = logging.Red.Wrap("NOT_BOOTSTRAPPED")

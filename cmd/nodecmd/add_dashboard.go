@@ -22,27 +22,27 @@ cluster.`,
 		RunE: addDashboard,
 	}
 	cmd.Flags().StringVar(&customGrafanaDashboardPath, "add-grafana-dashboard", "", "path to additional grafana dashboard json file")
-	cmd.Flags().StringVar(&subnetName, "subnet", "", "subnet that the dasbhoard is intended for (if any)")
+	cmd.Flags().StringVar(&blockchainName, "subnet", "", "subnet that the dasbhoard is intended for (if any)")
 	return cmd
 }
 
 func addDashboard(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if customGrafanaDashboardPath != "" {
-		if err := addCustomDashboard(clusterName, subnetName); err != nil {
+		if err := addCustomDashboard(clusterName, blockchainName); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func addCustomDashboard(clusterName, subnetName string) error {
+func addCustomDashboard(clusterName, blockchainName string) error {
 	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
 	monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 	if err != nil {
 		return err
 	}
-	_, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	_, chainID, err := getDeployedSubnetInfo(clusterName, blockchainName)
 	if err != nil {
 		return err
 	}

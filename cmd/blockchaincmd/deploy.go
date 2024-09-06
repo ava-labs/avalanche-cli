@@ -21,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
@@ -384,7 +383,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			&sidecar,
 			network,
 			deployInfo.SubnetID,
-			ids.Empty,
 			deployInfo.BlockchainID,
 			deployInfo.TeleporterMessengerAddress,
 			deployInfo.TeleporterRegistryAddress,
@@ -400,7 +398,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	createSubnet := true
-	var subnetID, transferSubnetOwnershipTxID ids.ID
+	var subnetID ids.ID
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -412,7 +410,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
-				transferSubnetOwnershipTxID = model.TransferSubnetOwnershipTxID
 				createSubnet = false
 			}
 		}
@@ -420,10 +417,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	fee := uint64(0)
 	if !subnetOnly {
-		fee += network.GenesisParams().CreateBlockchainTxFee
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
 	}
 	if createSubnet {
-		fee += network.GenesisParams().CreateSubnetTxFee
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
 	}
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
@@ -519,7 +516,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
-			transferSubnetOwnershipTxID,
 			chain,
 			chainGenesis,
 		)
@@ -550,28 +546,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if isFullySigned {
-		if network.ClusterName != "" {
-			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
-			if err != nil {
-				return err
-			}
-			if _, err := utils.GetIndexInSlice(clusterConfig.Subnets, blockchainName); err != nil {
-				clusterConfig.Subnets = append(clusterConfig.Subnets, blockchainName)
-			}
-			if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
-				return err
-			}
-		}
-	}
-
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID, "", "")
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "")
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {

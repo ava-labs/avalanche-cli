@@ -54,7 +54,7 @@ type nodeInfo struct {
 
 func newLoadTestStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "start [loadtestName] [clusterName] [subnetName]",
+		Use:   "start [loadtestName] [clusterName] [blockchainName]",
 		Short: "(ALPHA Warning) Start load test for existing devnet cluster",
 		Long: `(ALPHA Warning) This command is currently in experimental mode. 
 
@@ -111,9 +111,9 @@ func preLoadTestChecks(clusterName string) error {
 func startLoadTest(_ *cobra.Command, args []string) error {
 	loadTestName := args[0]
 	clusterName := args[1]
-	subnetName = args[2]
-	if !app.SidecarExists(subnetName) {
-		return fmt.Errorf("subnet %s doesn't exist, please create it first", subnetName)
+	blockchainName = args[2]
+	if !app.SidecarExists(blockchainName) {
+		return fmt.Errorf("subnet %s doesn't exist, please create it first", blockchainName)
 	}
 	if err := preLoadTestChecks(clusterName); err != nil {
 		return err
@@ -338,7 +338,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, subnetName)
+	subnetID, chainID, err := getDeployedSubnetInfo(clusterName, blockchainName)
 	if err != nil {
 		return err
 	}
@@ -369,8 +369,8 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func getDeployedSubnetInfo(clusterName string, subnetName string) (string, string, error) {
-	sc, err := app.LoadSidecar(subnetName)
+func getDeployedSubnetInfo(clusterName string, blockchainName string) (string, string, error) {
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return "", "", err
 	}
@@ -387,7 +387,7 @@ func getDeployedSubnetInfo(clusterName string, subnetName string) (string, strin
 			}
 		}
 	}
-	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <subnetName> --cluster <clusterName> first")
+	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <blockchainName> --cluster <clusterName> first")
 }
 
 func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {

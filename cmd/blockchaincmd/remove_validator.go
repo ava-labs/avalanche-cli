@@ -106,7 +106,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 
 	// get keychain accesor
-	fee := network.GenesisParams().TxFee
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 	kc, err := keychain.GetKeychain(app, false, useLedger, ledgerAddresses, keyName, network, fee)
 	if err != nil {
 		return err
@@ -123,7 +123,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
 	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
@@ -187,7 +186,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		controlKeys,
 		subnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 		nodeID,
 	)
 	if err != nil {

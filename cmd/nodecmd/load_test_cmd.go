@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package nodecmd
 
@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewLoadTestCmd() *cobra.Command {
+func newLoadTestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "loadtest",
 		Short: "(ALPHA Warning) Load test suite for an existing subnet on an existing cloud cluster",

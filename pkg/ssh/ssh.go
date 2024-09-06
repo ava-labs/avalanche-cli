@@ -489,30 +489,29 @@ func RunSSHRenderAvagoAliasConfigFile(
 	blockchainID string,
 	subnetAliases []string,
 ) error {
-	aliasConf, err := remoteconfig.RenderAvalancheAliasesConfig(remoteconfig.AvalancheConfigInputs{
-		BlockChainID: blockchainID,
-		Aliases:      subnetAliases,
-	})
-	if err != nil {
-		return err
-	}
-	// merge alias config into remote config
+	aliasToBlockchain := map[string]string{}
 	if aliasConfigFileExists(host) {
-		// read remote aliases
+		// load remote aliases
 		remoteAliases, err := getAvalancheGoAliasData(host)
 		if err != nil {
 			return err
 		}
-		localAliases := make(map[string]interface{})
-		if err := json.Unmarshal(aliasConf, &localAliases); err != nil {
-			return err
+		for chainID, aliases := range remoteAliases {
+			for _, alias := range aliases {
+				aliasToBlockchain[alias] = chainID
+			}
 		}
-		// merge with local aliases presedence. Result is in remoteAliases
-		maps.Copy(remoteAliases, localAliases)
-		aliasConf, err = json.MarshalIndent(remoteAliases, "", "  ")
-		if err != nil {
-			return err
-		}
+	}
+	for _, alias := range subnetAliases {
+		aliasToBlockchain[alias] = blockchainID
+	}
+	newAliases := map[string][]string{}
+	for alias, chainID := range aliasToBlockchain {
+		newAliases[chainID] = append(newAliases[chainID], alias)
+	}
+	aliasConf, err := json.MarshalIndent(newAliases, "", "  ")
+	if err != nil {
+		return err
 	}
 	aliasConfFile, err := os.CreateTemp("", "avalanchecli-alias-*.yml")
 	if err != nil {
@@ -529,7 +528,13 @@ func RunSSHRenderAvagoAliasConfigFile(
 }
 
 // RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
-func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, network models.Network, trackSubnets []string) error {
+func RunSSHRenderAvalancheNodeConfig(
+	app *application.Avalanche,
+	host *models.Host,
+	network models.Network,
+	trackSubnets []string,
+	isAPIHost bool,
+) error {
 	// get subnet ids
 	subnetIDs, err := utils.MapWithError(trackSubnets, func(subnetName string) (string, error) {
 		sc, err := app.LoadSidecar(subnetName)
@@ -550,8 +555,7 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 		if genesisFileExists(host) {
 			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 		}
-		// make sure that wiz works. TODO switch to RPC over SSH client to access 127.0.0.1 instead
-		if network.Kind == models.Local || network.Kind == models.Devnet {
+		if network.Kind == models.Local || network.Kind == models.Devnet || isAPIHost {
 			avagoConf.HTTPHost = "0.0.0.0"
 		}
 		remoteAvagoConf, err := getAvalancheGoConfigData(host)
@@ -680,8 +684,10 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	// genesis config
 	genesisFilename := filepath.Join(app.GetNodesDir(), host.GetCloudID(), constants.GenesisFileName)
-	if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
-		return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
+	if utils.FileExists(genesisFilename) {
+		if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
+			return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
+		}
 	}
 	// end genesis config
 	// subnet node config
@@ -917,13 +923,13 @@ func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error)
 	return avagoConfig, nil
 }
 
-func getAvalancheGoAliasData(host *models.Host) (map[string]interface{}, error) {
+func getAvalancheGoAliasData(host *models.Host) (map[string][]string, error) {
 	// parse aliases.json file
 	aliasesJSON, err := host.ReadFileBytes(remoteconfig.GetRemoteAvalancheAliasesConfig(), constants.SSHFileOpsTimeout)
 	if err != nil {
 		return nil, err
 	}
-	var aliases map[string]interface{}
+	var aliases map[string][]string
 	if err := json.Unmarshal(aliasesJSON, &aliases); err != nil {
 		return nil, err
 	}
