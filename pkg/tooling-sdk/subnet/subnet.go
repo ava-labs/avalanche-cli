@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/multisig"
 	utilsSDK "github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/wallet"
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	avalanchegoTx "github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/vm"
 
@@ -297,7 +297,7 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 	if issueTxErr != nil {
 		return ids.Empty, fmt.Errorf("issue tx error %w", issueTxErr)
 	}
-	if _, ok := ms.PChainTx.Unsigned.(*txs.CreateSubnetTx); ok {
+	if _, ok := ms.PChainTx.Unsigned.(*avalanchegoTx.CreateSubnetTx); ok {
 		c.SubnetID = tx.ID()
 	}
 	return tx.ID(), issueTxErr
