@@ -421,13 +421,13 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 
 	switch feeDefault {
 	case lowOption:
-		vm.SetStandardGas(&config, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
+		vm.SetStandardGas(&config.FeeConfig, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
 		return config, nil
 	case mediumOption:
-		vm.SetStandardGas(&config, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
+		vm.SetStandardGas(&config.FeeConfig, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
 		return config, err
 	case highOption:
-		vm.SetStandardGas(&config, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
+		vm.SetStandardGas(&config.FeeConfig, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
 		return config, err
 	default:
 		ux.Logger.PrintToUser("Customizing fee config")
