@@ -5,7 +5,7 @@ package keychain
 import (
 	"fmt"
 
-	avalancheSDK "github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanche"
+	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalancheSDK"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/key"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/ledger"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/utils"

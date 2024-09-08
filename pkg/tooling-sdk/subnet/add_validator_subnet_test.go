@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanche"
+	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalancheSDK"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/validator"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/wallet"
@@ -36,7 +36,7 @@ func TestValidateSubnet(t *testing.T) {
 
 	newSubnet.SetSubnetID(subnetID)
 
-	network := avalanche.FujiNetwork()
+	network := avalancheSDK.FujiNetwork()
 	keychain, err := keychain.NewKeychain(network, "PRIVATE_KEY_FILEPATH", nil)
 	require.NoError(err)
 
