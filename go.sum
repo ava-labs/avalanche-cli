@@ -87,10 +87,14 @@ github.com/ava-labs/avalanche-network-runner v1.8.3-0.20240815175406-50423422fb5
 github.com/ava-labs/avalanche-network-runner v1.8.3-0.20240815175406-50423422fb5b/go.mod h1:X4ly6Ebq6vzsj9q9G9W00YftOrS7ZT2jLi9cxLqT4eQ=
 github.com/ava-labs/avalanchego v1.11.11-0.20240815211142-ce78e7f1799f h1:fLWva3zOGwhZAnLq+nhiTs1Q24dL1nPvF4qVZZ6IGFg=
 github.com/ava-labs/avalanchego v1.11.11-0.20240815211142-ce78e7f1799f/go.mod h1:UkyrRDXK2E15Lq2abyae2Pt+JsWvgsg1pe0/AtoMyAM=
+github.com/ava-labs/avalanchego v1.11.11 h1:MIQq8xRavRj4ZXHA4G+aMiymig7SOScGOG1SApmMvBc=
+github.com/ava-labs/avalanchego v1.11.11/go.mod h1:yFx3V31Jy9NFa8GZlgGnwiVf8KGjeF2+Uc99l9Scd/8=
 github.com/ava-labs/awm-relayer v1.3.0 h1:aI90Daoq7bs9SnfZpyjXajj7YLcdZoFgEkyCd52fOHE=
 github.com/ava-labs/awm-relayer v1.3.0/go.mod h1:UI1Tm0jfFIpO1S2hpE5WGzJCDpLHLldhsE1bWn2FjEE=
 github.com/ava-labs/coreth v0.13.8-fixed-genesis-upgrade.0.20240813194342-7635a96aa180 h1:6aIHp7wbyGVYdhHVQUbG7BEcbCMEQ5SYopPPJyipyvk=
 github.com/ava-labs/coreth v0.13.8-fixed-genesis-upgrade.0.20240813194342-7635a96aa180/go.mod h1:/wNBVq7J7wlC2Kbov7kk6LV5xZvau7VF9zwTVOeyAjY=
+github.com/ava-labs/coreth v0.13.8-fixed-genesis-upgrade.0.20240815193440-a96bc921e732 h1:wlhGJbmb7s3bU2QWtxKjscGjfHknQiq+cVhhUjONsB8=
+github.com/ava-labs/coreth v0.13.8-fixed-genesis-upgrade.0.20240815193440-a96bc921e732/go.mod h1:RkQLaQ961Xe/sUb3ycn4Qi18vPPuEetTqDf2eDcquAs=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20240610153809-9c955cc90a95 h1:dOVbtdnZL++pENdTCNZ1nu41eYDQkTML4sWebDnnq8c=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20240610153809-9c955cc90a95/go.mod h1:pJxaT9bUgeRNVmNRgtCHb7sFDIRKy7CzTQVi8gGNT6g=
 github.com/ava-labs/subnet-evm v0.6.9-0.20240815191823-9f3608326298 h1:g7JdXUEZ5Hk3sKhJPoZattE4obRaF7qapHREnB4O+Rg=
