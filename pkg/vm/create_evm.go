@@ -71,13 +71,12 @@ func CreateEvmSidecar(
 	return &sc, nil
 }
 
-func CreateEvmGenesis(
-	app *application.Avalanche,
-	subnetName string,
+func CreateEVMGenesis(
+	blockchainName string,
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
 ) ([]byte, error) {
-	ux.Logger.PrintToUser("creating genesis for blockchain %s", subnetName)
+	ux.Logger.PrintToUser("creating genesis for blockchain %s", blockchainName)
 
 	genesis := core.Genesis{}
 	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())
@@ -89,43 +88,29 @@ func CreateEvmGenesis(
 
 	setFeeConfig(params, conf)
 
-	allocations, err := getAllocation(
-		params,
-		app,
-		subnetName,
-		defaultEvmAirdropAmount,
-		oneAvax,
-		params.UseExternalGasToken,
-	)
-	if err != nil {
-		return nil, err
-	}
-
+	// Validity checks on the parameter settings.
 	if params.enableTransactionPrecompile {
 		if someoneWasAllowed(params.transactionPrecompileAllowList) &&
-			!someAllowedHasBalance(params.transactionPrecompileAllowList, allocations) {
+			!someAllowedHasBalance(params.transactionPrecompileAllowList, params.initialTokenAllocation) {
 			return nil, errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Allocate some funds to one of the allow list addresses to continue")
 		}
 	}
-
 	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
 		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but warp precompile is disabled")
 	}
-
 	if (params.UseTeleporter || params.UseExternalGasToken) && teleporterInfo == nil {
 		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but no teleporter info was provided")
 	}
 
+	// Add the teleporter deployer to the initial token allocation if necessary.
 	if params.UseTeleporter || params.UseExternalGasToken {
 		balance := teleporterBalance
 		if params.UseExternalGasToken {
 			balance = externalGasTokenBalance
 		}
-		allocations = addInterchainMessagingAllocation(
-			allocations,
-			teleporterInfo.FundedAddress,
-			balance,
-		)
+		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
+			Balance: balance,
+		}
 	}
 
 	if params.UseExternalGasToken {
@@ -147,7 +132,7 @@ func CreateEvmGenesis(
 		)
 	}
 
-	genesis.Alloc = allocations
+	genesis.Alloc = params.initialTokenAllocation
 	genesis.Config = conf
 	genesis.Difficulty = Difficulty
 	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()
