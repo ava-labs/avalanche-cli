@@ -13,11 +13,11 @@ import (
 )
 
 type PrivateKeyFlags struct {
-	PrivateKeyFlagName string
+	privateKeyFlagName string
+	keyFlagName        string
+	genesisKeyFlagName string
 	PrivateKey         string
-	KeyFlagName        string
 	KeyName            string
-	GenesisKeyFlagName string
 	GenesisKey         bool
 }
 
@@ -28,14 +28,14 @@ const (
 )
 
 func (pkf *PrivateKeyFlags) fillDefaultFlagNames() {
-	if pkf.PrivateKeyFlagName == "" {
-		pkf.PrivateKeyFlagName = defaultPrivateKeyFlagName
+	if pkf.privateKeyFlagName == "" {
+		pkf.privateKeyFlagName = defaultPrivateKeyFlagName
 	}
-	if pkf.KeyFlagName == "" {
-		pkf.KeyFlagName = defaultKeyFlagName
+	if pkf.keyFlagName == "" {
+		pkf.keyFlagName = defaultKeyFlagName
 	}
-	if pkf.GenesisKeyFlagName == "" {
-		pkf.GenesisKeyFlagName = defaultGenesisKeyFlagName
+	if pkf.genesisKeyFlagName == "" {
+		pkf.genesisKeyFlagName = defaultGenesisKeyFlagName
 	}
 }
 
@@ -44,9 +44,9 @@ func (pkf *PrivateKeyFlags) SetFlagNames(
 	keyFlagName string,
 	genesisKeyFlagName string,
 ) {
-	pkf.PrivateKeyFlagName = privateKeyFlagName
-	pkf.KeyFlagName = keyFlagName
-	pkf.GenesisKeyFlagName = genesisKeyFlagName
+	pkf.privateKeyFlagName = privateKeyFlagName
+	pkf.keyFlagName = keyFlagName
+	pkf.genesisKeyFlagName = genesisKeyFlagName
 }
 
 func (pkf *PrivateKeyFlags) AddToCmd(
@@ -56,19 +56,19 @@ func (pkf *PrivateKeyFlags) AddToCmd(
 	pkf.fillDefaultFlagNames()
 	cmd.Flags().StringVar(
 		&pkf.PrivateKey,
-		pkf.PrivateKeyFlagName,
+		pkf.privateKeyFlagName,
 		"",
 		fmt.Sprintf("private key to use %s", goal),
 	)
 	cmd.Flags().StringVar(
 		&pkf.KeyName,
-		pkf.KeyFlagName,
+		pkf.keyFlagName,
 		"",
 		fmt.Sprintf("CLI stored key to use %s", goal),
 	)
 	cmd.Flags().BoolVar(
 		&pkf.GenesisKey,
-		pkf.GenesisKeyFlagName,
+		pkf.genesisKeyFlagName,
 		false,
 		fmt.Sprintf("use genesis allocated key %s", goal),
 	)
@@ -85,9 +85,9 @@ func (pkf *PrivateKeyFlags) GetPrivateKey(
 		pkf.GenesisKey,
 	}) {
 		return "", fmt.Errorf("%s, %s and %s are mutually exclusive flags",
-			pkf.PrivateKeyFlagName,
-			pkf.KeyFlagName,
-			pkf.GenesisKeyFlagName,
+			pkf.privateKeyFlagName,
+			pkf.keyFlagName,
+			pkf.genesisKeyFlagName,
 		)
 	}
 	privateKey := pkf.PrivateKey

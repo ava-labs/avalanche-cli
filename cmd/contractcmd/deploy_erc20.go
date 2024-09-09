@@ -3,7 +3,6 @@
 package contractcmd
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -47,15 +46,7 @@ func newDeployERC20Cmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
 	deployERC20Flags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
-	contract.AddChainSpecToCmd(
-		cmd,
-		&deployERC20Flags.chainFlags,
-		"deploy the ERC20 contract",
-		"",
-		"",
-		"",
-		true,
-	)
+	deployERC20Flags.chainFlags.AddToCmd(cmd, "deploy the ERC20 contract", true)
 	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the token symbol")
 	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the token supply")
 	cmd.Flags().StringVar(&deployERC20Flags.funded, "funded", "", "set the funded address")
@@ -76,11 +67,10 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	// flags exclusiveness
-	if !contract.MutuallyExclusiveChainSpecFields(deployERC20Flags.chainFlags) {
-		return fmt.Errorf("--blockchaion, --blockchain-id and --c-chain are mutually exclusive flags")
+	if err := deployERC20Flags.chainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
 	}
-	if !contract.DefinedChainSpec(deployERC20Flags.chainFlags) {
+	if !deployERC20Flags.chainFlags.Defined() {
 		prompt := "Where do you want to Deploy the ERC-20 Token?"
 		if cancel, err := contract.PromptChain(
 			app,

@@ -109,7 +109,7 @@ func addSource(
 	rpcEndpoint string,
 	wsEndpoint string,
 ) (ConfigEsp, error) {
-	if !contract.DefinedChainSpec(chainSpec) {
+	if !chainSpec.Defined() {
 		prompt := "Which blockchain do you want to set as source?"
 		var err error
 		chainSpec, err = getBlockchain(network, prompt)
@@ -181,7 +181,7 @@ func addDestination(
 	chainSpec contract.ChainSpec,
 	rpcEndpoint string,
 ) (ConfigEsp, error) {
-	if !contract.DefinedChainSpec(chainSpec) {
+	if !chainSpec.Defined() {
 		prompt := "Which blockchain do you want to set as destination?"
 		var err error
 		chainSpec, err = getBlockchain(network, prompt)

@@ -59,15 +59,7 @@ func newDeployCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	deployFlags.PrivateKeyFlags.AddToCmd(cmd, "to fund ICM deploy")
-	contract.AddChainSpecToCmd(
-		cmd,
-		&deployFlags.ChainFlags,
-		"deploy ICM",
-		"",
-		"",
-		"",
-		true,
-	)
+	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM", true)
 	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
 	cmd.Flags().StringVar(&deployFlags.RPCURL, "rpc-url", "", "use the given RPC URL to connect to the subnet")
@@ -96,13 +88,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	if !contract.MutuallyExclusiveChainSpecFields(flags.ChainFlags) {
-		return fmt.Errorf("--blockchain, --blockchain-id and --cchain are mutually exclusive flags")
+	if err := flags.ChainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
 	}
 	if !flags.DeployMessenger && !flags.DeployRegistry {
 		return fmt.Errorf("you should set at least one of --deploy-messenger/--deploy-registry to true")
 	}
-	if !contract.DefinedChainSpec(flags.ChainFlags) {
+	if !flags.ChainFlags.Defined() {
 		prompt := "Which Blockchain would you like to deploy Teleporter to?"
 		if cancel, err := contract.PromptChain(
 			app,

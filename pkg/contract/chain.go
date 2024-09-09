@@ -17,50 +17,74 @@ import (
 )
 
 type ChainSpec struct {
-	BlockchainName string
-	CChain         bool
-	BlockchainID   string
+	blockchainFlagName   string
+	cChainFlagName       string
+	blockchainIDFlagName string
+	BlockchainName       string
+	CChain               bool
+	BlockchainID         string
 }
 
-func MutuallyExclusiveChainSpecFields(chainSpec ChainSpec) bool {
-	return cmdflags.EnsureMutuallyExclusive([]bool{
-		chainSpec.BlockchainName != "",
-		chainSpec.BlockchainID != "",
-		chainSpec.CChain,
-	})
+const (
+	defaultBlockchainFlagName   = "blockchain"
+	defaultCChainFlagName       = "c-chain"
+	defaultBlockchainIDFlagName = "blockchain-id"
+)
+
+func (cs *ChainSpec) CheckMutuallyExclusiveFields() error {
+	if !cmdflags.EnsureMutuallyExclusive([]bool{
+		cs.BlockchainName != "",
+		cs.BlockchainID != "",
+		cs.CChain,
+	}) {
+		return fmt.Errorf("%s, %s and %s are mutually exclusive flags",
+			cs.blockchainFlagName,
+			cs.cChainFlagName,
+			cs.blockchainIDFlagName,
+		)
+	}
+	return nil
 }
 
-func DefinedChainSpec(chainSpec ChainSpec) bool {
-	return chainSpec.BlockchainName != "" || chainSpec.BlockchainID != "" || chainSpec.CChain
+func (cs *ChainSpec) Defined() bool {
+	return cs.BlockchainName != "" || cs.BlockchainID != "" || cs.CChain
 }
 
-func AddChainSpecToCmd(
-	cmd *cobra.Command,
-	chainSpec *ChainSpec,
-	goal string,
+func (cs *ChainSpec) fillDefaultFlagNames() {
+	if cs.blockchainFlagName == "" {
+		cs.blockchainFlagName = defaultBlockchainFlagName
+	}
+	if cs.cChainFlagName == "" {
+		cs.cChainFlagName = defaultCChainFlagName
+	}
+	if cs.blockchainIDFlagName == "" {
+		cs.blockchainIDFlagName = defaultBlockchainIDFlagName
+	}
+}
+
+func (cs *ChainSpec) SetFlagNames(
 	blockchainFlagName string,
 	cChainFlagName string,
 	blockchainIDFlagName string,
+) {
+	cs.blockchainFlagName = blockchainFlagName
+	cs.cChainFlagName = cChainFlagName
+	cs.blockchainIDFlagName = blockchainIDFlagName
+}
+
+func (cs *ChainSpec) AddToCmd(
+	cmd *cobra.Command,
+	goal string,
 	addBlockchainIDFlag bool,
 ) {
-	subnetFlagName := "" // backwards compat
-	if blockchainFlagName == "" {
-		blockchainFlagName = "blockchain"
-		subnetFlagName = "subnet"
+	cs.fillDefaultFlagNames()
+	if cs.blockchainFlagName == defaultBlockchainFlagName {
+		cmd.Flags().StringVar(&cs.BlockchainName, "subnet", "", fmt.Sprintf("%s into the given CLI blockchain", goal))
 	}
-	if cChainFlagName == "" {
-		cChainFlagName = "c-chain"
-	}
-	if blockchainIDFlagName == "" {
-		blockchainIDFlagName = "blockchain-id"
-	}
-	if subnetFlagName != "" {
-		cmd.Flags().StringVar(&chainSpec.BlockchainName, subnetFlagName, "", fmt.Sprintf("%s into the given CLI blockchain", goal))
-	}
-	cmd.Flags().StringVar(&chainSpec.BlockchainName, blockchainFlagName, "", fmt.Sprintf("%s into the given CLI blockchain", goal))
-	cmd.Flags().BoolVar(&chainSpec.CChain, cChainFlagName, false, fmt.Sprintf("%s into C-Chain", goal))
+	cmd.Flags().StringVar(&cs.BlockchainName, cs.blockchainFlagName, "", fmt.Sprintf("%s into the given CLI blockchain", goal))
+	cmd.Flags().BoolVar(&cs.CChain, cs.cChainFlagName, false, fmt.Sprintf("%s into C-Chain", goal))
 	if addBlockchainIDFlag {
-		cmd.Flags().StringVar(&chainSpec.BlockchainID, blockchainIDFlagName, "", fmt.Sprintf("%s into the given blockchain ID/Alias", goal))
+		cmd.Flags().StringVar(&cs.BlockchainID, cs.blockchainIDFlagName, "", fmt.Sprintf("%s into the given blockchain ID/Alias", goal))
 	}
 }
 

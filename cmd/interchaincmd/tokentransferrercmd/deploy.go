@@ -68,24 +68,18 @@ func NewDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	contract.AddChainSpecToCmd(
-		cmd,
-		&deployFlags.homeFlags.chainFlags,
-		"set the Transferrer's Home Chain",
-		"home-subnet",
+	deployFlags.homeFlags.chainFlags.SetFlagNames(
+		"home-blockchain",
 		"c-chain-home",
 		"",
-		false,
 	)
-	contract.AddChainSpecToCmd(
-		cmd,
-		&deployFlags.remoteFlags.chainFlags,
-		"set the Transferrer's Remote Chain",
-		"remote-subnet",
+	deployFlags.homeFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Home Chain", false)
+	deployFlags.remoteFlags.chainFlags.SetFlagNames(
+		"remote-blockchain",
 		"c-chain-remote",
 		"",
-		false,
 	)
+	deployFlags.remoteFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Remote Chain", false)
 	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
@@ -125,8 +119,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// flags exclusiveness
-	if !contract.MutuallyExclusiveChainSpecFields(flags.homeFlags.chainFlags) {
-		return fmt.Errorf("--home-subnet and --c-chain-home are mutually exclusive flags")
+	if err := flags.homeFlags.chainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
 	}
 	if !cmdflags.EnsureMutuallyExclusive([]bool{
 		flags.homeFlags.homeAddress != "",
@@ -135,12 +129,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}) {
 		return fmt.Errorf("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
 	}
-	if !contract.MutuallyExclusiveChainSpecFields(flags.remoteFlags.chainFlags) {
-		return fmt.Errorf("--remote-subnet and --c-chain-remote are mutually exclusive flags")
+	if err := flags.remoteFlags.chainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
 	}
 
 	// Home Chain Prompts
-	if !contract.DefinedChainSpec(flags.homeFlags.chainFlags) {
+	if !flags.homeFlags.chainFlags.Defined() {
 		prompt := "Where is the Token origin?"
 		if cancel, err := contract.PromptChain(app, network, prompt, false, "", false, &flags.homeFlags.chainFlags); err != nil {
 			return err
@@ -353,7 +347,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Prompts
-	if !contract.DefinedChainSpec(flags.remoteFlags.chainFlags) {
+	if !flags.remoteFlags.chainFlags.Defined() {
 		prompt := "Where should the token be available as an ERC-20?"
 		if flags.remoteFlags.native {
 			prompt = "Where should the token be available as a Native Token?"
