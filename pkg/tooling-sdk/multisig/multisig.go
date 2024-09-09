@@ -5,6 +5,7 @@ package multisig
 import (
 	"context"
 	"fmt"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanchesdk"

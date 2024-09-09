@@ -4,8 +4,9 @@ package utils
 
 import (
 	"context"
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/constants"
 	"sort"
+
+	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/constants"
 )
 
 // Unique returns a new slice containing only the unique elements from the input slice.
