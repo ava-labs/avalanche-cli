@@ -143,8 +143,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&teleporterMessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
 	cmd.Flags().StringVar(&teleporterMessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
 	cmd.Flags().StringVar(&teleporterRegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
-	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Teleporter Messenger")
-	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Teleporter Registry")
+	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Interchain Messenger")
+	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Interchain Registry")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
 	cmd.Flags().StringSliceVar(&subnetAliases, "subnet-aliases", nil, "additional subnet aliases to be used for RPC calls in addition to subnet blockchain name")
@@ -387,7 +387,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 				BlockchainName: subnetName,
 			},
 			PrivateKeyFlags: contract.PrivateKeyFlags{
-				KeyName: constants.TeleporterKeyName,
+				KeyName: constants.ICMKeyName,
 			},
 			Network: networkoptions.NetworkFlags{
 				ClusterName: clusterName,

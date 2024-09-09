@@ -97,10 +97,10 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmEsp.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
 	cmd.Flags().BoolVar(&icmEsp.SkipRelayerDeploy, "skip-relayer", false, "skip relayer deploy")
 	cmd.Flags().StringVar(&icmEsp.Version, "teleporter-version", "latest", "teleporter version to deploy")
-	cmd.Flags().StringVar(&icmEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
-	cmd.Flags().StringVar(&icmEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
-	cmd.Flags().StringVar(&icmEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
-	cmd.Flags().StringVar(&icmEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
+	cmd.Flags().StringVar(&icmEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
+	cmd.Flags().StringVar(&icmEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
+	cmd.Flags().StringVar(&icmEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an interchain messenger deployer tx file")
+	cmd.Flags().StringVar(&icmEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an interchain messenger registry bytecode file")
 	return cmd
 }
 

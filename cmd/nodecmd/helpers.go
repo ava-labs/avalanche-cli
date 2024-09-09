@@ -228,7 +228,7 @@ func checkHostsAreBootstrapped(hosts []*models.Host) error {
 	return nil
 }
 
-func getEndpoint(ip string) string {
+func getAvalancheGoEndpoint(ip string) string {
 	return fmt.Sprintf("http://%s:%d", ip, constants.AvalanchegoAPIPort)
 }
 
@@ -255,7 +255,7 @@ func getPublicEndpoints(clusterName string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		endpoints = append(endpoints, getEndpoint(nodeConfig.ElasticIP))
+		endpoints = append(endpoints, getAvalancheGoEndpoint(nodeConfig.ElasticIP))
 	}
 	return endpoints, nil
 }

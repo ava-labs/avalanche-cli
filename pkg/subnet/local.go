@@ -370,9 +370,9 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
-		td := teleporter.Deployer{}
+		icmd := teleporter.Deployer{}
 		if icmEsp.MessengerContractAddressPath != "" {
-			if err := td.SetAssetsFromPaths(
+			if err := icmd.SetAssetsFromPaths(
 				icmEsp.MessengerContractAddressPath,
 				icmEsp.MessengerDeployerAddressPath,
 				icmEsp.MessengerDeployerTxPath,
@@ -394,7 +394,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 				}
 				icmVersion = icmInfo.Version
 			}
-			if err := td.DownloadAssets(
+			if err := icmd.DownloadAssets(
 				d.app.GetTeleporterBinDir(),
 				icmVersion,
 			); err != nil {
@@ -405,7 +405,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 		if err != nil {
 			return nil, err
 		}
-		cchainAlreadyDeployed, cchainIcmMessengerAddress, cchainIcmRegistryAddress, err := td.Deploy(
+		cchainAlreadyDeployed, cchainIcmMessengerAddress, cchainIcmRegistryAddress, err := icmd.Deploy(
 			"c-chain",
 			network.BlockchainEndpoint("C"),
 			cChainKey.PrivKeyHex(),
@@ -441,7 +441,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 		if err != nil {
 			return nil, err
 		}
-		_, icmMessengerAddress, icmRegistryAddress, err = td.Deploy(
+		_, icmMessengerAddress, icmRegistryAddress, err = icmd.Deploy(
 			chain,
 			network.BlockchainEndpoint(blockchainID),
 			blockchainKey.PrivKeyHex(),

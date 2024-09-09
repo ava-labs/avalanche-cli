@@ -258,7 +258,7 @@ const (
 
 	AWMRelayerSnapshotConfsDir = "relayer-confs"
 
-	TeleporterKeyName = "cli-teleporter-deployer"
+	ICMKeyName        = "cli-teleporter-deployer"
 	AWMRelayerKeyName = "cli-awm-relayer"
 
 	AWMRelayerMetricsPort = 9091
