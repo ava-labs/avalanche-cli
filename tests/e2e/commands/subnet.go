@@ -225,6 +225,7 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	if confPath != "" {
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
+	cmdArgs = append(cmdArgs, "--proof-of-authority")
 	// in case we want to use specific avago for local tests
 	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
 	if debugAvalanchegoPath != "" {
