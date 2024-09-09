@@ -15,7 +15,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-type SourceEsp struct {
+type SourceSpec struct {
 	blockchainDesc      string
 	rpcEndpoint         string
 	wsEndpoint          string
@@ -26,7 +26,7 @@ type SourceEsp struct {
 	icmRegistryAddress  string
 }
 
-type DestinationEsp struct {
+type DestinationSpec struct {
 	blockchainDesc string
 	rpcEndpoint    string
 	blockchainID   string
@@ -34,9 +34,9 @@ type DestinationEsp struct {
 	privateKey     string
 }
 
-type ConfigEsp struct {
-	sources      []SourceEsp
-	destinations []DestinationEsp
+type ConfigSpec struct {
+	sources      []SourceSpec
+	destinations []DestinationSpec
 }
 
 const (
@@ -44,17 +44,17 @@ const (
 	cancelOption  = "Cancel"
 )
 
-func preview(configEsp ConfigEsp) {
+func preview(configSpec ConfigSpec) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetRowLine(true)
 	table.SetAutoMergeCellsByColumnIndex([]int{0})
-	if len(configEsp.sources) > 0 {
-		for _, source := range configEsp.sources {
+	if len(configSpec.sources) > 0 {
+		for _, source := range configSpec.sources {
 			table.Append([]string{"Source", source.blockchainDesc})
 		}
 	}
-	if len(configEsp.destinations) > 0 {
-		for _, destination := range configEsp.destinations {
+	if len(configSpec.destinations) > 0 {
+		for _, destination := range configSpec.destinations {
 			table.Append([]string{"Destination", destination.blockchainDesc})
 		}
 	}
@@ -62,26 +62,26 @@ func preview(configEsp ConfigEsp) {
 	fmt.Println()
 }
 
-func addBoth(network models.Network, configEsp ConfigEsp) (ConfigEsp, error) {
+func addBoth(network models.Network, configSpec ConfigSpec) (ConfigSpec, error) {
 	prompt := "Which blockchain do you want to set both as source and destination?"
 	var err error
 	chainSpec, err := getBlockchain(network, prompt)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
 	rpcEndpoint, wsEndpoint, err := contract.GetBlockchainEndpoints(app, network, chainSpec, true, true)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
-	configEsp, err = addSource(network, configEsp, chainSpec, rpcEndpoint, wsEndpoint)
+	configSpec, err = addSource(network, configSpec, chainSpec, rpcEndpoint, wsEndpoint)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
-	configEsp, err = addDestination(network, configEsp, chainSpec, rpcEndpoint)
+	configSpec, err = addDestination(network, configSpec, chainSpec, rpcEndpoint)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
-	return configEsp, nil
+	return configSpec, nil
 }
 
 func getBlockchain(network models.Network, prompt string) (contract.ChainSpec, error) {
@@ -104,42 +104,42 @@ func getBlockchain(network models.Network, prompt string) (contract.ChainSpec, e
 
 func addSource(
 	network models.Network,
-	configEsp ConfigEsp,
+	configSpec ConfigSpec,
 	chainSpec contract.ChainSpec,
 	rpcEndpoint string,
 	wsEndpoint string,
-) (ConfigEsp, error) {
+) (ConfigSpec, error) {
 	if !chainSpec.Defined() {
 		prompt := "Which blockchain do you want to set as source?"
 		var err error
 		chainSpec, err = getBlockchain(network, prompt)
 		if err != nil {
-			return ConfigEsp{}, err
+			return ConfigSpec{}, err
 		}
 		rpcEndpoint, wsEndpoint, err = contract.GetBlockchainEndpoints(app, network, chainSpec, true, true)
 		if err != nil {
-			return ConfigEsp{}, err
+			return ConfigSpec{}, err
 		}
 	}
 	blockchainID, err := contract.GetBlockchainID(app, network, chainSpec)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
-	if foundSource := utils.Find(configEsp.sources, func(s SourceEsp) bool { return s.blockchainID == blockchainID.String() }); foundSource != nil {
+	if foundSource := utils.Find(configSpec.sources, func(s SourceSpec) bool { return s.blockchainID == blockchainID.String() }); foundSource != nil {
 		ux.Logger.PrintToUser("blockchain is already a source")
-		return configEsp, nil
+		return configSpec, nil
 	}
 	blockchainDesc, err := contract.GetBlockchainDesc(chainSpec)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
 	subnetID, err := contract.GetSubnetID(app, network, chainSpec)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
 	icmRegistryAddress, icmMessengerAddress, err := contract.GetICMInfo(app, network, chainSpec, true, true, false)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
 	genesisAddress, _, err := contract.GetEVMSubnetPrefundedKey(
 		app,
@@ -147,7 +147,7 @@ func addSource(
 		chainSpec,
 	)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
 	rewardAddress, err := prompts.PromptAddress(
 		app.Prompt,
@@ -160,9 +160,9 @@ func addSource(
 		"Address",
 	)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
-	configEsp.sources = append(configEsp.sources, SourceEsp{
+	configSpec.sources = append(configSpec.sources, SourceSpec{
 		blockchainDesc:      blockchainDesc,
 		blockchainID:        blockchainID.String(),
 		subnetID:            subnetID.String(),
@@ -172,42 +172,42 @@ func addSource(
 		rpcEndpoint:         rpcEndpoint,
 		wsEndpoint:          wsEndpoint,
 	})
-	return configEsp, nil
+	return configSpec, nil
 }
 
 func addDestination(
 	network models.Network,
-	configEsp ConfigEsp,
+	configSpec ConfigSpec,
 	chainSpec contract.ChainSpec,
 	rpcEndpoint string,
-) (ConfigEsp, error) {
+) (ConfigSpec, error) {
 	if !chainSpec.Defined() {
 		prompt := "Which blockchain do you want to set as destination?"
 		var err error
 		chainSpec, err = getBlockchain(network, prompt)
 		if err != nil {
-			return ConfigEsp{}, err
+			return ConfigSpec{}, err
 		}
 		rpcEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, chainSpec, true, false)
 		if err != nil {
-			return ConfigEsp{}, err
+			return ConfigSpec{}, err
 		}
 	}
 	blockchainID, err := contract.GetBlockchainID(app, network, chainSpec)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
-	if foundDestination := utils.Find(configEsp.destinations, func(s DestinationEsp) bool { return s.blockchainID == blockchainID.String() }); foundDestination != nil {
+	if foundDestination := utils.Find(configSpec.destinations, func(s DestinationSpec) bool { return s.blockchainID == blockchainID.String() }); foundDestination != nil {
 		ux.Logger.PrintToUser("blockchain is already a destination")
-		return configEsp, nil
+		return configSpec, nil
 	}
 	blockchainDesc, err := contract.GetBlockchainDesc(chainSpec)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
 	subnetID, err := contract.GetSubnetID(app, network, chainSpec)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Please provide a key that is not going to be used for any other purpose on destination"))
 	privateKey, err := prompts.PromptPrivateKey(
@@ -219,64 +219,64 @@ func addDestination(
 		"",
 	)
 	if err != nil {
-		return ConfigEsp{}, err
+		return ConfigSpec{}, err
 	}
-	configEsp.destinations = append(configEsp.destinations, DestinationEsp{
+	configSpec.destinations = append(configSpec.destinations, DestinationSpec{
 		blockchainDesc: blockchainDesc,
 		blockchainID:   blockchainID.String(),
 		subnetID:       subnetID.String(),
 		privateKey:     privateKey,
 		rpcEndpoint:    rpcEndpoint,
 	})
-	return configEsp, nil
+	return configSpec, nil
 }
 
 func removeSource(
-	configEsp ConfigEsp,
-) (ConfigEsp, bool, error) {
-	if len(configEsp.sources) == 0 {
+	configSpec ConfigSpec,
+) (ConfigSpec, bool, error) {
+	if len(configSpec.sources) == 0 {
 		ux.Logger.PrintToUser("There are no sources to remove")
 		ux.Logger.PrintToUser("")
-		return configEsp, true, nil
+		return configSpec, true, nil
 	}
 	prompt := "Select the source you want to remove"
-	options := utils.Map(configEsp.sources, func(s SourceEsp) string { return s.blockchainDesc })
+	options := utils.Map(configSpec.sources, func(s SourceSpec) string { return s.blockchainDesc })
 	options = append(options, cancelOption)
 	opt, err := app.Prompt.CaptureList(prompt, options)
 	if err != nil {
-		return configEsp, false, err
+		return configSpec, false, err
 	}
 	if opt != cancelOption {
-		configEsp.sources = utils.Filter(configEsp.sources, func(s SourceEsp) bool { return s.blockchainDesc != opt })
-		return configEsp, false, nil
+		configSpec.sources = utils.Filter(configSpec.sources, func(s SourceSpec) bool { return s.blockchainDesc != opt })
+		return configSpec, false, nil
 	}
-	return configEsp, true, nil
+	return configSpec, true, nil
 }
 
 func removeDestination(
-	configEsp ConfigEsp,
-) (ConfigEsp, bool, error) {
-	if len(configEsp.destinations) == 0 {
+	configSpec ConfigSpec,
+) (ConfigSpec, bool, error) {
+	if len(configSpec.destinations) == 0 {
 		ux.Logger.PrintToUser("There are no destinations to remove")
 		ux.Logger.PrintToUser("")
-		return configEsp, true, nil
+		return configSpec, true, nil
 	}
 	prompt := "Select the destination you want to remove"
-	options := utils.Map(configEsp.destinations, func(d DestinationEsp) string { return d.blockchainDesc })
+	options := utils.Map(configSpec.destinations, func(d DestinationSpec) string { return d.blockchainDesc })
 	options = append(options, cancelOption)
 	opt, err := app.Prompt.CaptureList(prompt, options)
 	if err != nil {
-		return configEsp, false, err
+		return configSpec, false, err
 	}
 	if opt != cancelOption {
-		configEsp.destinations = utils.Filter(configEsp.destinations, func(d DestinationEsp) bool { return d.blockchainDesc != opt })
-		return configEsp, false, nil
+		configSpec.destinations = utils.Filter(configSpec.destinations, func(d DestinationSpec) bool { return d.blockchainDesc != opt })
+		return configSpec, false, nil
 	}
-	return configEsp, true, nil
+	return configSpec, true, nil
 }
 
-func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
-	configEsp := ConfigEsp{}
+func GenerateConfigSpec(network models.Network) (ConfigSpec, bool, error) {
+	configSpec := ConfigSpec{}
 
 	prompt := "Configure the blockchains that will be interconnected by the relayer"
 
@@ -293,14 +293,14 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 			confirmOption,
 			cancelOption,
 		}
-		if len(configEsp.sources) == 0 && len(configEsp.destinations) == 0 {
+		if len(configSpec.sources) == 0 && len(configSpec.destinations) == 0 {
 			options = utils.RemoveFromSlice(options, removeOption)
 			options = utils.RemoveFromSlice(options, previewOption)
 			options = utils.RemoveFromSlice(options, confirmOption)
 		}
 		option, err := app.Prompt.CaptureList(prompt, options)
 		if err != nil {
-			return ConfigEsp{}, false, err
+			return ConfigSpec{}, false, err
 		}
 		switch option {
 		case addOption:
@@ -312,23 +312,23 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 				options := []string{addBothOption, addSourceOption, addDestinationOption, explainOption, cancelOption}
 				roleOption, err := app.Prompt.CaptureList(addPrompt, options)
 				if err != nil {
-					return ConfigEsp{}, false, err
+					return ConfigSpec{}, false, err
 				}
 				switch roleOption {
 				case addBothOption:
-					configEsp, err = addBoth(network, configEsp)
+					configSpec, err = addBoth(network, configSpec)
 					if err != nil {
-						return ConfigEsp{}, false, err
+						return ConfigSpec{}, false, err
 					}
 				case addSourceOption:
-					configEsp, err = addSource(network, configEsp, contract.ChainSpec{}, "", "")
+					configSpec, err = addSource(network, configSpec, contract.ChainSpec{}, "", "")
 					if err != nil {
-						return ConfigEsp{}, false, err
+						return ConfigSpec{}, false, err
 					}
 				case addDestinationOption:
-					configEsp, err = addDestination(network, configEsp, contract.ChainSpec{}, "")
+					configSpec, err = addDestination(network, configSpec, contract.ChainSpec{}, "")
 					if err != nil {
-						return ConfigEsp{}, false, err
+						return ConfigSpec{}, false, err
 					}
 				case explainOption:
 					ux.Logger.PrintToUser("A source blockchain is going to be listened by the relayer to check for new")
@@ -347,36 +347,36 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 				removeSourceOption := "Source"
 				removeDestinationOption := "Destination"
 				options := []string{}
-				if len(configEsp.sources) != 0 {
+				if len(configSpec.sources) != 0 {
 					options = append(options, removeSourceOption)
 				}
-				if len(configEsp.destinations) != 0 {
+				if len(configSpec.destinations) != 0 {
 					options = append(options, removeDestinationOption)
 				}
 				options = append(options, cancelOption)
 				kindOption, err := app.Prompt.CaptureList(removePrompt, options)
 				if err != nil {
-					return ConfigEsp{}, false, err
+					return ConfigSpec{}, false, err
 				}
 				switch kindOption {
 				case removeSourceOption:
-					configEsp, keepAsking, err = removeSource(configEsp)
+					configSpec, keepAsking, err = removeSource(configSpec)
 					if err != nil {
-						return ConfigEsp{}, false, err
+						return ConfigSpec{}, false, err
 					}
 				case removeDestinationOption:
-					configEsp, keepAsking, err = removeDestination(configEsp)
+					configSpec, keepAsking, err = removeDestination(configSpec)
 					if err != nil {
-						return ConfigEsp{}, false, err
+						return ConfigSpec{}, false, err
 					}
 				case cancelOption:
 					keepAsking = false
 				}
 			}
 		case previewOption:
-			preview(configEsp)
+			preview(configSpec)
 		case confirmOption:
-			preview(configEsp)
+			preview(configSpec)
 			confirmPrompt := "Confirm?"
 			yesOption := "Yes"
 			noOption := "No, keep editing"
@@ -384,13 +384,13 @@ func GenerateConfigEsp(network models.Network) (ConfigEsp, bool, error) {
 				confirmPrompt, []string{yesOption, noOption},
 			)
 			if err != nil {
-				return ConfigEsp{}, false, err
+				return ConfigSpec{}, false, err
 			}
 			if confirmOption == yesOption {
-				return configEsp, false, nil
+				return configSpec, false, nil
 			}
 		case cancelOption:
-			return ConfigEsp{}, true, err
+			return ConfigSpec{}, true, err
 		}
 	}
 }

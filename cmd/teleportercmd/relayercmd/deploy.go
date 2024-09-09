@@ -169,14 +169,14 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	var configEsp ConfigEsp
+	var configSpec ConfigSpec
 	if configureBlockchains {
 		// TODO: this is the base for a 'relayer config' cmd
-		// that should load the current config, generate a configEsp for that,
+		// that should load the current config, generate a configSpec for that,
 		// and use this to change the config, before saving it
 		// most probably, also, relayer config should restart the relayer
 		var cancel bool
-		configEsp, cancel, err = GenerateConfigEsp(network)
+		configSpec, cancel, err = GenerateConfigSpec(network)
 		if cancel {
 			return nil
 		}
@@ -186,12 +186,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	fundBlockchains := false
-	if networkUP && len(configEsp.destinations) > 0 {
+	if networkUP && len(configSpec.destinations) > 0 {
 		// TODO: this (and the next section) are the base for a 'relayer fund' cmd
 		// it must be based on relayer conf, and try to gather a nice blockchain desc
 		// from the blockchain id (as relayer logs cmd)
 		ux.Logger.PrintToUser("")
-		for _, destination := range configEsp.destinations {
+		for _, destination := range configSpec.destinations {
 			pk, err := crypto.HexToECDSA(destination.privateKey)
 			if err != nil {
 				return err
@@ -237,7 +237,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	if fundBlockchains {
-		for _, destination := range configEsp.destinations {
+		for _, destination := range configSpec.destinations {
 			pk, err := crypto.HexToECDSA(destination.privateKey)
 			if err != nil {
 				return err
@@ -337,7 +337,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err := teleporter.CreateBaseRelayerConfig(configPath, logLevel, storageDir, network); err != nil {
 		return err
 	}
-	for _, source := range configEsp.sources {
+	for _, source := range configSpec.sources {
 		if err := teleporter.AddSourceToRelayerConfig(
 			configPath,
 			source.rpcEndpoint,
@@ -351,7 +351,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
-	for _, destination := range configEsp.destinations {
+	for _, destination := range configSpec.destinations {
 		if err := teleporter.AddDestinationToRelayerConfig(
 			configPath,
 			destination.rpcEndpoint,
@@ -363,7 +363,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
-	if len(configEsp.sources) > 0 && len(configEsp.destinations) > 0 {
+	if len(configSpec.sources) > 0 && len(configSpec.destinations) > 0 {
 		// relayer fails for empty configs
 		err := teleporter.DeployRelayer(
 			flags.Version,

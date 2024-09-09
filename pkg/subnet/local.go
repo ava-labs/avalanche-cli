@@ -78,7 +78,7 @@ type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, erro
 
 type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 
-type ICMEsp struct {
+type ICMSpec struct {
 	SkipICMDeploy                bool
 	SkipRelayerDeploy            bool
 	Version                      string
@@ -101,13 +101,13 @@ type DeployInfo struct {
 func (d *LocalDeployer) DeployToLocalNetwork(
 	chain string,
 	genesisPath string,
-	icmEsp ICMEsp,
+	icmSpec ICMSpec,
 	subnetIDStr string,
 ) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, genesisPath, icmEsp, subnetIDStr)
+	return d.doDeploy(chain, genesisPath, icmSpec, subnetIDStr)
 }
 
 func (d *LocalDeployer) StartServer() error {
@@ -151,7 +151,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSpec, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -198,7 +198,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
-	if sc.RunRelayer && !icmEsp.SkipRelayerDeploy {
+	if sc.RunRelayer && !icmSpec.SkipRelayerDeploy {
 		// relayer stop/cleanup is neeeded in the case it is registered to blockchains
 		// if not, network restart fails
 		if err := teleporter.RelayerCleanup(
@@ -348,7 +348,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 		icmMessengerAddress string
 		icmRegistryAddress  string
 	)
-	if sc.TeleporterReady && !icmEsp.SkipICMDeploy {
+	if sc.TeleporterReady && !icmSpec.SkipICMDeploy {
 		network := models.NewLocalNetwork()
 		// get relayer address
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
@@ -371,20 +371,20 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
 		icmd := teleporter.Deployer{}
-		if icmEsp.MessengerContractAddressPath != "" {
+		if icmSpec.MessengerContractAddressPath != "" {
 			if err := icmd.SetAssetsFromPaths(
-				icmEsp.MessengerContractAddressPath,
-				icmEsp.MessengerDeployerAddressPath,
-				icmEsp.MessengerDeployerTxPath,
-				icmEsp.RegistryBydecodePath,
+				icmSpec.MessengerContractAddressPath,
+				icmSpec.MessengerDeployerAddressPath,
+				icmSpec.MessengerDeployerTxPath,
+				icmSpec.RegistryBydecodePath,
 			); err != nil {
 				return nil, err
 			}
 		} else {
 			icmVersion := ""
 			switch {
-			case icmEsp.Version != "" && icmEsp.Version != "latest":
-				icmVersion = icmEsp.Version
+			case icmSpec.Version != "" && icmSpec.Version != "latest":
+				icmVersion = icmSpec.Version
 			case sc.TeleporterVersion != "":
 				icmVersion = sc.TeleporterVersion
 			default:
@@ -451,7 +451,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmEsp ICMEsp
 		if err != nil {
 			return nil, err
 		}
-		if sc.RunRelayer && !icmEsp.SkipRelayerDeploy {
+		if sc.RunRelayer && !icmSpec.SkipRelayerDeploy {
 			if !cchainAlreadyDeployed {
 				if err := teleporter.FundRelayer(
 					network.BlockchainEndpoint("C"),
