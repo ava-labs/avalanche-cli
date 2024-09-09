@@ -26,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
@@ -566,4 +567,25 @@ func StringValue(data map[string]interface{}, key string) (string, error) {
 		return fmt.Sprintf("%v", value), nil
 	}
 	return "", fmt.Errorf("key %s not found", key)
+}
+
+func LogLevelToEmoji(logLevel string) (string, error) {
+	levelEmoji := ""
+	level, err := logging.ToLevel(logLevel)
+	if err != nil {
+		return "", err
+	}
+	switch level {
+	case logging.Info:
+		levelEmoji = "ℹ️"
+	case logging.Debug:
+		levelEmoji = "🪲"
+	case logging.Warn:
+		levelEmoji = "⚠️"
+	case logging.Error:
+		levelEmoji = "⛔"
+	case logging.Fatal:
+		levelEmoji = "💀"
+	}
+	return levelEmoji, nil
 }

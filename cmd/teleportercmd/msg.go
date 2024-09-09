@@ -48,14 +48,7 @@ func newMsgCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(3),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(
-		cmd,
-		&msgFlags.PrivateKeyFlags,
-		"as message originator and to pay source blockchain fees",
-		"",
-		"",
-		"",
-	)
+	msgFlags.PrivateKeyFlags.AddToCmd(cmd, "as message originator and to pay source blockchain fees")
 	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
 	cmd.Flags().StringVar(&msgFlags.SourceRPCEndpoint, "source-rpc", "", "use the given source blockchain rpc endpoint")
@@ -116,12 +109,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	privateKey, err := contract.GetPrivateKeyFromFlags(
-		app,
-		msgFlags.PrivateKeyFlags,
-		genesisPrivateKey,
-		"",
-	)
+	privateKey, err := msgFlags.PrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}

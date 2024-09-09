@@ -92,22 +92,10 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", true, "remove the native minter precompile admin found on remote blockchain genesis")
-	contract.AddPrivateKeyFlagsToCmd(
-		cmd,
-		&deployFlags.homeFlags.privateKeyFlags,
-		"to deploy Transferrer Home",
-		"home-private-key",
-		"home-key",
-		"home-genesis-key",
-	)
-	contract.AddPrivateKeyFlagsToCmd(
-		cmd,
-		&deployFlags.remoteFlags.privateKeyFlags,
-		"to deploy Transferrer Remote",
-		"remote-private-key",
-		"remote-key",
-		"remote-genesis-key",
-	)
+	deployFlags.homeFlags.privateKeyFlags.SetFlagNames("home-private-key", "home-key", "home-genesis-key")
+	deployFlags.homeFlags.privateKeyFlags.AddToCmd(cmd, "to deploy Transferrer Home")
+	deployFlags.remoteFlags.privateKeyFlags.SetFlagNames("remote-private-key", "remote-key", "remote-genesis-key")
+	deployFlags.remoteFlags.privateKeyFlags.AddToCmd(cmd, "to deploy Transferrer Remote")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.RPCEndpoint, "home-rpc", "", "use the given RPC URL to connect to the home blockchain")
 	cmd.Flags().StringVar(&deployFlags.remoteFlags.RPCEndpoint, "remote-rpc", "", "use the given RPC URL to connect to the remote blockchain")
 	return cmd
@@ -328,12 +316,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		homeKey, err = contract.GetPrivateKeyFromFlags(
-			app,
-			flags.homeFlags.privateKeyFlags,
-			genesisPrivateKey,
-			"--home-private-key, --home-key and --home-genesis-key are mutually exclusive flags",
-		)
+		homeKey, err = flags.homeFlags.privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 		if err != nil {
 			return err
 		}
@@ -406,12 +389,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	remoteKey, err := contract.GetPrivateKeyFromFlags(
-		app,
-		flags.remoteFlags.privateKeyFlags,
-		genesisPrivateKey,
-		"--remote-private-key, --remote-key and --remote-genesis-key are mutually exclusive flags",
-	)
+	remoteKey, err := flags.remoteFlags.privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}

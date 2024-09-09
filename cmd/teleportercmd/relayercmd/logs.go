@@ -108,7 +108,7 @@ func logs(_ *cobra.Command, _ []string) error {
 			levelEmoji := ""
 			levelStr, b := logMap["level"].(string)
 			if b {
-				levelEmoji, err = logLevelToEmoji(levelStr)
+				levelEmoji, err = utils.LogLevelToEmoji(levelStr)
 				if err != nil {
 					return err
 				}
@@ -210,25 +210,4 @@ func getBlockchainIDToBlockchainNameMap(network models.Network) (map[string]stri
 	}
 	blockchainIDToBlockchainName[blockchainID.String()] = "c-chain"
 	return blockchainIDToBlockchainName, nil
-}
-
-func logLevelToEmoji(logLevel string) (string, error) {
-	levelEmoji := ""
-	level, err := logging.ToLevel(logLevel)
-	if err != nil {
-		return "", err
-	}
-	switch level {
-	case logging.Info:
-		levelEmoji = "ℹ️"
-	case logging.Debug:
-		levelEmoji = "🪲"
-	case logging.Warn:
-		levelEmoji = "⚠️"
-	case logging.Error:
-		levelEmoji = "⛔"
-	case logging.Fatal:
-		levelEmoji = "💀"
-	}
-	return levelEmoji, nil
 }

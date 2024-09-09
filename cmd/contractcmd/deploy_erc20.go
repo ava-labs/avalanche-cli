@@ -46,7 +46,7 @@ func newDeployERC20Cmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &deployERC20Flags.PrivateKeyFlags, "as contract deployer", "", "", "")
+	deployERC20Flags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	contract.AddChainSpecToCmd(
 		cmd,
 		&deployERC20Flags.chainFlags,
@@ -82,8 +82,15 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	}
 	if !contract.DefinedChainSpec(deployERC20Flags.chainFlags) {
 		prompt := "Where do you want to Deploy the ERC-20 Token?"
-		cancel, err := contract.PromptChain(app, network, prompt, false, "", true, &deployERC20Flags.chainFlags)
-		if cancel || err != nil {
+		if cancel, err := contract.PromptChain(
+			app,
+			network,
+			prompt,
+			false,
+			"",
+			true,
+			&deployERC20Flags.chainFlags,
+		); cancel || err != nil {
 			return err
 		}
 	}
@@ -108,12 +115,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	privateKey, err := contract.GetPrivateKeyFromFlags(
-		app,
-		deployERC20Flags.PrivateKeyFlags,
-		genesisPrivateKey,
-		"",
-	)
+	privateKey, err := deployERC20Flags.PrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}

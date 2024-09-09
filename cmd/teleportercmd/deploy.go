@@ -58,7 +58,7 @@ func newDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &deployFlags.PrivateKeyFlags, "to fund ICM deploy", "", "", "")
+	deployFlags.PrivateKeyFlags.AddToCmd(cmd, "to fund ICM deploy")
 	contract.AddChainSpecToCmd(
 		cmd,
 		&deployFlags.ChainFlags,
@@ -135,12 +135,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	privateKey, err := contract.GetPrivateKeyFromFlags(
-		app,
-		flags.PrivateKeyFlags,
-		genesisPrivateKey,
-		"",
-	)
+	privateKey, err := flags.PrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}
