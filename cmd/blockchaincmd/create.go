@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
