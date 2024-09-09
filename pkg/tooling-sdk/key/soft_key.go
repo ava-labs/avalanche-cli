@@ -158,10 +158,6 @@ func LoadSoftOrCreate(keyPath string) (*SoftKey, error) {
 	}
 }
 
-func LoadEwoq() (*SoftKey, error) {
-	return LoadSoftFromBytes(ewoqKeyBytes)
-}
-
 // LoadSoftFromBytes loads the private key from bytes and creates the corresponding SoftKey.
 func LoadSoftFromBytes(kb []byte) (*SoftKey, error) {
 	// in case, it's already encoded

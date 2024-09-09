@@ -4,8 +4,6 @@ package wallet
 
 import (
 	"context"
-	"errors"
-
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/keychain"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -13,8 +11,6 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
-
-var ErrNotReadyToCommit = errors.New("tx is not fully signed so can't be committed")
 
 type Wallet struct {
 	primary.Wallet

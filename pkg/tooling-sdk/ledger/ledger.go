@@ -34,14 +34,6 @@ func New() (*LedgerDevice, error) {
 	return &dev, nil
 }
 
-func (dev *LedgerDevice) P(network avalanchesdk.Network, indices []uint32) ([]string, error) {
-	addresses, err := dev.Addresses(indices)
-	if err != nil {
-		return nil, err
-	}
-	return utils.P(network.HRP(), addresses)
-}
-
 func (dev *LedgerDevice) FindAddresses(addresses []string, maxIndex uint32) (map[string]uint32, error) {
 	addressesIDs, err := address.ParseToIDs(addresses)
 	if err != nil {
@@ -71,7 +63,7 @@ func (dev *LedgerDevice) FindAddresses(addresses []string, maxIndex uint32) (map
 	return indices, nil
 }
 
-// search for a set of indices that pay a given amount
+// FindFunds searches for a set of indices that pay a given amount
 func (dev *LedgerDevice) FindFunds(
 	network avalanchesdk.Network,
 	amount uint64,

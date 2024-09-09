@@ -97,11 +97,6 @@ func NewKeychain(
 	return &kc, nil
 }
 
-// P returns string formatted addresses in the keychain
-func (kc *Keychain) P() ([]string, error) {
-	return utils.P(kc.network.HRP(), kc.Addresses().List())
-}
-
 func (kc *Keychain) LedgerEnabled() bool {
 	return kc.Ledger.LedgerDevice != nil
 }

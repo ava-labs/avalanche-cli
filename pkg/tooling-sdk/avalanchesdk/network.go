@@ -4,14 +4,7 @@
 package avalanchesdk
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/utils"
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
 
 type NetworkKind int64
@@ -28,18 +21,6 @@ const (
 	MainnetAPIEndpoint = "https://api.avax.network"
 )
 
-func (nk NetworkKind) String() string {
-	switch nk {
-	case Mainnet:
-		return "Mainnet"
-	case Fuji:
-		return "Fuji"
-	case Devnet:
-		return "Devnet"
-	}
-	return "invalid network"
-}
-
 type Network struct {
 	Kind     NetworkKind
 	ID       uint32
@@ -47,17 +28,6 @@ type Network struct {
 }
 
 var UndefinedNetwork = Network{}
-
-func (n Network) HRP() string {
-	switch n.ID {
-	case constants.FujiID:
-		return constants.FujiHRP
-	case constants.MainnetID:
-		return constants.MainnetHRP
-	default:
-		return constants.FallbackHRP
-	}
-}
 
 func NetworkFromNetworkID(networkID uint32) Network {
 	switch networkID {
@@ -83,38 +53,4 @@ func FujiNetwork() Network {
 
 func MainnetNetwork() Network {
 	return NewNetwork(Mainnet, constants.MainnetID, MainnetAPIEndpoint)
-}
-
-func (n Network) GenesisParams() *genesis.Params {
-	switch n.Kind {
-	case Devnet:
-		return &genesis.LocalParams
-	case Fuji:
-		return &genesis.FujiParams
-	case Mainnet:
-		return &genesis.MainnetParams
-	}
-	return nil
-}
-
-func (n Network) BlockchainEndpoint(blockchainID string) string {
-	return fmt.Sprintf("%s/ext/bc/%s/rpc", n.Endpoint, blockchainID)
-}
-
-func (n Network) BlockchainWSEndpoint(blockchainID string) string {
-	trimmedURI := n.Endpoint
-	trimmedURI = strings.TrimPrefix(trimmedURI, "http://")
-	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
-	return fmt.Sprintf("ws://%s/ext/bc/%s/ws", trimmedURI, blockchainID)
-}
-
-func (n Network) GetMinStakingAmount() (uint64, error) {
-	pClient := platformvm.NewClient(n.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	minValStake, _, err := pClient.GetMinStake(ctx, ids.Empty)
-	if err != nil {
-		return 0, err
-	}
-	return minValStake, nil
 }

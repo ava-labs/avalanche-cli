@@ -12,27 +12,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
-var _ Key = &LedgerKey{}
-
 type LedgerKey struct {
 	index uint32
-}
-
-// ledger device should be connected
-func NewLedger(index uint32) LedgerKey {
-	return LedgerKey{
-		index: index,
-	}
-}
-
-// LoadLedger loads the ledger key info from disk and creates the corresponding LedgerKey.
-func LoadLedger(_ string) (*LedgerKey, error) {
-	return nil, fmt.Errorf("not implemented")
-}
-
-// LoadLedgerFromBytes loads the ledger key info from bytes and creates the corresponding LedgerKey.
-func LoadLedgerFromBytes(_ []byte) (*SoftKey, error) {
-	return nil, fmt.Errorf("not implemented")
 }
 
 func (*LedgerKey) C() string {
