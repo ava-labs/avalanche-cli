@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"os"
 	"sort"
 	"strconv"
@@ -45,6 +46,8 @@ type CreateFlags struct {
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
 	useExternalGasToken           bool
+	proofOfStake                  bool
+	proofOfAuthority              bool
 }
 
 var (
@@ -58,6 +61,7 @@ var (
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions   = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
+	errMutuallyExlusiveConsensusOptions = errors.New("consensus flags --proof-of-authority,--proof-of-stake are mutually exclusive")
 )
 
 // avalanche blockchain create
@@ -101,6 +105,8 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
+	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority consensus")
+	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake consensus")
 	return cmd
 }
 
@@ -183,6 +189,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	// vm type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVM}) {
 		return errors.New("flags --evm,--custom are mutually exclusive")
+	}
+
+	// consensus type exclusiveness
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStake}) {
+		return errMutuallyExlusiveConsensusOptions
 	}
 
 	// get vm kind
@@ -343,7 +354,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
-
+	if err = promptConsensusType(app, sc); err != nil {
+		return err
+	}
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
@@ -420,5 +433,45 @@ func checkInvalidSubnetNames(name string) error {
 			return errIllegalNameCharacter
 		}
 	}
+	return nil
+}
+
+// TODO: add explain the difference for different consensus
+func promptConsensusType(
+	app *application.Avalanche,
+	sidecar *models.Sidecar,
+) error {
+	proofOfAuthorityOption := "Proof of Authority"
+	proofOfStakeOption := "Proof of Stake"
+	explainOption := "Explain the difference"
+	if createFlags.proofOfStake {
+		sidecar.Consensus = models.ConsensusTypeFromString(proofOfStakeOption)
+		return nil
+	}
+	if createFlags.proofOfAuthority {
+		sidecar.Consensus = models.ConsensusTypeFromString(proofOfAuthorityOption)
+		return nil
+	}
+	options := []string{proofOfAuthorityOption, proofOfStakeOption, explainOption}
+	var subnetTypeStr string
+	for {
+		option, err := app.Prompt.CaptureList(
+			"Which consensus would you like to use in your blockchain?",
+			options,
+		)
+		if err != nil {
+			return err
+		}
+		switch option {
+		case proofOfAuthorityOption:
+			subnetTypeStr = models.ProofOfAuthority
+		case proofOfStakeOption:
+			subnetTypeStr = models.ProofOfStake
+		case explainOption:
+			continue
+		}
+		break
+	}
+	sidecar.Consensus = models.ConsensusTypeFromString(subnetTypeStr)
 	return nil
 }
