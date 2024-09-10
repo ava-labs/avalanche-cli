@@ -5,13 +5,11 @@ package multisig
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanchesdk"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
-	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
@@ -68,30 +66,6 @@ func (ms *Multisig) ToBytes() ([]byte, error) {
 	return txBytes, nil
 }
 
-func (ms *Multisig) ToFile(txPath string) error {
-	if ms.Undefined() {
-		return ErrUndefinedTx
-	}
-	txBytes, err := ms.ToBytes()
-	if err != nil {
-		return err
-	}
-	txStr, err := formatting.Encode(formatting.Hex, txBytes)
-	if err != nil {
-		return fmt.Errorf("couldn't encode signed tx: %w", err)
-	}
-	f, err := os.Create(txPath)
-	if err != nil {
-		return fmt.Errorf("couldn't create file to write tx to: %w", err)
-	}
-	defer f.Close()
-	_, err = f.WriteString(txStr)
-	if err != nil {
-		return fmt.Errorf("couldn't write tx into file: %w", err)
-	}
-	return nil
-}
-
 func (ms *Multisig) FromBytes(txBytes []byte) error {
 	var tx txs.Tx
 	if _, err := txs.Codec.Unmarshal(txBytes, &tx); err != nil {
@@ -102,18 +76,6 @@ func (ms *Multisig) FromBytes(txBytes []byte) error {
 	}
 	ms.PChainTx = &tx
 	return nil
-}
-
-func (ms *Multisig) FromFile(txPath string) error {
-	txEncodedBytes, err := os.ReadFile(txPath)
-	if err != nil {
-		return err
-	}
-	txBytes, err := formatting.Decode(formatting.Hex, string(txEncodedBytes))
-	if err != nil {
-		return fmt.Errorf("couldn't decode signed tx: %w", err)
-	}
-	return ms.FromBytes(txBytes)
 }
 
 func (ms *Multisig) IsReadyToCommit() (bool, error) {

@@ -59,26 +59,6 @@ func (op *Op) applyOpts(opts []OpOption) {
 	}
 }
 
-func WithTime(t uint64) OpOption {
-	return func(op *Op) {
-		op.time = t
-	}
-}
-
-func WithTargetAmount(ta uint64) OpOption {
-	return func(op *Op) {
-		op.targetAmount = ta
-	}
-}
-
-// To deduct transfer fee from total spend (output).
-// e.g., "units.MilliAvax" for X/P-Chain transfer.
-func WithFeeDeduct(fee uint64) OpOption {
-	return func(op *Op) {
-		op.feeDeduct = fee
-	}
-}
-
 type innerSortTransferableInputsWithSigners struct {
 	ins     []*avax.TransferableInput
 	signers [][]ids.ShortID
