@@ -383,7 +383,7 @@ func addChainToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: fmt.Sprintf("http://%s:%d/ext/bc/%s/rpc", host, port, blockchainID),
 		},
 		AccountPrivateKey: relayerFundedAddressKey,
