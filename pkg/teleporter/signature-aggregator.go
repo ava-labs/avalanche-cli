@@ -5,6 +5,7 @@ package teleporter
 import (
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
@@ -23,7 +24,10 @@ import (
 const (
 	DefaultQuorumPercentage   = 67
 	DefaultSignatureCacheSize = uint64(1024 * 1024)
-	DefaultMetricPort         = 9072
+)
+
+var (
+	etnaTime = time.Unix(0, 0)
 )
 
 type SignatureAggregator struct {
@@ -73,8 +77,7 @@ func NewSignatureAggregator(
 		constants.DefaultNetworkCompressionType,
 		constants.DefaultNetworkMaximumInboundTimeout,
 	)
-	registry := metrics.Initialize(DefaultMetricPort)
-	metricsInstance := metrics.NewSignatureAggregatorMetrics(registry)
+	metricsInstance := metrics.NewSignatureAggregatorMetrics(prometheus.DefaultRegisterer)
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
 		network,
 		logger,
@@ -125,5 +128,5 @@ func (s *SignatureAggregator) AggregateSignatures(
 		s.subnetID,
 		s.quorumPercentage,
 	)
-	return hex.EncodeToString(signedMessage.Bytes()), nil
+	return hex.EncodeToString(signedMessage.Bytes()), err
 }
