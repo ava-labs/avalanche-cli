@@ -25,8 +25,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/awm-relayer/config"
+	apiConfig "github.com/ava-labs/awm-relayer/config"
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
+	"github.com/ava-labs/awm-relayer/relayer/config"
 )
 
 const (
@@ -326,11 +327,11 @@ func createRelayerConfig(
 ) config.Config {
 	return config.Config{
 		LogLevel: logLevel,
-		PChainAPI: &config.APIConfig{
+		PChainAPI: &apiConfig.APIConfig{
 			BaseURL:     endpoint,
 			QueryParams: map[string]string{},
 		},
-		InfoAPI: &config.APIConfig{
+		InfoAPI: &apiConfig.APIConfig{
 			BaseURL:     endpoint,
 			QueryParams: map[string]string{},
 		},
@@ -357,10 +358,10 @@ func addChainToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: fmt.Sprintf("http://%s:%d/ext/bc/%s/rpc", host, port, blockchainID),
 		},
-		WSEndpoint: config.APIConfig{
+		WSEndpoint: apiConfig.APIConfig{
 			BaseURL: fmt.Sprintf("ws://%s:%d/ext/bc/%s/ws", host, port, blockchainID),
 		},
 		MessageContracts: map[string]config.MessageProtocolConfig{

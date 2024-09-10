@@ -10,8 +10,6 @@ import (
 	"github.com/ava-labs/awm-relayer/signature-aggregator/aggregator"
 	awmTypes "github.com/ava-labs/awm-relayer/types"
 	awmUtils "github.com/ava-labs/awm-relayer/utils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
 const (
@@ -69,7 +67,7 @@ func (s *SignatureAggregator) AggregateSignatures(
 		return "", fmt.Errorf("failed to decode justification: %w", err)
 	}
 	// checks
-	if utils.IsEmptyOrZeroes(message.Bytes()) && utils.IsEmptyOrZeroes(justification) {
+	if awmUtils.IsEmptyOrZeroes(message.Bytes()) && awmUtils.IsEmptyOrZeroes(justification) {
 		return "", fmt.Errorf("message and justification cannot be empty")
 	}
 
