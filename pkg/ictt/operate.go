@@ -113,7 +113,7 @@ func TokenHomeGetDecimals(
 	}
 	decimals, b := out[0].(uint8)
 	if !b {
-		return 0, fmt.Errorf("error at getDecimals, expected uint8, got %T", out[0])
+		return 0, fmt.Errorf("error at tokenDecimals, expected uint8, got %T", out[0])
 	}
 	return decimals, nil
 }
