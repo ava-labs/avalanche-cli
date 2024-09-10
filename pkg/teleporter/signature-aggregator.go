@@ -70,6 +70,9 @@ func NewSignatureAggregator(
 			InfoAPI:   &apiConfig.APIConfig{},
 		},
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create network: %w", err)
+	}
 
 	messageCreator, err := message.NewCreator(
 		logger,
@@ -77,6 +80,10 @@ func NewSignatureAggregator(
 		constants.DefaultNetworkCompressionType,
 		constants.DefaultNetworkMaximumInboundTimeout,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create message creator: %w", err)
+	}
+
 	metricsInstance := metrics.NewSignatureAggregatorMetrics(prometheus.DefaultRegisterer)
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
 		network,
