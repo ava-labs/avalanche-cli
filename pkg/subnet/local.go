@@ -364,6 +364,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 			relayerConfigPath,
 			logging.Info.LowerString(),
 			d.app.GetLocalRelayerStorageDir(models.Local),
+			constants.LocalNetworkLocalAWMRelayerMetricsPort,
 			network,
 		); err != nil {
 			return nil, err
@@ -508,6 +509,10 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 				d.app.GetLocalRelayerRunPath(models.Local),
 				d.app.GetLocalRelayerStorageDir(models.Local),
 			); err != nil {
+				logPath := d.app.GetLocalRelayerLogPath(models.Local)
+				if bs, err := os.ReadFile(logPath); err == nil {
+					ux.Logger.PrintToUser(string(bs))
+				}
 				return nil, err
 			}
 		}

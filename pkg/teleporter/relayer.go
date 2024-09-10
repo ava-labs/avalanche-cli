@@ -324,6 +324,7 @@ func CreateBaseRelayerConfigIfMissing(
 	relayerConfigPath string,
 	logLevel string,
 	storageLocation string,
+	metricsPort uint16,
 	network models.Network,
 ) error {
 	if !utils.FileExists(relayerConfigPath) {
@@ -331,6 +332,7 @@ func CreateBaseRelayerConfigIfMissing(
 			relayerConfigPath,
 			logLevel,
 			storageLocation,
+			metricsPort,
 			network,
 		)
 	}
@@ -341,6 +343,7 @@ func CreateBaseRelayerConfig(
 	relayerConfigPath string,
 	logLevel string,
 	storageLocation string,
+	metricsPort uint16,
 	network models.Network,
 ) error {
 	awmRelayerConfig := &config.Config{
@@ -357,7 +360,7 @@ func CreateBaseRelayerConfig(
 		ProcessMissedBlocks:    false,
 		SourceBlockchains:      []*config.SourceBlockchain{},
 		DestinationBlockchains: []*config.DestinationBlockchain{},
-		MetricsPort:            constants.AWMRelayerMetricsPort,
+		MetricsPort:            metricsPort,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }
