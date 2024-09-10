@@ -322,7 +322,7 @@ func displayAllocations(alloc core.GenesisAlloc) {
 }
 
 func createNewKeyAllocation(app *application.Avalanche, subnetName string) (core.GenesisAlloc, error) {
-	keyName := utils.GetDefaultSubnetAirdropKeyName(subnetName)
+	keyName := utils.GetDefaultBlockchainAirdropKeyName(subnetName)
 	k, err := app.GetKey(keyName, models.NewLocalNetwork(), true)
 	if err != nil {
 		return core.GenesisAlloc{}, err
@@ -397,7 +397,7 @@ func getNativeGasTokenAllocationConfig(
 				}
 
 				res[address] = core.GenesisAccount{
-					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), oneAvax),
+					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), OneAvax),
 				}
 			case changeAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to update the allocation of")
@@ -416,7 +416,7 @@ func getNativeGasTokenAllocationConfig(
 					return core.GenesisAlloc{}, err
 				}
 				res[address] = core.GenesisAccount{
-					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), oneAvax),
+					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), OneAvax),
 				}
 			case removeAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to remove from the allocation list")

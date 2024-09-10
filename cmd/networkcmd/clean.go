@@ -58,8 +58,8 @@ func clean(*cobra.Command, []string) error {
 	}
 
 	if err := teleporter.RelayerCleanup(
-		app.GetAWMRelayerRunPath(),
-		app.GetAWMRelayerStorageDir(),
+		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
 	}
