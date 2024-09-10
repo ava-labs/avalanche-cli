@@ -188,24 +188,24 @@ func getPrecompiles(
 	}
 
 	if subnetEVMGenesisParams.enableNativeMinterPrecompile {
-		mintConfig := configureNativeMinter(subnetEVMGenesisParams)
+		mintConfig := configureNativeMinter(subnetEVMGenesisParams, genesisTimestamp)
 		precompiles[nativeminter.ConfigKey] = &mintConfig
 	}
 
 	if subnetEVMGenesisParams.enableContractDeployerPrecompile {
-		contractConfig := configureContractDeployerAllowList(subnetEVMGenesisParams)
+		contractConfig := configureContractDeployerAllowList(subnetEVMGenesisParams, genesisTimestamp)
 		precompiles[deployerallowlist.ConfigKey] = &contractConfig
 	}
 	if subnetEVMGenesisParams.enableTransactionPrecompile {
-		txConfig := configureTransactionAllowList(subnetEVMGenesisParams)
+		txConfig := configureTransactionAllowList(subnetEVMGenesisParams, genesisTimestamp)
 		precompiles[txallowlist.ConfigKey] = &txConfig
 	}
 	if subnetEVMGenesisParams.enableFeeManagerPrecompile {
-		feeConfig := configureFeeManager(subnetEVMGenesisParams)
+		feeConfig := configureFeeManager(subnetEVMGenesisParams, genesisTimestamp)
 		precompiles[feemanager.ConfigKey] = &feeConfig
 	}
 	if subnetEVMGenesisParams.enableRewardManagerPrecompile {
-		rewardManagerConfig := configureRewardManager(subnetEVMGenesisParams)
+		rewardManagerConfig := configureRewardManager(subnetEVMGenesisParams, genesisTimestamp)
 		precompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
 	}
 	return precompiles
