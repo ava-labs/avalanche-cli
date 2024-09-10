@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -58,8 +59,8 @@ func StopNetwork(*cobra.Command, []string) error {
 	}
 
 	if err := teleporter.RelayerCleanup(
-		app.GetAWMRelayerRunPath(),
-		app.GetAWMRelayerStorageDir(),
+		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
 	}
