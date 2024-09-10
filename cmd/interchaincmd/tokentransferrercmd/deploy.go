@@ -496,9 +496,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		homeDecimals := tokenHomeDecimals
 		if flags.homeFlags.tokenDecimals != 0 {
-			homeDecimals = flags.homeFlags.tokenDecimals
+			tokenHomeDecimals = flags.homeFlags.tokenDecimals
 		}
 		homeAddress, err = ictt.DeployERC20Home(
 			icttSrcDir,
@@ -507,7 +506,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			common.HexToAddress(homeRegistryAddress),
 			common.HexToAddress(homeKeyAddress),
 			tokenHomeAddress,
-			homeDecimals,
+			tokenHomeDecimals,
 		)
 		if err != nil {
 			return err
@@ -578,12 +577,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteSupply  *big.Int
 	)
 
-	tokenRemoteDecimals := tokenHomeDecimals
-	if flags.remoteFlags.tokenDecimals != 0 {
-		tokenRemoteDecimals = flags.remoteFlags.tokenDecimals
-	}
-
 	if !flags.remoteFlags.native {
+		tokenRemoteDecimals := tokenHomeDecimals
+		if flags.remoteFlags.tokenDecimals != 0 {
+			tokenRemoteDecimals = flags.remoteFlags.tokenDecimals
+		}
 		remoteAddress, err = ictt.DeployERC20Remote(
 			icttSrcDir,
 			remoteRPCEndpoint,
@@ -592,6 +590,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
+			tokenHomeDecimals,
 			tokenHomeName,
 			tokenHomeSymbol,
 			tokenRemoteDecimals,
@@ -623,7 +622,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
-			tokenRemoteDecimals,
+			tokenHomeDecimals,
 			nativeTokenSymbol,
 			remoteSupply,
 			big.NewInt(0),
