@@ -32,7 +32,6 @@ type HomeFlags struct {
 	erc20Address    string
 	privateKeyFlags contract.PrivateKeyFlags
 	RPCEndpoint     string
-	tokenDecimals   uint8
 }
 
 type RemoteFlags struct {
@@ -41,7 +40,7 @@ type RemoteFlags struct {
 	removeMinterAdmin bool
 	privateKeyFlags   contract.PrivateKeyFlags
 	RPCEndpoint       string
-	tokenDecimals     uint8
+	Decimals          uint8
 }
 
 type DeployFlags struct {
@@ -94,8 +93,7 @@ func NewDeployCmd() *cobra.Command {
 	deployFlags.remoteFlags.privateKeyFlags.AddToCmd(cmd, "to deploy Transferrer Remote")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.RPCEndpoint, "home-rpc", "", "use the given RPC URL to connect to the home blockchain")
 	cmd.Flags().StringVar(&deployFlags.remoteFlags.RPCEndpoint, "remote-rpc", "", "use the given RPC URL to connect to the remote blockchain")
-	cmd.Flags().Uint8Var(&deployFlags.homeFlags.tokenDecimals, "home-token-decimals", 0, "use the given number of token decimals for the Transferrer Home [defaults to token home's decimals (18 for a new wrapped native home token)]")
-	cmd.Flags().Uint8Var(&deployFlags.remoteFlags.tokenDecimals, "remote-token-decimals", 0, "use the given number of token decimals for the Transferrer Remote [defaults to token home's decimals (18 for a new wrapped native home token)]")
+	cmd.Flags().Uint8Var(&deployFlags.remoteFlags.Decimals, "remote-token-decimals", 0, "use the given number of token decimals for the Transferrer Remote [defaults to token home's decimals (18 for a new wrapped native home token)]")
 	return cmd
 }
 
@@ -443,12 +441,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	var (
-		homeAddress       common.Address
-		tokenHomeSymbol   string
-		tokenHomeName     string
-		tokenHomeDecimals uint8
-	)
+	var homeAddress common.Address
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
 	homeBlockchainID, err := contract.GetBlockchainID(app, network, flags.homeFlags.chainFlags)
 	if err != nil {
@@ -460,44 +453,15 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if flags.homeFlags.homeAddress != "" {
 		homeAddress = common.HexToAddress(flags.homeFlags.homeAddress)
-		endpointKind, err := ictt.GetEndpointKind(homeRPCEndpoint, homeAddress)
-		if err != nil {
-			return err
-		}
-		var tokenHomeAddress common.Address
-		switch endpointKind {
-		case ictt.ERC20TokenHome:
-			tokenHomeAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
-			if err != nil {
-				return err
-			}
-		case ictt.NativeTokenHome:
-			tokenHomeAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
-		}
-		tokenHomeSymbol, tokenHomeName, tokenHomeDecimals, err = ictt.GetTokenParams(
-			homeRPCEndpoint,
-			tokenHomeAddress.Hex(),
-		)
-		if err != nil {
-			return err
-		}
 	}
 	if flags.homeFlags.erc20Address != "" {
 		tokenHomeAddress := common.HexToAddress(flags.homeFlags.erc20Address)
-		tokenHomeSymbol, tokenHomeName, tokenHomeDecimals, err = ictt.GetTokenParams(
+		tokenHomeDecimals, err := ictt.GetTokenDecimals(
 			homeRPCEndpoint,
-			tokenHomeAddress.Hex(),
+			tokenHomeAddress,
 		)
 		if err != nil {
 			return err
-		}
-		if flags.homeFlags.tokenDecimals != 0 {
-			tokenHomeDecimals = flags.homeFlags.tokenDecimals
 		}
 		homeAddress, err = ictt.DeployERC20Home(
 			icttSrcDir,
@@ -532,15 +496,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		tokenHomeSymbol, tokenHomeName, tokenHomeDecimals, err = ictt.GetTokenParams(
-			homeRPCEndpoint,
-			wrappedNativeTokenAddress.Hex(),
-		)
-		if err != nil {
-			return err
-		}
 		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeRPCEndpoint)
-		ux.Logger.PrintToUser("%s Address: %s", tokenHomeSymbol, wrappedNativeTokenAddress)
+		ux.Logger.PrintToUser("%s Address: %s", nativeTokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
 		homeAddress, err = ictt.DeployNativeHome(
 			icttSrcDir,
@@ -577,10 +534,44 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteSupply  *big.Int
 	)
 
+	// get token home symbol, name, decimals
+	endpointKind, err := ictt.GetEndpointKind(homeRPCEndpoint, homeAddress)
+	if err != nil {
+		return err
+	}
+	var tokenHomeAddress common.Address
+	switch endpointKind {
+	case ictt.ERC20TokenHome:
+		tokenHomeAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
+		if err != nil {
+			return err
+		}
+	case ictt.NativeTokenHome:
+		tokenHomeAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
+	}
+	tokenHomeSymbol, tokenHomeName, _, err := ictt.GetTokenParams(
+		homeRPCEndpoint,
+		tokenHomeAddress,
+	)
+	if err != nil {
+		return err
+	}
+	homeDecimals, err := ictt.TokenHomeGetDecimals(homeRPCEndpoint, homeAddress)
+	if err != nil {
+		return err
+	}
+
 	if !flags.remoteFlags.native {
-		tokenRemoteDecimals := tokenHomeDecimals
-		if flags.remoteFlags.tokenDecimals != 0 {
-			tokenRemoteDecimals = flags.remoteFlags.tokenDecimals
+		// we default token remote decimals to be the same as token home decimals,
+		// but allow to be overridden by a user's provided flag
+		remoteDecimals := homeDecimals
+		if flags.remoteFlags.Decimals != 0 {
+			remoteDecimals = flags.remoteFlags.Decimals
 		}
 		remoteAddress, err = ictt.DeployERC20Remote(
 			icttSrcDir,
@@ -590,10 +581,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
-			tokenHomeDecimals,
+			homeDecimals,
 			tokenHomeName,
 			tokenHomeSymbol,
-			tokenRemoteDecimals,
+			remoteDecimals,
 		)
 		if err != nil {
 			return err
@@ -622,7 +613,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
-			tokenHomeDecimals,
+			homeDecimals,
 			nativeTokenSymbol,
 			remoteSupply,
 			big.NewInt(0),

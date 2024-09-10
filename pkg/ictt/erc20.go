@@ -10,13 +10,12 @@ import (
 	"github.com/liyue201/erc20-go/erc20"
 )
 
-func GetTokenParams(endpoint string, tokenAddress string) (string, string, uint8, error) {
-	address := common.HexToAddress(tokenAddress)
+func GetTokenParams(endpoint string, tokenAddress common.Address) (string, string, uint8, error) {
 	client, err := ethclient.Dial(endpoint)
 	if err != nil {
 		return "", "", 0, err
 	}
-	token, err := erc20.NewGGToken(address, client)
+	token, err := erc20.NewGGToken(tokenAddress, client)
 	if err != nil {
 		return "", "", 0, err
 	}
@@ -28,10 +27,21 @@ func GetTokenParams(endpoint string, tokenAddress string) (string, string, uint8
 	if err != nil {
 		return "", "", 0, err
 	}
-	// TODO: find out if there are decimals options and why (academy)
 	tokenDecimals, err := token.Decimals(nil)
 	if err != nil {
 		return "", "", 0, err
 	}
 	return tokenSymbol, tokenName, tokenDecimals, nil
+}
+
+func GetTokenDecimals(endpoint string, tokenAddress common.Address) (uint8, error) {
+	client, err := ethclient.Dial(endpoint)
+	if err != nil {
+		return 0, err
+	}
+	token, err := erc20.NewGGToken(tokenAddress, client)
+	if err != nil {
+		return 0, err
+	}
+	return token.Decimals(nil)
 }
