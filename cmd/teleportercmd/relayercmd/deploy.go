@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
@@ -38,6 +39,8 @@ var (
 	}
 	deployFlags DeployFlags
 )
+
+const disableDeployToRemotePrompt = true
 
 // avalanche teleporter relayer deploy
 func newDeployCmd() *cobra.Command {
@@ -75,7 +78,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	deployToRemote := false
-	if network.Kind != models.Local {
+	if !disableDeployToRemotePrompt && network.Kind != models.Local {
 		prompt := "Do you want to deploy the relayer to a remote or a local host?"
 		remoteHostOption := "I want to deploy the relayer into a remote node in the cloud"
 		localHostOption := "I prefer to deploy into a localhost process"
@@ -331,10 +334,28 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	configPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
 	logPath := app.GetLocalRelayerLogPath(network.Kind)
 
+	metricsPort := constants.RemoteAWMRelayerMetricsPort
+	if !deployToRemote {
+		switch network.Kind {
+		case models.Local:
+			metricsPort = constants.LocalNetworkLocalAWMRelayerMetricsPort
+		case models.Devnet:
+			metricsPort = constants.DevnetLocalAWMRelayerMetricsPort
+		case models.Fuji:
+			metricsPort = constants.FujiLocalAWMRelayerMetricsPort
+		}
+	}
+
 	// create config
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Generating relayer config file at %s", configPath)
-	if err := teleporter.CreateBaseRelayerConfig(configPath, logLevel, storageDir, network); err != nil {
+	if err := teleporter.CreateBaseRelayerConfig(
+		configPath,
+		logLevel,
+		storageDir,
+		uint16(metricsPort),
+		network,
+	); err != nil {
 		return err
 	}
 	for _, source := range configSpec.sources {
