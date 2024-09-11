@@ -66,6 +66,8 @@ var (
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
+	errTokenMinterAddressConflict                 = errors.New("--validator-manager-mint-only means that no additional addresses can be provided in --token-minter-address")
+	errTokenMinterAddressForPoS                   = errors.New("--token-minter-address is only applicable to proof of authority")
 )
 
 // avalanche blockchain create
@@ -201,6 +203,19 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	// validator management type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStake}) {
 		return errMutuallyExlusiveValidatorManagementOptions
+	}
+
+	if createFlags.proofOfAuthority {
+		return errMutuallyExlusiveValidatorManagementOptions
+	}
+
+	if len(createFlags.tokenMinterAddress) > 0 {
+		if createFlags.proofOfStake {
+			return errTokenMinterAddressForPoS
+		}
+		if createFlags.validatorManagerMintOnly {
+			return errTokenMinterAddressConflict
+		}
 	}
 
 	// get vm kind
@@ -365,17 +380,19 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if sc.ValidatorManagement == models.ProofOfAuthority {
-		if createFlags.tokenMinterAddress == nil {
+		if !createFlags.validatorManagerMintOnly && createFlags.tokenMinterAddress == nil {
 			createFlags.tokenMinterAddress, err = getTokenMinterAddr()
 			if err != nil {
 				return err
 			}
 		}
 	}
-	if len(createFlags.tokenMinterAddress) > 0 {
-		ux.Logger.GreenCheckmarkToUser("Addresses added as new native token minter", createFlags.tokenMinterAddress)
-	} else {
-		ux.Logger.GreenCheckmarkToUser("No additional addresses added as new native token minter")
+	if !createFlags.validatorManagerMintOnly {
+		if len(createFlags.tokenMinterAddress) > 0 {
+			ux.Logger.GreenCheckmarkToUser("Addresses added as new native token minter %s", createFlags.tokenMinterAddress)
+		} else {
+			ux.Logger.GreenCheckmarkToUser("No additional addresses added as new native token minter")
+		}
 	}
 	sc.NewNativeTokenMinter = createFlags.tokenMinterAddress
 	if createFlags.validatorManagerController == nil {

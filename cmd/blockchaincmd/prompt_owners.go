@@ -232,6 +232,7 @@ func enterCustomKeys(network models.Network) ([]string, bool, error) {
 }
 
 // getAddrLoop asks as many addresses the user requires, until Done or Cancel is selected
+// TODO: add info for TokenMinter and ValidatorManagerController
 func getAddrLoop(prompt, label string, network models.Network) ([]string, bool, error) {
 	info := ""
 	goal := ""
