@@ -406,7 +406,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// nolint: gocritic
 func getValidatorContractManagerAddr() ([]string, bool, error) {
 	controllerAddrPrompt := "Enter Validator Manager Contract controller address"
 	for {
@@ -446,6 +445,7 @@ func getTokenMinterAddr() ([]string, error) {
 	return addr, nil
 }
 
+//nolint: gocritic
 func getAddr() ([]string, bool, error) {
 	addrPrompt := "Enter addresses that can mint new native tokens"
 	for {
