@@ -49,6 +49,7 @@ type CreateFlags struct {
 	useExternalGasToken           bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
+	validatorManagerMintOnly      bool
 	tokenMinterAddress            []string
 	validatorManagerController    []string
 }
@@ -110,7 +111,8 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake for validator management")
-	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that may make mint new native tokens")
+	cmd.Flags().BoolVar(&createFlags.validatorManagerMintOnly, "validator-manager-mint-only", false, "only enable validator manager contract to mint new native tokens")
+	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that can mint new native tokens (for proof of authority validator management only)")
 	cmd.Flags().StringSliceVar(&createFlags.validatorManagerController, "validator-manager-controller", nil, "addresses that will control Validator Manager contract")
 	return cmd
 }
@@ -445,19 +447,16 @@ func getTokenMinterAddr() ([]string, error) {
 	return addr, nil
 }
 
-//nolint: gocritic
 func getAddr() ([]string, bool, error) {
 	addrPrompt := "Enter addresses that can mint new native tokens"
-	for {
-		addr, cancelled, err := getAddrLoop(addrPrompt, constants.TokenMinter, models.UndefinedNetwork)
-		if err != nil {
-			return nil, false, err
-		}
-		if cancelled {
-			return nil, cancelled, nil
-		}
-		return addr, false, nil
+	addr, cancelled, err := getAddrLoop(addrPrompt, constants.TokenMinter, models.UndefinedNetwork)
+	if err != nil {
+		return nil, false, err
 	}
+	if cancelled {
+		return nil, cancelled, nil
+	}
+	return addr, false, nil
 }
 
 func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, balance string) ([]byte, error) {
