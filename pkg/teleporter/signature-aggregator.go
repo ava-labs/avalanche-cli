@@ -26,9 +26,7 @@ const (
 	DefaultSignatureCacheSize = uint64(1024 * 1024)
 )
 
-var (
-	etnaTime = time.Unix(0, 0)
-)
+var etnaTime = time.Unix(0, 0)
 
 type SignatureAggregator struct {
 	subnetID         ids.ID
@@ -42,14 +40,14 @@ func NewSignatureAggregator(
 	subnetID string,
 	quorumPercentage uint64,
 ) (*SignatureAggregator, error) {
-	SignatureAggregator := &SignatureAggregator{}
+	sa := &SignatureAggregator{}
 	// set quorum percentage
 	if quorumPercentage == 0 {
-		SignatureAggregator.quorumPercentage = DefaultQuorumPercentage
+		sa.quorumPercentage = DefaultQuorumPercentage
 	} else if quorumPercentage > 100 {
 		return nil, fmt.Errorf("quorum percentage cannot be greater than 100")
 	}
-	SignatureAggregator.quorumPercentage = quorumPercentage
+	sa.quorumPercentage = quorumPercentage
 
 	// set subnet ID
 	if subnetID == "" {
@@ -59,7 +57,7 @@ func NewSignatureAggregator(
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert subnet ID: %w", err)
 	}
-	SignatureAggregator.subnetID = signingSubnetID
+	sa.subnetID = signingSubnetID
 	network, err := peers.NewNetwork(
 		logLevel,
 		prometheus.DefaultRegisterer,
@@ -96,9 +94,8 @@ func NewSignatureAggregator(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signature aggregator: %w", err)
 	}
-	SignatureAggregator.aggregator = signatureAggregator
-	return SignatureAggregator, nil
-
+	sa.aggregator = signatureAggregator
+	return sa, nil
 }
 
 func (s *SignatureAggregator) AggregateSignatures(
