@@ -387,7 +387,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 	sc.ValidatorManagerController = createFlags.validatorManagerController
-	//TODO: add description of what Validator Manager Contract controller does
+	// TODO: add description of what Validator Manager Contract controller does
 	ux.Logger.GreenCheckmarkToUser("Validator Manager Contract controller %s", createFlags.validatorManagerController)
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
@@ -435,7 +435,7 @@ func getTokenMinterAddr() ([]string, error) {
 	if !yes {
 		return nil, nil
 	}
-	addr, cancelled, err := enterCustomAddr()
+	addr, cancelled, err := getAddr()
 	if err != nil {
 		return nil, err
 	}
@@ -445,7 +445,7 @@ func getTokenMinterAddr() ([]string, error) {
 	return addr, nil
 }
 
-func enterCustomAddr() ([]string, bool, error) {
+func getAddr() ([]string, bool, error) {
 	addrPrompt := "Enter addresses that can mint new native tokens"
 	for {
 		addr, cancelled, err := getAddrLoop(addrPrompt, constants.TokenMinter, models.UndefinedNetwork)
@@ -455,10 +455,6 @@ func enterCustomAddr() ([]string, bool, error) {
 		if cancelled {
 			return nil, cancelled, nil
 		}
-		//if len(addr) != 0 {
-		//	return addr, false, nil
-		//}
-		//ux.Logger.PrintToUser("This tool does not allow to proceed without any control key set")
 		return addr, false, nil
 	}
 }
