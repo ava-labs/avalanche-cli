@@ -49,6 +49,8 @@ type CreateFlags struct {
 	useExternalGasToken           bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
+	tokenMinterAddress            []string
+	validatorManagerController    []string
 }
 
 var (
@@ -108,6 +110,8 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake for validator management")
+	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that may make mint new native tokens")
+	cmd.Flags().StringSliceVar(&createFlags.validatorManagerController, "validator-manager-controller", nil, "addresses that will control Validator Manager contract")
 	return cmd
 }
 
@@ -358,6 +362,33 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err = promptValidatorManagementType(app, sc); err != nil {
 		return err
 	}
+	if sc.ValidatorManagement == models.ProofOfAuthority {
+		if createFlags.tokenMinterAddress == nil {
+			createFlags.tokenMinterAddress, err = getTokenMinterAddr()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if len(createFlags.tokenMinterAddress) > 0 {
+		ux.Logger.GreenCheckmarkToUser("Addresses added as new native token minter", createFlags.tokenMinterAddress)
+	} else {
+		ux.Logger.GreenCheckmarkToUser("No additional addresses added as new native token minter")
+	}
+	sc.NewNativeTokenMinter = createFlags.tokenMinterAddress
+	if createFlags.validatorManagerController == nil {
+		var cancelled bool
+		createFlags.validatorManagerController, cancelled, err = getValidatorContractManagerAddr()
+		if err != nil {
+			return err
+		}
+		if cancelled {
+			return fmt.Errorf("user cancelled operation")
+		}
+	}
+	sc.ValidatorManagerController = createFlags.validatorManagerController
+	//TODO: add description of what Validator Manager Contract controller does
+	ux.Logger.GreenCheckmarkToUser("Validator Manager Contract controller %s", createFlags.validatorManagerController)
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
@@ -373,6 +404,63 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.GreenCheckmarkToUser("Successfully created blockchain configuration")
 	return nil
+}
+
+func getValidatorContractManagerAddr() ([]string, bool, error) {
+	controllerAddrPrompt := "Enter Validator Manager Contract controller address"
+	for {
+		// ask in a loop so that if some condition is not met we can keep asking
+		controlAddr, cancelled, err := getAddrLoop(controllerAddrPrompt, constants.ValidatorManagerController, models.UndefinedNetwork)
+		if err != nil {
+			return nil, false, err
+		}
+		if cancelled {
+			return nil, cancelled, nil
+		}
+		if len(controlAddr) != 0 {
+			return controlAddr, false, nil
+		}
+		ux.Logger.RedXToUser("An address to control Validator Manage Contract is required before proceeding")
+	}
+}
+
+// Configure which addresses may make mint new native tokens
+func getTokenMinterAddr() ([]string, error) {
+	addTokenMinterAddrPrompt := "Currently only Validator Manager Contract can mint new native tokens"
+	ux.Logger.PrintToUser(addTokenMinterAddrPrompt)
+	yes, err := app.Prompt.CaptureNoYes("Add additional addresses that can mint new native tokens?")
+	if err != nil {
+		return nil, err
+	}
+	if !yes {
+		return nil, nil
+	}
+	addr, cancelled, err := enterCustomAddr()
+	if err != nil {
+		return nil, err
+	}
+	if cancelled {
+		return nil, nil
+	}
+	return addr, nil
+}
+
+func enterCustomAddr() ([]string, bool, error) {
+	addrPrompt := "Enter addresses that can mint new native tokens"
+	for {
+		addr, cancelled, err := getAddrLoop(addrPrompt, constants.TokenMinter, models.UndefinedNetwork)
+		if err != nil {
+			return nil, false, err
+		}
+		if cancelled {
+			return nil, cancelled, nil
+		}
+		//if len(addr) != 0 {
+		//	return addr, false, nil
+		//}
+		//ux.Logger.PrintToUser("This tool does not allow to proceed without any control key set")
+		return addr, false, nil
+	}
 }
 
 func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, balance string) ([]byte, error) {

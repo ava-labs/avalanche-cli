@@ -38,8 +38,10 @@ type Sidecar struct {
 	TeleporterVersion string
 	RunRelayer        bool
 	// SubnetEVM based VM's only
-	SubnetEVMMainnetChainID uint
-	ValidatorManagement     ValidatorManagementType
+	SubnetEVMMainnetChainID    uint
+	ValidatorManagement        ValidatorManagementType
+	ValidatorManagerController []string
+	NewNativeTokenMinter       []string
 }
 
 func (sc Sidecar) GetVMID() (string, error) {
