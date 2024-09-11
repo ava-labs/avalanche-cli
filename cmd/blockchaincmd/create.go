@@ -406,6 +406,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// nolint: gocritic
 func getValidatorContractManagerAddr() ([]string, bool, error) {
 	controllerAddrPrompt := "Enter Validator Manager Contract controller address"
 	for {
