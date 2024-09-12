@@ -557,6 +557,7 @@ func checkInvalidSubnetNames(name string) error {
 	}
 	return nil
 }
+
 func promptValidatorInitialBalance() ([]int, error) {
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
 		"How many bootstrap validators to set up?",
