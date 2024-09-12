@@ -113,7 +113,8 @@ func CreateEVMGenesis(
 		)
 	}
 
-	precompiles := getPrecompiles(params, utils.TimeToNewUint64(time.Now()))
+	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
+	precompiles := getPrecompiles(params, genesisBlock0Timestamp)
 
 	if params.UseTeleporter || params.UseExternalGasToken {
 		addTeleporterAddressesToAllowLists(
@@ -131,6 +132,7 @@ func CreateEVMGenesis(
 				FeeConfig:   feeConfig,
 				Allocation:  params.initialTokenAllocation,
 				Precompiles: precompiles,
+				Timestamp:   genesisBlock0Timestamp,
 			},
 			Name: "TestSubnet",
 		})

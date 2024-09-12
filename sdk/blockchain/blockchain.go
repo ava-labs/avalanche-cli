@@ -22,7 +22,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	commonAvago "github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
-	"github.com/ava-labs/coreth/utils"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
@@ -65,6 +64,10 @@ type SubnetEVMParams struct {
 	//
 	// For more information regarding Precompiles, head to https://docs.avax.network/build/vm/evm/intro.
 	Precompiles params.Precompiles
+
+	// Timestamp
+	//TODO: add description what timestamp is
+	Timestamp *uint64
 }
 
 type CustomVMParams struct {
@@ -196,7 +199,7 @@ func createEvmGenesis(
 	subnetEVMParams *SubnetEVMParams,
 ) ([]byte, error) {
 	genesis := core.Genesis{}
-	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())
+	genesis.Timestamp = *subnetEVMParams.Timestamp
 
 	conf := params.SubnetEVMDefaultChainConfig
 	conf.NetworkUpgrades = params.NetworkUpgrades{}
