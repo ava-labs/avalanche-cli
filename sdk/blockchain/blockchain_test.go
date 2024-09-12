@@ -6,10 +6,11 @@ package blockchain
 import (
 	"context"
 	"fmt"
-	"github.com/ava-labs/subnet-evm/utils"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/ava-labs/subnet-evm/utils"
 
 	"github.com/stretchr/testify/require"
 
