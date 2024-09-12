@@ -10,8 +10,6 @@ import (
 )
 
 var (
-	Difficulty = big.NewInt(0)
-
 	// current avacloud settings
 	LowGasLimit     = big.NewInt(12_000_000)
 	MediumGasLimit  = big.NewInt(15_000_000) // C-Chain value
