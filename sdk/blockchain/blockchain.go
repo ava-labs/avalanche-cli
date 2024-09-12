@@ -66,7 +66,7 @@ type SubnetEVMParams struct {
 	Precompiles params.Precompiles
 
 	// Timestamp
-	//TODO: add description what timestamp is
+	// TODO: add description what timestamp is
 	Timestamp *uint64
 }
 
