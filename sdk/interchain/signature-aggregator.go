@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
 	"github.com/ava-labs/avalanchego/utils/constants"
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	DefaultQuorumPercentage   = 67
+	DefaultQuorumPercentage   = uint64(67)
 	DefaultSignatureCacheSize = uint64(1024 * 1024)
 )
 
@@ -34,10 +35,30 @@ type SignatureAggregator struct {
 	aggregator       *aggregator.SignatureAggregator
 }
 
+func CreateAppRequestNetwork(network models.Network, logLevel logging.Level) (peers.AppRequestNetwork, error) {
+	peerNetwork, err := peers.NewNetwork(
+		logLevel,
+		prometheus.DefaultRegisterer,
+		nil,
+		&config.Config{
+			PChainAPI: &apiConfig.APIConfig{
+				BaseURL: network.Endpoint,
+			},
+			InfoAPI: &apiConfig.APIConfig{
+				BaseURL: network.Endpoint,
+			},
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create peer network: %w", err)
+	}
+	return peerNetwork, nil
+}
+
 func NewSignatureAggregator(
+	network peers.AppRequestNetwork,
 	logger logging.Logger,
-	logLevel logging.Level,
-	subnetID string,
+	subnetID ids.ID,
 	quorumPercentage uint64,
 ) (*SignatureAggregator, error) {
 	sa := &SignatureAggregator{}
@@ -50,27 +71,10 @@ func NewSignatureAggregator(
 	sa.quorumPercentage = quorumPercentage
 
 	// set subnet ID
-	if subnetID == "" {
+	if subnetID == ids.Empty {
 		return nil, fmt.Errorf("subnet ID cannot be empty")
 	}
-	signingSubnetID, err := awmUtils.HexOrCB58ToID(subnetID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert subnet ID: %w", err)
-	}
-	sa.subnetID = signingSubnetID
-	network, err := peers.NewNetwork(
-		logLevel,
-		prometheus.DefaultRegisterer,
-		nil,
-		&config.Config{
-			LogLevel:  logLevel.String(),
-			PChainAPI: &apiConfig.APIConfig{},
-			InfoAPI:   &apiConfig.APIConfig{},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create network: %w", err)
-	}
+	sa.subnetID = subnetID
 
 	messageCreator, err := message.NewCreator(
 		logger,
