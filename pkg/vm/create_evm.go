@@ -14,7 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	subnetSDK "github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/subnet"
+	subnetSDK "github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/utils"
