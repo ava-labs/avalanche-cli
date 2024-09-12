@@ -12,10 +12,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/keychain"
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/network"
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/vm"
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/wallet"
+	"github.com/ava-labs/avalanche-cli/sdk/keychain"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/vm"
+	"github.com/ava-labs/avalanche-cli/sdk/wallet"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
