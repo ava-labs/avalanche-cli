@@ -6,6 +6,7 @@ package vm
 import (
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/sdk/vm"
 	"github.com/ava-labs/subnet-evm/commontype"
 )
 
@@ -25,7 +26,7 @@ func SetStandardGas(
 func getFeeConfig(
 	params SubnetEVMGenesisParams,
 ) commontype.FeeConfig {
-	feeConfig := StarterFeeConfig
+	feeConfig := vm.StarterFeeConfig
 	switch {
 	case params.feeConfig.lowThroughput:
 		SetStandardGas(&feeConfig, LowGasLimit, LowTargetGas, params.feeConfig.useDynamicFees)
