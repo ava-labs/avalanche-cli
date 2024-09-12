@@ -16,7 +16,7 @@ const (
 var (
 	Difficulty = big.NewInt(0)
 
-	// This is the current c-chain gas config
+	// StarterFeeConfig is the current c-chain gas config
 	StarterFeeConfig = commontype.FeeConfig{
 		GasLimit:                 big.NewInt(8_000_000),
 		MinBaseFee:               big.NewInt(25_000_000_000),
