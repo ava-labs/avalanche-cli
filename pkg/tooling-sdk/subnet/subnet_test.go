@@ -12,8 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanchesdk"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/network"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/vm"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/wallet"
 	"github.com/ava-labs/avalanchego/ids"
@@ -47,7 +47,7 @@ func TestSubnetDeploy(t *testing.T) {
 	subnetParams := getDefaultSubnetEVMGenesis()
 	newSubnet, err := New(&subnetParams)
 	require.NoError(err)
-	network := avalanchesdk.FujiNetwork()
+	network := network.FujiNetwork()
 
 	keychain, err := keychain.NewKeychain(network, "KEY_PATH", nil)
 	require.NoError(err)
@@ -84,7 +84,7 @@ func TestSubnetDeployMultiSig(t *testing.T) {
 	require := require.New(t)
 	subnetParams := getDefaultSubnetEVMGenesis()
 	newSubnet, _ := New(&subnetParams)
-	network := avalanchesdk.FujiNetwork()
+	network := network.FujiNetwork()
 
 	keychainA, err := keychain.NewKeychain(network, "KEY_PATH_A", nil)
 	require.NoError(err)
@@ -157,7 +157,7 @@ func TestSubnetDeployLedger(t *testing.T) {
 	subnetParams := getDefaultSubnetEVMGenesis()
 	newSubnet, err := New(&subnetParams)
 	require.NoError(err)
-	network := avalanchesdk.FujiNetwork()
+	network := network.FujiNetwork()
 
 	ledgerInfo := keychain.LedgerParams{
 		LedgerAddresses: []string{"P-fujixxxxxxxxx"},

@@ -5,9 +5,9 @@ package keychain
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanchesdk"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/key"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/ledger"
+	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/network"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"golang.org/x/exp/maps"
@@ -15,7 +15,7 @@ import (
 
 type Keychain struct {
 	keychain.Keychain
-	network avalanchesdk.Network
+	network network.Network
 	Ledger  *Ledger
 }
 
@@ -53,7 +53,7 @@ type Ledger struct {
 // For stored keys, NewKeychain will generate a new key pair in the provided keyPath if no .pk
 // file currently exists in the provided path.
 func NewKeychain(
-	network avalanchesdk.Network,
+	network network.Network,
 	keyPath string,
 	ledgerInfo *LedgerParams,
 ) (*Keychain, error) {

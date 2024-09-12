@@ -5,7 +5,7 @@ package ledger
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanchesdk"
+	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/network"
 	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/utils"
 
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -65,7 +65,7 @@ func (dev *LedgerDevice) FindAddresses(addresses []string, maxIndex uint32) (map
 
 // FindFunds searches for a set of indices that pay a given amount
 func (dev *LedgerDevice) FindFunds(
-	network avalanchesdk.Network,
+	network network.Network,
 	amount uint64,
 	maxIndex uint32,
 ) ([]uint32, error) {

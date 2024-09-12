@@ -8,7 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/avalanchesdk"
+	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/network"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -247,19 +247,19 @@ func (ms *Multisig) GetNetworkID() (uint32, error) {
 }
 
 // get network model associated to tx
-func (ms *Multisig) GetNetwork() (avalanchesdk.Network, error) {
+func (ms *Multisig) GetNetwork() (network.Network, error) {
 	if ms.Undefined() {
-		return avalanchesdk.UndefinedNetwork, ErrUndefinedTx
+		return network.UndefinedNetwork, ErrUndefinedTx
 	}
 	networkID, err := ms.GetNetworkID()
 	if err != nil {
-		return avalanchesdk.UndefinedNetwork, err
+		return network.UndefinedNetwork, err
 	}
-	network := avalanchesdk.NetworkFromNetworkID(networkID)
-	if network.Kind == avalanchesdk.Undefined {
-		return avalanchesdk.UndefinedNetwork, fmt.Errorf("undefined network model for tx")
+	newNetwork := network.NetworkFromNetworkID(networkID)
+	if newNetwork.Kind == network.Undefined {
+		return network.UndefinedNetwork, fmt.Errorf("undefined network model for tx")
 	}
-	return network, nil
+	return newNetwork, nil
 }
 
 func (ms *Multisig) GetBlockchainID() (ids.ID, error) {
@@ -337,7 +337,7 @@ func (ms *Multisig) GetSubnetOwners() ([]ids.ShortID, uint32, error) {
 	return ms.controlKeys, ms.threshold, nil
 }
 
-func GetOwners(network avalanchesdk.Network, subnetID ids.ID) ([]ids.ShortID, uint32, error) {
+func GetOwners(network network.Network, subnetID ids.ID) ([]ids.ShortID, uint32, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()
 	subnetResponse, err := pClient.GetSubnet(ctx, subnetID)
