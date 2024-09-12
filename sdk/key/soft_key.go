@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/utils"
+	"github.com/ava-labs/avalanche-cli/sdk/constants"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"

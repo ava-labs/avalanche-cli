@@ -8,7 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"

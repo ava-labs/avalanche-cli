@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/multisig"
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/wallet"
+	"github.com/ava-labs/avalanche-cli/sdk/multisig"
+	"github.com/ava-labs/avalanche-cli/sdk/wallet"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"

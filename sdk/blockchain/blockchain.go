@@ -14,11 +14,11 @@ import (
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/multisig"
-	utilsSDK "github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/wallet"
+	"github.com/ava-labs/avalanche-cli/sdk/multisig"
+	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-cli/sdk/wallet"
 
-	"github.com/ava-labs/avalanche-cli/pkg/tooling-sdk/vm"
+	"github.com/ava-labs/avalanche-cli/sdk/vm"
 
 	"github.com/ava-labs/avalanchego/ids"
 	commonAvago "github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
