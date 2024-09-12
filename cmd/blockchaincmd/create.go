@@ -117,7 +117,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.validatorManagerMintOnly, "validator-manager-mint-only", false, "only enable validator manager contract to mint new native tokens")
 	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that can mint new native tokens (for proof of authority validator management only)")
 	cmd.Flags().StringSliceVar(&createFlags.validatorManagerController, "validator-manager-controller", nil, "addresses that will control Validator Manager contract")
-	cmd.Flags().IntSliceVar(&createFlags.bootstrapValidatorInitialBalance, "bootstrap-validators-balanche", []int{}, "starting P-Chain balance of each bootstrap validator (minimum of 5 AVAX)")
+	cmd.Flags().IntSliceVar(&createFlags.bootstrapValidatorInitialBalance, "bootstrap-validators-balance", []int{}, "starting P-Chain balance of each bootstrap validator (minimum of 5 AVAX)")
 	return cmd
 }
 
@@ -217,6 +217,14 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 		if createFlags.validatorManagerMintOnly {
 			return errTokenMinterAddressConflict
+		}
+	}
+
+	if len(createFlags.bootstrapValidatorInitialBalance) > 0 {
+		for _, balance := range createFlags.bootstrapValidatorInitialBalance {
+			if balance < constants.MinInitialBalanceBootstrapValidator {
+				return fmt.Errorf("initial bootstrap validator balance must be at least %d AVAX", constants.MinInitialBalanceBootstrapValidator)
+			}
 		}
 	}
 
@@ -414,9 +422,16 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if createFlags.bootstrapValidatorInitialBalance == nil {
-
+	if len(createFlags.bootstrapValidatorInitialBalance) == 0 {
+		createFlags.bootstrapValidatorInitialBalance, err = promptValidatorInitialBalance()
+		if err != nil {
+			return err
+		}
 	}
+
+	ux.Logger.GreenCheckmarkToUser("Number of initial bootstrap validators %d", len(createFlags.bootstrapValidatorInitialBalance))
+	ux.Logger.GreenCheckmarkToUser("Initial bootstrap validator balances %d", createFlags.bootstrapValidatorInitialBalance)
+
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
@@ -541,6 +556,18 @@ func checkInvalidSubnetNames(name string) error {
 		}
 	}
 	return nil
+}
+func promptValidatorInitialBalance() ([]int, error) {
+	numBootstrapValidators, err := app.Prompt.CaptureInt(
+		"How many bootstrap validators to set up?",
+	)
+	if err != nil {
+		return nil, err
+	}
+	return app.Prompt.CaptureInitialBalances(
+		"What are the initial balances of the bootstrap validators (use comma separated values e.g. 5,5)?",
+		numBootstrapValidators,
+	)
 }
 
 // TODO: add explain the difference for different validator management type
