@@ -6,6 +6,7 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"github.com/ava-labs/subnet-evm/utils"
 	"math/big"
 	"testing"
 	"time"
@@ -31,12 +32,14 @@ func getDefaultSubnetEVMGenesis() SubnetParams {
 	allocation[common.HexToAddress("INITIAL_ALLOCATION_ADDRESS")] = core.GenesisAccount{
 		Balance: defaultAmount,
 	}
+	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
 	return SubnetParams{
 		SubnetEVM: &SubnetEVMParams{
 			ChainID:     big.NewInt(123456),
 			FeeConfig:   vm.StarterFeeConfig,
 			Allocation:  allocation,
 			Precompiles: params.Precompiles{},
+			Timestamp:   genesisBlock0Timestamp,
 		},
 		Name: "TestSubnet",
 	}
