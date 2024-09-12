@@ -35,23 +35,24 @@ const (
 )
 
 type CreateFlags struct {
-	useSubnetEvm                  bool
-	useCustomVM                   bool
-	chainID                       uint64
-	tokenSymbol                   string
-	useTestDefaults               bool
-	useProductionDefaults         bool
-	useWarp                       bool
-	useTeleporter                 bool
-	vmVersion                     string
-	useLatestReleasedVMVersion    bool
-	useLatestPreReleasedVMVersion bool
-	useExternalGasToken           bool
-	proofOfStake                  bool
-	proofOfAuthority              bool
-	validatorManagerMintOnly      bool
-	tokenMinterAddress            []string
-	validatorManagerController    []string
+	useSubnetEvm                     bool
+	useCustomVM                      bool
+	chainID                          uint64
+	tokenSymbol                      string
+	useTestDefaults                  bool
+	useProductionDefaults            bool
+	useWarp                          bool
+	useTeleporter                    bool
+	vmVersion                        string
+	useLatestReleasedVMVersion       bool
+	useLatestPreReleasedVMVersion    bool
+	useExternalGasToken              bool
+	proofOfStake                     bool
+	proofOfAuthority                 bool
+	validatorManagerMintOnly         bool
+	tokenMinterAddress               []string
+	validatorManagerController       []string
+	bootstrapValidatorInitialBalance []int
 }
 
 var (
@@ -116,6 +117,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.validatorManagerMintOnly, "validator-manager-mint-only", false, "only enable validator manager contract to mint new native tokens")
 	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that can mint new native tokens (for proof of authority validator management only)")
 	cmd.Flags().StringSliceVar(&createFlags.validatorManagerController, "validator-manager-controller", nil, "addresses that will control Validator Manager contract")
+	cmd.Flags().IntSliceVar(&createFlags.bootstrapValidatorInitialBalance, "bootstrap-validators-balanche", []int{}, "starting P-Chain balance of each bootstrap validator (minimum of 5 AVAX)")
 	return cmd
 }
 
@@ -412,6 +414,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if createFlags.bootstrapValidatorInitialBalance == nil {
+
+	}
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}

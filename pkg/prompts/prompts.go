@@ -483,6 +483,35 @@ func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error
 	return addresses, nil
 }
 
+func (*realPrompter) CaptureInitialBalances(promptStr string, minBalance int) ([]int, error) {
+	addressesStr := ""
+	validated := false
+	for !validated {
+		var err error
+		addressesStr, err = utils.ReadLongString(promptui.IconGood + " " + promptStr + " ")
+		if err != nil {
+			return nil, err
+		}
+		if err := validateAddresses(addressesStr); err != nil {
+			fmt.Println(err)
+		} else {
+			validated = true
+		}
+	}
+
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateBootstrapBalance,
+	}
+
+	addressStr, err := prompt.Run()
+	if err != nil {
+		return common.Address{}, err
+	}
+	initialBalances, err := strings.Split(addressesStr, ","),
+	return addresses, nil
+}
+
 func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
