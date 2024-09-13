@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"os"
 	"sort"
 	"strconv"
@@ -556,6 +559,94 @@ func checkInvalidSubnetNames(name string) error {
 		}
 	}
 	return nil
+}
+
+// TODO: replace this object with avalanchego struct SubnetValidator
+type SubnetValidator struct {
+	// Must be Ed25519 NodeID
+	NodeID ids.NodeID
+	// Weight of this validator used when sampling
+	Weight uint64
+	// Initial balance for this validator
+	Balance uint64
+	// [Signer] is the BLS key for this validator.
+	// Note: We do not enforce that the BLS key is unique across all validators.
+	// This means that validators can share a key if they so choose.
+	// However, a NodeID + Subnet does uniquely map to a BLS key
+	Signer signer.Signer
+	// Leftover $AVAX from the [Balance] will be issued to this
+	// owner once it is removed from the validator set.
+	ChangeOwner fx.Owner
+}
+
+func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
+	defaultStake := network.GenesisParams().MinValidatorStake
+	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
+	txt := "What stake weight would you like to assign to the validator?"
+	weightOptions := []string{defaultWeight, "Custom"}
+	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
+	if err != nil {
+		return 0, err
+	}
+
+	switch weightOption {
+	case defaultWeight:
+		return defaultStake, nil
+	default:
+		return app.Prompt.CaptureWeight(txt)
+	}
+}
+
+func promptValidators() ([]int, error) {
+	subnetValidators := []SubnetValidator{}
+	numBootstrapValidators, err := app.Prompt.CaptureInt(
+		"How many bootstrap validators to set up?",
+	)
+	for len(subnetValidators) < numBootstrapValidators {
+		nodeID, err := PromptNodeID()
+		if err != nil {
+			return err
+		}
+		weight, err := PromptWeightPrimaryNetwork(network)
+		if err != nil {
+			return err
+		}
+		balance, err := PromptBalance()
+		if err != nil {
+			return err
+		}
+		jsonPop, err := promptProofOfPossession()
+		if err != nil {
+			return err
+		}
+		popBytes, err := json.Marshal(jsonPop)
+		if err != nil {
+			return err
+		}
+		var proofOfPossession signer.Signer
+		pop := &signer.ProofOfPossession{}
+		err := pop.UnmarshalJSON(popBytes)
+		if err != nil {
+			return ids.Empty, err
+		}
+		proofOfPossession = pop
+		changeAddr, err := PromptChangeAddr()
+		if err != nil {
+			return err
+		}
+		subnetValidator := SubnetValidator{
+			NodeID:      nodeID,
+			Weight:      weight,
+			Balance:     balance,
+			Signer:      proofOfPossession,
+			ChangeOwner: changeAddr,
+		}
+		subnetValidators = append(subnetValidators, subnetValidator)
+	}
+	if err != nil {
+		return nil, err
+	}
+
 }
 
 func promptValidatorInitialBalance() ([]int, error) {
