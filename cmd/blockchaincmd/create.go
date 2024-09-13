@@ -386,6 +386,10 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
+
+	// TODO: implement AddValidatorManagerToGenesis
+	AddValidatorManagerToGenesis()
+
 	if err = promptValidatorManagementType(app, sc); err != nil {
 		return err
 	}
@@ -609,4 +613,8 @@ func promptValidatorManagementType(
 	}
 	sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(subnetTypeStr)
 	return nil
+}
+
+// TODO: impelement AddValidatorManagerToGenesis
+func AddValidatorManagerToGenesis() {
 }
