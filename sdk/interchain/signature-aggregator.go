@@ -70,10 +70,6 @@ func NewSignatureAggregator(
 	}
 	sa.quorumPercentage = quorumPercentage
 
-	// set subnet ID
-	if subnetID == ids.Empty {
-		return nil, fmt.Errorf("subnet ID cannot be empty")
-	}
 	sa.subnetID = subnetID
 
 	messageCreator, err := message.NewCreator(
