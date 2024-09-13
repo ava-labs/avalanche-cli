@@ -528,6 +528,67 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		savePartialTx = !isFullySigned && err == nil
 	}
 
+	// convertSubnet calls ConvertSubnetTx
+	//
+	//	type ConvertSubnetTx struct {
+	//		// Metadata, inputs and outputs
+	//		BaseTx
+	//		// ID of the Subnet to transform
+	//		// Restrictions:
+	//		// - Must not be the Primary Network ID
+	//		Subnet ids.ID `json:"subnetID"`
+	//		// BlockchainID where the Subnet manager lives
+	//		ChainID ids.ID `json:"chainID"`
+	//		// Address of the Subnet manager
+	//		Address []byte `json:"address"`
+	//		// Initial pay-as-you-go validators for the Subnet
+	//		Validators []SubnetValidator `json:"validators"`
+	//		// Authorizes this conversion
+	//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
+	//	}
+
+	// TODO: Check if subnet has gone through convert Subnet Tx through avalanchego
+	//controlKeys []string,
+	//	subnetAuthKeysStrs []string,
+	//	subnetID ids.ID,
+	//	chainID ids.ID,
+	//// validators []avalanchego.SubnetValidator
+
+	//type SubnetValidator struct {
+	//	// Must be Ed25519 NodeID
+	//	NodeID ids.NodeID `json:"nodeID"`
+	//	// Weight of this validator used when sampling
+	//	Weight uint64 `json:"weight"`
+	//	// Initial balance for this validator
+	//	Balance uint64 `json:"balance"`
+	//	// [Signer] is the BLS key for this validator.
+	//	// Note: We do not enforce that the BLS key is unique across all validators.
+	//	//       This means that validators can share a key if they so choose.
+	//	//       However, a NodeID + Subnet does uniquely map to a BLS key
+	//	Signer signer.Signer `json:"signer"`
+	//	// Leftover $AVAX from the [Balance] will be issued to this
+	//	// owner once it is removed from the validator set.
+	//	ChangeOwner fx.Owner `json:"changeOwner"`
+	//}
+	//var validators []avalanchego.SubnetValidators
+	// TODO: get validators from sidecar
+	// How do we get NodeID for validators?
+
+	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.ConvertSubnet(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		blockchainID,
+		//validators,
+	)
+	if err != nil {
+		ux.Logger.PrintToUser(logging.Red.Wrap(
+			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+		))
+	}
+
+	////
+
 	if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
 		return err
 	}
