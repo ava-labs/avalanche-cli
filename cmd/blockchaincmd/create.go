@@ -427,6 +427,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err = promptValidators()
+	if err != nil {
+		return err
+	}
 	// TODO: update subnetvalidators in sidecar
 
 	if err = app.CreateSidecar(sc); err != nil {
@@ -588,6 +591,7 @@ func promptValidators() ([]models.SubnetValidator, error) {
 	}
 	previousAddr := ""
 	for len(subnetValidators) < numBootstrapValidators {
+		ux.Logger.PrintToUser("Getting info for bootstrap validator %d", len(subnetValidators)+1)
 		nodeID, err := PromptNodeID()
 		if err != nil {
 			return nil, err
@@ -622,6 +626,11 @@ func promptValidators() ([]models.SubnetValidator, error) {
 			ChangeOwner: changeOwner,
 		}
 		subnetValidators = append(subnetValidators, subnetValidator)
+		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
+		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
+		ux.Logger.PrintToUser("- Weight: %d", weight)
+		ux.Logger.PrintToUser("- Initial Balance: %d AVAX", balance)
+		ux.Logger.PrintToUser("- Change Address: %s", changeAddr)
 	}
 	return subnetValidators, nil
 }
