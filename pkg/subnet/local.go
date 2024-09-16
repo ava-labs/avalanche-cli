@@ -81,11 +81,12 @@ type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 type ICMSpec struct {
 	SkipICMDeploy                bool
 	SkipRelayerDeploy            bool
-	Version                      string
+	ICMVersion                   string
 	MessengerContractAddressPath string
 	MessengerDeployerAddressPath string
 	MessengerDeployerTxPath      string
 	RegistryBydecodePath         string
+	RelayerVersion               string
 }
 
 type DeployInfo struct {
@@ -384,8 +385,8 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 		} else {
 			icmVersion := ""
 			switch {
-			case icmSpec.Version != "" && icmSpec.Version != "latest":
-				icmVersion = icmSpec.Version
+			case icmSpec.ICMVersion != "" && icmSpec.ICMVersion != "latest":
+				icmVersion = icmSpec.ICMVersion
 			case sc.TeleporterVersion != "":
 				icmVersion = sc.TeleporterVersion
 			default:
@@ -412,6 +413,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 			cChainKey.PrivKeyHex(),
 			true,
 			true,
+			false,
 		)
 		if err != nil {
 			return nil, err
@@ -446,6 +448,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 			chain,
 			network.BlockchainEndpoint(blockchainID),
 			blockchainKey.PrivKeyHex(),
+			true,
 			true,
 			true,
 		)
@@ -502,7 +505,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 			ux.Logger.PrintToUser("")
 			// start relayer
 			if err := teleporter.DeployRelayer(
-				"latest",
+				icmSpec.RelayerVersion,
 				d.app.GetAWMRelayerBinDir(),
 				relayerConfigPath,
 				d.app.GetLocalRelayerLogPath(models.Local),

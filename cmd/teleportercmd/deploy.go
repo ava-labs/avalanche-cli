@@ -188,6 +188,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		privateKey,
 		flags.DeployMessenger,
 		flags.DeployRegistry,
+		false,
 	)
 	if err != nil {
 		return err
@@ -224,6 +225,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			ewoq.PrivKeyHex(),
 			flags.DeployMessenger,
 			flags.DeployRegistry,
+			false,
 		)
 		if err != nil {
 			return err

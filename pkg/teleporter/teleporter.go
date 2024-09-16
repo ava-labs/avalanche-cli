@@ -240,6 +240,7 @@ func (t *Deployer) Deploy(
 	privateKey string,
 	deployMessenger bool,
 	deployRegistry bool,
+	forceRegistryDeploy bool,
 ) (bool, string, string, error) {
 	var (
 		messengerAddress string
@@ -255,7 +256,7 @@ func (t *Deployer) Deploy(
 		)
 	}
 	if err == nil && deployRegistry {
-		if !deployMessenger || !alreadyDeployed {
+		if !deployMessenger || !alreadyDeployed || forceRegistryDeploy {
 			registryAddress, err = t.DeployRegistry(subnetName, rpcURL, privateKey)
 		}
 	}
@@ -404,24 +405,23 @@ func DeployAndFundRelayer(
 		privKeyStr,
 		true,
 		true,
+		true,
 	)
 	if err != nil {
 		return false, "", "", err
 	}
-	if !alreadyDeployed {
-		// get relayer address
-		relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
-		if err != nil {
-			return false, "", "", err
-		}
-		// fund relayer
-		if err := FundRelayer(
-			endpoint,
-			privKeyStr,
-			relayerAddress,
-		); err != nil {
-			return false, "", "", err
-		}
+	// get relayer address
+	relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	if err != nil {
+		return false, "", "", err
+	}
+	// fund relayer
+	if err := FundRelayer(
+		endpoint,
+		privKeyStr,
+		relayerAddress,
+	); err != nil {
+		return false, "", "", err
 	}
 	return alreadyDeployed, messengerAddress, registryAddress, err
 }
