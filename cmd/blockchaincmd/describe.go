@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -276,6 +277,12 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 		t.SetTitle("Initial Token Allocation")
 		t.AppendHeader(table.Row{"Description", "Address and Private Key", "Amount (10^18)", "Amount (wei)"})
 		for address := range genesis.Alloc {
+			if len(genesis.Alloc[address].Code) > 0 {
+				continue
+			}
+			if address == common.HexToAddress(icmgenesis.MessengerDeployerAddress) {
+				continue
+			}
 			amount := genesis.Alloc[address].Balance
 			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 			description := ""

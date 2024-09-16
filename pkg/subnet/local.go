@@ -24,9 +24,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -459,7 +459,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 		}
 		if alreadyDeployed {
 			// included in genesis
-			icmRegistryAddress = vm.RegistryContractAddress
+			icmRegistryAddress = icmgenesis.RegistryContractAddress
 		}
 		if sc.RunRelayer && !icmSpec.SkipRelayerDeploy {
 			if !cchainAlreadyDeployed {

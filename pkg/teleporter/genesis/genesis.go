@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package vm
+package genesis
 
 import (
 	_ "embed"
@@ -16,9 +16,9 @@ import (
 
 const (
 	messengerVersion         = "0x1"
-	messengerDeployerAddress = "0x618FEdD9A45a8C456812ecAAE70C671c6249DfaC"
-	MessengerContractAddress = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	messengerContractAddress = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
 	RegistryContractAddress  = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
+	MessengerDeployerAddress = "0x618FEdD9A45a8C456812ecAAE70C671c6249DfaC"
 )
 
 //go:embed deployed_messenger_bytecode.txt
@@ -60,7 +60,7 @@ func setMappingStorageValue(
 	return nil
 }
 
-func addICMMessengerContractToGenesisAllocations(
+func AddICMMessengerContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
 	const (
@@ -71,19 +71,19 @@ func addICMMessengerContractToGenesisAllocations(
 	setSimpleStorageValue(storage, blockchainIDSlot, "0x1")
 	setSimpleStorageValue(storage, messageNonceSlot, "0x1")
 	deployedMessengerBytes := common.FromHex(strings.TrimSpace(string(deployedMessengerBytecode)))
-	allocs[common.HexToAddress(MessengerContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(messengerContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedMessengerBytes,
 		Storage: storage,
 		Nonce:   1,
 	}
-	allocs[common.HexToAddress(messengerDeployerAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(MessengerDeployerAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Nonce:   1,
 	}
 }
 
-func addICMRegistryContractToGenesisAllocations(
+func AddICMRegistryContractToAllocations(
 	allocs core.GenesisAlloc,
 ) error {
 	const (
@@ -93,10 +93,10 @@ func addICMRegistryContractToGenesisAllocations(
 	)
 	storage := map[common.Hash]common.Hash{}
 	setSimpleStorageValue(storage, latestVersionSlot, messengerVersion)
-	if err := setMappingStorageValue(storage, versionToAddressSlot, messengerVersion, MessengerContractAddress); err != nil {
+	if err := setMappingStorageValue(storage, versionToAddressSlot, messengerVersion, messengerContractAddress); err != nil {
 		return err
 	}
-	if err := setMappingStorageValue(storage, addressToVersionSlot, MessengerContractAddress, messengerVersion); err != nil {
+	if err := setMappingStorageValue(storage, addressToVersionSlot, messengerContractAddress, messengerVersion); err != nil {
 		return err
 	}
 	deployedRegistryBytes := common.FromHex(strings.TrimSpace(string(deployedRegistryBytecode)))

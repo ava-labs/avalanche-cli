@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
 	subnetevmparams "github.com/ava-labs/subnet-evm/params"
@@ -112,8 +113,8 @@ func CreateEVMGenesis(
 		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
-		addICMMessengerContractToGenesisAllocations(params.initialTokenAllocation)
-		if err := addICMRegistryContractToGenesisAllocations(params.initialTokenAllocation); err != nil {
+		icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
+		if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
 			return nil, err
 		}
 	}
