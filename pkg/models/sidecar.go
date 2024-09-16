@@ -42,6 +42,8 @@ type Sidecar struct {
 	ValidatorManagement        ValidatorManagementType
 	ValidatorManagerController []string
 	NewNativeTokenMinter       []string
+	// TODO: replace this object with avalanchego struct SubnetValidator
+	BootstrapValidators []SubnetValidator
 }
 
 func (sc Sidecar) GetVMID() (string, error) {

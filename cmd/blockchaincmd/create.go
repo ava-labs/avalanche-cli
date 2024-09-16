@@ -6,17 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
-	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 
@@ -58,7 +57,7 @@ type CreateFlags struct {
 	validatorManagerMintOnly      bool
 	tokenMinterAddress            []string
 	validatorManagerController    []string
-	bootstrapValidators           []SubnetValidator
+	bootstrapValidators           []models.SubnetValidator
 }
 
 var (
@@ -428,7 +427,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err = promptValidators()
-	//TODO: update subnetvalidators in sidecar
+	// TODO: update subnetvalidators in sidecar
 
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
@@ -556,24 +555,6 @@ func checkInvalidSubnetNames(name string) error {
 	return nil
 }
 
-// TODO: replace this object with avalanchego struct SubnetValidator
-type SubnetValidator struct {
-	// Must be Ed25519 NodeID
-	NodeID ids.NodeID
-	// Weight of this validator used when sampling
-	Weight uint64
-	// Initial balance for this validator
-	Balance uint64
-	// [Signer] is the BLS key for this validator.
-	// Note: We do not enforce that the BLS key is unique across all validators.
-	// This means that validators can share a key if they so choose.
-	// However, a NodeID + Subnet does uniquely map to a BLS key
-	Signer signer.Signer
-	// Leftover $AVAX from the [Balance] will be issued to this
-	// owner once it is removed from the validator set.
-	ChangeOwner fx.Owner
-}
-
 // TODO: find the min weight for bootstrap validator
 func PromptWeightBootstrapValidator() (uint64, error) {
 	txt := "What stake weight would you like to assign to the validator?"
@@ -597,8 +578,8 @@ func PromptInitialBalance() (uint64, error) {
 	}
 }
 
-func promptValidators() ([]SubnetValidator, error) {
-	var subnetValidators []SubnetValidator
+func promptValidators() ([]models.SubnetValidator, error) {
+	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
 		"How many bootstrap validators do you want to set up?",
 	)
@@ -633,7 +614,7 @@ func promptValidators() ([]SubnetValidator, error) {
 			Addrs:     addrs,
 		}
 		previousAddr = changeAddr
-		subnetValidator := SubnetValidator{
+		subnetValidator := models.SubnetValidator{
 			NodeID:      nodeID,
 			Weight:      weight,
 			Balance:     balance,

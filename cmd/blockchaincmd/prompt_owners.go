@@ -4,12 +4,13 @@ package blockchaincmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
