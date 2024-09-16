@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"os"
 	"sort"
 	"strconv"
@@ -222,13 +225,13 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if len(createFlags.bootstrapValidatorInitialBalance) > 0 {
-		for _, balance := range createFlags.bootstrapValidatorInitialBalance {
-			if balance < constants.MinInitialBalanceBootstrapValidator {
-				return fmt.Errorf("initial bootstrap validator balance must be at least %d AVAX", constants.MinInitialBalanceBootstrapValidator)
-			}
-		}
-	}
+	//if len(createFlags.bootstrapValidatorInitialBalance) > 0 {
+	//	for _, balance := range createFlags.bootstrapValidatorInitialBalance {
+	//		if balance < constants.MinInitialBalanceBootstrapValidator {
+	//			return fmt.Errorf("initial bootstrap validator balance must be at least %d AVAX", constants.MinInitialBalanceBootstrapValidator)
+	//		}
+	//	}
+	//}
 
 	// get vm kind
 	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useCustomVM)
@@ -424,11 +427,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	subnetValidators, err := promptValidators()
+	_, err = promptValidators()
 	//TODO: update subnetvalidators in sidecar
-
-	ux.Logger.GreenCheckmarkToUser("Number of initial bootstrap validators %d", len(createFlags.bootstrapValidatorInitialBalance))
-	ux.Logger.GreenCheckmarkToUser("Initial bootstrap validator balances %d", createFlags.bootstrapValidatorInitialBalance)
 
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
@@ -574,74 +574,115 @@ type SubnetValidator struct {
 	ChangeOwner fx.Owner
 }
 
-func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
-	defaultStake := network.GenesisParams().MinValidatorStake
-	defaultWeight := fmt.Sprintf("Default (%s)", convertNanoAvaxToAvaxString(defaultStake))
+// TODO: find the min weight for bootstrap validator
+func PromptWeightBootstrapValidator() (uint64, error) {
 	txt := "What stake weight would you like to assign to the validator?"
-	weightOptions := []string{defaultWeight, "Custom"}
+	return app.Prompt.CaptureWeight(txt)
+}
+
+func PromptInitialBalance() (uint64, error) {
+	defaultInitialBalance := fmt.Sprintf("Default (%d) AVAX", constants.MinInitialBalanceBootstrapValidator)
+	txt := "What initial balance would you like to assign to the bootstrap validator (in AVAX)?"
+	weightOptions := []string{defaultInitialBalance, "Custom"}
 	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
 	if err != nil {
 		return 0, err
 	}
 
 	switch weightOption {
-	case defaultWeight:
-		return defaultStake, nil
+	case defaultInitialBalance:
+		return constants.MinInitialBalanceBootstrapValidator, nil
 	default:
-		return app.Prompt.CaptureWeight(txt)
+		return app.Prompt.CaptureBootstrapInitialBalance(txt)
 	}
 }
 
 func promptValidators() ([]SubnetValidator, error) {
-	subnetValidators := []SubnetValidator{}
+	var subnetValidators []SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
-		"How many bootstrap validators to set up?",
+		"How many bootstrap validators do you want to set up?",
 	)
+	if err != nil {
+		return nil, err
+	}
+	previousAddr := ""
 	for len(subnetValidators) < numBootstrapValidators {
 		nodeID, err := PromptNodeID()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		weight, err := PromptWeightPrimaryNetwork(network)
+		weight, err := PromptWeightBootstrapValidator()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		balance, err := PromptBalance()
+		balance, err := PromptInitialBalance()
 		if err != nil {
-			return err
+			return nil, err
 		}
-		jsonPop, err := promptProofOfPossession()
+		proofOfPossession, err := promptProofOfPossession()
+		changeAddr, err := getKeyForChangeOwner(previousAddr)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		popBytes, err := json.Marshal(jsonPop)
+		addrs, err := address.ParseToIDs([]string{changeAddr})
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
 		}
-		var proofOfPossession signer.Signer
-		pop := &signer.ProofOfPossession{}
-		err := pop.UnmarshalJSON(popBytes)
-		if err != nil {
-			return ids.Empty, err
+		changeOwner := &secp256k1fx.OutputOwners{
+			Threshold: 1,
+			Addrs:     addrs,
 		}
-		proofOfPossession = pop
-		changeAddr, err := PromptChangeAddr()
-		if err != nil {
-			return err
-		}
+		previousAddr = changeAddr
 		subnetValidator := SubnetValidator{
 			NodeID:      nodeID,
 			Weight:      weight,
 			Balance:     balance,
 			Signer:      proofOfPossession,
-			ChangeOwner: changeAddr,
+			ChangeOwner: changeOwner,
 		}
 		subnetValidators = append(subnetValidators, subnetValidator)
 	}
+	return subnetValidators, nil
+}
+
+func validateProofOfPossession(publicKey, pop string) {
+	if publicKey != "" {
+		err := prompts.ValidateHexa(publicKey)
+		if err != nil {
+			ux.Logger.PrintToUser("Format error in given public key: %s", err)
+			publicKey = ""
+		}
+	}
+	if pop != "" {
+		err := prompts.ValidateHexa(pop)
+		if err != nil {
+			ux.Logger.PrintToUser("Format error in given proof of possession: %s", err)
+			pop = ""
+		}
+	}
+}
+
+func promptProofOfPossession() (signer.Signer, error) {
+	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
+	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
+	var err error
+	txt := "What is the public key of the node's BLS?"
+	publicKey, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
 	if err != nil {
 		return nil, err
 	}
-
+	txt = "What is the proof of possession of the node's BLS?"
+	proofOfPossesion, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
+	if err != nil {
+		return nil, err
+	}
+	var proofOfPossession signer.Signer
+	pop := &signer.ProofOfPossession{
+		PublicKey:         [48]byte([]byte(publicKey)),
+		ProofOfPossession: [96]byte([]byte(proofOfPossesion)),
+	}
+	proofOfPossession = pop
+	return proofOfPossession, nil
 }
 
 // TODO: add explain the difference for different validator management type

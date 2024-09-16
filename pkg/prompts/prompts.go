@@ -104,6 +104,7 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
+	CaptureBootstrapInitialBalance(promptStr string) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string) (int, error)
 	CaptureUint32(promptStr string) (uint32, error)
@@ -114,7 +115,6 @@ type Prompter interface {
 	CaptureXChainAddress(promptStr string, network models.Network) (string, error)
 	CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error)
 	ChooseKeyOrLedger(goal string) (bool, error)
-	CaptureInitialBalances(promptStr string, numValidators int) ([]int, error)
 }
 
 type realPrompter struct{}
@@ -264,6 +264,20 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 		return ids.EmptyNodeID, err
 	}
 	return ids.NodeIDFromString(nodeIDStr)
+}
+
+func (*realPrompter) CaptureBootstrapInitialBalance(promptStr string) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateBootstrapBalance,
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(amountStr, 10, 64)
 }
 
 func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
@@ -482,34 +496,6 @@ func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error
 		},
 	)
 	return addresses, nil
-}
-
-func (*realPrompter) CaptureInitialBalances(promptStr string, numValidators int) ([]int, error) {
-	prompt := promptui.Prompt{
-		Label: promptStr,
-	}
-
-	balanceStr, err := prompt.Run()
-	if err != nil {
-		return nil, err
-	}
-
-	initialBalances := strings.Split(balanceStr, ",")
-	if len(initialBalances) != numValidators {
-		return nil, fmt.Errorf("number of initial balances provided does not match number of bootstrap validators")
-	}
-	validatorBalances := []int{}
-	for _, balance := range initialBalances {
-		if err = validateBootstrapBalance(balance); err != nil {
-			return nil, err
-		}
-		balanceInt, err := strconv.Atoi(balance)
-		if err != nil {
-			return nil, err
-		}
-		validatorBalances = append(validatorBalances, balanceInt)
-	}
-	return validatorBalances, nil
 }
 
 func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {

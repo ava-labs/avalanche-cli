@@ -4,6 +4,8 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -304,4 +306,83 @@ func getThreshold(maxLen int) (uint32, error) {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(intTh), err
+}
+
+func getKeyForChangeOwner(previouslyUsedAddr string) (string, error) {
+	moreKeysPrompt := "Which key would you like to set as change owner for leftover AVAX if the node is removed from validator set?"
+
+	const (
+		getFromStored = "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
+		custom        = "Custom"
+	)
+	previousAddres := fmt.Sprintf("Previously used address %s", previouslyUsedAddr)
+
+	listOptions := []string{getFromStored, custom}
+	if previouslyUsedAddr != "" {
+		listOptions = []string{previousAddres, getFromStored, custom}
+	}
+	listDecision, err := app.Prompt.CaptureList(moreKeysPrompt, listOptions)
+	if err != nil {
+		return "", err
+	}
+
+	var key string
+
+	switch listDecision {
+	case previousAddres:
+		key = previouslyUsedAddr
+	case getFromStored:
+		network, err := promptNetwork()
+		if err != nil {
+			return "", err
+		}
+		key, err = prompts.CaptureKeyAddress(
+			app.Prompt,
+			"be set as a change owner for leftover AVAX",
+			app.GetKeyDir(),
+			app.GetKey,
+			network,
+			prompts.PChainFormat,
+		)
+		if err != nil {
+			return "", err
+		}
+	case custom:
+		addrPrompt := "Enter change address (P-chain format)"
+		changeAddr, err := app.Prompt.CaptureAddress(addrPrompt)
+		if err != nil {
+			return "", err
+		}
+		key = changeAddr.String()
+	}
+	if err != nil {
+		return "", err
+	}
+	return key, nil
+}
+
+func promptNetwork() (models.Network, error) {
+	promptStr := "Choose a network to get the key from"
+	supportedNetworkOptionsToPrompt := []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+
+	networkOptionStr, err := app.Prompt.CaptureList(
+		promptStr,
+		utils.Map(supportedNetworkOptionsToPrompt, func(n networkoptions.NetworkOption) string { return n.String() }),
+	)
+	if err != nil {
+		return models.UndefinedNetwork, err
+	}
+	networkOption := networkoptions.NetworkOptionFromString(networkOptionStr)
+	network := models.UndefinedNetwork
+	if networkOption == networkoptions.Devnet {
+		endpoint, err := app.Prompt.CaptureURL(fmt.Sprintf("%s Endpoint", networkOption.String()), false)
+		if err != nil {
+			return models.UndefinedNetwork, err
+		}
+		network, err = networkOption.ModelNetwork(endpoint)
+		if err != nil {
+			return models.UndefinedNetwork, err
+		}
+	}
+	return network, nil
 }

@@ -46,7 +46,7 @@ func (n NetworkOption) String() string {
 	return "invalid network"
 }
 
-func networkOptionFromString(s string) NetworkOption {
+func NetworkOptionFromString(s string) NetworkOption {
 	switch s {
 	case "Mainnet":
 		return Mainnet
@@ -60,6 +60,31 @@ func networkOptionFromString(s string) NetworkOption {
 		return Cluster
 	}
 	return Undefined
+}
+
+func (n NetworkOption) ModelNetwork(devnetEndpoint string) (models.Network, error) {
+	network := models.UndefinedNetwork
+	switch n {
+	case Local:
+		network = models.NewLocalNetwork()
+	case Devnet:
+		networkID := uint32(0)
+		if devnetEndpoint != "" {
+			infoClient := info.NewClient(devnetEndpoint)
+			ctx, cancel := utils.GetAPIContext()
+			defer cancel()
+			_, err := infoClient.GetNetworkID(ctx)
+			if err != nil {
+				return models.UndefinedNetwork, err
+			}
+		}
+		network = models.NewDevnetNetwork(devnetEndpoint, networkID)
+	case Fuji:
+		network = models.NewFujiNetwork()
+	case Mainnet:
+		network = models.NewMainnetNetwork()
+	}
+	return network, nil
 }
 
 type NetworkFlags struct {
@@ -283,7 +308,7 @@ func GetNetworkFromCmdLineFlags(
 		if err != nil {
 			return models.UndefinedNetwork, err
 		}
-		networkOption = networkOptionFromString(networkOptionStr)
+		networkOption = NetworkOptionFromString(networkOptionStr)
 		if networkOption == Devnet && !onlyEndpointBasedDevnets && len(clusterNames) != 0 {
 			endpointOptions := []string{
 				"Get Devnet RPC endpoint from an existing node cluster (created from avalanche node create or avalanche devnet wiz)",
