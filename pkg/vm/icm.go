@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	messengerVersion         = "0x1"
 	messengerContractAddress = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
 	messengerDeployerAddress = "0x618FEdD9A45a8C456812ecAAE70C671c6249DfaC"
 	registryContractAddress  = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
@@ -62,9 +63,13 @@ func setMappingStorageValue(
 func addICMContractToGenesisAllocations(
 	allocs core.GenesisAlloc,
 ) {
+	const (
+		blockchainIDSlot = "0x0"
+		messageNonceSlot = "0x1"
+	)
 	storage := map[common.Hash]common.Hash{}
-	setSimpleStorageValue(storage, "0", "1")
-	setSimpleStorageValue(storage, "1", "1")
+	setSimpleStorageValue(storage, blockchainIDSlot, "0x1")
+	setSimpleStorageValue(storage, messageNonceSlot, "0x1")
 	deployedMessengerBytes := common.FromHex(strings.TrimSpace(string(deployedMessengerBytecode)))
 	allocs[common.HexToAddress(messengerContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
@@ -81,12 +86,17 @@ func addICMContractToGenesisAllocations(
 func addICMRegistryContractToGenesisAllocations(
 	allocs core.GenesisAlloc,
 ) error {
+	const (
+		latestVersionSlot    = "0x0"
+		versionToAddressSlot = "0x1"
+		addressToVersionSlot = "0x2"
+	)
 	storage := map[common.Hash]common.Hash{}
-	setSimpleStorageValue(storage, "0", "1")
-	if err := setMappingStorageValue(storage, "1", "1", messengerContractAddress); err != nil {
+	setSimpleStorageValue(storage, latestVersionSlot, messengerVersion)
+	if err := setMappingStorageValue(storage, versionToAddressSlot, messengerVersion, messengerContractAddress); err != nil {
 		return err
 	}
-	if err := setMappingStorageValue(storage, "2", messengerContractAddress, "2"); err != nil {
+	if err := setMappingStorageValue(storage, addressToVersionSlot, messengerContractAddress, messengerVersion); err != nil {
 		return err
 	}
 	deployedRegistryBytes := common.FromHex(strings.TrimSpace(string(deployedRegistryBytecode)))
