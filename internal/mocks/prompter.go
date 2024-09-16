@@ -76,6 +76,30 @@ func (_m *Prompter) CaptureAddresses(promptStr string) ([]common.Address, error)
 	return r0, r1
 }
 
+// CaptureBootstrapInitialBalance provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureBootstrapInitialBalance(promptStr string) (uint64, error) {
+	ret := _m.Called(promptStr)
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (uint64, error)); ok {
+		return rf(promptStr)
+	}
+	if rf, ok := ret.Get(0).(func(string) uint64); ok {
+		r0 = rf(promptStr)
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(promptStr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CaptureDate provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureDate(promptStr string) (time.Time, error) {
 	ret := _m.Called(promptStr)
@@ -289,32 +313,6 @@ func (_m *Prompter) CaptureIndex(promptStr string, options []interface{}) (int, 
 
 	if rf, ok := ret.Get(1).(func(string, []interface{}) error); ok {
 		r1 = rf(promptStr, options)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// CaptureInitialBalances provides a mock function with given fields: promptStr, numValidators
-func (_m *Prompter) CaptureInitialBalances(promptStr string, numValidators int) ([]int, error) {
-	ret := _m.Called(promptStr, numValidators)
-
-	var r0 []int
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string, int) ([]int, error)); ok {
-		return rf(promptStr, numValidators)
-	}
-	if rf, ok := ret.Get(0).(func(string, int) []int); ok {
-		r0 = rf(promptStr, numValidators)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]int)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(string, int) error); ok {
-		r1 = rf(promptStr, numValidators)
 	} else {
 		r1 = ret.Error(1)
 	}
