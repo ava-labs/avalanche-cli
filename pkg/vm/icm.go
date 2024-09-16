@@ -4,11 +4,14 @@ package vm
 
 import (
 	_ "embed"
+	"encoding/hex"
+	"fmt"
 	"math/big"
 	"strings"
 
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -23,13 +26,45 @@ var deployedMessengerBytecode []byte
 //go:embed deployed_registry_bytecode.txt
 var deployedRegistryBytecode []byte
 
+func setSimpleStorageValue(
+	storage map[common.Hash]common.Hash,
+	slot string,
+	value string,
+) {
+	storage[common.HexToHash(slot)] = common.HexToHash(value)
+}
+
+func trimHexa(s string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(s, "0x"), "0X")
+}
+
+func hexFill32(s string) string {
+	return fmt.Sprintf("%064s", trimHexa(s))
+}
+
+func setMappingStorageValue(
+	storage map[common.Hash]common.Hash,
+	slot string,
+	key string,
+	value string,
+) error {
+	slot = hexFill32(slot)
+	key = hexFill32(key)
+	storageKey := key + slot
+	storageKeyBytes, err := hex.DecodeString(storageKey)
+	if err != nil {
+		return err
+	}
+	storage[crypto.Keccak256Hash(storageKeyBytes)] = common.HexToHash(value)
+	return nil
+}
+
 func addICMContractToGenesisAllocations(
 	allocs core.GenesisAlloc,
 ) {
-	storage := map[common.Hash]common.Hash{
-		common.HexToHash("0x0"): common.HexToHash("0x1"),
-		common.HexToHash("0x1"): common.HexToHash("0x1"),
-	}
+	storage := map[common.Hash]common.Hash{}
+	setSimpleStorageValue(storage, "0", "1")
+	setSimpleStorageValue(storage, "1", "1")
 	deployedMessengerBytes := common.FromHex(strings.TrimSpace(string(deployedMessengerBytecode)))
 	allocs[common.HexToAddress(messengerContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
@@ -45,10 +80,14 @@ func addICMContractToGenesisAllocations(
 
 func addICMRegistryContractToGenesisAllocations(
 	allocs core.GenesisAlloc,
-) {
-	storage := map[common.Hash]common.Hash{
-		common.HexToHash("0x0"): common.HexToHash("0x1"),
-		common.HexToHash("0x1"): common.HexToHash("0x1"),
+) error {
+	storage := map[common.Hash]common.Hash{}
+	setSimpleStorageValue(storage, "0", "1")
+	if err := setMappingStorageValue(storage, "1", "1", messengerContractAddress); err != nil {
+		return err
+	}
+	if err := setMappingStorageValue(storage, "2", messengerContractAddress, "2"); err != nil {
+		return err
 	}
 	deployedRegistryBytes := common.FromHex(strings.TrimSpace(string(deployedRegistryBytecode)))
 	allocs[common.HexToAddress(registryContractAddress)] = core.GenesisAccount{
@@ -57,4 +96,5 @@ func addICMRegistryContractToGenesisAllocations(
 		Storage: storage,
 		Nonce:   1,
 	}
+	return nil
 }

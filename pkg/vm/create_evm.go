@@ -113,6 +113,9 @@ func CreateEVMGenesis(
 			Balance: balance,
 		}
 		addICMContractToGenesisAllocations(params.initialTokenAllocation)
+		if err := addICMRegistryContractToGenesisAllocations(params.initialTokenAllocation); err != nil {
+			return nil, err
+		}
 	}
 
 	if params.UseExternalGasToken {
