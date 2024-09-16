@@ -26,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -444,16 +445,21 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 		if err != nil {
 			return nil, err
 		}
-		_, icmMessengerAddress, icmRegistryAddress, err = icmd.Deploy(
+		var alreadyDeployed bool
+		alreadyDeployed, icmMessengerAddress, icmRegistryAddress, err = icmd.Deploy(
 			chain,
 			network.BlockchainEndpoint(blockchainID),
 			blockchainKey.PrivKeyHex(),
 			true,
 			true,
-			true,
+			false,
 		)
 		if err != nil {
 			return nil, err
+		}
+		if alreadyDeployed {
+			// included in genesis
+			icmRegistryAddress = vm.RegistryContractAddress
 		}
 		if sc.RunRelayer && !icmSpec.SkipRelayerDeploy {
 			if !cchainAlreadyDeployed {

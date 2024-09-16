@@ -16,9 +16,9 @@ import (
 
 const (
 	messengerVersion         = "0x1"
-	messengerContractAddress = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
 	messengerDeployerAddress = "0x618FEdD9A45a8C456812ecAAE70C671c6249DfaC"
-	registryContractAddress  = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
+	MessengerContractAddress = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	RegistryContractAddress  = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
 )
 
 //go:embed deployed_messenger_bytecode.txt
@@ -60,7 +60,7 @@ func setMappingStorageValue(
 	return nil
 }
 
-func addICMContractToGenesisAllocations(
+func addICMMessengerContractToGenesisAllocations(
 	allocs core.GenesisAlloc,
 ) {
 	const (
@@ -71,7 +71,7 @@ func addICMContractToGenesisAllocations(
 	setSimpleStorageValue(storage, blockchainIDSlot, "0x1")
 	setSimpleStorageValue(storage, messageNonceSlot, "0x1")
 	deployedMessengerBytes := common.FromHex(strings.TrimSpace(string(deployedMessengerBytecode)))
-	allocs[common.HexToAddress(messengerContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(MessengerContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedMessengerBytes,
 		Storage: storage,
@@ -93,14 +93,14 @@ func addICMRegistryContractToGenesisAllocations(
 	)
 	storage := map[common.Hash]common.Hash{}
 	setSimpleStorageValue(storage, latestVersionSlot, messengerVersion)
-	if err := setMappingStorageValue(storage, versionToAddressSlot, messengerVersion, messengerContractAddress); err != nil {
+	if err := setMappingStorageValue(storage, versionToAddressSlot, messengerVersion, MessengerContractAddress); err != nil {
 		return err
 	}
-	if err := setMappingStorageValue(storage, addressToVersionSlot, messengerContractAddress, messengerVersion); err != nil {
+	if err := setMappingStorageValue(storage, addressToVersionSlot, MessengerContractAddress, messengerVersion); err != nil {
 		return err
 	}
 	deployedRegistryBytes := common.FromHex(strings.TrimSpace(string(deployedRegistryBytecode)))
-	allocs[common.HexToAddress(registryContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(RegistryContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedRegistryBytes,
 		Storage: storage,
