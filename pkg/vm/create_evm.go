@@ -4,12 +4,10 @@ package vm
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -18,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/subnet-evm/core"
-	"github.com/ava-labs/subnet-evm/core/types"
 	subnetevmparams "github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -115,28 +112,7 @@ func CreateEVMGenesis(
 		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
-		messengerContractAddress, deployedMessengerString, messengerDeployerAddress, err := getTeleporterMessengerParamsForGenesis(
-			app,
-			"v1.0.0",
-		)
-		if err != nil {
-			return nil, err
-		}
-		deployedMessengerBytes := common.FromHex(deployedMessengerString)
-		storage := map[common.Hash]common.Hash{
-			common.HexToHash("0x0"): common.HexToHash("0x1"),
-			common.HexToHash("0x1"): common.HexToHash("0x1"),
-		}
-		params.initialTokenAllocation[common.HexToAddress(messengerContractAddress)] = core.GenesisAccount{
-			Balance: big.NewInt(0),
-			Code:    deployedMessengerBytes,
-			Storage: storage,
-			Nonce:   1,
-		}
-		params.initialTokenAllocation[common.HexToAddress(messengerDeployerAddress)] = core.GenesisAccount{
-			Balance: big.NewInt(0),
-			Nonce:   1,
-		}
+		addICMContractToGenesisAllocations(params.initialTokenAllocation)
 	}
 
 	if params.UseExternalGasToken {
@@ -193,32 +169,4 @@ func someAllowedHasBalance(allowList AllowList, allocations core.GenesisAlloc) b
 		}
 	}
 	return false
-}
-
-func getTeleporterMessengerParamsForGenesis(
-	app *application.Avalanche,
-	teleporterVersion string,
-) (string, string, string, error) {
-	td := teleporter.Deployer{}
-	messengerContractAddress, messengerDeployerAddress, messengerDeployerTxString, registryBytecode, err := td.GetAssets(
-		app.GetTeleporterBinDir(),
-		teleporterVersion,
-	)
-	if err != nil {
-		return "", "", "", err
-	}
-	messengerDeployerTxBytes, err := hex.DecodeString(strings.TrimPrefix(messengerDeployerTxString, "0x"))
-	if err != nil {
-		return "", "", "", err
-	}
-	messengerDeployerTx := types.NewTx(&types.LegacyTx{})
-	if err := messengerDeployerTx.UnmarshalBinary(messengerDeployerTxBytes); err != nil {
-		return "", "", "", err
-	}
-	messengerBytes := messengerDeployerTx.Data()
-	deployedMessengerBytes := messengerBytes[:19]
-	deployedMessengerBytes = append(deployedMessengerBytes, messengerBytes[19+41:]...)
-	deployedMessengerString := "0x" + hex.EncodeToString(deployedMessengerBytes)
-	_ = registryBytecode
-	return messengerContractAddress, deployedMessengerString, messengerDeployerAddress, nil
 }
