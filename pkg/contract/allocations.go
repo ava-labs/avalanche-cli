@@ -235,3 +235,39 @@ func GetEVMSubnetGenesisNativeMinterAdmin(
 	}
 	return getGenesisNativeMinterAdmin(app, network, genesisData)
 }
+
+func ContractAddressIsInBlockchainGenesis(
+	app *application.Avalanche,
+	network models.Network,
+	chainSpec ChainSpec,
+	contractAddress common.Address,
+) (bool, error) {
+	genesisData, err := GetBlockchainGenesis(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return false, err
+	}
+	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
+		return false, fmt.Errorf("checking for contract belonging to genesis is only supported on EVM based vms")
+	}
+	return ContractAddressIsInGenesisData(genesisData, contractAddress)
+}
+
+func ContractAddressIsInGenesisData(
+	genesisData []byte,
+	contractAddress common.Address,
+) (bool, error) {
+	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
+	if err != nil {
+		return false, err
+	}
+	for address, allocation := range genesis.Alloc {
+		if address == contractAddress {
+			return len(allocation.Code) > 0, nil
+		}
+	}
+	return false, nil
+}

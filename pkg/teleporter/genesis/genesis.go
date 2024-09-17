@@ -9,6 +9,9 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -16,7 +19,7 @@ import (
 
 const (
 	messengerVersion         = "0x1"
-	messengerContractAddress = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	MessengerContractAddress = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
 	RegistryContractAddress  = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
 	MessengerDeployerAddress = "0x618FEdD9A45a8C456812ecAAE70C671c6249DfaC"
 )
@@ -71,7 +74,7 @@ func AddICMMessengerContractToAllocations(
 	setSimpleStorageValue(storage, blockchainIDSlot, "0x1")
 	setSimpleStorageValue(storage, messageNonceSlot, "0x1")
 	deployedMessengerBytes := common.FromHex(strings.TrimSpace(string(deployedMessengerBytecode)))
-	allocs[common.HexToAddress(messengerContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(MessengerContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedMessengerBytes,
 		Storage: storage,
@@ -93,10 +96,10 @@ func AddICMRegistryContractToAllocations(
 	)
 	storage := map[common.Hash]common.Hash{}
 	setSimpleStorageValue(storage, latestVersionSlot, messengerVersion)
-	if err := setMappingStorageValue(storage, versionToAddressSlot, messengerVersion, messengerContractAddress); err != nil {
+	if err := setMappingStorageValue(storage, versionToAddressSlot, messengerVersion, MessengerContractAddress); err != nil {
 		return err
 	}
-	if err := setMappingStorageValue(storage, addressToVersionSlot, messengerContractAddress, messengerVersion); err != nil {
+	if err := setMappingStorageValue(storage, addressToVersionSlot, MessengerContractAddress, messengerVersion); err != nil {
 		return err
 	}
 	deployedRegistryBytes := common.FromHex(strings.TrimSpace(string(deployedRegistryBytecode)))
@@ -107,4 +110,18 @@ func AddICMRegistryContractToAllocations(
 		Nonce:   1,
 	}
 	return nil
+}
+
+func BlockchainHasICMEnabledGenesis(
+	app *application.Avalanche,
+	network models.Network,
+	chainSpec contract.ChainSpec,
+) (bool, error) {
+	return contract.ContractAddressIsInBlockchainGenesis(app, network, chainSpec, common.HexToAddress(MessengerContractAddress))
+}
+
+func GenesisIsICMEnabled(
+	genesisData []byte,
+) (bool, error) {
+	return contract.ContractAddressIsInGenesisData(genesisData, common.HexToAddress(MessengerContractAddress))
 }
