@@ -426,11 +426,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = promptValidators()
+	bootstrapValidators, err := promptBootstrapValidators()
 	if err != nil {
 		return err
 	}
-	// TODO: update subnetvalidators in sidecar
+	sc.BootstrapValidators = bootstrapValidators
 
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
@@ -565,7 +565,7 @@ func PromptWeightBootstrapValidator() (uint64, error) {
 }
 
 func PromptInitialBalance() (uint64, error) {
-	defaultInitialBalance := fmt.Sprintf("Default (%d) AVAX", constants.MinInitialBalanceBootstrapValidator)
+	defaultInitialBalance := fmt.Sprintf("Default (%d AVAX)", constants.MinInitialBalanceBootstrapValidator)
 	txt := "What initial balance would you like to assign to the bootstrap validator (in AVAX)?"
 	weightOptions := []string{defaultInitialBalance, "Custom"}
 	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
@@ -581,7 +581,7 @@ func PromptInitialBalance() (uint64, error) {
 	}
 }
 
-func promptValidators() ([]models.SubnetValidator, error) {
+func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
 		"How many bootstrap validators do you want to set up?",

@@ -363,7 +363,7 @@ func getKeyForChangeOwner(previouslyUsedAddr string) (string, error) {
 }
 
 func promptNetwork() (models.Network, error) {
-	promptStr := "Choose a network to get the key from"
+	promptStr := "Choose a network that the bootstrap validators will be validating"
 	supportedNetworkOptionsToPrompt := []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
 
 	networkOptionStr, err := app.Prompt.CaptureList(
