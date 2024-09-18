@@ -3,14 +3,17 @@
 package blockchaincmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/staking"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
@@ -130,16 +133,46 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 	if err != nil {
 		return nil, err
 	}
+	setUpNodes, err := promptSetUpNodes()
+	if err != nil {
+		return nil, err
+	}
 	previousAddr := ""
 	for len(subnetValidators) < numBootstrapValidators {
 		ux.Logger.PrintToUser("Getting info for bootstrap validator %d", len(subnetValidators)+1)
-		nodeID, err := PromptNodeID()
-		if err != nil {
-			return nil, err
-		}
-		publicKey, pop, err := promptProofOfPossession()
-		if err != nil {
-			return nil, err
+		var nodeID ids.NodeID
+		var publicKey, pop string
+		if setUpNodes {
+			nodeID, err = PromptNodeID()
+			if err != nil {
+				return nil, err
+			}
+			publicKey, pop, err = promptProofOfPossession()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			certBytes, _, err := staking.NewCertAndKeyBytes()
+			if err != nil {
+				return nil, err
+			}
+			nodeID, err = utils.ToNodeID(certBytes)
+			if err != nil {
+				return nil, err
+			}
+			blsSignerKey, err := bls.NewSecretKey()
+			if err != nil {
+				return nil, err
+			}
+			p := signer.NewProofOfPossession(blsSignerKey)
+			publicKey, err = formatting.Encode(formatting.HexNC, p.PublicKey[:])
+			if err != nil {
+				return nil, err
+			}
+			pop, err = formatting.Encode(formatting.HexNC, p.ProofOfPossession[:])
+			if err != nil {
+				return nil, err
+			}
 		}
 		changeAddr, err := getKeyForChangeOwner(previousAddr)
 		if err != nil {
@@ -172,27 +205,6 @@ func validateBLS(publicKey, pop string) error {
 	return nil
 }
 
-func getBLSInfo(publicKey, proofOfPossesion string) (signer.Signer, error) {
-	type jsonProofOfPossession struct {
-		PublicKey         string
-		ProofOfPossession string
-	}
-	jsonPop := jsonProofOfPossession{
-		PublicKey:         publicKey,
-		ProofOfPossession: proofOfPossesion,
-	}
-	popBytes, err := json.Marshal(jsonPop)
-	if err != nil {
-		return nil, err
-	}
-	pop := &signer.ProofOfPossession{}
-	err = pop.UnmarshalJSON(popBytes)
-	if err != nil {
-		return nil, err
-	}
-	return pop, nil
-}
-
 func validateSubnetValidatorsJSON(validatorJSONS []models.SubnetValidator) error {
 	for _, validatorJSON := range validatorJSONS {
 		_, err := ids.NodeIDFromString(validatorJSON.NodeID)
@@ -210,4 +222,16 @@ func validateSubnetValidatorsJSON(validatorJSONS []models.SubnetValidator) error
 		}
 	}
 	return nil
+}
+
+// promptProvideNodeID returns false if user doesn't have any Avalanche node set up yet to be
+// bootstrap validators
+func promptSetUpNodes() (bool, error) {
+	ux.Logger.PrintToUser("If you have set up your own Avalanche Nodes, you can provide the Node ID and BLS Key from those nodes in the next step.")
+	ux.Logger.PrintToUser("Otherwise, we will generate new Node IDs and BLS Key for you.")
+	setUpNodes, err := app.Prompt.CaptureYesNo("Have you set up your own Avalanche Nodes?")
+	if err != nil {
+		return false, err
+	}
+	return setUpNodes, nil
 }

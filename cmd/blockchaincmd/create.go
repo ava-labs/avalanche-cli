@@ -50,7 +50,6 @@ type CreateFlags struct {
 	validatorManagerMintOnly      bool
 	tokenMinterAddress            []string
 	validatorManagerController    []string
-	bootstrapValidators           []models.SubnetValidator
 }
 
 var (
