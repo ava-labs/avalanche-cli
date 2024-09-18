@@ -134,8 +134,8 @@ func validateBootstrapBalance(input string) error {
 	if err != nil {
 		return err
 	}
-	if val < constants.MinInitialBalanceBootstrapValidator {
-		return fmt.Errorf("initial bootstrap validator balance must be at least %d AVAX", constants.MinInitialBalanceBootstrapValidator)
+	if val < constants.InitialBalanceBootstrapValidator {
+		return fmt.Errorf("initial bootstrap validator balance must be at least %d AVAX", constants.InitialBalanceBootstrapValidator)
 	}
 	return nil
 }

@@ -122,28 +122,6 @@ func promptValidatorManagementType(
 	return nil
 }
 
-func PromptWeightBootstrapValidator() (uint64, error) {
-	txt := "What stake weight would you like to assign to the validator?"
-	return app.Prompt.CaptureWeight(txt)
-}
-
-func PromptInitialBalance() (uint64, error) {
-	defaultInitialBalance := fmt.Sprintf("Default (%d AVAX)", constants.MinInitialBalanceBootstrapValidator)
-	txt := "What initial balance would you like to assign to the bootstrap validator (in AVAX)?"
-	weightOptions := []string{defaultInitialBalance, "Custom"}
-	weightOption, err := app.Prompt.CaptureList(txt, weightOptions)
-	if err != nil {
-		return 0, err
-	}
-
-	switch weightOption {
-	case defaultInitialBalance:
-		return constants.MinInitialBalanceBootstrapValidator, nil
-	default:
-		return app.Prompt.CaptureBootstrapInitialBalance(txt)
-	}
-}
-
 func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
@@ -159,14 +137,6 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 		if err != nil {
 			return nil, err
 		}
-		weight, err := PromptWeightBootstrapValidator()
-		if err != nil {
-			return nil, err
-		}
-		balance, err := PromptInitialBalance()
-		if err != nil {
-			return nil, err
-		}
 		publicKey, pop, err := promptProofOfPossession()
 		if err != nil {
 			return nil, err
@@ -178,8 +148,8 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 		previousAddr = changeAddr
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
-			Weight:               weight,
-			Balance:              balance,
+			Weight:               constants.DefaultWeightBootstrapValidator,
+			Balance:              constants.InitialBalanceBootstrapValidator,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
 			ChangeOwnerAddr:      changeAddr,
@@ -187,8 +157,6 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 		subnetValidators = append(subnetValidators, subnetValidator)
 		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
 		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
-		ux.Logger.PrintToUser("- Weight: %d", weight)
-		ux.Logger.PrintToUser("- Initial Balance: %d AVAX", balance)
 		ux.Logger.PrintToUser("- Change Address: %s", changeAddr)
 	}
 	return subnetValidators, nil
