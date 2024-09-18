@@ -261,7 +261,13 @@ const (
 	ICMKeyName        = "cli-teleporter-deployer"
 	AWMRelayerKeyName = "cli-awm-relayer"
 
-	AWMRelayerMetricsPort = 9091
+	// to not interfere with other node services
+	RemoteAWMRelayerMetricsPort = 9091
+
+	// enables having many local relayers
+	LocalNetworkLocalAWMRelayerMetricsPort = 9091
+	DevnetLocalAWMRelayerMetricsPort       = 9092
+	FujiLocalAWMRelayerMetricsPort         = 9093
 
 	SubnetEVMBin = "subnet-evm"
 

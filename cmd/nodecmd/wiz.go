@@ -1021,6 +1021,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		configPath,
 		logging.Info.LowerString(),
 		app.GetAWMRelayerServiceStorageDir(storageBasePath),
+		constants.RemoteAWMRelayerMetricsPort,
 		network,
 	); err != nil {
 		return err
