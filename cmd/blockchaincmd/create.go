@@ -54,11 +54,12 @@ type CreateFlags struct {
 }
 
 var (
-	createFlags CreateFlags
-	forceCreate bool
-	genesisFile string
-	vmFile      string
-	useRepo     bool
+	createFlags                     CreateFlags
+	forceCreate                     bool
+	genesisFile                     string
+	vmFile                          string
+	useRepo                         bool
+	bootstrapValidatorsJSONFilePath string
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -115,6 +116,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.validatorManagerMintOnly, "validator-manager-mint-only", false, "only enable validator manager contract to mint new native tokens")
 	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that can mint new native tokens (for proof of authority validator management only)")
 	cmd.Flags().StringSliceVar(&createFlags.validatorManagerController, "validator-manager-controller", nil, "addresses that will control Validator Manager contract")
+	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators")
 	return cmd
 }
 
@@ -217,13 +219,14 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	//if len(createFlags.bootstrapValidatorInitialBalance) > 0 {
-	//	for _, balance := range createFlags.bootstrapValidatorInitialBalance {
-	//		if balance < constants.MinInitialBalanceBootstrapValidator {
-	//			return fmt.Errorf("initial bootstrap validator balance must be at least %d AVAX", constants.MinInitialBalanceBootstrapValidator)
-	//		}
-	//	}
-	//}
+	var bootstrapValidators []models.SubnetValidator
+	var err error
+	if bootstrapValidatorsJSONFilePath != "" {
+		bootstrapValidators, err = LoadBootstrapValidator(bootstrapValidatorsJSONFilePath)
+		if err != nil {
+			return err
+		}
+	}
 
 	// get vm kind
 	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useCustomVM)
@@ -419,9 +422,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	bootstrapValidators, err := promptBootstrapValidators()
-	if err != nil {
-		return err
+	if bootstrapValidatorsJSONFilePath == "" {
+		bootstrapValidators, err = promptBootstrapValidators()
+		if err != nil {
+			return err
+		}
 	}
 	sc.BootstrapValidators = bootstrapValidators
 
@@ -498,4 +503,20 @@ func checkInvalidSubnetNames(name string) error {
 		}
 	}
 	return nil
+}
+
+func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
+	jsonBytes, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+	var subnetValidatorsJSON []models.SubnetValidatorJSON
+	if err = json.Unmarshal(jsonBytes, &subnetValidatorsJSON); err != nil {
+		return nil, err
+	}
+	subnetValidators, err := convertToSubnetValidators(subnetValidatorsJSON)
+	if err != nil {
+		return nil, err
+	}
+	return subnetValidators, nil
 }

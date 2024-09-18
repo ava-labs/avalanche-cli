@@ -3,12 +3,14 @@
 package blockchaincmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -79,13 +81,11 @@ func promptProofOfPossession() (signer.Signer, error) {
 	if err != nil {
 		return nil, err
 	}
-	var proofOfPossession signer.Signer
-	pop := &signer.ProofOfPossession{
-		PublicKey:         [48]byte([]byte(publicKey)),
-		ProofOfPossession: [96]byte([]byte(proofOfPossesion)),
+	pop, err := getBLSInfo(publicKey, proofOfPossesion)
+	if err != nil {
+		return nil, err
 	}
-	proofOfPossession = pop
-	return proofOfPossession, nil
+	return pop, nil
 }
 
 // TODO: add explain the difference for different validator management type
@@ -205,19 +205,91 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 	return subnetValidators, nil
 }
 
-func validateProofOfPossession(publicKey, pop string) {
-	if publicKey != "" {
-		err := prompts.ValidateHexa(publicKey)
-		if err != nil {
-			ux.Logger.PrintToUser("Format error in given public key: %s", err)
-			publicKey = ""
-		}
+func validateBLS(publicKey, pop string) error {
+	if err := prompts.ValidateHexa(publicKey); err != nil {
+		return fmt.Errorf("format error in given public key: %s", err)
 	}
-	if pop != "" {
-		err := prompts.ValidateHexa(pop)
-		if err != nil {
-			ux.Logger.PrintToUser("Format error in given proof of possession: %s", err)
-			pop = ""
-		}
+	if err := prompts.ValidateHexa(pop); err != nil {
+		return fmt.Errorf("format error in given proof of possession: %s", err)
 	}
+	return nil
+}
+
+func getBLSInfo(publicKey, proofOfPossesion string) (signer.Signer, error) {
+	type jsonProofOfPossession struct {
+		PublicKey         string
+		ProofOfPossession string
+	}
+	jsonPop := jsonProofOfPossession{
+		PublicKey:         publicKey,
+		ProofOfPossession: proofOfPossesion,
+	}
+	popBytes, err := json.Marshal(jsonPop)
+	if err != nil {
+		return nil, err
+	}
+	pop := &signer.ProofOfPossession{}
+	err = pop.UnmarshalJSON(popBytes)
+	if err != nil {
+		return nil, err
+	}
+	return pop, nil
+}
+
+func convertToSubnetValidators(validatorJSONS []models.SubnetValidatorJSON) ([]models.SubnetValidator, error) {
+	subnetValidators := []models.SubnetValidator{}
+	type jsonProofOfPossession struct {
+		PublicKey         string
+		ProofOfPossession string
+	}
+	for _, validatorJSON := range validatorJSONS {
+		nodeID, err := ids.NodeIDFromString(validatorJSON.NodeID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid node id %s", validatorJSON.NodeID)
+		}
+		if validatorJSON.Weight <= 0 {
+			return nil, fmt.Errorf("bootstrap validator weight has to be greater than 0")
+		}
+		if validatorJSON.Balance <= 0 {
+			return nil, fmt.Errorf("bootstrap validator balance has to be greater than 0")
+		}
+		if err = validateBLS(validatorJSON.BLSPublicKey, validatorJSON.BLSProofOfPossession); err != nil {
+			return nil, err
+		}
+		//jsonPop := jsonProofOfPossession{
+		//	PublicKey:         validatorJSON.BLSPublicKey,
+		//	ProofOfPossession: validatorJSON.BLSProofOfPossession,
+		//}
+		//popBytes, err := json.Marshal(jsonPop)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//pop := &signer.ProofOfPossession{}
+		//err = pop.UnmarshalJSON(popBytes)
+		//if err != nil {
+		//	return nil, err
+		//}
+		pop, err := getBLSInfo(validatorJSON.BLSPublicKey, validatorJSON.BLSProofOfPossession)
+		if err != nil {
+			return nil, err
+		}
+		changeAddr, err := ids.ShortFromString(validatorJSON.ChangeOwnerAddr)
+		if err != nil {
+			return nil, err
+		}
+		changeOwner := &secp256k1fx.OutputOwners{
+			Threshold: 1,
+			Addrs:     []ids.ShortID{changeAddr},
+		}
+		subnetValidators = append(subnetValidators,
+			models.SubnetValidator{
+				NodeID:      nodeID,
+				Weight:      validatorJSON.Weight,
+				Balance:     validatorJSON.Balance,
+				Signer:      pop,
+				ChangeOwner: changeOwner,
+			},
+		)
+	}
+	return subnetValidators, nil
 }
