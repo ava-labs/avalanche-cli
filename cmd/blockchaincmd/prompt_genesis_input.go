@@ -126,6 +126,32 @@ func promptValidatorManagementType(
 	return nil
 }
 
+// generateNewNodeAndBLS returns node id, bls public key and bls pop
+func generateNewNodeAndBLS() (string, string, string, error) {
+	certBytes, _, err := staking.NewCertAndKeyBytes()
+	if err != nil {
+		return "", "", "", err
+	}
+	nodeID, err := utils.ToNodeID(certBytes)
+	if err != nil {
+		return "", "", "", err
+	}
+	blsSignerKey, err := bls.NewSecretKey()
+	if err != nil {
+		return "", "", "", err
+	}
+	p := signer.NewProofOfPossession(blsSignerKey)
+	publicKey, err := formatting.Encode(formatting.HexNC, p.PublicKey[:])
+	if err != nil {
+		return "", "", "", err
+	}
+	pop, err := formatting.Encode(formatting.HexNC, p.ProofOfPossession[:])
+	if err != nil {
+		return "", "", "", err
+	}
+	return nodeID.String(), publicKey, pop, nil
+}
+
 func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
@@ -134,9 +160,14 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 	if err != nil {
 		return nil, err
 	}
-	setUpNodes, err := promptSetUpNodes()
-	if err != nil {
-		return nil, err
+	var setUpNodes bool
+	if createFlags.generateNodeID {
+		setUpNodes = true
+	} else {
+		setUpNodes, err = promptSetUpNodes()
+		if err != nil {
+			return nil, err
+		}
 	}
 	previousAddr := ""
 	for len(subnetValidators) < numBootstrapValidators {
@@ -153,24 +184,11 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 				return nil, err
 			}
 		} else {
-			certBytes, _, err := staking.NewCertAndKeyBytes()
+			nodeIDStr, publicKey, pop, err = generateNewNodeAndBLS()
 			if err != nil {
 				return nil, err
 			}
-			nodeID, err = utils.ToNodeID(certBytes)
-			if err != nil {
-				return nil, err
-			}
-			blsSignerKey, err := bls.NewSecretKey()
-			if err != nil {
-				return nil, err
-			}
-			p := signer.NewProofOfPossession(blsSignerKey)
-			publicKey, err = formatting.Encode(formatting.HexNC, p.PublicKey[:])
-			if err != nil {
-				return nil, err
-			}
-			pop, err = formatting.Encode(formatting.HexNC, p.ProofOfPossession[:])
+			nodeID, err = ids.NodeIDFromString(nodeIDStr)
 			if err != nil {
 				return nil, err
 			}
@@ -206,20 +224,22 @@ func validateBLS(publicKey, pop string) error {
 	return nil
 }
 
-func validateSubnetValidatorsJSON(validatorJSONS []models.SubnetValidator) error {
+func validateSubnetValidatorsJSON(generateNewNodeID bool, validatorJSONS []models.SubnetValidator) error {
 	for _, validatorJSON := range validatorJSONS {
-		_, err := ids.NodeIDFromString(validatorJSON.NodeID)
-		if err != nil {
-			return fmt.Errorf("invalid node id %s", validatorJSON.NodeID)
+		if !generateNewNodeID {
+			_, err := ids.NodeIDFromString(validatorJSON.NodeID)
+			if err != nil {
+				return fmt.Errorf("invalid node id %s", validatorJSON.NodeID)
+			}
+			if err = validateBLS(validatorJSON.BLSPublicKey, validatorJSON.BLSProofOfPossession); err != nil {
+				return err
+			}
 		}
 		if validatorJSON.Weight <= 0 {
 			return fmt.Errorf("bootstrap validator weight has to be greater than 0")
 		}
 		if validatorJSON.Balance <= 0 {
 			return fmt.Errorf("bootstrap validator balance has to be greater than 0")
-		}
-		if err = validateBLS(validatorJSON.BLSPublicKey, validatorJSON.BLSProofOfPossession); err != nil {
-			return err
 		}
 	}
 	return nil
