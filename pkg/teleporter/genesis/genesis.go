@@ -112,16 +112,28 @@ func AddICMRegistryContractToAllocations(
 	return nil
 }
 
-func BlockchainHasICMEnabledGenesis(
+func ICMAtBlockchainGenesis(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec contract.ChainSpec,
-) (bool, error) {
-	return contract.ContractAddressIsInBlockchainGenesis(app, network, chainSpec, common.HexToAddress(MessengerContractAddress))
+) (bool, bool, error) {
+	genesisData, err := contract.GetBlockchainGenesis(app, network, chainSpec)
+	if err != nil {
+		return false, false, err
+	}
+	return ICMAtGenesis(genesisData)
 }
 
-func GenesisIsICMEnabled(
+func ICMAtGenesis(
 	genesisData []byte,
-) (bool, error) {
-	return contract.ContractAddressIsInGenesisData(genesisData, common.HexToAddress(MessengerContractAddress))
+) (bool, bool, error) {
+	messengerAtGenesis, err := contract.ContractAddressIsInGenesisData(genesisData, common.HexToAddress(MessengerContractAddress))
+	if err != nil {
+		return false, false, err
+	}
+	registryAtGenesis, err := contract.ContractAddressIsInGenesisData(genesisData, common.HexToAddress(RegistryContractAddress))
+	if err != nil {
+		return false, false, err
+	}
+	return messengerAtGenesis, registryAtGenesis, nil
 }

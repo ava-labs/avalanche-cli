@@ -25,6 +25,7 @@ type DeployFlags struct {
 	GenesisKey                   bool
 	DeployMessenger              bool
 	DeployRegistry               bool
+	ForceRegistryDeploy          bool
 	RPCURL                       string
 	Version                      string
 	MessengerContractAddressPath string
@@ -62,6 +63,7 @@ func newDeployCmd() *cobra.Command {
 	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM", true)
 	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
+	cmd.Flags().BoolVar(&deployFlags.ForceRegistryDeploy, "force-registry-deploy", false, "deploy Teleporter Registry even if Messenger has already been deployed")
 	cmd.Flags().StringVar(&deployFlags.RPCURL, "rpc-url", "", "use the given RPC URL to connect to the subnet")
 	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
 	cmd.Flags().StringVar(&deployFlags.MessengerContractAddressPath, "messenger-contract-address-path", "", "path to a messenger contract address file")
@@ -188,7 +190,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		privateKey,
 		flags.DeployMessenger,
 		flags.DeployRegistry,
-		false,
+		flags.ForceRegistryDeploy,
 	)
 	if err != nil {
 		return err

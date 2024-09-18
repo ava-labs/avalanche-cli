@@ -76,6 +76,8 @@ func CreateEVMGenesis(
 	blockchainName string,
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
+	addICMMessengerToGenesis bool,
+	addICMRegistryToGenesis bool,
 ) ([]byte, error) {
 	ux.Logger.PrintToUser("creating genesis for blockchain %s", blockchainName)
 
@@ -104,9 +106,13 @@ func CreateEVMGenesis(
 		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
-		icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
-		if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
-			return nil, err
+		if addICMMessengerToGenesis || addICMRegistryToGenesis {
+			icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
+			if addICMRegistryToGenesis {
+				if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
+					return nil, err
+				}
+			}
 		}
 	}
 

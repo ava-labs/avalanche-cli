@@ -449,15 +449,30 @@ func (d *LocalDeployer) doDeploy(blockchainName string, genesisPath string, icmS
 		if err != nil {
 			return nil, err
 		}
-		includedInGenesis, err := icmgenesis.GenesisIsICMEnabled(genesisData)
+		messengerAtGenesis, registryAtGenesis, err := icmgenesis.ICMAtGenesis(genesisData)
 		if err != nil {
 			return nil, err
 		}
-		if includedInGenesis {
+		switch {
+		case registryAtGenesis:
 			ux.Logger.PrintToUser("Teleporter Messenger and Registry already included in %s's Genesis", blockchainName)
 			icmMessengerAddress = icmgenesis.MessengerContractAddress
 			icmRegistryAddress = icmgenesis.RegistryContractAddress
-		} else {
+		case messengerAtGenesis:
+			ux.Logger.PrintToUser("Teleporter Messenger already included in %s's Genesis", blockchainName)
+			icmMessengerAddress = icmgenesis.MessengerContractAddress
+			_, _, icmRegistryAddress, err = icmd.Deploy(
+				blockchainName,
+				network.BlockchainEndpoint(blockchainID),
+				blockchainKey.PrivKeyHex(),
+				false,
+				true,
+				false,
+			)
+			if err != nil {
+				return nil, err
+			}
+		default:
 			_, icmMessengerAddress, icmRegistryAddress, err = icmd.Deploy(
 				blockchainName,
 				network.BlockchainEndpoint(blockchainID),

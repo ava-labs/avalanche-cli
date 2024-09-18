@@ -394,6 +394,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			},
 			DeployMessenger:              deployTeleporterMessenger,
 			DeployRegistry:               deployTeleporterRegistry,
+			ForceRegistryDeploy:          true,
 			Version:                      teleporterVersion,
 			MessengerContractAddressPath: teleporterMessengerContractAddressPath,
 			MessengerDeployerAddressPath: teleporterMessengerDeployerAddressPath,
