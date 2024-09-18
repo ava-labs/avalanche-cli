@@ -90,6 +90,7 @@ type SubnetEVMGenesisParams struct {
 	enableContractDeployerPrecompile    bool
 	contractDeployerPrecompileAllowList AllowList
 	enableWarpPrecompile                bool
+	SoVUsePoAValidatorManager           bool
 }
 
 func PromptTokenSymbol(

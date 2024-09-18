@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/utils"
@@ -114,6 +115,11 @@ func CreateEVMGenesis(
 				}
 			}
 		}
+	}
+
+	params.SoVUsePoAValidatorManager = true
+	if params.SoVUsePoAValidatorManager {
+		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 	}
 
 	if params.UseExternalGasToken {
