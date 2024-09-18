@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -197,10 +198,10 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 
 func validateBLS(publicKey, pop string) error {
 	if err := prompts.ValidateHexa(publicKey); err != nil {
-		return fmt.Errorf("format error in given public key: %s", err)
+		return fmt.Errorf("format error in given public key: %w", err)
 	}
 	if err := prompts.ValidateHexa(pop); err != nil {
-		return fmt.Errorf("format error in given proof of possession: %s", err)
+		return fmt.Errorf("format error in given proof of possession: %w", err)
 	}
 	return nil
 }
