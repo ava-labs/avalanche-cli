@@ -11,9 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 )
 
 func getValidatorContractManagerAddr() ([]string, bool, error) {
@@ -67,25 +65,21 @@ func getAddr() ([]string, bool, error) {
 	return addr, false, nil
 }
 
-func promptProofOfPossession() (signer.Signer, error) {
+func promptProofOfPossession() (string, string, error) {
 	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
 	var err error
 	txt := "What is the public key of the node's BLS?"
 	publicKey, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 	txt = "What is the proof of possession of the node's BLS?"
 	proofOfPossesion, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
-	pop, err := getBLSInfo(publicKey, proofOfPossesion)
-	if err != nil {
-		return nil, err
-	}
-	return pop, nil
+	return publicKey, proofOfPossesion, nil
 }
 
 // TODO: add explain the difference for different validator management type
@@ -128,7 +122,6 @@ func promptValidatorManagementType(
 	return nil
 }
 
-// TODO: find the min weight for bootstrap validator
 func PromptWeightBootstrapValidator() (uint64, error) {
 	txt := "What stake weight would you like to assign to the validator?"
 	return app.Prompt.CaptureWeight(txt)
@@ -174,26 +167,22 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 		if err != nil {
 			return nil, err
 		}
-		proofOfPossession, err := promptProofOfPossession()
+		publicKey, pop, err := promptProofOfPossession()
+		if err != nil {
+			return nil, err
+		}
 		changeAddr, err := getKeyForChangeOwner(previousAddr)
 		if err != nil {
 			return nil, err
 		}
-		addrs, err := address.ParseToIDs([]string{changeAddr})
-		if err != nil {
-			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
-		}
-		changeOwner := &secp256k1fx.OutputOwners{
-			Threshold: 1,
-			Addrs:     addrs,
-		}
 		previousAddr = changeAddr
 		subnetValidator := models.SubnetValidator{
-			NodeID:      nodeID,
-			Weight:      weight,
-			Balance:     balance,
-			Signer:      proofOfPossession,
-			ChangeOwner: changeOwner,
+			NodeID:               nodeID.String(),
+			Weight:               weight,
+			Balance:              balance,
+			BLSPublicKey:         publicKey,
+			BLSProofOfPossession: pop,
+			ChangeOwnerAddr:      changeAddr,
 		}
 		subnetValidators = append(subnetValidators, subnetValidator)
 		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
@@ -236,60 +225,21 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.Signer, error) {
 	return pop, nil
 }
 
-func convertToSubnetValidators(validatorJSONS []models.SubnetValidatorJSON) ([]models.SubnetValidator, error) {
-	subnetValidators := []models.SubnetValidator{}
-	type jsonProofOfPossession struct {
-		PublicKey         string
-		ProofOfPossession string
-	}
+func validateSubnetValidatorsJSON(validatorJSONS []models.SubnetValidator) error {
 	for _, validatorJSON := range validatorJSONS {
-		nodeID, err := ids.NodeIDFromString(validatorJSON.NodeID)
+		_, err := ids.NodeIDFromString(validatorJSON.NodeID)
 		if err != nil {
-			return nil, fmt.Errorf("invalid node id %s", validatorJSON.NodeID)
+			return fmt.Errorf("invalid node id %s", validatorJSON.NodeID)
 		}
 		if validatorJSON.Weight <= 0 {
-			return nil, fmt.Errorf("bootstrap validator weight has to be greater than 0")
+			return fmt.Errorf("bootstrap validator weight has to be greater than 0")
 		}
 		if validatorJSON.Balance <= 0 {
-			return nil, fmt.Errorf("bootstrap validator balance has to be greater than 0")
+			return fmt.Errorf("bootstrap validator balance has to be greater than 0")
 		}
 		if err = validateBLS(validatorJSON.BLSPublicKey, validatorJSON.BLSProofOfPossession); err != nil {
-			return nil, err
+			return err
 		}
-		//jsonPop := jsonProofOfPossession{
-		//	PublicKey:         validatorJSON.BLSPublicKey,
-		//	ProofOfPossession: validatorJSON.BLSProofOfPossession,
-		//}
-		//popBytes, err := json.Marshal(jsonPop)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//pop := &signer.ProofOfPossession{}
-		//err = pop.UnmarshalJSON(popBytes)
-		//if err != nil {
-		//	return nil, err
-		//}
-		pop, err := getBLSInfo(validatorJSON.BLSPublicKey, validatorJSON.BLSProofOfPossession)
-		if err != nil {
-			return nil, err
-		}
-		changeAddr, err := ids.ShortFromString(validatorJSON.ChangeOwnerAddr)
-		if err != nil {
-			return nil, err
-		}
-		changeOwner := &secp256k1fx.OutputOwners{
-			Threshold: 1,
-			Addrs:     []ids.ShortID{changeAddr},
-		}
-		subnetValidators = append(subnetValidators,
-			models.SubnetValidator{
-				NodeID:      nodeID,
-				Weight:      validatorJSON.Weight,
-				Balance:     validatorJSON.Balance,
-				Signer:      pop,
-				ChangeOwner: changeOwner,
-			},
-		)
 	}
-	return subnetValidators, nil
+	return nil
 }

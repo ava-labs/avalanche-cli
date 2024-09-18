@@ -510,12 +510,11 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 	if err != nil {
 		return nil, err
 	}
-	var subnetValidatorsJSON []models.SubnetValidatorJSON
-	if err = json.Unmarshal(jsonBytes, &subnetValidatorsJSON); err != nil {
+	var subnetValidators []models.SubnetValidator
+	if err = json.Unmarshal(jsonBytes, &subnetValidators); err != nil {
 		return nil, err
 	}
-	subnetValidators, err := convertToSubnetValidators(subnetValidatorsJSON)
-	if err != nil {
+	if err = validateSubnetValidatorsJSON(subnetValidators); err != nil {
 		return nil, err
 	}
 	return subnetValidators, nil
