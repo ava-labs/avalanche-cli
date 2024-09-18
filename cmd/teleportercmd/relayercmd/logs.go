@@ -24,10 +24,13 @@ import (
 )
 
 var (
-	logsNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji}
-	raw                bool
-	last               uint
-	first              uint
+	logsNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Fuji,
+	}
+	raw   bool
+	last  uint
+	first uint
 )
 
 // avalanche teleporter relayer logs
@@ -51,7 +54,7 @@ func logs(_ *cobra.Command, _ []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		logsNetworkOptions,
 		"",
