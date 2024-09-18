@@ -5,6 +5,7 @@ package networkoptions
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -334,6 +335,11 @@ func GetNetworkFromCmdLineFlags(
 		}
 	}
 
+	if networkFlags.Endpoint != "" {
+		re := regexp.MustCompile(`/+$`)
+		networkFlags.Endpoint = re.ReplaceAllString(networkFlags.Endpoint, "")
+	}
+
 	network := models.UndefinedNetwork
 	switch networkOption {
 	case Local:
@@ -360,6 +366,7 @@ func GetNetworkFromCmdLineFlags(
 			return models.UndefinedNetwork, err
 		}
 	}
+
 	// on all cases, enable user setting specific endpoint
 	if networkFlags.Endpoint != "" {
 		network.Endpoint = networkFlags.Endpoint
