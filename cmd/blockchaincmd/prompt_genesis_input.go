@@ -227,6 +227,9 @@ func validateBLS(publicKey, pop string) error {
 func validateSubnetValidatorsJSON(generateNewNodeID bool, validatorJSONS []models.SubnetValidator) error {
 	for _, validatorJSON := range validatorJSONS {
 		if !generateNewNodeID {
+			if validatorJSON.NodeID == "" || validatorJSON.BLSPublicKey == "" || validatorJSON.BLSProofOfPossession == "" {
+				return fmt.Errorf("no Node ID or BLS info provided, use --generate-node-id flag to generate new Node ID and BLS info")
+			}
 			_, err := ids.NodeIDFromString(validatorJSON.NodeID)
 			if err != nil {
 				return fmt.Errorf("invalid node id %s", validatorJSON.NodeID)
