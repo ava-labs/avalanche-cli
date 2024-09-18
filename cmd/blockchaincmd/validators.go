@@ -19,7 +19,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var validatorsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Cluster, networkoptions.Devnet}
+var validatorsSupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 // avalanche blockchain validators
 func newValidatorsCmd() *cobra.Command {
@@ -42,7 +47,7 @@ func printValidators(_ *cobra.Command, args []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		validatorsSupportedNetworkOptions,
 		blockchainName,

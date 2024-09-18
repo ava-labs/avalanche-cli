@@ -21,11 +21,16 @@ import (
 )
 
 var (
-	importPublicSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
-	blockchainIDstr                     string
-	nodeURL                             string
-	useSubnetEvm                        bool
-	useCustomVM                         bool
+	importPublicSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+		networkoptions.Devnet,
+		networkoptions.Local,
+	}
+	blockchainIDstr string
+	nodeURL         string
+	useSubnetEvm    bool
+	useCustomVM     bool
 )
 
 // avalanche blockchain import public
@@ -37,7 +42,7 @@ func newImportPublicCmd() *cobra.Command {
 		Args:  cobrautils.MaximumNArgs(1),
 		Long: `The blockchain import public command imports a Blockchain configuration from a running network.
 
-The genesis file should be available from the disk for this to work. By default, an imported Blockchain
+By default, an imported Blockchain
 doesn't overwrite an existing Blockchain with the same name. To allow overwrites, provide the --force
 flag.`,
 	}
@@ -68,7 +73,7 @@ func importPublic(*cobra.Command, []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		importPublicSupportedNetworkOptions,
 		"",

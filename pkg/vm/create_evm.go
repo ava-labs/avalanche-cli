@@ -16,8 +16,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/subnet-evm/core"
-	subnetevmparams "github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -79,15 +79,7 @@ func CreateEVMGenesis(
 ) ([]byte, error) {
 	ux.Logger.PrintToUser("creating genesis for blockchain %s", blockchainName)
 
-	genesis := core.Genesis{}
-	genesis.Timestamp = *utils.TimeToNewUint64(time.Now())
-	conf := subnetevmparams.SubnetEVMDefaultChainConfig
-	conf.NetworkUpgrades = subnetevmparams.NetworkUpgrades{}
-
-	chainID := new(big.Int).SetUint64(params.chainID)
-	conf.ChainID = chainID
-
-	setFeeConfig(params, conf)
+	feeConfig := getFeeConfig(params)
 
 	// Validity checks on the parameter settings.
 	if params.enableTransactionPrecompile {
@@ -126,29 +118,35 @@ func CreateEVMGenesis(
 		)
 	}
 
-	getPrecompiles(conf, params, &genesis.Timestamp)
+	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
+	precompiles := getPrecompiles(params, genesisBlock0Timestamp)
 
 	if params.UseTeleporter || params.UseExternalGasToken {
 		addTeleporterAddressesToAllowLists(
-			conf,
+			&precompiles,
 			teleporterInfo.FundedAddress,
 			teleporterInfo.MessengerDeployerAddress,
 			teleporterInfo.RelayerAddress,
 		)
 	}
 
-	genesis.Alloc = params.initialTokenAllocation
-	genesis.Config = conf
-	genesis.Difficulty = Difficulty
-	genesis.GasLimit = conf.FeeConfig.GasLimit.Uint64()
-
-	jsonBytes, err := genesis.MarshalJSON()
+	subnetConfig, err := blockchainSDK.New(
+		&blockchainSDK.SubnetParams{
+			SubnetEVM: &blockchainSDK.SubnetEVMParams{
+				ChainID:     new(big.Int).SetUint64(params.chainID),
+				FeeConfig:   feeConfig,
+				Allocation:  params.initialTokenAllocation,
+				Precompiles: precompiles,
+				Timestamp:   genesisBlock0Timestamp,
+			},
+			Name: "TestSubnet",
+		})
 	if err != nil {
 		return nil, err
 	}
 
 	var prettyJSON bytes.Buffer
-	err = json.Indent(&prettyJSON, jsonBytes, "", "    ")
+	err = json.Indent(&prettyJSON, subnetConfig.Genesis, "", "    ")
 	if err != nil {
 		return nil, err
 	}
