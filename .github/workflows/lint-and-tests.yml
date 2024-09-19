@@ -120,7 +120,7 @@ jobs:
         run: |
           brew install docker
           brew install colima
-          colima start
+          colima start --vm-type vz
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
       - name: generate ssh token for e2e tests
         run: |
