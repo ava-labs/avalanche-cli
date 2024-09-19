@@ -198,10 +198,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return errMutuallyExlusiveValidatorManagementOptions
 	}
 
-	if createFlags.proofOfAuthority {
-		return errMutuallyExlusiveValidatorManagementOptions
-	}
-
 	// get vm kind
 	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useCustomVM)
 	if err != nil {
