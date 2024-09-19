@@ -49,8 +49,6 @@ type CreateFlags struct {
 	useExternalGasToken           bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
-	validatorManagerMintOnly      bool
-	tokenMinterAddress            []string
 	validatorManagerController    []string
 }
 
@@ -66,8 +64,6 @@ var (
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
-	errTokenMinterAddressConflict                 = errors.New("--validator-manager-mint-only means that no additional addresses can be provided in --token-minter-address")
-	errTokenMinterAddressForPoS                   = errors.New("--token-minter-address is only applicable to proof of authority")
 )
 
 // avalanche blockchain create
@@ -113,8 +109,6 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake for validator management")
-	cmd.Flags().BoolVar(&createFlags.validatorManagerMintOnly, "validator-manager-mint-only", false, "only enable validator manager contract to mint new native tokens")
-	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that can mint new native tokens (for proof of authority validator management only)")
 	cmd.Flags().StringSliceVar(&createFlags.validatorManagerController, "validator-manager-controller", nil, "addresses that will control Validator Manager contract")
 	return cmd
 }
@@ -207,15 +201,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if createFlags.proofOfAuthority {
 		return errMutuallyExlusiveValidatorManagementOptions
-	}
-
-	if len(createFlags.tokenMinterAddress) > 0 {
-		if createFlags.proofOfStake {
-			return errTokenMinterAddressForPoS
-		}
-		if createFlags.validatorManagerMintOnly {
-			return errTokenMinterAddressConflict
-		}
 	}
 
 	// get vm kind
@@ -379,22 +364,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err = promptValidatorManagementType(app, sc); err != nil {
 		return err
 	}
-	if sc.ValidatorManagement == models.ProofOfAuthority {
-		if !createFlags.validatorManagerMintOnly && createFlags.tokenMinterAddress == nil {
-			createFlags.tokenMinterAddress, err = getTokenMinterAddr()
-			if err != nil {
-				return err
-			}
-		}
-	}
-	if !createFlags.validatorManagerMintOnly {
-		if len(createFlags.tokenMinterAddress) > 0 {
-			ux.Logger.GreenCheckmarkToUser("Addresses added as new native token minter %s", createFlags.tokenMinterAddress)
-		} else {
-			ux.Logger.GreenCheckmarkToUser("No additional addresses added as new native token minter")
-		}
-	}
-	sc.NewNativeTokenMinter = createFlags.tokenMinterAddress
 	if createFlags.validatorManagerController == nil {
 		var cancelled bool
 		createFlags.validatorManagerController, cancelled, err = getValidatorContractManagerAddr()
@@ -426,54 +395,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 }
 
 func getValidatorContractManagerAddr() ([]string, bool, error) {
-	controllerAddrPrompt := "Enter Validator Manager Contract controller address"
-	for {
-		// ask in a loop so that if some condition is not met we can keep asking
-		controlAddr, cancelled, err := getAddrLoop(controllerAddrPrompt, constants.ValidatorManagerController, models.UndefinedNetwork)
-		if err != nil {
-			return nil, false, err
-		}
-		if cancelled {
-			return nil, cancelled, nil
-		}
-		if len(controlAddr) != 0 {
-			return controlAddr, false, nil
-		}
-		ux.Logger.RedXToUser("An address to control Validator Manage Contract is required before proceeding")
-	}
-}
-
-// Configure which addresses may make mint new native tokens
-func getTokenMinterAddr() ([]string, error) {
-	addTokenMinterAddrPrompt := "Currently only Validator Manager Contract can mint new native tokens"
-	ux.Logger.PrintToUser(addTokenMinterAddrPrompt)
-	yes, err := app.Prompt.CaptureNoYes("Add additional addresses that can mint new native tokens?")
-	if err != nil {
-		return nil, err
-	}
-	if !yes {
-		return nil, nil
-	}
-	addr, cancelled, err := getAddr()
-	if err != nil {
-		return nil, err
-	}
-	if cancelled {
-		return nil, nil
-	}
-	return addr, nil
-}
-
-func getAddr() ([]string, bool, error) {
-	addrPrompt := "Enter addresses that can mint new native tokens"
-	addr, cancelled, err := getAddrLoop(addrPrompt, constants.TokenMinter, models.UndefinedNetwork)
-	if err != nil {
-		return nil, false, err
-	}
-	if cancelled {
-		return nil, cancelled, nil
-	}
-	return addr, false, nil
+	// TODO: replace this with implementation in validator prompt PR
+	return nil, false, nil
 }
 
 func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, balance string) ([]byte, error) {
