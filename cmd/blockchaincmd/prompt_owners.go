@@ -217,7 +217,7 @@ func enterCustomKeys(network models.Network) ([]string, bool, error) {
 	controlKeysPrompt := "Enter control keys"
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
-		controlKeys, cancelled, err := getAddrLoop(controlKeysPrompt, constants.ControlKey, network)
+		controlKeys, cancelled, err := controlKeysLoop(controlKeysPrompt, network)
 		if err != nil {
 			return nil, false, err
 		}
@@ -231,41 +231,27 @@ func enterCustomKeys(network models.Network) ([]string, bool, error) {
 	}
 }
 
-// getAddrLoop asks as many addresses the user requires, until Done or Cancel is selected
-// TODO: add info for TokenMinter
-func getAddrLoop(prompt, label string, network models.Network) ([]string, bool, error) {
-	info := ""
-	goal := ""
-	switch label {
-	case constants.ControlKey:
-		info = "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
-			"Only private keys which control such addresses are allowed to make changes on the subnet"
-		goal = "be set as a subnet control key"
-	case constants.TokenMinter:
-		goal = "enable as new native token minter"
-	default:
-	}
+// controlKeysLoop asks as many controlkeys the user requires, until Done or Cancel is selected
+func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string, bool, error) {
+	label := "Control key"
+	info := "Control keys are P-Chain addresses which have admin rights on the subnet.\n" +
+		"Only private keys which control such addresses are allowed to make changes on the subnet"
 	customPrompt := "Enter P-Chain address (Example: P-...)"
-	addressFormat := prompts.PChainFormat
-	if label != constants.ControlKey {
-		customPrompt = "Enter address"
-		addressFormat = prompts.EVMFormat
-	}
 	return prompts.CaptureListDecision(
 		// we need this to be able to mock test
 		app.Prompt,
 		// the main prompt for entering address keys
-		prompt,
+		controlKeysPrompt,
 		// the Capture function to use
 		func(_ string) (string, error) {
 			return prompts.PromptAddress(
 				app.Prompt,
-				goal,
+				"be set as a subnet control key",
 				app.GetKeyDir(),
 				app.GetKey,
 				"",
 				network,
-				addressFormat,
+				prompts.PChainFormat,
 				customPrompt,
 			)
 		},

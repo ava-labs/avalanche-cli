@@ -25,11 +25,6 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 	confPath         = "tests/e2e/assets/test_avalanche-cli.json"
-	stakeAmount      = "2000"
-	stakeDuration    = "337h"
-	delegateAmount   = "25"
-	delegateDuration = "336h"
-	localNetwork     = "Local Network"
 )
 
 var (
