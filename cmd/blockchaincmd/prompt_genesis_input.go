@@ -200,7 +200,7 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 		previousAddr = changeAddr
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
-			Weight:               constants.DefaultWeightBootstrapValidator,
+			Weight:               constants.DefaultBootstrapValidatorWeight,
 			Balance:              constants.InitialBalanceBootstrapValidator,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,

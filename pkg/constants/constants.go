@@ -157,7 +157,7 @@ const (
 	TimeParseLayout                  = "2006-01-02 15:04:05"
 	MinStakeWeight                   = 1
 	InitialBalanceBootstrapValidator = 1
-	DefaultWeightBootstrapValidator  = 1000000
+	DefaultBootstrapValidatorWeight  = 1000000
 	DefaultStakeWeight               = 20
 	AVAXSymbol                       = "AVAX"
 	DefaultFujiStakeDuration         = "48h"

@@ -507,6 +507,9 @@ func checkInvalidSubnetNames(name string) error {
 }
 
 func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
+	if !utils.FileExists(filepath) {
+		return nil, fmt.Errorf("file path %q doesn't exist", filepath)
+	}
 	jsonBytes, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err

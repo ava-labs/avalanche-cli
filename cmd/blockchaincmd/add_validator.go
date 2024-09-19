@@ -220,7 +220,7 @@ func CallAddValidator(
 		return err
 	}
 	if selectedWeight < constants.MinStakeWeight {
-		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, selectedWeight)
+		return fmt.Errorf("invalid weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, selectedWeight)
 	}
 
 	start, selectedDuration, err := getTimeParameters(network, nodeID, true)
