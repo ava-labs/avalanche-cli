@@ -136,10 +136,13 @@ func GetKeychainFromCmdLineFlags(
 			}
 		}
 	case network.Kind == models.Devnet:
-		// going to just use ewoq atm
-		useEwoq = true
-		if keyName != "" || useLedger {
-			return nil, ErrNonEwoqKeyOnDevnet
+		// prompt the user if no key source was provided
+		if !useEwoq && !useLedger && keyName == "" {
+			var err error
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), true)
+			if err != nil {
+				return nil, err
+			}
 		}
 	case network.Kind == models.Fuji:
 		if useEwoq {

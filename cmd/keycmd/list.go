@@ -273,8 +273,8 @@ func listKeys(*cobra.Command, []string) error {
 		network, err := networkoptions.GetNetworkFromCmdLineFlags(
 			app,
 			"",
-			networkoptions.NetworkFlags{},
-			false,
+			globalNetworkFlags,
+			true,
 			false,
 			listSupportedNetworkOptions,
 			"",

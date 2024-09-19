@@ -12,6 +12,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -45,6 +47,8 @@ type CreateFlags struct {
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
 	useExternalGasToken           bool
+	proofOfStake                  bool
+	proofOfAuthority              bool
 }
 
 var (
@@ -56,8 +60,9 @@ var (
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
-	errMutuallyExlusiveVersionOptions   = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
-	errMutuallyExclusiveVMConfigOptions = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
+	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
+	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
+	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
 )
 
 // avalanche blockchain create
@@ -101,6 +106,8 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
+	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
+	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	return cmd
 }
 
@@ -183,6 +190,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	// vm type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVM}) {
 		return errors.New("flags --evm,--custom are mutually exclusive")
+	}
+
+	// validator management type exclusiveness
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStake}) {
+		return errMutuallyExlusiveValidatorManagementOptions
 	}
 
 	// get vm kind
@@ -343,7 +355,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
-
+	if err = promptValidatorManagementType(app, sc); err != nil {
+		return err
+	}
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
@@ -420,5 +434,45 @@ func checkInvalidSubnetNames(name string) error {
 			return errIllegalNameCharacter
 		}
 	}
+	return nil
+}
+
+// TODO: add explain the difference for different validator management type
+func promptValidatorManagementType(
+	app *application.Avalanche,
+	sidecar *models.Sidecar,
+) error {
+	proofOfAuthorityOption := "Proof of Authority"
+	proofOfStakeOption := "Proof of Stake"
+	explainOption := "Explain the difference"
+	if createFlags.proofOfStake {
+		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfStakeOption)
+		return nil
+	}
+	if createFlags.proofOfAuthority {
+		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfAuthorityOption)
+		return nil
+	}
+	options := []string{proofOfAuthorityOption, proofOfStakeOption, explainOption}
+	var subnetTypeStr string
+	for {
+		option, err := app.Prompt.CaptureList(
+			"Which validator management protocol would you like to use in your blockchain?",
+			options,
+		)
+		if err != nil {
+			return err
+		}
+		switch option {
+		case proofOfAuthorityOption:
+			subnetTypeStr = models.ProofOfAuthority
+		case proofOfStakeOption:
+			subnetTypeStr = models.ProofOfStake
+		case explainOption:
+			continue
+		}
+		break
+	}
+	sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(subnetTypeStr)
 	return nil
 }

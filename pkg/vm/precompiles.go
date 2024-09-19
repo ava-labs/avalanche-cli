@@ -106,10 +106,8 @@ func configureWarp(timestamp *uint64) warp.Config {
 	}
 }
 
-// adds teleporter-related addresses (main funded key, messenger deploy key, relayer key)
-// to the allow list of relevant enabled precompiles
 func addTeleporterAddressesToAllowLists(
-	config *params.ChainConfig,
+	precompile *params.Precompiles,
 	teleporterAddress string,
 	teleporterMessengerDeployerAddress string,
 	relayerAddress string,
@@ -118,7 +116,8 @@ func addTeleporterAddressesToAllowLists(
 	// teleporterAddress funds the other two and also deploys the registry
 	// teleporterMessengerDeployerAddress deploys the messenger
 	// relayerAddress is used by the relayer to send txs to the target chain
-	precompileConfig := config.GenesisPrecompiles[txallowlist.ConfigKey]
+	currentPrecompile := *precompile
+	precompileConfig := currentPrecompile[txallowlist.ConfigKey]
 	if precompileConfig != nil {
 		txAllowListConfig := precompileConfig.(*txallowlist.Config)
 		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
@@ -131,7 +130,7 @@ func addTeleporterAddressesToAllowLists(
 	// contract deploy allow list:
 	// teleporterAddress deploys the registry
 	// teleporterMessengerDeployerAddress deploys the messenger
-	precompileConfig = config.GenesisPrecompiles[deployerallowlist.ConfigKey]
+	precompileConfig = currentPrecompile[deployerallowlist.ConfigKey]
 	if precompileConfig != nil {
 		deployerAllowListConfig := precompileConfig.(*deployerallowlist.Config)
 		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress} {
@@ -179,34 +178,35 @@ func addAddressToAllowed(
 }
 
 func getPrecompiles(
-	config *params.ChainConfig,
-	params SubnetEVMGenesisParams,
+	subnetEVMGenesisParams SubnetEVMGenesisParams,
 	genesisTimestamp *uint64,
-) {
-	if params.enableWarpPrecompile {
+) params.Precompiles {
+	precompiles := make(params.Precompiles)
+	if subnetEVMGenesisParams.enableWarpPrecompile {
 		warpConfig := configureWarp(genesisTimestamp)
-		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
+		precompiles[warp.ConfigKey] = &warpConfig
 	}
 
-	if params.enableNativeMinterPrecompile {
-		mintConfig := configureNativeMinter(params, genesisTimestamp)
-		config.GenesisPrecompiles[nativeminter.ConfigKey] = &mintConfig
+	if subnetEVMGenesisParams.enableNativeMinterPrecompile {
+		mintConfig := configureNativeMinter(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[nativeminter.ConfigKey] = &mintConfig
 	}
 
-	if params.enableContractDeployerPrecompile {
-		contractConfig := configureContractDeployerAllowList(params, genesisTimestamp)
-		config.GenesisPrecompiles[deployerallowlist.ConfigKey] = &contractConfig
+	if subnetEVMGenesisParams.enableContractDeployerPrecompile {
+		contractConfig := configureContractDeployerAllowList(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[deployerallowlist.ConfigKey] = &contractConfig
 	}
-	if params.enableTransactionPrecompile {
-		txConfig := configureTransactionAllowList(params, genesisTimestamp)
-		config.GenesisPrecompiles[txallowlist.ConfigKey] = &txConfig
+	if subnetEVMGenesisParams.enableTransactionPrecompile {
+		txConfig := configureTransactionAllowList(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[txallowlist.ConfigKey] = &txConfig
 	}
-	if params.enableFeeManagerPrecompile {
-		feeConfig := configureFeeManager(params, genesisTimestamp)
-		config.GenesisPrecompiles[feemanager.ConfigKey] = &feeConfig
+	if subnetEVMGenesisParams.enableFeeManagerPrecompile {
+		feeConfig := configureFeeManager(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[feemanager.ConfigKey] = &feeConfig
 	}
-	if params.enableRewardManagerPrecompile {
-		rewardManagerConfig := configureRewardManager(params, genesisTimestamp)
-		config.GenesisPrecompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
+	if subnetEVMGenesisParams.enableRewardManagerPrecompile {
+		rewardManagerConfig := configureRewardManager(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
 	}
+	return precompiles
 }
