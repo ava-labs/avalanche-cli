@@ -462,7 +462,8 @@ func RunLedgerSim(
 	showStdout bool,
 ) error {
 	cmd := exec.Command(
-		"ts-node",
+		"npx",
+		"tsx",
 		basicLedgerSimScript,
 		fmt.Sprintf("%d", iters),
 		seed,
