@@ -43,6 +43,7 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 		genesisPath,
 		"--evm",
 		subnetName,
+		"--proof-of-authority",
 		"--" + constants.SkipUpdateFlag,
 		"--teleporter=false",
 		"--evm-token",
@@ -122,6 +123,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"create",
 		"--genesis",
 		genesisPath,
+		"--proof-of-authority",
 		"--custom",
 		subnetName,
 		"--custom-vm-path",
@@ -225,7 +227,6 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	if confPath != "" {
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
-	cmdArgs = append(cmdArgs, "--proof-of-authority")
 	// in case we want to use specific avago for local tests
 	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
 	if debugAvalanchegoPath != "" {
