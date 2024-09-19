@@ -152,7 +152,7 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func promptBootstrapValidators() ([]models.SubnetValidator, error) {
+func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
 		"How many bootstrap validators do you want to set up?",
@@ -161,7 +161,7 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 		return nil, err
 	}
 	var setUpNodes bool
-	if createFlags.generateNodeID {
+	if generateNodeID {
 		setUpNodes = true
 	} else {
 		setUpNodes, err = promptSetUpNodes()
@@ -193,7 +193,7 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 				return nil, err
 			}
 		}
-		changeAddr, err := getKeyForChangeOwner(previousAddr)
+		changeAddr, err := getKeyForChangeOwner(previousAddr, network)
 		if err != nil {
 			return nil, err
 		}

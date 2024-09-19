@@ -62,31 +62,6 @@ func NetworkOptionFromString(s string) NetworkOption {
 	return Undefined
 }
 
-func (n NetworkOption) ModelNetwork(devnetEndpoint string) (models.Network, error) {
-	network := models.UndefinedNetwork
-	switch n {
-	case Local:
-		network = models.NewLocalNetwork()
-	case Devnet:
-		networkID := uint32(0)
-		if devnetEndpoint != "" {
-			infoClient := info.NewClient(devnetEndpoint)
-			ctx, cancel := utils.GetAPIContext()
-			defer cancel()
-			_, err := infoClient.GetNetworkID(ctx)
-			if err != nil {
-				return models.UndefinedNetwork, err
-			}
-		}
-		network = models.NewDevnetNetwork(devnetEndpoint, networkID)
-	case Fuji:
-		network = models.NewFujiNetwork()
-	case Mainnet:
-		network = models.NewMainnetNetwork()
-	}
-	return network, nil
-}
-
 type NetworkFlags struct {
 	UseLocal    bool
 	UseDevnet   bool

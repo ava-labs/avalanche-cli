@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"os"
 	"path/filepath"
 	"strings"
@@ -36,27 +37,28 @@ import (
 var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
 
 var (
-	sameControlKey           bool
-	keyName                  string
-	threshold                uint32
-	controlKeys              []string
-	subnetAuthKeys           []string
-	userProvidedAvagoVersion string
-	outputTxPath             string
-	useLedger                bool
-	useEwoq                  bool
-	ledgerAddresses          []string
-	subnetIDStr              string
-	mainnetChainID           uint32
-	skipCreatePrompt         bool
-	avagoBinaryPath          string
-	subnetOnly               bool
-	teleporterEsp            subnet.TeleporterEsp
-
-	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
-	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
-	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
+	sameControlKey                  bool
+	keyName                         string
+	threshold                       uint32
+	controlKeys                     []string
+	subnetAuthKeys                  []string
+	userProvidedAvagoVersion        string
+	outputTxPath                    string
+	useLedger                       bool
+	useEwoq                         bool
+	ledgerAddresses                 []string
+	subnetIDStr                     string
+	mainnetChainID                  uint32
+	skipCreatePrompt                bool
+	avagoBinaryPath                 string
+	subnetOnly                      bool
+	generateNodeID                  bool
+	teleporterEsp                   subnet.TeleporterEsp
+	bootstrapValidatorsJSONFilePath string
+	errMutuallyExlusiveControlKeys  = errors.New("--control-keys and --same-control-key are mutually exclusive")
+	ErrMutuallyExlusiveKeyLedger    = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet           = errors.New("key --key is not available for mainnet operations")
+	errMutuallyExlusiveSubnetFlags  = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
 
 // avalanche blockchain deploy
@@ -100,6 +102,8 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
 	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
 	cmd.Flags().StringVar(&teleporterEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
+	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
+	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	return cmd
 }
 
@@ -274,6 +278,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	var bootstrapValidators []models.SubnetValidator
+	if bootstrapValidatorsJSONFilePath != "" {
+		bootstrapValidators, err = LoadBootstrapValidator(bootstrapValidatorsJSONFilePath)
+		if err != nil {
+			return err
+		}
+	}
+
 	chain := chains[0]
 
 	sidecar, err := app.LoadSidecar(chain)
@@ -335,6 +347,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if bootstrapValidatorsJSONFilePath == "" {
+		bootstrapValidators, err = promptBootstrapValidators(network)
+		if err != nil {
+			return err
+		}
+	}
+
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {
@@ -386,6 +405,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.TeleporterMessengerAddress,
 			deployInfo.TeleporterRegistryAddress,
+			bootstrapValidators,
 		); err != nil {
 			return err
 		}
@@ -552,7 +572,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "")
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
@@ -724,4 +744,33 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 		}
 	}
 	return desiredAvagoVersion, nil
+}
+
+func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
+	if !utils.FileExists(filepath) {
+		return nil, fmt.Errorf("file path %q doesn't exist", filepath)
+	}
+	jsonBytes, err := os.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+	var subnetValidators []models.SubnetValidator
+	if err = json.Unmarshal(jsonBytes, &subnetValidators); err != nil {
+		return nil, err
+	}
+	if err = validateSubnetValidatorsJSON(generateNodeID, subnetValidators); err != nil {
+		return nil, err
+	}
+	if generateNodeID {
+		for _, subnetValidator := range subnetValidators {
+			nodeID, publicKey, pop, err := generateNewNodeAndBLS()
+			if err != nil {
+				return nil, err
+			}
+			subnetValidator.NodeID = nodeID
+			subnetValidator.BLSPublicKey = publicKey
+			subnetValidator.BLSProofOfPossession = pop
+		}
+	}
+	return subnetValidators, nil
 }

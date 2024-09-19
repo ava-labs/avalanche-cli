@@ -50,17 +50,14 @@ type CreateFlags struct {
 	validatorManagerMintOnly      bool
 	tokenMinterAddress            []string
 	validatorManagerController    []string
-	generateNodeID                bool
 }
 
 var (
-	createFlags                     CreateFlags
-	forceCreate                     bool
-	genesisFile                     string
-	vmFile                          string
-	useRepo                         bool
-	bootstrapValidatorsJSONFilePath string
-
+	createFlags             CreateFlags
+	forceCreate             bool
+	genesisFile             string
+	vmFile                  string
+	useRepo                 bool
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
@@ -116,8 +113,6 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.validatorManagerMintOnly, "validator-manager-mint-only", false, "only enable validator manager contract to mint new native tokens")
 	cmd.Flags().StringSliceVar(&createFlags.tokenMinterAddress, "token-minter-address", nil, "addresses that can mint new native tokens (for proof of authority validator management only)")
 	cmd.Flags().StringSliceVar(&createFlags.validatorManagerController, "validator-manager-controller", nil, "addresses that will control Validator Manager contract")
-	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
-	cmd.Flags().BoolVar(&createFlags.generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	return cmd
 }
 
@@ -217,15 +212,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 		if createFlags.validatorManagerMintOnly {
 			return errTokenMinterAddressConflict
-		}
-	}
-
-	var bootstrapValidators []models.SubnetValidator
-	var err error
-	if bootstrapValidatorsJSONFilePath != "" {
-		bootstrapValidators, err = LoadBootstrapValidator(bootstrapValidatorsJSONFilePath)
-		if err != nil {
-			return err
 		}
 	}
 
@@ -423,14 +409,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if bootstrapValidatorsJSONFilePath == "" {
-		bootstrapValidators, err = promptBootstrapValidators()
-		if err != nil {
-			return err
-		}
-	}
-	sc.BootstrapValidators = bootstrapValidators
-
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
@@ -504,33 +482,4 @@ func checkInvalidSubnetNames(name string) error {
 		}
 	}
 	return nil
-}
-
-func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
-	if !utils.FileExists(filepath) {
-		return nil, fmt.Errorf("file path %q doesn't exist", filepath)
-	}
-	jsonBytes, err := os.ReadFile(filepath)
-	if err != nil {
-		return nil, err
-	}
-	var subnetValidators []models.SubnetValidator
-	if err = json.Unmarshal(jsonBytes, &subnetValidators); err != nil {
-		return nil, err
-	}
-	if err = validateSubnetValidatorsJSON(createFlags.generateNodeID, subnetValidators); err != nil {
-		return nil, err
-	}
-	if createFlags.generateNodeID {
-		for _, subnetValidator := range subnetValidators {
-			nodeID, publicKey, pop, err := generateNewNodeAndBLS()
-			if err != nil {
-				return nil, err
-			}
-			subnetValidator.NodeID = nodeID
-			subnetValidator.BLSPublicKey = publicKey
-			subnetValidator.BLSProofOfPossession = pop
-		}
-	}
-	return subnetValidators, nil
 }

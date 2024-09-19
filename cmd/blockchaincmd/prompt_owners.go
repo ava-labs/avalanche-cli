@@ -9,9 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -309,7 +306,7 @@ func getThreshold(maxLen int) (uint32, error) {
 	return uint32(intTh), err
 }
 
-func getKeyForChangeOwner(previouslyUsedAddr string) (string, error) {
+func getKeyForChangeOwner(previouslyUsedAddr string, network models.Network) (string, error) {
 	moreKeysPrompt := "Which key would you like to set as change owner for leftover AVAX if the node is removed from validator set?"
 
 	const (
@@ -333,10 +330,6 @@ func getKeyForChangeOwner(previouslyUsedAddr string) (string, error) {
 	case previousAddres:
 		key = previouslyUsedAddr
 	case getFromStored:
-		network, err := promptNetwork()
-		if err != nil {
-			return "", err
-		}
 		key, err = prompts.CaptureKeyAddress(
 			app.Prompt,
 			"be set as a change owner for leftover AVAX",
@@ -360,30 +353,4 @@ func getKeyForChangeOwner(previouslyUsedAddr string) (string, error) {
 		return "", err
 	}
 	return key, nil
-}
-
-func promptNetwork() (models.Network, error) {
-	promptStr := "Choose a network that the bootstrap validators will be validating"
-	supportedNetworkOptionsToPrompt := []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
-
-	networkOptionStr, err := app.Prompt.CaptureList(
-		promptStr,
-		utils.Map(supportedNetworkOptionsToPrompt, func(n networkoptions.NetworkOption) string { return n.String() }),
-	)
-	if err != nil {
-		return models.UndefinedNetwork, err
-	}
-	networkOption := networkoptions.NetworkOptionFromString(networkOptionStr)
-	network := models.UndefinedNetwork
-	if networkOption == networkoptions.Devnet {
-		endpoint, err := app.Prompt.CaptureURL(fmt.Sprintf("%s Endpoint", networkOption.String()), false)
-		if err != nil {
-			return models.UndefinedNetwork, err
-		}
-		network, err = networkOption.ModelNetwork(endpoint)
-		if err != nil {
-			return models.UndefinedNetwork, err
-		}
-	}
-	return network, nil
 }
