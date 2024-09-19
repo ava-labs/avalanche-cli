@@ -119,11 +119,11 @@ func promptValidatorManagementType(
 	proofOfStakeOption := models.ProofOfStake
 	explainOption := "Explain the difference"
 	if createFlags.proofOfStake {
-		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfStakeOption)
+		sidecar.ValidatorManagement = models.ProofOfStake
 		return nil
 	}
 	if createFlags.proofOfAuthority {
-		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfAuthorityOption)
+		sidecar.ValidatorManagement = models.ProofOfAuthority
 		return nil
 	}
 	options := []string{proofOfAuthorityOption, proofOfStakeOption, explainOption}

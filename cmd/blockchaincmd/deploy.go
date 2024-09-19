@@ -764,13 +764,10 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 	}
 	if generateNodeID {
 		for _, subnetValidator := range subnetValidators {
-			nodeID, publicKey, pop, err := generateNewNodeAndBLS()
+			subnetValidator.NodeID, subnetValidator.BLSPublicKey, subnetValidator.BLSProofOfPossession, err = generateNewNodeAndBLS()
 			if err != nil {
 				return nil, err
 			}
-			subnetValidator.NodeID = nodeID
-			subnetValidator.BLSPublicKey = publicKey
-			subnetValidator.BLSProofOfPossession = pop
 		}
 	}
 	return subnetValidators, nil
