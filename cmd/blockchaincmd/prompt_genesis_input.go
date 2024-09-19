@@ -60,39 +60,6 @@ func getValidatorContractManagerAddr() ([]string, bool, error) {
 	}
 }
 
-// Configure which addresses may make mint new native tokens
-func getTokenMinterAddr() ([]string, error) {
-	addTokenMinterAddrPrompt := "Currently only Validator Manager Contract can mint new native tokens"
-	ux.Logger.PrintToUser(addTokenMinterAddrPrompt)
-	yes, err := app.Prompt.CaptureNoYes("Add additional addresses that can mint new native tokens?")
-	if err != nil {
-		return nil, err
-	}
-	if !yes {
-		return nil, nil
-	}
-	addresses, cancelled, err := getAddr()
-	if err != nil {
-		return nil, err
-	}
-	if cancelled {
-		return nil, nil
-	}
-	return addresses, nil
-}
-
-func getAddr() ([]string, bool, error) {
-	addrPrompt := "Enter addresses that can mint new native tokens"
-	addr, cancelled, err := getAddrLoop(addrPrompt, constants.TokenMinter, models.UndefinedNetwork)
-	if err != nil {
-		return nil, false, err
-	}
-	if cancelled {
-		return nil, cancelled, nil
-	}
-	return addr, false, nil
-}
-
 func promptProofOfPossession() (string, string, error) {
 	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
