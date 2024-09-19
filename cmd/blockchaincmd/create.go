@@ -107,7 +107,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
-	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake for validator management")
+	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	return cmd
 }
 

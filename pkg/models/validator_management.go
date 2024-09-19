@@ -5,7 +5,7 @@ package models
 type ValidatorManagementType string
 
 const (
-	ProofOfStake                 = "Proof Of Stake"
+	ProofOfStake                 = "Proof Of Stake (Coming Soon)"
 	ProofOfAuthority             = "Proof Of Authority"
 	UndefinedValidatorManagement = "Undefined Validator Management"
 )
