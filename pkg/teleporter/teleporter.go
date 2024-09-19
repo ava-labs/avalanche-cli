@@ -452,7 +452,7 @@ func GetInfo(
 	ti := Info{}
 	ti.FundedAddress, _, ti.FundedBalance, err = getTeleporterKeyInfo(
 		app,
-		constants.TeleporterKeyName,
+		constants.ICMKeyName,
 	)
 	if err != nil {
 		return nil, err

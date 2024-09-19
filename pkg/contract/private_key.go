@@ -13,57 +13,92 @@ import (
 )
 
 type PrivateKeyFlags struct {
-	PrivateKey string
-	KeyName    string
-	GenesisKey bool
+	privateKeyFlagName string
+	keyFlagName        string
+	genesisKeyFlagName string
+	PrivateKey         string
+	KeyName            string
+	GenesisKey         bool
 }
 
-func AddPrivateKeyFlagsToCmd(
+const (
+	defaultPrivateKeyFlagName = "private-key"
+	defaultKeyFlagName        = "key"
+	defaultGenesisKeyFlagName = "genesis-key"
+)
+
+func (pkf *PrivateKeyFlags) fillDefaultFlagNames() {
+	if pkf.privateKeyFlagName == "" {
+		pkf.privateKeyFlagName = defaultPrivateKeyFlagName
+	}
+	if pkf.keyFlagName == "" {
+		pkf.keyFlagName = defaultKeyFlagName
+	}
+	if pkf.genesisKeyFlagName == "" {
+		pkf.genesisKeyFlagName = defaultGenesisKeyFlagName
+	}
+}
+
+func (pkf *PrivateKeyFlags) SetFlagNames(
+	privateKeyFlagName string,
+	keyFlagName string,
+	genesisKeyFlagName string,
+) {
+	pkf.privateKeyFlagName = privateKeyFlagName
+	pkf.keyFlagName = keyFlagName
+	pkf.genesisKeyFlagName = genesisKeyFlagName
+}
+
+func (pkf *PrivateKeyFlags) AddToCmd(
 	cmd *cobra.Command,
-	privateKeyFlags *PrivateKeyFlags,
 	goal string,
 ) {
+	pkf.fillDefaultFlagNames()
 	cmd.Flags().StringVar(
-		&privateKeyFlags.PrivateKey,
-		"private-key",
+		&pkf.PrivateKey,
+		pkf.privateKeyFlagName,
 		"",
 		fmt.Sprintf("private key to use %s", goal),
 	)
 	cmd.Flags().StringVar(
-		&privateKeyFlags.KeyName,
-		"key",
+		&pkf.KeyName,
+		pkf.keyFlagName,
 		"",
 		fmt.Sprintf("CLI stored key to use %s", goal),
 	)
 	cmd.Flags().BoolVar(
-		&privateKeyFlags.GenesisKey,
-		"genesis-key",
+		&pkf.GenesisKey,
+		pkf.genesisKeyFlagName,
 		false,
 		fmt.Sprintf("use genesis allocated key %s", goal),
 	)
 }
 
-func GetPrivateKeyFromFlags(
+func (pkf *PrivateKeyFlags) GetPrivateKey(
 	app *application.Avalanche,
-	flags PrivateKeyFlags,
 	genesisPrivateKey string,
 ) (string, error) {
+	pkf.fillDefaultFlagNames()
 	if !cmdflags.EnsureMutuallyExclusive([]bool{
-		flags.PrivateKey != "",
-		flags.KeyName != "",
-		flags.GenesisKey,
+		pkf.PrivateKey != "",
+		pkf.KeyName != "",
+		pkf.GenesisKey,
 	}) {
-		return "", fmt.Errorf("--private-key, --key and --genesis-key are mutually exclusive flags")
+		return "", fmt.Errorf("%s, %s and %s are mutually exclusive flags",
+			pkf.privateKeyFlagName,
+			pkf.keyFlagName,
+			pkf.genesisKeyFlagName,
+		)
 	}
-	privateKey := flags.PrivateKey
-	if flags.KeyName != "" {
-		k, err := app.GetKey(flags.KeyName, models.NewLocalNetwork(), false)
+	privateKey := pkf.PrivateKey
+	if pkf.KeyName != "" {
+		k, err := app.GetKey(pkf.KeyName, models.NewLocalNetwork(), false)
 		if err != nil {
 			return "", err
 		}
 		privateKey = k.PrivKeyHex()
 	}
-	if flags.GenesisKey {
+	if pkf.GenesisKey {
 		privateKey = genesisPrivateKey
 	}
 	return privateKey, nil

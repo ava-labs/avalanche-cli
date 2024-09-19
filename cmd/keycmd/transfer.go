@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -193,7 +194,7 @@ func transferF(*cobra.Command, []string) error {
 		app,
 		"On what Network do you want to execute the transfer?",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		transferSupportedNetworkOptions,
 		"",
@@ -202,14 +203,14 @@ func transferF(*cobra.Command, []string) error {
 		return err
 	}
 
-	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	subnetNames, err := app.GetBlockchainNamesOnNetwork(network)
 	if err != nil {
 		return err
 	}
 
 	if originSubnet == "" && !PToX && !PToP {
 		prompt := "Where are the funds to transfer?"
-		cancel, pChainChoosen, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+		cancel, pChainChoosen, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 			app.Prompt,
 			prompt,
 			subnetNames,
@@ -217,6 +218,7 @@ func transferF(*cobra.Command, []string) error {
 			true,
 			false,
 			"",
+			false,
 		)
 		if err != nil {
 			return err
@@ -252,7 +254,7 @@ func transferF(*cobra.Command, []string) error {
 			if originSubnet == cChain {
 				avoidSubnet = ""
 			}
-			cancel, _, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+			cancel, _, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 				app.Prompt,
 				prompt,
 				subnetNames,
@@ -260,6 +262,7 @@ func transferF(*cobra.Command, []string) error {
 				true,
 				originSubnet == cChain,
 				avoidSubnet,
+				false,
 			)
 			if err != nil {
 				return err
@@ -275,15 +278,18 @@ func transferF(*cobra.Command, []string) error {
 		}
 		originURL := network.CChainEndpoint()
 		if strings.ToLower(originSubnet) != cChain {
-			sc, err := app.LoadSidecar(originSubnet)
+			originURL, _, err = contract.GetBlockchainEndpoints(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainName: originSubnet,
+				},
+				true,
+				false,
+			)
 			if err != nil {
 				return err
 			}
-			blockchainID := sc.Networks[network.Name()].BlockchainID
-			if blockchainID == ids.Empty {
-				return fmt.Errorf("subnet %s is not deployed to %s", originSubnet, network.Name())
-			}
-			originURL = network.BlockchainEndpoint(blockchainID.String())
 		}
 		var destinationBlockchainID ids.ID
 		if strings.ToLower(destinationSubnet) == cChain {

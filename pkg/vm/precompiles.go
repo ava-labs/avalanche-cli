@@ -14,99 +14,100 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/precompile/precompileconfig"
-	subnetevmutils "github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 func configureContractDeployerAllowList(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) deployerallowlist.Config {
-	config := deployerallowlist.Config{}
-	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   params.contractDeployerPrecompileAllowList.AdminAddresses,
-		ManagerAddresses: params.contractDeployerPrecompileAllowList.ManagerAddresses,
-		EnabledAddresses: params.contractDeployerPrecompileAllowList.EnabledAddresses,
+	return deployerallowlist.Config{
+		AllowListConfig: allowlist.AllowListConfig{
+			AdminAddresses:   params.contractDeployerPrecompileAllowList.AdminAddresses,
+			ManagerAddresses: params.contractDeployerPrecompileAllowList.ManagerAddresses,
+			EnabledAddresses: params.contractDeployerPrecompileAllowList.EnabledAddresses,
+		},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
-	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: subnetevmutils.NewUint64(0),
-	}
-	return config
 }
 
 func configureTransactionAllowList(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) txallowlist.Config {
-	config := txallowlist.Config{}
-	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   params.transactionPrecompileAllowList.AdminAddresses,
-		ManagerAddresses: params.transactionPrecompileAllowList.ManagerAddresses,
-		EnabledAddresses: params.transactionPrecompileAllowList.EnabledAddresses,
+	return txallowlist.Config{
+		AllowListConfig: allowlist.AllowListConfig{
+			AdminAddresses:   params.transactionPrecompileAllowList.AdminAddresses,
+			ManagerAddresses: params.transactionPrecompileAllowList.ManagerAddresses,
+			EnabledAddresses: params.transactionPrecompileAllowList.EnabledAddresses,
+		},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
-	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: subnetevmutils.NewUint64(0),
-	}
-	return config
 }
 
 func configureNativeMinter(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) nativeminter.Config {
-	config := nativeminter.Config{}
-	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   params.nativeMinterPrecompileAllowList.AdminAddresses,
-		ManagerAddresses: params.nativeMinterPrecompileAllowList.ManagerAddresses,
-		EnabledAddresses: params.nativeMinterPrecompileAllowList.EnabledAddresses,
+	return nativeminter.Config{
+		AllowListConfig: allowlist.AllowListConfig{
+			AdminAddresses:   params.nativeMinterPrecompileAllowList.AdminAddresses,
+			ManagerAddresses: params.nativeMinterPrecompileAllowList.ManagerAddresses,
+			EnabledAddresses: params.nativeMinterPrecompileAllowList.EnabledAddresses,
+		},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
-	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: subnetevmutils.NewUint64(0),
-	}
-	return config
 }
 
 func configureFeeManager(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) feemanager.Config {
-	config := feemanager.Config{}
-	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   params.feeManagerPrecompileAllowList.AdminAddresses,
-		ManagerAddresses: params.feeManagerPrecompileAllowList.ManagerAddresses,
-		EnabledAddresses: params.feeManagerPrecompileAllowList.EnabledAddresses,
+	return feemanager.Config{
+		AllowListConfig: allowlist.AllowListConfig{
+			AdminAddresses:   params.feeManagerPrecompileAllowList.AdminAddresses,
+			ManagerAddresses: params.feeManagerPrecompileAllowList.ManagerAddresses,
+			EnabledAddresses: params.feeManagerPrecompileAllowList.EnabledAddresses,
+		},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
-	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: subnetevmutils.NewUint64(0),
-	}
-	return config
 }
 
 func configureRewardManager(
 	params SubnetEVMGenesisParams,
+	timestamp *uint64,
 ) rewardmanager.Config {
-	config := rewardmanager.Config{}
-	config.AllowListConfig = allowlist.AllowListConfig{
-		AdminAddresses:   params.rewardManagerPrecompileAllowList.AdminAddresses,
-		ManagerAddresses: params.rewardManagerPrecompileAllowList.ManagerAddresses,
-		EnabledAddresses: params.rewardManagerPrecompileAllowList.EnabledAddresses,
+	return rewardmanager.Config{
+		AllowListConfig: allowlist.AllowListConfig{
+			AdminAddresses:   params.rewardManagerPrecompileAllowList.AdminAddresses,
+			ManagerAddresses: params.rewardManagerPrecompileAllowList.ManagerAddresses,
+			EnabledAddresses: params.rewardManagerPrecompileAllowList.EnabledAddresses,
+		},
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
-	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: subnetevmutils.NewUint64(0),
-	}
-	return config
 }
 
 func configureWarp(timestamp *uint64) warp.Config {
-	config := warp.Config{
+	return warp.Config{
 		QuorumNumerator: warp.WarpDefaultQuorumNumerator,
+		Upgrade: precompileconfig.Upgrade{
+			BlockTimestamp: timestamp,
+		},
 	}
-	config.Upgrade = precompileconfig.Upgrade{
-		BlockTimestamp: timestamp,
-	}
-	return config
 }
 
-// adds teleporter-related addresses (main funded key, messenger deploy key, relayer key)
-// to the allow list of relevant enabled precompiles
 func addTeleporterAddressesToAllowLists(
-	config *params.ChainConfig,
+	precompile *params.Precompiles,
 	teleporterAddress string,
 	teleporterMessengerDeployerAddress string,
 	relayerAddress string,
@@ -115,7 +116,8 @@ func addTeleporterAddressesToAllowLists(
 	// teleporterAddress funds the other two and also deploys the registry
 	// teleporterMessengerDeployerAddress deploys the messenger
 	// relayerAddress is used by the relayer to send txs to the target chain
-	precompileConfig := config.GenesisPrecompiles[txallowlist.ConfigKey]
+	currentPrecompile := *precompile
+	precompileConfig := currentPrecompile[txallowlist.ConfigKey]
 	if precompileConfig != nil {
 		txAllowListConfig := precompileConfig.(*txallowlist.Config)
 		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
@@ -128,7 +130,7 @@ func addTeleporterAddressesToAllowLists(
 	// contract deploy allow list:
 	// teleporterAddress deploys the registry
 	// teleporterMessengerDeployerAddress deploys the messenger
-	precompileConfig = config.GenesisPrecompiles[deployerallowlist.ConfigKey]
+	precompileConfig = currentPrecompile[deployerallowlist.ConfigKey]
 	if precompileConfig != nil {
 		deployerAllowListConfig := precompileConfig.(*deployerallowlist.Config)
 		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress} {
@@ -176,34 +178,35 @@ func addAddressToAllowed(
 }
 
 func getPrecompiles(
-	config *params.ChainConfig,
-	params SubnetEVMGenesisParams,
+	subnetEVMGenesisParams SubnetEVMGenesisParams,
 	genesisTimestamp *uint64,
-) {
-	if params.enableWarpPrecompile {
+) params.Precompiles {
+	precompiles := make(params.Precompiles)
+	if subnetEVMGenesisParams.enableWarpPrecompile {
 		warpConfig := configureWarp(genesisTimestamp)
-		config.GenesisPrecompiles[warp.ConfigKey] = &warpConfig
+		precompiles[warp.ConfigKey] = &warpConfig
 	}
 
-	if params.enableNativeMinterPrecompile {
-		mintConfig := configureNativeMinter(params)
-		config.GenesisPrecompiles[nativeminter.ConfigKey] = &mintConfig
+	if subnetEVMGenesisParams.enableNativeMinterPrecompile {
+		mintConfig := configureNativeMinter(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[nativeminter.ConfigKey] = &mintConfig
 	}
 
-	if params.enableContractDeployerPrecompile {
-		contractConfig := configureContractDeployerAllowList(params)
-		config.GenesisPrecompiles[deployerallowlist.ConfigKey] = &contractConfig
+	if subnetEVMGenesisParams.enableContractDeployerPrecompile {
+		contractConfig := configureContractDeployerAllowList(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[deployerallowlist.ConfigKey] = &contractConfig
 	}
-	if params.enableTransactionPrecompile {
-		txConfig := configureTransactionAllowList(params)
-		config.GenesisPrecompiles[txallowlist.ConfigKey] = &txConfig
+	if subnetEVMGenesisParams.enableTransactionPrecompile {
+		txConfig := configureTransactionAllowList(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[txallowlist.ConfigKey] = &txConfig
 	}
-	if params.enableFeeManagerPrecompile {
-		feeConfig := configureFeeManager(params)
-		config.GenesisPrecompiles[feemanager.ConfigKey] = &feeConfig
+	if subnetEVMGenesisParams.enableFeeManagerPrecompile {
+		feeConfig := configureFeeManager(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[feemanager.ConfigKey] = &feeConfig
 	}
-	if params.enableRewardManagerPrecompile {
-		rewardManagerConfig := configureRewardManager(params)
-		config.GenesisPrecompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
+	if subnetEVMGenesisParams.enableRewardManagerPrecompile {
+		rewardManagerConfig := configureRewardManager(subnetEVMGenesisParams, genesisTimestamp)
+		precompiles[rewardmanager.ConfigKey] = &rewardManagerConfig
 	}
+	return precompiles
 }

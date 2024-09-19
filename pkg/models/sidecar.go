@@ -13,6 +13,8 @@ type NetworkData struct {
 	RPCVersion                 int
 	TeleporterMessengerAddress string
 	TeleporterRegistryAddress  string
+	RPCEndpoints               []string
+	WSEndpoints                []string
 }
 
 type Sidecar struct {

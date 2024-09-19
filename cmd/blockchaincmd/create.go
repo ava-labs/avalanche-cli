@@ -341,7 +341,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		sc.TeleporterReady = true
 		sc.RunRelayer = true // TODO: remove this once deploy asks if deploying relayer
 		sc.ExternalToken = useExternalGasToken
-		sc.TeleporterKey = constants.TeleporterKeyName
+		sc.TeleporterKey = constants.ICMKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
 		if genesisFile != "" {
 			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {

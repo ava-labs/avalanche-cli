@@ -22,7 +22,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var statsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
+var statsSupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 // avalanche blockchain stats
 func newStatsCmd() *cobra.Command {
@@ -42,7 +47,7 @@ func stats(_ *cobra.Command, args []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		statsSupportedNetworkOptions,
 		"",
