@@ -22,7 +22,31 @@ func getValidatorContractManagerAddr() ([]string, bool, error) {
 	controllerAddrPrompt := "Enter Validator Manager Contract controller address"
 	for {
 		// ask in a loop so that if some condition is not met we can keep asking
-		controlAddr, cancelled, err := getAddrLoop(controllerAddrPrompt, constants.ValidatorManagerController, models.UndefinedNetwork)
+		controlAddr, cancelled, err := prompts.CaptureListDecision(
+			// we need this to be able to mock test
+			app.Prompt,
+			// the main prompt for entering address keys
+			controllerAddrPrompt,
+			// the Capture function to use
+			func(_ string) (string, error) {
+				return prompts.PromptAddress(
+					app.Prompt,
+					"enable as controller of ValidatorManager contract",
+					app.GetKeyDir(),
+					app.GetKey,
+					"",
+					models.UndefinedNetwork,
+					prompts.EVMFormat,
+					"Enter address",
+				)
+			},
+			// the prompt for each address
+			"",
+			// label describes the entity we are prompting for (e.g. address, control key, etc.)
+			"Validator Manager Controller",
+			//TODO: add info here on what this validator manager controller is
+			"",
+		)
 		if err != nil {
 			return nil, false, err
 		}

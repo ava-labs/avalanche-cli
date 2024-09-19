@@ -29,7 +29,6 @@ const (
 	AliasesFileName              = "aliases.json"
 	ControlKey                   = "Control key"
 	TokenMinter                  = "Native token minter"
-	ValidatorManagerController   = "Validator Manager Controller"
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"

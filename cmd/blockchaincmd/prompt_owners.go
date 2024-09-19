@@ -232,7 +232,7 @@ func enterCustomKeys(network models.Network) ([]string, bool, error) {
 }
 
 // getAddrLoop asks as many addresses the user requires, until Done or Cancel is selected
-// TODO: add info for TokenMinter and ValidatorManagerController
+// TODO: add info for TokenMinter
 func getAddrLoop(prompt, label string, network models.Network) ([]string, bool, error) {
 	info := ""
 	goal := ""
@@ -243,8 +243,6 @@ func getAddrLoop(prompt, label string, network models.Network) ([]string, bool, 
 		goal = "be set as a subnet control key"
 	case constants.TokenMinter:
 		goal = "enable as new native token minter"
-	case constants.ValidatorManagerController:
-		goal = "enable as controller of ValidatorManager contract"
 	default:
 	}
 	customPrompt := "Enter P-Chain address (Example: P-...)"
