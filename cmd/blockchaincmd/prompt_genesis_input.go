@@ -44,7 +44,7 @@ func getValidatorContractManagerAddr() ([]string, bool, error) {
 			"",
 			// label describes the entity we are prompting for (e.g. address, control key, etc.)
 			"Validator Manager Controller",
-			//TODO: add info here on what this validator manager controller is
+			// TODO: add info here on what this validator manager controller is
 			"",
 		)
 		if err != nil {
