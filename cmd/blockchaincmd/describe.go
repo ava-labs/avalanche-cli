@@ -276,14 +276,14 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 		t.Style().Options.SeparateRows = true
 		t.SetTitle("Initial Token Allocation")
 		t.AppendHeader(table.Row{"Description", "Address and Private Key", "Amount (10^18)", "Amount (wei)"})
-		for address := range genesis.Alloc {
-			if len(genesis.Alloc[address].Code) > 0 {
+		for address, allocation := range genesis.Alloc {
+			if len(allocation.Code) > 0 {
 				continue
 			}
 			if address == common.HexToAddress(icmgenesis.MessengerDeployerAddress) {
 				continue
 			}
-			amount := genesis.Alloc[address].Balance
+			amount := allocation.Balance
 			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 			description := ""
 			privKey := ""

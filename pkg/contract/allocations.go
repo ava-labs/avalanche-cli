@@ -251,7 +251,7 @@ func ContractAddressIsInBlockchainGenesis(
 		return false, err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
-		return false, fmt.Errorf("checking for contract belonging to genesis is only supported on EVM based vms")
+		return false, fmt.Errorf("only EVM based vms support genesis contract checks")
 	}
 	return ContractAddressIsInGenesisData(genesisData, contractAddress)
 }
