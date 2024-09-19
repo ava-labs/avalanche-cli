@@ -91,8 +91,8 @@ func promptValidatorManagementType(
 	app *application.Avalanche,
 	sidecar *models.Sidecar,
 ) error {
-	proofOfAuthorityOption := "Proof of Authority"
-	proofOfStakeOption := "Proof of Stake"
+	proofOfAuthorityOption := models.ProofOfAuthority
+	proofOfStakeOption := models.ProofOfStake
 	explainOption := "Explain the difference"
 	if createFlags.proofOfStake {
 		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfStakeOption)
@@ -175,7 +175,7 @@ func promptBootstrapValidators() ([]models.SubnetValidator, error) {
 		var nodeID ids.NodeID
 		var publicKey, pop string
 		if setUpNodes {
-			nodeID, err = PromptNodeID()
+			nodeID, err = PromptNodeID("add as bootstrap validator")
 			if err != nil {
 				return nil, err
 			}

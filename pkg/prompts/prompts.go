@@ -269,7 +269,7 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 func (*realPrompter) CaptureBootstrapInitialBalance(promptStr string) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateBootstrapBalance,
+		Validate: validateBootstrapValidatorBalance,
 	}
 
 	amountStr, err := prompt.Run()

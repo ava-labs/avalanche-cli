@@ -204,7 +204,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
-		nodeID, err = PromptNodeID()
+		nodeID, err = PromptNodeID("add as validator")
 		if err != nil {
 			return err
 		}
@@ -401,8 +401,8 @@ func promptStart() (time.Time, error) {
 	return app.Prompt.CaptureDate(txt)
 }
 
-func PromptNodeID() (ids.NodeID, error) {
-	txt := "What is the NodeID of the node you want to add as bootstrap validator?"
+func PromptNodeID(goal string) (ids.NodeID, error) {
+	txt := fmt.Sprintf("What is the NodeID of the node you want to %s?", goal)
 	return app.Prompt.CaptureNodeID(txt)
 }
 
