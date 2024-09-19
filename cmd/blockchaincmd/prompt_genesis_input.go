@@ -47,14 +47,14 @@ func getTokenMinterAddr() ([]string, error) {
 	if !yes {
 		return nil, nil
 	}
-	addr, cancelled, err := getAddr()
+	addresses, cancelled, err := getAddr()
 	if err != nil {
 		return nil, err
 	}
 	if cancelled {
 		return nil, nil
 	}
-	return addr, nil
+	return addresses, nil
 }
 
 func getAddr() ([]string, bool, error) {
@@ -73,12 +73,12 @@ func promptProofOfPossession() (string, string, error) {
 	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
 	var err error
-	txt := "What is the public key of the node's BLS?"
+	txt := "What is the node's BLS public key?"
 	publicKey, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
 	if err != nil {
 		return "", "", err
 	}
-	txt = "What is the proof of possession of the node's BLS?"
+	txt = "What is the node's BLS proof of possession?"
 	proofOfPossesion, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
 	if err != nil {
 		return "", "", err
