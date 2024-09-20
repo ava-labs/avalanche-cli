@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
