@@ -26,19 +26,23 @@ import (
 
 var (
 	globalNetworkFlags                  networkoptions.NetworkFlags
-	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Mainnet}
-	keyName                             string
-	useLedger                           bool
-	ledgerAddresses                     []string
-	nodeIDStr                           string
-	weight                              uint64
-	delegationFee                       uint32
-	startTimeStr                        string
-	duration                            time.Duration
-	publicKey                           string
-	pop                                 string
-	ErrMutuallyExlusiveKeyLedger        = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOnMainnet               = errors.New("--key is not available for mainnet operations")
+	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+		networkoptions.Devnet,
+	}
+	keyName                      string
+	useLedger                    bool
+	ledgerAddresses              []string
+	nodeIDStr                    string
+	weight                       uint64
+	delegationFee                uint32
+	startTimeStr                 string
+	duration                     time.Duration
+	publicKey                    string
+	pop                          string
+	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
 )
 
 type jsonProofOfPossession struct {
@@ -119,7 +123,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		addValidatorSupportedNetworkOptions,
 		"",

@@ -99,6 +99,25 @@ func TokenRemoteIsCollateralized(
 	return isCollateralized, nil
 }
 
+func TokenHomeGetDecimals(
+	rpcURL string,
+	address common.Address,
+) (uint8, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"tokenDecimals()->(uint8)",
+	)
+	if err != nil {
+		return 0, err
+	}
+	decimals, b := out[0].(uint8)
+	if !b {
+		return 0, fmt.Errorf("error at tokenDecimals, expected uint8, got %T", out[0])
+	}
+	return decimals, nil
+}
+
 type RegisteredRemote struct {
 	Registered       bool
 	CollateralNeeded *big.Int

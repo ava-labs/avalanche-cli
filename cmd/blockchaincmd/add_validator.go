@@ -24,7 +24,12 @@ import (
 )
 
 var (
-	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Devnet,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+	}
 
 	nodeIDStr              string
 	weight                 uint64

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -196,13 +197,21 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 						return nil, err
 					}
 					subnetToken = sc.TokenSymbol
-					chainID := sc.Networks[network.Name()].BlockchainID
-					if chainID != ids.Empty {
+					endpoint, _, err := contract.GetBlockchainEndpoints(
+						app,
+						network,
+						contract.ChainSpec{
+							BlockchainName: subnetName,
+						},
+						true,
+						false,
+					)
+					if err == nil {
 						_, b := evmClients[network]
 						if !b {
 							evmClients[network] = map[string]ethclient.Client{}
 						}
-						evmClients[network][subnetName], err = ethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+						evmClients[network][subnetName], err = ethclient.Dial(endpoint)
 						if err != nil {
 							return nil, err
 						}
@@ -211,7 +220,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 							if !b {
 								evmGethClients[network] = map[string]*goethereumethclient.Client{}
 							}
-							evmGethClients[network][subnetName], err = goethereumethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+							evmGethClients[network][subnetName], err = goethereumethclient.Dial(endpoint)
 							if err != nil {
 								return nil, err
 							}
@@ -264,8 +273,8 @@ func listKeys(*cobra.Command, []string) error {
 		network, err := networkoptions.GetNetworkFromCmdLineFlags(
 			app,
 			"",
-			networkoptions.NetworkFlags{},
-			false,
+			globalNetworkFlags,
+			true,
 			false,
 			listSupportedNetworkOptions,
 			"",

@@ -47,7 +47,6 @@ type CreateFlags struct {
 	useExternalGasToken           bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
-	validatorManagerController    []string
 }
 
 var (
@@ -339,7 +338,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		sc.TeleporterReady = true
 		sc.RunRelayer = true // TODO: remove this once deploy asks if deploying relayer
 		sc.ExternalToken = useExternalGasToken
-		sc.TeleporterKey = constants.TeleporterKeyName
+		sc.TeleporterKey = constants.ICMKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
 		if genesisFile != "" {
 			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
@@ -356,19 +355,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err = promptValidatorManagementType(app, sc); err != nil {
 		return err
 	}
-	if createFlags.validatorManagerController == nil {
-		var cancelled bool
-		createFlags.validatorManagerController, cancelled, err = getValidatorContractManagerAddr()
-		if err != nil {
-			return err
-		}
-		if cancelled {
-			return fmt.Errorf("user cancelled operation")
-		}
-	}
-	sc.ValidatorManagerController = createFlags.validatorManagerController
-	// TODO: add description of what Validator Manager Contract controller does
-	ux.Logger.GreenCheckmarkToUser("Validator Manager Contract controller %s", createFlags.validatorManagerController)
+
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}

@@ -97,7 +97,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 		if err := blockchaincmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators)
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, sc.Networks[network.Name()].PoAValidatorManagerOwner)
 	}
 
 	return nil

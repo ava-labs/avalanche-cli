@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,7 +36,12 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 var (
 	sameControlKey                  bool
@@ -53,13 +59,15 @@ var (
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
 	subnetOnly                      bool
+	icmSpec                         subnet.ICMSpec
 	generateNodeID                  bool
-	teleporterEsp                   subnet.TeleporterEsp
+	validatorManagerOwner           string
 	bootstrapValidatorsJSONFilePath string
-	errMutuallyExlusiveControlKeys  = errors.New("--control-keys and --same-control-key are mutually exclusive")
-	ErrMutuallyExlusiveKeyLedger    = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOnMainnet           = errors.New("key --key is not available for mainnet operations")
-	errMutuallyExlusiveSubnetFlags  = errors.New("--subnet-only and --subnet-id are mutually exclusive")
+
+	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
+	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
+	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
+	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
 
 // avalanche blockchain deploy
@@ -96,13 +104,15 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
-	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
-	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
-	cmd.Flags().StringVar(&teleporterEsp.Version, "teleporter-version", "latest", "teleporter version to deploy")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
-	cmd.Flags().StringVar(&teleporterEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, "skip-relayer", false, "skip relayer deploy")
+	cmd.Flags().StringVar(&icmSpec.Version, "teleporter-version", "latest", "teleporter version to deploy")
+	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
+	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
+	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an interchain messenger deployer tx file")
+	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an interchain messenger registry bytecode file")
+	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Controller (for Proof of Authority only)")
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	return cmd
@@ -273,8 +283,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if teleporterEsp.MessengerContractAddressPath != "" || teleporterEsp.MessengerDeployerAddressPath != "" || teleporterEsp.MessengerDeployerTxPath != "" || teleporterEsp.RegistryBydecodePath != "" {
-		if teleporterEsp.MessengerContractAddressPath == "" || teleporterEsp.MessengerDeployerAddressPath == "" || teleporterEsp.MessengerDeployerTxPath == "" || teleporterEsp.RegistryBydecodePath == "" {
+	if icmSpec.MessengerContractAddressPath != "" || icmSpec.MessengerDeployerAddressPath != "" || icmSpec.MessengerDeployerTxPath != "" || icmSpec.RegistryBydecodePath != "" {
+		if icmSpec.MessengerContractAddressPath == "" || icmSpec.MessengerDeployerAddressPath == "" || icmSpec.MessengerDeployerTxPath == "" || icmSpec.RegistryBydecodePath == "" {
 			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
 		}
 	}
@@ -296,6 +306,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.ImportedFromAPM {
 		return errors.New("unable to deploy subnets imported from a repo")
+	}
+
+	if sidecar.ValidatorManagement != models.ProofOfAuthority && validatorManagerOwner != "" {
+		return errors.New("--validator-manager-controller flag cannot be used when blockchain validator management type is not Proof of Authority")
 	}
 
 	if outputTxPath != "" {
@@ -387,7 +401,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, teleporterEsp, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, icmSpec, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -404,9 +418,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			network,
 			deployInfo.SubnetID,
 			deployInfo.BlockchainID,
-			deployInfo.TeleporterMessengerAddress,
-			deployInfo.TeleporterRegistryAddress,
+			deployInfo.ICMMessengerAddress,
+			deployInfo.ICMRegistryAddress,
 			bootstrapValidators,
+			validatorManagerOwner,
 		); err != nil {
 			return err
 		}
@@ -509,6 +524,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
+	if validatorManagerOwner == "" {
+		validatorManagerOwnerEVMAddress, err := getValidatorContractOwnerAddr()
+		if err != nil {
+			return err
+		}
+		validatorManagerOwner = validatorManagerOwnerEVMAddress.String()
+	}
+	ux.Logger.PrintToUser("Validator Manager Contract controller address %s", validatorManagerOwner)
+
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
@@ -573,7 +597,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators, validatorManagerOwner)
+}
+
+func getValidatorContractOwnerAddr() (common.Address, error) {
+	return app.Prompt.CaptureAddress("What is the EVM address that will control the Validator Manager Contract?")
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {

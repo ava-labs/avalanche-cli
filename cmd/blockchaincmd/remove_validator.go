@@ -22,7 +22,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet}
+var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 // avalanche blockchain removeValidator
 func newRemoveValidatorCmd() *cobra.Command {
@@ -57,7 +62,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		removeValidatorSupportedNetworkOptions,
 		"",
