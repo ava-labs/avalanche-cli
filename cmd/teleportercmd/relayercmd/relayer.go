@@ -14,16 +14,17 @@ var app *application.Avalanche
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "relayer",
-		Short: "Install and configure relayer on localhost",
-		Long: `The relayert command suite provides a collection of tools for installing
-and configuring an AWM relayer on localhost.`,
+		Short: "Manage ICM relayers",
+		Long: `The relayer command suite provides a collection of tools for deploying
+and configuring an ICM relayers.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
-	cmd.AddCommand(newPrepareServiceCmd())
-	cmd.AddCommand(newAddSubnetToServiceCmd())
-	cmd.AddCommand(newStopCmd())
-	cmd.AddCommand(newStartCmd())
+	cmd.AddCommand(newDeployCmd())
 	cmd.AddCommand(newLogsCmd())
+	cmd.AddCommand(newStartCmd())
+	cmd.AddCommand(newStopCmd())
+	// TODO: config
+	// TODO: fund
 	return cmd
 }

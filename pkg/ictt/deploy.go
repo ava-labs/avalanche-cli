@@ -53,9 +53,10 @@ func DeployERC20Remote(
 	teleporterManagerAddress common.Address,
 	tokenHomeBlockchainID [32]byte,
 	tokenHomeAddress common.Address,
-	tokenName string,
-	tokenSymbol string,
-	tokenDecimals uint8,
+	tokenHomeDecimals uint8,
+	tokenRemoteName string,
+	tokenRemoteSymbol string,
+	tokenRemoteDecimals uint8,
 ) (common.Address, error) {
 	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenRemote.sol/ERC20TokenRemote.bin")
 	binBytes, err := os.ReadFile(binPath)
@@ -67,8 +68,7 @@ func DeployERC20Remote(
 		TeleporterManager:         teleporterManagerAddress,
 		TokenHomeBlockchainID:     tokenHomeBlockchainID,
 		TokenHomeAddress:          tokenHomeAddress,
-		// TODO: user case for home having diff decimals
-		TokenHomeDecimals: tokenDecimals,
+		TokenHomeDecimals:         tokenHomeDecimals,
 	}
 	return contract.DeployContract(
 		rpcURL,
@@ -76,9 +76,9 @@ func DeployERC20Remote(
 		binBytes,
 		"((address, address, bytes32, address, uint8), string, string, uint8)",
 		tokenRemoteSettings,
-		tokenName,
-		tokenSymbol,
-		tokenDecimals,
+		tokenRemoteName,
+		tokenRemoteSymbol,
+		tokenRemoteDecimals,
 	)
 }
 
@@ -90,7 +90,7 @@ func DeployNativeRemote(
 	teleporterManagerAddress common.Address,
 	tokenHomeBlockchainID [32]byte,
 	tokenHomeAddress common.Address,
-	tokenDecimals uint8,
+	tokenHomeDecimals uint8,
 	nativeAssetSymbol string,
 	initialReserveImbalance *big.Int,
 	burnedFeesReportingRewardPercentage *big.Int,
@@ -105,8 +105,7 @@ func DeployNativeRemote(
 		TeleporterManager:         teleporterManagerAddress,
 		TokenHomeBlockchainID:     tokenHomeBlockchainID,
 		TokenHomeAddress:          tokenHomeAddress,
-		// TODO: user case for home having diff decimals
-		TokenHomeDecimals: tokenDecimals,
+		TokenHomeDecimals:         tokenHomeDecimals,
 	}
 	return contract.DeployContract(
 		rpcURL,

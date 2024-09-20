@@ -14,6 +14,8 @@ type NetworkData struct {
 	TeleporterMessengerAddress string
 	TeleporterRegistryAddress  string
 	PoAValidatorManagerOwner   string
+	RPCEndpoints               []string
+	WSEndpoints                []string
 }
 
 type Sidecar struct {

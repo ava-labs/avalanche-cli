@@ -127,9 +127,9 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		genesisBytes, err := contract.GetBlockchainGenesis(
 			app,
 			network,
-			sc.Name,
-			false,
-			"",
+			contract.ChainSpec{
+				BlockchainName: sc.Name,
+			},
 		)
 		if err != nil {
 			return err

@@ -3,15 +3,14 @@
 package contractcmd
 
 import (
-	"fmt"
 	"math/big"
 
-	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
@@ -20,10 +19,11 @@ import (
 type DeployERC20Flags struct {
 	Network         networkoptions.NetworkFlags
 	PrivateKeyFlags contract.PrivateKeyFlags
-	chainFlags      contract.ChainFlags
+	chainFlags      contract.ChainSpec
 	symbol          string
 	funded          string
 	supply          uint64
+	rpcEndpoint     string
 }
 
 var (
@@ -45,17 +45,12 @@ func newDeployERC20Cmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &deployERC20Flags.PrivateKeyFlags, "as contract deployer")
-	contract.AddChainFlagsToCmd(
-		cmd,
-		&deployERC20Flags.chainFlags,
-		"deploy the ERC20 contract",
-		"",
-		"",
-	)
+	deployERC20Flags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
+	deployERC20Flags.chainFlags.AddToCmd(cmd, "deploy the ERC20 contract", true)
 	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the token symbol")
 	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the token supply")
 	cmd.Flags().StringVar(&deployERC20Flags.funded, "funded", "", "set the funded address")
+	cmd.Flags().StringVar(&deployERC20Flags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
 	return cmd
 }
 
@@ -72,51 +67,45 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	// flags exclusiveness
-	if !cmdflags.EnsureMutuallyExclusive([]bool{
-		deployERC20Flags.chainFlags.SubnetName != "",
-		deployERC20Flags.chainFlags.CChain,
-	}) {
-		return fmt.Errorf("--subnet and --c-chain are mutually exclusive flags")
+	if err := deployERC20Flags.chainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
 	}
-	if deployERC20Flags.chainFlags.SubnetName == "" && !deployERC20Flags.chainFlags.CChain {
-		subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	if !deployERC20Flags.chainFlags.Defined() {
+		prompt := "Where do you want to Deploy the ERC-20 Token?"
+		if cancel, err := contract.PromptChain(
+			app,
+			network,
+			prompt,
+			false,
+			"",
+			true,
+			&deployERC20Flags.chainFlags,
+		); cancel || err != nil {
+			return err
+		}
+	}
+	if deployERC20Flags.rpcEndpoint == "" {
+		deployERC20Flags.rpcEndpoint, _, err = contract.GetBlockchainEndpoints(
+			app,
+			network,
+			deployERC20Flags.chainFlags,
+			true,
+			false,
+		)
 		if err != nil {
 			return err
 		}
-		prompt := "Where do you want to Deploy the ERC-20 Token?"
-		cancel, _, _, cChain, subnetName, err := prompts.PromptChain(
-			app.Prompt,
-			prompt,
-			subnetNames,
-			true,
-			true,
-			false,
-			"",
-		)
-		if cancel {
-			return nil
-		}
-		if err == nil {
-			deployERC20Flags.chainFlags.SubnetName = subnetName
-			deployERC20Flags.chainFlags.CChain = cChain
-		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), deployERC20Flags.rpcEndpoint)
 	}
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
-		deployERC20Flags.chainFlags.SubnetName,
-		deployERC20Flags.chainFlags.CChain,
-		"",
+		deployERC20Flags.chainFlags,
 	)
 	if err != nil {
 		return err
 	}
-	privateKey, err := contract.GetPrivateKeyFromFlags(
-		app,
-		deployERC20Flags.PrivateKeyFlags,
-		genesisPrivateKey,
-	)
+	privateKey, err := deployERC20Flags.PrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}
@@ -167,17 +156,8 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
-	rpcURL, err := contract.GetRPCURL(
-		app,
-		network,
-		deployERC20Flags.chainFlags.SubnetName,
-		deployERC20Flags.chainFlags.CChain,
-	)
-	if err != nil {
-		return err
-	}
 	address, err := contract.DeployERC20(
-		rpcURL,
+		deployERC20Flags.rpcEndpoint,
 		privateKey,
 		deployERC20Flags.symbol,
 		common.HexToAddress(deployERC20Flags.funded),

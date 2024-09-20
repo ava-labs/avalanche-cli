@@ -5,6 +5,7 @@ package networkoptions
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -132,11 +133,16 @@ func GetSupportedNetworkOptionsForSubnet(
 	for _, networkOption := range supportedNetworkOptions {
 		isInSidecar := false
 		for networkName := range sc.Networks {
-			if strings.HasPrefix(networkName, networkOption.String()) {
+			networkOptionWords := strings.Fields(networkOption.String())
+			if len(networkOptionWords) == 0 {
+				return nil, nil, nil, fmt.Errorf("empty network option")
+			}
+			firstNetworkOptionWord := networkOptionWords[0]
+			if strings.HasPrefix(networkName, firstNetworkOptionWord) {
 				isInSidecar = true
 			}
 			if os.Getenv(constants.SimulatePublicNetwork) != "" {
-				if strings.HasPrefix(networkName, Local.String()) {
+				if networkName == Local.String() {
 					if networkOption == Fuji || networkOption == Mainnet {
 						isInSidecar = true
 					}
@@ -329,6 +335,11 @@ func GetNetworkFromCmdLineFlags(
 		}
 	}
 
+	if networkFlags.Endpoint != "" {
+		re := regexp.MustCompile(`/+$`)
+		networkFlags.Endpoint = re.ReplaceAllString(networkFlags.Endpoint, "")
+	}
+
 	network := models.UndefinedNetwork
 	switch networkOption {
 	case Local:
@@ -355,6 +366,7 @@ func GetNetworkFromCmdLineFlags(
 			return models.UndefinedNetwork, err
 		}
 	}
+
 	// on all cases, enable user setting specific endpoint
 	if networkFlags.Endpoint != "" {
 		network.Endpoint = networkFlags.Endpoint
