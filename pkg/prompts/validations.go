@@ -129,6 +129,17 @@ func validateWeight(input string) error {
 	return nil
 }
 
+func validateBootstrapValidatorBalance(input string) error {
+	val, err := strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		return err
+	}
+	if val <= 0 {
+		return fmt.Errorf("initial bootstrap validator balance must be greater than 0 AVAX")
+	}
+	return nil
+}
+
 func validateBiggerThanZero(input string) error {
 	val, err := strconv.ParseUint(input, 0, 64)
 	if err != nil {

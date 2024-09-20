@@ -151,12 +151,14 @@ const (
 
 	Disable = "disable"
 
-	TimeParseLayout             = "2006-01-02 15:04:05"
-	MinStakeWeight              = 1
-	DefaultStakeWeight          = 20
-	AVAXSymbol                  = "AVAX"
-	DefaultFujiStakeDuration    = "48h"
-	DefaultMainnetStakeDuration = "336h"
+	TimeParseLayout                  = "2006-01-02 15:04:05"
+	MinStakeWeight                   = 1
+	InitialBalanceBootstrapValidator = 1
+	DefaultBootstrapValidatorWeight  = 1000000
+	DefaultStakeWeight               = 20
+	AVAXSymbol                       = "AVAX"
+	DefaultFujiStakeDuration         = "48h"
+	DefaultMainnetStakeDuration      = "336h"
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	DevnetStakingStartLeadTime                   = 30 * time.Second

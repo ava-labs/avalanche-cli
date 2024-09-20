@@ -161,6 +161,7 @@ func PromptVMType(
 // provided in call args
 func PromptSubnetEVMGenesisParams(
 	app *application.Avalanche,
+	sc *models.Sidecar,
 	version string,
 	chainID uint64,
 	tokenSymbol string,
@@ -174,6 +175,8 @@ func PromptSubnetEVMGenesisParams(
 		err    error
 		params SubnetEVMGenesisParams
 	)
+
+	params.SoVUsePoAValidatorManager = sc.ValidatorManagement == models.ProofOfAuthority
 
 	// Chain ID
 	params.chainID = chainID

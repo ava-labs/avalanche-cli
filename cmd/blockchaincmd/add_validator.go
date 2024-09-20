@@ -209,7 +209,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
-		nodeID, err = PromptNodeID()
+		nodeID, err = PromptNodeID("add as validator")
 		if err != nil {
 			return err
 		}
@@ -225,7 +225,7 @@ func CallAddValidator(
 		return err
 	}
 	if selectedWeight < constants.MinStakeWeight {
-		return fmt.Errorf("illegal weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, selectedWeight)
+		return fmt.Errorf("invalid weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, selectedWeight)
 	}
 
 	start, selectedDuration, err := getTimeParameters(network, nodeID, true)
@@ -406,13 +406,8 @@ func promptStart() (time.Time, error) {
 	return app.Prompt.CaptureDate(txt)
 }
 
-func PromptNodeID() (ids.NodeID, error) {
-	ux.Logger.PrintToUser("Next, we need the NodeID of the validator you want to whitelist.")
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions about how to query the NodeID from your node")
-	ux.Logger.PrintToUser("(Edit host IP address and port to match your deployment, if needed).")
-
-	txt := "What is the NodeID of the validator you'd like to whitelist?"
+func PromptNodeID(goal string) (ids.NodeID, error) {
+	txt := fmt.Sprintf("What is the NodeID of the node you want to %s?", goal)
 	return app.Prompt.CaptureNodeID(txt)
 }
 

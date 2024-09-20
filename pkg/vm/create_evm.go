@@ -32,13 +32,14 @@ var (
 	externalGasTokenBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1000))
 )
 
-func CreateEvmSidecar(
+func FillEvmSidecar(
+	sc *models.Sidecar,
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
 	tokenSymbol string,
 	getRPCVersionFromBinary bool,
-) (*models.Sidecar, error) {
+) error {
 	var (
 		err        error
 		rpcVersion int
@@ -47,30 +48,28 @@ func CreateEvmSidecar(
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
 		if err != nil {
-			return nil, fmt.Errorf("failed to install subnet-evm: %w", err)
+			return fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
 		rpcVersion, err = GetVMBinaryProtocolVersion(vmBin)
 		if err != nil {
-			return nil, fmt.Errorf("unable to get RPC version: %w", err)
+			return fmt.Errorf("unable to get RPC version: %w", err)
 		}
 	} else {
 		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	sc := models.Sidecar{
-		Name:        subnetName,
-		VM:          models.SubnetEvm,
-		VMVersion:   subnetEVMVersion,
-		RPCVersion:  rpcVersion,
-		Subnet:      subnetName,
-		TokenSymbol: tokenSymbol,
-		TokenName:   tokenSymbol + " Token",
-	}
+	sc.Name = subnetName
+	sc.VM = models.SubnetEvm
+	sc.VMVersion = subnetEVMVersion
+	sc.RPCVersion = rpcVersion
+	sc.Subnet = subnetName
+	sc.TokenSymbol = tokenSymbol
+	sc.TokenName = tokenSymbol + " Token"
 
-	return &sc, nil
+	return nil
 }
 
 func CreateEVMGenesis(
@@ -115,7 +114,6 @@ func CreateEVMGenesis(
 		}
 	}
 
-	params.SoVUsePoAValidatorManager = true
 	if params.SoVUsePoAValidatorManager {
 		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 	}

@@ -12,8 +12,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -50,15 +48,15 @@ type CreateFlags struct {
 	addICMRegistryToGenesis       bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
+	validatorManagerController    string
 }
 
 var (
-	createFlags CreateFlags
-	forceCreate bool
-	genesisFile string
-	vmFile      string
-	useRepo     bool
-
+	createFlags             CreateFlags
+	forceCreate             bool
+	genesisFile             string
+	vmFile                  string
+	useRepo                 bool
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
@@ -110,6 +108,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
+	cmd.Flags().StringVar(&createFlags.validatorManagerController, "poa-manager-owner", "", "owner address for a PoA validator manager")
 	return cmd
 }
 
@@ -207,7 +206,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	var (
 		genesisBytes        []byte
-		sc                  *models.Sidecar
 		useTeleporterFlag   *bool
 		deployTeleporter    bool
 		useExternalGasToken bool
@@ -225,7 +223,24 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	sc := &models.Sidecar{}
+
+	if err = promptValidatorManagementType(app, sc); err != nil {
+		return err
+	}
+
 	if vmType == models.SubnetEvm {
+		if sc.ValidatorManagement == models.ProofOfAuthority {
+			if createFlags.validatorManagerController == "" {
+				createFlags.validatorManagerController, err = getValidatorContractManagerAddr()
+				if err != nil {
+					return err
+				}
+			}
+			sc.ValidatorManagerController = createFlags.validatorManagerController
+			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract controller %s", createFlags.validatorManagerController)
+		}
+
 		if genesisFile == "" {
 			// Default
 			defaultsKind, err = vm.PromptDefaults(app, defaultsKind)
@@ -275,6 +290,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			var params vm.SubnetEVMGenesisParams
 			params, tokenSymbol, err = vm.PromptSubnetEVMGenesisParams(
 				app,
+				sc,
 				vmVersion,
 				createFlags.chainID,
 				createFlags.tokenSymbol,
@@ -299,14 +315,14 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		sc, err = vm.CreateEvmSidecar(
+		if err := vm.FillEvmSidecar(
+			sc,
 			app,
 			blockchainName,
 			vmVersion,
 			tokenSymbol,
 			true,
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 	} else {
@@ -325,7 +341,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		sc, err = vm.CreateCustomSidecar(
+		if err := vm.FillCustomSidecar(
+			sc,
 			app,
 			blockchainName,
 			useRepo,
@@ -334,8 +351,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			customVMBuildScript,
 			vmFile,
 			tokenSymbol,
-		)
-		if err != nil {
+		); err != nil {
 			return err
 		}
 	}
@@ -358,9 +374,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
-	if err = promptValidatorManagementType(app, sc); err != nil {
-		return err
-	}
+
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
@@ -437,45 +451,5 @@ func checkInvalidSubnetNames(name string) error {
 			return errIllegalNameCharacter
 		}
 	}
-	return nil
-}
-
-// TODO: add explain the difference for different validator management type
-func promptValidatorManagementType(
-	app *application.Avalanche,
-	sidecar *models.Sidecar,
-) error {
-	proofOfAuthorityOption := "Proof of Authority"
-	proofOfStakeOption := "Proof of Stake"
-	explainOption := "Explain the difference"
-	if createFlags.proofOfStake {
-		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfStakeOption)
-		return nil
-	}
-	if createFlags.proofOfAuthority {
-		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfAuthorityOption)
-		return nil
-	}
-	options := []string{proofOfAuthorityOption, proofOfStakeOption, explainOption}
-	var subnetTypeStr string
-	for {
-		option, err := app.Prompt.CaptureList(
-			"Which validator management protocol would you like to use in your blockchain?",
-			options,
-		)
-		if err != nil {
-			return err
-		}
-		switch option {
-		case proofOfAuthorityOption:
-			subnetTypeStr = models.ProofOfAuthority
-		case proofOfStakeOption:
-			subnetTypeStr = models.ProofOfStake
-		case explainOption:
-			continue
-		}
-		break
-	}
-	sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(subnetTypeStr)
 	return nil
 }
