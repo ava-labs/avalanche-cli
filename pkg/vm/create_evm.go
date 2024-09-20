@@ -114,7 +114,7 @@ func CreateEVMGenesis(
 		}
 	}
 
-	if params.SoVUsePoAValidatorManager {
+	if params.UsePoAValidatorManager {
 		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 	}
 

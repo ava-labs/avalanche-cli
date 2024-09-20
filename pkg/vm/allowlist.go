@@ -98,6 +98,7 @@ func removeAddress(
 
 func GenerateAllowList(
 	app *application.Avalanche,
+	allowList AllowList,
 	action string,
 	evmVersion string,
 ) (AllowList, bool, error) {
@@ -105,8 +106,6 @@ func GenerateAllowList(
 		return AllowList{}, false, fmt.Errorf("invalid semantic version %q", evmVersion)
 	}
 	managerRoleEnabled := semver.Compare(evmVersion, "v0.6.4") >= 0
-
-	allowList := AllowList{}
 
 	promptTemplate := "Configure the addresses that are allowed to %s"
 	prompt := fmt.Sprintf(promptTemplate, action)
@@ -121,6 +120,12 @@ func GenerateAllowList(
 	managerOption := "Manager"
 	enabledOption := "Enabled"
 	explainOption := "Explain the difference"
+
+	if len(allowList.AdminAddresses) != 0 || len(allowList.ManagerAddresses) != 0 || len(allowList.EnabledAddresses) != 0 {
+		fmt.Println()
+		fmt.Printf(logging.Bold.Wrap("Addresses automatically allowed to %s\n"), action)
+		preview(allowList)
+	}
 
 	for {
 		options := []string{addOption, removeOption, previewOption, confirmOption, cancelOption}
