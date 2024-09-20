@@ -378,7 +378,7 @@ func getNativeGasTokenAllocationConfig(
 	if allocOption == customAllocationOption {
 		if len(allocations) != 0 {
 			fmt.Println()
-			fmt.Printf(logging.Bold.Wrap("Addresses automatically allocated\n"))
+			fmt.Println(logging.Bold.Wrap("Addresses automatically allocated"))
 			displayAllocations(allocations)
 		}
 		for {
@@ -494,7 +494,6 @@ func getNativeMinterPrecompileConfig(
 		if !confirm {
 			return AllowList{}, false, nil
 		}
-
 	}
 
 	for {
