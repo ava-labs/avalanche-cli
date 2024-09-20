@@ -114,12 +114,13 @@ jobs:
         run: |
           npm install -g typescript
           npm install -g ts-node
+          npm install -g tsx
       - name: Install docker on macos
-        if: ${{ matrix.os == 'macos-13' }}
+        if: ${{ (matrix.os == 'macos-13') && (matrix.suite == '\\[Public Subnet\\]') }}
         run: |
           brew install docker
           brew install colima
-          colima start
+          colima start --vm-type vz
           sudo ln -s ~/.colima/default/docker.sock /var/run/docker.sock
       - name: generate ssh token for e2e tests
         run: |

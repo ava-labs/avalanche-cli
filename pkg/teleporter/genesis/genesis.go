@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -38,12 +39,8 @@ func setSimpleStorageValue(
 	storage[common.HexToHash(slot)] = common.HexToHash(value)
 }
 
-func trimHexa(s string) string {
-	return strings.TrimPrefix(strings.TrimPrefix(s, "0x"), "0X")
-}
-
 func hexFill32(s string) string {
-	return fmt.Sprintf("%064s", trimHexa(s))
+	return fmt.Sprintf("%064s", utils.TrimHexa(s))
 }
 
 func setMappingStorageValue(

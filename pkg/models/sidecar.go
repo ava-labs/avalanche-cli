@@ -41,6 +41,7 @@ type Sidecar struct {
 	RunRelayer        bool
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
+	ValidatorManagement     ValidatorManagementType
 }
 
 func (sc Sidecar) GetVMID() (string, error) {
