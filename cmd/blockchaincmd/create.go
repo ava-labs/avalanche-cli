@@ -49,7 +49,6 @@ type CreateFlags struct {
 	useExternalGasToken           bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
-	validatorManagerController    []string
 }
 
 var (
@@ -359,19 +358,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err = promptValidatorManagementType(app, sc); err != nil {
 		return err
 	}
-	if createFlags.validatorManagerController == nil {
-		var cancelled bool
-		createFlags.validatorManagerController, cancelled, err = getValidatorContractManagerAddr()
-		if err != nil {
-			return err
-		}
-		if cancelled {
-			return fmt.Errorf("user cancelled operation")
-		}
-	}
-	sc.ValidatorManagerController = createFlags.validatorManagerController
-	// TODO: add description of what Validator Manager Contract controller does
-	ux.Logger.GreenCheckmarkToUser("Validator Manager Contract controller %s", createFlags.validatorManagerController)
+
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
@@ -387,11 +374,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.GreenCheckmarkToUser("Successfully created blockchain configuration")
 	return nil
-}
-
-func getValidatorContractManagerAddr() ([]string, bool, error) {
-	// TODO: replace this with implementation in validator prompt PR
-	return nil, false, nil
 }
 
 func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, balance string) ([]byte, error) {

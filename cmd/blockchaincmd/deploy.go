@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,6 +52,7 @@ var (
 	skipCreatePrompt         bool
 	avagoBinaryPath          string
 	subnetOnly               bool
+	validatorManagerOwner    string
 	teleporterEsp            subnet.TeleporterEsp
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -100,6 +102,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
 	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
 	cmd.Flags().StringVar(&teleporterEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
+	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Controller (for Proof of Authority only)")
 	return cmd
 }
 
@@ -285,6 +288,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return errors.New("unable to deploy subnets imported from a repo")
 	}
 
+	if sidecar.ValidatorManagement != models.ProofOfAuthority && validatorManagerOwner != "" {
+		return errors.New("--validator-manager-controller flag cannot be used when blockchain validator management type is not Proof of Authority")
+	}
+
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
@@ -386,6 +393,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.TeleporterMessengerAddress,
 			deployInfo.TeleporterRegistryAddress,
+			validatorManagerOwner,
 		); err != nil {
 			return err
 		}
@@ -488,6 +496,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
+	if validatorManagerOwner == "" {
+		validatorManagerOwnerEVMAddress, err := getValidatorContractOwnerAddr()
+		if err != nil {
+			return err
+		}
+		validatorManagerOwner = validatorManagerOwnerEVMAddress.String()
+	}
+	ux.Logger.PrintToUser("Validator Manager Contract controller address %s", validatorManagerOwner)
+
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
@@ -552,7 +569,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "")
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", validatorManagerOwner)
+}
+
+func getValidatorContractOwnerAddr() (common.Address, error) {
+	return app.Prompt.CaptureAddress("What is the EVM address that will control the Validator Manager Contract?")
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
