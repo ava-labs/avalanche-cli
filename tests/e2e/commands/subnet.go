@@ -16,7 +16,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const subnetEVMMainnetChainID = 11
+const (
+	subnetEVMMainnetChainID  = 11
+	poaValidatorManagerOwner = "0x2e6FcBb9d4E17eC4cF67eddfa7D32eabC4cdCFc6"
+)
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
@@ -44,6 +47,8 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 		"--evm",
 		subnetName,
 		"--proof-of-authority",
+		"--poa-manager-owner",
+		poaValidatorManagerOwner,
 		"--" + constants.SkipUpdateFlag,
 		"--teleporter=false",
 		"--evm-token",
@@ -124,6 +129,8 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"--genesis",
 		genesisPath,
 		"--proof-of-authority",
+		"--poa-manager-owner",
+		poaValidatorManagerOwner,
 		"--custom",
 		subnetName,
 		"--custom-vm-path",
