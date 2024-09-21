@@ -58,8 +58,8 @@ var (
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
 	subnetOnly                      bool
-	generateNodeID                  bool
 	icmSpec                         subnet.ICMSpec
+	generateNodeID                  bool
 	bootstrapValidatorsJSONFilePath string
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")

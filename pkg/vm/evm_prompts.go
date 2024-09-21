@@ -178,7 +178,7 @@ func PromptSubnetEVMGenesisParams(
 		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
 			common.HexToAddress(validatormanager.PoAValidarorMessengerContractAddress),
 		}
-		params.initialTokenAllocation[common.HexToAddress(sc.ValidatorManagerController)] = core.GenesisAccount{
+		params.initialTokenAllocation[common.HexToAddress(sc.PoAValidatorManagerOwner)] = core.GenesisAccount{
 			Balance: defaultPoAOwnerBalance,
 		}
 	}

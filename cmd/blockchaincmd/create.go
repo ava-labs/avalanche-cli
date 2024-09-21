@@ -48,7 +48,7 @@ type CreateFlags struct {
 	addICMRegistryToGenesis       bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
-	validatorManagerController    string
+	poaValidatorManagerOwner      string
 }
 
 var (
@@ -108,7 +108,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
-	cmd.Flags().StringVar(&createFlags.validatorManagerController, "poa-manager-owner", "", "owner address for a PoA validator manager")
+	cmd.Flags().StringVar(&createFlags.poaValidatorManagerOwner, "poa-manager-owner", "", "EVM address that controls Validator Manager Owner (for Proof of Authority only)")
 	return cmd
 }
 
@@ -229,16 +229,20 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if sc.ValidatorManagement != models.ProofOfAuthority && createFlags.poaValidatorManagerOwner != "" {
+		return errors.New("--poa-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
+	}
+
 	if vmType == models.SubnetEvm {
 		if sc.ValidatorManagement == models.ProofOfAuthority {
-			if createFlags.validatorManagerController == "" {
-				createFlags.validatorManagerController, err = getValidatorContractManagerAddr()
+			if createFlags.poaValidatorManagerOwner == "" {
+				createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
 				if err != nil {
 					return err
 				}
 			}
-			sc.ValidatorManagerController = createFlags.validatorManagerController
-			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract controller %s", createFlags.validatorManagerController)
+			sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
+			ux.Logger.GreenCheckmarkToUser("PoA Validator Manager Contract owner %s", createFlags.poaValidatorManagerOwner)
 		}
 
 		if genesisFile == "" {
