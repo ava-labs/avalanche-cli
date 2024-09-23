@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -583,10 +581,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
-}
-
-func getValidatorContractOwnerAddr() (common.Address, error) {
-	return app.Prompt.CaptureAddress("What is the EVM address that will control the Validator Manager Contract?")
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
