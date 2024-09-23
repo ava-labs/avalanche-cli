@@ -12,8 +12,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -52,12 +50,11 @@ type CreateFlags struct {
 }
 
 var (
-	createFlags CreateFlags
-	forceCreate bool
-	genesisFile string
-	vmFile      string
-	useRepo     bool
-
+	createFlags             CreateFlags
+	forceCreate             bool
+	genesisFile             string
+	vmFile                  string
+	useRepo                 bool
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
@@ -435,45 +432,5 @@ func checkInvalidSubnetNames(name string) error {
 			return errIllegalNameCharacter
 		}
 	}
-	return nil
-}
-
-// TODO: add explain the difference for different validator management type
-func promptValidatorManagementType(
-	app *application.Avalanche,
-	sidecar *models.Sidecar,
-) error {
-	proofOfAuthorityOption := "Proof of Authority"
-	proofOfStakeOption := "Proof of Stake"
-	explainOption := "Explain the difference"
-	if createFlags.proofOfStake {
-		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfStakeOption)
-		return nil
-	}
-	if createFlags.proofOfAuthority {
-		sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(proofOfAuthorityOption)
-		return nil
-	}
-	options := []string{proofOfAuthorityOption, proofOfStakeOption, explainOption}
-	var subnetTypeStr string
-	for {
-		option, err := app.Prompt.CaptureList(
-			"Which validator management protocol would you like to use in your blockchain?",
-			options,
-		)
-		if err != nil {
-			return err
-		}
-		switch option {
-		case proofOfAuthorityOption:
-			subnetTypeStr = models.ProofOfAuthority
-		case proofOfStakeOption:
-			subnetTypeStr = models.ProofOfStake
-		case explainOption:
-			continue
-		}
-		break
-	}
-	sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(subnetTypeStr)
 	return nil
 }

@@ -13,9 +13,9 @@ type NetworkData struct {
 	RPCVersion                 int
 	TeleporterMessengerAddress string
 	TeleporterRegistryAddress  string
-	PoAValidatorManagerOwner   string
 	RPCEndpoints               []string
 	WSEndpoints                []string
+	BootstrapValidators        []SubnetValidator
 }
 
 type Sidecar struct {
@@ -59,4 +59,9 @@ func (sc Sidecar) GetVMID() (string, error) {
 		vmid = chainVMID.String()
 	}
 	return vmid, nil
+}
+
+func (sc Sidecar) NetworkDataIsEmpty(network string) bool {
+	_, networkExists := sc.Networks[network]
+	return !networkExists
 }

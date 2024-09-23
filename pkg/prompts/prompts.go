@@ -106,6 +106,7 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
+	CaptureBootstrapInitialBalance(promptStr string) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string) (int, error)
 	CaptureUint32(promptStr string) (uint32, error)
@@ -265,6 +266,20 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 		return ids.EmptyNodeID, err
 	}
 	return ids.NodeIDFromString(nodeIDStr)
+}
+
+func (*realPrompter) CaptureBootstrapInitialBalance(promptStr string) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateBootstrapValidatorBalance,
+	}
+
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.ParseUint(amountStr, 10, 64)
 }
 
 func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {

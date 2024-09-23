@@ -158,7 +158,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	}
 
 	if nodeIDStr == "" {
-		nodeID, err = blockchaincmd.PromptNodeID()
+		nodeID, err = blockchaincmd.PromptNodeID("add as Primary Network Validator")
 		if err != nil {
 			return err
 		}

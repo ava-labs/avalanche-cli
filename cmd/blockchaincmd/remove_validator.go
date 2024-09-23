@@ -161,7 +161,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Your subnet auth keys for remove validator tx creation: %s", subnetAuthKeys)
 
 	if nodeIDStr == "" {
-		nodeID, err = PromptNodeID()
+		nodeID, err = PromptNodeID("remove as validator")
 		if err != nil {
 			return err
 		}
