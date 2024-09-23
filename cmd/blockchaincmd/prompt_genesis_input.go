@@ -18,48 +18,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
-func getValidatorContractManagerAddr() ([]string, bool, error) {
-	controllerAddrPrompt := "Enter Validator Manager Contract controller address"
-	for {
-		// ask in a loop so that if some condition is not met we can keep asking
-		controlAddr, cancelled, err := prompts.CaptureListDecision(
-			// we need this to be able to mock test
-			app.Prompt,
-			// the main prompt for entering address keys
-			controllerAddrPrompt,
-			// the Capture function to use
-			func(_ string) (string, error) {
-				return prompts.PromptAddress(
-					app.Prompt,
-					"enable as controller of ValidatorManager contract",
-					app.GetKeyDir(),
-					app.GetKey,
-					"",
-					models.UndefinedNetwork,
-					prompts.EVMFormat,
-					"Enter address",
-				)
-			},
-			// the prompt for each address
-			"",
-			// label describes the entity we are prompting for (e.g. address, control key, etc.)
-			"Validator Manager Controller",
-			// TODO: add info here on what this validator manager controller is
-			"",
-		)
-		if err != nil {
-			return nil, false, err
-		}
-		if cancelled {
-			return nil, cancelled, nil
-		}
-		if len(controlAddr) != 0 {
-			return controlAddr, false, nil
-		}
-		ux.Logger.RedXToUser("An address to control Validator Manage Contract is required before proceeding")
-	}
-}
-
 func promptProofOfPossession() (string, string, error) {
 	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
@@ -82,8 +40,6 @@ func promptValidatorManagementType(
 	app *application.Avalanche,
 	sidecar *models.Sidecar,
 ) error {
-	proofOfAuthorityOption := models.ProofOfAuthority
-	proofOfStakeOption := models.ProofOfStake
 	explainOption := "Explain the difference"
 	if createFlags.proofOfStake {
 		sidecar.ValidatorManagement = models.ProofOfStake
@@ -93,8 +49,7 @@ func promptValidatorManagementType(
 		sidecar.ValidatorManagement = models.ProofOfAuthority
 		return nil
 	}
-	options := []string{proofOfAuthorityOption, proofOfStakeOption, explainOption}
-	var subnetTypeStr string
+	options := []string{models.ProofOfAuthority, models.ProofOfStake, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
 			"Which validator management protocol would you like to use in your blockchain?",
@@ -104,16 +59,16 @@ func promptValidatorManagementType(
 			return err
 		}
 		switch option {
-		case proofOfAuthorityOption:
-			subnetTypeStr = models.ProofOfAuthority
-		case proofOfStakeOption:
-			subnetTypeStr = models.ProofOfStake
+		case models.ProofOfAuthority:
+			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
+		case models.ProofOfStake:
+			ux.Logger.RedXToUser("Proof of Stake is currently unavailable")
+			continue
 		case explainOption:
 			continue
 		}
 		break
 	}
-	sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(subnetTypeStr)
 	return nil
 }
 
@@ -191,8 +146,8 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 		previousAddr = changeAddr
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
-			Weight:               constants.DefaultBootstrapValidatorWeight,
-			Balance:              constants.InitialBalanceBootstrapValidator,
+			Weight:               constants.BootstrapValidatorWeight,
+			Balance:              constants.BootstrapValidatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
 			ChangeOwnerAddr:      changeAddr,
@@ -229,10 +184,10 @@ func validateSubnetValidatorsJSON(generateNewNodeID bool, validatorJSONS []model
 				return err
 			}
 		}
-		if validatorJSON.Weight <= 0 {
+		if validatorJSON.Weight == 0 {
 			return fmt.Errorf("bootstrap validator weight has to be greater than 0")
 		}
-		if validatorJSON.Balance <= 0 {
+		if validatorJSON.Balance == 0 {
 			return fmt.Errorf("bootstrap validator balance has to be greater than 0")
 		}
 	}

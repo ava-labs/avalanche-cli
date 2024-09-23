@@ -63,12 +63,6 @@ func (sc Sidecar) GetVMID() (string, error) {
 }
 
 func (sc Sidecar) NetworkDataIsEmpty(network string) bool {
-	if sc.Networks[network].SubnetID == ids.Empty &&
-		sc.Networks[network].BlockchainID == ids.Empty &&
-		sc.Networks[network].RPCVersion == 0 &&
-		sc.Networks[network].TeleporterMessengerAddress == "" &&
-		sc.Networks[network].TeleporterRegistryAddress == "" {
-		return true
-	}
-	return false
+	_, networkExists := sc.Networks[network]
+	return !networkExists
 }

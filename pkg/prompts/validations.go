@@ -134,7 +134,7 @@ func validateBootstrapValidatorBalance(input string) error {
 	if err != nil {
 		return err
 	}
-	if val <= 0 {
+	if val == 0 {
 		return fmt.Errorf("initial bootstrap validator balance must be greater than 0 AVAX")
 	}
 	return nil
