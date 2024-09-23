@@ -13,7 +13,6 @@ type NetworkData struct {
 	RPCVersion                 int
 	TeleporterMessengerAddress string
 	TeleporterRegistryAddress  string
-	PoAValidatorManagerOwner   string
 	RPCEndpoints               []string
 	WSEndpoints                []string
 	BootstrapValidators        []SubnetValidator

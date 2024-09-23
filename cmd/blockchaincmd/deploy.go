@@ -62,7 +62,6 @@ var (
 	subnetOnly                      bool
 	icmSpec                         subnet.ICMSpec
 	generateNodeID                  bool
-	validatorManagerOwner           string
 	bootstrapValidatorsJSONFilePath string
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
@@ -113,7 +112,6 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an interchain messenger deployer tx file")
 	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an interchain messenger registry bytecode file")
-	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Controller (for Proof of Authority only)")
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	return cmd
@@ -309,10 +307,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return errors.New("unable to deploy subnets imported from a repo")
 	}
 
-	if sidecar.ValidatorManagement != models.ProofOfAuthority && validatorManagerOwner != "" {
-		return errors.New("--validator-manager-controller flag cannot be used when blockchain validator management type is not Proof of Authority")
-	}
-
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
@@ -422,7 +416,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.ICMMessengerAddress,
 			deployInfo.ICMRegistryAddress,
 			bootstrapValidators,
-			validatorManagerOwner,
 		); err != nil {
 			return err
 		}
@@ -525,15 +518,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
-	if validatorManagerOwner == "" {
-		validatorManagerOwnerEVMAddress, err := getValidatorContractOwnerAddr()
-		if err != nil {
-			return err
-		}
-		validatorManagerOwner = validatorManagerOwnerEVMAddress.String()
-	}
-	ux.Logger.PrintToUser("Validator Manager Contract controller address %s", validatorManagerOwner)
-
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
@@ -598,7 +582,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators, validatorManagerOwner)
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
 }
 
 func getValidatorContractOwnerAddr() (common.Address, error) {
