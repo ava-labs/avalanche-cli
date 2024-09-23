@@ -13,6 +13,7 @@ type NetworkData struct {
 	RPCVersion                 int
 	TeleporterMessengerAddress string
 	TeleporterRegistryAddress  string
+	PoAValidatorManagerOwner   string
 	RPCEndpoints               []string
 	WSEndpoints                []string
 }
@@ -41,7 +42,8 @@ type Sidecar struct {
 	RunRelayer        bool
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
-	ValidatorManagement     ValidatorManagementType
+	// TODO: remove if not needed for subnet acp 77 create flow once avalnache go releases etna
+	ValidatorManagement ValidatorManagementType
 }
 
 func (sc Sidecar) GetVMID() (string, error) {

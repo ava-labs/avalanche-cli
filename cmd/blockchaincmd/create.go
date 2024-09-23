@@ -358,6 +358,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err = promptValidatorManagementType(app, sc); err != nil {
 		return err
 	}
+
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
 	}
