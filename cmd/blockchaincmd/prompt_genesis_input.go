@@ -3,7 +3,10 @@
 package blockchaincmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -58,6 +61,27 @@ func getValidatorContractManagerAddr() ([]string, bool, error) {
 		}
 		ux.Logger.RedXToUser("An address to control Validator Manage Contract is required before proceeding")
 	}
+}
+
+func getBLSSigner(publicKey, proofOfPossesion string) (signer.Signer, error) {
+	type jsonProofOfPossession struct {
+		PublicKey         string
+		ProofOfPossession string
+	}
+	jsonPop := jsonProofOfPossession{
+		PublicKey:         publicKey,
+		ProofOfPossession: proofOfPossesion,
+	}
+	popBytes, err := json.Marshal(jsonPop)
+	if err != nil {
+		return nil, err
+	}
+	pop := &signer.ProofOfPossession{}
+	err = pop.UnmarshalJSON(popBytes)
+	if err != nil {
+		return nil, err
+	}
+	return pop, nil
 }
 
 func promptProofOfPossession() (string, string, error) {
@@ -143,8 +167,8 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator, error) {
-	var subnetValidators []models.SubnetValidator
+func promptBootstrapValidators(network models.Network) ([]SubnetValidator, error) {
+	var subnetValidators []SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
 		"How many bootstrap validators do you want to set up?",
 	)
@@ -184,18 +208,29 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 				return nil, err
 			}
 		}
+		proofOfPossession, err := getBLSSigner(publicKey, pop)
+		if err != nil {
+			return nil, err
+		}
 		changeAddr, err := getKeyForChangeOwner(previousAddr, network)
 		if err != nil {
 			return nil, err
 		}
+		addrs, err := address.ParseToIDs([]string{changeAddr})
+		if err != nil {
+			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
+		}
+		changeOwner := &secp256k1fx.OutputOwners{
+			Threshold: 1,
+			Addrs:     addrs,
+		}
 		previousAddr = changeAddr
-		subnetValidator := models.SubnetValidator{
-			NodeID:               nodeID.String(),
-			Weight:               constants.DefaultBootstrapValidatorWeight,
-			Balance:              constants.InitialBalanceBootstrapValidator,
-			BLSPublicKey:         publicKey,
-			BLSProofOfPossession: pop,
-			ChangeOwnerAddr:      changeAddr,
+		subnetValidator := SubnetValidator{
+			NodeID:      nodeID,
+			Weight:      constants.DefaultBootstrapValidatorWeight,
+			Balance:     constants.InitialBalanceBootstrapValidator,
+			Signer:      proofOfPossession,
+			ChangeOwner: changeOwner,
 		}
 		subnetValidators = append(subnetValidators, subnetValidator)
 		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))

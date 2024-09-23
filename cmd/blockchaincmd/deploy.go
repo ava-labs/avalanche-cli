@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/formatting"
+	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,6 +74,30 @@ var (
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
+
+type SubnetValidator struct {
+	// Must be Ed25519 NodeID
+	NodeID ids.NodeID `json:"nodeID"`
+	// Weight of this validator used when sampling
+	Weight uint64 `json:"weight"`
+	// When this validator will stop validating the Subnet
+	EndTime uint64 `json:"endTime"`
+	// Initial balance for this validator
+	Balance uint64 `json:"balance"`
+	// [Signer] is the BLS key for this validator.
+	// Note: We do not enforce that the BLS key is unique across all validators.
+	//       This means that validators can share a key if they so choose.
+	//       However, a NodeID + Subnet does uniquely map to a BLS key
+	Signer signer.Signer `json:"signer"`
+	// Leftover $AVAX from the [Balance] will be issued to this
+	// owner once it is removed from the validator set.
+	ChangeOwner fx.Owner `json:"changeOwner"`
+}
+
+type sideCarSubnetValidator struct {
+	SubnetValidator
+	address string
+}
 
 // avalanche blockchain deploy
 func newDeployCmd() *cobra.Command {
@@ -592,6 +620,36 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	//type ConvertSubnetTx struct {
+	//		// Metadata, inputs and outputs
+	//		BaseTx
+	//		// ID of the Subnet to transform
+	//		// Restrictions:
+	//		// - Must not be the Primary Network ID
+	//		Subnet ids.ID `json:"subnetID"`
+	//		// BlockchainID where the Subnet manager lives
+	//		ChainID ids.ID `json:"chainID"`
+	//		// Address of the Subnet manager
+	//		Address []byte `json:"address"`
+	//		// Initial pay-as-you-go validators for the Subnet
+	//		Validators []SubnetValidator `json:"validators"`
+	//		// Authorizes this conversion
+	//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
+	//	}
+
+	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.ConvertSubnet(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		blockchainID,
+		//validators,
+	)
+	if err != nil {
+		ux.Logger.PrintToUser(logging.Red.Wrap(
+			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+		))
+	}
+
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
@@ -800,4 +858,36 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 		}
 	}
 	return subnetValidators, nil
+}
+
+// TODO: replace with avalancehgo subnetvalidator
+func convertToSidecarBootstrapValidator(bootstrapValidators []SubnetValidator) ([]models.SubnetValidator, error) {
+	subnetValidators := []models.SubnetValidator{}
+	for _, validator := range bootstrapValidators {
+		bls := validator.Signer.Key()
+		pk, err := formatting.Encode(formatting.HexNC, bls.PublicKey[:])
+		if err != nil {
+			return nil, err
+		}
+		pop, err := formatting.Encode(formatting.HexNC, bls.ProofOfPossession[:])
+		if err != nil {
+			return nil, err
+		}
+		changeOwnerAddr := validator.ChangeOwner
+		subnetValidator := models.SubnetValidator{
+			NodeID:      validator.NodeID.String(),
+			Weight:      validator.Weight,
+			Balance:     validator.Balance,
+			BLSPublicKey: pk,
+			BLSProofOfPossession: pop,
+
+
+			ChangeOwnerAddr: validator.ChangeOwner
+		}
+	Out := &secp256k1fx.TransferOutput{
+		OutputOwners: validator.ChangeOwner,
+	}
+
+		subnetValidators = append(subnetValidators, subnetValidator)
+	}
 }
