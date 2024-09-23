@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -306,6 +307,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return errors.New("unable to deploy subnets imported from a repo")
 	}
 
+	if sidecar.ValidatorManagement != models.ProofOfAuthority && validatorManagerOwner != "" {
+		return errors.New("--validator-manager-controller flag cannot be used when blockchain validator management type is not Proof of Authority")
+	}
+
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
@@ -414,7 +419,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.ICMMessengerAddress,
 			deployInfo.ICMRegistryAddress,
-			bootstrapValidators,
+			bootstrapValidators
 		); err != nil {
 			return err
 		}
@@ -517,6 +522,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
 
+	if validatorManagerOwner == "" {
+		validatorManagerOwnerEVMAddress, err := getValidatorContractOwnerAddr()
+		if err != nil {
+			return err
+		}
+		validatorManagerOwner = validatorManagerOwnerEVMAddress.String()
+	}
+	ux.Logger.PrintToUser("Validator Manager Contract controller address %s", validatorManagerOwner)
+
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
@@ -582,6 +596,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
+}
+
+func getValidatorContractOwnerAddr() (common.Address, error) {
+	return app.Prompt.CaptureAddress("What is the EVM address that will control the Validator Manager Contract?")
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
