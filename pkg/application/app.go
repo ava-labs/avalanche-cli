@@ -534,7 +534,6 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	teleporterMessengerAddress string,
 	teleporterRegistryAddress string,
 	bootstrapValidators []models.SubnetValidator,
-	validatorManagerController string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -545,7 +544,6 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		RPCVersion:                 sc.RPCVersion,
 		TeleporterMessengerAddress: teleporterMessengerAddress,
 		TeleporterRegistryAddress:  teleporterRegistryAddress,
-		PoAValidatorManagerOwner:   validatorManagerController,
 		BootstrapValidators:        bootstrapValidators,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
