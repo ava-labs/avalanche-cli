@@ -227,7 +227,7 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag}
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag, "--bootstrap-filepath=" + utils.BootstrapValidatorPath}
 	if version != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
 	}
@@ -265,7 +265,7 @@ func DeploySubnetLocallyWithArgsAndOutput(subnetName string, version string, con
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag}
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag, "--bootstrap-filepath=" + utils.BootstrapValidatorPath}
 	if version != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
 	}
@@ -309,6 +309,7 @@ func SimulateFujiDeploy(
 		SubnetCmd,
 		"deploy",
 		"--fuji",
+		"--bootstrap-filepath="+utils.BootstrapValidatorPath,
 		"--threshold",
 		"1",
 		"--key",
@@ -359,6 +360,7 @@ func SimulateMainnetDeploy(
 		[]string{
 			SubnetCmd,
 			"deploy",
+			"--bootstrap-filepath=" + utils.BootstrapValidatorPath,
 			"--mainnet",
 			"--threshold",
 			"1",
@@ -398,6 +400,7 @@ func SimulateMultisigMainnetDeploy(
 			SubnetCmd,
 			"deploy",
 			"--mainnet",
+			"--bootstrap-filepath=" + utils.BootstrapValidatorPath,
 			"--control-keys",
 			strings.Join(subnetControlAddrs, ","),
 			"--subnet-auth-keys",

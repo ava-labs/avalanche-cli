@@ -53,8 +53,6 @@ func promptValidatorManagementType(
 	app *application.Avalanche,
 	sidecar *models.Sidecar,
 ) error {
-	proofOfAuthorityOption := models.ProofOfAuthority
-	proofOfStakeOption := models.ProofOfStake
 	explainOption := "Explain the difference"
 	if createFlags.proofOfStake {
 		sidecar.ValidatorManagement = models.ProofOfStake
@@ -64,27 +62,27 @@ func promptValidatorManagementType(
 		sidecar.ValidatorManagement = models.ProofOfAuthority
 		return nil
 	}
-	options := []string{proofOfAuthorityOption, proofOfStakeOption, explainOption}
-	var subnetTypeStr string
+
+	options := []string{models.ProofOfAuthority, models.ProofOfStake, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
-			"Which validator management protocol would you like to use in your blockchain?",
+			"Which validator management type would you like to use in your blockchain?",
 			options,
 		)
 		if err != nil {
 			return err
 		}
 		switch option {
-		case proofOfAuthorityOption:
-			subnetTypeStr = models.ProofOfAuthority
-		case proofOfStakeOption:
-			subnetTypeStr = models.ProofOfStake
+		case models.ProofOfAuthority:
+			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
+		case models.ProofOfStake:
+			ux.Logger.RedXToUser("Proof of Stake is currently unavailable")
+			continue
 		case explainOption:
 			continue
 		}
 		break
 	}
-	sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(subnetTypeStr)
 	return nil
 }
 
@@ -162,8 +160,8 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 		previousAddr = changeAddr
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
-			Weight:               constants.DefaultBootstrapValidatorWeight,
-			Balance:              constants.InitialBalanceBootstrapValidator,
+			Weight:               constants.BootstrapValidatorWeight,
+			Balance:              constants.BootstrapValidatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
 			ChangeOwnerAddr:      changeAddr,
@@ -200,10 +198,10 @@ func validateSubnetValidatorsJSON(generateNewNodeID bool, validatorJSONS []model
 				return err
 			}
 		}
-		if validatorJSON.Weight <= 0 {
+		if validatorJSON.Weight == 0 {
 			return fmt.Errorf("bootstrap validator weight has to be greater than 0")
 		}
-		if validatorJSON.Balance <= 0 {
+		if validatorJSON.Balance == 0 {
 			return fmt.Errorf("bootstrap validator balance has to be greater than 0")
 		}
 	}
