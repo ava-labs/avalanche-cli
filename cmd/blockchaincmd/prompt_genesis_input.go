@@ -52,7 +52,7 @@ func promptValidatorManagementType(
 	options := []string{models.ProofOfAuthority, models.ProofOfStake, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
-			"Which validator management protocol would you like to use in your blockchain?",
+			"Which validator management type would you like to use in your blockchain?",
 			options,
 		)
 		if err != nil {
