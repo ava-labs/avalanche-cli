@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
@@ -576,6 +576,31 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	//type ConvertSubnetTx struct {
+	//		// Metadata, inputs and outputs
+	//		BaseTx
+	//		// ID of the Subnet to transform
+	//		// Restrictions:
+	//		// - Must not be the Primary Network ID
+	//		Subnet ids.ID `json:"subnetID"`
+	//		// BlockchainID where the Subnet manager lives
+	//		ChainID ids.ID `json:"chainID"`
+	//		// Address of the Subnet manager
+	//		Address []byte `json:"address"`
+	//		// Initial pay-as-you-go validators for the Subnet
+	//		Validators []SubnetValidator `json:"validators"`
+	//		// Authorizes this conversion
+	//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
+	//	}
+
+	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.ConvertSubnet(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		blockchainID,
+		//validators,
+	)
+
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
@@ -585,8 +610,27 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
 }
 
-func getValidatorContractOwnerAddr() (common.Address, error) {
-	return app.Prompt.CaptureAddress("What is the EVM address that will control the Validator Manager Contract?")
+type SubnetValidator struct {
+	// Must be Ed25519 NodeID
+	NodeID ids.NodeID `json:"nodeID"`
+	// Weight of this validator used when sampling
+	Weight uint64 `json:"weight"`
+	// When this validator will stop validating the Subnet
+	EndTime uint64 `json:"endTime"`
+	// Initial balance for this validator
+	Balance uint64 `json:"balance"`
+	// [Signer] is the BLS key for this validator.
+	// Note: We do not enforce that the BLS key is unique across all validators.
+	//       This means that validators can share a key if they so choose.
+	//       However, a NodeID + Subnet does uniquely map to a BLS key
+	Signer signer.Signer `json:"signer"`
+	// Leftover $AVAX from the [Balance] will be issued to this
+	// owner once it is removed from the validator set.
+	ChangeOwner fx.Owner `json:"changeOwner"`
+}
+
+func convertToAvalancheGoSubnetValidator(validators []models.SubnetValidator) SubnetValidator {
+
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {

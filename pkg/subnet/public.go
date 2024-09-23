@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -615,25 +614,6 @@ func (d *PublicDeployer) createTransferSubnetOwnershipTx(
 		return nil, fmt.Errorf("error signing tx: %w", err)
 	}
 	return &tx, nil
-}
-
-type SubnetValidator struct {
-	// Must be Ed25519 NodeID
-	NodeID ids.NodeID `json:"nodeID"`
-	// Weight of this validator used when sampling
-	Weight uint64 `json:"weight"`
-	// When this validator will stop validating the Subnet
-	EndTime uint64 `json:"endTime"`
-	// Initial balance for this validator
-	Balance uint64 `json:"balance"`
-	// [Signer] is the BLS key for this validator.
-	// Note: We do not enforce that the BLS key is unique across all validators.
-	//       This means that validators can share a key if they so choose.
-	//       However, a NodeID + Subnet does uniquely map to a BLS key
-	Signer signer.Signer `json:"signer"`
-	// Leftover $AVAX from the [Balance] will be issued to this
-	// owner once it is removed from the validator set.
-	ChangeOwner fx.Owner `json:"changeOwner"`
 }
 
 func (d *PublicDeployer) createAddSubnetValidatorTx(
