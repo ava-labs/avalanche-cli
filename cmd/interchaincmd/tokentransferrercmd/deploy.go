@@ -170,7 +170,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		prompt := "What kind of token do you want to be able to transfer?"
-		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...) (recommended)"
+		popularOption := "A popular token (e.g. WAVAX, USDC, ...) (recommended)"
 		homeDeployedOption := "A token that already has a Home deployed (recommended)"
 		deployNewHomeOption := "Deploy a new Home for the token"
 		explainOption := "Explain the difference"
@@ -215,6 +215,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				if option == goBackOption {
 					continue
 				}
+				p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.Desc() == option })
+				if p == nil {
+					return fmt.Errorf("expected to have found a popular token from option")
+				}
+				flags.homeFlags.homeAddress = p.TransferrerHomeAddress
 			case homeDeployedOption:
 				addr, err := app.Prompt.CaptureAddress(
 					"Enter the address of the Home",
@@ -249,9 +254,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						ux.Logger.PrintToUser("There already is a Token Home for %s deployed on %s.", p.TokenName, homeChain)
 						ux.Logger.PrintToUser("")
 						ux.Logger.PrintToUser("Home Address: %s", p.TransferrerHomeAddress)
-						deployANewHupOption := "Yes, use the existing Home (recommended)"
-						useTheExistingHomeOption := "No, deploy my own Home"
-						options := []string{deployANewHupOption, useTheExistingHomeOption, explainOption}
+						useTheExistingHomeOption := "Yes, use the existing Home (recommended)"
+						deployANewHupOption := "No, deploy my own Home"
+						options := []string{useTheExistingHomeOption, deployANewHupOption, explainOption}
 						option, err := app.Prompt.CaptureList(
 							"Do you want to use the existing Home?",
 							options,
@@ -374,7 +379,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Remote RPC Endpoint: %s"), homeRPCEndpoint)
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Remote RPC Endpoint: %s"), remoteRPCEndpoint)
 	}
 
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
