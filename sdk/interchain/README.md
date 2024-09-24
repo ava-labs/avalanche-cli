@@ -22,13 +22,8 @@ import (
 
 func main() {
 	network := models.NewFujiNetwork()
-	peerNetwork, err := interchain.CreateAppRequestNetwork(network, logging.Error)
-	if err != nil {
-		panic(err)
-	}
-
 	aggregator, err := interchain.NewSignatureAggregator(
-		peerNetwork,
+		network,
 		logging.NewLogger(
 			"aggregator_test",
 			logging.NewWrappedCore(
@@ -39,6 +34,7 @@ func main() {
 				),
 			),
 		),
+		logging.Error,
 		ids.Empty,
 		interchain.DefaultQuorumPercentage,
 	)

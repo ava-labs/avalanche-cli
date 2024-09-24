@@ -35,7 +35,16 @@ type SignatureAggregator struct {
 	aggregator       *aggregator.SignatureAggregator
 }
 
-func CreateAppRequestNetwork(network models.Network, logLevel logging.Level) (peers.AppRequestNetwork, error) {
+// createAppRequestNetwork creates a new AppRequestNetwork for the given network and log level.
+//
+// Parameters:
+// - network: The network for which the AppRequestNetwork is created. It should be of type models.Network.
+// - logLevel: The log level for the AppRequestNetwork. It should be of type logging.Level.
+//
+// Returns:
+// - peers.AppRequestNetwork: The created AppRequestNetwork, or nil if an error occurred.
+// - error: An error if the creation of the AppRequestNetwork failed.
+func createAppRequestNetwork(network models.Network, logLevel logging.Level) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
 		prometheus.DefaultRegisterer,
@@ -55,7 +64,15 @@ func CreateAppRequestNetwork(network models.Network, logLevel logging.Level) (pe
 	return peerNetwork, nil
 }
 
-func NewSignatureAggregator(
+// initSignatureAggregator initializes a new SignatureAggregator instance.
+//
+// network is the network to create the aggregator for.
+// logger is the logger to use for logging.
+// subnetID is the subnet ID to create the aggregator for.
+// quorumPercentage is the quorum percentage to use for the aggregator.
+//
+// Returns a new SignatureAggregator instance, or an error if initialization fails.
+func initSignatureAggregator(
 	network peers.AppRequestNetwork,
 	logger logging.Logger,
 	subnetID ids.ID,
@@ -98,6 +115,34 @@ func NewSignatureAggregator(
 	return sa, nil
 }
 
+// NewSignatureAggregator creates a new signature aggregator instance.
+//
+// network is the network to create the aggregator for.
+// logger is the logger to use for logging.
+// logLevel is the log level to use for logging.
+// subnetID is the subnet ID to create the aggregator for.
+// quorumPercentage is the quorum percentage to use for the aggregator.
+//
+// Returns a new signature aggregator instance, or an error if creation fails.
+func NewSignatureAggregator(
+	network models.Network,
+	logger logging.Logger,
+	logLevel logging.Level,
+	subnetID ids.ID,
+	quorumPercentage uint64,
+) (*SignatureAggregator, error) {
+	peerNetwork, err := createAppRequestNetwork(network, logLevel)
+	if err != nil {
+		return nil, err
+	}
+	return initSignatureAggregator(peerNetwork, logger, subnetID, quorumPercentage)
+}
+
+// AggregateSignatures aggregates signatures for a given message and justification.
+//
+// msg is the Hex encoded message to be signed
+// justification is the hex encoded justification for the signature.
+// Returns the signed message as a hexadecimal string, and an error if the operation fails.
 func (s *SignatureAggregator) AggregateSignatures(
 	msg string,
 	justification string,

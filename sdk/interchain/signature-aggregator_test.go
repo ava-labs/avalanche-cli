@@ -22,7 +22,7 @@ func instantiateAggregator(t *testing.T) (
 ) {
 	mockNetwork := mocks.NewMockAppRequestNetwork(gomock.NewController(t))
 	subnetID = ids.GenerateTestID()
-	aggregator, err := NewSignatureAggregator(
+	aggregator, err := initSignatureAggregator(
 		mockNetwork,
 		logging.NoLog{},
 		subnetID,
