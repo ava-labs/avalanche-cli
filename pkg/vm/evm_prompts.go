@@ -503,12 +503,12 @@ func promptNativeGasToken(
 	if defaultsKind == TestDefaults {
 		ux.Logger.PrintToUser("prefunding address %s with balance %s", PrefundedEwoqAddress, defaultEVMAirdropAmount)
 		params.initialTokenAllocation = DefaultEwoqAllocation
-		return params, tokenSymbol, err
+		return params, tokenSymbol, nil
 	}
 
 	if defaultsKind == ProductionDefaults {
 		params.initialTokenAllocation, err = createNewKeyAllocation(app, blockchainName)
-		return params, tokenSymbol, nil
+		return params, tokenSymbol, err
 	}
 
 	// No defaults case. Prompt for initial token allocation and native minter precompile options.
