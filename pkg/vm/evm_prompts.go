@@ -501,12 +501,13 @@ func promptNativeGasToken(
 	}
 
 	if defaultsKind == TestDefaults {
-		params.initialTokenAllocation, err = createNewKeyAllocation(app, blockchainName)
+		ux.Logger.PrintToUser("prefunding address %s with balance %s", PrefundedEwoqAddress, defaultEVMAirdropAmount)
+		params.initialTokenAllocation = DefaultEwoqAllocation
 		return params, tokenSymbol, err
 	}
 
 	if defaultsKind == ProductionDefaults {
-		params.initialTokenAllocation = DefaultEwoqAllocation
+		params.initialTokenAllocation, err = createNewKeyAllocation(app, blockchainName)
 		return params, tokenSymbol, nil
 	}
 
