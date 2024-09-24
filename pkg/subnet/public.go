@@ -360,6 +360,53 @@ func (d *PublicDeployer) DeployBlockchain(
 	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
 }
 
+// TODO: update ConvertSubnet once avalanchego implementation is up for ACP77
+func (d *PublicDeployer) ConvertSubnet(
+	controlKeys []string,
+	subnetAuthKeysStrs []string,
+	subnetID ids.ID,
+	chainID ids.ID,
+	// validators []blockchaincmd.SubnetValidator,
+) (bool, ids.ID, *txs.Tx, []string, error) {
+	ux.Logger.PrintToUser("Now calling ConvertSubnet Tx...")
+
+	wallet, err := d.loadCacheWallet(subnetID)
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
+
+	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	if err != nil {
+		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+	}
+
+	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertSubnet transaction")
+
+	var validatorManagerAddress []byte
+	//var validators []avalanchego.SubnetValidator
+
+	tx, err := d.createConvertSubnetTx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress, wallet)
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
+
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
+	isFullySigned := len(remainingSubnetAuthKeys) == 0
+
+	id := ids.Empty
+	if isFullySigned {
+		id, err = d.Commit(tx, true)
+		if err != nil {
+			return false, ids.Empty, nil, nil, err
+		}
+	}
+
+	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
+}
+
 func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
 	waitForTxAcceptance bool,
@@ -505,6 +552,35 @@ func (d *PublicDeployer) createBlockchainTx(
 		return nil, fmt.Errorf("error signing tx: %w", err)
 	}
 	return &tx, nil
+}
+
+func (d *PublicDeployer) createConvertSubnetTx(
+	subnetAuthKeys []ids.ShortID,
+	subnetID ids.ID,
+	chainID ids.ID,
+	address []byte,
+	//validators []avalanchego.SubnetValidator,
+	wallet primary.Wallet,
+) (*txs.Tx, error) {
+	//fxIDs := make([]ids.ID, 0)
+	//options := d.getMultisigTxOptions(subnetAuthKeys)
+	//unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
+	//	subnetID,
+	//chainID,
+	//address,
+	//validators,
+	//	fxIDs,
+	//	options...,
+	//)
+	//if err != nil {
+	//	return nil, fmt.Errorf("error building tx: %w", err)
+	//}
+	//tx := txs.Tx{Unsigned: unsignedTx}
+	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	//	return nil, fmt.Errorf("error signing tx: %w", err)
+	//}
+	//return &tx, nil
+	return nil, nil
 }
 
 func (d *PublicDeployer) createTransferSubnetOwnershipTx(

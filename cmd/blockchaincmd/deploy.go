@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,6 +118,25 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	return cmd
+}
+
+type SubnetValidator struct {
+	// Must be Ed25519 NodeID
+	NodeID ids.NodeID `json:"nodeID"`
+	// Weight of this validator used when sampling
+	Weight uint64 `json:"weight"`
+	// When this validator will stop validating the Subnet
+	EndTime uint64 `json:"endTime"`
+	// Initial balance for this validator
+	Balance uint64 `json:"balance"`
+	// [Signer] is the BLS key for this validator.
+	// Note: We do not enforce that the BLS key is unique across all validators.
+	//       This means that validators can share a key if they so choose.
+	//       However, a NodeID + Subnet does uniquely map to a BLS key
+	Signer signer.Signer `json:"signer"`
+	// Leftover $AVAX from the [Balance] will be issued to this
+	// owner once it is removed from the validator set.
+	ChangeOwner fx.Owner `json:"changeOwner"`
 }
 
 func CallDeploy(
@@ -575,6 +598,58 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	//type ConvertSubnetTx struct {
+	//		// Metadata, inputs and outputs
+	//		BaseTx
+	//		// ID of the Subnet to transform
+	//		// Restrictions:
+	//		// - Must not be the Primary Network ID
+	//		Subnet ids.ID `json:"subnetID"`
+	//		// BlockchainID where the Subnet manager lives
+	//		ChainID ids.ID `json:"chainID"`
+	//		// Address of the Subnet manager
+	//		Address []byte `json:"address"`
+	//		// Initial pay-as-you-go validators for the Subnet
+	//		Validators []SubnetValidator `json:"validators"`
+	//		// Authorizes this conversion
+	//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
+	//	}
+
+	//avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
+	//if err != nil {
+	//	return err
+	//}
+	// TODO: replace with avalanchego subnetValidators once implemented
+	isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		blockchainID,
+		//avaGoBootstrapValidators,
+	)
+	if err != nil {
+		ux.Logger.PrintToUser(logging.Red.Wrap(
+			fmt.Sprintf("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err),
+		))
+	}
+
+	savePartialTx = !isFullySigned && err == nil
+	ux.Logger.PrintToUser("ConvertSubnetTx ID: %s", convertSubnetTxID)
+
+	if savePartialTx {
+		if err := SaveNotFullySignedTx(
+			"ConvertSubnetTx",
+			tx,
+			chain,
+			subnetAuthKeys,
+			remainingSubnetAuthKeys,
+			outputTxPath,
+			false,
+		); err != nil {
+			return err
+		}
+	}
+
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
@@ -582,6 +657,57 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
+}
+
+func getBLSInfo(publicKey, proofOfPossesion string) (signer.Signer, error) {
+	type jsonProofOfPossession struct {
+		PublicKey         string
+		ProofOfPossession string
+	}
+	jsonPop := jsonProofOfPossession{
+		PublicKey:         publicKey,
+		ProofOfPossession: proofOfPossesion,
+	}
+	popBytes, err := json.Marshal(jsonPop)
+	if err != nil {
+		return nil, err
+	}
+	pop := &signer.ProofOfPossession{}
+	err = pop.UnmarshalJSON(popBytes)
+	if err != nil {
+		return nil, err
+	}
+	return pop, nil
+}
+
+func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]SubnetValidator, error) {
+	bootstrapValidators := []SubnetValidator{}
+	for _, validator := range subnetValidators {
+		nodeID, err := ids.NodeIDFromString(validator.NodeID)
+		if err != nil {
+			return nil, err
+		}
+		blsInfo, err := getBLSInfo(validator.BLSPublicKey, validator.BLSProofOfPossession)
+		if err != nil {
+			return nil, fmt.Errorf("failure parsing BLS info: %w", err)
+		}
+		addrs, err := address.ParseToIDs([]string{validator.ChangeOwnerAddr})
+		if err != nil {
+			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
+		}
+		bootstrapValidator := SubnetValidator{
+			NodeID:  nodeID,
+			Weight:  validator.Weight,
+			Balance: validator.Balance,
+			Signer:  blsInfo,
+			ChangeOwner: &secp256k1fx.OutputOwners{
+				Threshold: 1,
+				Addrs:     addrs,
+			},
+		}
+		bootstrapValidators = append(bootstrapValidators, bootstrapValidator)
+	}
+	return bootstrapValidators, nil
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
