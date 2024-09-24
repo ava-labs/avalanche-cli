@@ -495,7 +495,7 @@ func transferF(*cobra.Command, []string) error {
 	var destinationAddr ids.ShortID
 	if send {
 		if destinationAddrStr == "" {
-			if PToP || CToP {
+			if PToP || CToP || PToC {
 				destinationAddrStr, err = app.Prompt.CapturePChainAddress("Destination address", network)
 				if err != nil {
 					return err
