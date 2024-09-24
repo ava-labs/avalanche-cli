@@ -36,7 +36,12 @@ source "amazon-ebs" "ubuntu_amd64" {
   ami_description = "Avalanche-CLI Ubuntu 20.04 Docker"
   instance_type = "t3.xlarge"
   region        = "us-east-1"
-  imds_support  = "v2.0"
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+  imds_support = "v2.0"
   source_ami_filter {
     filters = {
       name                = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
@@ -65,7 +70,12 @@ source "amazon-ebs" "ubuntu_arm64" {
   ami_description = "Avalanche-CLI Ubuntu 20.04 Docker"
   instance_type = "t4g.xlarge"  # Adjust the instance type for arm64
   region        = "us-east-1"
-  imds_support  = "v2.0"
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+  imds_support = "v2.0"
   source_ami_filter {
     filters = {
       name                = "ubuntu/images/*ubuntu-focal-20.04-arm64-server-*"  # Filter for arm64 AMIs
