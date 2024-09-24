@@ -40,47 +40,16 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
-var (
-	sameControlKey                  bool
-	keyName                         string
-	threshold                       uint32
-	controlKeys                     []string
-	subnetAuthKeys                  []string
-	userProvidedAvagoVersion        string
-	outputTxPath                    string
-	useLedger                       bool
-	useEwoq                         bool
-	ledgerAddresses                 []string
-	subnetIDStr                     string
-	mainnetChainID                  uint32
-	skipCreatePrompt                bool
-	avagoBinaryPath                 string
-	subnetOnly                      bool
-	icmSpec                         subnet.ICMSpec
-	generateNodeID                  bool
-	bootstrapValidatorsJSONFilePath string
-
-	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
-	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
-	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
-)
-
-// avalanche blockchain deploy
-func newDeployCmd() *cobra.Command {
+// avalanche blockchain convert
+func newConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deploy [blockchainName]",
-		Short: "Deploys a blockchain configuration",
-		Long: `The blockchain deploy command deploys your Blockchain configuration locally, to Fuji Testnet, or to Mainnet.
+		Use:   "convert [blockchainName]",
+		Short: "Converts an Avalanche blockchain into a SOV (Subnet Only Validator) blockchain",
+		Long: `The blockchain convert command converts a non-SOV Avalanche blockchain (which requires
+subnet validators to have at least 2000 AVAX staked in the Primary Network) into a SOV (Subnet Only 
+Validator) blockchain.
 
-At the end of the call, the command prints the RPC URL you can use to interact with the Subnet.
+At the end of the call, the Owner Keys .
 
 Avalanche-CLI only supports deploying an individual Blockchain once per network. Subsequent
 attempts to deploy the same Blockchain to the same network (local, Fuji, Mainnet) aren't
