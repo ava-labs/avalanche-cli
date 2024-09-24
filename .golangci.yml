@@ -20,7 +20,6 @@ linters:
     - errcheck
     - errorlint
     - exportloopref
-    - goconst
     - gocritic
     - gofmt
     - gofumpt
