@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 
+	warpPlatformVM "github.com/ava-labs/avalanchego/vms/platformvm/warp"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -49,14 +51,12 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the removeValidator tx")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().BoolVar(&nonSOV, "not-sov", false, "set to true if removing validator in a non SOV blockchain")
 	return cmd
 }
 
 func removeValidator(_ *cobra.Command, args []string) error {
-	var (
-		nodeID ids.NodeID
-		err    error
-	)
+	var err error
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -129,6 +129,51 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+	if nonSOV {
+		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName)
+	}
+	return removeValidatorSOV(deployer)
+}
+
+// TODO: implement getMinNonce
+// getMinNonce gets minNonce associated with the validationID from P-Chain
+func getMinNonce(validationID [32]byte) (uint64, error) {
+	return 0, nil
+}
+
+// TODO: implement getValidationID
+// get validation ID for a node from P Chain
+func getValidationID() [32]byte {
+	return [32]byte{}
+}
+
+// TODO: implement generateWarpMessageRemoveValidator
+func generateWarpMessageRemoveValidator(validationID [32]byte, nonce, weight uint64) (warpPlatformVM.Message, error) {
+	return warpPlatformVM.Message{}, nil
+}
+
+func removeValidatorSOV(deployer *subnet.PublicDeployer) error {
+	validationID := getValidationID()
+	minNonce, err := getMinNonce(validationID)
+	if err != nil {
+		return err
+	}
+	message, err := generateWarpMessageRemoveValidator(validationID, minNonce+1, 0)
+	if err != nil {
+		return err
+	}
+	tx, err := deployer.SetSubnetValidatorWeight(message)
+	if err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Set Subnet Validator Weight to 0 Tx ID: %s", tx.ID())
+	return nil
+}
+
+func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Network, subnetID ids.ID, kc *keychain.Keychain, blockchainName string) error {
+	var nodeID ids.NodeID
+
 	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
@@ -186,7 +231,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the specified validator...")
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(
 		controlKeys,
 		subnetAuthKeys,
@@ -209,7 +253,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
 	return err
 }
 

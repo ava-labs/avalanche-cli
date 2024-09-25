@@ -238,7 +238,7 @@ func CallAddValidator(
 		Addrs:     addrs,
 	}
 	// TODO: generate warp message
-	message, err := generateWarpMessage()
+	message, err := generateWarpMessageAddValidator()
 	tx, err := deployer.RegisterSubnetValidator(balance, blsInfo, changeOwner, message)
 	if err != nil {
 		return err
@@ -247,7 +247,7 @@ func CallAddValidator(
 	return nil
 }
 
-func generateWarpMessage() (warpPlatformVM.Message, error) {
+func generateWarpMessageAddValidator() (warpPlatformVM.Message, error) {
 	return warpPlatformVM.Message{}, nil
 }
 
