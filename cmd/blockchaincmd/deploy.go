@@ -58,6 +58,7 @@ var (
 	useLedger                       bool
 	useEwoq                         bool
 	ledgerAddresses                 []string
+	nonSOV                          bool
 	subnetIDStr                     string
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool

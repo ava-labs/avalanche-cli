@@ -40,6 +40,8 @@ var (
 	useDefaultDuration     bool
 	useDefaultWeight       bool
 	waitForTxAcceptance    bool
+	publicKey              string
+	pop                    string
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -70,22 +72,14 @@ Testnet or Mainnet.`,
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
-	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
-
-	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
-	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-
-	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "set duration so as to validate until primary validator ends its period")
-	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
-
-	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
-
+	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the staking weight of the validator to add")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "just issue the add validator tx, without waiting for its acceptance")
+	cmd.Flags().BoolVar(&nonSOV, "not-sov", false, "set to true if adding validator to a non SOV blockchain")
+	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
+	cmd.Flags().StringVar(&pop, "proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	return cmd
 }
 
@@ -122,10 +116,150 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
+	if nonSOV {
+		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
+	}
+	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams)
+}
+
+func PromptWeightBootstrapValidator() (uint64, error) {
+	txt := "What weight would you like to assign to the validator?"
+	return app.Prompt.CaptureWeight(txt)
+}
+
+func PromptInitialBalance() (uint64, error) {
+	ux.Logger.PrintToUser("Balance is used to pay for continuous fee to the P-Chain")
+	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
+	return app.Prompt.CaptureValidatorBalance(txt)
 }
 
 func CallAddValidator(
+	deployer *subnet.PublicDeployer,
+	network models.Network,
+	kc *keychain.Keychain,
+	useLedgerSetting bool,
+	blockchainName string,
+	nodeIDStr string,
+	defaultValidatorParamsSetting bool,
+) error {
+	var (
+		nodeID ids.NodeID
+		start  time.Time
+		err    error
+	)
+
+	useLedger = useLedgerSetting
+	defaultValidatorParams = defaultValidatorParamsSetting
+
+	_, err = ValidateSubnetNameAndGetChains([]string{blockchainName})
+	if err != nil {
+		return err
+	}
+
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	if err != nil {
+		return err
+	}
+	if !isPermissioned {
+		return ErrNotPermissionedSubnet
+	}
+
+	kcKeys, err := kc.PChainFormattedStrAddresses()
+	if err != nil {
+		return err
+	}
+
+	// get keys for add validator tx signing
+	if subnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
+			return err
+		}
+	} else {
+		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
+		if err != nil {
+			return err
+		}
+	}
+	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+
+	if nodeIDStr == "" {
+		nodeID, err = PromptNodeID("add as Subnet validator")
+		if err != nil {
+			return err
+		}
+	} else {
+		nodeID, err = ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			return err
+		}
+	}
+
+	publicKey, pop, err = promptProofOfPossession(publicKey == "", pop == "")
+	if err != nil {
+		return err
+	}
+
+	selectedWeight, err := getWeight()
+	if err != nil {
+		return err
+	}
+	if selectedWeight < constants.MinStakeWeight {
+		return fmt.Errorf("invalid weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, selectedWeight)
+	}
+
+	start, selectedDuration, err := getTimeParameters(network, nodeID, true)
+	if err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
+	ux.Logger.PrintToUser("Network: %s", network.Name())
+	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("End time: %s", start.Add(selectedDuration).Format(constants.TimeParseLayout))
+	ux.Logger.PrintToUser("Weight: %d", selectedWeight)
+	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
+
+	//type RegisterSubnetValidatorTx struct {
+	//	// Metadata, inputs and outputs
+	//	BaseTx
+	//	// Balance <= sum($AVAX inputs) - sum($AVAX outputs) - TxFee.
+	//	Balance uint64 `json:"balance"`
+	//	// [Signer] is the BLS key for this validator.
+	//	// Note: We do not enforce that the BLS key is unique across all validators.
+	//	//       This means that validators can share a key if they so choose.
+	//	//       However, a NodeID does uniquely map to a BLS key
+	//	Signer signer.Signer `json:"signer"`
+	//	// Leftover $AVAX from the Subnet Validator's Balance will be issued to
+	//	// this owner after it is removed from the validator set.
+	//	ChangeOwner fx.Owner `json:"changeOwner"`
+	//	// AddressedCall with Payload:
+	//	//   - SubnetID
+	//	//   - NodeID (must be Ed25519 NodeID)
+	//	//   - Weight
+	//	//   - BLS public key
+	//	//   - Expiry
+	//	Message warp.Message `json:"message"`
+	//}
+
+	tx, err := deployer.RegisterSubnetValidator()
+	if err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Register Subnet Validator Tx ID: %s", tx.ID())
+	return nil
+}
+
+func CallAddValidatorNonSOV(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
@@ -240,7 +374,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Weight: %d", selectedWeight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidatorNonSOV(
 		waitForTxAcceptance,
 		controlKeys,
 		subnetAuthKeys,

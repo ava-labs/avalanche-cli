@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -58,7 +60,7 @@ func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, networ
 //   - signs the tx with the wallet as the owner of fee outputs and a possible subnet auth key
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
-func (d *PublicDeployer) AddValidator(
+func (d *PublicDeployer) AddValidatorNonSOV(
 	waitForTxAcceptance bool,
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
@@ -109,6 +111,27 @@ func (d *PublicDeployer) AddValidator(
 
 	ux.Logger.PrintToUser("Partial tx created")
 	return false, tx, remainingSubnetAuthKeys, nil
+}
+
+func (d *PublicDeployer) RegisterSubnetValidator(
+	balance uint64,
+	signer signer.Signer,
+	changeOwner fx.Owner,
+	message warp.Message,
+) (*txs.Tx, error) {
+	// create tx
+	//unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(args...)
+	//if err != nil {
+	//	return nil, fmt.Errorf("error building tx: %w", err)
+	//}
+	//tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet that contains EVM address controlling POA Validator Manager
+	// TODO: change code below
+	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	//	return nil, fmt.Errorf("error signing tx: %w", err)
+	//}
+	//return &tx, nil
+	return nil, nil
 }
 
 // change subnet owner for [subnetID]

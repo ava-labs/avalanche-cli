@@ -129,13 +129,13 @@ func validateWeight(input string) error {
 	return nil
 }
 
-func validateBootstrapValidatorBalance(input string) error {
+func validateValidatorBalance(input string) error {
 	val, err := strconv.ParseUint(input, 10, 64)
 	if err != nil {
 		return err
 	}
 	if val == 0 {
-		return fmt.Errorf("initial bootstrap validator balance must be greater than 0 AVAX")
+		return fmt.Errorf("subnet validator balance must be greater than 0 AVAX")
 	}
 	return nil
 }

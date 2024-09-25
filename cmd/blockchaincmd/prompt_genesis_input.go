@@ -31,19 +31,25 @@ func getValidatorContractManagerAddr() (string, error) {
 	)
 }
 
-func promptProofOfPossession() (string, string, error) {
+func promptProofOfPossession(promptPublicKey, promptPop bool) (string, string, error) {
 	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
 	var err error
-	txt := "What is the node's BLS public key?"
-	publicKey, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
-	if err != nil {
-		return "", "", err
+	publicKey := ""
+	proofOfPossesion := ""
+	if promptPublicKey {
+		txt := "What is the node's BLS public key?"
+		publicKey, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
+		if err != nil {
+			return "", "", err
+		}
 	}
-	txt = "What is the node's BLS proof of possession?"
-	proofOfPossesion, err := app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
-	if err != nil {
-		return "", "", err
+	if promptPop {
+		txt := "What is the node's BLS proof of possession?"
+		proofOfPossesion, err = app.Prompt.CaptureValidatedString(txt, prompts.ValidateHexa)
+		if err != nil {
+			return "", "", err
+		}
 	}
 	return publicKey, proofOfPossesion, nil
 }
@@ -139,7 +145,7 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 			if err != nil {
 				return nil, err
 			}
-			publicKey, pop, err = promptProofOfPossession()
+			publicKey, pop, err = promptProofOfPossession(true, true)
 			if err != nil {
 				return nil, err
 			}
