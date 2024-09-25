@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	warpPlatformVM "github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -73,7 +77,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the staking weight of the validator to add")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -112,8 +115,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	network.HandlePublicNetworkSimulation()
-	if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
-		return err
+	if nonSOV {
+		if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
+			return err
+		}
 	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 	if nonSOV {
@@ -122,12 +127,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams)
 }
 
-func PromptWeightBootstrapValidator() (uint64, error) {
-	txt := "What weight would you like to assign to the validator?"
-	return app.Prompt.CaptureWeight(txt)
-}
-
-func PromptInitialBalance() (uint64, error) {
+func promptValidatorBalance() (uint64, error) {
 	ux.Logger.PrintToUser("Balance is used to pay for continuous fee to the P-Chain")
 	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
 	return app.Prompt.CaptureValidatorBalance(txt)
@@ -144,7 +144,6 @@ func CallAddValidator(
 ) error {
 	var (
 		nodeID ids.NodeID
-		start  time.Time
 		err    error
 	)
 
@@ -166,31 +165,11 @@ func CallAddValidator(
 		return errNoSubnetID
 	}
 
-	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
-	if err != nil {
-		return err
-	}
-	if !isPermissioned {
-		return ErrNotPermissionedSubnet
-	}
-
-	kcKeys, err := kc.PChainFormattedStrAddresses()
-	if err != nil {
-		return err
-	}
-
-	// get keys for add validator tx signing
-	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
-			return err
-		}
-	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
-		if err != nil {
-			return err
-		}
-	}
-	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+	// TODO: implement getting validator manager controller address
+	//kcKeys, err := kc.PChainFormattedStrAddresses()
+	//if err != nil {
+	//	return err
+	//}
 
 	if nodeIDStr == "" {
 		nodeID, err = PromptNodeID("add as Subnet validator")
@@ -209,24 +188,19 @@ func CallAddValidator(
 		return err
 	}
 
-	selectedWeight, err := getWeight()
+	balance, err := promptValidatorBalance()
 	if err != nil {
 		return err
 	}
-	if selectedWeight < constants.MinStakeWeight {
-		return fmt.Errorf("invalid weight, must be greater than or equal to %d: %d", constants.MinStakeWeight, selectedWeight)
-	}
 
-	start, selectedDuration, err := getTimeParameters(network, nodeID, true)
+	changeAddr, err := getKeyForChangeOwner("", network)
 	if err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())
-	ux.Logger.PrintToUser("Start time: %s", start.Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("End time: %s", start.Add(selectedDuration).Format(constants.TimeParseLayout))
-	ux.Logger.PrintToUser("Weight: %d", selectedWeight)
+	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	//type RegisterSubnetValidatorTx struct {
@@ -251,12 +225,30 @@ func CallAddValidator(
 	//	Message warp.Message `json:"message"`
 	//}
 
-	tx, err := deployer.RegisterSubnetValidator()
+	blsInfo, err := getBLSInfo(publicKey, pop)
+	if err != nil {
+		return fmt.Errorf("failure parsing BLS info: %w", err)
+	}
+	addrs, err := address.ParseToIDs([]string{changeAddr})
+	if err != nil {
+		return fmt.Errorf("failure parsing change owner address: %w", err)
+	}
+	changeOwner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     addrs,
+	}
+	// TODO: generate warp message
+	message, err := generateWarpMessage()
+	tx, err := deployer.RegisterSubnetValidator(balance, blsInfo, changeOwner, message)
 	if err != nil {
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("Register Subnet Validator Tx ID: %s", tx.ID())
 	return nil
+}
+
+func generateWarpMessage() (warpPlatformVM.Message, error) {
+	return warpPlatformVM.Message{}, nil
 }
 
 func CallAddValidatorNonSOV(
