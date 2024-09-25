@@ -767,6 +767,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 
 		if flags.remoteFlags.removeMinterAdmin && remoteMinterManagerIsAdmin {
+			ux.Logger.PrintToUser("Removing minter admin %s", remoteMinterManagerAddress)
 			if err := precompiles.SetNone(
 				remoteRPCEndpoint,
 				precompiles.NativeMinterPrecompile,
@@ -775,6 +776,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			); err != nil {
 				return err
 			}
+		} else {
+			minterRole := "admin"
+			if !remoteMinterManagerIsAdmin {
+				minterRole = "manager"
+			}
+			ux.Logger.PrintToUser("Original minter %s %s is left in place", minterRole, remoteMinterManagerAddress)
 		}
 	}
 
