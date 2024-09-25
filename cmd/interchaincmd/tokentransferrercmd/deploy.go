@@ -86,7 +86,7 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
 	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
-	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", true, "remove the native minter precompile admin found on remote blockchain genesis")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", false, "remove the native minter precompile admin found on remote blockchain genesis")
 	deployFlags.homeFlags.privateKeyFlags.SetFlagNames("home-private-key", "home-key", "home-genesis-key")
 	deployFlags.homeFlags.privateKeyFlags.AddToCmd(cmd, "to deploy Transferrer Home")
 	deployFlags.remoteFlags.privateKeyFlags.SetFlagNames("remote-private-key", "remote-key", "remote-genesis-key")
@@ -426,6 +426,50 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 	}
 
+	// Checkout minter availability for native remote before doing something else
+	remoteBlockchainDesc, err := contract.GetBlockchainDesc(flags.remoteFlags.chainFlags)
+	if err != nil {
+		return err
+	}
+	var (
+		remoteMinterManagerPrivKey, remoteMinterManagerAddress string
+		remoteMinterManagerIsAdmin                             bool
+	)
+	if flags.remoteFlags.native {
+		var remoteMinterAdminFound, remoteManagedMinterAdmin bool
+		remoteMinterAdminFound, remoteManagedMinterAdmin, _, remoteMinterManagerAddress, remoteMinterManagerPrivKey, err = contract.GetEVMSubnetGenesisNativeMinterAdmin(
+			app,
+			network,
+			flags.remoteFlags.chainFlags,
+		)
+		if err != nil {
+			return err
+		}
+		if !remoteManagedMinterAdmin {
+			remoteMinterAdminAddress := remoteMinterManagerAddress
+			var remoteMinterManagerFound, remoteManagedMinterManager bool
+			remoteMinterManagerFound, remoteManagedMinterManager, _, remoteMinterManagerAddress, remoteMinterManagerPrivKey, err = contract.GetEVMSubnetGenesisNativeMinterManager(
+				app,
+				network,
+				flags.remoteFlags.chainFlags,
+			)
+			if err != nil {
+				return err
+			}
+			if !remoteMinterManagerFound {
+				return fmt.Errorf("there is no native minter precompile admin or manager on %s", remoteBlockchainDesc)
+			}
+			if !remoteManagedMinterManager {
+				if remoteMinterAdminFound {
+					ux.Logger.PrintToUser("no managed key found for native minter admin %s on %s. add a CLI key for it using 'avalanche key create --file'", remoteMinterAdminAddress, remoteBlockchainDesc)
+				}
+				return fmt.Errorf("no managed key found for native minter manager %s on %s. add a CLI key for it using 'avalanche key create --file'", remoteMinterManagerAddress, remoteBlockchainDesc)
+			}
+		} else {
+			remoteMinterManagerIsAdmin = true
+		}
+	}
+
 	// Setup Contracts
 	ux.Logger.PrintToUser("Downloading Avalanche InterChain Token Transfer Contracts")
 	version := constants.ICTTVersion
@@ -521,10 +565,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Deploy
-	remoteBlockchainDesc, err := contract.GetBlockchainDesc(flags.remoteFlags.chainFlags)
-	if err != nil {
-		return err
-	}
 	remoteBlockchainID, err := contract.GetBlockchainID(app, network, flags.remoteFlags.chainFlags)
 	if err != nil {
 		return err
@@ -685,25 +725,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return fmt.Errorf("failure setting collateral in home endpoint: remaining collateral=%d", registeredRemote.CollateralNeeded)
 		}
 
-		minterAdminFound, managedMinterAdmin, _, minterAdminAddress, minterAdminPrivKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
-			app,
-			network,
-			flags.remoteFlags.chainFlags,
-		)
-		if err != nil {
-			return err
-		}
-		if !minterAdminFound {
-			return fmt.Errorf("there is no native minter precompile admin on %s", remoteBlockchainDesc)
-		}
-		if !managedMinterAdmin {
-			return fmt.Errorf("no managed key found for native minter admin %s on %s", minterAdminAddress, remoteBlockchainDesc)
-		}
-
 		if err := precompiles.SetEnabled(
 			remoteRPCEndpoint,
 			precompiles.NativeMinterPrecompile,
-			minterAdminPrivKey,
+			remoteMinterManagerPrivKey,
 			remoteAddress,
 		); err != nil {
 			return err
@@ -741,12 +766,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			time.Sleep(checkInterval)
 		}
 
-		if flags.remoteFlags.removeMinterAdmin {
+		if flags.remoteFlags.removeMinterAdmin && remoteMinterManagerIsAdmin {
 			if err := precompiles.SetNone(
 				remoteRPCEndpoint,
 				precompiles.NativeMinterPrecompile,
-				minterAdminPrivKey,
-				common.HexToAddress(minterAdminAddress),
+				remoteMinterManagerPrivKey,
+				common.HexToAddress(remoteMinterManagerAddress),
 			); err != nil {
 				return err
 			}
