@@ -38,7 +38,7 @@ func CreateEvmSidecar(
 	subnetEVMVersion string,
 	tokenSymbol string,
 	getRPCVersionFromBinary bool,
-) error {
+) (*models.Sidecar, error) {
 	var (
 		err        error
 		rpcVersion int
@@ -51,16 +51,16 @@ func CreateEvmSidecar(
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
 		if err != nil {
-			return fmt.Errorf("failed to install subnet-evm: %w", err)
+			return nil, fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
 		rpcVersion, err = GetVMBinaryProtocolVersion(vmBin)
 		if err != nil {
-			return fmt.Errorf("unable to get RPC version: %w", err)
+			return nil, fmt.Errorf("unable to get RPC version: %w", err)
 		}
 	} else {
 		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 

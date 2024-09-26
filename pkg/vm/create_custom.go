@@ -26,7 +26,7 @@ func CreateCustomSidecar(
 	customVMBuildScript string,
 	vmPath string,
 	tokenSymbol string,
-) error {
+) (*models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
 
 	if sc == nil {
@@ -83,7 +83,7 @@ func CreateCustomSidecar(
 
 	sc.RPCVersion = rpcVersion
 
-	return nil
+	return sc, nil
 }
 
 func LoadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, error) {
