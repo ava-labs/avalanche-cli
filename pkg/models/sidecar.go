@@ -43,7 +43,8 @@ type Sidecar struct {
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
 	// TODO: remove if not needed for subnet acp 77 create flow once avalnache go releases etna
-	ValidatorManagement ValidatorManagementType
+	ValidatorManagement      ValidatorManagementType
+	PoAValidatorManagerOwner string
 }
 
 func (sc Sidecar) GetVMID() (string, error) {
@@ -64,4 +65,12 @@ func (sc Sidecar) GetVMID() (string, error) {
 func (sc Sidecar) NetworkDataIsEmpty(network string) bool {
 	_, networkExists := sc.Networks[network]
 	return !networkExists
+}
+
+func (sc Sidecar) PoA() bool {
+	return sc.ValidatorManagement == ProofOfAuthority
+}
+
+func (sc Sidecar) PoS() bool {
+	return sc.ValidatorManagement == ProofOfStake
 }

@@ -18,6 +18,19 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
+func getValidatorContractManagerAddr() (string, error) {
+	return prompts.PromptAddress(
+		app.Prompt,
+		"enable as controller of ValidatorManager contract",
+		app.GetKeyDir(),
+		app.GetKey,
+		"",
+		models.UndefinedNetwork,
+		prompts.EVMFormat,
+		"Enter address",
+	)
+}
+
 func promptProofOfPossession() (string, string, error) {
 	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
@@ -49,6 +62,7 @@ func promptValidatorManagementType(
 		sidecar.ValidatorManagement = models.ProofOfAuthority
 		return nil
 	}
+
 	options := []string{models.ProofOfAuthority, models.ProofOfStake, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(

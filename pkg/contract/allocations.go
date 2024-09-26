@@ -71,7 +71,7 @@ func GetBlockchainAirdropKeyInfo(
 		}
 	}
 	for address := range genesis.Alloc {
-		found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, address, false)
+		found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, address, false)
 		if err != nil {
 			return "", "", "", err
 		}
@@ -82,7 +82,7 @@ func GetBlockchainAirdropKeyInfo(
 	return "", "", "", nil
 }
 
-func searchForManagedKey(
+func SearchForManagedKey(
 	app *application.Avalanche,
 	network models.Network,
 	address common.Address,
@@ -204,7 +204,7 @@ func getGenesisNativeMinterAdmin(
 			return false, false, "", "", "", nil
 		}
 		for _, admin := range allowListCfg.AllowListConfig.AdminAddresses {
-			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
 			if err != nil {
 				return false, false, "", "", "", err
 			}
@@ -238,7 +238,7 @@ func getGenesisNativeMinterManager(
 			return false, false, "", "", "", nil
 		}
 		for _, admin := range allowListCfg.AllowListConfig.ManagerAddresses {
-			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
 			if err != nil {
 				return false, false, "", "", "", err
 			}

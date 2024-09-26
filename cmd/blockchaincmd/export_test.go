@@ -41,6 +41,7 @@ func TestExportImportSubnet(t *testing.T) {
 	)
 	require.NoError(err)
 	sc, err := vm.CreateEvmSidecar(
+		nil,
 		app,
 		testSubnet,
 		vmVersion,
