@@ -321,14 +321,13 @@ func printSmartContracts(genesis core.Genesis) {
 			continue
 		}
 		var description, deployer string
-		if address == common.HexToAddress(icmgenesis.MessengerContractAddress) {
+		switch {
+		case address == common.HexToAddress(icmgenesis.MessengerContractAddress):
 			description = "ICM Messenger"
 			deployer = icmgenesis.MessengerDeployerAddress
-		}
-		if address == common.HexToAddress(validatormanager.PoAValidarorMessengerContractAddress) {
+		case address == common.HexToAddress(validatormanager.PoAValidarorMessengerContractAddress):
 			description = "PoA Validator Manager"
-		}
-		if address == common.HexToAddress(validatormanager.PoSValidarorMessengerContractAddress) {
+		case address == common.HexToAddress(validatormanager.PoSValidarorMessengerContractAddress):
 			description = "PoS Validator Manager"
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
