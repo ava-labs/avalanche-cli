@@ -71,7 +71,7 @@ func GetBlockchainAirdropKeyInfo(
 		}
 	}
 	for address := range genesis.Alloc {
-		found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, address, false)
+		found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, address, false)
 		if err != nil {
 			return "", "", "", err
 		}
@@ -82,7 +82,7 @@ func GetBlockchainAirdropKeyInfo(
 	return "", "", "", nil
 }
 
-func searchForManagedKey(
+func SearchForManagedKey(
 	app *application.Avalanche,
 	network models.Network,
 	address common.Address,
@@ -204,7 +204,7 @@ func getGenesisNativeMinterAdmin(
 			return false, false, "", "", "", nil
 		}
 		for _, admin := range allowListCfg.AllowListConfig.AdminAddresses {
-			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
 			if err != nil {
 				return false, false, "", "", "", err
 			}
@@ -213,6 +213,40 @@ func getGenesisNativeMinterAdmin(
 			}
 		}
 		return true, false, "", allowListCfg.AllowListConfig.AdminAddresses[0].Hex(), "", nil
+	}
+	return false, false, "", "", "", nil
+}
+
+func getGenesisNativeMinterManager(
+	app *application.Avalanche,
+	network models.Network,
+	genesisData []byte,
+) (bool, bool, string, string, string, error) {
+	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
+	if err != nil {
+		return false, false, "", "", "", err
+	}
+	if genesis.Config != nil && genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+		allowListCfg, ok := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+		if !ok {
+			return false, false, "", "", "", fmt.Errorf(
+				"expected config of type nativeminter.AllowListConfig, but got %T",
+				allowListCfg,
+			)
+		}
+		if len(allowListCfg.AllowListConfig.ManagerAddresses) == 0 {
+			return false, false, "", "", "", nil
+		}
+		for _, admin := range allowListCfg.AllowListConfig.ManagerAddresses {
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
+			if err != nil {
+				return false, false, "", "", "", err
+			}
+			if found {
+				return true, true, keyName, addressStr, privKey, nil
+			}
+		}
+		return true, false, "", allowListCfg.AllowListConfig.ManagerAddresses[0].Hex(), "", nil
 	}
 	return false, false, "", "", "", nil
 }
@@ -236,24 +270,23 @@ func GetEVMSubnetGenesisNativeMinterAdmin(
 	return getGenesisNativeMinterAdmin(app, network, genesisData)
 }
 
-func ContractAddressIsInBlockchainGenesis(
+func GetEVMSubnetGenesisNativeMinterManager(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec ChainSpec,
-	contractAddress common.Address,
-) (bool, error) {
+) (bool, bool, string, string, string, error) {
 	genesisData, err := GetBlockchainGenesis(
 		app,
 		network,
 		chainSpec,
 	)
 	if err != nil {
-		return false, err
+		return false, false, "", "", "", err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
-		return false, fmt.Errorf("only EVM based vms support genesis contract checks")
+		return false, false, "", "", "", fmt.Errorf("genesis native minter manager query is only supported on EVM based vms")
 	}
-	return ContractAddressIsInGenesisData(genesisData, contractAddress)
+	return getGenesisNativeMinterManager(app, network, genesisData)
 }
 
 func ContractAddressIsInGenesisData(

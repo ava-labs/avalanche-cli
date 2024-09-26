@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func FillCustomSidecar(
+func CreateCustomSidecar(
 	sc *models.Sidecar,
 	app *application.Avalanche,
 	subnetName string,
@@ -28,6 +28,10 @@ func FillCustomSidecar(
 	tokenSymbol string,
 ) error {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
+
+	if sc == nil {
+		sc = &models.Sidecar{}
+	}
 
 	sc.Name = subnetName
 	sc.VM = models.CustomVM
@@ -47,34 +51,34 @@ func FillCustomSidecar(
 		options := []string{githubOption, localOption}
 		option, err := app.Prompt.CaptureList("How do you want to set up the VM binary?", options)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if option == githubOption {
 			useRepo = true
 		} else {
 			vmPath, err = app.Prompt.CaptureExistingFilepath("Enter path to VM binary")
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
 	if useRepo {
 		if err := SetCustomVMSourceCodeFields(app, sc, customVMRepoURL, customVMBranch, customVMBuildScript); err != nil {
-			return err
+			return nil, err
 		}
 		if err := BuildCustomVM(app, sc); err != nil {
-			return err
+			return nil, err
 		}
 		vmPath = app.GetCustomVMPath(subnetName)
 	} else {
 		if err := app.CopyVMBinary(vmPath, subnetName); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
 	if err != nil {
-		return fmt.Errorf("unable to get RPC version: %w", err)
+		return nil, fmt.Errorf("unable to get RPC version: %w", err)
 	}
 
 	sc.RPCVersion = rpcVersion

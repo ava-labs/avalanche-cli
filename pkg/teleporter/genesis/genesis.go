@@ -9,9 +9,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ethereum/go-ethereum/common"
@@ -109,18 +107,13 @@ func AddICMRegistryContractToAllocations(
 	return nil
 }
 
-func ICMAtBlockchainGenesis(
-	app *application.Avalanche,
-	network models.Network,
-	chainSpec contract.ChainSpec,
-) (bool, bool, error) {
-	genesisData, err := contract.GetBlockchainGenesis(app, network, chainSpec)
-	if err != nil {
-		return false, false, err
-	}
-	return ICMAtGenesis(genesisData)
-}
-
+// check if [genesisData] has
+// smart contracts (len(alloc.Code)>0) allocated for
+// ICM Messenger and ICM registry,
+// based on their expected addresses [MessengerContractAddress] and
+// [RegistryContractAddress]
+// to be used by local blockchain deploy to determine if a teleporter deploy
+// or a registry deploy is needed
 func ICMAtGenesis(
 	genesisData []byte,
 ) (bool, bool, error) {

@@ -172,14 +172,17 @@ func PromptSubnetEVMGenesisParams(
 	)
 	params.initialTokenAllocation = core.GenesisAlloc{}
 
-	if sc.ValidatorManagement == models.ProofOfAuthority {
+	if sc.PoA() {
 		params.UsePoAValidatorManager = true
-		params.enableNativeMinterPrecompile = true
-		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
-			common.HexToAddress(validatormanager.PoAValidarorMessengerContractAddress),
-		}
 		params.initialTokenAllocation[common.HexToAddress(sc.PoAValidatorManagerOwner)] = core.GenesisAccount{
 			Balance: defaultPoAOwnerBalance,
+		}
+	}
+
+	if sc.PoS() {
+		params.enableNativeMinterPrecompile = true
+		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
+			common.HexToAddress(validatormanager.ValidatorContractAddress),
 		}
 	}
 
@@ -530,13 +533,14 @@ func promptNativeGasToken(
 	}
 
 	if defaultsKind == TestDefaults {
-		err = addNewKeyAllocation(params.initialTokenAllocation, app, blockchainName)
-		return params, tokenSymbol, err
+		ux.Logger.PrintToUser("prefunding address %s with balance %s", PrefundedEwoqAddress, defaultEVMAirdropAmount)
+		addEwoqAllocation(params.initialTokenAllocation)
+		return params, tokenSymbol, nil
 	}
 
 	if defaultsKind == ProductionDefaults {
-		addEwoqAllocation(params.initialTokenAllocation)
-		return params, tokenSymbol, nil
+		err = addNewKeyAllocation(params.initialTokenAllocation, app, blockchainName)
+		return params, tokenSymbol, err
 	}
 
 	// No defaults case. Prompt for initial token allocation and native minter precompile options.

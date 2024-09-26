@@ -229,12 +229,12 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if sc.ValidatorManagement != models.ProofOfAuthority && createFlags.poaValidatorManagerOwner != "" {
+	if !sc.PoA() && createFlags.poaValidatorManagerOwner != "" {
 		return errors.New("--poa-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
 	}
 
 	if vmType == models.SubnetEvm {
-		if sc.ValidatorManagement == models.ProofOfAuthority {
+		if sc.PoA() {
 			if createFlags.poaValidatorManagerOwner == "" {
 				createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
 				if err != nil {
@@ -242,7 +242,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				}
 			}
 			sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
-			ux.Logger.GreenCheckmarkToUser("PoA Validator Manager Contract owner %s", createFlags.poaValidatorManagerOwner)
+			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
 		}
 
 		if genesisFile == "" {
@@ -310,7 +310,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			deployTeleporter = params.UseTeleporter
 			useExternalGasToken = params.UseExternalGasToken
 			genesisBytes, err = vm.CreateEVMGenesis(
-				blockchainName,
 				params,
 				teleporterInfo,
 				createFlags.addICMRegistryToGenesis,
@@ -319,7 +318,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if err := vm.FillEvmSidecar(
+		if sc, err = vm.CreateEvmSidecar(
 			sc,
 			app,
 			blockchainName,
@@ -345,7 +344,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if err := vm.FillCustomSidecar(
+		if sc, err = vm.CreateCustomSidecar(
 			sc,
 			app,
 			blockchainName,
@@ -393,6 +392,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 	ux.Logger.GreenCheckmarkToUser("Successfully created blockchain configuration")
+	ux.Logger.PrintToUser("Run 'avalanche blockchain describe' to view all created addresses and what their roles are")
 	return nil
 }
 
