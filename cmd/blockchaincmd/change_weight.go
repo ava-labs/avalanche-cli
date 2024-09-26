@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 	"os"
@@ -28,12 +29,11 @@ func newChangeWeightCmd() *cobra.Command {
 
 The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 		RunE: updateWeight,
-		Args: cobrautils.ExactArgs(1),
+		Args: cobrautils.ExactArgs(2),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
-	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -43,15 +43,14 @@ The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 
 func updateWeight(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
-	// TODO: validate node id format
-	nodeID := args[1]
-	var err error
+	_, err := ids.NodeIDFromString(args[1])
+	if err != nil {
+		return err
+	}
+	nodeIDStr = args[1]
 
 	//TODO: add check for non SOV subnet
 	// return err if non SOV
-
-	// TODO: check for number of validators
-	// return error if there is only 1 validator
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -123,10 +122,24 @@ func updateWeight(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return err
+	}
+
+	isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
+	if err != nil {
+		// just warn the user, don't fail
+		ux.Logger.PrintToUser("failed to check if node is a validator on the subnet: %s", err)
+	} else if !isValidator {
+		// this is actually an error
+		return fmt.Errorf("node %s is not a validator on subnet %s", nodeID, subnetID)
+	}
+
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	// first remove the validator from subnet
-	err = removeValidatorSOV(deployer)
+	err = removeValidatorSOV(deployer, network, subnetID, nodeID)
 	if err != nil {
 		return err
 	}
@@ -155,7 +168,7 @@ func updateWeight(_ *cobra.Command, args []string) error {
 	}
 
 	// add back validator to subnet with updated weight
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeID)
+	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr)
 }
 
 // TODO: implement checkIfSubnetIsSOV
