@@ -15,6 +15,7 @@ import (
 
 const (
 	PoAValidarorMessengerContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
+	PoSValidarorMessengerContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
 )
 
 //go:embed deployed_poa_validator_manager_bytecode.txt
