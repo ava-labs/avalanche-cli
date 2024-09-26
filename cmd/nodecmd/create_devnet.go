@@ -172,7 +172,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	} else {
 		endpointIP = ansibleHosts[ansibleHostIDs[0]].IP
 	}
-	endpoint := fmt.Sprintf("http://%s:%d", endpointIP, constants.AvalanchegoAPIPort)
+	endpoint := getAvalancheGoEndpoint(endpointIP)
 	network := models.NewDevnetNetwork(endpoint, 0)
 	network = models.NewNetworkFromCluster(network, clusterName)
 
@@ -205,7 +205,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		return err
 	}
 	// make sure that custom genesis is saved to the subnet dir
-	if err := os.WriteFile(app.GetGenesisPath(subnetName), genesisBytes, constants.WriteReadReadPerms); err != nil {
+	if err := os.WriteFile(app.GetGenesisPath(blockchainName), genesisBytes, constants.WriteReadReadPerms); err != nil {
 		return err
 	}
 

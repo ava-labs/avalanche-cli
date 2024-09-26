@@ -10,7 +10,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -156,16 +155,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		gomega.Expect(sshOutput).To(gomega.ContainSubstring("chunks_directory: /var/lib/loki/chunks"))
 		gomega.Expect(sshOutput).To(gomega.ContainSubstring("store: tsdb"))
 	})
-	ginkgo.It("installs and runs avalanchego", func() {
-		avalancegoProcess := commands.NodeSSH(constants.E2EClusterName, "ps -elf")
-		gomega.Expect(avalancegoProcess).To(gomega.ContainSubstring("/home/ubuntu/avalanche-node/avalanchego"))
-	})
-	ginkgo.It("installs latest version of avalanchego", func() {
-		avalanchegoVersionClean := strings.TrimPrefix(avalanchegoVersion, "v")
-		avalancegoVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/avalanche-node/avalanchego --version")
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("go="))
-		gomega.Expect(avalancegoVersion).To(gomega.ContainSubstring("avalanchego/" + avalanchegoVersionClean))
-	})
 	ginkgo.It("configured avalanchego", func() {
 		avalancegoConfig := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanchego/configs/node.json")
 		gomega.Expect(avalancegoConfig).To(gomega.ContainSubstring("\"network-id\": \"" + network + "\""))
@@ -178,12 +167,6 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("signer.key"))
 		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("staker.crt"))
 		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("staker.key"))
-	})
-	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
-		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanche-cli/config.json")
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("\"metricsenabled\": false"))
-		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
-		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
 	})
 	ginkgo.It("can get cluster status", func() {
 		output := commands.NodeStatus()

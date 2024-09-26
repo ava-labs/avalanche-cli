@@ -351,6 +351,9 @@ func (c *AwsCloud) DestroyAWSNode(nodeConfig models.NodeConfig, clusterName stri
 	isRunning, err := c.checkInstanceIsRunning(nodeConfig.NodeID)
 	if err != nil {
 		ux.Logger.PrintToUser(fmt.Sprintf("Failed to destroy node %s due to %s", nodeConfig.NodeID, err.Error()))
+		if errors.Is(err, ErrNoInstanceState) {
+			return nil
+		}
 		return err
 	}
 	if !isRunning {
@@ -563,7 +566,7 @@ func (c *AwsCloud) GetUbuntuAMIID(arch string, ubuntuVerLTS string) (string, err
 			{Name: aws.String("description"), Values: []string{descriptionFilterValue}},
 			{Name: aws.String("architecture"), Values: []string{arch}},
 		},
-		Owners: []string{"self", "931867039610"},
+		Owners: []string{"self", "221210582303"},
 	}
 	images, err := c.ec2Client.DescribeImages(c.ctx, imageInput)
 	if err != nil {

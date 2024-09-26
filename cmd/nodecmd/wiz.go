@@ -4,16 +4,20 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -52,7 +56,8 @@ var (
 	evmVersion                             string
 	evmChainID                             uint64
 	evmToken                               string
-	evmDefaults                            bool
+	evmTestDefaults                        bool
+	evmProductionDefaults                  bool
 	useLatestEvmReleasedVersion            bool
 	useLatestEvmPreReleasedVersion         bool
 	customVMRepoURL                        string
@@ -108,7 +113,9 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&evmVersion, "evm-version", "", "version of Subnet-EVM to use")
 	cmd.Flags().Uint64Var(&evmChainID, "evm-chain-id", 0, "chain ID to use with Subnet-EVM")
 	cmd.Flags().StringVar(&evmToken, "evm-token", "", "token name to use with Subnet-EVM")
-	cmd.Flags().BoolVar(&evmDefaults, "evm-defaults", false, "use default settings for fees/airdrop/precompiles with Subnet-EVM")
+	cmd.Flags().BoolVar(&evmProductionDefaults, "evm-defaults", false, "use default production settings with Subnet-EVM")
+	cmd.Flags().BoolVar(&evmProductionDefaults, "evm-production-defaults", false, "use default production settings for your blockchain")
+	cmd.Flags().BoolVar(&evmTestDefaults, "evm-test-defaults", false, "use default test settings for your blockchain")
 	cmd.Flags().BoolVar(&useLatestEvmReleasedVersion, "latest-evm-version", false, "use latest Subnet-EVM released version")
 	cmd.Flags().BoolVar(&useLatestEvmPreReleasedVersion, "latest-pre-released-evm-version", false, "use latest Subnet-EVM pre-released version")
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
@@ -136,9 +143,11 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&teleporterMessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
 	cmd.Flags().StringVar(&teleporterMessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
 	cmd.Flags().StringVar(&teleporterRegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
-	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Teleporter Messenger")
-	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Teleporter Registry")
+	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Interchain Messenger")
+	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Interchain Registry")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
+	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
+	cmd.Flags().StringSliceVar(&subnetAliases, "subnet-aliases", nil, "additional subnet aliases to be used for RPC calls in addition to subnet blockchain name")
 	return cmd
 }
 
@@ -148,6 +157,18 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 {
 		subnetName = args[1]
 	}
+	c := make(chan os.Signal, 1)
+	// Destroy cluster if user calls ctrl ^ c
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		for range c {
+			if err := CallDestroyNode(clusterName); err != nil {
+				ux.Logger.RedXToUser("Unable to delete cluster %s due to %s", clusterName, err)
+				ux.Logger.RedXToUser("Please try again by calling avalanche node destroy %s", clusterName)
+			}
+			os.Exit(0)
+		}
+	}()
 	clusterAlreadyExists, err := app.ClusterExists(clusterName)
 	if err != nil {
 		return err
@@ -164,7 +185,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Creating the subnet"))
 		ux.Logger.PrintToUser("")
-		if err := subnetcmd.CallCreate(
+		if err := blockchaincmd.CallCreate(
 			cmd,
 			subnetName,
 			forceSubnetCreate,
@@ -174,7 +195,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 			evmVersion,
 			evmChainID,
 			evmToken,
-			evmDefaults,
+			evmProductionDefaults,
+			evmTestDefaults,
 			useLatestEvmReleasedVersion,
 			useLatestEvmPreReleasedVersion,
 			customVMRepoURL,
@@ -184,7 +206,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if chainConf != "" || subnetConf != "" || nodeConf != "" {
-			if err := subnetcmd.CallConfigure(
+			if err := blockchaincmd.CallConfigure(
 				cmd,
 				subnetName,
 				chainConf,
@@ -264,6 +286,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser(logging.Green.Wrap("Adding nodes as subnet validators"))
 	ux.Logger.PrintToUser("")
 	avoidSubnetValidationChecks = true
+	useEwoq = true
 	if err := validateSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
@@ -361,7 +384,12 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
 		ux.Logger.PrintToUser("")
 		flags := teleportercmd.DeployFlags{
-			SubnetName: subnetName,
+			ChainFlags: contract.ChainSpec{
+				BlockchainName: subnetName,
+			},
+			PrivateKeyFlags: contract.PrivateKeyFlags{
+				KeyName: constants.ICMKeyName,
+			},
 			Network: networkoptions.NetworkFlags{
 				ClusterName: clusterName,
 			},
@@ -382,7 +410,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		if err := updateAWMRelayerFunds(network, sc, blockchainID); err != nil {
 			return err
 		}
-		if err := updateAWMRelayerHostConfig(awmRelayerHost, subnetName, clusterName); err != nil {
+		if err := updateAWMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
 			return err
 		}
 	}
@@ -487,15 +515,9 @@ func setAWMRelayerHost(host *models.Host) error {
 	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
-func updateAWMRelayerHostConfig(host *models.Host, subnetName string, clusterName string) error {
-	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay subnet %s", host.GetCloudID(), subnetName)
-	flags := relayercmd.AddSubnetToServiceFlags{
-		Network: networkoptions.NetworkFlags{
-			ClusterName: clusterName,
-		},
-		CloudNodeID: host.GetCloudID(),
-	}
-	if err := relayercmd.CallAddSubnetToService(subnetName, flags); err != nil {
+func updateAWMRelayerHostConfig(network models.Network, host *models.Host, blockchainName string) error {
+	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay blockchain %s", host.GetCloudID(), blockchainName)
+	if err := addBlockchainToRelayerConf(network, host.GetCloudID(), blockchainName); err != nil {
 		return err
 	}
 	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
@@ -978,5 +1000,97 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 		}
 	}
 	spinSession.Stop()
+	return nil
+}
+
+func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, blockchainName string) error {
+	relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	if err != nil {
+		return err
+	}
+
+	storageBasePath := constants.AWMRelayerDockerDir
+	configBasePath := app.GetNodeInstanceDirPath(cloudNodeID)
+
+	configPath := app.GetAWMRelayerServiceConfigPath(configBasePath)
+	if err := os.MkdirAll(filepath.Dir(configPath), constants.DefaultPerms755); err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("updating configuration file %s", configPath)
+
+	if err := teleporter.CreateBaseRelayerConfigIfMissing(
+		configPath,
+		logging.Info.LowerString(),
+		app.GetAWMRelayerServiceStorageDir(storageBasePath),
+		constants.RemoteAWMRelayerMetricsPort,
+		network,
+	); err != nil {
+		return err
+	}
+
+	chainSpec := contract.ChainSpec{CChain: true}
+	subnetID, err := contract.GetSubnetID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	blockchainID, err := contract.GetBlockchainID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	registryAddress, messengerAddress, err := contract.GetICMInfo(app, network, chainSpec, false, false, false)
+	if err != nil {
+		return err
+	}
+	rpcEndpoint, wsEndpoint, err := contract.GetBlockchainEndpoints(app, network, chainSpec, false, false)
+	if err != nil {
+		return err
+	}
+
+	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+		configPath,
+		rpcEndpoint,
+		wsEndpoint,
+		subnetID.String(),
+		blockchainID.String(),
+		registryAddress,
+		messengerAddress,
+		relayerAddress,
+		relayerPrivateKey,
+	); err != nil {
+		return err
+	}
+
+	chainSpec = contract.ChainSpec{BlockchainName: blockchainName}
+	subnetID, err = contract.GetSubnetID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	blockchainID, err = contract.GetBlockchainID(app, network, chainSpec)
+	if err != nil {
+		return err
+	}
+	registryAddress, messengerAddress, err = contract.GetICMInfo(app, network, chainSpec, false, false, false)
+	if err != nil {
+		return err
+	}
+	rpcEndpoint, wsEndpoint, err = contract.GetBlockchainEndpoints(app, network, chainSpec, false, false)
+	if err != nil {
+		return err
+	}
+
+	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+		configPath,
+		rpcEndpoint,
+		wsEndpoint,
+		subnetID.String(),
+		blockchainID.String(),
+		registryAddress,
+		messengerAddress,
+		relayerAddress,
+		relayerPrivateKey,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }

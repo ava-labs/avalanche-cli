@@ -8,25 +8,13 @@ import (
 )
 
 type NetworkData struct {
-	SubnetID                    ids.ID
-	TransferSubnetOwnershipTxID ids.ID
-	BlockchainID                ids.ID
-	RPCVersion                  int
-	TeleporterMessengerAddress  string
-	TeleporterRegistryAddress   string
-}
-
-type PermissionlessValidators struct {
-	TxID ids.ID
-}
-type ElasticSubnet struct {
-	SubnetID    ids.ID
-	AssetID     ids.ID
-	PChainTXID  ids.ID
-	TokenName   string
-	TokenSymbol string
-	Validators  map[string]PermissionlessValidators
-	Txs         map[string]ids.ID
+	SubnetID                   ids.ID
+	BlockchainID               ids.ID
+	RPCVersion                 int
+	TeleporterMessengerAddress string
+	TeleporterRegistryAddress  string
+	RPCEndpoints               []string
+	WSEndpoints                []string
 }
 
 type Sidecar struct {
@@ -41,7 +29,6 @@ type Sidecar struct {
 	ChainID             string
 	Version             string
 	Networks            map[string]NetworkData
-	ElasticSubnet       map[string]ElasticSubnet
 	ImportedFromAPM     bool
 	ImportedVMID        string
 	CustomVMRepoURL     string

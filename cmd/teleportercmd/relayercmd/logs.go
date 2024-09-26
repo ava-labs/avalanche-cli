@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -24,10 +24,13 @@ import (
 )
 
 var (
-	logsNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local}
-	raw                bool
-	last               uint
-	first              uint
+	logsNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Fuji,
+	}
+	raw   bool
+	last  uint
+	first uint
 )
 
 // avalanche teleporter relayer logs
@@ -51,7 +54,7 @@ func logs(_ *cobra.Command, _ []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		logsNetworkOptions,
 		"",
@@ -61,8 +64,8 @@ func logs(_ *cobra.Command, _ []string) error {
 	}
 	var logLines []string
 	switch {
-	case network.Kind == models.Local:
-		logsPath := app.GetAWMRelayerLogPath()
+	case network.Kind == models.Local || network.Kind == models.Fuji:
+		logsPath := app.GetLocalRelayerLogPath(network.Kind)
 		bs, err := os.ReadFile(logsPath)
 		if err != nil {
 			return err
@@ -91,7 +94,7 @@ func logs(_ *cobra.Command, _ []string) error {
 		}
 		return nil
 	}
-	blockchainIDToSubnetName, err := getBlockchainIDToSubnetNameMap(network)
+	blockchainIDToBlockchainName, err := getBlockchainIDToBlockchainNameMap(network)
 	if err != nil {
 		return err
 	}
@@ -108,7 +111,7 @@ func logs(_ *cobra.Command, _ []string) error {
 			levelEmoji := ""
 			levelStr, b := logMap["level"].(string)
 			if b {
-				levelEmoji, err = logLevelToEmoji(levelStr)
+				levelEmoji, err = utils.LogLevelToEmoji(levelStr)
 				if err != nil {
 					return err
 				}
@@ -139,11 +142,11 @@ func logs(_ *cobra.Command, _ []string) error {
 						logMap,
 						k,
 						k,
-						blockchainIDToSubnetName,
+						blockchainIDToBlockchainName,
 					)
 				}
 			}
-			subnet := getLogSubnet(logMap, blockchainIDToSubnetName)
+			subnet := getLogSubnet(logMap, blockchainIDToBlockchainName)
 			t.AppendRow(table.Row{levelEmoji, timeStr, subnet, logMsg})
 		}
 	}
@@ -157,13 +160,13 @@ func addAditionalInfo(
 	logMap map[string]interface{},
 	key string,
 	outputName string,
-	blockchainIDToSubnetName map[string]string,
+	blockchainIDToBlockchainName map[string]string,
 ) string {
 	value, b := logMap[key].(string)
 	if b {
-		subnetName := blockchainIDToSubnetName[value]
-		if subnetName != "" {
-			value = subnetName
+		blockchainName := blockchainIDToBlockchainName[value]
+		if blockchainName != "" {
+			value = blockchainName
 		}
 		logMsg = fmt.Sprintf("%s\n  %s=%s", logMsg, outputName, value)
 	}
@@ -172,7 +175,7 @@ func addAditionalInfo(
 
 func getLogSubnet(
 	logMap map[string]interface{},
-	blockchainIDToSubnetName map[string]string,
+	blockchainIDToBlockchainName map[string]string,
 ) string {
 	for _, key := range []string{
 		"blockchainID",
@@ -182,53 +185,32 @@ func getLogSubnet(
 	} {
 		value, b := logMap[key].(string)
 		if b {
-			subnetName := blockchainIDToSubnetName[value]
-			if subnetName != "" {
-				return subnetName
+			blockchainName := blockchainIDToBlockchainName[value]
+			if blockchainName != "" {
+				return blockchainName
 			}
 		}
 	}
 	return ""
 }
 
-func getBlockchainIDToSubnetNameMap(network models.Network) (map[string]string, error) {
-	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+func getBlockchainIDToBlockchainNameMap(network models.Network) (map[string]string, error) {
+	blockchainNames, err := app.GetBlockchainNamesOnNetwork(network)
 	if err != nil {
 		return nil, err
 	}
-	blockchainIDToSubnetName := map[string]string{}
-	for _, subnetName := range subnetNames {
-		_, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, subnetName, false)
+	blockchainIDToBlockchainName := map[string]string{}
+	for _, blockchainName := range blockchainNames {
+		blockchainID, err := contract.GetBlockchainID(app, network, contract.ChainSpec{BlockchainName: blockchainName})
 		if err != nil {
 			return nil, err
 		}
-		blockchainIDToSubnetName[blockchainID.String()] = subnetName
+		blockchainIDToBlockchainName[blockchainID.String()] = blockchainName
 	}
-	_, _, blockchainID, _, _, _, err := teleporter.GetSubnetParams(app, network, "", true)
+	blockchainID, err := contract.GetBlockchainID(app, network, contract.ChainSpec{CChain: true})
 	if err != nil {
 		return nil, err
 	}
-	blockchainIDToSubnetName[blockchainID.String()] = "c-chain"
-	return blockchainIDToSubnetName, nil
-}
-
-func logLevelToEmoji(logLevel string) (string, error) {
-	levelEmoji := ""
-	level, err := logging.ToLevel(logLevel)
-	if err != nil {
-		return "", err
-	}
-	switch level {
-	case logging.Info:
-		levelEmoji = "ℹ️"
-	case logging.Debug:
-		levelEmoji = "🪲"
-	case logging.Warn:
-		levelEmoji = "⚠️"
-	case logging.Error:
-		levelEmoji = "⛔"
-	case logging.Fatal:
-		levelEmoji = "💀"
-	}
-	return levelEmoji, nil
+	blockchainIDToBlockchainName[blockchainID.String()] = "c-chain"
+	return blockchainIDToBlockchainName, nil
 }

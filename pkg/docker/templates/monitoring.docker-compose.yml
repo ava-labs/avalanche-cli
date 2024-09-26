@@ -15,8 +15,6 @@ services:
       - '--storage.tsdb.path=/var/lib/prometheus'
     links:
       - node-exporter
-    networks:
-      - monitoring_net
 
   grafana:
     image: grafana/grafana:10.4.1
@@ -31,8 +29,6 @@ services:
     links:
       - prometheus
       - loki
-    networks:
-      - monitoring_net
 
   loki:
     image: grafana/loki:3.0.0
@@ -45,8 +41,6 @@ services:
     volumes:
       - /home/ubuntu/.avalanche-cli/services/loki:/etc/loki:ro
       - /home/ubuntu/.avalanche-cli/services/loki/data:/var/lib/loki:rw
-    networks:
-      - monitoring_net
   
   node-exporter:
     image: prom/node-exporter:v1.7.0
@@ -54,12 +48,7 @@ services:
     restart: unless-stopped
     ports:
       - "9100:9100"
-    networks:
-      - monitoring_net
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
-
-networks:
-  monitoring_net:

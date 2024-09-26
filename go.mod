@@ -1,21 +1,21 @@
 module github.com/ava-labs/avalanche-cli
 
-go 1.21.11
+go 1.21.12
 
 toolchain go1.22.3
 
 require (
 	github.com/ava-labs/apm v1.0.0
-	github.com/ava-labs/avalanche-network-runner v1.8.1-0.20240613173905-80d33ed0b7b9
-	github.com/ava-labs/avalanchego v1.11.8
+	github.com/ava-labs/avalanche-network-runner v1.8.3-0.20240815175406-50423422fb5b
+	github.com/ava-labs/avalanchego v1.11.11-0.20240815211142-ce78e7f1799f
 	github.com/ava-labs/awm-relayer v1.3.0
-	github.com/ava-labs/coreth v0.13.5-rc.0
-	github.com/ava-labs/subnet-evm v0.6.6
+	github.com/ava-labs/coreth v0.13.8-fixed-genesis-upgrade.0.20240813194342-7635a96aa180
+	github.com/ava-labs/subnet-evm v0.6.9-0.20240815191823-9f3608326298
 	github.com/aws/aws-sdk-go-v2 v1.30.3
 	github.com/aws/aws-sdk-go-v2/config v1.27.26
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.162.0
 	github.com/chelnak/ysmrr v0.4.0
-	github.com/docker/docker v26.1.3+incompatible
+	github.com/docker/docker v27.1.1+incompatible
 	github.com/ethereum/go-ethereum v1.13.8
 	github.com/fatih/color v1.17.0
 	github.com/go-git/go-git/v5 v5.12.0
@@ -228,6 +228,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gotest.tools/v3 v3.5.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )

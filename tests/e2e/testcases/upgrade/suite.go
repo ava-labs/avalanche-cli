@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"

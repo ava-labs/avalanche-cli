@@ -35,6 +35,15 @@ func (ccm *CloudConfig) GetAllInstanceIDs() []string {
 	return instanceIDs
 }
 
+// GetAllAPIInstanceIDs returns all API instance IDs
+func (ccm *CloudConfig) GetAllAPIInstanceIDs() []string {
+	apiInstanceIDs := []string{}
+	for _, cloudConfig := range *ccm {
+		apiInstanceIDs = append(apiInstanceIDs, cloudConfig.APIInstanceIDs...)
+	}
+	return apiInstanceIDs
+}
+
 // GetInstanceIDsForRegion returns instance IDs for specific region
 func (ccm *CloudConfig) GetInstanceIDsForRegion(region string) []string {
 	if regionConf, ok := (*ccm)[region]; ok {

@@ -5,7 +5,7 @@ package nodecmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	subnetOnly  bool
-	avoidChecks bool
+	subnetOnly    bool
+	avoidChecks   bool
+	subnetAliases []string
 )
 
 func newDeployCmd() *cobra.Command {
@@ -33,6 +34,7 @@ It saves the deploy info both locally and remotely.
 	}
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
 	cmd.Flags().BoolVar(&avoidChecks, "no-checks", false, "do not check for healthy status or rpc compatibility of nodes against subnet")
+	cmd.Flags().StringSliceVar(&subnetAliases, "subnet-aliases", nil, "additional subnet aliases to be used for RPC calls in addition to subnet blockchain name")
 	return cmd
 }
 
@@ -42,7 +44,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if _, err := subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
+	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
 	clustersConfig, err := app.LoadClustersConfig()
@@ -73,7 +75,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	useEwoqParam := true
 	sameControlKey := true
 
-	if err := subnetcmd.CallDeploy(
+	if err := blockchaincmd.CallDeploy(
 		cmd,
 		subnetOnly,
 		subnetName,

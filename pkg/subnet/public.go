@@ -63,13 +63,12 @@ func (d *PublicDeployer) AddValidator(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	nodeID ids.NodeID,
 	weight uint64,
 	startTime time.Time,
 	duration time.Duration,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -122,11 +121,10 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	newControlKeys []string,
 	newThreshold uint32,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -213,94 +211,6 @@ func (d *PublicDeployer) CreateAssetTx(
 	return tx.ID(), err
 }
 
-func (d *PublicDeployer) ExportToPChainTx(
-	subnetAssetID ids.ID,
-	owner *secp256k1fx.OutputOwners,
-	assetAmount uint64,
-) (ids.ID, error) {
-	wallet, err := d.loadWallet()
-	if err != nil {
-		return ids.Empty, err
-	}
-	txID, err := IssueXToPExportTx(
-		wallet,
-		d.kc.UsesLedger,
-		d.kc.HasOnlyOneKey(),
-		subnetAssetID,
-		assetAmount,
-		owner,
-	)
-	if err != nil {
-		return txID, err
-	}
-	ux.Logger.PrintToUser("Export to P-Chain Transaction successful, transaction ID: %s", txID)
-	ux.Logger.PrintToUser("Now importing asset from X-Chain ...")
-	return txID, nil
-}
-
-func (d *PublicDeployer) ImportFromXChain(
-	owner *secp256k1fx.OutputOwners,
-) (ids.ID, error) {
-	wallet, err := d.loadWallet()
-	if err != nil {
-		return ids.Empty, err
-	}
-	txID, err := IssuePFromXImportTx(
-		wallet,
-		d.kc.UsesLedger,
-		d.kc.HasOnlyOneKey(),
-		owner,
-	)
-	if err != nil {
-		return txID, err
-	}
-	ux.Logger.PrintToUser("Import from X Chain Transaction successful, transaction ID: %s", txID)
-	ux.Logger.PrintToUser("Now transforming subnet into elastic subnet ...")
-	return txID, nil
-}
-
-func (d *PublicDeployer) TransformSubnetTx(
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
-	elasticSubnetConfig models.ElasticSubnetConfig,
-	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
-	subnetAssetID ids.ID,
-) (bool, ids.ID, *txs.Tx, []string, error) {
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
-	if err != nil {
-		return false, ids.Empty, nil, nil, err
-	}
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
-	if err != nil {
-		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
-	}
-
-	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "Transform Subnet hash")
-
-	tx, err := d.createTransformSubnetTX(subnetAuthKeys, elasticSubnetConfig, wallet, subnetAssetID)
-	if err != nil {
-		return false, ids.Empty, nil, nil, err
-	}
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
-	if err != nil {
-		return false, ids.Empty, nil, nil, err
-	}
-	isFullySigned := len(remainingSubnetAuthKeys) == 0
-
-	if isFullySigned {
-		txID, err := d.Commit(tx, true)
-		if err != nil {
-			return false, ids.Empty, nil, nil, err
-		}
-		ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
-		return true, txID, nil, nil, nil
-	}
-
-	ux.Logger.PrintToUser("Partial tx created")
-	return false, ids.Empty, tx, remainingSubnetAuthKeys, nil
-}
-
 // removes a subnet validator from the given [subnet]
 // - verifies that the wallet is one of the subnet auth keys (so as to sign the AddSubnetValidator tx)
 // - if operation is multisig (len(subnetAuthKeysStrs) > 1):
@@ -313,10 +223,9 @@ func (d *PublicDeployer) RemoveValidator(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	nodeID ids.NodeID,
 ) (bool, *txs.Tx, []string, error) {
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -379,27 +288,6 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 	return txID, nil
 }
 
-func (d *PublicDeployer) AddPermissionlessDelegator(
-	subnetID ids.ID,
-	subnetAssetID ids.ID,
-	nodeID ids.NodeID,
-	stakeAmount uint64,
-	startTime uint64,
-	endTime uint64,
-	recipientAddr ids.ShortID,
-) (ids.ID, error) {
-	wallet, err := d.loadWallet(subnetID)
-	if err != nil {
-		return ids.Empty, err
-	}
-	txID, err := d.issueAddPermissionlessDelegatorTX(recipientAddr, stakeAmount, subnetID, nodeID, subnetAssetID, startTime, endTime, wallet)
-	if err != nil {
-		return ids.Empty, err
-	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
-	return txID, nil
-}
-
 // - creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
 	controlKeys []string,
@@ -428,13 +316,12 @@ func (d *PublicDeployer) DeployBlockchain(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	chain string,
 	genesis []byte,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now creating blockchain...")
 
-	wallet, err := d.loadCacheWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -515,9 +402,8 @@ func (d *PublicDeployer) Sign(
 	tx *txs.Tx,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 ) error {
-	wallet, err := d.loadWallet(subnetID, transferSubnetOwnershipTxID)
+	wallet, err := d.loadWallet(subnetID)
 	if err != nil {
 		return err
 	}
@@ -542,17 +428,17 @@ func (d *PublicDeployer) Sign(
 	return nil
 }
 
-func (d *PublicDeployer) loadWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
+func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (primary.Wallet, error) {
 	ctx := context.Background()
 	// filter out ids.Empty txs
-	filteredTxs := utils.Filter(preloadTxs, func(e ids.ID) bool { return e != ids.Empty })
+	filteredTxs := utils.Filter(subnetIDs, func(e ids.ID) bool { return e != ids.Empty })
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{
-			URI:              d.network.Endpoint,
-			AVAXKeychain:     d.kc.Keychain,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: set.Of(filteredTxs...),
+			URI:          d.network.Endpoint,
+			AVAXKeychain: d.kc.Keychain,
+			EthKeychain:  secp256k1fx.NewKeychain(),
+			SubnetIDs:    filteredTxs,
 		},
 	)
 	if err != nil {
@@ -694,30 +580,6 @@ func (d *PublicDeployer) createRemoveValidatorTX(
 	return &tx, nil
 }
 
-func (d *PublicDeployer) createTransformSubnetTX(
-	subnetAuthKeys []ids.ShortID,
-	elasticSubnetConfig models.ElasticSubnetConfig,
-	wallet primary.Wallet,
-	assetID ids.ID,
-) (*txs.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
-	// create tx
-	unsignedTx, err := wallet.P().Builder().NewTransformSubnetTx(elasticSubnetConfig.SubnetID, assetID,
-		elasticSubnetConfig.InitialSupply, elasticSubnetConfig.MaxSupply, elasticSubnetConfig.MinConsumptionRate,
-		elasticSubnetConfig.MaxConsumptionRate, elasticSubnetConfig.MinValidatorStake, elasticSubnetConfig.MaxValidatorStake,
-		elasticSubnetConfig.MinStakeDuration, elasticSubnetConfig.MaxStakeDuration, elasticSubnetConfig.MinDelegationFee,
-		elasticSubnetConfig.MinDelegatorStake, elasticSubnetConfig.MaxValidatorWeightFactor, elasticSubnetConfig.UptimeRequirement, options...)
-	if err != nil {
-		return nil, fmt.Errorf("error building tx: %w", err)
-	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, fmt.Errorf("error signing tx: %w", err)
-	}
-	return &tx, nil
-}
-
 // issueAddPermissionlessValidatorTX calls addPermissionlessValidatorTx API on P-Chain
 // if subnetID is empty, node nodeID is going to be added as a validator on Primary Network
 // if popBytes is empty, that means that we are using BLS proof generated from signer.key file
@@ -775,67 +637,6 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 		owner,
 		owner,
 		delegationFee,
-		options...,
-	)
-	if err != nil {
-		return ids.Empty, fmt.Errorf("error building tx: %w", err)
-	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
-	}
-
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	err = wallet.P().IssueTx(
-		&tx,
-		common.WithContext(ctx),
-	)
-	if err != nil {
-		if ctx.Err() != nil {
-			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-		} else {
-			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
-		}
-		return ids.Empty, err
-	}
-
-	return tx.ID(), nil
-}
-
-func (d *PublicDeployer) issueAddPermissionlessDelegatorTX(
-	recipientAddr ids.ShortID,
-	stakeAmount uint64,
-	subnetID ids.ID,
-	nodeID ids.NodeID,
-	assetID ids.ID,
-	startTime uint64,
-	endTime uint64,
-	wallet primary.Wallet,
-) (ids.ID, error) {
-	options := d.getMultisigTxOptions([]ids.ShortID{})
-	owner := &secp256k1fx.OutputOwners{
-		Threshold: 1,
-		Addrs: []ids.ShortID{
-			recipientAddr,
-		},
-	}
-
-	if d.kc.UsesLedger {
-		showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "Add Permissionless Delegator hash")
-	}
-	unsignedTx, err := wallet.P().Builder().NewAddPermissionlessDelegatorTx(
-		&txs.SubnetValidator{
-			Validator: txs.Validator{
-				NodeID: nodeID,
-				Start:  startTime,
-				End:    endTime,
-				Wght:   stakeAmount,
-			},
-			Subnet: subnetID,
-		},
-		assetID,
-		owner,
 		options...,
 	)
 	if err != nil {
