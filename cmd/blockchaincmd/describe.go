@@ -305,26 +305,30 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 }
 
 func printSmartContracts(genesis core.Genesis) {
-	if len(genesis.Alloc) > 0 {
-		ux.Logger.PrintToUser("")
-		t := table.NewWriter()
-		t.Style().Title.Align = text.AlignCenter
-		t.Style().Title.Format = text.FormatUpper
-		t.Style().Options.SeparateRows = true
-		t.SetTitle("Smart Contracts")
-		t.AppendHeader(table.Row{"Description", "Address", "Deployer"})
-		for address, allocation := range genesis.Alloc {
-			var description, deployer string
-			if len(allocation.Code) > 0 {
-				if address == common.HexToAddress(icmgenesis.MessengerContractAddress) {
-					description = "ICM Messenger"
-					deployer = icmgenesis.MessengerDeployerAddress
-				}
-				t.AppendRow(table.Row{description, address.Hex(), deployer})
-			}
-		}
-		ux.Logger.PrintToUser(t.Render())
+	if len(genesis.Alloc) == 0 {
+		return
 	}
+
+	ux.Logger.PrintToUser("")
+	t := table.NewWriter()
+	t.Style().Title.Align = text.AlignCenter
+	t.Style().Title.Format = text.FormatUpper
+	t.Style().Options.SeparateRows = true
+	t.SetTitle("Smart Contracts")
+	t.AppendHeader(table.Row{"Description", "Address", "Deployer"})
+	for address, allocation := range genesis.Alloc {
+		if len(allocation.Code) == 0 {
+			continue
+		}
+		var description, deployer string
+		if address == common.HexToAddress(icmgenesis.MessengerContractAddress) {
+			description = "ICM Messenger"
+			deployer = icmgenesis.MessengerDeployerAddress
+		}
+		t.AppendRow(table.Row{description, address.Hex(), deployer})
+		
+	}
+	ux.Logger.PrintToUser(t.Render())
 }
 
 func printPrecompiles(genesis core.Genesis) {
