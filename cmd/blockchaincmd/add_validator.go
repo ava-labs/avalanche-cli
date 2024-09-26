@@ -36,6 +36,7 @@ var (
 	}
 
 	nodeIDStr              string
+	balance                uint64
 	weight                 uint64
 	startTimeStr           string
 	duration               time.Duration
@@ -46,6 +47,7 @@ var (
 	waitForTxAcceptance    bool
 	publicKey              string
 	pop                    string
+	changeAddr             string
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -83,6 +85,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&nonSOV, "not-sov", false, "set to true if adding validator to a non SOV blockchain")
 	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
 	cmd.Flags().StringVar(&pop, "proof-of-possession", "", "set the BLS proof of possession of the validator to add")
+	cmd.Flags().StringVar(&changeAddr, "change-address", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	return cmd
 }
 
@@ -124,7 +127,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if nonSOV {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams)
+	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr)
 }
 
 func promptValidatorBalance() (uint64, error) {
@@ -140,7 +143,6 @@ func CallAddValidator(
 	useLedgerSetting bool,
 	blockchainName string,
 	nodeIDStr string,
-	defaultValidatorParamsSetting bool,
 ) error {
 	var (
 		nodeID ids.NodeID
@@ -148,11 +150,35 @@ func CallAddValidator(
 	)
 
 	useLedger = useLedgerSetting
-	defaultValidatorParams = defaultValidatorParamsSetting
 
 	_, err = ValidateSubnetNameAndGetChains([]string{blockchainName})
 	if err != nil {
 		return err
+	}
+
+	switch network.Kind {
+	case models.Devnet:
+		if useLedger {
+			return ErrLedgerOnDevnet
+		}
+		keyName, err = prompts.CaptureKeyName(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
+		if err != nil {
+			return err
+		}
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
+			if err != nil {
+				return err
+			}
+		}
+	case models.Mainnet:
+		useLedger = true
+		if keyName != "" {
+			return ErrStoredKeyOnMainnet
+		}
+	default:
+		return errors.New("unsupported network")
 	}
 
 	sc, err := app.LoadSidecar(blockchainName)

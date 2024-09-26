@@ -93,7 +93,17 @@ func removeValidator(_ *cobra.Command, args []string) error {
 
 	switch network.Kind {
 	case models.Local:
-		return removeFromLocal(blockchainName)
+		if nonSOV {
+			return removeFromLocalNonSOV(blockchainName)
+		}
+	case models.Devnet:
+		if useLedger {
+			return ErrLedgerOnDevnet
+		}
+		keyName, err = prompts.CaptureKeyName(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
+		if err != nil {
+			return err
+		}
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
@@ -154,6 +164,8 @@ func generateWarpMessageRemoveValidator(validationID [32]byte, nonce, weight uin
 }
 
 func removeValidatorSOV(deployer *subnet.PublicDeployer) error {
+	// TODO: check for number of validators
+	// return error if there is only 1 validator
 	validationID := getValidationID()
 	minNonce, err := getMinNonce(validationID)
 	if err != nil {
@@ -256,7 +268,7 @@ func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Netwo
 	return err
 }
 
-func removeFromLocal(blockchainName string) error {
+func removeFromLocalNonSOV(blockchainName string) error {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
