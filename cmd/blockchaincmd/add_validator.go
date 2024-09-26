@@ -79,6 +79,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the staking weight of the validator to add")
+	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee to P-Chain")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -158,12 +159,11 @@ func CallAddValidator(
 
 	switch network.Kind {
 	case models.Devnet:
-		if useLedger {
-			return ErrLedgerOnDevnet
-		}
-		keyName, err = prompts.CaptureKeyName(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
-		if err != nil {
-			return err
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
+			if err != nil {
+				return err
+			}
 		}
 	case models.Fuji:
 		if !useLedger && keyName == "" {
@@ -214,19 +214,25 @@ func CallAddValidator(
 		return err
 	}
 
-	balance, err := promptValidatorBalance()
-	if err != nil {
-		return err
+	if balance == 0 {
+		balance, err = promptValidatorBalance()
+		if err != nil {
+			return err
+		}
 	}
 
-	changeAddr, err := getKeyForChangeOwner("", network)
-	if err != nil {
-		return err
+	if changeAddr == "" {
+		changeAddr, err = getKeyForChangeOwner("", network)
+		if err != nil {
+			return err
+		}
 	}
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Weight: %d", weight)
+	ux.Logger.PrintToUser("Balance: %d", balance)
+	ux.Logger.PrintToUser("Change Address: %s", changeAddr)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
 	//type RegisterSubnetValidatorTx struct {

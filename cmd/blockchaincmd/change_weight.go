@@ -85,12 +85,11 @@ func updateWeight(_ *cobra.Command, args []string) error {
 
 	switch network.Kind {
 	case models.Devnet:
-		if useLedger {
-			return ErrLedgerOnDevnet
-		}
-		keyName, err = prompts.CaptureKeyName(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
-		if err != nil {
-			return err
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
+			if err != nil {
+				return err
+			}
 		}
 	case models.Fuji:
 		if !useLedger && keyName == "" {
