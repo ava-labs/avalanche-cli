@@ -45,6 +45,7 @@ type CreateFlags struct {
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
 	useExternalGasToken           bool
+	addICMRegistryToGenesis       bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
 }
@@ -103,6 +104,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
+	cmd.Flags().BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	return cmd
@@ -288,6 +290,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				blockchainName,
 				params,
 				teleporterInfo,
+				createFlags.addICMRegistryToGenesis,
 			)
 			if err != nil {
 				return err
