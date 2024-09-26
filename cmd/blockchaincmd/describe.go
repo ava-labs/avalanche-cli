@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -216,6 +217,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		if err := printAllocations(sc, genesis); err != nil {
 			return err
 		}
+		printSmartContracts(genesis)
 		printPrecompiles(genesis)
 	}
 
@@ -300,6 +302,29 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 		ux.Logger.PrintToUser(t.Render())
 	}
 	return nil
+}
+
+func printSmartContracts(genesis core.Genesis) {
+	if len(genesis.Alloc) > 0 {
+		ux.Logger.PrintToUser("")
+		t := table.NewWriter()
+		t.Style().Title.Align = text.AlignCenter
+		t.Style().Title.Format = text.FormatUpper
+		t.Style().Options.SeparateRows = true
+		t.SetTitle("Smart Contracts")
+		t.AppendHeader(table.Row{"Description", "Address", "Deployer"})
+		for address, allocation := range genesis.Alloc {
+			var description, deployer string
+			if len(allocation.Code) > 0 {
+				if address == common.HexToAddress(icmgenesis.MessengerContractAddress) {
+					description = "ICM Messenger"
+					deployer = icmgenesis.MessengerDeployerAddress
+				}
+				t.AppendRow(table.Row{description, address.Hex(), deployer})
+			}
+		}
+		ux.Logger.PrintToUser(t.Render())
+	}
 }
 
 func printPrecompiles(genesis core.Genesis) {
