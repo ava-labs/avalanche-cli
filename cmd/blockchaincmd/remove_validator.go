@@ -42,7 +42,7 @@ validating your deployed Blockchain.
 To remove the validator from the Subnet's allow list, provide the validator's unique NodeID. You can bypass
 these prompts by providing the values with flags.`,
 		RunE: removeValidator,
-		Args: cobrautils.ExactArgs(1),
+		Args: cobrautils.ExactArgs(2),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, removeValidatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")

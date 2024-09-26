@@ -34,13 +34,10 @@ The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
-	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the staking weight of the validator to add")
+	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().BoolVar(&nonSOV, "not-sov", false, "set to true if adding validator to a non SOV blockchain")
-	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
-	cmd.Flags().StringVar(&pop, "proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	return cmd
 }
 
@@ -161,6 +158,11 @@ func updateWeight(_ *cobra.Command, args []string) error {
 	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeID)
 }
 
+// TODO: implement checkIfSubnetIsSOV
+// checkIfSubnetIsSOV returns true if Subnet is SOV from P Chain
+func checkIfSubnetIsSOV() (bool, error) {
+	return false, nil
+}
 func promptWeightSubnetValidator() (uint64, error) {
 	txt := "What weight would you like to assign to the validator?"
 	return app.Prompt.CaptureWeight(txt)
