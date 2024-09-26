@@ -6,9 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
@@ -433,7 +434,7 @@ func (d *PublicDeployer) ConvertSubnet(
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertSubnet transaction")
 
 	var validatorManagerAddress []byte
-	//var validators []avalanchego.SubnetValidator
+	// var validators []avalanchego.SubnetValidator
 
 	tx, err := d.createConvertSubnetTx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress, wallet)
 	if err != nil {
@@ -609,7 +610,7 @@ func (d *PublicDeployer) createConvertSubnetTx(
 	subnetID ids.ID,
 	chainID ids.ID,
 	address []byte,
-	//validators []avalanchego.SubnetValidator,
+	// validators []avalanchego.SubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
 	//fxIDs := make([]ids.ID, 0)
