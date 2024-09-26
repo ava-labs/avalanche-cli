@@ -12,7 +12,7 @@ permissions:
   contents: read # This is required for actions/checkout
 
 env:
-  PACKER_VERSION: "1.10.2"
+  PACKER_VERSION: "1.11.2"
 
 jobs:
   build-public-ami-and-upload:

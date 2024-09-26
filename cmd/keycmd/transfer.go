@@ -194,7 +194,7 @@ func transferF(*cobra.Command, []string) error {
 		app,
 		"On what Network do you want to execute the transfer?",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		transferSupportedNetworkOptions,
 		"",
