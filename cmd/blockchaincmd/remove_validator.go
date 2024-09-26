@@ -34,7 +34,7 @@ var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
 // avalanche blockchain removeValidator
 func newRemoveValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "removeValidator [blockchainName]",
+		Use:   "removeValidator [blockchainName] [nodeID]",
 		Short: "Remove a permissioned validator from your blockchain's subnet",
 		Long: `The blockchain removeValidator command stops a whitelisted, subnet network validator from
 validating your deployed Blockchain.
