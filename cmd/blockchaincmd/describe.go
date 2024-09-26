@@ -308,7 +308,6 @@ func printSmartContracts(genesis core.Genesis) {
 	if len(genesis.Alloc) == 0 {
 		return
 	}
-
 	ux.Logger.PrintToUser("")
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
@@ -326,7 +325,6 @@ func printSmartContracts(genesis core.Genesis) {
 			deployer = icmgenesis.MessengerDeployerAddress
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
-		
 	}
 	ux.Logger.PrintToUser(t.Render())
 }
