@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	PoAValidarorMessengerContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
-	PoSValidarorMessengerContractAddress = "0x6E584C2D56B4c356e7d82EC6129349393dc5df17"
+	ValidatorContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
 )
 
 //go:embed deployed_poa_validator_manager_bytecode.txt
@@ -25,7 +24,7 @@ func AddPoAValidatorManagerContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
 	deployedPoaValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoAValidatorManagerBytecode)))
-	allocs[common.HexToAddress(PoAValidarorMessengerContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(ValidatorContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedPoaValidatorManagerBytes,
 		Nonce:   1,

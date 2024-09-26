@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/subnet-evm/core"
@@ -32,32 +31,36 @@ var (
 	externalGasTokenBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1000))
 )
 
-func FillEvmSidecar(
+func CreateEvmSidecar(
 	sc *models.Sidecar,
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
 	tokenSymbol string,
 	getRPCVersionFromBinary bool,
-) error {
+) (*models.Sidecar, error) {
 	var (
 		err        error
 		rpcVersion int
 	)
 
+	if sc == nil {
+		sc = &models.Sidecar{}
+	}
+
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
 		if err != nil {
-			return fmt.Errorf("failed to install subnet-evm: %w", err)
+			return nil, fmt.Errorf("failed to install subnet-evm: %w", err)
 		}
 		rpcVersion, err = GetVMBinaryProtocolVersion(vmBin)
 		if err != nil {
-			return fmt.Errorf("unable to get RPC version: %w", err)
+			return nil, fmt.Errorf("unable to get RPC version: %w", err)
 		}
 	} else {
 		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -69,7 +72,7 @@ func FillEvmSidecar(
 	sc.TokenSymbol = tokenSymbol
 	sc.TokenName = tokenSymbol + " Token"
 
-	return nil
+	return sc, nil
 }
 
 func CreateEVMGenesis(
@@ -78,8 +81,6 @@ func CreateEVMGenesis(
 	teleporterInfo *teleporter.Info,
 	addICMRegistryToGenesis bool,
 ) ([]byte, error) {
-	ux.Logger.PrintToUser("creating genesis for blockchain %s", blockchainName)
-
 	feeConfig := getFeeConfig(params)
 
 	// Validity checks on the parameter settings.

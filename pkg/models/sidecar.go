@@ -66,3 +66,11 @@ func (sc Sidecar) NetworkDataIsEmpty(network string) bool {
 	_, networkExists := sc.Networks[network]
 	return !networkExists
 }
+
+func (sc Sidecar) PoA() bool {
+	return sc.ValidatorManagement == ProofOfAuthority
+}
+
+func (sc Sidecar) PoS() bool {
+	return sc.ValidatorManagement == ProofOfStake
+}

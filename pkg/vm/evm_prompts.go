@@ -172,17 +172,17 @@ func PromptSubnetEVMGenesisParams(
 	)
 	params.initialTokenAllocation = core.GenesisAlloc{}
 
-	if sc.ValidatorManagement == models.ProofOfAuthority {
+	if sc.PoA() {
 		params.UsePoAValidatorManager = true
 		params.initialTokenAllocation[common.HexToAddress(sc.PoAValidatorManagerOwner)] = core.GenesisAccount{
 			Balance: defaultPoAOwnerBalance,
 		}
 	}
 
-	if sc.ValidatorManagement == models.ProofOfStake {
+	if sc.PoS() {
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
-			common.HexToAddress(validatormanager.PoSValidarorMessengerContractAddress),
+			common.HexToAddress(validatormanager.ValidatorContractAddress),
 		}
 	}
 
