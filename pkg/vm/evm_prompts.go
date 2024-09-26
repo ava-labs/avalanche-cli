@@ -532,6 +532,7 @@ func promptNativeGasToken(
 	if defaultsKind == TestDefaults {
 		ux.Logger.PrintToUser("prefunding address %s with balance %s", PrefundedEwoqAddress, defaultEVMAirdropAmount)
 		addEwoqAllocation(params.initialTokenAllocation)
+		return params, tokenSymbol, nil
 	}
 
 	if defaultsKind == ProductionDefaults {

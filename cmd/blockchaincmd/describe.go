@@ -21,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -319,6 +320,9 @@ func printSmartContracts(genesis core.Genesis) {
 				if address == common.HexToAddress(icmgenesis.MessengerContractAddress) {
 					description = "ICM Messenger"
 					deployer = icmgenesis.MessengerDeployerAddress
+				}
+				if address == common.HexToAddress(validatormanager.PoAValidarorMessengerContractAddress) {
+					description = "PoA Validator Manager"
 				}
 				t.AppendRow(table.Row{description, address.Hex(), deployer})
 			}
