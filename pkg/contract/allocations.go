@@ -217,6 +217,40 @@ func getGenesisNativeMinterAdmin(
 	return false, false, "", "", "", nil
 }
 
+func getGenesisNativeMinterManager(
+	app *application.Avalanche,
+	network models.Network,
+	genesisData []byte,
+) (bool, bool, string, string, string, error) {
+	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
+	if err != nil {
+		return false, false, "", "", "", err
+	}
+	if genesis.Config != nil && genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey] != nil {
+		allowListCfg, ok := genesis.Config.GenesisPrecompiles[nativeminter.ConfigKey].(*nativeminter.Config)
+		if !ok {
+			return false, false, "", "", "", fmt.Errorf(
+				"expected config of type nativeminter.AllowListConfig, but got %T",
+				allowListCfg,
+			)
+		}
+		if len(allowListCfg.AllowListConfig.ManagerAddresses) == 0 {
+			return false, false, "", "", "", nil
+		}
+		for _, admin := range allowListCfg.AllowListConfig.ManagerAddresses {
+			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			if err != nil {
+				return false, false, "", "", "", err
+			}
+			if found {
+				return true, true, keyName, addressStr, privKey, nil
+			}
+		}
+		return true, false, "", allowListCfg.AllowListConfig.ManagerAddresses[0].Hex(), "", nil
+	}
+	return false, false, "", "", "", nil
+}
+
 func GetEVMSubnetGenesisNativeMinterAdmin(
 	app *application.Avalanche,
 	network models.Network,
@@ -234,4 +268,23 @@ func GetEVMSubnetGenesisNativeMinterAdmin(
 		return false, false, "", "", "", fmt.Errorf("genesis native minter admin query is only supported on EVM based vms")
 	}
 	return getGenesisNativeMinterAdmin(app, network, genesisData)
+}
+
+func GetEVMSubnetGenesisNativeMinterManager(
+	app *application.Avalanche,
+	network models.Network,
+	chainSpec ChainSpec,
+) (bool, bool, string, string, string, error) {
+	genesisData, err := GetBlockchainGenesis(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return false, false, "", "", "", err
+	}
+	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
+		return false, false, "", "", "", fmt.Errorf("genesis native minter manager query is only supported on EVM based vms")
+	}
+	return getGenesisNativeMinterManager(app, network, genesisData)
 }

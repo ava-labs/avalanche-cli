@@ -17,7 +17,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var changeOwnerSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+var changeOwnerSupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 // avalanche blockchain changeOwner
 func newChangeOwnerCmd() *cobra.Command {

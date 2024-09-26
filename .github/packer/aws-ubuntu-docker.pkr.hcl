@@ -36,6 +36,12 @@ source "amazon-ebs" "ubuntu_amd64" {
   ami_description = "Avalanche-CLI Ubuntu 20.04 Docker"
   instance_type = "t3.xlarge"
   region        = "us-east-1"
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+  imds_support = "v2.0"
   source_ami_filter {
     filters = {
       name                = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
@@ -64,6 +70,12 @@ source "amazon-ebs" "ubuntu_arm64" {
   ami_description = "Avalanche-CLI Ubuntu 20.04 Docker"
   instance_type = "t4g.xlarge"  # Adjust the instance type for arm64
   region        = "us-east-1"
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+  }
+  imds_support = "v2.0"
   source_ami_filter {
     filters = {
       name                = "ubuntu/images/*ubuntu-focal-20.04-arm64-server-*"  # Filter for arm64 AMIs
@@ -99,7 +111,7 @@ build {
         inline = [
             "export DEBIAN_FRONTEND=noninteractive",
             "sudo add-apt-repository -y ppa:longsleep/golang-backports",
-            "sudo apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y install ca-certificates curl gcc git golang-go=2:1.22~3longsleep1",
+            "sudo apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y install ca-certificates curl gcc git golang-go",
             "sudo install -m 0755 -d /etc/apt/keyrings && sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc && sudo chmod a+r /etc/apt/keyrings/docker.asc",
             "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
             "sudo apt-get -y update && sudo apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-compose",
