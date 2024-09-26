@@ -103,7 +103,6 @@ func addNodeAsSubnetValidator(
 		useLedger,
 		subnetName,
 		nodeID,
-		subnetID,
 		defaultValidatorParams,
 		waitForTxAcceptance,
 	); err != nil {

@@ -129,20 +129,11 @@ func addValidator(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
-
-	subnetID := sc.Networks[network.Name()].SubnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
-	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 	if nonSOV {
-		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance, subnetID)
+		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName)
+	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr)
 }
 
 func promptValidatorBalance() (uint64, error) {
@@ -157,8 +148,7 @@ func CallAddValidator(
 	kc *keychain.Keychain,
 	useLedgerSetting bool,
 	blockchainName string,
-	nodeIDstr string,
-	subnetID ids.ID,
+	nodeIDStrFormat string,
 ) error {
 	useLedger = useLedgerSetting
 
@@ -191,6 +181,16 @@ func CallAddValidator(
 		return errors.New("unsupported network")
 	}
 
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
 	// TODO: implement getting validator manager controller address
 	//kcKeys, err := kc.PChainFormattedStrAddresses()
 	//if err != nil {
@@ -216,7 +216,7 @@ func CallAddValidator(
 		}
 	}
 
-	ux.Logger.PrintToUser("NodeID: %s", nodeIDStr)
+	ux.Logger.PrintToUser("NodeID: %s", nodeIDStrFormat)
 	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Weight: %d", weight)
 	ux.Logger.PrintToUser("Balance: %d", balance)
@@ -257,8 +257,16 @@ func CallAddValidator(
 		Threshold: 1,
 		Addrs:     addrs,
 	}
+	nodeID, err := ids.NodeIDFromString(nodeIDStrFormat)
+	if err != nil {
+		return err
+	}
 	// TODO: generate warp message
-	message, err := generateWarpMessageAddValidator(subnetID)
+	// expiry is set to 48 hours from time of transaction
+	message, err := generateWarpMessageAddValidator(subnetID, nodeID, weight, publicKey, uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix()))
+	if err != nil {
+		return err
+	}
 	tx, err := deployer.RegisterSubnetValidator(balance, blsInfo, changeOwner, message)
 	if err != nil {
 		return err
@@ -278,7 +286,6 @@ func CallAddValidatorNonSOV(
 	useLedgerSetting bool,
 	blockchainName string,
 	nodeIDStr string,
-	subnetID ids.ID,
 	defaultValidatorParamsSetting bool,
 	waitForTxAcceptanceSetting bool,
 ) error {
@@ -316,6 +323,16 @@ func CallAddValidatorNonSOV(
 	_, err = ValidateSubnetNameAndGetChains([]string{blockchainName})
 	if err != nil {
 		return err
+	}
+
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
 	}
 
 	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
