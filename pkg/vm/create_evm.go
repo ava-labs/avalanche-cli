@@ -76,7 +76,6 @@ func CreateEvmSidecar(
 }
 
 func CreateEVMGenesis(
-	blockchainName string,
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
 	addICMRegistryToGenesis bool,

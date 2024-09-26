@@ -344,7 +344,6 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 				description = "PoA Validator Manager"
 			} else {
 				description = "PoS Validator Manager"
-
 			}
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
