@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -216,6 +217,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		if err := printAllocations(sc, genesis); err != nil {
 			return err
 		}
+		printSmartContracts(genesis)
 		printPrecompiles(genesis)
 	}
 
@@ -275,8 +277,12 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 		t.Style().Options.SeparateRows = true
 		t.SetTitle("Initial Token Allocation")
 		t.AppendHeader(table.Row{"Description", "Address and Private Key", "Amount (10^18)", "Amount (wei)"})
-		for address := range genesis.Alloc {
-			amount := genesis.Alloc[address].Balance
+		for address, allocation := range genesis.Alloc {
+			amount := allocation.Balance
+			// we are only interested in supply distribution here
+			if amount == nil || big.NewInt(0).Cmp(amount) == 0 {
+				continue
+			}
 			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 			description := ""
 			privKey := ""
@@ -296,6 +302,31 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 		ux.Logger.PrintToUser(t.Render())
 	}
 	return nil
+}
+
+func printSmartContracts(genesis core.Genesis) {
+	if len(genesis.Alloc) == 0 {
+		return
+	}
+	ux.Logger.PrintToUser("")
+	t := table.NewWriter()
+	t.Style().Title.Align = text.AlignCenter
+	t.Style().Title.Format = text.FormatUpper
+	t.Style().Options.SeparateRows = true
+	t.SetTitle("Smart Contracts")
+	t.AppendHeader(table.Row{"Description", "Address", "Deployer"})
+	for address, allocation := range genesis.Alloc {
+		if len(allocation.Code) == 0 {
+			continue
+		}
+		var description, deployer string
+		if address == common.HexToAddress(icmgenesis.MessengerContractAddress) {
+			description = "ICM Messenger"
+			deployer = icmgenesis.MessengerDeployerAddress
+		}
+		t.AppendRow(table.Row{description, address.Hex(), deployer})
+	}
+	ux.Logger.PrintToUser(t.Render())
 }
 
 func printPrecompiles(genesis core.Genesis) {

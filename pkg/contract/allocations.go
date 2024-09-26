@@ -235,3 +235,19 @@ func GetEVMSubnetGenesisNativeMinterAdmin(
 	}
 	return getGenesisNativeMinterAdmin(app, network, genesisData)
 }
+
+func ContractAddressIsInGenesisData(
+	genesisData []byte,
+	contractAddress common.Address,
+) (bool, error) {
+	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
+	if err != nil {
+		return false, err
+	}
+	for address, allocation := range genesis.Alloc {
+		if address == contractAddress {
+			return len(allocation.Code) > 0, nil
+		}
+	}
+	return false, nil
+}
