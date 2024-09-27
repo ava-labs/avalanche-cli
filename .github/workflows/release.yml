@@ -7,52 +7,21 @@ on:
 
 jobs:
   lint:
-    name: Lint
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: "1.21.7"
-      - uses: actions/checkout@v3
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.56.2
-          working-directory: .
-          args: --timeout 3m
-      - name: Install license check
-        run: go install github.com/google/addlicense@v1.0.0
-      - name: Check license
-        run: addlicense -f ./LICENSE.header -check -v ./**/*.go
-  test:
-    name: Golang Unit Tests v${{ matrix.go }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        go: ["1.21.7"]
-        os: [ubuntu-20.04]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go }}
-      - run: go mod download
-      - run: scripts/build.sh
-      - run: go test -v -coverprofile=coverage.out $(go list ./... | grep -v /tests/ | grep -v '/sdk/')
-        env:
-          CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
-      - run: go tool cover -func=coverage.out
+    uses: ./.github/workflows/lint.yml
+
+  unit_test:
+    uses: ./.github/workflows/unit-test.yml
+
   release:
-    needs: [lint, test]
+    needs: [lint, unit_test]
     runs-on: ubuntu-20.04
     steps:
       - name: Git checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           path: avalanche-cli
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: "1.21.7"
       - name: Set up arm64 cross compiler
@@ -60,7 +29,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install gcc-aarch64-linux-gnu
       - name: Checkout osxcross
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: tpoechtrager/osxcross
           path: osxcross
@@ -92,7 +61,7 @@ jobs:
           args: release --clean
           workdir: ./avalanche-cli/
         env:
-          #https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
           DOCKERFILE: ./Dockerfile.release
