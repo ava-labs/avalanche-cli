@@ -62,6 +62,7 @@ var (
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
+	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority,--proof-of-stake, --poa-manager-owner are only applicable to Subnet Only Validator (SOV) blockchains")
 )
 
 // avalanche blockchain create
@@ -109,6 +110,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	cmd.Flags().StringVar(&createFlags.poaValidatorManagerOwner, "poa-manager-owner", "", "EVM address that controls Validator Manager Owner (for Proof of Authority only)")
+	cmd.Flags().BoolVar(&nonSOV, "not-sov", false, "set to true if creating non-SOV (Subnet Only Validator) blockchain")
 	return cmd
 }
 
@@ -193,6 +195,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
+	if nonSOV {
+		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.poaValidatorManagerOwner != "" {
+			return errSOVFlagsOnly
+		}
+	}
 	// validator management type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStake}) {
 		return errMutuallyExlusiveValidatorManagementOptions
