@@ -1,6 +1,6 @@
 module github.com/ava-labs/avalanche-cli
 
-go 1.22.5
+go 1.22.7
 
 require (
 	github.com/ava-labs/apm v1.0.0
