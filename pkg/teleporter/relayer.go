@@ -533,7 +533,7 @@ func waitForRelayerInitialization(
 		checkInterval = 100 * time.Millisecond
 	}
 	if checkTimeout == 0 {
-		checkTimeout = 10 * time.Second
+		checkTimeout = 120 * time.Second
 	}
 	t0 := time.Now()
 	for {
