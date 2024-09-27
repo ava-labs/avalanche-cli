@@ -100,6 +100,9 @@ func CreateEVMGenesis(
 		if params.UseExternalGasToken {
 			balance = externalGasTokenBalance
 		}
+		if params.initialTokenAllocation == nil {
+			params.initialTokenAllocation = core.GenesisAlloc{}
+		}
 		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
