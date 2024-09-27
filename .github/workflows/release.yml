@@ -1,4 +1,4 @@
-name: Release (with lint and test)
+name: Release
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - "*"
 
 jobs:
+  # First confirm that the linting and unit tests pass at this commit prior to creating release artifacts.
   lint:
     uses: ./.github/workflows/lint.yml
 
