@@ -278,39 +278,29 @@ func TestExpandHome(t *testing.T) {
 	input1 := "~/documents/file.txt"
 	expected1 := filepath.Join("/home", "testuser", "documents/file.txt")
 	result1 := host.ExpandHome(input1)
-	if result1 != expected1 {
-		t.Errorf("Expected: %s, Got: %s", expected1, result1)
-	}
+	require.Equal(t, expected1, result1)
 
 	// Test case 2: path starts with "~" but with no following directory
 	input2 := "~"
 	expected2 := filepath.Join("/home", "testuser")
 	result2 := host.ExpandHome(input2)
-	if result2 != expected2 {
-		t.Errorf("Expected: %s, Got: %s", expected2, result2)
-	}
+	require.Equal(t, expected2, result2)
 
 	// Test case 3: path does not start with "~/"
 	input3 := "/var/www"
 	expected3 := "/var/www"
 	result3 := host.ExpandHome(input3)
-	if result3 != expected3 {
-		t.Errorf("Expected: %s, Got: %s", expected3, result3)
-	}
+	require.Equal(t, expected3, result3)
 
 	// Test case 4: empty input
 	input4 := ""
 	expected4 := "/home/testuser"
 	result4 := host.ExpandHome(input4)
-	if result4 != expected4 {
-		t.Errorf("Expected: %s, Got: %s", expected4, result4)
-	}
+	require.Equal(t, expected4, result4)
 
 	// Test case 5: path starts with "~/" but with no following directory
 	input5 := "~/"
 	expected5 := filepath.Join("/home", "testuser", "/")
 	result5 := host.ExpandHome(input5)
-	if result5 != expected5 {
-		t.Errorf("Expected: %s, Got: %s", expected5, result5)
-	}
+	require.Equal(t, expected5, result5)
 }

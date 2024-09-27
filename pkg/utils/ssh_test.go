@@ -2,7 +2,11 @@
 // See the file LICENSE for licensing terms.
 package utils
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestIsSSHKey(t *testing.T) {
 	testCases := []struct {
@@ -35,9 +39,7 @@ func TestIsSSHKey(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := IsSSHPubKey(tc.key)
-			if result != tc.expected {
-				t.Errorf("Expected %v for key '%s', but got %v", tc.expected, tc.key, result)
-			}
+			require.Equal(t, tc.expected, result)
 		})
 	}
 }

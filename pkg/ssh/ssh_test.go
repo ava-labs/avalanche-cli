@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReplaceCustomVarDashboardValues(t *testing.T) {
@@ -93,7 +94,5 @@ func TestReplaceCustomVarDashboardValues(t *testing.T) {
 			]
 		}
 	}`
-	if string(modifiedContent) != expectedContent {
-		t.Errorf("Expected content after replacement:\n%s\nGot:\n%s", expectedContent, string(modifiedContent))
-	}
+	require.Equal(t, string(modifiedContent), expectedContent)
 }

@@ -4,9 +4,12 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSplitKeyValueStringToMap(t *testing.T) {
@@ -18,9 +21,7 @@ func TestSplitKeyValueStringToMap(t *testing.T) {
 		"key3": "value3",
 	}
 	result1, _ := SplitKeyValueStringToMap(input1, ",")
-	if !reflect.DeepEqual(result1, expected1) {
-		t.Errorf("Expected %v, but got %v", expected1, result1)
-	}
+	require.True(t, reflect.DeepEqual(result1, expected1), fmt.Sprintf("Expected %v, but got %v", expected1, result1))
 
 	// Test case 2: Splitting a string with a single key-value pair separated by delimiter
 	input2 := "key=value"
@@ -28,17 +29,13 @@ func TestSplitKeyValueStringToMap(t *testing.T) {
 		"key": "value",
 	}
 	result2, _ := SplitKeyValueStringToMap(input2, ",")
-	if !reflect.DeepEqual(result2, expected2) {
-		t.Errorf("Expected %v, but got %v", expected2, result2)
-	}
+	require.True(t, reflect.DeepEqual(result2, expected2), fmt.Sprintf("Expected %v, but got %v", expected2, result2))
 
 	// Test case 3: Splitting a string with no key-value pairs
 	input3 := ""
 	expected3 := map[string]string{}
 	result3, _ := SplitKeyValueStringToMap(input3, ",")
-	if !reflect.DeepEqual(result3, expected3) {
-		t.Errorf("Expected %v, but got %v", expected3, result3)
-	}
+	require.True(t, reflect.DeepEqual(result3, expected3), fmt.Sprintf("Expected %v, but got %v", expected3, result3))
 
 	// Test case 4: Splitting a string with  partial key-value pairs
 	input4 := "key0,key1=value1,key2=value2,key3=value3"
@@ -49,9 +46,7 @@ func TestSplitKeyValueStringToMap(t *testing.T) {
 		"key3": "value3",
 	}
 	result4, _ := SplitKeyValueStringToMap(input4, ",")
-	if !reflect.DeepEqual(result4, expected4) {
-		t.Errorf("Expected %v, but got %v", expected4, result4)
-	}
+	require.True(t, reflect.DeepEqual(result4, expected4), fmt.Sprintf("Expected %v, but got %v", expected4, result4))
 
 	// Test case 5: real life scenario
 	input5 := "aws_node_i-009713a2ebe873b86 ansible_host=127.0.0.1 ansible_user=ubuntu ansible_ssh_private_key_file=/Users/user/.ssh/kp.pem ansible_ssh_common_args='-o IdentitiesOnly=yes -o StrictHostKeyChecking=no'"
@@ -63,9 +58,7 @@ func TestSplitKeyValueStringToMap(t *testing.T) {
 		"ansible_ssh_common_args":      "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
 	}
 	result5, _ := SplitKeyValueStringToMap(input5, " ")
-	if !reflect.DeepEqual(result5, expected5) {
-		t.Errorf("Expected %v, but got %v", expected5, result5)
-	}
+	require.True(t, reflect.DeepEqual(result5, expected5), fmt.Sprintf("Expected %v, but got %v", expected5, result5))
 }
 
 func TestUnique(t *testing.T) {

@@ -6,23 +6,21 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpandHome(t *testing.T) {
 	// Test case 1: Absolute path
 	absolutePath := "/tmp/testfile.txt"
 	expandedAbsolutePath := ExpandHome(absolutePath)
-	if expandedAbsolutePath != absolutePath {
-		t.Errorf("ExpandHome failed for absolute path: expected %s, got %s", absolutePath, expandedAbsolutePath)
-	}
+	require.Equal(t, absolutePath, expandedAbsolutePath)
 
 	// Test case 2: Relative path
 	relativePath := "testfile.txt"
 	expectedRelativePath := filepath.Join(".", relativePath)
 	expandedRelativePath := ExpandHome(relativePath)
-	if expandedRelativePath != expectedRelativePath {
-		t.Errorf("ExpandHome failed for relative path: expected %s, got %s", expectedRelativePath, expandedRelativePath)
-	}
+	require.Equal(t, expectedRelativePath, expandedRelativePath)
 
 	// Test case 3: Path starting with ~
 	homeDir, err := os.UserHomeDir()
@@ -32,15 +30,11 @@ func TestExpandHome(t *testing.T) {
 	tildePath := "~/testfile.txt"
 	expectedTildePath := filepath.Join(homeDir, "testfile.txt")
 	expandedTildePath := ExpandHome(tildePath)
-	if expandedTildePath != expectedTildePath {
-		t.Errorf("ExpandHome failed for path starting with ~: expected %s, got %s", expectedTildePath, expandedTildePath)
-	}
+	require.Equal(t, expectedTildePath, expandedTildePath)
 
 	// Test case 4: Empty path
 	emptyPath := ""
 	expectedEmptyPath := homeDir
 	expandedEmptyPath := ExpandHome(emptyPath)
-	if expandedEmptyPath != expectedEmptyPath {
-		t.Errorf("ExpandHome failed for empty path: expected %s, got %s", expectedEmptyPath, expandedEmptyPath)
-	}
+	require.Equal(t, expectedEmptyPath, expandedEmptyPath)
 }

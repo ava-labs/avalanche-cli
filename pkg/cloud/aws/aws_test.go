@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/stretchr/testify/require"
 )
 
 // TestCheckIPInSg tests the CheckIPInSg function
@@ -41,59 +42,41 @@ func TestCheckIPInSg(t *testing.T) {
 
 	// ip is present in SG
 	present := CheckIPInSg(sg, "192.168.1.5", 80)
-	if !present {
-		t.Errorf("Expected IP to be present in SecurityGroup")
-	}
+	require.True(t, present, "Expected IP to be present in SecurityGroup")
 
 	// ip is not present in SG
 	notPresent := CheckIPInSg(sg, "192.168.2.5", 80)
-	if notPresent {
-		t.Errorf("Expected IP not to be present in SecurityGroup")
-	}
+	require.False(t, notPresent, "Expected IP not to be present in SecurityGroup")
 
 	// invalid IP
 	invalidIP := CheckIPInSg(sg, "invalid_ip", 80)
-	if invalidIP {
-		t.Errorf("Expected invalid IP not to be present in SecurityGroup")
-	}
+	require.False(t, invalidIP, "Expected invalid IP not to be present in SecurityGroup")
 
 	// ip present in SG but with wrong port
 	wrongPort := CheckIPInSg(sg, "10.0.1.5", 443)
-	if wrongPort {
-		t.Errorf("Expected IP to be present in SecurityGroup but with wrong port")
-	}
+	require.False(t, wrongPort, "Expected IP to be present in SecurityGroup but with wrong port")
 
 	// ip is not present in any CIDR range in SG
 	outsideRange := CheckIPInSg(sg, "172.17.0.5", 443)
-	if outsideRange {
-		t.Errorf("Expected IP not to be present in any CIDR range in SecurityGroup")
-	}
+	require.False(t, outsideRange, "Expected IP not to be present in any CIDR range in SecurityGroup")
 
 	// current IP and security group both have 0.0.0.0/0 but with port 22
 	bothAnyDifferentPort := CheckIPInSg(sg, "0.0.0.0/0", 22)
-	if !bothAnyDifferentPort {
-		t.Errorf("Expected both 0.0.0.0/0 IP addresses to match with port 22")
-	}
+	require.True(t, bothAnyDifferentPort, "Expected both 0.0.0.0/0 IP addresses to match with port 22")
+
 	bothAnyDifferentPortNoMask := CheckIPInSg(sg, "0.0.0.0", 22)
-	if !bothAnyDifferentPortNoMask {
-		t.Errorf("Expected both 0.0.0.0/0 IP addresses to match with port 22")
-	}
+	require.True(t, bothAnyDifferentPortNoMask, "Expected both 0.0.0.0/0 IP addresses to match with port 22")
+
 	fullButWrongPort := CheckIPInSg(sg, "0.0.0.0/0", 23)
-	if fullButWrongPort {
-		t.Errorf("Expected both 0.0.0.0/0 23 IP addresses to match 0.0.0.0/0 with port 22")
-	}
+	require.False(t, fullButWrongPort, "Expected both 0.0.0.0/0 23 IP addresses to match 0.0.0.0/0 with port 22")
+
 	fullButWrongPortNoMask := CheckIPInSg(sg, "0.0.0.0", 23)
-	if fullButWrongPortNoMask {
-		t.Errorf("Expected both 0.0.0.0 23 IP addresses to match 0.0.0.0/0 with port 22")
-	}
+	require.False(t, fullButWrongPortNoMask, "Expected both 0.0.0.0 23 IP addresses to match 0.0.0.0/0 with port 22")
+
 	someIPAndFullAccess := CheckIPInSg(sg, "1.1.1.1", 22)
-	if !someIPAndFullAccess {
-		t.Errorf("Expected both 0.0.0.0 23 IP addresses to match 0.0.0.0/0 with port 22")
-	}
+	require.True(t, someIPAndFullAccess, "Expected both 0.0.0.0 23 IP addresses to match 0.0.0.0/0 with port 22")
 
 	// current IP and security group both have 1.1.1.1/32
 	bothSpecific := CheckIPInSg(sg, "1.1.1.1/32", 80)
-	if !bothSpecific {
-		t.Errorf("Expected both 1.1.1.1/32 IP addresses to match")
-	}
+	require.True(t, bothSpecific, "Expected both 1.1.1.1/32 IP addresses to match")
 }
