@@ -19,8 +19,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          path: avalanche-cli
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -61,7 +59,7 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-        
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:

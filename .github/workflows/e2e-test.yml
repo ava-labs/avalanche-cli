@@ -46,14 +46,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install MacOSX dependencies
-        if: ${{ matrix.os == 'macos-14' }}
-        run: brew install python-setuptools
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
+
+      - name: Install MacOSX dependencies
+        if: ${{ matrix.os == 'macos-14' }}
+        run: brew install python-setuptools
 
       - name: Use Node.js
         uses: actions/setup-node@v3
