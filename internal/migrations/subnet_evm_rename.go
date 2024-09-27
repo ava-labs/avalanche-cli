@@ -8,10 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 )
 
 const oldSubnetEVM = "SubnetEVM"

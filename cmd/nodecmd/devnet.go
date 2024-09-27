@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-
 	"github.com/spf13/cobra"
 )
 

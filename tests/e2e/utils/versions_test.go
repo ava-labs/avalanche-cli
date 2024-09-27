@@ -14,9 +14,10 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/semver"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 var _ VersionMapper = &testMapper{}

@@ -6,14 +6,14 @@ import (
 	"context"
 	"fmt"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 )
 
 func getNodesWithDynamicIP(clusterNodes []string) ([]models.NodeConfig, error) {
@@ -113,7 +113,7 @@ func updatePublicIPs(clusterName string) error {
 				changed++
 			}
 			node.ElasticIP = publicIPMap[node.NodeID]
-			if err := app.CreateNodeCloudConfigFile(node.NodeID, &node); err != nil { //nolint:gosec
+			if err := app.CreateNodeCloudConfigFile(node.NodeID, &node); err != nil {
 				return err
 			}
 		}

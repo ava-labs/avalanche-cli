@@ -25,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/awm-relayer/config"
+
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
 )
 

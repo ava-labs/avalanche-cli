@@ -3,7 +3,6 @@
 package ictt
 
 import (
-	_ "embed"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -11,6 +10,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ethereum/go-ethereum/common"
+
+	_ "embed"
 )
 
 type TeleporterFeeInfo struct {

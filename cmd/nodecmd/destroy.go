@@ -8,17 +8,17 @@ import (
 	"os"
 	"strings"
 
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/net/context"
 
-	"github.com/spf13/cobra"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 )
 
 var (

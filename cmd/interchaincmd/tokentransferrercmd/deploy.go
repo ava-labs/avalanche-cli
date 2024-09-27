@@ -3,12 +3,10 @@
 package tokentransferrercmd
 
 import (
-	_ "embed"
 	"fmt"
 	"math/big"
 	"time"
 
-	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -18,11 +16,15 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/spf13/cobra"
+
+	_ "embed"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
+
+	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 )
 
 type HomeFlags struct {

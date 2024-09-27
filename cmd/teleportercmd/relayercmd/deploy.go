@@ -20,10 +20,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/spf13/cobra"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 type DeployFlags struct {

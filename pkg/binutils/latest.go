@@ -11,9 +11,10 @@ import (
 	"runtime"
 
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
-	"go.uber.org/zap"
 )
 
 // CheckReleaseVersion checks the latest available version from github for the given repo and version

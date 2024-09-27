@@ -13,18 +13,20 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/coreth/ethclient"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/liyue201/erc20-go/erc20"
+	"github.com/olekukonko/tablewriter"
+	"github.com/spf13/cobra"
+
 	"github.com/ava-labs/avalanchego/ids"
-	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/avm"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/coreth/ethclient"
-	"github.com/ethereum/go-ethereum/common"
+
+	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	goethereumethclient "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/liyue201/erc20-go/erc20"
-	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
 )
 
 const (

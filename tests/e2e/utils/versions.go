@@ -15,8 +15,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"golang.org/x/mod/semver"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 var (

@@ -9,10 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-
 	"github.com/ava-labs/apm/types"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -22,9 +18,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/go-git/go-git/v5"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/version"
-	"gopkg.in/yaml.v3"
 )
 
 var (

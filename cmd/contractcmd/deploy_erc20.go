@@ -10,10 +10,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/spf13/cobra"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 type DeployERC20Flags struct {

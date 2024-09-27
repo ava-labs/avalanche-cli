@@ -9,8 +9,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/ledger"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"golang.org/x/exp/maps"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 )
 
 type Keychain struct {

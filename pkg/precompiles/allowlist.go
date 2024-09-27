@@ -3,12 +3,13 @@
 package precompiles
 
 import (
-	_ "embed"
 	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ethereum/go-ethereum/common"
+
+	_ "embed"
 )
 
 func SetAdmin(

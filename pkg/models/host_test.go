@@ -12,10 +12,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	oos "github.com/okteto/remote/pkg/os"
-	ossh "github.com/okteto/remote/pkg/ssh"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
+
+	oos "github.com/okteto/remote/pkg/os"
+	ossh "github.com/okteto/remote/pkg/ssh"
 )
 
 const (

@@ -21,13 +21,15 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
+	"github.com/ava-labs/avalanchego/ids"
+
+	ANRclient "github.com/ava-labs/avalanche-network-runner/client"
 )
 
 const (

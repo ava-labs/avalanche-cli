@@ -3,7 +3,6 @@
 package ictt
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,6 +12,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+
+	_ "embed"
 )
 
 func RepoDir(

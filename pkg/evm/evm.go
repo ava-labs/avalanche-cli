@@ -14,9 +14,10 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/rpc"
-	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+
+	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
 )
 
 const (

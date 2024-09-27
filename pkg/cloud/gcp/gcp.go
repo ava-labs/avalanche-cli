@@ -11,17 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/rand"
-
-	"golang.org/x/exp/slices"
-	"golang.org/x/sync/errgroup"
-
-	"google.golang.org/api/compute/v1"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"golang.org/x/exp/rand"
+	"golang.org/x/exp/slices"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/api/compute/v1"
 )
 
 const (

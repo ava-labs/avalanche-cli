@@ -16,8 +16,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 var (

@@ -3,10 +3,12 @@
 package tokentransferrercmd
 
 import (
-	_ "embed"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+
+	_ "embed"
+
 	"github.com/ava-labs/avalanchego/ids"
 )
 

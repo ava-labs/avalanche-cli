@@ -14,9 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
 )

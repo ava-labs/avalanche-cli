@@ -3,10 +3,11 @@
 package contract
 
 import (
-	_ "embed"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+
+	_ "embed"
 )
 
 //go:embed contracts/bin/Token.bin

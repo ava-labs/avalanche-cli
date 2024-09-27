@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"sort"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"golang.org/x/exp/maps"
 )
 
 // PrintLocalNetworkEndpoints prints the endpoints coming from the status call

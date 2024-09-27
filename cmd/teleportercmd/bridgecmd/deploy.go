@@ -3,11 +3,10 @@
 package bridgecmd
 
 import (
-	_ "embed"
-
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
-
 	"github.com/spf13/cobra"
+
+	_ "embed"
 )
 
 // avalanche teleporter bridge deploy

@@ -3,11 +3,11 @@
 package ictt
 
 import (
-	_ "embed"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/liyue201/erc20-go/erc20"
+
+	_ "embed"
 )
 
 func GetTokenParams(endpoint string, tokenAddress common.Address) (string, string, uint8, error) {

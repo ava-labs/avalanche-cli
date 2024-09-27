@@ -5,11 +5,11 @@ package contract
 import (
 	"fmt"
 
-	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-
 	"github.com/spf13/cobra"
+
+	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 )
 
 type PrivateKeyFlags struct {

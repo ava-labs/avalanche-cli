@@ -9,10 +9,9 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/exp/slices"
 )
 
 // GetSSHConnectionString returns the SSH connection string for the given public IP and certificate file path.

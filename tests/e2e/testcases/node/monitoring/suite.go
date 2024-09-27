@@ -16,9 +16,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
-	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"golang.org/x/exp/slices"
+
+	ginkgo "github.com/onsi/ginkgo/v2"
 )
 
 const (

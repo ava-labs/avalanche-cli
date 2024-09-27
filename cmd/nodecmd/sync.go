@@ -13,8 +13,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
+
+	"github.com/ava-labs/avalanchego/utils/set"
 )
 
 func newSyncCmd() *cobra.Command {

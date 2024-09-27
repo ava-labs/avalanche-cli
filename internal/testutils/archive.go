@@ -14,8 +14,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ava-labs/avalanchego/utils/perms"
 )
 
 func CreateZip(require *require.Assertions, src string, dest string) {

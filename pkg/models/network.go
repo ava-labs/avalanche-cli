@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+
 	"github.com/ava-labs/avalanchego/genesis"
+
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 

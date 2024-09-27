@@ -5,15 +5,17 @@ package contract
 import (
 	"fmt"
 
-	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
+
+	"github.com/ava-labs/avalanchego/ids"
+
+	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 )
 
 type ChainSpec struct {

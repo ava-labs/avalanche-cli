@@ -10,11 +10,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/mod/semver"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 type AllowList struct {

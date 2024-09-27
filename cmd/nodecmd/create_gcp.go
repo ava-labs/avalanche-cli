@@ -10,19 +10,16 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/exp/slices"
-
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"golang.org/x/exp/slices"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/compute/v1"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 func getServiceAccountKeyFilepath() (string, error) {

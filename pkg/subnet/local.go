@@ -14,9 +14,6 @@ import (
 	"sort"
 	"strings"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/mod/semver"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -29,7 +26,10 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"go.uber.org/zap"
+	"golang.org/x/exp/maps"
+	"golang.org/x/mod/semver"
+
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -38,7 +38,8 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"go.uber.org/zap"
+
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 )
 
 type LocalDeployer struct {

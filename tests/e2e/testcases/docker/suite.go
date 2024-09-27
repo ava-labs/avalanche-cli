@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"os/exec"
 
-	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+
+	ginkgo "github.com/onsi/ginkgo/v2"
 )
 
 var _ = ginkgo.Describe("[Docker]", func() {

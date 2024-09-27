@@ -11,8 +11,9 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ava-labs/avalanchego/config"
 )
 
 // TestFindByRunningProcess starts a process and then

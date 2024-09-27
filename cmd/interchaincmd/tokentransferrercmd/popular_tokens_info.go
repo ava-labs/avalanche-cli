@@ -3,11 +3,12 @@
 package tokentransferrercmd
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+
+	_ "embed"
 )
 
 type PopularTokenInfo struct {

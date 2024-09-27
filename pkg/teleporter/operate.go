@@ -3,14 +3,16 @@
 package teleporter
 
 import (
-	_ "embed"
 	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
+
+	_ "embed"
+
+	"github.com/ava-labs/avalanchego/ids"
 )
 
 func GetNextMessageID(

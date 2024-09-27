@@ -19,8 +19,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
+
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 )
 
 var (

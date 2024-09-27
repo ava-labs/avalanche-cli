@@ -8,16 +8,15 @@ import (
 	"os/exec"
 	"strings"
 
-	"golang.org/x/exp/maps"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
 func getNewKeyPairName(ec2Svc *awsAPI.AwsCloud) (string, error) {

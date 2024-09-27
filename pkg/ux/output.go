@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/fatih/color"
 )
 
 var Logger *UserLog

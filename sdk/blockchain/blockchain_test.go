@@ -10,21 +10,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ava-labs/subnet-evm/utils"
-
-	"github.com/stretchr/testify/require"
-
 	"github.com/ava-labs/avalanche-cli/sdk/keychain"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
 	"github.com/ava-labs/avalanche-cli/sdk/wallet"
+	"github.com/ava-labs/subnet-evm/core"
+	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/utils"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
-	"github.com/ava-labs/subnet-evm/core"
-	"github.com/ava-labs/subnet-evm/params"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 func getDefaultSubnetEVMGenesis() SubnetParams {

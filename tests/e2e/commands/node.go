@@ -12,10 +12,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/onsi/gomega"
+	"gopkg.in/yaml.v3"
 )
 
 const (

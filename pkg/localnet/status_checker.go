@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+
 	"github.com/ava-labs/avalanchego/api/info"
 )
 

@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanche-cli/sdk/keychain"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"

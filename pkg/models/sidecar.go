@@ -4,6 +4,7 @@ package models
 
 import (
 	"github.com/ava-labs/avalanche-network-runner/utils"
+
 	"github.com/ava-labs/avalanchego/ids"
 )
 

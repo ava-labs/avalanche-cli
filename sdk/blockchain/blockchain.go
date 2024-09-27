@@ -12,19 +12,18 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
-	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/wallet"
-
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
-
-	"github.com/ava-labs/avalanchego/ids"
-	commonAvago "github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
+	"github.com/ava-labs/avalanche-cli/sdk/wallet"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+
+	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
+	commonAvago "github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
 type SubnetParams struct {

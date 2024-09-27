@@ -9,7 +9,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )

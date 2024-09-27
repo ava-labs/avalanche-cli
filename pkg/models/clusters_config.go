@@ -3,10 +3,9 @@
 package models
 
 import (
-	"golang.org/x/exp/slices"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"golang.org/x/exp/slices"
 )
 
 type GCPConfig struct {

@@ -3,7 +3,6 @@
 package ictt
 
 import (
-	_ "embed"
 	"fmt"
 	"io"
 	"os/exec"
@@ -11,6 +10,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
+	_ "embed"
 )
 
 var (

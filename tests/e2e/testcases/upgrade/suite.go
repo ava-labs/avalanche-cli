@@ -19,12 +19,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/subnet-evm/params"
+	"github.com/onsi/gomega"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/subnet-evm/params"
+
+	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/gomega"
 )
 
 const (

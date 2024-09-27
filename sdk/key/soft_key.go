@@ -14,6 +14,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/sdk/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"go.uber.org/zap"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/cb58"
@@ -24,7 +25,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 
 	eth_crypto "github.com/ethereum/go-ethereum/crypto"
-	"go.uber.org/zap"
 )
 
 var (

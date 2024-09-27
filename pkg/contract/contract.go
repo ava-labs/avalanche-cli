@@ -3,7 +3,6 @@
 package contract
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -15,6 +14,8 @@ import (
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
+
+	_ "embed"
 )
 
 var ErrFailedReceiptStatus = fmt.Errorf("failed receipt status")

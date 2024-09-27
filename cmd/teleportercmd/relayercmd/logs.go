@@ -15,12 +15,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/utils/logging"
-
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/mitchellh/go-wordwrap"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 var (

@@ -14,10 +14,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/spf13/cobra"
+
+	"github.com/ava-labs/avalanchego/ids"
 )
 
 type MsgFlags struct {

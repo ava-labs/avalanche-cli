@@ -8,8 +8,9 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
-	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+
+	ginkgo "github.com/onsi/ginkgo/v2"
 )
 
 var _ = ginkgo.Describe("[Root]", func() {

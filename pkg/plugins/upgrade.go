@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 

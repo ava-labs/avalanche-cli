@@ -9,8 +9,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
+
+	"github.com/ava-labs/avalanchego/ids"
 )
 
 var globalNetworkFlags networkoptions.NetworkFlags
