@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	clievm "github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -31,6 +32,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
+	"github.com/ava-labs/coreth/plugin/evm"
 	goethereumcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -64,6 +66,9 @@ var (
 	receiveRecoveryStep uint64
 	PToX                bool
 	PToP                bool
+	PToC                bool
+	CToP                bool
+	CToX                bool
 	// token transferrer experimental
 	originSubnet                  string
 	destinationSubnet             string
@@ -81,6 +86,12 @@ func newTransferCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, transferSupportedNetworkOptions)
+	cmd.Flags().BoolVar(
+		&PToC,
+		"fund-c-chain",
+		false,
+		"fund C-Chain account on destination",
+	)
 	cmd.Flags().BoolVar(
 		&PToX,
 		"fund-x-chain",
@@ -229,14 +240,17 @@ func transferF(*cobra.Command, []string) error {
 		case pChainChoosen:
 			option, err := app.Prompt.CaptureList(
 				"Destination Chain",
-				[]string{"P-Chain", "X-Chain"},
+				[]string{"P-Chain", "X-Chain", "C-Chain"},
 			)
 			if err != nil {
 				return err
 			}
-			if option == "P-Chain" {
+			switch option {
+			case "P-Chain":
 				PToP = true
-			} else {
+			case "C-Chain":
+				PToC = true
+			case "X-Chain":
 				PToX = true
 			}
 		case cChainChoosen:
@@ -254,12 +268,12 @@ func transferF(*cobra.Command, []string) error {
 			if originSubnet == cChain {
 				avoidSubnet = ""
 			}
-			cancel, _, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
+			cancel, pChainChoosen, xChainChoosen, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 				app.Prompt,
 				prompt,
 				subnetNames,
-				true,
-				true,
+				false,
+				false,
 				originSubnet == cChain,
 				avoidSubnet,
 				false,
@@ -270,141 +284,147 @@ func transferF(*cobra.Command, []string) error {
 			switch {
 			case cancel:
 				return nil
+			case pChainChoosen:
+				CToP = true
+			case xChainChoosen:
+				CToX = true
 			case cChainChoosen:
 				destinationSubnet = cChain
 			default:
 				destinationSubnet = subnetName
 			}
 		}
-		originURL := network.CChainEndpoint()
-		if strings.ToLower(originSubnet) != cChain {
-			originURL, _, err = contract.GetBlockchainEndpoints(
-				app,
-				network,
-				contract.ChainSpec{
-					BlockchainName: originSubnet,
-				},
-				true,
-				false,
-			)
-			if err != nil {
-				return err
-			}
-		}
-		var destinationBlockchainID ids.ID
-		if strings.ToLower(destinationSubnet) == cChain {
-			destinationBlockchainID, err = utils.GetChainID(network.Endpoint, "C")
-			if err != nil {
-				return err
-			}
-		} else {
-			sc, err := app.LoadSidecar(destinationSubnet)
-			if err != nil {
-				return err
-			}
-			blockchainID := sc.Networks[network.Name()].BlockchainID
-			if blockchainID == ids.Empty {
-				return fmt.Errorf("subnet %s is not deployed to %s", destinationSubnet, network.Name())
-			}
-			destinationBlockchainID = blockchainID
-		}
-		if originTransferrerAddress == "" {
-			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
-			)
-			if err != nil {
-				return err
-			}
-			originTransferrerAddress = addr.Hex()
-		} else {
-			if err := prompts.ValidateAddress(originTransferrerAddress); err != nil {
-				return err
-			}
-		}
-		if destinationTransferrerAddress == "" {
-			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
-			)
-			if err != nil {
-				return err
-			}
-			destinationTransferrerAddress = addr.Hex()
-		} else {
-			if err := prompts.ValidateAddress(destinationTransferrerAddress); err != nil {
-				return err
-			}
-		}
-		if keyName == "" {
-			keyName, err = prompts.CaptureKeyName(app.Prompt, "fund the transfer", app.GetKeyDir(), true)
-			if err != nil {
-				return err
-			}
-		}
-		originK, err := app.GetKey(keyName, network, false)
-		if err != nil {
-			return err
-		}
-		privateKey := originK.PrivKeyHex()
-		var destinationAddr goethereumcommon.Address
-		if destinationAddrStr == "" && destinationKeyName == "" {
-			option, err := app.Prompt.CaptureList(
-				"Do you want to choose a stored key for the destination, or input a destination address?",
-				[]string{"Key", "Address"},
-			)
-			if err != nil {
-				return err
-			}
-			switch option {
-			case "Key":
-				destinationKeyName, err = prompts.CaptureKeyName(app.Prompt, "receive the transfer", app.GetKeyDir(), true)
-				if err != nil {
-					return err
-				}
-			case "Address":
-				addr, err := app.Prompt.CaptureAddress(
-					"Enter the destination address",
+		if destinationSubnet != "" {
+			originURL := network.CChainEndpoint()
+			if strings.ToLower(originSubnet) != cChain {
+				originURL, _, err = contract.GetBlockchainEndpoints(
+					app,
+					network,
+					contract.ChainSpec{
+						BlockchainName: originSubnet,
+					},
+					true,
+					false,
 				)
 				if err != nil {
 					return err
 				}
-				destinationAddrStr = addr.Hex()
 			}
-		}
-		switch {
-		case destinationAddrStr != "":
-			if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
-				return err
+			var destinationBlockchainID ids.ID
+			if strings.ToLower(destinationSubnet) == cChain {
+				destinationBlockchainID, err = utils.GetChainID(network.Endpoint, "C")
+				if err != nil {
+					return err
+				}
+			} else {
+				sc, err := app.LoadSidecar(destinationSubnet)
+				if err != nil {
+					return err
+				}
+				blockchainID := sc.Networks[network.Name()].BlockchainID
+				if blockchainID == ids.Empty {
+					return fmt.Errorf("subnet %s is not deployed to %s", destinationSubnet, network.Name())
+				}
+				destinationBlockchainID = blockchainID
 			}
-			destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
-		case destinationKeyName != "":
-			destinationK, err := app.GetKey(destinationKeyName, network, false)
+			if originTransferrerAddress == "" {
+				addr, err := app.Prompt.CaptureAddress(
+					fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
+				)
+				if err != nil {
+					return err
+				}
+				originTransferrerAddress = addr.Hex()
+			} else {
+				if err := prompts.ValidateAddress(originTransferrerAddress); err != nil {
+					return err
+				}
+			}
+			if destinationTransferrerAddress == "" {
+				addr, err := app.Prompt.CaptureAddress(
+					fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
+				)
+				if err != nil {
+					return err
+				}
+				destinationTransferrerAddress = addr.Hex()
+			} else {
+				if err := prompts.ValidateAddress(destinationTransferrerAddress); err != nil {
+					return err
+				}
+			}
+			if keyName == "" {
+				keyName, err = prompts.CaptureKeyName(app.Prompt, "fund the transfer", app.GetKeyDir(), true)
+				if err != nil {
+					return err
+				}
+			}
+			originK, err := app.GetKey(keyName, network, false)
 			if err != nil {
 				return err
 			}
-			destinationAddrStr = destinationK.C()
-			destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
-		default:
-			return fmt.Errorf("you should set the destination address or destination key")
-		}
-		if amountFlt == 0 {
-			amountFlt, err = captureAmount(true, "TOKEN units")
-			if err != nil {
-				return err
+			privateKey := originK.PrivKeyHex()
+			var destinationAddr goethereumcommon.Address
+			if destinationAddrStr == "" && destinationKeyName == "" {
+				option, err := app.Prompt.CaptureList(
+					"Do you want to choose a stored key for the destination, or input a destination address?",
+					[]string{"Key", "Address"},
+				)
+				if err != nil {
+					return err
+				}
+				switch option {
+				case "Key":
+					destinationKeyName, err = prompts.CaptureKeyName(app.Prompt, "receive the transfer", app.GetKeyDir(), true)
+					if err != nil {
+						return err
+					}
+				case "Address":
+					addr, err := app.Prompt.CaptureAddress(
+						"Enter the destination address",
+					)
+					if err != nil {
+						return err
+					}
+					destinationAddrStr = addr.Hex()
+				}
 			}
+			switch {
+			case destinationAddrStr != "":
+				if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
+					return err
+				}
+				destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+			case destinationKeyName != "":
+				destinationK, err := app.GetKey(destinationKeyName, network, false)
+				if err != nil {
+					return err
+				}
+				destinationAddrStr = destinationK.C()
+				destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+			default:
+				return fmt.Errorf("you should set the destination address or destination key")
+			}
+			if amountFlt == 0 {
+				amountFlt, err = captureAmount(true, "TOKEN units")
+				if err != nil {
+					return err
+				}
+			}
+			amount := new(big.Float).SetFloat64(amountFlt)
+			amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
+			amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
+			amountInt, _ := amount.Int(nil)
+			return ictt.Send(
+				originURL,
+				goethereumcommon.HexToAddress(originTransferrerAddress),
+				privateKey,
+				destinationBlockchainID,
+				goethereumcommon.HexToAddress(destinationTransferrerAddress),
+				destinationAddr,
+				amountInt,
+			)
 		}
-		amount := new(big.Float).SetFloat64(amountFlt)
-		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
-		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
-		amountInt, _ := amount.Int(nil)
-		return ictt.Send(
-			originURL,
-			goethereumcommon.HexToAddress(originTransferrerAddress),
-			privateKey,
-			destinationBlockchainID,
-			goethereumcommon.HexToAddress(destinationTransferrerAddress),
-			destinationAddr,
-			amountInt,
-		)
 	}
 
 	if !send && !receive {
@@ -426,9 +446,9 @@ func transferF(*cobra.Command, []string) error {
 		var useLedger bool
 		goalStr := ""
 		if send {
-			goalStr = " for the sender address"
+			goalStr = "specify the sender address"
 		} else {
-			goalStr = " for the destination address"
+			goalStr = "specify the destination address"
 		}
 		useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir(), true)
 		if err != nil {
@@ -453,8 +473,9 @@ func transferF(*cobra.Command, []string) error {
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 
 	var kc keychain.Keychain
+	var sk *key.SoftKey
 	if keyName != "" {
-		sk, err := app.GetKey(keyName, network, false)
+		sk, err = app.GetKey(keyName, network, false)
 		if err != nil {
 			return err
 		}
@@ -474,12 +495,12 @@ func transferF(*cobra.Command, []string) error {
 	var destinationAddr ids.ShortID
 	if send {
 		if destinationAddrStr == "" {
-			if PToP {
+			if PToP || CToP || PToC {
 				destinationAddrStr, err = app.Prompt.CapturePChainAddress("Destination address", network)
 				if err != nil {
 					return err
 				}
-			} else {
+			} else if PToX || CToX {
 				destinationAddrStr, err = app.Prompt.CaptureXChainAddress("Destination address", network)
 				if err != nil {
 					return err
@@ -511,17 +532,35 @@ func transferF(*cobra.Command, []string) error {
 		if addr == destinationAddr && PToP {
 			return fmt.Errorf("sender addr is the same as destination addr")
 		}
-		ux.Logger.PrintToUser("- send %.9f AVAX from %s to destination address %s", float64(amount)/float64(units.Avax), addrStr, destinationAddrStr)
+		if CToP || CToX {
+			if sk != nil {
+				addrStr = sk.C()
+			}
+		}
+		ux.Logger.PrintToUser(
+			"- send %.9f AVAX from %s to destination address %s",
+			float64(amount)/float64(units.Avax),
+			addrStr,
+			destinationAddrStr,
+		)
 		totalFee := 4 * fee
 		if !usingLedger {
 			totalFee = fee
 		}
-		if PToX {
+		if PToX || PToC || CToP || CToX {
 			totalFee = 2 * fee
 		}
-		ux.Logger.PrintToUser("- take a fee of %.9f AVAX from source address %s", float64(totalFee)/float64(units.Avax), addrStr)
+		ux.Logger.PrintToUser(
+			"- take a fee of %.9f AVAX from source address %s",
+			float64(totalFee)/float64(units.Avax),
+			addrStr,
+		)
 	} else {
-		ux.Logger.PrintToUser("- receive %.9f AVAX at destination address %s", float64(amount)/float64(units.Avax), destinationAddrStr)
+		ux.Logger.PrintToUser(
+			"- receive %.9f AVAX at destination address %s",
+			float64(amount)/float64(units.Avax),
+			destinationAddrStr,
+		)
 	}
 	ux.Logger.PrintToUser("")
 
@@ -543,12 +582,16 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if send {
+		ethKeychain := secp256k1fx.NewKeychain()
+		if sk != nil {
+			ethKeychain = sk.KeyChain()
+		}
 		wallet, err := primary.MakeWallet(
 			context.Background(),
 			&primary.WalletConfig{
 				URI:          network.Endpoint,
 				AVAXKeychain: kc,
-				EthKeychain:  secp256k1fx.NewKeychain(),
+				EthKeychain:  ethKeychain,
 			},
 		)
 		if err != nil {
@@ -560,7 +603,7 @@ func transferF(*cobra.Command, []string) error {
 				amountPlusFee += fee * 3
 			}
 		}
-		if PToX {
+		if PToX || PToC || CToP || CToX {
 			amountPlusFee += fee
 		}
 		output := &avax.TransferableOutput{
@@ -571,46 +614,110 @@ func transferF(*cobra.Command, []string) error {
 			},
 		}
 		outputs := []*avax.TransferableOutput{output}
-		var unsignedTx txs.UnsignedTx
-		if PToP && !usingLedger {
-			ux.Logger.PrintToUser("Issuing BaseTx P -> P")
-			unsignedTx, err = wallet.P().Builder().NewBaseTx(
-				outputs,
+
+		if CToP {
+			ux.Logger.PrintToUser("Issuing ImportTx C -> P")
+			if usingLedger {
+				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
+			}
+			client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+			if err != nil {
+				return err
+			}
+			baseFee, err := clievm.EstimateBaseFee(client)
+			if err != nil {
+				return err
+			}
+			newOutputs := []*secp256k1fx.TransferOutput{
+				{
+					Amt:          amountPlusFee,
+					OutputOwners: to,
+				},
+			}
+			unsignedTx, err := wallet.C().Builder().NewExportTx(
+				avagoconstants.PlatformChainID,
+				newOutputs,
+				baseFee,
 			)
 			if err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return fmt.Errorf("error building tx: %w", err)
+			}
+			tx := evm.Tx{UnsignedAtomicTx: unsignedTx}
+			if err := wallet.C().Signer().SignAtomic(context.Background(), &tx); err != nil {
+				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+				return fmt.Errorf("error signing tx: %w", err)
+			}
+			ctx, cancel := utils.GetAPIContext()
+			defer cancel()
+			err = wallet.C().IssueAtomicTx(
+				&tx,
+				common.WithContext(ctx),
+			)
+			if err != nil {
+				if ctx.Err() != nil {
+					err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+				} else {
+					err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+				}
+				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+				return err
 			}
 		} else {
-			ux.Logger.PrintToUser("Issuing ExportTx P -> X")
-			if usingLedger {
-				ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+			var unsignedTx txs.UnsignedTx
+			switch {
+			case PToP && !usingLedger:
+				ux.Logger.PrintToUser("Issuing BaseTx P -> P")
+				unsignedTx, err = wallet.P().Builder().NewBaseTx(
+					outputs,
+				)
+				if err != nil {
+					return fmt.Errorf("error building tx: %w", err)
+				}
+			case PToX || (PToP && usingLedger):
+				ux.Logger.PrintToUser("Issuing ExportTx P -> X")
+				if usingLedger {
+					ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+				}
+				unsignedTx, err = wallet.P().Builder().NewExportTx(
+					wallet.X().Builder().Context().BlockchainID,
+					outputs,
+				)
+				if err != nil {
+					return fmt.Errorf("error building tx: %w", err)
+				}
+			case PToC:
+				ux.Logger.PrintToUser("Issuing ExportTx P -> C")
+				if usingLedger {
+					ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to C Chain' transaction on the ledger device *** ")
+				}
+				unsignedTx, err = wallet.P().Builder().NewExportTx(
+					wallet.C().Builder().Context().BlockchainID,
+					outputs,
+				)
+				if err != nil {
+					return fmt.Errorf("error building tx: %w", err)
+				}
 			}
-			unsignedTx, err = wallet.P().Builder().NewExportTx(
-				wallet.X().Builder().Context().BlockchainID,
-				outputs,
+			tx := txs.Tx{Unsigned: unsignedTx}
+			if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+				return fmt.Errorf("error signing tx: %w", err)
+			}
+
+			ctx, cancel := utils.GetAPIContext()
+			defer cancel()
+			err = wallet.P().IssueTx(
+				&tx,
+				common.WithContext(ctx),
 			)
 			if err != nil {
-				return fmt.Errorf("error building tx: %w", err)
+				if ctx.Err() != nil {
+					err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+				} else {
+					err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+				}
+				return err
 			}
-		}
-		tx := txs.Tx{Unsigned: unsignedTx}
-		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-			return fmt.Errorf("error signing tx: %w", err)
-		}
-
-		ctx, cancel := utils.GetAPIContext()
-		defer cancel()
-		err = wallet.P().IssueTx(
-			&tx,
-			common.WithContext(ctx),
-		)
-		if err != nil {
-			if ctx.Err() != nil {
-				err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-			} else {
-				err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
-			}
-			return err
 		}
 	} else {
 		if receiveRecoveryStep == 0 {
@@ -626,41 +733,122 @@ func transferF(*cobra.Command, []string) error {
 				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
 				return err
 			}
-			ux.Logger.PrintToUser("Issuing ImportTx P -> X")
-			if usingLedger {
-				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
-			}
-			unsignedTx, err := wallet.X().Builder().NewImportTx(
-				avagoconstants.PlatformChainID,
-				&to,
-			)
-			if err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
-				return fmt.Errorf("error building tx: %w", err)
-			}
-			tx := avmtxs.Tx{Unsigned: unsignedTx}
-			if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
-				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
-				return fmt.Errorf("error signing tx: %w", err)
-			}
-
-			ctx, cancel := utils.GetAPIContext()
-			defer cancel()
-			err = wallet.X().IssueTx(
-				&tx,
-				common.WithContext(ctx),
-			)
-			if err != nil {
-				if ctx.Err() != nil {
-					err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-				} else {
-					err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+			switch {
+			case CToP:
+				ux.Logger.PrintToUser("Issuing ImportTx C -> P")
+				if usingLedger {
+					ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 				}
-				ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
-				return err
+				unsignedTx, err := wallet.P().Builder().NewImportTx(
+					wallet.C().Builder().Context().BlockchainID,
+					&to,
+				)
+				if err != nil {
+					ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+					return fmt.Errorf("error building tx: %w", err)
+				}
+				tx := txs.Tx{Unsigned: unsignedTx}
+				if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+					return fmt.Errorf("error signing tx: %w", err)
+				}
+				ctx, cancel := utils.GetAPIContext()
+				defer cancel()
+				err = wallet.P().IssueTx(
+					&tx,
+					common.WithContext(ctx),
+				)
+				if err != nil {
+					if ctx.Err() != nil {
+						err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+					} else {
+						err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+					}
+					return err
+				}
+			case PToP || PToX || CToX:
+				ux.Logger.PrintToUser("Issuing ImportTx P -> X")
+				if usingLedger {
+					ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
+				}
+				unsignedTx, err := wallet.X().Builder().NewImportTx(
+					avagoconstants.PlatformChainID,
+					&to,
+				)
+				if err != nil {
+					ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+					return fmt.Errorf("error building tx: %w", err)
+				}
+				tx := avmtxs.Tx{Unsigned: unsignedTx}
+				if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+					ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+					return fmt.Errorf("error signing tx: %w", err)
+				}
+				ctx, cancel := utils.GetAPIContext()
+				defer cancel()
+				err = wallet.X().IssueTx(
+					&tx,
+					common.WithContext(ctx),
+				)
+				if err != nil {
+					if ctx.Err() != nil {
+						err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+					} else {
+						err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+					}
+					ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+					return err
+				}
+			case PToC:
+				ux.Logger.PrintToUser("Issuing ImportTx P -> C")
+				if usingLedger {
+					ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
+				}
+				client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+				if err != nil {
+					return err
+				}
+				baseFee, err := clievm.EstimateBaseFee(client)
+				if err != nil {
+					return err
+				}
+				addr, err := app.Prompt.CaptureAddress(
+					"Enter the C-Chain destination address",
+				)
+				if err != nil {
+					return err
+				}
+				unsignedTx, err := wallet.C().Builder().NewImportTx(
+					avagoconstants.PlatformChainID,
+					addr,
+					baseFee,
+				)
+				if err != nil {
+					ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+					return fmt.Errorf("error building tx: %w", err)
+				}
+				tx := evm.Tx{UnsignedAtomicTx: unsignedTx}
+				if err := wallet.C().Signer().SignAtomic(context.Background(), &tx); err != nil {
+					ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+					return fmt.Errorf("error signing tx: %w", err)
+				}
+				ctx, cancel := utils.GetAPIContext()
+				defer cancel()
+				err = wallet.C().IssueAtomicTx(
+					&tx,
+					common.WithContext(ctx),
+				)
+				if err != nil {
+					if ctx.Err() != nil {
+						err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+					} else {
+						err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+					}
+					ux.Logger.PrintToUser(logging.LightRed.Wrap("ERROR: restart from this step by using the same command"))
+					return err
+				}
 			}
 
-			if PToX {
+			if PToX || PToC || CToP || CToX {
 				return nil
 			}
 
