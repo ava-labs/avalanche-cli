@@ -35,7 +35,7 @@ func TestExportImportSubnet(t *testing.T) {
 
 	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
-	genBytes, err := vm.LoadCustomGenesis(
+	_, genBytes, err := vm.LoadCustomGenesis(
 		app,
 		"../../"+utils.SubnetEvmGenesisPath,
 	)
