@@ -295,7 +295,13 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		genesisPath, genesisBytes, err = vm.LoadCustomGenesis(app, genesisPath)
+		if genesisPath == "" {
+			genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
+			if err != nil {
+				return err
+			}
+		}
+		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
 			return err
 		}
