@@ -45,6 +45,7 @@ type CreateFlags struct {
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
 	useExternalGasToken           bool
+	enableDebugging               bool
 }
 
 var (
@@ -101,6 +102,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
+	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", false, "enable blockchain debugging")
 	return cmd
 }
 
@@ -346,6 +348,22 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
+	}
+
+	// subnet-evm check based on genesis
+	// covers both subnet-evm vms and custom vms
+	if hasSubnetEVMGenesis, rawErr, err := app.HasSubnetEVMGenesis(blockchainName); rawErr != nil {
+		return rawErr
+	} else if err != nil {
+		return err
+	} else if hasSubnetEVMGenesis && createFlags.enableDebugging {
+		if err := SetBlockchainConf(
+			blockchainName,
+			vm.EvmDebugConfig,
+			constants.ChainConfigFileName,
+		); err != nil {
+			return err
+		}
 	}
 
 	if err = app.CreateSidecar(sc); err != nil {
