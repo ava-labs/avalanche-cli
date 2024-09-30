@@ -38,7 +38,7 @@ const (
 
 func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
 	// deploy
-	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
+	s := commands.SimulateFujiDeployNonSOV(subnetName, keyName, controlKeys)
 	subnetID, err := utils.ParsePublicDeployOutput(s)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
@@ -109,7 +109,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
-		s := commands.SimulateMainnetDeploy(subnetName, 0, false)
+		s := commands.SimulateMainnetDeployNonSOV(subnetName, 0, false)
 		// deploy
 		subnetID, err := utils.ParsePublicDeployOutput(s)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -162,7 +162,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		subnetMainnetChainID, err := utils.GetSubnetEVMMainneChainID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(0)))
-		_ = commands.SimulateMainnetDeploy(subnetName, mainnetChainID, true)
+		_ = commands.SimulateMainnetDeployNonSOV(subnetName, mainnetChainID, true)
 		subnetMainnetChainID, err = utils.GetSubnetEVMMainneChainID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(mainnetChainID)))
