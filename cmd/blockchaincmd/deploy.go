@@ -337,6 +337,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if sidecar.NotSOV && bootstrapValidatorsJSONFilePath != "" {
+		return fmt.Errorf("--bootstrap-filepath flag is only applicable to SOV (Subnet Only Validator) blockchains")
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -381,10 +385,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if bootstrapValidatorsJSONFilePath == "" {
-		bootstrapValidators, err = promptBootstrapValidators(network)
-		if err != nil {
-			return err
+	if !sidecar.NotSOV {
+		if bootstrapValidatorsJSONFilePath == "" {
+			bootstrapValidators, err = promptBootstrapValidators(network)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -600,55 +606,57 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// type ConvertSubnetTx struct {
-	//		// Metadata, inputs and outputs
-	//		BaseTx
-	//		// ID of the Subnet to transform
-	//		// Restrictions:
-	//		// - Must not be the Primary Network ID
-	//		Subnet ids.ID `json:"subnetID"`
-	//		// BlockchainID where the Subnet manager lives
-	//		ChainID ids.ID `json:"chainID"`
-	//		// Address of the Subnet manager
-	//		Address []byte `json:"address"`
-	//		// Initial pay-as-you-go validators for the Subnet
-	//		Validators []SubnetValidator `json:"validators"`
-	//		// Authorizes this conversion
-	//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
-	//	}
+	if !sidecar.NotSOV {
+		// type ConvertSubnetTx struct {
+		//		// Metadata, inputs and outputs
+		//		BaseTx
+		//		// ID of the Subnet to transform
+		//		// Restrictions:
+		//		// - Must not be the Primary Network ID
+		//		Subnet ids.ID `json:"subnetID"`
+		//		// BlockchainID where the Subnet manager lives
+		//		ChainID ids.ID `json:"chainID"`
+		//		// Address of the Subnet manager
+		//		Address []byte `json:"address"`
+		//		// Initial pay-as-you-go validators for the Subnet
+		//		Validators []SubnetValidator `json:"validators"`
+		//		// Authorizes this conversion
+		//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
+		//	}
 
-	//avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
-	//if err != nil {
-	//	return err
-	//}
-	// TODO: replace with avalanchego subnetValidators once implemented
-	isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
-		controlKeys,
-		subnetAuthKeys,
-		subnetID,
-		blockchainID,
-		// avaGoBootstrapValidators,
-	)
-	if err != nil {
-		ux.Logger.PrintToUser(logging.Red.Wrap(
-			fmt.Sprintf("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err),
-		))
-	}
-
-	savePartialTx = !isFullySigned && err == nil
-	ux.Logger.PrintToUser("ConvertSubnetTx ID: %s", convertSubnetTxID)
-
-	if savePartialTx {
-		if err := SaveNotFullySignedTx(
-			"ConvertSubnetTx",
-			tx,
-			chain,
+		//avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
+		//if err != nil {
+		//	return err
+		//}
+		// TODO: replace with avalanchego subnetValidators once implemented
+		isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
+			controlKeys,
 			subnetAuthKeys,
-			remainingSubnetAuthKeys,
-			outputTxPath,
-			false,
-		); err != nil {
-			return err
+			subnetID,
+			blockchainID,
+			// avaGoBootstrapValidators,
+		)
+		if err != nil {
+			ux.Logger.PrintToUser(logging.Red.Wrap(
+				fmt.Sprintf("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err),
+			))
+		}
+
+		savePartialTx = !isFullySigned && err == nil
+		ux.Logger.PrintToUser("ConvertSubnetTx ID: %s", convertSubnetTxID)
+
+		if savePartialTx {
+			if err := SaveNotFullySignedTx(
+				"ConvertSubnetTx",
+				tx,
+				chain,
+				subnetAuthKeys,
+				remainingSubnetAuthKeys,
+				outputTxPath,
+				false,
+			); err != nil {
+				return err
+			}
 		}
 	}
 

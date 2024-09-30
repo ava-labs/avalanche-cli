@@ -62,7 +62,7 @@ var (
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
-	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority,--proof-of-stake, --poa-manager-owner are only applicable to Subnet Only Validator (SOV) blockchains")
+	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority, --proof-of-stake, --poa-manager-owner are only applicable to Subnet Only Validator (SOV) blockchains")
 )
 
 // avalanche blockchain create
@@ -232,24 +232,27 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	sc := &models.Sidecar{}
 
-	if err = promptValidatorManagementType(app, sc); err != nil {
-		return err
-	}
-
-	if !sc.PoA() && createFlags.poaValidatorManagerOwner != "" {
-		return errors.New("--poa-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
+	if !nonSOV {
+		if err = promptValidatorManagementType(app, sc); err != nil {
+			return err
+		}
+		if !sc.PoA() && createFlags.poaValidatorManagerOwner != "" {
+			return errors.New("--poa-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
+		}
 	}
 
 	if vmType == models.SubnetEvm {
-		if sc.PoA() {
-			if createFlags.poaValidatorManagerOwner == "" {
-				createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
-				if err != nil {
-					return err
+		if !nonSOV {
+			if sc.PoA() {
+				if createFlags.poaValidatorManagerOwner == "" {
+					createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
+					if err != nil {
+						return err
+					}
 				}
+				sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
+				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
 			}
-			sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
-			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
 		}
 
 		if genesisFile == "" {
@@ -332,6 +335,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			vmVersion,
 			tokenSymbol,
 			true,
+			nonSOV,
 		); err != nil {
 			return err
 		}
@@ -361,6 +365,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			customVMBuildScript,
 			vmFile,
 			tokenSymbol,
+			nonSOV,
 		); err != nil {
 			return err
 		}

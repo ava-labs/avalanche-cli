@@ -45,6 +45,8 @@ type Sidecar struct {
 	// TODO: remove if not needed for subnet acp 77 create flow once avalnache go releases etna
 	ValidatorManagement      ValidatorManagementType
 	PoAValidatorManagerOwner string
+	// Subnet defaults to SOV post ACP-77
+	NotSOV bool
 }
 
 func (sc Sidecar) GetVMID() (string, error) {
