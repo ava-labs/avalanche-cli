@@ -41,7 +41,9 @@ const (
 
 func generateCustomCchainGenesis() ([]byte, error) {
 	cChainGenesisMap := map[string]interface{}{}
-	cChainGenesisMap["config"] = coreth_params.AvalancheLocalChainConfig
+	chainConfig := *coreth_params.TestChainConfig
+	chainConfig.ChainID = coreth_params.AvalancheLocalChainID
+	cChainGenesisMap["config"] = chainConfig
 	cChainGenesisMap["nonce"] = hexa0Str
 	cChainGenesisMap["timestamp"] = hexa0Str
 	cChainGenesisMap["extraData"] = "0x00"

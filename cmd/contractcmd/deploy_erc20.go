@@ -7,9 +7,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -55,6 +57,11 @@ func newDeployERC20Cmd() *cobra.Command {
 }
 
 func deployERC20(_ *cobra.Command, _ []string) error {
+	return validatormanager.SetupPoA(
+		app,
+		models.NewLocalNetwork(),
+		"poa",
+	)
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
