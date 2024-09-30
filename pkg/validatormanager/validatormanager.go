@@ -3,6 +3,7 @@
 package validatormanager
 
 import (
+	"crypto/sha256"
 	_ "embed"
 	"encoding/binary"
 	"fmt"
@@ -16,9 +17,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/utils/hashing"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -144,17 +148,41 @@ func SetupPoA(
 		Validators: validators,
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
-	fmt.Printf("%#v\n", tx)
-	fmt.Println(getSubnetConversionID(&tx))
+
+	subnetConversionID, err := getSubnetConversionID(&tx)
+	if err != nil {
+		return err
+	}
+	addressedCallPayload, err := warpMessage.NewSubnetConversion(subnetConversionID)
+	if err != nil {
+		return err
+	}
+	subnetConversionAddressedCall, err := warpPayload.NewAddressedCall(
+		common.Address{}.Bytes(),
+		addressedCallPayload.Bytes(),
+	)
+	if err != nil {
+		return err
+	}
+	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		avagoconstants.PlatformChainID,
+		subnetConversionAddressedCall.Bytes(),
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%#v\n", subnetConversionUnsignedMessage)
+
 	return nil
 }
 
-func getSubnetConversionID(tx *txs.Tx) ([]byte, error) {
+func getSubnetConversionID(tx *txs.Tx) (ids.ID, error) {
 	subnetConversionData := []byte{}
 	txID := tx.ID()
 	convertSubnetTx, b := tx.Unsigned.(*txs.ConvertSubnetTx)
 	if !b {
-		return nil, fmt.Errorf("expected txs.ConvertSubneTx, got %T", tx.Unsigned)
+		return ids.Empty, fmt.Errorf("expected txs.ConvertSubneTx, got %T", tx.Unsigned)
 	}
 	subnetConversionData = append(subnetConversionData, txID[:]...)
 	subnetConversionData = append(subnetConversionData, convertSubnetTx.ChainID[:]...)
@@ -167,5 +195,5 @@ func getSubnetConversionID(tx *txs.Tx) ([]byte, error) {
 		blsPublicKey := bls.PublicKeyToCompressedBytes(validator.Signer.Key())
 		subnetConversionData = append(subnetConversionData, blsPublicKey...)
 	}
-	return hashing.ComputeHash256(subnetConversionData), nil
+	return sha256.Sum256(subnetConversionData), nil
 }
