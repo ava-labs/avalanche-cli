@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
@@ -81,11 +82,12 @@ type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
 type ICMSpec struct {
 	SkipICMDeploy                bool
 	SkipRelayerDeploy            bool
-	Version                      string
+	ICMVersion                   string
 	MessengerContractAddressPath string
 	MessengerDeployerAddressPath string
 	MessengerDeployerTxPath      string
 	RegistryBydecodePath         string
+	RelayerVersion               string
 }
 
 type DeployInfo struct {
@@ -99,7 +101,7 @@ type DeployInfo struct {
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
 func (d *LocalDeployer) DeployToLocalNetwork(
-	chain string,
+	blockchainName string,
 	genesisPath string,
 	icmSpec ICMSpec,
 	subnetIDStr string,
@@ -107,7 +109,7 @@ func (d *LocalDeployer) DeployToLocalNetwork(
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, genesisPath, icmSpec, subnetIDStr)
+	return d.doDeploy(blockchainName, genesisPath, icmSpec, subnetIDStr)
 }
 
 func (d *LocalDeployer) StartServer() error {
@@ -151,7 +153,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSpec, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(blockchainName string, genesisPath string, icmSpec ICMSpec, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -174,7 +176,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 	defer cancel()
 
 	// loading sidecar before it's needed so we catch any error early
-	sc, err := d.app.LoadSidecar(chain)
+	sc, err := d.app.LoadSidecar(blockchainName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load sidecar: %w", err)
 	}
@@ -192,9 +194,9 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 		}
 	}
 
-	chainVMID, err := anrutils.VMID(chain)
+	chainVMID, err := anrutils.VMID(blockchainName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return nil, fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
@@ -253,7 +255,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 	logRootDir = clusterInfo.GetLogRootDir()
 
 	if alreadyDeployed(chainVMID, clusterInfo) {
-		return nil, fmt.Errorf("subnet %s has already been deployed", chain)
+		return nil, fmt.Errorf("subnet %s has already been deployed", blockchainName)
 	}
 
 	numBlockchains := len(clusterInfo.CustomChains)
@@ -278,11 +280,11 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 	// if a chainConfig has been configured
 	var (
 		chainConfig            string
-		chainConfigFile        = filepath.Join(d.app.GetSubnetDir(), chain, constants.ChainConfigFileName)
+		chainConfigFile        = filepath.Join(d.app.GetSubnetDir(), blockchainName, constants.ChainConfigFileName)
 		perNodeChainConfig     string
-		perNodeChainConfigFile = filepath.Join(d.app.GetSubnetDir(), chain, constants.PerNodeChainConfigFileName)
+		perNodeChainConfigFile = filepath.Join(d.app.GetSubnetDir(), blockchainName, constants.PerNodeChainConfigFileName)
 		subnetConfig           string
-		subnetConfigFile       = filepath.Join(d.app.GetSubnetDir(), chain, constants.SubnetConfigFileName)
+		subnetConfigFile       = filepath.Join(d.app.GetSubnetDir(), blockchainName, constants.SubnetConfigFileName)
 	)
 	if _, err := os.Stat(chainConfigFile); err == nil {
 		// currently the ANR only accepts the file as a path, not its content
@@ -307,14 +309,14 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 	// the given VM ID, genesis, and available subnet ID
 	blockchainSpecs := []*rpcpb.BlockchainSpec{
 		{
-			VmName:   chain,
+			VmName:   blockchainName,
 			Genesis:  genesisPath,
 			SubnetId: &subnetIDStr,
 			SubnetSpec: &rpcpb.SubnetSpec{
 				SubnetConfig: subnetConfig,
 			},
 			ChainConfig:        chainConfig,
-			BlockchainAlias:    chain,
+			BlockchainAlias:    blockchainName,
 			PerNodeChainConfig: perNodeChainConfig,
 		},
 	}
@@ -384,8 +386,8 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 		} else {
 			icmVersion := ""
 			switch {
-			case icmSpec.Version != "" && icmSpec.Version != "latest":
-				icmVersion = icmSpec.Version
+			case icmSpec.ICMVersion != "" && icmSpec.ICMVersion != "latest":
+				icmVersion = icmSpec.ICMVersion
 			case sc.TeleporterVersion != "":
 				icmVersion = sc.TeleporterVersion
 			default:
@@ -412,6 +414,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 			cChainKey.PrivKeyHex(),
 			true,
 			true,
+			false,
 		)
 		if err != nil {
 			return nil, err
@@ -423,34 +426,64 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 		}
 		// deploy current blockchain
 		ux.Logger.PrintToUser("")
-		subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, chain)
+		subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, blockchainName)
 		if err != nil {
 			return nil, err
 		}
-		teleporterKeyName := sc.TeleporterKey
-		if teleporterKeyName == "" {
-			genesisData, err := d.app.LoadRawGenesis(chain)
+		blockchainKeyName := sc.TeleporterKey
+		if blockchainKeyName == "" {
+			genesisData, err := d.app.LoadRawGenesis(blockchainName)
 			if err != nil {
 				return nil, err
 			}
-			teleporterKeyName, _, _, err = GetSubnetAirdropKeyInfo(d.app, network, chain, genesisData)
+			blockchainKeyName, _, _, err = GetSubnetAirdropKeyInfo(d.app, network, blockchainName, genesisData)
 			if err != nil {
 				return nil, err
 			}
 		}
-		blockchainKey, err := key.LoadSoft(network.ID, d.app.GetKeyPath(teleporterKeyName))
+		blockchainKey, err := key.LoadSoft(network.ID, d.app.GetKeyPath(blockchainKeyName))
 		if err != nil {
 			return nil, err
 		}
-		_, icmMessengerAddress, icmRegistryAddress, err = icmd.Deploy(
-			chain,
-			network.BlockchainEndpoint(blockchainID),
-			blockchainKey.PrivKeyHex(),
-			true,
-			true,
-		)
+		genesisData, err := os.ReadFile(genesisPath)
 		if err != nil {
 			return nil, err
+		}
+		messengerAtGenesis, registryAtGenesis, err := icmgenesis.ICMAtGenesis(genesisData)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case registryAtGenesis:
+			ux.Logger.PrintToUser("Teleporter Messenger and Registry already included in %s's Genesis", blockchainName)
+			icmMessengerAddress = icmgenesis.MessengerContractAddress
+			icmRegistryAddress = icmgenesis.RegistryContractAddress
+		case messengerAtGenesis:
+			ux.Logger.PrintToUser("Teleporter Messenger already included in %s's Genesis", blockchainName)
+			icmMessengerAddress = icmgenesis.MessengerContractAddress
+			_, _, icmRegistryAddress, err = icmd.Deploy(
+				blockchainName,
+				network.BlockchainEndpoint(blockchainID),
+				blockchainKey.PrivKeyHex(),
+				false,
+				true,
+				false,
+			)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			_, icmMessengerAddress, icmRegistryAddress, err = icmd.Deploy(
+				blockchainName,
+				network.BlockchainEndpoint(blockchainID),
+				blockchainKey.PrivKeyHex(),
+				true,
+				true,
+				false,
+			)
+			if err != nil {
+				return nil, err
+			}
 		}
 		if sc.RunRelayer && !icmSpec.SkipRelayerDeploy {
 			if !cchainAlreadyDeployed {
@@ -502,7 +535,7 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSp
 			ux.Logger.PrintToUser("")
 			// start relayer
 			if err := teleporter.DeployRelayer(
-				"latest",
+				icmSpec.RelayerVersion,
 				d.app.GetAWMRelayerBinDir(),
 				relayerConfigPath,
 				d.app.GetLocalRelayerLogPath(models.Local),
