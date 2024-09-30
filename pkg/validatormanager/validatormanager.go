@@ -4,13 +4,18 @@ package validatormanager
 
 import (
 	_ "embed"
+	"fmt"
 	"math/big"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -90,21 +95,51 @@ func SetupPoA(
 	if err != nil {
 		return err
 	}
+	blockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
 	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
 	if err != nil {
 		return err
 	}
-	ownerAddress := common.HexToAddress(sc.PoAValidatorManagerOwner)
 	_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
 	if err != nil {
 		return err
 	}
+	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	ownerAddress := common.HexToAddress(sc.PoAValidatorManagerOwner)
 	_ = InitializePoAValidatorManager(
 		rpcURL,
-		common.HexToAddress(ValidatorContractAddress),
+		managerAddress,
 		genesisPrivateKey,
 		subnetID,
 		ownerAddress,
 	)
+	infoClient := info.NewClient(constants.LocalAPIEndpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	nodeID, proofOfPossesion, err := infoClient.GetNodeID(ctx)
+	if err != nil {
+		return err
+	}
+	validators := []txs.ConvertSubnetValidator{
+		{
+			NodeID: nodeID,
+			Weight: 15,
+			Signer: proofOfPossesion,
+		},
+	}
+	tx := txs.ConvertSubnetTx{
+		Subnet:     subnetID,
+		ChainID:    blockchainID,
+		Address:    managerAddress.Bytes(),
+		Validators: validators,
+	}
+	fmt.Printf("%#v\n", tx)
 	return nil
 }
