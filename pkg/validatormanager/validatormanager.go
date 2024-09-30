@@ -143,3 +143,7 @@ func SetupPoA(
 	fmt.Printf("%#v\n", tx)
 	return nil
 }
+
+func getSubnetConversionID(tx txs.ConvertSubnetTx) []byte {
+	return nil
+}
