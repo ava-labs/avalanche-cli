@@ -3,9 +3,7 @@
 package validatormanager
 
 import (
-	"crypto/sha256"
 	_ "embed"
-	"encoding/binary"
 	"fmt"
 	"math/big"
 	"strings"
@@ -19,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
@@ -134,22 +131,21 @@ func SetupPoA(
 	if err != nil {
 		return err
 	}
-	validators := []txs.ConvertSubnetValidator{
+	blsPublicKey := bls.PublicKeyToCompressedBytes(proofOfPossesion.Key())
+	subnetConversionValidatorData := []warpMessage.SubnetConversionValidatorData{
 		{
-			NodeID: nodeID,
-			Weight: 15,
-			Signer: proofOfPossesion,
+			NodeID:       nodeID[:],
+			BLSPublicKey: [48]byte(blsPublicKey),
+			Weight:       15,
 		},
 	}
-	unsignedTx := &txs.ConvertSubnetTx{
-		Subnet:     subnetID,
-		ChainID:    blockchainID,
-		Address:    managerAddress.Bytes(),
-		Validators: validators,
+	subnetConversionData := warpMessage.SubnetConversionData{
+		SubnetID:       subnetID,
+		ManagerChainID: blockchainID,
+		ManagerAddress: managerAddress.Bytes(),
+		Validators:     subnetConversionValidatorData,
 	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-
-	subnetConversionID, err := getSubnetConversionID(&tx)
+	subnetConversionID, err := warpMessage.SubnetConversionID(subnetConversionData)
 	if err != nil {
 		return err
 	}
@@ -175,25 +171,4 @@ func SetupPoA(
 	fmt.Printf("%#v\n", subnetConversionUnsignedMessage)
 
 	return nil
-}
-
-func getSubnetConversionID(tx *txs.Tx) (ids.ID, error) {
-	subnetConversionData := []byte{}
-	txID := tx.ID()
-	convertSubnetTx, b := tx.Unsigned.(*txs.ConvertSubnetTx)
-	if !b {
-		return ids.Empty, fmt.Errorf("expected txs.ConvertSubneTx, got %T", tx.Unsigned)
-	}
-	subnetConversionData = append(subnetConversionData, txID[:]...)
-	subnetConversionData = append(subnetConversionData, convertSubnetTx.ChainID[:]...)
-	subnetConversionData = binary.BigEndian.AppendUint32(subnetConversionData, uint32(len(convertSubnetTx.Address)))
-	subnetConversionData = append(subnetConversionData, convertSubnetTx.Address...)
-	subnetConversionData = binary.BigEndian.AppendUint32(subnetConversionData, uint32(len(convertSubnetTx.Validators)))
-	for _, validator := range convertSubnetTx.Validators {
-		subnetConversionData = append(subnetConversionData, validator.NodeID[:]...)
-		subnetConversionData = binary.BigEndian.AppendUint64(subnetConversionData, validator.Weight)
-		blsPublicKey := bls.PublicKeyToCompressedBytes(validator.Signer.Key())
-		subnetConversionData = append(subnetConversionData, blsPublicKey...)
-	}
-	return sha256.Sum256(subnetConversionData), nil
 }

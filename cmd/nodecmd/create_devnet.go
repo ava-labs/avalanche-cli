@@ -22,6 +22,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
+	avago_upgrade "github.com/ava-labs/avalanchego/upgrade"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -41,9 +43,7 @@ const (
 
 func generateCustomCchainGenesis() ([]byte, error) {
 	cChainGenesisMap := map[string]interface{}{}
-	chainConfig := *coreth_params.TestChainConfig
-	chainConfig.ChainID = coreth_params.AvalancheLocalChainID
-	cChainGenesisMap["config"] = chainConfig
+	cChainGenesisMap["config"] = coreth_params.GetChainConfig(avago_upgrade.GetConfig(avago_constants.LocalID), coreth_params.AvalancheLocalChainID)
 	cChainGenesisMap["nonce"] = hexa0Str
 	cChainGenesisMap["timestamp"] = hexa0Str
 	cChainGenesisMap["extraData"] = "0x00"
