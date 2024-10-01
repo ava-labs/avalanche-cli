@@ -12,11 +12,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
@@ -168,7 +170,20 @@ func SetupPoA(
 	if err != nil {
 		return err
 	}
+
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		network,
+		app.Log,
+		logging.Info,
+		ids.Empty,
+		0,
+	)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("%#v\n", subnetConversionUnsignedMessage)
+	_ = signatureAggregator
 
 	return nil
 }

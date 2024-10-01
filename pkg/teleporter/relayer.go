@@ -362,6 +362,8 @@ func CreateBaseRelayerConfig(
 		SourceBlockchains:      []*config.SourceBlockchain{},
 		DestinationBlockchains: []*config.DestinationBlockchain{},
 		MetricsPort:            metricsPort,
+		DBWriteIntervalSeconds: 10,
+		SignatureCacheSize:     1024 * 1024,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }
