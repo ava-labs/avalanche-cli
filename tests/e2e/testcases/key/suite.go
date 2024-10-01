@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -269,7 +270,6 @@ var _ = ginkgo.Describe("[Key]", func() {
 
 		amount := 0.2
 		amountStr := fmt.Sprintf("%.2f", amount)
-		feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
 		amountNAvax := uint64(amount * float64(units.Avax))
 
 		// send/receive without recovery
@@ -287,13 +287,16 @@ var _ = ginkgo.Describe("[Key]", func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		feeNAvax, err := getKeyTransferFee(output)
+		gomega.Expect(err).Should(gomega.BeNil())
+
 		output, err = commands.ListKeys("local", true, true)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(ewoqKeyBalance1 - ewoqKeyBalance2).Should(gomega.Equal(feeNAvax + amountNAvax))
+		gomega.Expect(feeNAvax + amountNAvax).Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
 		gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
 
 		output, err = commands.ListKeys("local", true, true)
@@ -306,3 +309,23 @@ var _ = ginkgo.Describe("[Key]", func() {
 		gomega.Expect(keyBalance3 - keyBalance1).Should(gomega.Equal(amountNAvax))
 	})
 })
+
+func getKeyTransferFee(output string) (uint64, error) {
+	feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, "Payed fee") {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return 0, fmt.Errorf("incorrect format for fee output of key transfer: %s", line)
+			}
+			feeAvaxStr := lineFields[2]
+			feeAvax, err := strconv.ParseFloat(feeAvaxStr, 64)
+			if err != nil {
+				return 0, err
+			}
+			feeAvax = feeAvax * float64(units.Avax)
+			feeNAvax = uint64(feeAvax)
+		}
+	}
+	return feeNAvax, nil
+}
