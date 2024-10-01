@@ -323,8 +323,8 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	ginkgo.It("can deploy a subnet-evm with old version", func() {
 		subnetEVMVersion := "v0.6.6"
 
-		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
-		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
+		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -347,10 +347,10 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		subnetEVMVersion1 := "v0.6.6"
 		subnetEVMVersion2 := "v0.6.2"
 
-		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
-		commands.CreateSubnetEvmConfigWithVersionNonSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
+		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
+		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
-		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -358,7 +358,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-		commands.DeploySubnetLocallyExpectError(secondSubnetName)
+		commands.DeploySubnetLocallyExpectErrorSOV(secondSubnetName)
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteSubnetConfig(secondSubnetName)

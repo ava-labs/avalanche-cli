@@ -358,7 +358,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 
-		commands.DeploySubnetLocallyExpectError(secondSubnetName)
+		commands.DeploySubnetLocallyExpectErrorNonSOV(secondSubnetName)
 
 		commands.DeleteSubnetConfig(subnetName)
 		commands.DeleteSubnetConfig(secondSubnetName)

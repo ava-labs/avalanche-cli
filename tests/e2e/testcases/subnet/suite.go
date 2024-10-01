@@ -34,12 +34,24 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can create and delete a custom vm subnet config", func() {
+	ginkgo.It("can create and delete a custom vm subnet config non SOV", func() {
 		// let's use a SubnetEVM version which would be compatible with an existing Avago
 		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.CreateCustomVMConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
+		commands.DeleteSubnetConfig(subnetName)
+		exists, err := utils.SubnetCustomVMExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeFalse())
+	})
+
+	ginkgo.It("can create and delete a custom vm subnet config SOV", func() {
+		// let's use a SubnetEVM version which would be compatible with an existing Avago
+		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.CreateCustomVMConfigSOV(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
 		commands.DeleteSubnetConfig(subnetName)
 		exists, err := utils.SubnetCustomVMExists(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())

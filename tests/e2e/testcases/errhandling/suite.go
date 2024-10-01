@@ -52,7 +52,7 @@ var _ = ginkgo.Describe("[Error handling]", func() {
 		// this will boot the subnet with a bad genesis:
 		// the root gas limit is smaller than the fee config gas limit, should fail
 		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisBadPath)
-		out, err := commands.DeploySubnetLocallyWithArgsAndOutputNonSOV(subnetName, "", "")
+		out, err := commands.DeploySubnetLocallyWithArgsAndOutputSOV(subnetName, "", "")
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(out).Should(gomega.ContainSubstring("does not match gas limit"))
 		fmt.Println(string(out))

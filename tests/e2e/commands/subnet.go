@@ -297,12 +297,20 @@ func DeploySubnetLocallySOV(subnetName string) string {
 }
 
 /* #nosec G204 */
-func DeploySubnetLocallyExpectError(subnetName string) {
+func DeploySubnetLocallyExpectErrorNonSOV(subnetName string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	DeploySubnetLocallyWithArgsExpectError(subnetName, mapping[utils.OnlyAvagoKey], "")
+	DeploySubnetLocallyWithArgsExpectErrorNonSOV(subnetName, mapping[utils.OnlyAvagoKey], "")
+}
+
+func DeploySubnetLocallyExpectErrorSOV(subnetName string) {
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	DeploySubnetLocallyWithArgsExpectErrorSOV(subnetName, mapping[utils.OnlyAvagoKey], "")
 }
 
 // Returns the deploy output
@@ -458,8 +466,13 @@ func DeploySubnetLocallyWithArgsAndOutputSOV(subnetName string, version string, 
 }
 
 /* #nosec G204 */
-func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
+func DeploySubnetLocallyWithArgsExpectErrorNonSOV(subnetName string, version string, confPath string) {
 	_, err := DeploySubnetLocallyWithArgsAndOutputNonSOV(subnetName, version, confPath)
+	gomega.Expect(err).Should(gomega.HaveOccurred())
+}
+
+func DeploySubnetLocallyWithArgsExpectErrorSOV(subnetName string, version string, confPath string) {
+	_, err := DeploySubnetLocallyWithArgsAndOutputSOV(subnetName, version, confPath)
 	gomega.Expect(err).Should(gomega.HaveOccurred())
 }
 

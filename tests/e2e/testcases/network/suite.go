@@ -81,7 +81,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 
 	ginkgo.It("can stop and restart a deployed subnet SOV", func() {
 		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
-		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -164,7 +164,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 
 	ginkgo.It("clean hard deletes plugin binaries SOV", func() {
 		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
-		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
