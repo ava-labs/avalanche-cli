@@ -24,8 +24,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/awm-relayer/config"
+	apiConfig "github.com/ava-labs/awm-relayer/config"
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
+	"github.com/ava-labs/awm-relayer/relayer/config"
 )
 
 const (
@@ -348,11 +349,11 @@ func CreateBaseRelayerConfig(
 ) error {
 	awmRelayerConfig := &config.Config{
 		LogLevel: logLevel,
-		PChainAPI: &config.APIConfig{
+		PChainAPI: &apiConfig.APIConfig{
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
-		InfoAPI: &config.APIConfig{
+		InfoAPI: &apiConfig.APIConfig{
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
@@ -468,10 +469,10 @@ func addSourceToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: rpcEndpoint,
 		},
-		WSEndpoint: config.APIConfig{
+		WSEndpoint: apiConfig.APIConfig{
 			BaseURL: wsEndpoint,
 		},
 		MessageContracts: map[string]config.MessageProtocolConfig{
@@ -505,7 +506,7 @@ func addDestinationToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: rpcEndpoint,
 		},
 		AccountPrivateKey: relayerFundedAddressKey,
