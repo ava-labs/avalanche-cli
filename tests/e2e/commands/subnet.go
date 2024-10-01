@@ -23,12 +23,21 @@ const (
 )
 
 /* #nosec G204 */
-func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
+func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string) (string, string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
 	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
+	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
+}
+
+func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, string) {
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	// let's use a SubnetEVM version which has a guaranteed compatible avago
+	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
@@ -279,8 +288,12 @@ func DeleteSubnetConfig(subnetName string) {
 
 // Returns the deploy output
 /* #nosec G204 */
-func DeploySubnetLocally(subnetName string) string {
+func DeploySubnetLocallyNonSOV(subnetName string) string {
 	return DeploySubnetLocallyWithArgsNonSOV(subnetName, "", "")
+}
+
+func DeploySubnetLocallySOV(subnetName string) string {
+	return DeploySubnetLocallyWithArgsSOV(subnetName, "", "")
 }
 
 /* #nosec G204 */
@@ -294,7 +307,7 @@ func DeploySubnetLocallyExpectError(subnetName string) {
 
 // Returns the deploy output
 /* #nosec G204 */
-func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
+func DeploySubnetLocallyWithViperConfNonSOV(subnetName string, confPath string) string {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -302,10 +315,22 @@ func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string
 	return DeploySubnetLocallyWithArgsNonSOV(subnetName, mapping[utils.OnlyAvagoKey], confPath)
 }
 
+func DeploySubnetLocallyWithViperConfSOV(subnetName string, confPath string) string {
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	return DeploySubnetLocallyWithArgsSOV(subnetName, mapping[utils.OnlyAvagoKey], confPath)
+}
+
 // Returns the deploy output
 /* #nosec G204 */
-func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
+func DeploySubnetLocallyWithVersionNonSOV(subnetName string, version string) string {
 	return DeploySubnetLocallyWithArgsNonSOV(subnetName, version, "")
+}
+
+func DeploySubnetLocallyWithVersionSOV(subnetName string, version string) string {
+	return DeploySubnetLocallyWithArgsSOV(subnetName, version, "")
 }
 
 // Returns the deploy output
@@ -610,7 +635,46 @@ func SimulateMainnetDeploySOV(
 
 // simulates multisig mainnet deploy execution path on a local network
 /* #nosec G204 */
-func SimulateMultisigMainnetDeploy(
+func SimulateMultisigMainnetDeployNonSOV(
+	subnetName string,
+	subnetControlAddrs []string,
+	chainCreationAuthAddrs []string,
+	txPath string,
+	errorIsExpected bool,
+) string {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	err = os.Setenv(constants.SimulatePublicNetwork, "true")
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Multisig deploy for local subnet with possible tx file generation
+	return utils.ExecCommand(
+		CLIBinary,
+		[]string{
+			SubnetCmd,
+			"deploy",
+			"--mainnet",
+			"--control-keys",
+			strings.Join(subnetControlAddrs, ","),
+			"--subnet-auth-keys",
+			strings.Join(chainCreationAuthAddrs, ","),
+			"--output-tx-path",
+			txPath,
+			"--mainnet-chain-id",
+			fmt.Sprint(subnetEVMMainnetChainID),
+			subnetName,
+			"--" + constants.SkipUpdateFlag,
+		},
+		true,
+		errorIsExpected,
+	)
+}
+
+func SimulateMultisigMainnetDeploySOV(
 	subnetName string,
 	subnetControlAddrs []string,
 	chainCreationAuthAddrs []string,

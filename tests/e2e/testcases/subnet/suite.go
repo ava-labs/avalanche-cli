@@ -24,8 +24,13 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
-	ginkgo.It("can create and delete a subnet evm config", func() {
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+	ginkgo.It("can create and delete a subnet evm config non SOV", func() {
+		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can create and delete a subnet evm config SOV", func() {
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
 		commands.DeleteSubnetConfig(subnetName)
 	})
 

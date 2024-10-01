@@ -35,12 +35,23 @@ var _ = ginkgo.Describe("[Error handling]", func() {
 		// delete custom vm
 		utils.DeleteCustomBinary(subnetName)
 	})
-	ginkgo.It("subnet-evm has error but booted", func() {
+	ginkgo.It("subnet-evm has error but booted non SOV", func() {
 		// tip: if you really want to run this, reduce the RequestTimeout
 		ginkgo.Skip("run this manually only, times out")
 		// this will boot the subnet with a bad genesis:
 		// the root gas limit is smaller than the fee config gas limit, should fail
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisBadPath)
+		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisBadPath)
+		out, err := commands.DeploySubnetLocallyWithArgsAndOutputNonSOV(subnetName, "", "")
+		gomega.Expect(err).Should(gomega.HaveOccurred())
+		gomega.Expect(out).Should(gomega.ContainSubstring("does not match gas limit"))
+		fmt.Println(string(out))
+	})
+	ginkgo.It("subnet-evm has error but booted SOV", func() {
+		// tip: if you really want to run this, reduce the RequestTimeout
+		ginkgo.Skip("run this manually only, times out")
+		// this will boot the subnet with a bad genesis:
+		// the root gas limit is smaller than the fee config gas limit, should fail
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisBadPath)
 		out, err := commands.DeploySubnetLocallyWithArgsAndOutputNonSOV(subnetName, "", "")
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(out).Should(gomega.ContainSubstring("does not match gas limit"))
