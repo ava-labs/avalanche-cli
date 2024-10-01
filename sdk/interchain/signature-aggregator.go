@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanchego/message"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	apiConfig "github.com/ava-labs/awm-relayer/config"
 	"github.com/ava-labs/awm-relayer/peers"
 	"github.com/ava-labs/awm-relayer/signature-aggregator/aggregator"
@@ -171,11 +172,26 @@ func (s *SignatureAggregator) AggregateSignatures(
 	}
 
 	// aggregate signatures
-	signedMessage, err := s.aggregator.CreateSignedMessage(
+	signedMessage, err := s.Sign(
 		message,
 		justificationBytes,
+	)
+	return hex.EncodeToString(signedMessage.Bytes()), err
+}
+
+// Sign aggregates signatures for a given message and justification.
+//
+// msg is the message to be signed
+// justification is the justification for the signature.
+// Returns the signed message, and an error if the operation fails.
+func (s *SignatureAggregator) Sign(
+	msg *warp.UnsignedMessage,
+	justification []byte,
+) (*warp.Message, error) {
+	return s.aggregator.CreateSignedMessage(
+		msg,
+		justification,
 		s.subnetID,
 		s.quorumPercentage,
 	)
-	return hex.EncodeToString(signedMessage.Bytes()), err
 }

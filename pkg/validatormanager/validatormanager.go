@@ -4,7 +4,6 @@ package validatormanager
 
 import (
 	_ "embed"
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -174,7 +173,7 @@ func SetupPoA(
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
 		app.Log,
-		logging.Info,
+		logging.Verbo,
 		ids.Empty,
 		0,
 	)
@@ -182,8 +181,12 @@ func SetupPoA(
 		return err
 	}
 
-	fmt.Printf("%#v\n", subnetConversionUnsignedMessage)
-	_ = signatureAggregator
+	subnetConversionSignedMessage, err := signatureAggregator.Sign(subnetConversionUnsignedMessage, nil)
+	if err != nil {
+		return err
+	}
+
+	_ = subnetConversionSignedMessage
 
 	return nil
 }
