@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -180,7 +181,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if clusterAlreadyExists && subnetName == "" {
-		return fmt.Errorf("expecting to add subnet to existing cluster but no subnet-name was provided")
+		return errors.New("expecting to add subnet to existing cluster but no subnet-name was provided")
 	}
 	if subnetName != "" && (!app.SidecarExists(subnetName) || forceSubnetCreate) {
 		ux.Logger.PrintToUser("")
@@ -551,7 +552,7 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 	if len(clusterConfig.Nodes) > 0 {
 		return node.GetHostWithCloudID(app, clusterName, clusterConfig.Nodes[0])
 	}
-	return nil, fmt.Errorf("no hosts found on cluster")
+	return nil, errors.New("no hosts found on cluster")
 }
 
 func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
@@ -568,7 +569,7 @@ func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 		teleporterKey.PrivKeyHex(),
 		relayerKey.C(),
 	); err != nil {
-		return nil
+		return err
 	}
 	ewoqKey, err := app.GetKey("ewoq", network, true)
 	if err != nil {
@@ -720,7 +721,7 @@ func waitForSubnetValidators(
 			if !b {
 				err, b := failedNodesMap[host.NodeID]
 				if !b {
-					return fmt.Errorf("expected to found an error for non mapped node")
+					return errors.New("expected to found an error for non mapped node")
 				}
 				return err
 			}

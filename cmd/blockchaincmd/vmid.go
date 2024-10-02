@@ -3,8 +3,6 @@
 package blockchaincmd
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/utils"
@@ -35,6 +33,6 @@ func printVMID(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("VM ID : %s", vmID.String()))
+	ux.Logger.PrintToUser("VM ID : " + vmID.String())
 	return nil
 }

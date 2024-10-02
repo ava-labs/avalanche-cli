@@ -541,7 +541,7 @@ func getEvmBasedChainAddrInfo(
 		}
 		taggedChainToken := chainToken
 		if taggedChainToken != "AVAX" {
-			taggedChainToken = fmt.Sprintf("%s (Native)", taggedChainToken)
+			taggedChainToken += " (Native)"
 		}
 		info := addressInfo{
 			kind:    kind,

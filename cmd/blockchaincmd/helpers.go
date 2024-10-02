@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -24,7 +25,7 @@ func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 				return err
 			}
 			if !yes {
-				return fmt.Errorf("blockchain not available and not being created first")
+				return errors.New("blockchain not available and not being created first")
 			}
 		}
 		return createBlockchainConfig(cmd, []string{blockchainName})
@@ -41,7 +42,7 @@ func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 	if !app.BlockchainConfigExists(blockchainName) {
 		doDeploy = true
 		msg = fmt.Sprintf("Blockchain %s is not created yet. Do you want to create it first?", blockchainName)
-		errIfNoChoosen = fmt.Errorf("blockchain not available and not being created first")
+		errIfNoChoosen = errors.New("blockchain not available and not being created first")
 	} else {
 		filteredSupportedNetworkOptions, _, _, err := networkoptions.GetSupportedNetworkOptionsForSubnet(app, blockchainName, supportedNetworkOptions)
 		if err != nil {
@@ -50,7 +51,7 @@ func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 		if len(filteredSupportedNetworkOptions) == 0 {
 			doDeploy = true
 			msg = fmt.Sprintf("Blockchain %s is not deployed yet to a supported network. Do you want to deploy it first?", blockchainName)
-			errIfNoChoosen = fmt.Errorf("blockchain not deployed and not being deployed first")
+			errIfNoChoosen = errors.New("blockchain not deployed and not being deployed first")
 		}
 	}
 	if doDeploy {

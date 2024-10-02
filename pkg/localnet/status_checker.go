@@ -28,7 +28,7 @@ func (networkStatusChecker) GetCurrentNetworkVersion() (string, int, bool, error
 	versionResponse, err := infoClient.GetNodeVersion(ctx)
 	if err != nil {
 		// not actually an error, network just not running
-		return "", 0, false, nil
+		return "", 0, false, nil // #nolint:nilerr
 	}
 
 	// version is in format avalanche/x.y.z, need to turn to semantic

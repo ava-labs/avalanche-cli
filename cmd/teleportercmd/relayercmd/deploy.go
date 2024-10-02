@@ -3,6 +3,7 @@
 package relayercmd
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -286,7 +287,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				}
 				privateKey, err := prompts.PromptPrivateKey(
 					app.Prompt,
-					fmt.Sprintf("fund the relayer destination %s", destination.blockchainDesc),
+					"fund the relayer destination "+destination.blockchainDesc,
 					app.GetKeyDir(),
 					app.GetKey,
 					genesisAddress,
@@ -299,7 +300,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					"Amount to transfer",
 					func(f float64) error {
 						if f <= 0 {
-							return fmt.Errorf("not positive")
+							return errors.New("not positive")
 						}
 						return nil
 					},

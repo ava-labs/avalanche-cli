@@ -22,6 +22,6 @@ func TestSetupAPM(t *testing.T) {
 
 	err = SetupApm(app, testDir)
 	require.NoError(err)
-	require.NotEqual(nil, app.Apm)
+	require.NotNil(app.Apm)
 	require.Equal(testDir, app.ApmDir)
 }

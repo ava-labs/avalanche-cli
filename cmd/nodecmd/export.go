@@ -103,7 +103,7 @@ func exportFile(_ *cobra.Command, args []string) error {
 	for _, loadTestNode := range clusterConf.LoadTestInstance {
 		loadTestNodeConf, err := app.LoadClusterNodeConfig(loadTestNode)
 		if err != nil {
-			ux.Logger.RedXToUser("could not load load test node configuration: %v", err)
+			ux.Logger.RedXToUser("could not load load test node configuration: %v", err) //nolint:dupword
 			return err
 		}
 		loadTestNodeConf.CertPath, loadTestNodeConf.SecurityGroup, loadTestNodeConf.KeyPair = "", "", "" // hide cert path and sg id

@@ -3,6 +3,7 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -212,7 +213,7 @@ func PromptSubnetEVMGenesisParams(
 	// Warp
 	params.enableWarpPrecompile = useWarp
 	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
-		return SubnetEVMGenesisParams{}, "", fmt.Errorf("warp should be enabled for teleporter to work")
+		return SubnetEVMGenesisParams{}, "", errors.New("warp should be enabled for teleporter to work")
 	}
 
 	// Permissioning
@@ -443,11 +444,11 @@ func getNativeGasTokenAllocationConfig(
 					return res, nil
 				}
 			default:
-				return core.GenesisAlloc{}, fmt.Errorf("invalid allocation modification option")
+				return core.GenesisAlloc{}, errors.New("invalid allocation modification option")
 			}
 		}
 	}
-	return core.GenesisAlloc{}, fmt.Errorf("invalid allocation option")
+	return core.GenesisAlloc{}, errors.New("invalid allocation option")
 }
 
 func getNativeMinterPrecompileConfig(app *application.Avalanche, version string) (AllowList, bool, error) {
@@ -476,7 +477,7 @@ func getNativeMinterPrecompileConfig(app *application.Avalanche, version string)
 		}
 	}
 
-	return AllowList{}, false, fmt.Errorf("invalid option")
+	return AllowList{}, false, errors.New("invalid option")
 }
 
 // prompts for token symbol, initial token allocation, and native minter precompile
@@ -840,12 +841,12 @@ func PromptVMVersion(
 ) (string, error) {
 	switch vmVersion {
 	case latest:
-		return app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		return application.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
 	case preRelease:
-		return app.Downloader.GetLatestPreReleaseVersion(
+		return application.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
 		)
@@ -865,7 +866,7 @@ func promptUserForVMVersion(
 		err                     error
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
-		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
+		latestReleaseVersion, err = application.GetLatestReleaseVersion(
 			binutils.GetGithubLatestReleaseURL(
 				constants.AvaLabsOrg,
 				repoName,
@@ -874,7 +875,7 @@ func promptUserForVMVersion(
 		if err != nil {
 			return "", err
 		}
-		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
+		latestPreReleaseVersion, err = application.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
 		)
@@ -914,7 +915,7 @@ func promptUserForVMVersion(
 	}
 
 	// prompt for version
-	versions, err := app.Downloader.GetAllReleasesForRepo(
+	versions, err := application.GetAllReleasesForRepo(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
 	)

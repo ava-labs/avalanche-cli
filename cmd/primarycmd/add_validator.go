@@ -252,7 +252,7 @@ func getDelegationFeeOption(app *application.Avalanche, network models.Network) 
 		if delegationFee > 0 && delegationFee <= math.MaxUint32 {
 			return uint32(delegationFee), nil
 		}
-		return 0, fmt.Errorf("invalid delegation fee")
+		return 0, errors.New("invalid delegation fee")
 	}
 	return defaultFee, nil
 }

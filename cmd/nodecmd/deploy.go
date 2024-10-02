@@ -3,7 +3,7 @@
 package nodecmd
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -52,7 +52,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
-		return fmt.Errorf("node deploy command must be applied to devnet clusters")
+		return errors.New("node deploy command must be applied to devnet clusters")
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {

@@ -142,9 +142,9 @@ func createApp(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	log.Info("-----------")
-	log.Info(fmt.Sprintf("cmd: %s", strings.Join(os.Args[1:], " ")))
+	log.Info("cmd: " + strings.Join(os.Args[1:], " "))
 	cf := config.New()
-	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(baseDir, log, cf, prompts.NewPrompter())
 
 	initConfig()
 

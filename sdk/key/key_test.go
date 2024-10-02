@@ -4,10 +4,10 @@
 package key
 
 import (
-	"bytes"
-	"errors"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/avalanchego/utils/cb58"
 	"github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
@@ -21,49 +21,29 @@ func TestNewKeyEwoq(t *testing.T) {
 	m, err := NewSoft(
 		WithPrivateKeyEncoded(EwoqPrivateKey),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	pAddr, err := m.P("custom")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if pAddr != ewoqPChainAddr {
-		t.Fatalf("unexpected P-Chain address %q, expected %q", pAddr, ewoqPChainAddr)
-	}
-
+	require.NoError(t, err)
+	require.Equal(t, ewoqPChainAddr, pAddr)
 	keyPath := filepath.Join(t.TempDir(), "key.pk")
-	if err := m.Save(keyPath); err != nil {
-		t.Fatal(err)
-	}
-
+	require.NoError(t, m.Save(keyPath))
 	m2, err := LoadSoft(keyPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(m.PrivKeyRaw(), m2.PrivKeyRaw()) {
-		t.Fatalf("loaded key unexpected %v, expected %v", m2.PrivKeyRaw(), m.PrivKeyRaw())
-	}
+	require.NoError(t, err)
+	require.Equal(t, m.PrivKeyRaw(), m2.PrivKeyRaw())
 }
 
 func TestNewKey(t *testing.T) {
 	t.Parallel()
 
 	skBytes, err := cb58.Decode(rawEwoqPk)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	ewoqPk, err := secp256k1.ToPrivateKey(skBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	privKey2, err := secp256k1.NewPrivateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tt := []struct {
 		name   string
@@ -106,10 +86,8 @@ func TestNewKey(t *testing.T) {
 			expErr: ErrInvalidPrivateKey,
 		},
 	}
-	for i, tv := range tt {
+	for _, tv := range tt {
 		_, err := NewSoft(tv.opts...)
-		if !errors.Is(err, tv.expErr) {
-			t.Fatalf("#%d(%s): unexpected error %v, expected %v", i, tv.name, err, tv.expErr)
-		}
+		require.ErrorIs(t, err, tv.expErr)
 	}
 }

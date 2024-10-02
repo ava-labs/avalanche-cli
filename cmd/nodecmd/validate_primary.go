@@ -232,7 +232,7 @@ func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex
 	}
 	end := start.Add(d)
 	if nodeIndex == 0 {
-		confirm := fmt.Sprintf("Your validator will finish staking by %s", end.Format(constants.TimeParseLayout))
+		confirm := "Your validator will finish staking by " + end.Format(constants.TimeParseLayout)
 		yes, err := app.Prompt.CaptureYesNo(confirm)
 		if err != nil {
 			return 0, err
@@ -338,7 +338,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		if !b {
 			err, b := failedNodesMap[host.NodeID]
 			if !b {
-				return fmt.Errorf("expected to found an error for non mapped node")
+				return errors.New("expected to found an error for non mapped node")
 			}
 			ux.Logger.PrintToUser("Failed to add node %s as Primary Network validator due to %s", host.NodeID, err)
 			nodeErrors[host.NodeID] = err

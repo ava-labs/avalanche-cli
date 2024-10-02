@@ -51,7 +51,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *application.LastActions) error {
 	// first check if there is a new version exists
 	url := binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.CliRepoName)
-	latest, err := app.Downloader.GetLatestReleaseVersion(url)
+	latest, err := application.GetLatestReleaseVersion(url)
 	if err != nil {
 		app.Log.Warn("failed to get latest version for cli from repo", zap.Error(err))
 		return err
@@ -98,7 +98,7 @@ func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *app
 		ux.Logger.PrintToUser("We found a new version of Avalanche-CLI %s upstream. You are running %s", latest, thisVFmt)
 		y, err := app.Prompt.CaptureYesNo("Do you want to update?")
 		if err != nil {
-			return nil
+			return err
 		}
 		if !y {
 			ux.Logger.PrintToUser("Aborted by user")

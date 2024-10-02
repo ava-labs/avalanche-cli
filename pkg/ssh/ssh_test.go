@@ -14,9 +14,7 @@ import (
 func TestReplaceCustomVarDashboardValues(t *testing.T) {
 	tmpDir := os.TempDir()
 	testDir, err := os.MkdirTemp(tmpDir, "dashboard-test")
-	if err != nil {
-		t.Fatalf("Error creating test dir: %v", err)
-	}
+	require.NoError(t, err)
 	tempFileName := filepath.Join(testDir, "test_dashboard.json")
 	tempContent := []byte(`{
 		"templating": {
@@ -46,25 +44,16 @@ func TestReplaceCustomVarDashboardValues(t *testing.T) {
 			]
 		}
 	}`)
-	err = os.WriteFile(tempFileName, tempContent, constants.WriteReadUserOnlyPerms)
-	if err != nil {
-		t.Fatalf("Error creating test file: %v", err)
-	}
+	require.NoError(t, os.WriteFile(tempFileName, tempContent, constants.WriteReadUserOnlyPerms))
 	defer func() {
-		err := os.WriteFile(tempFileName, []byte{}, constants.WriteReadUserOnlyPerms)
-		if err != nil {
-			t.Fatalf("Error cleaning up test file: %v", err)
-		}
+		require.NoError(t, os.WriteFile(tempFileName, []byte{}, constants.WriteReadUserOnlyPerms))
 	}()
 
 	err = replaceCustomVarDashboardValues(tempFileName, "newChainID")
-	if err != nil {
-		t.Fatalf("Error replacing custom variables: %v", err)
-	}
+	require.NoError(t, err)
+
 	modifiedContent, err := os.ReadFile(tempFileName)
-	if err != nil {
-		t.Fatalf("Error reading modified content: %v", err)
-	}
+	require.NoError(t, err)
 
 	expectedContent := `{
 		"templating": {
@@ -94,5 +83,5 @@ func TestReplaceCustomVarDashboardValues(t *testing.T) {
 			]
 		}
 	}`
-	require.Equal(t, string(modifiedContent), expectedContent)
+	require.Equal(t, expectedContent, string(modifiedContent))
 }

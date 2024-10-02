@@ -49,7 +49,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		match := re.FindStringSubmatch(output)
 		if len(match) >= 3 {
 			hostName = match[1]
-			NodeID = fmt.Sprintf("NodeID-%s", match[2])
+			NodeID = "NodeID-" + match[2]
 		} else {
 			ginkgo.Fail("failed to parse hostName and NodeID")
 		}
@@ -83,8 +83,8 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		hostavalancheGoPorts := []string{}
 		hostMachinePorts := []string{}
 		for _, host := range createdHosts {
-			hostavalancheGoPorts = append(hostavalancheGoPorts, fmt.Sprintf("%s:9650", host.IP))
-			hostMachinePorts = append(hostMachinePorts, fmt.Sprintf("%s:9100", host.IP))
+			hostavalancheGoPorts = append(hostavalancheGoPorts, host.IP+":9650")
+			hostMachinePorts = append(hostMachinePorts, host.IP+":9100")
 		}
 		prometheusConfig := commands.ParsePrometheusYamlConfig(filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
 		scrapeConfig := prometheusConfig.ScrapeConfigs

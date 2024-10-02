@@ -3,6 +3,7 @@
 package ictt
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -253,7 +254,7 @@ func ERC20TokenHomeSend(
 		privateKey,
 		homeAddress,
 		nil,
-		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)",
+		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)", //nolint:dupword
 		params,
 		amount,
 	)
@@ -298,7 +299,7 @@ func NativeTokenHomeSend(
 		privateKey,
 		homeAddress,
 		amount,
-		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
+		"send((bytes32, address, address, address, uint256, uint256, uint256, address))", //nolint:dupword
 		params,
 	)
 	return err
@@ -349,7 +350,7 @@ func ERC20TokenRemoteSend(
 		privateKey,
 		remoteAddress,
 		nil,
-		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)",
+		"send((bytes32, address, address, address, uint256, uint256, uint256, address), uint256)", //nolint:dupword
 		params,
 		amount,
 	)
@@ -390,7 +391,7 @@ func NativeTokenRemoteSend(
 		privateKey,
 		remoteAddress,
 		amount,
-		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
+		"send((bytes32, address, address, address, uint256, uint256, uint256, address))", //nolint:dupword
 		params,
 	)
 	return err
@@ -487,11 +488,11 @@ func TokenHomeAddCollateral(
 			amount,
 		)
 	case ERC20TokenRemote:
-		return fmt.Errorf("trying to add collateral to an erc20 token remote endpoint")
+		return errors.New("trying to add collateral to an erc20 token remote endpoint")
 	case NativeTokenRemote:
-		return fmt.Errorf("trying to add collateral to a native token remote endpoint")
+		return errors.New("trying to add collateral to a native token remote endpoint")
 	}
-	return fmt.Errorf("unknown ictt endpoint")
+	return errors.New("unknown ictt endpoint")
 }
 
 func Send(
@@ -552,5 +553,5 @@ func Send(
 			amount,
 		)
 	}
-	return fmt.Errorf("unknown ictt endpoint")
+	return errors.New("unknown ictt endpoint")
 }

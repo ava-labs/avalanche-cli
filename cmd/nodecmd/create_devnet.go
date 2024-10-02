@@ -238,7 +238,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 				return err
 			}
 			bootstrapIDs = append(bootstrapIDs, nodeID.String())
-			bootstrapIPs = append(bootstrapIPs, fmt.Sprintf("%s:9651", host.IP))
+			bootstrapIPs = append(bootstrapIPs, host.IP+":9651")
 		}
 	}
 	// update node/s genesis + conf and start

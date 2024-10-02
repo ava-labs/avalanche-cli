@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -170,7 +171,7 @@ func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig
 		case len(hosts) > 1:
 			return fmt.Errorf("cannot open ssh shell on multiple nodes: %s", strings.Join(utils.Map(hosts, func(h *models.Host) string { return h.GetCloudID() }), ", "))
 		case len(hosts) == 0:
-			return fmt.Errorf("no nodes found")
+			return errors.New("no nodes found")
 		default:
 			selectedHost := hosts[0]
 			splitCmdLine := strings.Split(utils.GetSSHConnectionString(selectedHost.IP, selectedHost.SSHPrivateKeyPath), " ")

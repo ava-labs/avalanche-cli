@@ -3,6 +3,7 @@
 package networkoptions
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -117,7 +118,7 @@ func GetNetworkFromSidecarNetworkName(
 	case networkName == models.Mainnet.String():
 		return models.NewMainnetNetwork(), nil
 	}
-	return models.UndefinedNetwork, fmt.Errorf("unsupported network name")
+	return models.UndefinedNetwork, errors.New("unsupported network name")
 }
 
 func GetSupportedNetworkOptionsForSubnet(
@@ -135,7 +136,7 @@ func GetSupportedNetworkOptionsForSubnet(
 		for networkName := range sc.Networks {
 			networkOptionWords := strings.Fields(networkOption.String())
 			if len(networkOptionWords) == 0 {
-				return nil, nil, nil, fmt.Errorf("empty network option")
+				return nil, nil, nil, errors.New("empty network option")
 			}
 			firstNetworkOptionWord := networkOptionWords[0]
 			if strings.HasPrefix(networkName, firstNetworkOptionWord) {
@@ -322,7 +323,7 @@ func GetNetworkFromCmdLineFlags(
 				return models.UndefinedNetwork, err
 			}
 		} else {
-			networkFlags.Endpoint, err = app.Prompt.CaptureURL(fmt.Sprintf("%s Endpoint", networkOption.String()), false)
+			networkFlags.Endpoint, err = app.Prompt.CaptureURL(networkOption.String()+"%s Endpoint", false)
 			if err != nil {
 				return models.UndefinedNetwork, err
 			}

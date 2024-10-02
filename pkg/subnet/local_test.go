@@ -92,7 +92,7 @@ func TestDeployToLocal(t *testing.T) {
 	}()
 
 	app := &application.Avalanche{}
-	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
 
 	binDir := filepath.Join(app.GetAvalanchegoBinDir(), "avalanchego-"+avagoVersion)
 
@@ -162,8 +162,7 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 	s := httptest.NewServer(testHandler)
 	defer s.Close()
 
-	dl := application.NewDownloader()
-	v, err := dl.GetLatestReleaseVersion(s.URL)
+	v, err := application.GetLatestReleaseVersion(s.URL)
 	require.NoError(err)
 	require.Equal(v, testVersion)
 }

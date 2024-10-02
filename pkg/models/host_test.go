@@ -90,59 +90,56 @@ func TestHost(t *testing.T) {
 }
 
 func hostRunTest(t *testing.T) {
-	assert := require.New(t)
 	// prepare ssh keys
 	privKey, err := os.CreateTemp("", "unit-test-ssh-private-key")
-	assert.NoError(err)
+	require.NoError(t, err)
 	defer os.Remove(privKey.Name())
-	if _, err := privKey.Write(privateBytes); err != nil {
-		t.Fatal(err)
-	}
-	assert.NoError(privKey.Close())
+	_, err = privKey.Write(privateBytes)
+	require.NoError(t, err)
+	require.NoError(t, privKey.Close())
 
 	block, _ := pem.Decode(privateBytes)
-	assert.NotNil(block)
+	require.NotNil(t, block)
 	// Parse the private key
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	assert.NoError(err)
+	require.NoError(t, err)
 	publicKey := privateKey.PublicKey
 	publicKeyPEM := &pem.Block{
 		Type:  "RSA PUBLIC KEY",
 		Bytes: x509.MarshalPKCS1PublicKey(&publicKey),
 	}
 	pubKey, err := os.CreateTemp("", "unit-test-ssh-public-key")
-	assert.NoError(err)
+	require.NoError(t, err)
 	defer os.Remove(pubKey.Name())
 	err = pem.Encode(pubKey, publicKeyPEM)
-	assert.NoError(err)
-	assert.NoError(pubKey.Close())
+	require.NoError(t, err)
+	require.NoError(t, pubKey.Close())
 
 	publicKeyBytes, err := os.ReadFile(pubKey.Name())
-	assert.NoError(err)
+	require.NoError(t, err)
 	// Decode the PEM encoded public key
 	block, _ = pem.Decode(publicKeyBytes)
-	assert.NotNil(block)
+	require.NotNil(t, block)
 	// Parse the public key
 	parsedKey, err := x509.ParsePKCS1PublicKey(block.Bytes)
-	assert.NoError(err)
+	require.NoError(t, err)
 	authKey, err := os.CreateTemp("", "unit-test-ssh-auth-key")
-	assert.NoError(err)
+	require.NoError(t, err)
 	sshPublicKey, err := ssh.NewPublicKey(parsedKey)
-	assert.NoError(err)
+	require.NoError(t, err)
 	_, err = authKey.Write(ssh.MarshalAuthorizedKey(sshPublicKey))
-	assert.NoError(err)
-	assert.NoError(authKey.Close())
+	require.NoError(t, err)
+	require.NoError(t, authKey.Close())
 
 	brokenKey, err := os.CreateTemp("", "unit-test-ssh-broken-key")
-	assert.NoError(err)
+	require.NoError(t, err)
 	defer os.Remove(brokenKey.Name())
-	if _, err := brokenKey.Write(brokenBytes); err != nil {
-		t.Fatal(err)
-	}
-	assert.NoError(brokenKey.Close())
+	_, err = brokenKey.Write(brokenBytes)
+	require.NoError(t, err)
+	require.NoError(t, brokenKey.Close())
 
 	err = startSSHServer(sshPort, authKey.Name(), t)
-	assert.NoError(err)
+	require.NoError(t, err)
 	defer stopSSHServer()
 
 	host := &Host{
@@ -159,64 +156,46 @@ func hostRunTest(t *testing.T) {
 		SSHUser:           constants.AnsibleSSHUser,
 		SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
 	}
-	// good connection
-	if err := host.WaitForPort(sshPort, 10*time.Second); err != nil {
-		t.Fatal(err)
-	}
 
-	if err := host.Connect(sshPort); err != nil {
-		t.Fatal(err)
-	}
-	if !host.Connected() {
-		t.Fatal("host should be connected")
-	}
-	if err := host.MkdirAll("/tmp/test", time.Second); err != nil {
-		t.Fatal(err)
-	}
-	assert.DirExists("/tmp/test")
-	if err := host.StreamSSHCommand("sleep 1 && ls /tmp/test", nil, 10*time.Second); err != nil {
-		t.Fatal(err)
-	}
+	// good connection
+	require.NoError(t, host.WaitForPort(sshPort, 10*time.Second))
+	require.NoError(t, host.Connect(sshPort))
+	require.True(t, host.Connected())
+	require.NoError(t, host.MkdirAll("/tmp/test", time.Second))
+	require.DirExists(t, "/tmp/test")
+	require.NoError(t, host.StreamSSHCommand("sleep 1 && ls /tmp/test", nil, 10*time.Second))
+
 	// test  upload
 	randomString := utils.RandomString(20)
 	remoteFile := "/tmp/test/upload-unittest"
 	tmpFile, err := os.CreateTemp("", "upload-unittest")
-	assert.NoError(err)
+	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
 	_, err = tmpFile.Write([]byte(randomString))
-	assert.NoError(err)
-	assert.NoError(tmpFile.Close())
-	if err := host.Upload(tmpFile.Name(), remoteFile, 1*time.Second); err != nil {
-		t.Fatal(err)
-	}
-	assert.FileExists(remoteFile)
+	require.NoError(t, err)
+	require.NoError(t, tmpFile.Close())
+	require.NoError(t, host.Upload(tmpFile.Name(), remoteFile, 1*time.Second))
+
+	require.FileExists(t, remoteFile)
 	content, err := os.ReadFile(remoteFile)
-	assert.NoError(err)
-	assert.Equal(randomString, string(content))
+	require.NoError(t, err)
+	require.Equal(t, randomString, string(content))
 
 	// test download
 	localFile := "/tmp/download-unittest"
-	if err := host.Download(remoteFile, localFile, 1*time.Second); err != nil {
-		t.Fatal(err)
-	}
-	assert.NoError(err)
-	assert.FileExists(localFile)
+	require.NoError(t, host.Download(remoteFile, localFile, 1*time.Second))
+	require.FileExists(t, localFile)
 	content, err = os.ReadFile(remoteFile)
-	assert.NoError(err)
-	assert.Equal(randomString, string(content))
+	require.NoError(t, err)
+	require.Equal(t, randomString, string(content))
 
-	if _, err := host.Command("touch /tmp/test/streamtest", nil, 10*time.Second); err != nil {
-		t.Fatal(err)
-	}
-	assert.FileExists("/tmp/test/streamtest")
+	_, err = host.Command("touch /tmp/test/streamtest", nil, 10*time.Second)
+	require.NoError(t, err)
+	require.FileExists(t, "/tmp/test/streamtest")
 
 	// bad connection
-	if err := brokenHost.Connect(sshPort); err == nil {
-		t.Fatal(err)
-	}
-	if err := brokenHost.MkdirAll("/tmp/test", time.Second); err == nil {
-		t.Fatal(err)
-	}
+	require.Error(t, brokenHost.Connect(sshPort))
+	require.Error(t, brokenHost.MkdirAll("/tmp/test", time.Second))
 }
 
 func startSSHServer(sshPort int, keyFileName string, t *testing.T) error {

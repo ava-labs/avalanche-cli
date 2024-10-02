@@ -3,6 +3,7 @@
 package ledger
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -95,7 +96,7 @@ func (dev *LedgerDevice) FindFunds(
 		}
 	}
 	if totalBalance < amount {
-		return nil, fmt.Errorf("not enough funds on ledger")
+		return nil, errors.New("not enough funds on ledger")
 	}
 	return indices, nil
 }

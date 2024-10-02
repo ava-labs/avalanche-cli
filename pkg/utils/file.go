@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -73,7 +74,7 @@ func ExpandHome(path string) string {
 // FileCopy copies a file from src to dst.
 func FileCopy(src string, dst string) error {
 	if !FileExists(src) {
-		return fmt.Errorf("source file does not exist")
+		return errors.New("source file does not exist")
 	}
 	data, err := os.ReadFile(src)
 	if err != nil {
@@ -86,7 +87,7 @@ func FileCopy(src string, dst string) error {
 func ReadFile(filePath string) (string, error) {
 	filePath = ExpandHome(filePath)
 	if !FileExists(filePath) {
-		return "", fmt.Errorf("file does not exist")
+		return "", errors.New("file does not exist")
 	} else {
 		data, err := os.ReadFile(filePath)
 		if err != nil {

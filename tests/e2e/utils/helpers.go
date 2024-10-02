@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -467,7 +468,7 @@ func RunLedgerSim(
 		"npx",
 		"tsx",
 		basicLedgerSimScript,
-		fmt.Sprintf("%d", iters),
+		strconv.Itoa(iters),
 		seed,
 	)
 	cmd.Dir = ledgerSimDir
@@ -780,7 +781,7 @@ func GetFileHash(filename string) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 func GetLedgerAddress(network models.Network, index uint32) (string, error) {
@@ -795,7 +796,7 @@ func GetLedgerAddress(network models.Network, index uint32) (string, error) {
 		return "", err
 	}
 	if len(ledgerAddrs) != 1 {
-		return "", fmt.Errorf("no ledger addresses available")
+		return "", errors.New("no ledger addresses available")
 	}
 	ledgerAddr := ledgerAddrs[0]
 	hrp := key.GetHRP(network.ID)
@@ -819,7 +820,7 @@ func FundLedgerAddress(amount uint64) error {
 		return err
 	}
 	if len(ledgerAddrs) != 1 {
-		return fmt.Errorf("no ledger addresses available")
+		return errors.New("no ledger addresses available")
 	}
 	ledgerAddr := ledgerAddrs[0]
 	if err := ledgerDev.Disconnect(); err != nil {

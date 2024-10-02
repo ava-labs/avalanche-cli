@@ -47,7 +47,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		match := re.FindStringSubmatch(output)
 		if len(match) >= 3 {
 			hostName = match[1]
-			NodeID = fmt.Sprintf("NodeID-%s", match[3])
+			NodeID = "NodeID-" + match[3]
 			fmt.Println(hostName)
 			fmt.Println(NodeID)
 			// This is a validator node
@@ -60,7 +60,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		apiMatch := apiRe.FindStringSubmatch(output)
 		if len(apiMatch) >= 3 {
 			apiHostName = apiMatch[1]
-			apiNodeID = fmt.Sprintf("NodeID-%s", apiMatch[3])
+			apiNodeID = "NodeID-" + apiMatch[3]
 			fmt.Println(apiHostName)
 			fmt.Println(apiNodeID)
 			// This is an API node

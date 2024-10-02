@@ -6,8 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -144,7 +142,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 // doDeploy the actual deployment to the network runner
 // steps:
 //   - checks if the network has been started
-//   - install all needed plugin binaries, for the the new VM, and the already deployed VMs
+//   - install all needed plugin binaries, for the new VM, and the already deployed VMs
 //   - either starts a network from the default snapshot if not started,
 //     or restarts the already available network while preserving state
 //   - waits completion of operation
@@ -717,18 +715,11 @@ func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool
 
 func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool) (string, error) {
 	_, _, url, path := getSnapshotLocs(isSingleNode, isPreCortina17, isPreDurango11)
-	resp, err := http.Get(url)
+	sha256FileBytes, err := utils.MakeGetRequest(context.Background(), url)
 	if err != nil {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed downloading sha256 sums: unexpected http status code: %d", resp.StatusCode)
-	}
-	defer resp.Body.Close()
-	sha256FileBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
-	}
+
 	expectedSum, err := utils.SearchSHA256File(sha256FileBytes, path)
 	if err != nil {
 		return "", fmt.Errorf("failed obtaining snapshot sha256 sum: %w", err)
@@ -790,15 +781,7 @@ func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVer
 		}
 	}
 	if downloadSnapshot {
-		resp, err := http.Get(url)
-		if err != nil {
-			return false, fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			return false, fmt.Errorf("failed downloading bootstrap snapshot: unexpected http status code: %d", resp.StatusCode)
-		}
-		defer resp.Body.Close()
-		bootstrapSnapshotBytes, err := io.ReadAll(resp.Body)
+		bootstrapSnapshotBytes, err := utils.MakeGetRequest(context.Background(), url)
 		if err != nil {
 			return false, fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
 		}
@@ -860,7 +843,7 @@ func (d *LocalDeployer) startNetwork(
 	// load global node configs if they exist
 	configStr, err := d.app.Conf.LoadNodeConfig()
 	if err != nil {
-		return nil
+		return err
 	}
 	if configStr != "" {
 		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))

@@ -64,7 +64,7 @@ const (
 func newTestApp(t *testing.T, testDir string) *application.Avalanche {
 	tempDir := t.TempDir()
 	app := application.New()
-	app.Setup(tempDir, logging.NoLog{}, nil, prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(tempDir, logging.NoLog{}, nil, prompts.NewPrompter())
 	app.ApmDir = testDir
 	return app
 }
@@ -120,7 +120,7 @@ func TestGetRepos(t *testing.T) {
 
 			// check results
 			numRepos := len(tt.orgs) * len(tt.repos)
-			require.Equal(numRepos, len(repos))
+			require.Len(repos, numRepos)
 
 			index := 0
 			for _, org := range tt.orgs {

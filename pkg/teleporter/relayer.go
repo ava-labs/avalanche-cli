@@ -213,9 +213,8 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 
 func InstallRelayer(binDir, version string) (string, error) {
 	if version == "" || version == "latest" {
-		downloader := application.NewDownloader()
 		var err error
-		version, err = downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+		version, err = application.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
 		if err != nil {
 			return "", err
 		}
@@ -231,7 +230,7 @@ func InstallRelayer(binDir, version string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	bs, err := utils.Download(url)
+	bs, err := utils.MakeGetRequest(context.Background(), url, "")
 	if err != nil {
 		return "", err
 	}
@@ -267,7 +266,7 @@ func executeRelayer(binPath string, configPath string, logFile string) (int, err
 	time.Sleep(localRelayerSetupTime)
 	select {
 	case <-ch:
-		return 0, fmt.Errorf("relayer process failed during setup")
+		return 0, errors.New("relayer process failed during setup")
 	default:
 	}
 
@@ -555,7 +554,7 @@ func waitForRelayerInitialization(
 		}
 		elapsed := time.Since(t0)
 		if elapsed > checkTimeout {
-			return fmt.Errorf("timeout waiting for relayer initialization")
+			return errors.New("timeout waiting for relayer initialization")
 		}
 		time.Sleep(checkInterval)
 	}

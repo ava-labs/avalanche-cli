@@ -164,7 +164,7 @@ func Test_createSidecar_success(t *testing.T) {
 			require.NoError(err)
 			require.Equal(*sc, control)
 
-			require.Equal(sc.TokenName, tt.expectedTokenName)
+			require.Equal(tt.expectedTokenName, sc.TokenName)
 
 			// Cleanup file
 			err = os.Remove(createdPath)
@@ -203,7 +203,7 @@ func Test_loadSidecar_success(t *testing.T) {
 
 	sc, err := ap.LoadSidecar(subnetName1)
 	require.NoError(err)
-	require.Equal(sc, expectedSc)
+	require.Equal(expectedSc, sc)
 
 	// Cleanup file
 	err = os.Remove(sidecarPath)

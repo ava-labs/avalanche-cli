@@ -12,8 +12,8 @@ import (
 )
 
 func TestAddSingleQuotes(t *testing.T) {
-	input := []string{"", "b", "orange banana", "'apple'", "'a", "b'"}
-	expected := []string{"''", "'b'", "'orange banana'", "'apple'", "'a'", "'b'"}
+	input := []string{"", "b", "orange banana", "'apple'", "'a", "b'", "'both'"}
+	expected := []string{"''", "'b'", "'orange banana'", "'apple'", "'a'", "'b'", "'both'"}
 	output := AddSingleQuotes(input)
 
 	require.True(t, reflect.DeepEqual(output, expected), fmt.Sprintf("Expected %v, but got %v", expected, output))

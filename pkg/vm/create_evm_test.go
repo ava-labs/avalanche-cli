@@ -86,9 +86,9 @@ func Test_ensureAdminsFunded(t *testing.T) {
 			require := require.New(t)
 			b := someAllowedHasBalance(tt.allowList, tt.alloc)
 			if tt.shouldFail {
-				require.Equal(b, false)
+				require.False(b)
 			} else {
-				require.Equal(b, true)
+				require.True(b)
 			}
 		})
 	}

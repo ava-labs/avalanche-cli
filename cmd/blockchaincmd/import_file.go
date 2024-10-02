@@ -127,13 +127,13 @@ func importFromFile(importPath string) error {
 
 	if importable.Sidecar.VM == models.CustomVM {
 		if importable.Sidecar.CustomVMRepoURL == "" {
-			return fmt.Errorf("repository url must be defined for custom vm import")
+			return errors.New("repository url must be defined for custom vm import")
 		}
 		if importable.Sidecar.CustomVMBranch == "" {
-			return fmt.Errorf("repository branch must be defined for custom vm import")
+			return errors.New("repository branch must be defined for custom vm import")
 		}
 		if importable.Sidecar.CustomVMBuildScript == "" {
-			return fmt.Errorf("build script must be defined for custom vm import")
+			return errors.New("build script must be defined for custom vm import")
 		}
 
 		if err := vm.BuildCustomVM(app, &importable.Sidecar); err != nil {

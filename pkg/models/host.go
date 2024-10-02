@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -397,7 +398,7 @@ func (h *Host) Remove(path string, recursive bool) error {
 	defer sftp.Close()
 	if recursive {
 		// return sftp.RemoveAll(path) is very slow
-		_, err := h.Command(fmt.Sprintf("rm -rf %s", path), nil, constants.SSHLongRunningScriptTimeout)
+		_, err := h.Command("rm -rf "+path, nil, constants.SSHLongRunningScriptTimeout)
 		return err
 	} else {
 		return sftp.Remove(path)
@@ -407,9 +408,9 @@ func (h *Host) Remove(path string, recursive bool) error {
 func (h *Host) GetAnsibleInventoryRecord() string {
 	return strings.Join([]string{
 		h.NodeID,
-		fmt.Sprintf("ansible_host=%s", h.IP),
-		fmt.Sprintf("ansible_user=%s", h.SSHUser),
-		fmt.Sprintf("ansible_ssh_private_key_file=%s", h.SSHPrivateKeyPath),
+		"ansible_host=" + h.IP,
+		"ansible_user=" + h.SSHUser,
+		"ansible_ssh_private_key_file=" + h.SSHPrivateKeyPath,
 		fmt.Sprintf("ansible_ssh_common_args='%s'", h.SSHCommonArgs),
 	}, " ")
 }
@@ -466,7 +467,7 @@ func (h *Host) WaitForPort(port uint, timeout time.Duration) error {
 // WaitForSSHShell waits for the SSH shell to be available on the host within the specified timeout.
 func (h *Host) WaitForSSHShell(timeout time.Duration) error {
 	if h.IP == "" {
-		return fmt.Errorf("host IP is empty")
+		return errors.New("host IP is empty")
 	}
 	start := time.Now()
 	if err := h.WaitForPort(constants.SSHTCPPort, timeout); err != nil {

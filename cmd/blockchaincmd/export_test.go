@@ -9,14 +9,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -27,21 +25,17 @@ func TestExportImportSubnet(t *testing.T) {
 	require := require.New(t)
 	testSubnet := "testSubnet"
 	vmVersion := "v0.9.99"
-	testSubnetEVMCompat := []byte("{\"rpcChainVMProtocolVersion\": {\"v0.9.99\": 18}}")
 
 	app = application.New()
 
-	mockAppDownloader := mocks.Downloader{}
-	mockAppDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
-
-	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
+	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter())
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	genBytes, err := vm.LoadCustomGenesis(
 		app,
 		"../../"+utils.SubnetEvmGenesisPath,
 	)
 	require.NoError(err)
-	sc, err := vm.CreateEvmSidecar(
+	sc, err := vm.CreateEVMSidecar(
 		app,
 		testSubnet,
 		vmVersion,
@@ -76,14 +70,14 @@ func TestExportImportSubnet(t *testing.T) {
 	var control map[string]interface{}
 	err = json.Unmarshal(orig, &control)
 	require.NoError(err)
-	require.Equal(control["Name"], testSubnet)
-	require.Equal(control["VM"], "Subnet-EVM")
-	require.Equal(control["VMVersion"], vmVersion)
-	require.Equal(control["Subnet"], testSubnet)
-	require.Equal(control["TokenName"], "Test Token")
-	require.Equal(control["TokenSymbol"], "Test")
-	require.Equal(control["Version"], constants.SidecarVersion)
-	require.Equal(control["Networks"], nil)
+	require.Equal(testSubnet, control["Name"])
+	require.Equal("Subnet-EVM", control["VM"])
+	require.Equal(vmVersion, control["VMVersion"])
+	require.Equal(testSubnet, control["Subnet"])
+	require.Equal("Test Token", control["TokenName"])
+	require.Equal("Test", control["TokenSymbol"])
+	require.Equal(constants.SidecarVersion, control["Version"])
+	require.Nil(control["Networks"])
 
 	err = os.Remove(sidecarFile)
 	require.NoError(err)

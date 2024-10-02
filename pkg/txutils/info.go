@@ -4,6 +4,7 @@ package txutils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -37,7 +38,7 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 	}
 	network := models.NetworkFromNetworkID(networkID)
 	if network.Kind == models.Undefined {
-		return models.UndefinedNetwork, fmt.Errorf("undefined network model for tx")
+		return models.UndefinedNetwork, errors.New("undefined network model for tx")
 	}
 	return network, nil
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -355,7 +356,7 @@ func SimulateMainnetDeploy(
 			"1",
 			"--same-control-key",
 			"--mainnet-chain-id",
-			fmt.Sprint(mainnetChainID),
+			strconv.Itoa(mainnetChainID),
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},
@@ -396,7 +397,7 @@ func SimulateMultisigMainnetDeploy(
 			"--output-tx-path",
 			txPath,
 			"--mainnet-chain-id",
-			fmt.Sprint(subnetEVMMainnetChainID),
+			strconv.Itoa(subnetEVMMainnetChainID),
 			subnetName,
 			"--" + constants.SkipUpdateFlag,
 		},

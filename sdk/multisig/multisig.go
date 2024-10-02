@@ -4,6 +4,7 @@ package multisig
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/sdk/network"
@@ -18,7 +19,7 @@ import (
 
 type TxKind int64
 
-var ErrUndefinedTx = fmt.Errorf("tx is undefined")
+var ErrUndefinedTx = errors.New("tx is undefined")
 
 const (
 	Undefined TxKind = iota
@@ -193,7 +194,7 @@ func (ms *Multisig) GetAuthSigners() ([]ids.ShortID, error) {
 }
 
 func (*Multisig) GetSpendSigners() ([]ids.ShortID, error) {
-	return nil, fmt.Errorf("not implemented yet")
+	return nil, errors.New("not implemented yet")
 }
 
 func (ms *Multisig) GetTxKind() (TxKind, error) {
@@ -256,7 +257,7 @@ func (ms *Multisig) GetNetwork() (network.Network, error) {
 	}
 	newNetwork := network.NetworkFromNetworkID(networkID)
 	if newNetwork.Kind == network.Undefined {
-		return network.UndefinedNetwork, fmt.Errorf("undefined network model for tx")
+		return network.UndefinedNetwork, errors.New("undefined network model for tx")
 	}
 	return newNetwork, nil
 }

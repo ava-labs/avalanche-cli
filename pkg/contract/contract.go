@@ -4,6 +4,7 @@ package contract
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -18,7 +19,7 @@ import (
 	_ "embed"
 )
 
-var ErrFailedReceiptStatus = fmt.Errorf("failed receipt status")
+var ErrFailedReceiptStatus = errors.New("failed receipt status")
 
 func removeSurroundingParenthesis(s string) (string, error) {
 	s = strings.TrimSpace(s)
@@ -188,8 +189,8 @@ func getMap(
 				m["type"] = "tuple[]"
 				m["name"] = name
 			} else {
-				m["internalType"] = fmt.Sprintf("%s[]", t)
-				m["type"] = fmt.Sprintf("%s[]", t)
+				m["internalType"] = t + "[]"
+				m["type"] = t + "[]"
 				m["name"] = name
 			}
 		default:

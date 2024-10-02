@@ -7,11 +7,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -299,33 +299,8 @@ func Sum(s []int) int {
 	return sum
 }
 
-func Download(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf(
-			"failed downloading %s: unexpected http status code: %d",
-			url,
-			resp.StatusCode,
-		)
-	}
-	defer resp.Body.Close()
-	bs, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed downloading %s: %w", url, err)
-	}
-	return bs, nil
-}
-
-func DownloadStr(url string) (string, error) {
-	bs, err := Download(url)
-	return string(bs), err
-}
-
 func DownloadWithTee(url string, path string) ([]byte, error) {
-	bs, err := Download(url)
+	bs, err := MakeGetRequest(context.Background(), url, "")
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +321,7 @@ func GetIndexInSlice[T comparable](list []T, element T) (int, error) {
 			return i, nil
 		}
 	}
-	return 0, fmt.Errorf("element not found")
+	return 0, errors.New("element not found")
 }
 
 // GetRepoFromCommitURL takes a Git repository URL that contains commit ID and returns the cloneable
@@ -549,7 +524,7 @@ func ExtractPlaceholderValue(pattern, text string) (string, error) {
 	if len(matches) == 2 {
 		return matches[1], nil
 	} else {
-		return "", fmt.Errorf("no match found")
+		return "", errors.New("no match found")
 	}
 }
 

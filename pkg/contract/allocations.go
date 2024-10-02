@@ -3,6 +3,7 @@
 package contract
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -119,7 +120,7 @@ func GetEVMSubnetPrefundedKey(
 		return "", "", err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
-		return "", "", fmt.Errorf("search for prefunded key is only supported on EVM based vms")
+		return "", "", errors.New("search for prefunded key is only supported on EVM based vms")
 	}
 	_, genesisAddress, genesisPrivateKey, err := GetBlockchainAirdropKeyInfo(
 		app,
@@ -178,7 +179,7 @@ func GetEVMSubnetGenesisSupply(
 		return nil, err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
-		return nil, fmt.Errorf("genesis supply calculation is only supported on EVM based vms")
+		return nil, errors.New("genesis supply calculation is only supported on EVM based vms")
 	}
 	return sumGenesisSupply(genesisData)
 }
@@ -265,7 +266,7 @@ func GetEVMSubnetGenesisNativeMinterAdmin(
 		return false, false, "", "", "", err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
-		return false, false, "", "", "", fmt.Errorf("genesis native minter admin query is only supported on EVM based vms")
+		return false, false, "", "", "", errors.New("genesis native minter admin query is only supported on EVM based vms")
 	}
 	return getGenesisNativeMinterAdmin(app, network, genesisData)
 }
@@ -284,7 +285,7 @@ func GetEVMSubnetGenesisNativeMinterManager(
 		return false, false, "", "", "", err
 	}
 	if !utils.ByteSliceIsSubnetEvmGenesis(genesisData) {
-		return false, false, "", "", "", fmt.Errorf("genesis native minter manager query is only supported on EVM based vms")
+		return false, false, "", "", "", errors.New("genesis native minter manager query is only supported on EVM based vms")
 	}
 	return getGenesisNativeMinterManager(app, network, genesisData)
 }

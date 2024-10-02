@@ -25,25 +25,23 @@ import (
 )
 
 type Avalanche struct {
-	Log        logging.Logger
-	baseDir    string
-	Conf       *config.Config
-	Prompt     prompts.Prompter
-	Apm        *apm.APM
-	ApmDir     string
-	Downloader Downloader
+	Log     logging.Logger
+	baseDir string
+	Conf    *config.Config
+	Prompt  prompts.Prompter
+	Apm     *apm.APM
+	ApmDir  string
 }
 
 func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter, downloader Downloader) {
+func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter) {
 	app.baseDir = baseDir
 	app.Log = log
 	app.Conf = conf
 	app.Prompt = prompt
-	app.Downloader = downloader
 }
 
 func (app *Avalanche) GetRunFile() string {
@@ -287,14 +285,6 @@ func (app *Avalanche) GetKey(keyName string, network models.Network, createIfMis
 
 func (app *Avalanche) GetUpgradeBytesFilePath(blockchainName string) string {
 	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
-}
-
-func (app *Avalanche) GetDownloader() Downloader {
-	return app.Downloader
-}
-
-func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
-	return constants.AvalancheGoCompatibilityURL
 }
 
 func (app *Avalanche) ReadUpgradeFile(blockchainName string) ([]byte, error) {

@@ -4,7 +4,7 @@ package nodecmd
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -43,7 +43,7 @@ func importFile(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if clusterExists, err := checkClusterExists(clusterName); clusterExists || err != nil {
 		ux.Logger.RedXToUser("cluster %s already exists, please use a different name", clusterName)
-		return nil
+		return err
 	}
 
 	importCluster, err := readExportClusterFromFile(clusterFileName)
@@ -128,7 +128,7 @@ func importFile(_ *cobra.Command, args []string) error {
 func readExportClusterFromFile(filename string) (models.ExportCluster, error) {
 	var cluster models.ExportCluster
 	if !utils.FileExists(utils.ExpandHome(filename)) {
-		return cluster, fmt.Errorf("file does not exist")
+		return cluster, errors.New("file does not exist")
 	} else {
 		file, err := os.Open(filename)
 		if err != nil {

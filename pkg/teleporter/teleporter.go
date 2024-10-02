@@ -3,6 +3,7 @@
 package teleporter
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -78,7 +79,7 @@ func (t *Deployer) GetAssets(
 
 func (t *Deployer) CheckAssets() error {
 	if t.messengerContractAddress == "" || t.messengerDeployerAddress == "" || t.messengerDeployerTx == "" || t.registryBydecode == "" {
-		return fmt.Errorf("teleporter assets has not been initialized")
+		return errors.New("teleporter assets has not been initialized")
 	}
 	return nil
 }
@@ -457,7 +458,7 @@ func GetInfo(
 	if err != nil {
 		return nil, err
 	}
-	ti.Version, err = app.Downloader.GetLatestReleaseVersion(
+	ti.Version, err = application.GetLatestReleaseVersion(
 		binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName),
 	)
 	if err != nil {

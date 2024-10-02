@@ -31,7 +31,7 @@ var (
 	externalGasTokenBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1000))
 )
 
-func CreateEvmSidecar(
+func CreateEVMSidecar(
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
@@ -53,7 +53,7 @@ func CreateEvmSidecar(
 			return nil, fmt.Errorf("unable to get RPC version: %w", err)
 		}
 	} else {
-		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
+		rpcVersion, err = GetRPCProtocolVersion(models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -89,10 +89,10 @@ func CreateEVMGenesis(
 		}
 	}
 	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
-		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but warp precompile is disabled")
+		return nil, errors.New("a teleporter enabled blockchain was requested but warp precompile is disabled")
 	}
 	if (params.UseTeleporter || params.UseExternalGasToken) && teleporterInfo == nil {
-		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but no teleporter info was provided")
+		return nil, errors.New("a teleporter enabled blockchain was requested but no teleporter info was provided")
 	}
 
 	// Add the teleporter deployer to the initial token allocation if necessary.

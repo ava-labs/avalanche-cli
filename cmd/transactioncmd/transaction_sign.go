@@ -4,7 +4,6 @@ package transactioncmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -133,7 +132,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	if len(remainingSubnetAuthKeys) == 0 {
 		blockchaincmd.PrintReadyToSignMsg(subnetName, inputTxPath)
 		ux.Logger.PrintToUser("")
-		return fmt.Errorf("tx is already fully signed")
+		return errors.New("tx is already fully signed")
 	}
 
 	// get keychain accessor
@@ -161,7 +160,7 @@ func signTx(_ *cobra.Command, args []string) error {
 				ux.Logger.PrintToUser("  %s", addr)
 			}
 			ux.Logger.PrintToUser("")
-			return fmt.Errorf("no remaining signer address present in wallet")
+			return errors.New("no remaining signer address present in wallet")
 		}
 		return err
 	}

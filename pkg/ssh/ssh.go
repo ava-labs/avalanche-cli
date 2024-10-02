@@ -307,7 +307,7 @@ func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath s
 func RunSSHCopyYAMLFile(host *models.Host, yamlFilePath string) error {
 	if err := host.Upload(
 		yamlFilePath,
-		fmt.Sprintf("/home/ubuntu/%s", filepath.Base(yamlFilePath)),
+		"/home/ubuntu/"+filepath.Base(yamlFilePath),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
@@ -644,7 +644,7 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 // RunSSHMergeSubnetNodeConfig merges subnet node config to the node config on the remote host
 func mergeSubnetNodeConfig(host *models.Host, subnetNodeConfigPath string) error {
 	if subnetNodeConfigPath == "" {
-		return fmt.Errorf("subnet node config path is empty")
+		return errors.New("subnet node config path is empty")
 	}
 	remoteNodeConfigBytes, err := host.ReadFileBytes(remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
 	if err != nil {

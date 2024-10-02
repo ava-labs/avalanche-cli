@@ -154,15 +154,15 @@ type DeployParams struct {
 //   - Add Validator(s) into the Subnet
 func New(subnetParams *SubnetParams) (*Subnet, error) {
 	if subnetParams.GenesisFilePath != "" && subnetParams.SubnetEVM != nil {
-		return nil, fmt.Errorf("genesis file path cannot be non-empty if SubnetEVM params is not empty")
+		return nil, errors.New("genesis file path cannot be non-empty if SubnetEVM params is not empty")
 	}
 
 	if subnetParams.GenesisFilePath == "" && subnetParams.SubnetEVM == nil {
-		return nil, fmt.Errorf("genesis file path and SubnetEVM params params cannot all be empty")
+		return nil, errors.New("genesis file path and SubnetEVM params cannot both be empty")
 	}
 
 	if subnetParams.Name == "" {
-		return nil, fmt.Errorf("SubnetEVM name cannot be empty")
+		return nil, errors.New("SubnetEVM name cannot be empty")
 	}
 
 	var genesisBytes []byte
@@ -206,20 +206,20 @@ func createEvmGenesis(
 	var err error
 
 	if subnetEVMParams.ChainID == nil {
-		return nil, fmt.Errorf("genesis params chain ID cannot be empty")
+		return nil, errors.New("genesis params chain ID cannot be empty")
 	}
 
 	if subnetEVMParams.FeeConfig == commontype.EmptyFeeConfig {
-		return nil, fmt.Errorf("genesis params fee config cannot be empty")
+		return nil, errors.New("genesis params fee config cannot be empty")
 	}
 
 	if subnetEVMParams.Allocation == nil {
-		return nil, fmt.Errorf("genesis params allocation cannot be empty")
+		return nil, errors.New("genesis params allocation cannot be empty")
 	}
 	allocation := subnetEVMParams.Allocation
 
 	if subnetEVMParams.Precompiles == nil {
-		return nil, fmt.Errorf("genesis params precompiles cannot be empty")
+		return nil, errors.New("genesis params precompiles cannot be empty")
 	}
 
 	conf.FeeConfig = subnetEVMParams.FeeConfig

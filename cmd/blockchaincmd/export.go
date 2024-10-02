@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
@@ -79,7 +81,7 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Custom VM source code repository, branch and build script not defined for subnet. Filling in the details now.")
 			if customVMRepoURL != "" {
 				ux.Logger.PrintToUser("Checking source code repository URL %s", customVMRepoURL)
-				if err := prompts.ValidateURL(customVMRepoURL); err != nil {
+				if _, err := utils.MakeGetRequest(context.Background(), customVMRepoURL, ""); err != nil {
 					ux.Logger.PrintToUser("Invalid repository url %s: %s", customVMRepoURL, err)
 					customVMRepoURL = ""
 				}

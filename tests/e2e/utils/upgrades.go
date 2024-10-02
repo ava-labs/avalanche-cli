@@ -37,7 +37,7 @@ func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeC
 	// we want the "upgrades" section - easiest is to first unmarshal to a map...
 	var jsonToGo map[string]interface{}
 	if err := json.Unmarshal(chainConfig, &jsonToGo); err != nil {
-		return fmt.Errorf("failed to unpack JSON string to go map[string]interface{}")
+		return errors.New("failed to unpack JSON string to go map[string]interface{}")
 	}
 
 	// ...then access the part we need...
@@ -55,7 +55,7 @@ func CheckUpgradeIsDeployed(rpcEndpoint string, deployedUpgrades params.UpgradeC
 	// ...so that we finally can unmarshal to the object we need
 	var appliedUpgrades params.UpgradeConfig
 	if err := json.Unmarshal(serialized, &appliedUpgrades); err != nil {
-		return fmt.Errorf("failed to unpack JSON strings to params.UpgradeConfig")
+		return errors.New("failed to unpack JSON strings to params.UpgradeConfig")
 	}
 
 	gomega.Expect(appliedUpgrades).Should(gomega.Equal(deployedUpgrades))

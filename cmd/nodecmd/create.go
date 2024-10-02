@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -136,64 +138,64 @@ func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func preCreateChecks(clusterName string) error {
 	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
-		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
+		return errors.New("latest avalanchego released version, latest avalanchego pre-released version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
 	}
 	if useAWS && useGCP {
-		return fmt.Errorf("could not use both AWS and GCP cloud options")
+		return errors.New("could not use both AWS and GCP cloud options")
 	}
 	if !useAWS && awsProfile != constants.AWSDefaultCredential {
-		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
+		return errors.New("could not use AWS profile for non AWS cloud option")
 	}
 	if len(utils.Unique(cmdLineRegion)) != len(numValidatorsNodes) {
-		return fmt.Errorf("regions provided is not consistent with number of nodes provided. Please make sure list of regions is unique")
+		return errors.New("regions provided is not consistent with number of nodes provided. Please make sure list of regions is unique")
 	}
 
 	if len(numValidatorsNodes) > 0 {
 		for _, num := range numValidatorsNodes {
 			if num <= 0 {
-				return fmt.Errorf("number of nodes per region must be greater than 0")
+				return errors.New("number of nodes per region must be greater than 0")
 			}
 		}
 	}
 	if sshIdentity != "" && !useSSHAgent {
-		return fmt.Errorf("could not use ssh identity without using ssh agent")
+		return errors.New("could not use ssh identity without using ssh agent")
 	}
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
-		return fmt.Errorf("ssh agent is not available")
+		return errors.New("ssh agent is not available")
 	}
 	if len(numAPINodes) > 0 && !(globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
-		return fmt.Errorf("API nodes can only be created in Devnet/Fuji(Testnet)")
+		return errors.New("API nodes can only be created in Devnet/Fuji(Testnet)")
 	}
 	if (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) > 0 && len(numAPINodes) != len(numValidatorsNodes) {
-		return fmt.Errorf("API nodes and Validator nodes must be deployed to same number of regions")
+		return errors.New("API nodes and Validator nodes must be deployed to same number of regions")
 	}
 	if len(numAPINodes) > 0 {
 		for _, num := range numValidatorsNodes {
 			if num <= 0 {
-				return fmt.Errorf("number of API nodes per region must be greater than 0")
+				return errors.New("number of API nodes per region must be greater than 0")
 			}
 		}
 	}
 	if customGrafanaDashboardPath != "" && !utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
-		return fmt.Errorf("custom grafana dashboard file does not exist")
+		return errors.New("custom grafana dashboard file does not exist")
 	}
 
 	if useAWS {
 		if stringToAWSVolumeType(volumeType) == "" {
-			return fmt.Errorf("invalid AWS volume type provided")
+			return errors.New("invalid AWS volume type provided")
 		}
 		if volumeType != constants.AWSVolumeTypeGP3 && throughput != constants.AWSGP3DefaultThroughput {
-			return fmt.Errorf("AWS throughput setting is only applicable AWS gp3 volume type")
+			return errors.New("AWS throughput setting is only applicable AWS gp3 volume type")
 		}
 		if volumeType != constants.AWSVolumeTypeGP3 && volumeType != constants.AWSVolumeTypeIO1 && volumeType != constants.AWSVolumeTypeIO2 && iops != constants.AWSGP3DefaultIOPS {
-			return fmt.Errorf("AWS iops setting is only applicable AWS gp3, io1, and io2 volume types")
+			return errors.New("AWS iops setting is only applicable AWS gp3, io1, and io2 volume types")
 		}
 	}
 	if grafanaPkg != "" && (!strings.HasSuffix(grafanaPkg, ".deb") || !utils.IsValidURL(grafanaPkg)) {
-		return fmt.Errorf("grafana package must be URL to a .deb file")
+		return errors.New("grafana package must be URL to a .deb file")
 	}
 	if grafanaPkg != "" && !addMonitoring {
-		return fmt.Errorf("grafana package can only be used with monitoring setup")
+		return errors.New("grafana package can only be used with monitoring setup")
 	}
 	// check external cluster
 	if err := failForExternal(clusterName); err != nil {
@@ -272,10 +274,10 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 
 	if cloudService != constants.GCPCloudService && cmdLineGCPCredentialsPath != "" {
-		return fmt.Errorf("set to use GCP credentials but cloud option is not GCP")
+		return errors.New("set to use GCP credentials but cloud option is not GCP")
 	}
 	if cloudService != constants.GCPCloudService && cmdLineGCPProjectName != "" {
-		return fmt.Errorf("set to use GCP project but cloud option is not GCP")
+		return errors.New("set to use GCP project but cloud option is not GCP")
 	}
 	// for devnet add nonstake api nodes for each region with stake
 	cloudConfigMap := models.CloudConfig{}
@@ -309,7 +311,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		}
 		// override cloudConfig for E2E testing
 		defaultAvalancheCLIPrefix := usr.Username + constants.AvalancheCLISuffix
-		keyPairName := fmt.Sprintf("%s-keypair", defaultAvalancheCLIPrefix)
+		keyPairName := defaultAvalancheCLIPrefix + "-keypair"
 		certPath, err := app.GetSSHCertFilePath(keyPairName)
 		if globalNetworkFlags.UseDevnet {
 			for i, num := range numAPINodes {
@@ -378,7 +380,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			}
 			monitoringNodeConfig = monitoringCloudConfig["monitoringDocker"]
 		}
-		pubKeyString, err := os.ReadFile(fmt.Sprintf("%s.pub", certPath))
+		pubKeyString, err := os.ReadFile(certPath + ".pub")
 		if err != nil {
 			return err
 		}
@@ -393,7 +395,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		if cloudService == constants.AWSCloudService {
 			// Get AWS Credential, region and AMI
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
-				return fmt.Errorf("cloud access is required")
+				return errors.New("cloud access is required")
 			}
 			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil, nodeType)
 			if err != nil {
@@ -465,7 +467,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			}
 		} else {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
-				return fmt.Errorf("cloud access is required")
+				return errors.New("cloud access is required")
 			}
 			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
 			gcpClient, numNodesMap, imageID, credentialFilepath, projectName, err := getGCPConfig(false)
@@ -528,7 +530,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					networkName := fmt.Sprintf("%s-network", prefix)
+					networkName := prefix + "-network"
 					firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
 					ports := []string{
 						strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
@@ -995,14 +997,14 @@ func getAvalancheGoVersion() (string, error) {
 	if useCustomAvalanchegoVersion != "" {
 		return useCustomAvalanchegoVersion, nil
 	}
-	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestReleaseVersion, err := application.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
 	))
 	if err != nil {
 		return "", err
 	}
-	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+	latestPreReleaseVersion, err := application.GetLatestPreReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
 	)
@@ -1040,7 +1042,9 @@ func getAvalancheGoVersion() (string, error) {
 
 func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
 	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
-		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+		configuredRPCVersion,
+		constants.AvalancheGoCompatibilityURL,
+	)
 	if err == vm.ErrNoAvagoVersion {
 		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
 		return latestPreReleaseVersion, nil
@@ -1099,7 +1103,7 @@ func promptAvalancheGoVersionChoice(latestReleaseVersion string, latestPreReleas
 func setCloudService() (string, error) {
 	if utils.IsE2E() {
 		if !utils.E2EDocker() {
-			return "", fmt.Errorf("E2E is required but docker-compose is not available")
+			return "", errors.New("E2E is required but docker-compose is not available")
 		}
 		return constants.E2EDocker, nil
 	}
@@ -1382,7 +1386,7 @@ func getRegionsNodeNum(cloudName string) (
 			}
 		}
 		if numNodes > uint32(math.MaxInt32) || numAPINodes > uint32(math.MaxInt32) {
-			return nil, fmt.Errorf("number of nodes exceeds the range of a signed 32-bit integer")
+			return nil, errors.New("number of nodes exceeds the range of a signed 32-bit integer")
 		}
 		nodes[userRegion] = NumNodes{int(numNodes), int(numAPINodes)}
 		var currentInput []string

@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		match := re.FindStringSubmatch(output)
 		if len(match) >= 3 {
 			hostName = match[1]
-			NodeID = fmt.Sprintf("NodeID-%s", match[2])
+			NodeID = "NodeID-" + match[2]
 		} else {
 			ginkgo.Fail("failed to parse hostName and NodeID")
 		}
@@ -167,7 +167,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		output := commands.NodeExport(exportFileName, false)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("exported cluster [%s] configuration", constants.E2EClusterName)))
-		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("to %s", exportFileName)))
+		gomega.Expect(output).To(gomega.ContainSubstring("to " + exportFileName))
 		exportFile, err := utils.ReadFile(exportFileName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(exportFile)

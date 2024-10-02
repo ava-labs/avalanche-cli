@@ -110,7 +110,7 @@ func TestListDecision(t *testing.T) {
 	)
 	require.NoError(err)
 	require.False(cancel)
-	require.Exactly(1, len(list))
+	require.Len(list, 1)
 
 	// 4. add - 1 valid, then add the same
 	list, cancel, err = prompts.CaptureListDecision(
@@ -123,7 +123,7 @@ func TestListDecision(t *testing.T) {
 	)
 	require.NoError(err)
 	require.False(cancel)
-	require.Exactly(2, len(list))
+	require.Len(list, 2)
 
 	// 5. add - 2 valid, then remove index 1, readd
 	list, cancel, err = prompts.CaptureListDecision(
@@ -136,5 +136,5 @@ func TestListDecision(t *testing.T) {
 	)
 	require.NoError(err)
 	require.False(cancel)
-	require.Exactly(2, len(list))
+	require.Len(list, 2)
 }

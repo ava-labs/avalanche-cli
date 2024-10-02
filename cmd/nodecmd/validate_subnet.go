@@ -258,7 +258,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	for _, host := range hosts {
 		if _, b := nodeIDMap[host.NodeID]; !b {
 			if err, b := failedNodesMap[host.NodeID]; !b {
-				return fmt.Errorf("expected to found an error for non mapped node")
+				return errors.New("expected to found an error for non mapped node")
 			} else {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err)
 				nodeErrors[host.NodeID] = err
@@ -273,7 +273,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			}
 			nodeID, b := nodeIDMap[host.NodeID]
 			if !b {
-				return fmt.Errorf("nodeID should be defined on add primary validators")
+				return errors.New("nodeID should be defined on add primary validators")
 			}
 			if err := addNodeAsPrimaryNetworkValidator(deployer, network, kc, nodeID, i, host.GetCloudID()); err != nil {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
@@ -288,7 +288,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			}
 			nodeID, b := nodeIDMap[host.NodeID]
 			if !b {
-				return fmt.Errorf("nodeID should be defined on primary validators wait loop")
+				return errors.New("nodeID should be defined on primary validators wait loop")
 			}
 			if err := waitForNodeToBePrimaryNetworkValidator(network, nodeID); err != nil {
 				ux.Logger.PrintToUser("Failed to add node %s as subnet validator due to %s", host.NodeID, err.Error())
@@ -304,7 +304,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		}
 		nodeID, b := nodeIDMap[host.NodeID]
 		if !b {
-			return fmt.Errorf("nodeID should be defined on add subnet validators loop")
+			return errors.New("nodeID should be defined on add subnet validators loop")
 		}
 		if !avoidSubnetValidationChecks {
 			// we have to check if node is synced to subnet before adding the node as a validator

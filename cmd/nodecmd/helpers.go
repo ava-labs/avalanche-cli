@@ -67,7 +67,7 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 			return isHealthy, nil
 		}
 	}
-	return false, fmt.Errorf("unable to parse node healthy status")
+	return false, errors.New("unable to parse node healthy status")
 }
 
 func getNotBootstrappedNodes(hosts []*models.Host) ([]string, error) {

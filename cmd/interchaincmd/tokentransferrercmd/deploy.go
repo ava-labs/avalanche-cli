@@ -3,6 +3,7 @@
 package tokentransferrercmd
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -131,7 +132,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		flags.homeFlags.erc20Address != "",
 		flags.homeFlags.native,
 	}) {
-		return fmt.Errorf("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
+		return errors.New("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
 	}
 	if err := flags.remoteFlags.chainFlags.CheckMutuallyExclusiveFields(); err != nil {
 		return err
@@ -219,7 +220,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				}
 				p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.Desc() == option })
 				if p == nil {
-					return fmt.Errorf("expected to have found a popular token from option")
+					return errors.New("expected to have found a popular token from option")
 				}
 				flags.homeFlags.homeAddress = p.TransferrerHomeAddress
 			case homeDeployedOption:
@@ -421,11 +422,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if flags.remoteFlags.chainFlags.BlockchainName == flags.homeFlags.chainFlags.BlockchainName {
-			return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
+			return errors.New("trying to make an Transferrer were home and remote are on the same subnet")
 		}
 	}
 	if flags.remoteFlags.chainFlags.CChain && flags.homeFlags.chainFlags.CChain {
-		return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
+		return errors.New("trying to make an Transferrer were home and remote are on the same subnet")
 	}
 
 	// Checkout minter availability for native remote before doing something else
@@ -696,7 +697,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		elapsed := time.Since(t0)
 		if elapsed > checkTimeout {
-			return fmt.Errorf("timeout waiting for remote endpoint registration")
+			return errors.New("timeout waiting for remote endpoint registration")
 		}
 		time.Sleep(checkInterval)
 	}
@@ -763,7 +764,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			}
 			elapsed := time.Since(t0)
 			if elapsed > checkTimeout {
-				return fmt.Errorf("timeout waiting for remote endpoint collateralization")
+				return errors.New("timeout waiting for remote endpoint collateralization")
 			}
 			time.Sleep(checkInterval)
 		}

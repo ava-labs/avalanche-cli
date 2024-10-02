@@ -4,6 +4,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"golang.org/x/mod/semver"
 
@@ -52,18 +54,17 @@ VersionMapper keys and their usage:
 // without having to manually update the e2e tests periodically.
 type VersionMapper interface {
 	GetCompatURL(vmType models.VMType) string
-	GetAvagoURL() string
+	GetAvalancheGoURL() string
 	GetApp() *application.Avalanche
-	GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error)
-	GetEligibleVersions(sortedVersions []string, repoName string, app *application.Avalanche) ([]string, error)
+	GetLatestAvalancheGoByProtoVersion(rpcVersion int, url string) (string, error)
+	GetEligibleVersions(sortedVersions []string, repoName string) ([]string, error)
 	FilterAvailableVersions(versions []string) []string
 }
 
 // NewVersionMapper returns the default VersionMapper for e2e tests
 func NewVersionMapper() VersionMapper {
 	app := &application.Avalanche{
-		Downloader: application.NewDownloader(),
-		Log:        logging.NoLog{},
+		Log: logging.NoLog{},
 	}
 	return &versionMapper{
 		app: app,
@@ -76,11 +77,11 @@ type versionMapper struct {
 	app *application.Avalanche
 }
 
-// GetLatestAvagoByProtoVersion returns the latest Avalanchego version which
+// GetLatestAvalancheGoByProtoVersion returns the latest Avalanchego version which
 // runs with the specified rpcVersion, or an error if it can't be found
 // (or other errors occurred)
-func (*versionMapper) GetLatestAvagoByProtoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
-	return vm.GetLatestAvalancheGoByProtocolVersion(app, rpcVersion, url)
+func (*versionMapper) GetLatestAvalancheGoByProtoVersion(rpcVersion int, url string) (string, error) {
+	return vm.GetLatestAvalancheGoByProtocolVersion(rpcVersion, url)
 }
 
 // GetApp returns the Avalanche application instance
@@ -101,14 +102,14 @@ func (*versionMapper) GetCompatURL(vmType models.VMType) string {
 	}
 }
 
-// GetAvagoURL returns the compatibility URL for Avalanchego
-func (*versionMapper) GetAvagoURL() string {
+// GetAvalancheGoURL returns the compatibility URL for Avalanchego
+func (*versionMapper) GetAvalancheGoURL() string {
 	return constants.AvalancheGoCompatibilityURL
 }
 
-func (*versionMapper) GetEligibleVersions(sortedVersions []string, repoName string, app *application.Avalanche) ([]string, error) {
+func (*versionMapper) GetEligibleVersions(sortedVersions []string, repoName string) ([]string, error) {
 	// get latest avago release to make sure we're not picking a release currently in progress but not available for download
-	latest, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latest, err := application.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		repoName,
 	))
@@ -132,12 +133,11 @@ func (*versionMapper) GetEligibleVersions(sortedVersions []string, repoName stri
 func (*versionMapper) FilterAvailableVersions(versions []string) []string {
 	availableVersions := []string{}
 	for _, v := range versions {
-		resp, err := binutils.CheckReleaseVersion(logging.NoLog{}, constants.SubnetEVMRepoName, v)
+		err := binutils.CheckReleaseVersion(logging.NoLog{}, constants.SubnetEVMRepoName, v)
 		if err != nil {
 			continue
 		}
 		availableVersions = append(availableVersions, v)
-		resp.Body.Close()
 	}
 	return availableVersions
 }
@@ -168,7 +168,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 
 	// subnet-evm publishes its upcoming new version in the compatibility json
 	// before the new version is actually a downloadable release
-	subnetEVMversions, err = mapper.GetEligibleVersions(subnetEVMversions, constants.SubnetEVMRepoName, mapper.GetApp())
+	subnetEVMversions, err = mapper.GetEligibleVersions(subnetEVMversions, constants.SubnetEVMRepoName)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		// we should be able to safely assume that for a given subnet-evm RPC version,
 		// there exists at least one compatible Avalanchego.
 		// This means we can in any case use this to set the **latest** compatibility
-		soloAvago, err := mapper.GetLatestAvagoByProtoVersion(mapper.GetApp(), subnetEVMmapping[first], mapper.GetAvagoURL())
+		soloAvago, err := mapper.GetLatestAvalancheGoByProtoVersion(subnetEVMmapping[first], mapper.GetAvalancheGoURL())
 		if err != nil {
 			return nil, err
 		}
@@ -298,7 +298,7 @@ func getVersions(mapper VersionMapper, vmType models.VMType) ([]string, map[stri
 
 // getCompatibility returns the compatibility object for the given VM type
 func getCompatibility(mapper VersionMapper, vmType models.VMType) (models.VMCompatibility, error) {
-	compatibilityBytes, err := mapper.GetApp().GetDownloader().Download(mapper.GetCompatURL(vmType))
+	compatibilityBytes, err := utils.MakeGetRequest(context.Background(), mapper.GetCompatURL(vmType))
 	if err != nil {
 		return models.VMCompatibility{}, err
 	}
@@ -312,7 +312,7 @@ func getCompatibility(mapper VersionMapper, vmType models.VMType) (models.VMComp
 
 // getAvagoCompatibility returns the compatibility for Avalanchego
 func getAvagoCompatibility(mapper VersionMapper) (models.AvagoCompatiblity, error) {
-	avagoBytes, err := mapper.GetApp().GetDownloader().Download(mapper.GetAvagoURL())
+	avagoBytes, err := utils.MakeGetRequest(context.Background(), mapper.GetAvalancheGoURL())
 	if err != nil {
 		return nil, err
 	}

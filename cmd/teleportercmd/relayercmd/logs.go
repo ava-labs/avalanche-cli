@@ -4,6 +4,7 @@ package relayercmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -73,7 +74,7 @@ func logs(_ *cobra.Command, _ []string) error {
 		logs := string(bs)
 		logLines = strings.Split(logs, "\n")
 	default:
-		return fmt.Errorf("unsupported network")
+		return errors.New("unsupported network")
 	}
 	if first != 0 {
 		if len(logLines) > int(first) {

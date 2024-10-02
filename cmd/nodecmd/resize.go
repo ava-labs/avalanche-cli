@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -43,15 +44,15 @@ The node resize command can change the amount of CPU, memory and disk space avai
 
 func preResizeChecks(clusterName string) error {
 	if nodeType == "" && diskSize == "" {
-		return fmt.Errorf("at least one of the flags --node-type or --disk-size must be provided")
+		return errors.New("at least one of the flags --node-type or --disk-size must be provided")
 	}
 	if diskSize != "" && !strings.HasSuffix(diskSize, "Gb") {
-		return fmt.Errorf("disk-size must be in Gb")
+		return errors.New("disk-size must be in Gb")
 	}
 	if diskSize != "" {
 		diskSizeGb := strings.TrimSuffix(diskSize, "Gb")
 		if _, err := strconv.Atoi(diskSizeGb); err != nil {
-			return fmt.Errorf("disk-size must be an integer")
+			return errors.New("disk-size must be an integer")
 		}
 	}
 	if err := failForExternal(clusterName); err != nil {
@@ -107,7 +108,7 @@ func resize(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(nodeConfig.CloudService) != nil) {
-			return fmt.Errorf("cloud access is required")
+			return errors.New("cloud access is required")
 		}
 		spinSession := ux.NewUserSpinner()
 		// resize node and disk. If error occurs, log it and continue to next host
@@ -138,7 +139,7 @@ func resize(_ *cobra.Command, args []string) error {
 // resizeDisk resizes the disk size of the node
 func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
 	if diskSize > math.MaxInt32 {
-		return fmt.Errorf("disk size exceeds maximum supported value")
+		return errors.New("disk size exceeds maximum supported value")
 	}
 	switch nodeConfig.CloudService {
 	case "", constants.AWSCloudService:
@@ -165,7 +166,7 @@ func resizeDisk(nodeConfig models.NodeConfig, diskSize int) error {
 			return err
 		}
 		if diskSize > math.MaxInt {
-			return fmt.Errorf("disk size exceeds maximum supported value")
+			return errors.New("disk size exceeds maximum supported value")
 		}
 		return gcpCloud.ResizeVolume(rootVolume, nodeConfig.Region, int64(diskSize))
 	default:

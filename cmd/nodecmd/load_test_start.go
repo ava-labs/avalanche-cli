@@ -3,6 +3,8 @@
 package nodecmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -89,16 +90,16 @@ func preLoadTestChecks(clusterName string) error {
 		return err
 	}
 	if useAWS && useGCP {
-		return fmt.Errorf("could not use both AWS and GCP cloud options")
+		return errors.New("could not use both AWS and GCP cloud options")
 	}
 	if !useAWS && awsProfile != constants.AWSDefaultCredential {
-		return fmt.Errorf("could not use AWS profile for non AWS cloud option")
+		return errors.New("could not use AWS profile for non AWS cloud option")
 	}
 	if sshIdentity != "" && !useSSHAgent {
-		return fmt.Errorf("could not use ssh identity without using ssh agent")
+		return errors.New("could not use ssh identity without using ssh agent")
 	}
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
-		return fmt.Errorf("ssh agent is not available")
+		return errors.New("ssh agent is not available")
 	}
 	clusterNodes, err := getClusterNodes(clusterName)
 	if err != nil {
@@ -389,7 +390,7 @@ func getDeployedSubnetInfo(clusterName string, blockchainName string) (string, s
 			}
 		}
 	}
-	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <blockchainName> --cluster <clusterName> first")
+	return "", "", errors.New("unable to find deployed Cluster info, please call avalanche subnet deploy <blockchainName> --cluster <clusterName> first")
 }
 
 func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {
@@ -486,12 +487,11 @@ func GetLoadTestScript(app *application.Avalanche) error {
 	var err error
 	if loadTestRepoURL != "" {
 		ux.Logger.PrintToUser("Checking source code repository URL %s", loadTestRepoURL)
-		if err := prompts.ValidateURL(loadTestRepoURL); err != nil {
+		if _, err := utils.MakeGetRequest(context.Background(), loadTestRepoURL, ""); err != nil {
 			ux.Logger.PrintToUser("Invalid repository url %s: %s", loadTestRepoURL, err)
 			loadTestRepoURL = ""
 		}
-	}
-	if loadTestRepoURL == "" {
+	} else {
 		loadTestRepoURL, err = app.Prompt.CaptureURL("Source code repository URL", true)
 		if err != nil {
 			return err

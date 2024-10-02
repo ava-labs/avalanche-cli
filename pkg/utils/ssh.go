@@ -3,6 +3,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -17,7 +18,7 @@ import (
 // GetSSHConnectionString returns the SSH connection string for the given public IP and certificate file path.
 func GetSSHConnectionString(publicIP, certFilePath string) string {
 	if certFilePath != "" {
-		certFilePath = fmt.Sprintf("-i %s", certFilePath)
+		certFilePath = "-i " + certFilePath
 	}
 	return fmt.Sprintf("ssh %s %s@%s %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
 }
@@ -34,10 +35,10 @@ func GetSCPTargetPath(ip, path string) string {
 func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destIP, destPath string, recursive, withCompression bool) (string, error) {
 	scpParams := constants.AnsibleSSHShellParams + " -B -o LogLevel=Error"
 	if sourceIP == "" && destIP == "" {
-		return "", fmt.Errorf("source or destination should be remote")
+		return "", errors.New("source or destination should be remote")
 	}
 	if sourcePath == "" || destPath == "" {
-		return "", fmt.Errorf("source and destination path are required")
+		return "", errors.New("source and destination path are required")
 	}
 	// end of checks
 	if recursive {
@@ -47,7 +48,7 @@ func GetSCPCommandString(certFilePath string, sourceIP, sourcePath string, destI
 		scpParams += " -C"
 	}
 	if certFilePath != "" {
-		scpParams += fmt.Sprintf(" -i %s", certFilePath)
+		scpParams += " -i " + certFilePath
 	}
 	if sourceIP != "" && destIP != "" {
 		scpParams += " -3"
@@ -86,7 +87,7 @@ func IsSSHAgentAvailable() bool {
 
 func getSSHAgent() (agent.ExtendedAgent, error) {
 	if !IsSSHAgentAvailable() {
-		return nil, fmt.Errorf("SSH agent is not available")
+		return nil, errors.New("SSH agent is not available")
 	}
 	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
 	conn, err := net.Dial("unix", sshAuthSock)

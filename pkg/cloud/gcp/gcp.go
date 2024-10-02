@@ -100,12 +100,12 @@ func (c *GcpCloud) waitForOperation(operation *compute.Operation) error {
 			return nil
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("operation did not complete within the specified timeout")
+			return errors.New("operation did not complete within the specified timeout")
 		}
 		// Wait before checking the status again
 		select {
 		case <-c.ctx.Done():
-			return fmt.Errorf("operation canceled")
+			return errors.New("operation canceled")
 		case <-time.After(1 * time.Second):
 			// Continue
 		}
@@ -157,7 +157,7 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 // SetFirewallRule creates a new firewall rule in GCP
 func (c *GcpCloud) SetFirewallRule(ipAddress, firewallName, networkName string, ports []string) (*compute.Firewall, error) {
 	if !strings.Contains(ipAddress, "/") {
-		ipAddress = fmt.Sprintf("%s/32", ipAddress) // add netmask /32 if missing
+		ipAddress += "%s/32" // add netmask /32 if missing
 	}
 	firewall := &compute.Firewall{
 		Name:    firewallName,
@@ -229,11 +229,11 @@ func (c *GcpCloud) SetupInstances(
 ) ([]*compute.Instance, error) {
 	parallelism := 8
 	if len(staticIP) > 0 && len(staticIP) != numNodes {
-		return nil, fmt.Errorf("len(staticIPName) != numNodes")
+		return nil, errors.New("len(staticIPName) != numNodes")
 	}
 	instances := make([]*compute.Instance, numNodes)
 	instancesChan := make(chan *compute.Instance, numNodes)
-	sshKey := fmt.Sprintf("ubuntu:%s", strings.TrimSuffix(sshPublicKey, "\n"))
+	sshKey := "ubuntu:" + strings.TrimSuffix(sshPublicKey, "\n")
 	automaticRestart := true
 
 	eg := &errgroup.Group{}
@@ -444,7 +444,7 @@ func (c *GcpCloud) AddFirewall(publicIP, networkName, projectName, firewallName 
 		firewall := compute.Firewall{
 			Name:         firewallName,
 			Allowed:      []*compute.FirewallAllowed{&allowedFirewall},
-			Network:      fmt.Sprintf("global/networks/%s", networkName),
+			Network:      "global/networks/" + networkName,
 			SourceRanges: []string{publicIP + constants.IPAddressSuffix},
 		}
 		instancesStopCall := c.gcpClient.Firewalls.Insert(projectName, &firewall)

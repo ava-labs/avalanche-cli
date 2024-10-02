@@ -3,6 +3,7 @@
 package teleportercmd
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -217,7 +218,7 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 		elapsed := time.Since(t0)
 		if elapsed > arrivalCheckTimeout {
-			return fmt.Errorf("timeout waiting for message to be teleported")
+			return errors.New("timeout waiting for message to be teleported")
 		}
 		time.Sleep(arrivalCheckInterval)
 	}

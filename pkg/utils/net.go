@@ -3,27 +3,16 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net"
-	"net/http"
 	"net/url"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
 func GetUserIPAddress() (string, error) {
-	resp, err := http.Get("https://api.ipify.org?format=json")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("HTTP request failed")
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := MakeGetRequest(context.Background(), "https://api.ipify.org?format=json")
 	if err != nil {
 		return "", err
 	}

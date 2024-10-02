@@ -12,7 +12,7 @@ func SetupAvalanchego(app *application.Avalanche, avagoVersion string) (string, 
 	binDir := app.GetAvalanchegoBinDir()
 
 	installer := NewInstaller()
-	downloader := NewAvagoDownloader()
+	downloader := NewAvalancheGoDownloader()
 	return InstallBinary(
 		app,
 		avagoVersion,

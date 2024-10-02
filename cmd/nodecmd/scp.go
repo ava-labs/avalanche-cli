@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,7 +83,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if sourceClusterExists && destClusterExists {
-		return fmt.Errorf("both source and destination cannot be clusters")
+		return errors.New("both source and destination cannot be clusters")
 	}
 
 	switch {
@@ -104,7 +105,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 		return scpHosts(dstCluster, clusterHosts, utils.CombineSCPPath(sourceClusterNameOrNodeID, sourcePath), destPath, clusterName, false)
 	default:
 		if sourceClusterNameOrNodeID == destClusterNameOrNodeID {
-			return fmt.Errorf("source and destination cannot be the same node")
+			return errors.New("source and destination cannot be the same node")
 		}
 		// source is remote
 		srcPath := utils.CombineSCPPath(sourceClusterNameOrNodeID, sourcePath)
@@ -121,7 +122,7 @@ func scpNode(_ *cobra.Command, args []string) error {
 				return scpHosts(noCluster, []*models.Host{selectedHost}, srcPath, dstPath, clusterName, false)
 			}
 		}
-		return fmt.Errorf("source or destination not found")
+		return errors.New("source or destination not found")
 	}
 }
 

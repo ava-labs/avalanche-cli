@@ -3,7 +3,7 @@
 package keychain
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/ava-labs/avalanche-cli/sdk/key"
 	"github.com/ava-labs/avalanche-cli/sdk/ledger"
@@ -60,7 +60,7 @@ func NewKeychain(
 ) (*Keychain, error) {
 	if ledgerInfo != nil {
 		if keyPath != "" {
-			return nil, fmt.Errorf("keychain can only created either from key path or ledger, not both")
+			return nil, errors.New("keychain can only created either from key path or ledger, not both")
 		}
 		dev, err := ledger.New()
 		if err != nil {
@@ -83,7 +83,7 @@ func NewKeychain(
 			}
 		}
 		if len(kc.Ledger.LedgerIndices) == 0 {
-			return nil, fmt.Errorf("keychain currently does not contain any addresses from ledger")
+			return nil, errors.New("keychain currently does not contain any addresses from ledger")
 		}
 		return &kc, nil
 	}
@@ -113,7 +113,7 @@ func (kc *Keychain) AddLedgerIndices(indices []uint32) error {
 		kc.Keychain = newKc
 		return nil
 	}
-	return fmt.Errorf("keychain is not ledger enabled")
+	return errors.New("keychain is not ledger enabled")
 }
 
 func (kc *Keychain) AddLedgerAddresses(addresses []string) error {
@@ -124,7 +124,7 @@ func (kc *Keychain) AddLedgerAddresses(addresses []string) error {
 		}
 		return kc.AddLedgerIndices(maps.Values(indices))
 	}
-	return fmt.Errorf("keychain is not ledger enabled")
+	return errors.New("keychain is not ledger enabled")
 }
 
 func (kc *Keychain) AddLedgerFunds(amount uint64) error {
@@ -135,5 +135,5 @@ func (kc *Keychain) AddLedgerFunds(amount uint64) error {
 		}
 		return kc.AddLedgerIndices(indices)
 	}
-	return fmt.Errorf("keychain is not ledger enabled")
+	return errors.New("keychain is not ledger enabled")
 }

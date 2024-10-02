@@ -36,7 +36,7 @@ func GetGithubLatestReleaseURL(org, repo string) string {
 	return "https://api.github.com/repos/" + org + "/" + repo + "/releases/latest"
 }
 
-func NewAvagoDownloader() GithubDownloader {
+func NewAvalancheGoDownloader() GithubDownloader {
 	return &avalancheGoDownloader{}
 }
 

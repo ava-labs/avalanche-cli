@@ -41,13 +41,10 @@ func AddSingleQuotes(s []string) []string {
 			return "''"
 		}
 		if !strings.HasPrefix(item, "'") {
-			item = fmt.Sprintf("'%s", item)
+			item = "'" + item
 		}
 		if !strings.HasSuffix(item, "'") {
-			item = fmt.Sprintf("%s'", item)
-		}
-		if !strings.HasPrefix(item, "'") && !strings.HasSuffix(item, "'") {
-			item = fmt.Sprintf("'%s'", item)
+			item += "'"
 		}
 		return item
 	})

@@ -286,7 +286,7 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 			return 0, err
 		}
 		end := start.Add(d)
-		confirm := fmt.Sprintf("Your validator will finish staking by %s", end.Format(constants.TimeParseLayout))
+		confirm := "Your validator will finish staking by " + end.Format(constants.TimeParseLayout)
 		yes, err := app.Prompt.CaptureYesNo(confirm)
 		if err != nil {
 			return 0, err

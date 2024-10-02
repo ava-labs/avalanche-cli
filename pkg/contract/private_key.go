@@ -58,19 +58,19 @@ func (pkf *PrivateKeyFlags) AddToCmd(
 		&pkf.PrivateKey,
 		pkf.privateKeyFlagName,
 		"",
-		fmt.Sprintf("private key to use %s", goal),
+		"private key to use "+goal,
 	)
 	cmd.Flags().StringVar(
 		&pkf.KeyName,
 		pkf.keyFlagName,
 		"",
-		fmt.Sprintf("CLI stored key to use %s", goal),
+		"CLI stored key to use "+goal,
 	)
 	cmd.Flags().BoolVar(
 		&pkf.GenesisKey,
 		pkf.genesisKeyFlagName,
 		false,
-		fmt.Sprintf("use genesis allocated key %s", goal),
+		"use genesis allocated key "+goal,
 	)
 }
 

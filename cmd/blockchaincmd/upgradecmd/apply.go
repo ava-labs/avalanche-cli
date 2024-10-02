@@ -55,7 +55,7 @@ var (
 	avalanchegoChainConfigFlag       = "avalanchego-chain-config-dir"
 	avalanchegoChainConfigDir        string
 
-	print bool
+	shouldPrint bool
 )
 
 // avalanche blockchain upgrade apply
@@ -83,7 +83,7 @@ Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chai
 	cmd.Flags().BoolVar(&useFuji, "fuji", false, "apply upgrade existing `fuji` deployment (alias for `testnet`)")
 	cmd.Flags().BoolVar(&useFuji, "testnet", false, "apply upgrade existing `testnet` deployment (alias for `fuji`)")
 	cmd.Flags().BoolVar(&useMainnet, "mainnet", false, "apply upgrade existing `mainnet` deployment")
-	cmd.Flags().BoolVar(&print, "print", false, "if true, print the manual config without prompting (for public networks only)")
+	cmd.Flags().BoolVar(&shouldPrint, "print", false, "if true, print the manual config without prompting (for public networks only)")
 	cmd.Flags().BoolVar(&force, "force", false, "If true, don't prompt for confirmation of timestamps in the past")
 	cmd.Flags().StringVar(&avalanchegoChainConfigDir, avalanchegoChainConfigFlag, os.ExpandEnv(avalanchegoChainConfigDirDefault), "avalanchego's chain config file directory")
 
@@ -134,7 +134,7 @@ func applyCmd(_ *cobra.Command, args []string) error {
 // For a already deployed subnet, the supported scheme is to
 // save a snapshot, and to load the snapshot with the upgrade
 func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Sidecar) error {
-	if print {
+	if shouldPrint {
 		ux.Logger.PrintToUser("The --print flag is ignored on local networks. Continuing.")
 	}
 	precmpUpgrades, strNetUpgrades, err := validateUpgrade(blockchainName, networkKey, sc, force)
@@ -253,7 +253,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 // For public networks we therefore limit ourselves to just "apply" the upgrades
 // This also means we are *ignoring* the lock file here!
 func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sidecar) error {
-	if print {
+	if shouldPrint {
 		blockchainIDstr := "<your-blockchain-id>"
 		if sc.Networks != nil &&
 			sc.Networks[networkKey].BlockchainID != ids.Empty {

@@ -248,7 +248,7 @@ func printOutput(
 		ux.Logger.PrintToUser("All nodes in cluster %s are %s Subnet %s", logging.LightBlue.Wrap(clusterName), status, blockchainName)
 	}
 	ux.Logger.PrintToUser("")
-	tit := fmt.Sprintf("STATUS FOR CLUSTER: %s", logging.LightBlue.Wrap(clusterName))
+	tit := "STATUS FOR CLUSTER: " + logging.LightBlue.Wrap(clusterName)
 	ux.Logger.PrintToUser(tit)
 	ux.Logger.PrintToUser(strings.Repeat("=", len(removeColors(tit))))
 	ux.Logger.PrintToUser("")

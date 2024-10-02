@@ -4,8 +4,10 @@ package blockchaincmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -179,20 +181,20 @@ func importPublic(*cobra.Command, []string) error {
 		// no node was queried, ask the user
 		switch vmType {
 		case models.SubnetEvm:
-			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+			versions, err = application.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
 			if err != nil {
 				return err
 			}
 			sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
 		case models.CustomVM:
-			return fmt.Errorf("importing custom VMs is not yet implemented, but will be available soon")
+			return errors.New("importing custom VMs is not yet implemented, but will be available soon")
 		default:
 			return fmt.Errorf("unexpected VM type: %v", vmType)
 		}
 		if err != nil {
 			return err
 		}
-		sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
+		sc.RPCVersion, err = vm.GetRPCProtocolVersion(vmType, sc.VMVersion)
 		if err != nil {
 			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
 		}

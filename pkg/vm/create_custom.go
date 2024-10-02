@@ -3,6 +3,7 @@
 package vm
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -100,7 +101,8 @@ func SetCustomVMSourceCodeFields(app *application.Avalanche, sc *models.Sidecar,
 	var err error
 	if customVMRepoURL != "" {
 		ux.Logger.PrintToUser("Checking source code repository URL %s", customVMRepoURL)
-		if err := prompts.ValidateURL(customVMRepoURL); err != nil {
+		_, err := utils.MakeGetRequest(context.Background(), customVMRepoURL)
+		if err != nil {
 			ux.Logger.PrintToUser("Invalid repository url %s: %s", customVMRepoURL, err)
 			customVMRepoURL = ""
 		}

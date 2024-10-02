@@ -66,7 +66,7 @@ func (kc *Keychain) Addresses() set.Set[ids.ShortID] {
 func (kc *Keychain) PChainFormattedStrAddresses() ([]string, error) {
 	addrs := kc.Addresses().List()
 	if len(addrs) == 0 {
-		return nil, fmt.Errorf("no addresses in keychain")
+		return nil, errors.New("no addresses in keychain")
 	}
 	hrp := key.GetHRP(kc.Network.ID)
 	addrsStr := []string{}
@@ -181,7 +181,7 @@ func GetKeychain(
 	requiredFunds uint64,
 ) (*Keychain, error) {
 	if !useEwoq && !useLedger && keyName == "" {
-		return nil, fmt.Errorf("one of the options ewoq/ledger/keyName must be provided")
+		return nil, errors.New("one of the options ewoq/ledger/keyName must be provided")
 	}
 	// get keychain accessor
 	if useLedger {
@@ -299,7 +299,7 @@ func searchForFundedLedgerIndices(network models.Network, ledgerDevice keychain.
 	}
 	if totalBalance < amount {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Not enough funds in the first %d indices of Ledger"), numLedgerIndicesToSearchForBalance)
-		return nil, fmt.Errorf("not enough funds on ledger")
+		return nil, errors.New("not enough funds on ledger")
 	}
 	return ledgerIndices, nil
 }
@@ -320,7 +320,7 @@ func showLedgerAddresses(network models.Network, ledgerDevice keychain.Ledger, l
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Ledger addresses: "))
 	for _, addrStr := range addrStrs {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap(fmt.Sprintf("  %s", addrStr)))
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("  " + addrStr))
 	}
 	return nil
 }

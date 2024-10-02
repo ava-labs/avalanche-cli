@@ -4,22 +4,20 @@
 package commands
 
 import (
+	"context"
 	"encoding/json"
-	"net/http"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/onsi/gomega"
 )
 
 const avalanchegoReleaseURL = "https://api.github.com/repos/ava-labs/avalanchego/releases/latest"
 
 func GetLatestAvagoVersionFromGithub() string {
-	response, err := http.Get(avalanchegoReleaseURL)
+	response, err := utils.MakeGetRequest(context.Background(), avalanchegoReleaseURL)
 	gomega.Expect(err).Should(gomega.BeNil())
-	defer response.Body.Close()
-	gomega.Expect(response.StatusCode).Should(gomega.BeEquivalentTo(http.StatusOK))
 	var releaseInfo map[string]interface{}
-	decoder := json.NewDecoder(response.Body)
-	err = decoder.Decode(&releaseInfo)
+	err = json.Unmarshal(response, &releaseInfo)
 	gomega.Expect(err).Should(gomega.BeNil())
 	tagName, ok := releaseInfo["tag_name"].(string)
 	gomega.Expect(ok).Should(gomega.BeTrue())

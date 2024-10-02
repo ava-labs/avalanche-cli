@@ -24,9 +24,7 @@ func TestExpandHome(t *testing.T) {
 
 	// Test case 3: Path starting with ~
 	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatalf("Error getting user home directory: %v", err)
-	}
+	require.NoError(t, err)
 	tildePath := "~/testfile.txt"
 	expectedTildePath := filepath.Join(homeDir, "testfile.txt")
 	expandedTildePath := ExpandHome(tildePath)

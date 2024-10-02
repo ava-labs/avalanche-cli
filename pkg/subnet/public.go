@@ -419,7 +419,7 @@ func (d *PublicDeployer) Sign(
 		if len(txName) == 0 {
 			showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "tx hash")
 		} else {
-			showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), fmt.Sprintf("%s transaction", txName))
+			showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), txName+" transaction")
 		}
 	}
 	if err := d.signTx(tx, wallet); err != nil {
@@ -728,7 +728,7 @@ func IsSubnetValidator(subnetID ids.ID, nodeID ids.NodeID, network models.Networ
 
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{nodeID})
 	if err != nil {
-		return false, fmt.Errorf("failed to get current validators")
+		return false, errors.New("failed to get current validators")
 	}
 
 	return !(len(vals) == 0), nil
@@ -741,7 +741,7 @@ func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platf
 
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get current validators")
+		return nil, errors.New("failed to get current validators")
 	}
 
 	return vals, nil

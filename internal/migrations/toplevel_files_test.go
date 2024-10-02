@@ -26,7 +26,7 @@ func TestTopLevelFilesMigration(t *testing.T) {
 	testDir := t.TempDir()
 
 	app := &application.Avalanche{}
-	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
 
 	testSC1 := &models.Sidecar{
 		Name: "test1",

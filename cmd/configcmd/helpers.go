@@ -4,7 +4,6 @@ package configcmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -23,7 +22,7 @@ func handleBooleanSetting(cmd *cobra.Command, key string, args []string) error {
 		return nil
 	}
 	if len(args) != 1 {
-		return fmt.Errorf("unexpected number of arguments")
+		return errors.New("unexpected number of arguments")
 	}
 	arg := args[0]
 	switch arg {

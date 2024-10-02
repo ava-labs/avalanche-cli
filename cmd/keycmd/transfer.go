@@ -4,6 +4,7 @@ package keycmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -189,7 +190,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if keyName != "" && ledgerIndex != wrongLedgerIndexVal {
-		return fmt.Errorf("only one between a keyname or a ledger index must be given")
+		return errors.New("only one between a keyname or a ledger index must be given")
 	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -312,7 +313,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 		if originTransferrerAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
+				"Enter the address of the Token Transferrer on " + originSubnet,
 			)
 			if err != nil {
 				return err
@@ -325,7 +326,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 		if destinationTransferrerAddress == "" {
 			addr, err := app.Prompt.CaptureAddress(
-				fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
+				"Enter the address of the Token Transferrer on " + destinationSubnet,
 			)
 			if err != nil {
 				return err
@@ -386,7 +387,7 @@ func transferF(*cobra.Command, []string) error {
 			destinationAddrStr = destinationK.C()
 			destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
 		default:
-			return fmt.Errorf("you should set the destination address or destination key")
+			return errors.New("you should set the destination address or destination key")
 		}
 		if amountFlt == 0 {
 			amountFlt, err = captureAmount(true, "TOKEN units")
@@ -511,7 +512,7 @@ func transferF(*cobra.Command, []string) error {
 			return err
 		}
 		if addr == destinationAddr && PToP {
-			return fmt.Errorf("sender addr is the same as destination addr")
+			return errors.New("sender addr is the same as destination addr")
 		}
 		ux.Logger.PrintToUser("- send %.9f AVAX from %s to destination address %s", float64(amount)/float64(units.Avax), addrStr, destinationAddrStr)
 		totalFee := 4 * fee

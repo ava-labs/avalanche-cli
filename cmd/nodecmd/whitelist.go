@@ -73,7 +73,7 @@ func whitelist(_ *cobra.Command, args []string) error {
 	if discoverIP {
 		userIPAddress, err = utils.GetUserIPAddress()
 		if err != nil {
-			return fmt.Errorf("failed to get user IP address")
+			return errors.New("failed to get user IP address")
 		}
 		ux.Logger.PrintToUser("Detected your IP address as: %s", logging.LightBlue.Wrap(userIPAddress))
 	}
@@ -86,7 +86,7 @@ func whitelist(_ *cobra.Command, args []string) error {
 		// prompt for IP
 		detectedIPAddress, err := utils.GetUserIPAddress()
 		if err != nil {
-			return fmt.Errorf("failed to get user IP address")
+			return errors.New("failed to get user IP address")
 		}
 		ux.Logger.PrintToUser("Detected your IP address as: %s", logging.LightBlue.Wrap(detectedIPAddress))
 		userIPAddress, err = app.Prompt.CaptureStringAllowEmpty(fmt.Sprintf("Enter IP address to whitelist (Also you can press Enter to use %s or S to skip)", logging.LightBlue.Wrap(detectedIPAddress)))
@@ -214,7 +214,7 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 	if err != nil {
 		return err
 	}
-	networkName := fmt.Sprintf("%s-network", prefix)
+	networkName := prefix + "-network"
 	gcpClient, projectName, _, err := getGCPCloudCredentials()
 	if err != nil {
 		return err
@@ -224,7 +224,16 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Whitelisting IP %s in %s cloud", userIPAddress, constants.GCPCloudService)
-	if _, err = gcpCloud.SetFirewallRule(userIPAddress, fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")), networkName, []string{strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)}); err != nil {
+	if _, err = gcpCloud.SetFirewallRule(
+		userIPAddress,
+		fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(userIPAddress, ".", "")),
+		networkName,
+		[]string{
+			strconv.Itoa(constants.SSHTCPPort),
+			strconv.Itoa(constants.AvalanchegoAPIPort),
+			strconv.Itoa(constants.AvalanchegoGrafanaPort),
+		},
+	); err != nil {
 		if errors.IsAlreadyExists(err) {
 			return fmt.Errorf("IP %s is already whitelisted in %s cloud. Skipping... ", userIPAddress, constants.GCPCloudService)
 		} else {

@@ -156,18 +156,18 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	cliDefaultName string,
 	forMonitoring bool,
 ) (map[string][]string, map[string][]string, string, string, error) {
-	keyPairName := fmt.Sprintf("%s-keypair", cliDefaultName)
+	keyPairName := cliDefaultName + "-keypair"
 	sshKeyPath, err := app.GetSSHCertFilePath(keyPairName)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
-	networkName := fmt.Sprintf("%s-network", cliDefaultName)
+	networkName := cliDefaultName + "-network"
 	if !forMonitoring {
 		ux.Logger.PrintToUser("Creating new VM instance(s) on Google Compute Engine...")
 	} else {
 		ux.Logger.PrintToUser("Creating separate monitoring VM instance(s) on Google Compute Engine...")
 	}
-	certInSSHDir, err := app.CheckCertInSSHDir(fmt.Sprintf("%s-keypair.pub", cliDefaultName))
+	certInSSHDir, err := app.CheckCertInSSHDir(cliDefaultName + "-keypair.pub")
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -216,7 +216,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				return nil, nil, "", "", err
 			}
 		} else {
-			firewallMonitoringName := fmt.Sprintf("%s-monitoring", firewallName)
+			firewallMonitoringName := firewallName + "-monitoring"
 			// check that the separate monitoring firewall doesn't exist
 			firewallExists, err = gcpClient.CheckFirewallExists(firewallMonitoringName, false)
 			if err != nil {
@@ -228,7 +228,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 					return nil, nil, "", "", err
 				}
 			}
-			firewallLoggingName := fmt.Sprintf("%s-logging", firewallName)
+			firewallLoggingName := firewallName + "-logging"
 			firewallExists, err = gcpClient.CheckFirewallExists(firewallLoggingName, false)
 			if err != nil {
 				return nil, nil, "", "", err
@@ -261,7 +261,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 			return nil, nil, "", "", err
 		}
 	} else {
-		sshPublicKeyBytes, err := os.ReadFile(fmt.Sprintf("%s.pub", sshKeyPath))
+		sshPublicKeyBytes, err := os.ReadFile(sshKeyPath + ".pub")
 		if err != nil {
 			return nil, nil, "", "", err
 		}
@@ -298,7 +298,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 	ux.Logger.GreenCheckmarkToUser("New Compute instance(s) successfully created in GCP!")
 	sshCertPath := ""
 	if !useSSHAgent {
-		sshCertPath, err = app.GetSSHCertFilePath(fmt.Sprintf("%s-keypair", cliDefaultName))
+		sshCertPath, err = app.GetSSHCertFilePath(cliDefaultName + "-keypair")
 		if err != nil {
 			return nil, nil, "", "", err
 		}
@@ -368,7 +368,7 @@ func createGCPInstance(
 			InstanceIDs:   instanceIDs[zone],
 			PublicIPs:     elasticIPs[zone],
 			KeyPair:       keyPairName,
-			SecurityGroup: fmt.Sprintf("%s-network", prefix),
+			SecurityGroup: prefix + "-network",
 			CertFilePath:  certFilePath,
 			ImageID:       imageID,
 		}
@@ -399,7 +399,7 @@ func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName st
 	if err != nil {
 		return err
 	}
-	networkName := fmt.Sprintf("%s-network", prefix)
+	networkName := prefix + "-network"
 	firewallName := fmt.Sprintf("%s-%s-%s", networkName, strings.ReplaceAll(publicIP, ".", ""), label)
 	ports := []string{
 		strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
@@ -427,7 +427,7 @@ func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *models.Host) error {
 	if err != nil {
 		return err
 	}
-	networkName := fmt.Sprintf("%s-network", prefix)
+	networkName := prefix + "-network"
 	firewallName := fmt.Sprintf("%s-%s-relayer", networkName, strings.ReplaceAll(awmRelayerHost.IP, ".", ""))
 	ports := []string{
 		strconv.Itoa(constants.AvalanchegoAPIPort),

@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -101,11 +102,11 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	finalRegions := map[string]NumNodes{}
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
-		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
+		return nil, nil, nil, errors.New("number of nodes and regions should be the same")
 	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
-		return nil, nil, nil, fmt.Errorf("number of api nodes and regions should be the same")
+		return nil, nil, nil, errors.New("number of api nodes and regions should be the same")
 	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(numValidatorsNodes):
-		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
+		return nil, nil, nil, errors.New("number of api nodes and validator nodes should be the same")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
 		if singleNode {

@@ -3,6 +3,7 @@
 package txutils
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -25,7 +26,7 @@ func SaveToDisk(tx *txs.Tx, txPath string, forceOverwrite bool) error {
 	}
 	// save
 	if _, err := os.Stat(txPath); err == nil && !forceOverwrite {
-		return fmt.Errorf("couldn't create file to write tx to: file exists")
+		return errors.New("couldn't create file to write tx to: file exists")
 	}
 	f, err := os.Create(txPath)
 	if err != nil {

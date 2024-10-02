@@ -67,7 +67,7 @@ func TestEditConfigFileWithOldPattern(t *testing.T) {
 	require.Equal("subNetId000,testSubNet", avagoConfig["track-subnets"])
 
 	// ensure that the old setting has been deleted
-	require.Equal(nil, avagoConfig["whitelisted-subnets"])
+	require.Nil(avagoConfig["whitelisted-subnets"])
 }
 
 // testing backward compatibility
@@ -109,7 +109,7 @@ func TestEditConfigFileWithNewPattern(t *testing.T) {
 	require.Equal("subNetId000,testSubNet", avagoConfig["track-subnets"])
 
 	// ensure that the old setting wont be applied at all
-	require.Equal(nil, avagoConfig["whitelisted-subnets"])
+	require.Nil(avagoConfig["whitelisted-subnets"])
 }
 
 func TestEditConfigFileWithNoSettings(t *testing.T) {
@@ -150,5 +150,5 @@ func TestEditConfigFileWithNoSettings(t *testing.T) {
 	require.Equal("testSubNet", avagoConfig["track-subnets"])
 
 	// ensure that the old setting wont be applied at all
-	require.Equal(nil, avagoConfig["whitelisted-subnets"])
+	require.Nil(avagoConfig["whitelisted-subnets"])
 }

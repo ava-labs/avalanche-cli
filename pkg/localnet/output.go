@@ -3,6 +3,7 @@
 package localnet
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -44,13 +45,13 @@ func PrintSubnetEndpoints(
 	nodeInfos := maps.Values(clusterInfo.NodeInfos)
 	nodeUris := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
 	if len(nodeUris) == 0 {
-		return fmt.Errorf("network has no nodes")
+		return errors.New("network has no nodes")
 	}
 	sort.Strings(nodeUris)
 	refNodeURI := nodeUris[0]
 	nodeInfo := utils.Find(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) bool { return nodeInfo.GetUri() == refNodeURI })
 	if nodeInfo == nil {
-		return fmt.Errorf("unexpected nil nodeInfo")
+		return errors.New("unexpected nil nodeInfo")
 	}
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
@@ -59,7 +60,7 @@ func PrintSubnetEndpoints(
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
+	t.SetTitle(chainInfo.ChainName + " RPC URLs")
 	aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainName)
 	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
 	t.AppendRow(table.Row{"Localhost", aliasedURL})

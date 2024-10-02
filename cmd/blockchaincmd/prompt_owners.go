@@ -3,7 +3,7 @@
 package blockchaincmd
 
 import (
-	"fmt"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -37,7 +37,7 @@ func promptOwners(
 			return nil, 0, err
 		}
 		if len(kcKeys) == 0 {
-			return nil, 0, fmt.Errorf("no keys found on keychain")
+			return nil, 0, errors.New("no keys found on keychain")
 		}
 		controlKeys = kcKeys[:1]
 	}
@@ -50,7 +50,7 @@ func promptOwners(
 		}
 		if cancelled {
 			ux.Logger.PrintToUser("User cancelled. No operation was performed")
-			return nil, 0, fmt.Errorf("user cancelled operation")
+			return nil, 0, errors.New("user cancelled operation")
 		}
 	}
 	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
@@ -59,7 +59,7 @@ func promptOwners(
 		threshold = uint32(len(subnetAuthKeys))
 	}
 	if threshold > uint32(len(controlKeys)) {
-		return nil, 0, fmt.Errorf("given threshold is greater than number of control keys")
+		return nil, 0, errors.New("given threshold is greater than number of control keys")
 	}
 	if threshold == 0 {
 		threshold, err = getThreshold(len(controlKeys))
@@ -122,7 +122,7 @@ func getControlKeysForDeploy(kc *keychain.Keychain) ([]string, bool, error) {
 			return nil, false, err
 		}
 		if len(kcKeys) == 0 {
-			return nil, false, fmt.Errorf("no keys found on keychain")
+			return nil, false, errors.New("no keys found on keychain")
 		}
 		keys = kcKeys[:1]
 	case useAll:
@@ -285,7 +285,7 @@ func getThreshold(maxLen int) (uint32, error) {
 	}
 	// this now should technically not happen anymore, but let's leave it as a double stitch
 	if intTh > uint64(maxLen) {
-		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
+		return 0, errors.New("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(intTh), err
 }

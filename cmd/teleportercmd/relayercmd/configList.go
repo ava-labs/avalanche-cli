@@ -3,6 +3,7 @@
 package relayercmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -98,7 +99,7 @@ func getBlockchain(network models.Network, prompt string) (contract.ChainSpec, e
 	); err != nil {
 		return chainSpec, err
 	} else if cancel {
-		return chainSpec, fmt.Errorf("cancelled by user")
+		return chainSpec, errors.New("cancelled by user")
 	}
 	return chainSpec, nil
 }
@@ -152,7 +153,7 @@ func addSource(
 	}
 	rewardAddress, err := prompts.PromptAddress(
 		app.Prompt,
-		fmt.Sprintf("receive relayer rewards on %s", blockchainDesc),
+		"receive relayer rewards on "+blockchainDesc,
 		app.GetKeyDir(),
 		app.GetKey,
 		genesisAddress,
@@ -213,7 +214,7 @@ func addDestination(
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Please provide a key that is not going to be used for any other purpose on destination"))
 	privateKey, err := prompts.PromptPrivateKey(
 		app.Prompt,
-		fmt.Sprintf("pay relayer fees on %s", blockchainDesc),
+		"pay relayer fees on "+blockchainDesc,
 		app.GetKeyDir(),
 		app.GetKey,
 		"",

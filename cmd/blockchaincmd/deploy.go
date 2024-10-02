@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -192,7 +193,7 @@ func updateSubnetEVMGenesisChainID(genesisBytes []byte, newChainID uint) ([]byte
 	}
 	configI, ok := genesisMap["config"]
 	if !ok {
-		return nil, fmt.Errorf("config field not found on genesis")
+		return nil, errors.New("config field not found on genesis")
 	}
 	config, ok := configI.(map[string]interface{})
 	if !ok {
@@ -211,10 +212,10 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 		return err
 	}
 	if evmGenesis.Config == nil {
-		return fmt.Errorf("invalid subnet evm genesis format: config is nil")
+		return errors.New("invalid subnet evm genesis format: config is nil")
 	}
 	if evmGenesis.Config.ChainID == nil {
-		return fmt.Errorf("invalid subnet evm genesis format: config chain id is nil")
+		return errors.New("invalid subnet evm genesis format: config chain id is nil")
 	}
 	originalChainID := evmGenesis.Config.ChainID.Uint64()
 	// handle cmdline flag if given
@@ -278,7 +279,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if icmSpec.MessengerContractAddressPath != "" || icmSpec.MessengerDeployerAddressPath != "" || icmSpec.MessengerDeployerTxPath != "" || icmSpec.RegistryBydecodePath != "" {
 		if icmSpec.MessengerContractAddressPath == "" || icmSpec.MessengerDeployerAddressPath == "" || icmSpec.MessengerDeployerTxPath == "" || icmSpec.RegistryBydecodePath == "" {
-			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
+			return errors.New("if setting any teleporter asset path, you must set all teleporter asset paths")
 		}
 	}
 
@@ -326,7 +327,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if isEVMGenesis {
-		// is is a subnet evm or a custom vm based on subnet evm
+		// Is a subnet evm or a custom vm based on subnet evm
 		if network.Kind == models.Mainnet {
 			err = getSubnetEVMMainnetChainID(&sidecar, chain)
 			if err != nil {
@@ -461,7 +462,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		ux.Logger.PrintToUser(logging.Blue.Wrap(
-			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
+			"Deploying into pre-existent subnet ID " + subnetID.String(),
 		))
 		var isPermissioned bool
 		isPermissioned, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
@@ -716,9 +717,11 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 	} else if userProvidedAvagoVersion == "latest" {
 		// find latest avago version for this rpc version
 		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
-			app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
+			configuredRPCVersion,
+			constants.AvalancheGoCompatibilityURL,
+		)
 		if err == vm.ErrNoAvagoVersion {
-			latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+			latestPreReleaseVersion, err := application.GetLatestPreReleaseVersion(
 				constants.AvaLabsOrg,
 				constants.AvalancheGoRepoName,
 			)

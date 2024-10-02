@@ -3,7 +3,7 @@
 package ictt
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"os/exec"
 	"strings"
@@ -32,7 +32,7 @@ func GetForgePath() (string, error) {
 	if err == nil {
 		return string(out), nil
 	}
-	return "", fmt.Errorf("forge is not installed")
+	return "", errors.New("forge is not installed")
 }
 
 func InstallFoundry() error {

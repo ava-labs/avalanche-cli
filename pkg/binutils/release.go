@@ -3,12 +3,14 @@
 package binutils
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
@@ -30,7 +32,7 @@ func installBinaryWithVersion(
 	}
 
 	app.Log.Debug("starting download...", zap.String("download-url", installURL))
-	archive, err := app.Downloader.Download(installURL)
+	archive, err := utils.MakeGetRequest(context.Background(), installURL)
 	if err != nil {
 		return "", fmt.Errorf("unable to download binary: %w", err)
 	}
@@ -69,7 +71,7 @@ func InstallBinary(
 	if version == "latest" {
 		// get latest version
 		var err error
-		version, err = app.Downloader.GetLatestReleaseVersion(GetGithubLatestReleaseURL(
+		version, err = application.GetLatestReleaseVersion(GetGithubLatestReleaseURL(
 			org,
 			repo,
 		))

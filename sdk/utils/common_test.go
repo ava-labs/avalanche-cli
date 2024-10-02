@@ -58,7 +58,7 @@ func TestRetry(t *testing.T) {
 	success := "success"
 	// Test with a function that always returns an error.
 	result, err := Retry(WrapContext(mockFunction), 100*time.Millisecond, 3, "")
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, result)
 
 	// Test with a function that succeeds on the first attempt.
@@ -66,7 +66,7 @@ func TestRetry(t *testing.T) {
 		return success, nil
 	}
 	result, err = Retry(WrapContext(fn), 100*time.Millisecond, 3, "")
-	require.NoError(t, err)
+	require.Error(t, err)
 	require.Equal(t, success, result)
 
 	// Test with a function that succeeds after multiple attempts.
@@ -84,6 +84,6 @@ func TestRetry(t *testing.T) {
 
 	// Test with invalid retry interval.
 	result, err = Retry(WrapContext(mockFunction), 0, 3, "")
-	require.NotNil(t, err)
+	require.Error(t, err)
 	require.Nil(t, result)
 }

@@ -3,6 +3,7 @@
 package teleportercmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -92,7 +93,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return err
 	}
 	if !flags.DeployMessenger && !flags.DeployRegistry {
-		return fmt.Errorf("you should set at least one of --deploy-messenger/--deploy-registry to true")
+		return errors.New("you should set at least one of --deploy-messenger/--deploy-registry to true")
 	}
 	if !flags.ChainFlags.Defined() {
 		prompt := "Which Blockchain would you like to deploy Teleporter to?"
@@ -148,7 +149,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	switch {
 	case flags.MessengerContractAddressPath != "" || flags.MessengerDeployerAddressPath != "" || flags.MessengerDeployerTxPath != "" || flags.RegistryBydecodePath != "":
 		if flags.MessengerContractAddressPath == "" || flags.MessengerDeployerAddressPath == "" || flags.MessengerDeployerTxPath == "" || flags.RegistryBydecodePath == "" {
-			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
+			return errors.New("if setting any teleporter asset path, you must set all teleporter asset paths")
 		}
 	case flags.Version != "" && flags.Version != "latest":
 		teleporterVersion = flags.Version

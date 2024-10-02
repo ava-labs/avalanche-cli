@@ -4,7 +4,7 @@ package utils
 
 import (
 	"encoding/pem"
-	"fmt"
+	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
@@ -22,7 +22,7 @@ func NewBlsSecretKeyBytes() ([]byte, error) {
 func ToNodeID(certBytes []byte) (ids.NodeID, error) {
 	block, _ := pem.Decode(certBytes)
 	if block == nil {
-		return ids.EmptyNodeID, fmt.Errorf("failed to decode certificate")
+		return ids.EmptyNodeID, errors.New("failed to decode certificate")
 	}
 	cert, err := staking.ParseCertificate(block.Bytes)
 	if err != nil {

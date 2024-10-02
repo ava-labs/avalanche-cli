@@ -3,6 +3,7 @@
 package contract
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -81,12 +82,12 @@ func (cs *ChainSpec) AddToCmd(
 ) {
 	cs.fillDefaultFlagNames()
 	if cs.blockchainFlagName == defaultBlockchainFlagName {
-		cmd.Flags().StringVar(&cs.BlockchainName, "subnet", "", fmt.Sprintf("%s into the given CLI blockchain", goal))
+		cmd.Flags().StringVar(&cs.BlockchainName, "subnet", "", goal+" into the given CLI blockchain")
 	}
-	cmd.Flags().StringVar(&cs.BlockchainName, cs.blockchainFlagName, "", fmt.Sprintf("%s into the given CLI blockchain", goal))
-	cmd.Flags().BoolVar(&cs.CChain, cs.cChainFlagName, false, fmt.Sprintf("%s into C-Chain", goal))
+	cmd.Flags().StringVar(&cs.BlockchainName, cs.blockchainFlagName, "", goal+" into the given CLI blockchain")
+	cmd.Flags().BoolVar(&cs.CChain, cs.cChainFlagName, false, goal+" into C-Chain")
 	if addBlockchainIDFlag {
-		cmd.Flags().StringVar(&cs.BlockchainID, cs.blockchainIDFlagName, "", fmt.Sprintf("%s into the given blockchain ID/Alias", goal))
+		cmd.Flags().StringVar(&cs.BlockchainID, cs.blockchainIDFlagName, "", goal+" into the given blockchain ID/Alias")
 	}
 }
 
@@ -179,7 +180,7 @@ func GetBlockchainID(
 		}
 		blockchainID = sc.Networks[network.Name()].BlockchainID
 	default:
-		return ids.Empty, fmt.Errorf("blockchain is not defined")
+		return ids.Empty, errors.New("blockchain is not defined")
 	}
 	return blockchainID, nil
 }
@@ -213,7 +214,7 @@ func GetSubnetID(
 		}
 		subnetID = tx.SubnetID
 	default:
-		return ids.Empty, fmt.Errorf("blockchain is not defined")
+		return ids.Empty, errors.New("blockchain is not defined")
 	}
 	return subnetID, nil
 }
@@ -230,7 +231,7 @@ func GetBlockchainDesc(
 	case chainSpec.BlockchainID != "":
 		blockchainDesc = chainSpec.BlockchainID
 	default:
-		return "", fmt.Errorf("blockchain is not defined")
+		return "", errors.New("blockchain is not defined")
 	}
 	return blockchainDesc, nil
 }
@@ -264,7 +265,7 @@ func GetICMInfo(
 		registryAddress = sc.Networks[network.Name()].TeleporterRegistryAddress
 		messengerAddress = sc.Networks[network.Name()].TeleporterMessengerAddress
 	default:
-		return "", "", fmt.Errorf("blockchain is not defined")
+		return "", "", errors.New("blockchain is not defined")
 	}
 	blockchainDesc, err := GetBlockchainDesc(chainSpec)
 	if err != nil {
@@ -344,7 +345,7 @@ func GetCChainICMInfo(
 			return "", "", err
 		}
 		if !b {
-			return "", "", fmt.Errorf("no extra local network data available")
+			return "", "", errors.New("no extra local network data available")
 		}
 		messengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
 		registryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress

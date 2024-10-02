@@ -55,7 +55,7 @@ func getLoadTestInstancesInCluster(clusterName string) ([]string, error) {
 	if clustersConfig.Clusters[clusterName].LoadTestInstance != nil {
 		return maps.Keys(clustersConfig.Clusters[clusterName].LoadTestInstance), nil
 	}
-	return nil, fmt.Errorf("no load test instances found")
+	return nil, errors.New("no load test instances found")
 }
 
 func checkLoadTestExists(clusterName, loadTestName string) (bool, error) {
@@ -144,7 +144,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 		host := hosts[0]
 		loadTestResultFileName := fmt.Sprintf("loadtest_%s.txt", loadTestName)
 		// Download the load test result from remote cloud server to local machine
-		if err = ssh.RunSSHDownloadFile(host, fmt.Sprintf("/home/ubuntu/%s", loadTestResultFileName), filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
+		if err = ssh.RunSSHDownloadFile(host, "/home/ubuntu/"+loadTestResultFileName, filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), loadTestResultFileName)); err != nil {
 			ux.Logger.RedXToUser("Unable to download load test result %s to local machine due to %s", loadTestResultFileName, err.Error())
 		}
 		switch nodeConfig.CloudService {
@@ -216,7 +216,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 	}
 	if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
-			return fmt.Errorf("cloud access is required")
+			return errors.New("cloud access is required")
 		}
 		if err = ec2Svc.DestroyAWSNode(nodeConfig, ""); err != nil {
 			if isExpiredCredentialError(err) {
@@ -231,7 +231,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		}
 	} else {
 		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
-			return fmt.Errorf("cloud access is required")
+			return errors.New("cloud access is required")
 		}
 		if err = gcpClient.DestroyGCPNode(nodeConfig, ""); err != nil {
 			if !errors.Is(err, gcpAPI.ErrNodeNotFoundToBeRunning) {

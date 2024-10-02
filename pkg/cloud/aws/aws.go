@@ -24,6 +24,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 )
 
+const netmask32 = "/32"
+
 var (
 	ErrNoInstanceState         = errors.New("unable to get instance state")
 	ErrNoAddressFound          = errors.New("unable to get public IP address info on AWS")
@@ -98,7 +100,7 @@ func (c *AwsCloud) CheckSecurityGroupExists(sgName string) (bool, types.Security
 // AddSecurityGroupRule adds a rule to the given security group
 func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string, port int32) error {
 	if !strings.Contains(ip, "/") {
-		ip = fmt.Sprintf("%s/32", ip) // add netmask /32 if missing
+		ip += netmask32 // add netmask /32 if missing
 	}
 	switch direction {
 	case "ingress":
@@ -146,7 +148,7 @@ func (c *AwsCloud) AddSecurityGroupRule(groupID, direction, protocol, ip string,
 // DeleteSecurityGroupRule removes a rule from the given security group
 func (c *AwsCloud) DeleteSecurityGroupRule(groupID, direction, protocol, ip string, port int32) error {
 	if !strings.Contains(ip, "/") {
-		ip = fmt.Sprintf("%s/32", ip) // add netmask /32 if missing
+		ip += netmask32 // add netmask /32 if missing
 	}
 	switch direction {
 	case "ingress":
@@ -245,7 +247,7 @@ func (c *AwsCloud) CreateEC2Instances(prefix string, count int, amiID, instanceT
 	}
 	switch len(runResult.Instances) {
 	case 0:
-		return nil, fmt.Errorf("no instances created")
+		return nil, errors.New("no instances created")
 	case count:
 		instanceIDs := utils.Map(runResult.Instances, func(instance types.Instance) string {
 			return *instance.InstanceId
@@ -510,7 +512,7 @@ func (c *AwsCloud) SetupSecurityGroup(ipAddress, securityGroupName string) (stri
 // CheckIPInSg checks if the IP is present in the SecurityGroup.
 func CheckIPInSg(sg *types.SecurityGroup, currentIP string, port int32) bool {
 	if !strings.Contains(currentIP, "/") {
-		currentIP = fmt.Sprintf("%s/32", currentIP) // add netmask /32 if missing
+		currentIP += netmask32 // add netmask /32 if missing
 	}
 	for _, ipPermission := range sg.IpPermissions {
 		for _, ipRange := range ipPermission.IpRanges {
@@ -731,7 +733,7 @@ func (c *AwsCloud) ChangeInstanceType(instanceID, instanceType string) error {
 		return err
 	}
 	if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
-		return fmt.Errorf("instance not found")
+		return errors.New("instance not found")
 	}
 	currentInstanceType := resp.Reservations[0].Instances[0].InstanceType
 	if currentInstanceType == types.InstanceType(instanceType) {

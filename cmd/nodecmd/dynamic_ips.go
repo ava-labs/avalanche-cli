@@ -4,7 +4,7 @@ package nodecmd
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -52,7 +52,7 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 		var publicIP map[string]string
 		if node.CloudService == constants.GCPCloudService {
 			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
-				return nil, fmt.Errorf("cloud access is required")
+				return nil, errors.New("cloud access is required")
 			}
 			if gcpCloud == nil {
 				gcpClient, projectName, _, err := getGCPCloudCredentials()

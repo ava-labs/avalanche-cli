@@ -241,7 +241,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
 				return err
 			} else if !evmCompatibleGenesis {
-				return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
+				return errors.New("the provided genesis file has no proper Subnet-EVM format")
 			}
 			tokenSymbol, err = vm.PromptTokenSymbol(app, createFlags.tokenSymbol)
 			if err != nil {
@@ -283,7 +283,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		sc, err = vm.CreateEvmSidecar(
+		sc, err = vm.CreateEVMSidecar(
 			app,
 			blockchainName,
 			vmVersion,
@@ -367,7 +367,7 @@ func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, ba
 	}
 	allocI, ok := genesisMap["alloc"]
 	if !ok {
-		return nil, fmt.Errorf("alloc field not found on genesis")
+		return nil, errors.New("alloc field not found on genesis")
 	}
 	alloc, ok := allocI.(map[string]interface{})
 	if !ok {

@@ -3,6 +3,7 @@
 package binutils
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -23,7 +24,7 @@ func UpdateLocalSidecarRPC(app *application.Avalanche, sc models.Sidecar, rpcVer
 	// find local network deployment info in sidecar
 	networkData, ok := sc.Networks[models.Local.String()]
 	if !ok {
-		return fmt.Errorf("failed to find local network in sidecar")
+		return errors.New("failed to find local network in sidecar")
 	}
 
 	networkData.RPCVersion = rpcVersion

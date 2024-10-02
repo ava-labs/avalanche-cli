@@ -3,6 +3,7 @@
 package relayercmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -67,7 +68,7 @@ func start(_ *cobra.Command, _ []string) error {
 		}
 		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
 		if !utils.FileExists(relayerConfigPath) {
-			return fmt.Errorf("there is no relayer configuration available")
+			return errors.New("there is no relayer configuration available")
 		} else if err := teleporter.DeployRelayer(
 			"latest",
 			app.GetAWMRelayerBinDir(),

@@ -74,9 +74,7 @@ func TestUnique(t *testing.T) {
 
 	for _, test := range tests {
 		result := Unique(test.input)
-		if !reflect.DeepEqual(result, test.expected) {
-			t.Errorf("Unique(%v) = %v, expected %v", test.input, result, test.expected)
-		}
+		require.True(t, reflect.DeepEqual(result, test.expected))
 	}
 }
 
@@ -86,29 +84,18 @@ func TestSplitSliceAt(t *testing.T) {
 	firstPart, secondPart := SplitSliceAt(intSlice, 2)
 	expectedFirstPart := []int{1, 2}
 	expectedSecondPart := []int{3, 4, 5}
-	if !reflect.DeepEqual(firstPart, expectedFirstPart) {
-		t.Errorf("Expected first part %v, but got %v", expectedFirstPart, firstPart)
-	}
-	if !reflect.DeepEqual(secondPart, expectedSecondPart) {
-		t.Errorf("Expected second part %v, but got %v", expectedSecondPart, secondPart)
-	}
+	require.True(t, reflect.DeepEqual(firstPart, expectedFirstPart))
+	require.True(t, reflect.DeepEqual(secondPart, expectedSecondPart))
+
 	// Test case 2: Split at index 0
 	firstPart, secondPart = SplitSliceAt(intSlice, 0)
-	if firstPart != nil {
-		t.Errorf("Expected first part nil, but got %v", firstPart)
-	}
-	if !reflect.DeepEqual(secondPart, intSlice) {
-		t.Errorf("Expected second part %v, but got %v", intSlice, secondPart)
-	}
+	require.Nil(t, firstPart)
+	require.True(t, reflect.DeepEqual(secondPart, intSlice))
 
 	// Test case 3: Split at index out of bounds
 	firstPart, secondPart = SplitSliceAt(intSlice, 10)
-	if !reflect.DeepEqual(firstPart, intSlice) {
-		t.Errorf("Expected first part %v, but got %v", intSlice, firstPart)
-	}
-	if secondPart != nil {
-		t.Errorf("Expected second part nil, but got %v", secondPart)
-	}
+	require.True(t, reflect.DeepEqual(firstPart, intSlice))
+	require.Nil(t, secondPart)
 }
 
 // TestGetRepoFromCommitURL tests GetRepoFromCommitURL
@@ -116,35 +103,23 @@ func TestGetRepoFromCommitURL(t *testing.T) {
 	expected1 := "https://github.com/sukantoraymond/subnet-evm"
 	expected2 := "subnet-evm"
 	gitRepo, dirName := GetRepoFromCommitURL("https://github.com/sukantoraymond/subnet-evm/commit/29979c9c38f15a8e2af1db3102a0b70e03c91ab2")
-	if !reflect.DeepEqual(gitRepo, expected1) {
-		t.Errorf("Expected %v, but got %v", expected1, gitRepo)
-	}
-	if !reflect.DeepEqual(dirName, expected2) {
-		t.Errorf("Expected %v, but got %v", expected2, dirName)
-	}
+	require.Equal(t, expected1, gitRepo)
+	require.Equal(t, expected2, dirName)
 	expected1 = "https://github.com/ava-labs/hypersdk"
 	expected2 = "hypersdk"
 	gitRepo, dirName = GetRepoFromCommitURL("https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5")
-	if !reflect.DeepEqual(gitRepo, expected1) {
-		t.Errorf("Expected %v, but got %v", expected1, gitRepo)
-	}
-	if !reflect.DeepEqual(dirName, expected2) {
-		t.Errorf("Expected %v, but got %v", expected2, dirName)
-	}
+	require.Equal(t, expected1, gitRepo)
+	require.Equal(t, expected2, dirName)
 }
 
 // TestGetGitCommit tests GetGitCommit
 func TestGetGitCommit(t *testing.T) {
 	expected1 := "29979c9c38f15a8e2af1db3102a0b70e03c91ab2"
 	commitID := GetGitCommit("https://github.com/sukantoraymond/subnet-evm/commit/29979c9c38f15a8e2af1db3102a0b70e03c91ab2")
-	if !reflect.DeepEqual(commitID, expected1) {
-		t.Errorf("Expected %v, but got %v", expected1, commitID)
-	}
+	require.Equal(t, expected1, commitID)
 	expected1 = "b88acfb370f5aeb83a000aece2d72f28154410a5"
 	commitID = GetGitCommit("https://github.com/ava-labs/hypersdk/pull/772/commits/b88acfb370f5aeb83a000aece2d72f28154410a5")
-	if !reflect.DeepEqual(commitID, expected1) {
-		t.Errorf("Expected %v, but got %v", expected1, commitID)
-	}
+	require.Equal(t, expected1, commitID)
 }
 
 // TestAppendSlices tests AppendSlices
@@ -179,9 +154,7 @@ func TestAppendSlices(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := AppendSlices(tt.slices...)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("AppendSlices() = %v, want %v", got, tt.want)
-			}
+			require.True(t, reflect.DeepEqual(got, tt.want))
 		})
 	}
 }
@@ -220,13 +193,8 @@ func TestExtractPlaceholderValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ExtractPlaceholderValue(tt.pattern, tt.text)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ExtractPlaceholderValue() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.expected {
-				t.Errorf("ExtractPlaceholderValue() = %v, want %v", got, tt.expected)
-			}
+			require.Equal(t, tt.wantErr, err != nil)
+			require.Equal(t, tt.expected, got)
 		})
 	}
 }
@@ -241,24 +209,16 @@ func TestRetryFunction(t *testing.T) {
 	success := "success"
 	// Test with a function that always returns an error.
 	result, err := RetryFunction(mockFunction, 3, 100*time.Millisecond)
-	if err == nil {
-		t.Errorf("Expected an error, got nil")
-	}
-	if result != nil {
-		t.Errorf("Expected nil result, got %v", result)
-	}
+	require.Error(t, err)
+	require.Nil(t, result)
 
 	// Test with a function that succeeds on the first attempt.
 	fn := func() (interface{}, error) {
 		return success, nil
 	}
 	result, err = RetryFunction(fn, 3, 100*time.Millisecond)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if result != success {
-		t.Errorf("Expected 'success' result, got %v", result)
-	}
+	require.NoError(t, err)
+	require.Equal(t, success, result)
 
 	// Test with a function that succeeds after multiple attempts.
 	count := 0
@@ -270,19 +230,11 @@ func TestRetryFunction(t *testing.T) {
 		return success, nil
 	}
 	result, err = RetryFunction(fn, 5, 100*time.Millisecond)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if result != success {
-		t.Errorf("Expected 'success' result, got %v", result)
-	}
+	require.NoError(t, err)
+	require.Equal(t, success, result)
 
 	// Test with invalid retry interval.
 	result, err = RetryFunction(mockFunction, 3, 0)
-	if err == nil {
-		t.Errorf("Expected an error, got nil")
-	}
-	if result != nil {
-		t.Errorf("Expected nil result, got %v", result)
-	}
+	require.Error(t, err)
+	require.Nil(t, result)
 }

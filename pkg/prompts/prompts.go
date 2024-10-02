@@ -63,19 +63,19 @@ func (comparator *Comparator) Validate(val uint64) error {
 	switch comparator.Type {
 	case LessThanEq:
 		if val > comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be smaller than or equal to %s (%d)", comparator.Label, comparator.Value)
 		}
 	case MoreThan:
 		if val <= comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be bigger than %s (%d)", comparator.Label, comparator.Value)
 		}
 	case MoreThanEq:
 		if val < comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value)
 		}
 	case NotEq:
 		if val == comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be different than %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be different than %s (%d)", comparator.Label, comparator.Value)
 		}
 	}
 	return nil
@@ -592,7 +592,7 @@ func (*realPrompter) CaptureURL(promptStr string, validateConnection bool) (stri
 	for {
 		prompt := promptui.Prompt{
 			Label:    promptStr,
-			Validate: validateURLFormat,
+			Validate: utils.ValidateURLFormat,
 		}
 		str, err := prompt.Run()
 		if err != nil {
@@ -601,7 +601,7 @@ func (*realPrompter) CaptureURL(promptStr string, validateConnection bool) (stri
 		if !validateConnection {
 			return str, nil
 		}
-		if err := ValidateURL(str); err == nil {
+		if err := utils.ValidateURLFormat(str); err == nil {
 			return str, nil
 		}
 		ux.Logger.PrintToUser("Invalid URL: %s", err)
@@ -675,7 +675,7 @@ func (*realPrompter) CaptureValidatedString(promptStr string, validator func(str
 func (*realPrompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateURLFormat,
+		Validate: utils.ValidateURLFormat,
 	}
 
 	str, err := prompt.Run()
@@ -787,7 +787,7 @@ func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKe
 		}
 	}
 	if len(subnetAuthKeys) != int(threshold) {
-		return fmt.Errorf("number of given subnet auth differs from the threshold")
+		return errors.New("number of given subnet auth differs from the threshold")
 	}
 	for _, subnetAuthKey := range subnetAuthKeys {
 		found := false
@@ -968,7 +968,7 @@ func PromptPrivateKey(
 ) (string, error) {
 	privateKey := ""
 	cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
-	genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Allocated address %s", genesisAddress)
+	genesisKeyOpt := "Use the private key of the Genesis Allocated address " + genesisAddress
 	keyOptions := []string{cliKeyOpt, customOption}
 	if genesisPrivateKey != "" {
 		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}
@@ -1014,7 +1014,7 @@ func PromptAddress(
 ) (string, error) {
 	address := ""
 	cliKeyOpt := "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
-	genesisKeyOpt := fmt.Sprintf("Use the Genesis Allocated address %s", genesisAddress)
+	genesisKeyOpt := "Use the Genesis Allocated address " + genesisAddress
 	keyOptions := []string{cliKeyOpt, customOption}
 	if genesisAddress != "" {
 		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}

@@ -75,7 +75,7 @@ func DeployERC20Remote(
 		rpcURL,
 		privateKey,
 		binBytes,
-		"((address, address, bytes32, address, uint8), string, string, uint8)",
+		"((address, address, bytes32, address, uint8), string, string, uint8)", //nolint:dupword
 		tokenRemoteSettings,
 		tokenRemoteName,
 		tokenRemoteSymbol,
@@ -138,7 +138,7 @@ func DeployERC20Home(
 		rpcURL,
 		privateKey,
 		binBytes,
-		"(address, address, address, uint8)",
+		"(address, address, address, uint8)", //nolint:dupword
 		teleporterRegistryAddress,
 		teleporterManagerAddress,
 		erc20TokenAddress,

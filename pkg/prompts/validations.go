@@ -3,13 +3,12 @@
 package prompts
 
 import (
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
-	"net/http"
 	"net/mail"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -102,7 +101,7 @@ func validateAddresses(input string) error {
 		address = strings.TrimSpace(address)
 		if !common.IsHexAddress(address) {
 			if address == "" {
-				return fmt.Errorf("invalid empty address")
+				return errors.New("invalid empty address")
 			} else {
 				return fmt.Errorf("address %q is invalid", address)
 			}
@@ -137,14 +136,6 @@ func validateBiggerThanZero(input string) error {
 	}
 	if val == 0 {
 		return errors.New("the value must be bigger than zero")
-	}
-	return nil
-}
-
-func validateURLFormat(input string) error {
-	_, err := url.ParseRequestURI(input)
-	if err != nil {
-		return err
 	}
 	return nil
 }
@@ -294,47 +285,16 @@ func validateNonEmpty(input string) error {
 	return nil
 }
 
-func RequestURL(url string) (*http.Response, error) {
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request for url %s: %w", url, err)
-	}
-	token := os.Getenv(constants.GithubAPITokenEnvVarName)
-	if token != "" {
-		// avoid rate limitation issues at CI
-		request.Header.Set("authorization", fmt.Sprintf("Bearer %s", token))
-	}
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected http status code: %d", resp.StatusCode)
-	}
-	return resp, nil
-}
-
-func ValidateURL(url string) error {
-	if err := validateURLFormat(url); err != nil {
-		return err
-	}
-	resp, err := RequestURL(url)
-	if err != nil {
-		return err
-	}
-	// will just ignore this error, url is already validated
-	_ = resp.Body.Close()
-	return nil
-}
-
 func ValidateRepoBranch(repo string, branch string) error {
 	url := repo + "/tree/" + branch
-	return ValidateURL(url)
+	_, err := utils.MakeGetRequest(context.Background(), url)
+	return err
 }
 
 func ValidateRepoFile(repo string, branch string, file string) error {
 	url := repo + "/blob/" + branch + "/" + file
-	return ValidateURL(url)
+	_, err := utils.MakeGetRequest(context.Background(), url)
+	return err
 }
 
 func ValidateHexa(input string) error {
