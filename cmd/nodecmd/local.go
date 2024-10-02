@@ -4,8 +4,9 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -53,6 +54,14 @@ status by running avalanche node status local
 
 // stub for now
 func preLocalChecks() error {
+	// expand passed paths
+	if genesisPath != "" {
+		genesisPath = utils.ExpandHome(genesisPath)
+	}
+	if upgradePath != "" {
+		upgradePath = utils.ExpandHome(upgradePath)
+	}
+	// checks
 	if useEtnaDevnet && !globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 		return fmt.Errorf("etna devnet can only be used with devnet")
 	}
@@ -90,7 +99,6 @@ func localNode(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
 	if err := preLocalChecks(); err != nil {
 		return err
 	}
@@ -99,5 +107,46 @@ func localNode(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
+
+	genesisData := []byte{}
+	upgradeData := []byte{}
+	if useEtnaDevnet {
+		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
+		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
+		genesisData = constants.EtnaDevnetGenesisData
+		upgradeData = constants.EtnaDevnetUpgradeData
+	} else {
+		// read genesis and upgrade files if passes
+		if genesisPath != "" && utils.FileExists(genesisPath) {
+			genesisData, err = os.ReadFile(genesisPath)
+			if err != nil {
+				return fmt.Errorf("could not read genesis file %s: %w", genesisPath, err)
+			}
+		}
+		if upgradePath != "" && utils.FileExists(upgradePath) {
+			upgradeData, err = os.ReadFile(upgradePath)
+			if err != nil {
+				return fmt.Errorf("could not read upgrade file %s: %w", upgradePath, err)
+			}
+		}
+	}
+	bootstrapConfigNodeIDs, err := utils.StringSliceToNodeIds(bootstrapIDs)
+	if err != nil {
+		return fmt.Errorf("could not convert bootstrap IDs: %w", err)
+	}
+	bootstrapConfigNodeIPs, err := utils.StringSliceToNetipPorts(bootstrapIPs)
+	if err != nil {
+		return fmt.Errorf("could not convert bootstrap IP:port pairs: %w", err)
+	}
+	customNetwork, err := network.Customize(
+		genesisData,
+		upgradeData,
+		bootstrapConfigNodeIDs,
+		bootstrapConfigNodeIPs,
+	)
+	if err != nil {
+		return fmt.Errorf("could not configure network: %w", err)
+	}
+
 	return nil
 }

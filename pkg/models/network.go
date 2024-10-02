@@ -49,12 +49,16 @@ type Network struct {
 	ClusterName string
 }
 
+type BootstrapConfig struct {
+	NodeIDs []ids.NodeID
+	NodeIPs beacon.Set
+}
+
 type CustomNetwork struct {
 	Network
-	GenesisData  []byte
-	UpgradeData  []byte
-	BootstrapIDs []ids.NodeID
-	BootstrapIPs beacon.Set
+	BootstrapConfig BootstrapConfig
+	GenesisData     []byte
+	UpgradeData     []byte
 }
 
 var UndefinedNetwork = Network{}
@@ -74,14 +78,18 @@ func (n Network) Customize(genesisData []byte, upgradeData []byte, bootstrapIDs 
 	}
 	beaconSet := beacon.NewSet()
 	for index, ip := range bootstrapIPs {
-		beaconSet.Add(beacon.New(bootstrapIDs[index], ip))
+		if err := beaconSet.Add(beacon.New(bootstrapIDs[index], ip)); err != nil {
+			return CustomNetwork{}, fmt.Errorf("failed to add bootstrap IP:port pair: %w", err)
+		}
 	}
 	return CustomNetwork{
-		Network:      n,
-		GenesisData:  genesisData,
-		UpgradeData:  upgradeData,
-		BootstrapIDs: bootstrapIDs,
-		BootstrapIPs: beaconSet,
+		Network:     n,
+		GenesisData: genesisData,
+		UpgradeData: upgradeData,
+		BootstrapConfig: BootstrapConfig{
+			NodeIDs: bootstrapIDs,
+			NodeIPs: beaconSet,
+		},
 	}, nil
 }
 
