@@ -4,11 +4,14 @@ package models
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/beacon"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
@@ -20,6 +23,7 @@ const (
 	Fuji
 	Local
 	Devnet
+	Custom
 )
 
 func (nk NetworkKind) String() string {
@@ -32,6 +36,8 @@ func (nk NetworkKind) String() string {
 		return "Local Network"
 	case Devnet:
 		return "Devnet"
+	case Custom:
+		return "Custom Network"
 	}
 	return "invalid network"
 }
@@ -43,6 +49,14 @@ type Network struct {
 	ClusterName string
 }
 
+type CustomNetwork struct {
+	Network
+	GenesisData  []byte
+	UpgradeData  []byte
+	BootstrapIDs []ids.NodeID
+	BootstrapIPs beacon.Set
+}
+
 var UndefinedNetwork = Network{}
 
 func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string) Network {
@@ -52,6 +66,27 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string
 		Endpoint:    endpoint,
 		ClusterName: clusterName,
 	}
+}
+
+func (n Network) Customize(genesisData []byte, upgradeData []byte, bootstrapIDs []ids.NodeID, bootstrapIPs []netip.AddrPort) (CustomNetwork, error) {
+	if len(bootstrapIPs) != len(bootstrapIDs) {
+		return CustomNetwork{}, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
+	}
+	beaconSet := beacon.NewSet()
+	for index, ip := range bootstrapIPs {
+		beaconSet.Add(beacon.New(bootstrapIDs[index], ip))
+	}
+	return CustomNetwork{
+		Network:      n,
+		GenesisData:  genesisData,
+		UpgradeData:  upgradeData,
+		BootstrapIDs: bootstrapIDs,
+		BootstrapIPs: beaconSet,
+	}, nil
+}
+
+func (n Network) IsUndefined() bool {
+	return n.Kind == Undefined
 }
 
 func NewLocalNetwork() Network {
