@@ -123,11 +123,11 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 //		//   - Weight
 //		Message warp.Message `json:"message"`
 //	}
-func (d *PublicDeployer) SetSubnetValidatorWeight(
+func (d *PublicDeployer) SetL1ValidatorWeight(
 	message warp.Message,
 ) (*txs.Tx, error) {
 	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewSetSubnetValidatorWeightTx(args...)
+	//unsignedTx, err := wallet.P().Builder().NewSetL1ValidatorWeightTx(args...)
 	//if err != nil {
 	//	return nil, fmt.Errorf("error building tx: %w", err)
 	//}
@@ -141,14 +141,14 @@ func (d *PublicDeployer) SetSubnetValidatorWeight(
 	return nil, nil
 }
 
-func (d *PublicDeployer) RegisterSubnetValidator(
+func (d *PublicDeployer) RegisterL1Validator(
 	balance uint64,
 	signer signer.Signer,
 	changeOwner fx.Owner,
 	message warp.Message,
 ) (*txs.Tx, error) {
 	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(args...)
+	//unsignedTx, err := wallet.P().Builder().NewRegisterL1ValidatorTx(args...)
 	//if err != nil {
 	//	return nil, fmt.Errorf("error building tx: %w", err)
 	//}
