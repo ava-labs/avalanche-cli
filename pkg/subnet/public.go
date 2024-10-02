@@ -626,7 +626,6 @@ func (d *PublicDeployer) createConvertSubnetTx(
 		return nil, fmt.Errorf("error signing tx: %w", err)
 	}
 	return &tx, nil
-	//return nil, nil
 }
 
 func (d *PublicDeployer) createTransferSubnetOwnershipTx(
