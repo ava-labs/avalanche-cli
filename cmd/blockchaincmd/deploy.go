@@ -6,16 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -607,34 +606,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if !sidecar.NotSOV {
-		// type ConvertSubnetTx struct {
-		//		// Metadata, inputs and outputs
-		//		BaseTx
-		//		// ID of the Subnet to transform
-		//		// Restrictions:
-		//		// - Must not be the Primary Network ID
-		//		Subnet ids.ID `json:"subnetID"`
-		//		// BlockchainID where the Subnet manager lives
-		//		ChainID ids.ID `json:"chainID"`
-		//		// Address of the Subnet manager
-		//		Address []byte `json:"address"`
-		//		// Initial pay-as-you-go validators for the Subnet
-		//		Validators []SubnetValidator `json:"validators"`
-		//		// Authorizes this conversion
-		//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
-		//	}
-
-		//avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
-		//if err != nil {
-		//	return err
-		//}
-		// TODO: replace with avalanchego subnetValidators once implemented
+		avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
+		if err != nil {
+			return err
+		}
 		isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
 			blockchainID,
-			// avaGoBootstrapValidators,
+			avaGoBootstrapValidators,
 		)
 		if err != nil {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
@@ -669,7 +650,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
 }
 
-func getBLSInfo(publicKey, proofOfPossesion string) (signer.Signer, error) {
+func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
 	type jsonProofOfPossession struct {
 		PublicKey         string
 		ProofOfPossession string
@@ -680,18 +661,19 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.Signer, error) {
 	}
 	popBytes, err := json.Marshal(jsonPop)
 	if err != nil {
-		return nil, err
+		return signer.ProofOfPossession{}, err
 	}
 	pop := &signer.ProofOfPossession{}
 	err = pop.UnmarshalJSON(popBytes)
 	if err != nil {
-		return nil, err
+		return signer.ProofOfPossession{}, err
 	}
-	return pop, nil
+	return *pop, nil
 }
 
-func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]SubnetValidator, error) {
-	bootstrapValidators := []SubnetValidator{}
+// TODO: add deactivation owner?
+func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]txs.ConvertSubnetValidator, error) {
+	bootstrapValidators := []txs.ConvertSubnetValidator{}
 	for _, validator := range subnetValidators {
 		nodeID, err := ids.NodeIDFromString(validator.NodeID)
 		if err != nil {
@@ -705,14 +687,14 @@ func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		if err != nil {
 			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
 		}
-		bootstrapValidator := SubnetValidator{
+		bootstrapValidator := txs.ConvertSubnetValidator{
 			NodeID:  nodeID,
 			Weight:  validator.Weight,
 			Balance: validator.Balance,
 			Signer:  blsInfo,
-			ChangeOwner: &secp256k1fx.OutputOwners{
+			RemainingBalanceOwner: message.PChainOwner{
 				Threshold: 1,
-				Addrs:     addrs,
+				Addresses: addrs,
 			},
 		}
 		bootstrapValidators = append(bootstrapValidators, bootstrapValidator)
