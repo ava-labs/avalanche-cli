@@ -9,7 +9,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/l1cmd"
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -158,7 +158,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 	}
 
 	if nodeIDStr == "" {
-		nodeID, err = blockchaincmd.PromptNodeID("add as Primary Network Validator")
+		nodeID, err = l1cmd.PromptNodeID("add as Primary Network Validator")
 		if err != nil {
 			return err
 		}

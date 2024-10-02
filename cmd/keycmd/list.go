@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/l1cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -183,7 +183,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 		}
 		for _, subnetName := range subnets {
 			if subnetName != "p" && subnetName != "x" && subnetName != "c" {
-				_, err = blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName})
+				_, err = l1cmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 				if err != nil {
 					return nil, err
 				}

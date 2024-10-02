@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/l1cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -64,7 +64,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	}
 
 	if useLedger && keyName != "" {
-		return blockchaincmd.ErrMutuallyExlusiveKeyLedger
+		return l1cmd.ErrMutuallyExlusiveKeyLedger
 	}
 
 	// we need network to decide if ledger is forced (mainnet)
@@ -90,7 +90,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	case models.Mainnet:
 		useLedger = true
 		if keyName != "" {
-			return blockchaincmd.ErrStoredKeyOnMainnet
+			return l1cmd.ErrStoredKeyOnMainnet
 		}
 	default:
 		return errors.New("unsupported network")
@@ -120,7 +120,7 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if !isPermissioned {
-		return blockchaincmd.ErrNotPermissionedSubnet
+		return l1cmd.ErrNotPermissionedSubnet
 	}
 
 	// get the remaining tx signers so as to check that the wallet does contain an expected signer
@@ -130,7 +130,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	}
 
 	if len(remainingSubnetAuthKeys) == 0 {
-		blockchaincmd.PrintReadyToSignMsg(subnetName, inputTxPath)
+		l1cmd.PrintReadyToSignMsg(subnetName, inputTxPath)
 		ux.Logger.PrintToUser("")
 		return fmt.Errorf("tx is already fully signed")
 	}
@@ -171,7 +171,7 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := blockchaincmd.SaveNotFullySignedTx(
+	if err := l1cmd.SaveNotFullySignedTx(
 		"Tx",
 		tx,
 		subnetName,

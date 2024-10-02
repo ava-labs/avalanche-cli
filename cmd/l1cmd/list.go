@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package blockchaincmd
+package l1cmd
 
 import (
 	"os"

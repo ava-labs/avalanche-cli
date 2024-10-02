@@ -1,9 +1,9 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package blockchaincmd
+package l1cmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd/upgradecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/l1cmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/spf13/cobra"

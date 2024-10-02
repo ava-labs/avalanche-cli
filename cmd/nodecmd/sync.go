@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/l1cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -46,7 +46,7 @@ func syncSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{blockchainName}); err != nil {
+	if _, err := l1cmd.ValidateSubnetNameAndGetChains([]string{blockchainName}); err != nil {
 		return err
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))

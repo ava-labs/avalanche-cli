@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
+	"github.com/ava-labs/avalanche-cli/cmd/l1cmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
@@ -76,7 +76,7 @@ in with avalanche subnet create myNewSubnet.`,
 		BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
 
 	// add sub commands
-	rootCmd.AddCommand(blockchaincmd.NewCmd(app))
+	rootCmd.AddCommand(l1cmd.NewCmd(app))
 	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
@@ -110,7 +110,7 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.AddCommand(subcmd)
 
 	// add subnet command
-	subcmd = blockchaincmd.NewCmd(app)
+	subcmd = l1cmd.NewCmd(app)
 	subcmd.Use = "subnet"
 	subcmd.Short = "Create and deploy blockchains (deprecation notice: use 'avalanche blockchain')"
 	subcmd.Long = `The subnet command suite provides a collection of tools for developing

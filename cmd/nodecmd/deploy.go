@@ -5,7 +5,7 @@ package nodecmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/l1cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -44,7 +44,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if err := checkCluster(clusterName); err != nil {
 		return err
 	}
-	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
+	if _, err := l1cmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
 	clustersConfig, err := app.LoadClustersConfig()
@@ -75,7 +75,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	useEwoqParam := true
 	sameControlKey := true
 
-	if err := blockchaincmd.CallDeploy(
+	if err := l1cmd.CallDeploy(
 		cmd,
 		subnetOnly,
 		subnetName,

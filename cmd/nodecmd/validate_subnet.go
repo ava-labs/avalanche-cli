@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/l1cmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
