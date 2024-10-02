@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
@@ -90,8 +91,16 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
-	validators []warpMessage.SubnetConversionValidatorData,
+	convertSubnetValidators []txs.ConvertSubnetValidator,
 ) (*warp.Message, error) {
+	validators := []warpMessage.SubnetConversionValidatorData{}
+	for _, convertSubnetValidator := range convertSubnetValidators {
+		validators = append(validators, warpMessage.SubnetConversionValidatorData{
+			NodeID:       convertSubnetValidator.NodeID[:],
+			BLSPublicKey: convertSubnetValidator.Signer.PublicKey,
+			Weight:       convertSubnetValidator.Weight,
+		})
+	}
 	subnetConversionData := warpMessage.SubnetConversionData{
 		SubnetID:       subnetID,
 		ManagerChainID: managerBlockchainID,
@@ -134,14 +143,17 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, nil)
 }
 
+// calls poa manager validators set init method,
+// passing to it the p-chain signed [subnetConversionSignedMessage]
+// so as to verify p-chain already proceesed the associated
+// ConvertSubnetTx
 func PoAValidatorManagerInitializeValidatorsSet(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
-	// TODO replace with validators struct from ConvertSubnetTx
-	validators []warpMessage.SubnetConversionValidatorData,
+	convertSubnetValidators []txs.ConvertSubnetValidator,
 	subnetConversionSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
 	type InitialValidator struct {
@@ -155,19 +167,19 @@ func PoAValidatorManagerInitializeValidatorsSet(
 		ValidatorManagerAddress      common.Address
 		InitialValidators            []InitialValidator
 	}
-	initialValidators := []InitialValidator{}
-	for _, validator := range validators {
-		initialValidators = append(initialValidators, InitialValidator{
-			NodeID:       validator.NodeID[:],
-			BlsPublicKey: validator.BLSPublicKey[:],
-			Weight:       validator.Weight,
+	validators := []InitialValidator{}
+	for _, convertSubnetValidator := range convertSubnetValidators {
+		validators = append(validators, InitialValidator{
+			NodeID:       convertSubnetValidator.NodeID[:],
+			BlsPublicKey: convertSubnetValidator.Signer.PublicKey[:],
+			Weight:       convertSubnetValidator.Weight,
 		})
 	}
 	subnetConversionData := SubnetConversionData{
 		SubnetID:                     subnetID,
 		ValidatorManagerBlockchainID: managerBlockchainID,
 		ValidatorManagerAddress:      managerAddress,
-		InitialValidators:            initialValidators,
+		InitialValidators:            validators,
 	}
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
@@ -180,13 +192,18 @@ func PoAValidatorManagerInitializeValidatorsSet(
 	)
 }
 
+// setups PoA manager after a successful execution of
+// ConvertSubnetTx on P-Chain
+// needs the list of validators for that tx,
+// [convertSubnetValidators], together with an evm [ownerAddress]
+// to set as the owner of the PoA manager
 func SetupPoA(
 	app *application.Avalanche,
 	network models.Network,
 	chainSpec contract.ChainSpec,
 	privateKey string,
 	ownerAddress common.Address,
-	validators []warpMessage.SubnetConversionValidatorData,
+	convertSubnetValidators []txs.ConvertSubnetValidator,
 ) error {
 	rpcURL, _, err := contract.GetBlockchainEndpoints(
 		app,
@@ -237,7 +254,7 @@ func SetupPoA(
 		subnetID,
 		blockchainID,
 		managerAddress,
-		validators,
+		convertSubnetValidators,
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
@@ -248,7 +265,7 @@ func SetupPoA(
 		privateKey,
 		subnetID,
 		blockchainID,
-		validators,
+		convertSubnetValidators,
 		subnetConversionSignedMessage,
 	)
 	if err != nil {

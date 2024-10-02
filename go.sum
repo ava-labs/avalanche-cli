@@ -87,6 +87,8 @@ github.com/ava-labs/avalanche-network-runner v1.8.4-0.20240930181211-bfc2f5f8597
 github.com/ava-labs/avalanche-network-runner v1.8.4-0.20240930181211-bfc2f5f85973/go.mod h1:T6AYu2HBw4N6oAIRJWATSLx3/uWLVVADTbfSCIcSlEY=
 github.com/ava-labs/avalanchego v1.11.12-rc.2.0.20241002155128-f0d260f608ab h1:8Ex9uURO+CVmgBoX07zq6GAM8IhgKq7giTZEVLicK6E=
 github.com/ava-labs/avalanchego v1.11.12-rc.2.0.20241002155128-f0d260f608ab/go.mod h1:qSHmog3wMVjo/ruIAQo0ppXAilyni07NIu5K88RyhWE=
+github.com/ava-labs/avalanchego v1.11.12-rc.2.0.20241002202404-c0432585585b h1:DjkUlsIVIsD6vmIolsMwfd8/XU/nS0GbOFuATSqy11E=
+github.com/ava-labs/avalanchego v1.11.12-rc.2.0.20241002202404-c0432585585b/go.mod h1:qSHmog3wMVjo/ruIAQo0ppXAilyni07NIu5K88RyhWE=
 github.com/ava-labs/awm-relayer v1.4.1-0.20241002161747-fe8e776ca56d h1:eWTOqesxFPoj8TpHvBOngKcYgmJGybLKDBhD+ISAjJk=
 github.com/ava-labs/awm-relayer v1.4.1-0.20241002161747-fe8e776ca56d/go.mod h1:euakhKCSoBem976nRGg4MuUbWkwWaT62EEu5/JaFZDs=
 github.com/ava-labs/coreth v0.13.8 h1:f14X3KgwHl9LwzfxlN6S4bbn5VA2rhEsNnHaRLSTo/8=
