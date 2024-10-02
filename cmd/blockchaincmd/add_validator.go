@@ -7,10 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	warpPlatformVM "github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
-
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -24,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	warpPlatformVM "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/spf13/cobra"
 )
 
@@ -223,39 +220,9 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Change Address: %s", changeAddr)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	//type RegisterSubnetValidatorTx struct {
-	//	// Metadata, inputs and outputs
-	//	BaseTx
-	//	// Balance <= sum($AVAX inputs) - sum($AVAX outputs) - TxFee.
-	//	Balance uint64 `json:"balance"`
-	//	// [Signer] is the BLS key for this validator.
-	//	// Note: We do not enforce that the BLS key is unique across all validators.
-	//	//       This means that validators can share a key if they so choose.
-	//	//       However, a NodeID does uniquely map to a BLS key
-	//	Signer signer.Signer `json:"signer"`
-	//	// Leftover $AVAX from the Subnet Validator's Balance will be issued to
-	//	// this owner after it is removed from the validator set.
-	//	ChangeOwner fx.Owner `json:"changeOwner"`
-	//	// AddressedCall with Payload:
-	//	//   - SubnetID
-	//	//   - NodeID (must be Ed25519 NodeID)
-	//	//   - Weight
-	//	//   - BLS public key
-	//	//   - Expiry
-	//	Message warp.Message `json:"message"`
-	//}
-
 	blsInfo, err := getBLSInfo(publicKey, pop)
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
-	}
-	addrs, err := address.ParseToIDs([]string{changeAddr})
-	if err != nil {
-		return fmt.Errorf("failure parsing change owner address: %w", err)
-	}
-	changeOwner := &secp256k1fx.OutputOwners{
-		Threshold: 1,
-		Addrs:     addrs,
 	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStrFormat)
 	if err != nil {
@@ -267,7 +234,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	tx, err := deployer.RegisterSubnetValidator(balance, blsInfo, changeOwner, message)
+	tx, err := deployer.RegisterSubnetValidator(balance, blsInfo.ProofOfPossession, message)
 	if err != nil {
 		return err
 	}

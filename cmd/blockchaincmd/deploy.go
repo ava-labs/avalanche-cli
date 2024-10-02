@@ -688,7 +688,7 @@ func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
 		}
 		bootstrapValidator := txs.ConvertSubnetValidator{
-			NodeID:  nodeID,
+			NodeID:  nodeID[:],
 			Weight:  validator.Weight,
 			Balance: validator.Balance,
 			Signer:  blsInfo,

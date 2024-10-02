@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -143,23 +142,23 @@ func (d *PublicDeployer) SetSubnetValidatorWeight(
 
 func (d *PublicDeployer) RegisterSubnetValidator(
 	balance uint64,
-	signer signer.Signer,
-	changeOwner fx.Owner,
+	pop [96]byte,
 	message warp.Message,
 ) (*txs.Tx, error) {
+	wallet, err := d.loadCacheWallet()
+	if err != nil {
+		return nil, err
+	}
 	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(args...)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error building tx: %w", err)
-	//}
-	//tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet that contains EVM address controlling POA Validator Manager
-	// TODO: change code below
-	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-	//	return nil, fmt.Errorf("error signing tx: %w", err)
-	//}
-	//return &tx, nil
-	return nil, nil
+	tx, err := wallet.P().IssueRegisterSubnetValidatorTx(
+		balance,
+		pop,
+		message.Bytes(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error issuing RegisterSubnetValidatorTx: %w", err)
+	}
+	return tx, nil
 }
 
 // change subnet owner for [subnetID]
