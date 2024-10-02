@@ -4,24 +4,22 @@ package validatormanager
 
 import (
 	_ "embed"
+	"fmt"
 	"math/big"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-	"github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -43,45 +41,153 @@ func AddPoAValidatorManagerContractToAllocations(
 	}
 }
 
-func InitializePoAValidatorManager(
+// initializes contract [managerAddress] at [rpcURL], to
+// manage validators on [subnetID], with
+// owner given by [ownerAddress]
+func PoAValidatorManagerInitialize(
 	rpcURL string,
-	remoteAddress common.Address,
+	managerAddress common.Address,
 	privateKey string,
 	subnetID ids.ID,
 	ownerAddress common.Address,
-) error {
+) (*types.Transaction, *types.Receipt, error) {
+	const (
+		defaultChurnPeriodSeconds     = uint64(0)
+		defaultMaximumChurnPercentage = uint8(20)
+	)
 	type Params struct {
 		SubnetID               [32]byte
 		ChurnPeriodSeconds     uint64
 		MaximumChurnPercentage uint8
 	}
-	churnPeriodSeconds := uint64(0)
-	maximumChurnPercentage := uint8(20)
 	params := Params{
 		SubnetID:               subnetID,
-		ChurnPeriodSeconds:     churnPeriodSeconds,
-		MaximumChurnPercentage: maximumChurnPercentage,
+		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
+		MaximumChurnPercentage: defaultMaximumChurnPercentage,
 	}
-	_, _, err := contract.TxToMethod(
+	return contract.TxToMethod(
 		rpcURL,
 		privateKey,
-		remoteAddress,
+		managerAddress,
 		nil,
 		"initialize((bytes32,uint64,uint8),address)",
 		params,
 		ownerAddress,
 	)
-	return err
+}
+
+// constructs p-chain-validated (signed) subnet conversion warp
+// message, to be sent to the validators manager when
+// initializing validators set
+// the message specifies [subnetID] that is being converted
+// together with the validator's manager [managerBlockchainID],
+// [managerAddress], and the initial list of [validators]
+func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
+	network models.Network,
+	aggregatorLogger logging.Logger,
+	aggregatorLogLevel logging.Level,
+	aggregatorQuorumPercentage uint64,
+	subnetID ids.ID,
+	managerBlockchainID ids.ID,
+	managerAddress common.Address,
+	validators []warpMessage.SubnetConversionValidatorData,
+) (*warp.Message, error) {
+	subnetConversionData := warpMessage.SubnetConversionData{
+		SubnetID:       subnetID,
+		ManagerChainID: managerBlockchainID,
+		ManagerAddress: managerAddress.Bytes(),
+		Validators:     validators,
+	}
+	subnetConversionID, err := warpMessage.SubnetConversionID(subnetConversionData)
+	if err != nil {
+		return nil, err
+	}
+	addressedCallPayload, err := warpMessage.NewSubnetConversion(subnetConversionID)
+	if err != nil {
+		return nil, err
+	}
+	subnetConversionAddressedCall, err := warpPayload.NewAddressedCall(
+		nil,
+		addressedCallPayload.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		avagoconstants.PlatformChainID, // p-chain sign
+		subnetConversionAddressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		network,
+		aggregatorLogger,
+		aggregatorLogLevel,
+		ids.Empty, // primary network validators sign
+		aggregatorQuorumPercentage,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return signatureAggregator.Sign(subnetConversionUnsignedMessage, nil)
+}
+
+func PoAValidatorManagerInitializeValidatorsSet(
+	rpcURL string,
+	managerAddress common.Address,
+	privateKey string,
+	subnetID ids.ID,
+	managerBlockchainID ids.ID,
+	// TODO replace with validators struct from ConvertSubnetTx
+	validators []warpMessage.SubnetConversionValidatorData,
+	subnetConversionSignedMessage *warp.Message,
+) (*types.Transaction, *types.Receipt, error) {
+	type InitialValidator struct {
+		NodeID       []byte
+		BlsPublicKey []byte
+		Weight       uint64
+	}
+	type SubnetConversionData struct {
+		SubnetID                     [32]byte
+		ValidatorManagerBlockchainID [32]byte
+		ValidatorManagerAddress      common.Address
+		InitialValidators            []InitialValidator
+	}
+	initialValidators := []InitialValidator{}
+	for _, validator := range validators {
+		initialValidators = append(initialValidators, InitialValidator{
+			NodeID:       validator.NodeID[:],
+			BlsPublicKey: validator.BLSPublicKey[:],
+			Weight:       validator.Weight,
+		})
+	}
+	subnetConversionData := SubnetConversionData{
+		SubnetID:                     subnetID,
+		ValidatorManagerBlockchainID: managerBlockchainID,
+		ValidatorManagerAddress:      managerAddress,
+		InitialValidators:            initialValidators,
+	}
+	return contract.TxToMethodWithWarpMessage(
+		rpcURL,
+		privateKey,
+		managerAddress,
+		subnetConversionSignedMessage,
+		"initializeValidatorSet((bytes32,bytes32,address,[(bytes,bytes,uint64)]),uint32)",
+		subnetConversionData,
+		uint32(0),
+	)
 }
 
 func SetupPoA(
 	app *application.Avalanche,
 	network models.Network,
-	blockchainName string,
+	chainSpec contract.ChainSpec,
+	privateKey string,
+	ownerAddress common.Address,
+	validators []warpMessage.SubnetConversionValidatorData,
 ) error {
-	chainSpec := contract.ChainSpec{
-		BlockchainName: blockchainName,
-	}
 	rpcURL, _, err := contract.GetBlockchainEndpoints(
 		app,
 		network,
@@ -108,120 +214,49 @@ func SetupPoA(
 	if err != nil {
 		return err
 	}
-	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
-	if err != nil {
-		return err
-	}
-	_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
-	if err != nil {
-		return err
-	}
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
-	ownerAddress := common.HexToAddress(sc.PoAValidatorManagerOwner)
-	_ = InitializePoAValidatorManager(
+	tx, _, err := PoAValidatorManagerInitialize(
 		rpcURL,
 		managerAddress,
-		genesisPrivateKey,
+		privateKey,
 		subnetID,
 		ownerAddress,
 	)
-	infoClient := info.NewClient(constants.LocalAPIEndpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	nodeID, proofOfPossesion, err := infoClient.GetNodeID(ctx)
 	if err != nil {
-		return err
+		txHashMsg := ""
+		if tx != nil {
+			txHashMsg = fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
+		}
+		return fmt.Errorf("failure initializing poa validator manager: %w%s", err, txHashMsg)
 	}
-	blsPublicKey := bls.PublicKeyToCompressedBytes(proofOfPossesion.Key())
-	subnetConversionValidatorData := []warpMessage.SubnetConversionValidatorData{
-		{
-			NodeID:       nodeID[:],
-			BLSPublicKey: [48]byte(blsPublicKey),
-			Weight:       15,
-		},
-	}
-	subnetConversionData := warpMessage.SubnetConversionData{
-		SubnetID:       subnetID,
-		ManagerChainID: blockchainID,
-		ManagerAddress: managerAddress.Bytes(),
-		Validators:     subnetConversionValidatorData,
-	}
-	subnetConversionID, err := warpMessage.SubnetConversionID(subnetConversionData)
-	if err != nil {
-		return err
-	}
-	addressedCallPayload, err := warpMessage.NewSubnetConversion(subnetConversionID)
-	if err != nil {
-		return err
-	}
-	subnetConversionAddressedCall, err := warpPayload.NewAddressedCall(
-		nil,
-		addressedCallPayload.Bytes(),
-	)
-	if err != nil {
-		return err
-	}
-	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
-		network.ID,
-		avagoconstants.PlatformChainID,
-		subnetConversionAddressedCall.Bytes(),
-	)
-	if err != nil {
-		return err
-	}
-
-	signatureAggregator, err := interchain.NewSignatureAggregator(
+	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		app.Log,
-		logging.Debug,
-		ids.Empty,
+		logging.Info,
 		0,
-	)
-	if err != nil {
-		return err
-	}
-
-	subnetConversionSignedMessage, err := signatureAggregator.Sign(subnetConversionUnsignedMessage, nil)
-	if err != nil {
-		return err
-	}
-
-	type InitialValidator struct {
-		NodeID       []byte
-		BlsPublicKey []byte
-		Weight       uint64
-	}
-	type SubnetConversionData struct {
-		SubnetID                     [32]byte
-		ValidatorManagerBlockchainID [32]byte
-		ValidatorManagerAddress      common.Address
-		InitialValidators            []InitialValidator
-	}
-	subnetConversionDataAux := SubnetConversionData{
-		SubnetID:                     subnetID,
-		ValidatorManagerBlockchainID: blockchainID,
-		ValidatorManagerAddress:      managerAddress,
-		InitialValidators: []InitialValidator{
-			{
-				NodeID:       nodeID[:],
-				BlsPublicKey: blsPublicKey,
-				Weight:       15,
-			},
-		},
-	}
-
-	_, _, err = contract.TxToMethodWithWarpMessage(
-		rpcURL,
-		genesisPrivateKey,
+		subnetID,
+		blockchainID,
 		managerAddress,
-		subnetConversionSignedMessage,
-		"initializeValidatorSet((bytes32,bytes32,address,[(bytes,bytes,uint64)]),uint32)",
-		subnetConversionDataAux,
-		uint32(0),
+		validators,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
-
+	tx, _, err = PoAValidatorManagerInitializeValidatorsSet(
+		rpcURL,
+		managerAddress,
+		privateKey,
+		subnetID,
+		blockchainID,
+		validators,
+		subnetConversionSignedMessage,
+	)
+	if err != nil {
+		txHashMsg := ""
+		if tx != nil {
+			txHashMsg = fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
+		}
+		return fmt.Errorf("failure initializing validators set on poa manager: %w%s", err, txHashMsg)
+	}
 	return nil
 }

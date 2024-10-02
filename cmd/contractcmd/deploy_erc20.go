@@ -6,13 +6,18 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
@@ -57,10 +62,40 @@ func newDeployERC20Cmd() *cobra.Command {
 }
 
 func deployERC20(_ *cobra.Command, _ []string) error {
+	chainSpec := contract.ChainSpec{
+		BlockchainName: "poa",
+	}
+	_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(app, models.NewLocalNetwork(), chainSpec)
+	if err != nil {
+		return err
+	}
+	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
+	if err != nil {
+		return err
+	}
+	ownerAddress := common.HexToAddress(sc.PoAValidatorManagerOwner)
+	infoClient := info.NewClient(constants.LocalAPIEndpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	nodeID, proofOfPossesion, err := infoClient.GetNodeID(ctx)
+	if err != nil {
+		return err
+	}
+	blsPublicKey := bls.PublicKeyToCompressedBytes(proofOfPossesion.Key())
+	validators := []warpMessage.SubnetConversionValidatorData{
+		{
+			NodeID:       nodeID[:],
+			BLSPublicKey: [48]byte(blsPublicKey),
+			Weight:       15,
+		},
+	}
 	return validatormanager.SetupPoA(
 		app,
 		models.NewLocalNetwork(),
-		"poa",
+		chainSpec,
+		genesisPrivateKey,
+		ownerAddress,
+		validators,
 	)
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
