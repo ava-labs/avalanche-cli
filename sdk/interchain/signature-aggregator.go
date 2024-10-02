@@ -81,13 +81,12 @@ func initSignatureAggregator(
 ) (*SignatureAggregator, error) {
 	sa := &SignatureAggregator{}
 	// set quorum percentage
+	sa.quorumPercentage = quorumPercentage
 	if quorumPercentage == 0 {
 		sa.quorumPercentage = DefaultQuorumPercentage
 	} else if quorumPercentage > 100 {
 		return nil, fmt.Errorf("quorum percentage cannot be greater than 100")
 	}
-	sa.quorumPercentage = quorumPercentage
-
 	sa.subnetID = subnetID
 
 	messageCreator, err := message.NewCreator(

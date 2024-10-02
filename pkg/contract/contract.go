@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -315,6 +316,59 @@ func TxToMethod(
 	txOpts.Value = payment
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
+		return nil, nil, err
+	}
+	receipt, success, err := evm.WaitForTransaction(client, tx)
+	if err != nil {
+		return tx, nil, err
+	} else if !success {
+		return tx, receipt, ErrFailedReceiptStatus
+	}
+	return tx, receipt, nil
+}
+
+// The warp message signature is going to be validated before
+// executing the method. The methods is expected to try
+// to get the validated message
+func TxToMethodWithWarpMessage(
+	rpcURL string,
+	privateKey string,
+	contractAddress common.Address,
+	warpMessage *avalancheWarp.Message,
+	methodSpec string,
+	params ...interface{},
+) (*types.Transaction, *types.Receipt, error) {
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, params...)
+	if err != nil {
+		return nil, nil, err
+	}
+	metadata := &bind.MetaData{
+		ABI: methodABI,
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return nil, nil, err
+	}
+	callData, err := abi.Pack(methodName, params...)
+	if err != nil {
+		return nil, nil, err
+	}
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer client.Close()
+	tx, err := evm.GetSignedTxToMethodWithWarpMessage(
+		client,
+		privateKey,
+		warpMessage,
+		contractAddress,
+		callData,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := evm.SendTransaction(client, tx); err != nil {
 		return nil, nil, err
 	}
 	receipt, success, err := evm.WaitForTransaction(client, tx)

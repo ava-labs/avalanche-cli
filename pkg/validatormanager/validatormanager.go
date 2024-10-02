@@ -155,7 +155,7 @@ func SetupPoA(
 		return err
 	}
 	subnetConversionAddressedCall, err := warpPayload.NewAddressedCall(
-		common.Address{}.Bytes(),
+		nil,
 		addressedCallPayload.Bytes(),
 	)
 	if err != nil {
@@ -173,7 +173,7 @@ func SetupPoA(
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
 		app.Log,
-		logging.Verbo,
+		logging.Debug,
 		ids.Empty,
 		0,
 	)
@@ -186,7 +186,42 @@ func SetupPoA(
 		return err
 	}
 
-	_ = subnetConversionSignedMessage
+	type InitialValidator struct {
+		NodeID       []byte
+		BlsPublicKey []byte
+		Weight       uint64
+	}
+	type SubnetConversionData struct {
+		SubnetID                     [32]byte
+		ValidatorManagerBlockchainID [32]byte
+		ValidatorManagerAddress      common.Address
+		InitialValidators            []InitialValidator
+	}
+	subnetConversionDataAux := SubnetConversionData{
+		SubnetID:                     subnetID,
+		ValidatorManagerBlockchainID: blockchainID,
+		ValidatorManagerAddress:      managerAddress,
+		InitialValidators: []InitialValidator{
+			{
+				NodeID:       nodeID[:],
+				BlsPublicKey: blsPublicKey,
+				Weight:       15,
+			},
+		},
+	}
+
+	_, _, err = contract.TxToMethodWithWarpMessage(
+		rpcURL,
+		genesisPrivateKey,
+		managerAddress,
+		subnetConversionSignedMessage,
+		"initializeValidatorSet((bytes32,bytes32,address,[(bytes,bytes,uint64)]),uint32)",
+		subnetConversionDataAux,
+		uint32(0),
+	)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
