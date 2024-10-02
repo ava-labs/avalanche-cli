@@ -8,24 +8,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche blockchain convert
+// avalanche l1 convert
 func newConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "convert [blockchainName]",
-		Short: "Converts an Avalanche blockchain into a SOV (Subnet Only Validator) blockchain",
-		Long: `The blockchain convert command converts a non-SOV Avalanche blockchain (which requires
-subnet validators to have at least 2000 AVAX staked in the Primary Network) into a SOV (Subnet Only 
-Validator) blockchain.
+		Use:   "convert [l1Name]",
+		Short: "Converts an Avalanche L1 into a SOV (Subnet Only Validator) L1",
+		Long: `The l1 convert command converts a non-SOV Avalanche L1 (which requires subnet 
+validators to have at least 2000 AVAX staked in the Primary Network) into an SOV (Subnet Only 
+Validator) L1.
 
-At the end of the call, the Owner Keys .
+Once an L1 is successfully converted into a an SOV, the Owner Keys can no longer be used to modify 
+the L1's validator set. In addition, AddSubnetValidatorTx is disabled on the Subnet going forward. 
+The only action that the Owner key is able to take is removing any L1 validators that were added 
+using AddSubnetValidatorTx previously via RemoveSubnetValidatorTx. 
 
-Avalanche-CLI only supports deploying an individual Blockchain once per network. Subsequent
-attempts to deploy the same Blockchain to the same network (local, Fuji, Mainnet) aren't
-allowed. If you'd like to redeploy a Blockchain locally for testing, you must first call
-avalanche network clean to reset all deployed chain state. Subsequent local deploys
-redeploy the chain with fresh state. You can deploy the same Blockchain to multiple networks,
-so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
-		RunE:              convertSubnet,
+Unless removed by the Owner key, any Subnet Validators added previously with an AddSubnetValidatorTx 
+will continue to validate the Subnet until their End time is reached. Once all Subnet Validators 
+added with AddSubnetValidatorTx are no longer in the validator set, the Owner key is powerless. 
+RegisterL1ValidatorTx and SetL1ValidatorWeightTx must be used to manage the Subnet's 
+validator set going forward.`,
+		RunE:              convertL1,
 		PersistentPostRun: handlePostRun,
 		Args:              cobrautils.ExactArgs(1),
 	}
@@ -58,8 +60,8 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	return cmd
 }
 
-// // convertSubnet is the cobra command run for deploying subnets
-func convertSubnet(cmd *cobra.Command, args []string) error {
+// // convertL1 is the cobra command run for deploying subnets
+func convertL1(cmd *cobra.Command, args []string) error {
 	//blockchainName := args[0]
 	//
 	//if err := CreateBlockchainFirst(cmd, blockchainName, skipCreatePrompt); err != nil {
@@ -387,7 +389,7 @@ func convertSubnet(cmd *cobra.Command, args []string) error {
 	////	return err
 	////}
 	//// TODO: replace with avalanchego subnetValidators once implemented
-	//isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
+	//isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 	//	controlKeys,
 	//	subnetAuthKeys,
 	//	subnetID,
