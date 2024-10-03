@@ -17,6 +17,7 @@ import (
 )
 
 func CreateCustomSidecar(
+	sc *models.Sidecar,
 	app *application.Avalanche,
 	subnetName string,
 	useRepo bool,
@@ -28,11 +29,13 @@ func CreateCustomSidecar(
 ) (*models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
 
-	sc := &models.Sidecar{
-		Name:   subnetName,
-		VM:     models.CustomVM,
-		Subnet: subnetName,
+	if sc == nil {
+		sc = &models.Sidecar{}
 	}
+
+	sc.Name = subnetName
+	sc.VM = models.CustomVM
+	sc.Subnet = subnetName
 
 	if tokenSymbol != "" {
 		sc.TokenSymbol = tokenSymbol
@@ -48,34 +51,34 @@ func CreateCustomSidecar(
 		options := []string{githubOption, localOption}
 		option, err := app.Prompt.CaptureList("How do you want to set up the VM binary?", options)
 		if err != nil {
-			return &models.Sidecar{}, err
+			return nil, err
 		}
 		if option == githubOption {
 			useRepo = true
 		} else {
 			vmPath, err = app.Prompt.CaptureExistingFilepath("Enter path to VM binary")
 			if err != nil {
-				return &models.Sidecar{}, err
+				return nil, err
 			}
 		}
 	}
 	if useRepo {
 		if err := SetCustomVMSourceCodeFields(app, sc, customVMRepoURL, customVMBranch, customVMBuildScript); err != nil {
-			return &models.Sidecar{}, err
+			return nil, err
 		}
 		if err := BuildCustomVM(app, sc); err != nil {
-			return &models.Sidecar{}, err
+			return nil, err
 		}
 		vmPath = app.GetCustomVMPath(subnetName)
 	} else {
 		if err := app.CopyVMBinary(vmPath, subnetName); err != nil {
-			return &models.Sidecar{}, err
+			return nil, err
 		}
 	}
 
 	rpcVersion, err := GetVMBinaryProtocolVersion(vmPath)
 	if err != nil {
-		return &models.Sidecar{}, fmt.Errorf("unable to get RPC version: %w", err)
+		return nil, fmt.Errorf("unable to get RPC version: %w", err)
 	}
 
 	sc.RPCVersion = rpcVersion

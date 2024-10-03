@@ -16,7 +16,11 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const subnetEVMMainnetChainID = 11
+const (
+	subnetEVMMainnetChainID  = 11
+	poaValidatorManagerOwner = "0x2e6FcBb9d4E17eC4cF67eddfa7D32eabC4cdCFc6"
+	bootstrapFilepathFlag    = "--bootstrap-filepath"
+)
 
 /* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
@@ -43,6 +47,9 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 		genesisPath,
 		"--evm",
 		subnetName,
+		"--proof-of-authority",
+		"--poa-manager-owner",
+		poaValidatorManagerOwner,
 		"--" + constants.SkipUpdateFlag,
 		"--teleporter=false",
 		"--evm-token",
@@ -122,6 +129,9 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"create",
 		"--genesis",
 		genesisPath,
+		"--proof-of-authority",
+		"--poa-manager-owner",
+		poaValidatorManagerOwner,
 		"--custom",
 		subnetName,
 		"--custom-vm-path",
@@ -218,7 +228,7 @@ func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath str
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag}
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag, bootstrapFilepathFlag + "=" + utils.BootstrapValidatorPath}
 	if version != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
 	}
@@ -256,7 +266,7 @@ func DeploySubnetLocallyWithArgsAndOutput(subnetName string, version string, con
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet locally
-	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag}
+	cmdArgs := []string{SubnetCmd, "deploy", "--local", subnetName, "--" + constants.SkipUpdateFlag, bootstrapFilepathFlag + "=" + utils.BootstrapValidatorPath}
 	if version != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-version", version)
 	}
@@ -300,6 +310,7 @@ func SimulateFujiDeploy(
 		SubnetCmd,
 		"deploy",
 		"--fuji",
+		bootstrapFilepathFlag+"="+utils.BootstrapValidatorPath,
 		"--threshold",
 		"1",
 		"--key",
@@ -350,6 +361,7 @@ func SimulateMainnetDeploy(
 		[]string{
 			SubnetCmd,
 			"deploy",
+			bootstrapFilepathFlag + "=" + utils.BootstrapValidatorPath,
 			"--mainnet",
 			"--threshold",
 			"1",
@@ -389,6 +401,7 @@ func SimulateMultisigMainnetDeploy(
 			SubnetCmd,
 			"deploy",
 			"--mainnet",
+			bootstrapFilepathFlag + "=" + utils.BootstrapValidatorPath,
 			"--control-keys",
 			strings.Join(subnetControlAddrs, ","),
 			"--subnet-auth-keys",

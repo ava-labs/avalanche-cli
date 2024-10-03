@@ -71,7 +71,7 @@ func GetBlockchainAirdropKeyInfo(
 		}
 	}
 	for address := range genesis.Alloc {
-		found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, address, false)
+		found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, address, false)
 		if err != nil {
 			return "", "", "", err
 		}
@@ -82,7 +82,7 @@ func GetBlockchainAirdropKeyInfo(
 	return "", "", "", nil
 }
 
-func searchForManagedKey(
+func SearchForManagedKey(
 	app *application.Avalanche,
 	network models.Network,
 	address common.Address,
@@ -204,7 +204,7 @@ func getGenesisNativeMinterAdmin(
 			return false, false, "", "", "", nil
 		}
 		for _, admin := range allowListCfg.AllowListConfig.AdminAddresses {
-			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
 			if err != nil {
 				return false, false, "", "", "", err
 			}
@@ -238,7 +238,7 @@ func getGenesisNativeMinterManager(
 			return false, false, "", "", "", nil
 		}
 		for _, admin := range allowListCfg.AllowListConfig.ManagerAddresses {
-			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
 			if err != nil {
 				return false, false, "", "", "", err
 			}
@@ -287,4 +287,20 @@ func GetEVMSubnetGenesisNativeMinterManager(
 		return false, false, "", "", "", fmt.Errorf("genesis native minter manager query is only supported on EVM based vms")
 	}
 	return getGenesisNativeMinterManager(app, network, genesisData)
+}
+
+func ContractAddressIsInGenesisData(
+	genesisData []byte,
+	contractAddress common.Address,
+) (bool, error) {
+	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
+	if err != nil {
+		return false, err
+	}
+	for address, allocation := range genesis.Alloc {
+		if address == contractAddress {
+			return len(allocation.Code) > 0, nil
+		}
+	}
+	return false, nil
 }

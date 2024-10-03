@@ -14,7 +14,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/utils"
@@ -31,6 +32,7 @@ var (
 )
 
 func CreateEvmSidecar(
+	sc *models.Sidecar,
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
@@ -41,6 +43,10 @@ func CreateEvmSidecar(
 		err        error
 		rpcVersion int
 	)
+
+	if sc == nil {
+		sc = &models.Sidecar{}
+	}
 
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
@@ -58,26 +64,22 @@ func CreateEvmSidecar(
 		}
 	}
 
-	sc := models.Sidecar{
-		Name:        subnetName,
-		VM:          models.SubnetEvm,
-		VMVersion:   subnetEVMVersion,
-		RPCVersion:  rpcVersion,
-		Subnet:      subnetName,
-		TokenSymbol: tokenSymbol,
-		TokenName:   tokenSymbol + " Token",
-	}
+	sc.Name = subnetName
+	sc.VM = models.SubnetEvm
+	sc.VMVersion = subnetEVMVersion
+	sc.RPCVersion = rpcVersion
+	sc.Subnet = subnetName
+	sc.TokenSymbol = tokenSymbol
+	sc.TokenName = tokenSymbol + " Token"
 
-	return &sc, nil
+	return sc, nil
 }
 
 func CreateEVMGenesis(
-	blockchainName string,
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
+	addICMRegistryToGenesis bool,
 ) ([]byte, error) {
-	ux.Logger.PrintToUser("creating genesis for blockchain %s", blockchainName)
-
 	feeConfig := getFeeConfig(params)
 
 	// Validity checks on the parameter settings.
@@ -106,6 +108,17 @@ func CreateEVMGenesis(
 		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
+		icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
+		if addICMRegistryToGenesis {
+			// experimental
+			if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if params.UsePoAValidatorManager {
+		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 	}
 
 	if params.UseExternalGasToken {
