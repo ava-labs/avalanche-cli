@@ -610,7 +610,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
+		isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -624,11 +624,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		savePartialTx = !isFullySigned && err == nil
-		ux.Logger.PrintToUser("ConvertSubnetTx ID: %s", convertSubnetTxID)
+		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", ConvertL1TxID)
 
 		if savePartialTx {
 			if err := SaveNotFullySignedTx(
-				"ConvertSubnetTx",
+				"ConvertL1Tx",
 				tx,
 				chain,
 				subnetAuthKeys,
