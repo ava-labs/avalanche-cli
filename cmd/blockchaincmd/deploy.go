@@ -499,6 +499,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	network.HandlePublicNetworkSimulation()
 
 	if createSubnet {
+		if !sidecar.NotSOV {
+			sameControlKey = true
+		}
 		controlKeys, threshold, err = promptOwners(
 			kc,
 			controlKeys,
