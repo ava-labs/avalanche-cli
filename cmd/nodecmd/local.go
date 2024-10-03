@@ -141,12 +141,12 @@ func preLocalChecks() error {
 }
 
 func localStartNode(_ *cobra.Command, _ []string) error {
+	var err error
 	network := models.UndefinedNetwork
 	networkID := uint32(0)
 	if useEtnaDevnet {
 		networkID = constants.EtnaDevnetNetworkID
 	} else {
-		var err error
 		network, err = networkoptions.GetNetworkFromCmdLineFlags(
 			app,
 			"",
@@ -165,11 +165,15 @@ func localStartNode(_ *cobra.Command, _ []string) error {
 	if err := preLocalChecks(); err != nil {
 		return err
 	}
-	avalancheGoVersion, err := getAvalancheGoVersion()
-	if err != nil {
-		return err
+	avalancheGoVersion := "latest"
+	if avalanchegoBinaryPath == "" {
+		avalancheGoVersion, err = getAvalancheGoVersion()
+		if err != nil {
+			return err
+		} else {
+			ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
+		}
 	}
-	ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 
 	if useEtnaDevnet {
 		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs

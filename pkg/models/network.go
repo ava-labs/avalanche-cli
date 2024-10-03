@@ -9,8 +9,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/beacon"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
@@ -46,18 +44,6 @@ type Network struct {
 	ID          uint32
 	Endpoint    string
 	ClusterName string
-}
-
-type BootstrapConfig struct {
-	NodeIDs []ids.NodeID
-	NodeIPs beacon.Set
-}
-
-type CustomNetwork struct {
-	Network
-	BootstrapConfig BootstrapConfig
-	GenesisData     []byte
-	UpgradeData     []byte
 }
 
 var UndefinedNetwork = Network{}
