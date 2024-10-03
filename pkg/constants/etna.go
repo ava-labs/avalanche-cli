@@ -13,7 +13,8 @@ var EtnaDevnetGenesisData []byte
 var EtnaDevnetUpgradeData []byte
 
 const (
-	EtnaDevnetEndpoint = "https://etna.avax-dev.network"
+	EtnaDevnetEndpoint  = "https://etna.avax-dev.network"
+	EtnaDevnetNetworkID = uint32(76)
 )
 
 var (
