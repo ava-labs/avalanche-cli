@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
@@ -143,7 +144,7 @@ func (d *PublicDeployer) SetL1ValidatorWeight(
 
 func (d *PublicDeployer) RegisterL1Validator(
 	balance uint64,
-	signer signer.Signer,
+	signer signer.ProofOfPossession,
 	changeOwner fx.Owner,
 	message warp.Message,
 ) (*txs.Tx, error) {
@@ -411,13 +412,12 @@ func (d *PublicDeployer) DeployBlockchain(
 	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
 }
 
-
 func (d *PublicDeployer) ConvertL1(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	chainID ids.ID,
-	validators []txs.ConvertSubnetValidator,
+	validators []*txs.ConvertSubnetValidator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now calling ConvertL1 Tx...")
 
@@ -608,25 +608,35 @@ func (d *PublicDeployer) createConvertL1Tx(
 	subnetID ids.ID,
 	chainID ids.ID,
 	address []byte,
-	validators []txs.ConvertSubnetValidator,
+	validators []*txs.ConvertSubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
-	unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
+	//options := d.getMultisigTxOptions(subnetAuthKeys)
+	//unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
+	//	subnetID,
+	//	chainID,
+	//	address,
+	//	validators,
+	//	options...,
+	//)
+	//if err != nil {
+	//	return nil, fmt.Errorf("error building tx: %w", err)
+	//}
+	//tx := txs.Tx{Unsigned: unsignedTx}
+	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	//	return nil, fmt.Errorf("error signing tx: %w", err)
+	//}
+
+	tx, err := wallet.P().IssueConvertSubnetTx(
 		subnetID,
 		chainID,
 		address,
 		validators,
-		options...,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error building tx: %w", err)
+		log.Fatalf("failed to issue subnet conversion transaction: %s\n", err)
 	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, fmt.Errorf("error signing tx: %w", err)
-	}
-	return &tx, nil
+	return tx, nil
 }
 
 func (d *PublicDeployer) createTransferSubnetOwnershipTx(

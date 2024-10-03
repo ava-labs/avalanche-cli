@@ -610,7 +610,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
+		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -672,8 +672,8 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, e
 }
 
 // TODO: add deactivation owner?
-func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]txs.ConvertSubnetValidator, error) {
-	bootstrapValidators := []txs.ConvertSubnetValidator{}
+func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
+	bootstrapValidators := []*txs.ConvertSubnetValidator{}
 	for _, validator := range subnetValidators {
 		nodeID, err := ids.NodeIDFromString(validator.NodeID)
 		if err != nil {
@@ -687,8 +687,8 @@ func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		if err != nil {
 			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
 		}
-		bootstrapValidator := txs.ConvertSubnetValidator{
-			NodeID:  nodeID,
+		bootstrapValidator := &txs.ConvertSubnetValidator{
+			NodeID:  nodeID[:],
 			Weight:  validator.Weight,
 			Balance: validator.Balance,
 			Signer:  blsInfo,
