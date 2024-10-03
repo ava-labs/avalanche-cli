@@ -8,11 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/netip"
 	"net/url"
-	"strings"
-
-	"github.com/ava-labs/avalanchego/ids"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
@@ -59,36 +55,4 @@ func IsValidURL(urlString string) bool {
 		return false
 	}
 	return true
-}
-
-func StringSliceToNodeIds(s []string) ([]ids.NodeID, error) {
-	nodeIDs := []ids.NodeID{}
-	for _, id := range s {
-		id = strings.Trim(id, " ")
-		if id == "" {
-			continue
-		}
-		nodeID, err := ids.NodeIDFromString(id)
-		if err != nil {
-			return nil, err
-		}
-		nodeIDs = append(nodeIDs, nodeID)
-	}
-	return nodeIDs, nil
-}
-
-func StringSliceToNetipPorts(s []string) ([]netip.AddrPort, error) {
-	nodeIDs := []netip.AddrPort{}
-	for _, id := range s {
-		id = strings.Trim(id, " ")
-		if id == "" {
-			continue
-		}
-		addrPort, err := netip.ParseAddrPort(id)
-		if err != nil {
-			return nil, err
-		}
-		nodeIDs = append(nodeIDs, addrPort)
-	}
-	return nodeIDs, nil
 }
