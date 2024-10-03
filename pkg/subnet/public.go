@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
@@ -611,32 +610,22 @@ func (d *PublicDeployer) createConvertL1Tx(
 	validators []*txs.ConvertSubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	//options := d.getMultisigTxOptions(subnetAuthKeys)
-	//unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
-	//	subnetID,
-	//	chainID,
-	//	address,
-	//	validators,
-	//	options...,
-	//)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error building tx: %w", err)
-	//}
-	//tx := txs.Tx{Unsigned: unsignedTx}
-	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-	//	return nil, fmt.Errorf("error signing tx: %w", err)
-	//}
-
-	tx, err := wallet.P().IssueConvertSubnetTx(
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
 		subnetID,
 		chainID,
 		address,
 		validators,
+		options...,
 	)
 	if err != nil {
-		log.Fatalf("failed to issue subnet conversion transaction: %s\n", err)
+		return nil, fmt.Errorf("error building tx: %w", err)
 	}
-	return tx, nil
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, fmt.Errorf("error signing tx: %w", err)
+	}
+	return &tx, nil
 }
 
 func (d *PublicDeployer) createTransferSubnetOwnershipTx(
