@@ -4,7 +4,6 @@ package models
 
 import (
 	"fmt"
-	"net/netip"
 	"os"
 	"strings"
 
@@ -70,27 +69,6 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string
 		Endpoint:    endpoint,
 		ClusterName: clusterName,
 	}
-}
-
-func (n Network) Customize(genesisData []byte, upgradeData []byte, bootstrapIDs []ids.NodeID, bootstrapIPs []netip.AddrPort) (CustomNetwork, error) {
-	if len(bootstrapIPs) != len(bootstrapIDs) {
-		return CustomNetwork{}, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
-	}
-	beaconSet := beacon.NewSet()
-	for index, ip := range bootstrapIPs {
-		if err := beaconSet.Add(beacon.New(bootstrapIDs[index], ip)); err != nil {
-			return CustomNetwork{}, fmt.Errorf("failed to add bootstrap IP:port pair: %w", err)
-		}
-	}
-	return CustomNetwork{
-		Network:     n,
-		GenesisData: genesisData,
-		UpgradeData: upgradeData,
-		BootstrapConfig: BootstrapConfig{
-			NodeIDs: bootstrapIDs,
-			NodeIPs: beaconSet,
-		},
-	}, nil
 }
 
 func (n Network) IsUndefined() bool {

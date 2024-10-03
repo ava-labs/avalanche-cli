@@ -340,6 +340,7 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+	LocalDir  = "local"
 
 	MetricsNetwork               = "network"
 	MultiSig                     = "multi-sig"

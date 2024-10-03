@@ -68,17 +68,17 @@ func StringSliceToNodeIds(s []string) ([]ids.NodeID, error) {
 		if id == "" {
 			continue
 		}
-		nodeId, err := ids.NodeIDFromString(id)
+		nodeID, err := ids.NodeIDFromString(id)
 		if err != nil {
 			return nil, err
 		}
-		nodeIDs = append(nodeIDs, nodeId)
+		nodeIDs = append(nodeIDs, nodeID)
 	}
 	return nodeIDs, nil
 }
 
 func StringSliceToNetipPorts(s []string) ([]netip.AddrPort, error) {
-	var nodeIds []netip.AddrPort
+	nodeIDs := []netip.AddrPort{}
 	for _, id := range s {
 		id = strings.Trim(id, " ")
 		if id == "" {
@@ -88,7 +88,7 @@ func StringSliceToNetipPorts(s []string) ([]netip.AddrPort, error) {
 		if err != nil {
 			return nil, err
 		}
-		nodeIds = append(nodeIds, addrPort)
+		nodeIDs = append(nodeIDs, addrPort)
 	}
-	return nodeIds, nil
+	return nodeIDs, nil
 }
