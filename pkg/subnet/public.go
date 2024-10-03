@@ -123,11 +123,11 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 //		//   - Weight
 //		Message warp.Message `json:"message"`
 //	}
-func (d *PublicDeployer) SetSubnetValidatorWeight(
+func (d *PublicDeployer) SetL1ValidatorWeight(
 	message warp.Message,
 ) (*txs.Tx, error) {
 	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewSetSubnetValidatorWeightTx(args...)
+	//unsignedTx, err := wallet.P().Builder().NewSetL1ValidatorWeightTx(args...)
 	//if err != nil {
 	//	return nil, fmt.Errorf("error building tx: %w", err)
 	//}
@@ -141,14 +141,14 @@ func (d *PublicDeployer) SetSubnetValidatorWeight(
 	return nil, nil
 }
 
-func (d *PublicDeployer) RegisterSubnetValidator(
+func (d *PublicDeployer) RegisterL1Validator(
 	balance uint64,
 	signer signer.Signer,
 	changeOwner fx.Owner,
 	message warp.Message,
 ) (*txs.Tx, error) {
 	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(args...)
+	//unsignedTx, err := wallet.P().Builder().NewRegisterL1ValidatorTx(args...)
 	//if err != nil {
 	//	return nil, fmt.Errorf("error building tx: %w", err)
 	//}
@@ -411,15 +411,15 @@ func (d *PublicDeployer) DeployBlockchain(
 	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
 }
 
-// TODO: update ConvertSubnet once avalanchego implementation is up for ACP77
-func (d *PublicDeployer) ConvertSubnet(
+// TODO: update ConvertL1 once avalanchego implementation is up for ACP77
+func (d *PublicDeployer) ConvertL1(
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	chainID ids.ID,
 	// validators []blockchaincmd.SubnetValidator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
-	ux.Logger.PrintToUser("Now calling ConvertSubnet Tx...")
+	ux.Logger.PrintToUser("Now calling ConvertL1 Tx...")
 
 	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
@@ -431,12 +431,12 @@ func (d *PublicDeployer) ConvertSubnet(
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertSubnet transaction")
+	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertL1 transaction")
 
 	var validatorManagerAddress []byte
 	// var validators []avalanchego.SubnetValidator
 
-	tx, err := d.createConvertSubnetTx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress, wallet)
+	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress, wallet)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -605,7 +605,7 @@ func (d *PublicDeployer) createBlockchainTx(
 	return &tx, nil
 }
 
-func (d *PublicDeployer) createConvertSubnetTx(
+func (d *PublicDeployer) createConvertL1Tx(
 	subnetAuthKeys []ids.ShortID,
 	subnetID ids.ID,
 	chainID ids.ID,
@@ -615,7 +615,7 @@ func (d *PublicDeployer) createConvertSubnetTx(
 ) (*txs.Tx, error) {
 	//fxIDs := make([]ids.ID, 0)
 	//options := d.getMultisigTxOptions(subnetAuthKeys)
-	//unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
+	//unsignedTx, err := wallet.P().Builder().NewConvertL1Tx(
 	//	subnetID,
 	//chainID,
 	//address,

@@ -629,7 +629,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		//	return err
 		//}
 		// TODO: replace with avalanchego subnetValidators once implemented
-		isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
+		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -643,11 +643,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		savePartialTx = !isFullySigned && err == nil
-		ux.Logger.PrintToUser("ConvertSubnetTx ID: %s", convertSubnetTxID)
+		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", ConvertL1TxID)
 
 		if savePartialTx {
 			if err := SaveNotFullySignedTx(
-				"ConvertSubnetTx",
+				"ConvertL1Tx",
 				tx,
 				chain,
 				subnetAuthKeys,

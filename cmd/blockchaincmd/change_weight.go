@@ -20,15 +20,15 @@ import (
 
 var ()
 
-// avalanche blockchain addValidator
-func newChangeWeightCmd() *cobra.Command {
+// avalanche blockchain setWeight
+func newSetWeightCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "changeWeight [blockchainName] [nodeID]",
-		Short: "Changes the weight of a Subnet validator",
-		Long: `The blockchain changeWeight command changes the weight of a Subnet Validator.
+		Use:   "setWeight [blockchainName] [nodeID]",
+		Short: "Updates the weight of a Subnet validator",
+		Long: `The blockchain changeWeight command updates the weight of a Subnet Validator.
 
 The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
-		RunE: updateWeight,
+		RunE: setWeight,
 		Args: cobrautils.ExactArgs(2),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
@@ -41,7 +41,7 @@ The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 	return cmd
 }
 
-func updateWeight(_ *cobra.Command, args []string) error {
+func setWeight(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
 	_, err := ids.NodeIDFromString(args[1])
 	if err != nil {
