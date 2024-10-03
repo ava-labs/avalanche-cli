@@ -13,7 +13,7 @@ func Test_StateMachineNoStates(t *testing.T) {
 	require := require.New(t)
 
 	machine, err := NewStateMachine([]string{})
-	require.Error(err)
+	require.ErrorIs(err, errNoStates)
 	require.Nil(machine)
 }
 

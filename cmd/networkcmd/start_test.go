@@ -6,8 +6,10 @@ package networkcmd
 import (
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/internal/testutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -134,6 +136,11 @@ func Test_determineAvagoVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			app = testutils.SetupTestInTempDir(t)
+			mockDownloader := &mocks.Downloader{}
+			mockDownloader.On("Download", mock.Anything).Return(testAvagoCompat, nil)
+			mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return("v1.9.2", nil)
+
+			app.Downloader = mockDownloader
 
 			for i := range tt.sidecars {
 				err := app.CreateSidecar(&tt.sidecars[i])

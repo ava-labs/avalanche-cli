@@ -317,6 +317,7 @@ func (h *Host) UntimedForward(httpRequest string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer parsedResponse.Body.Close()
 	buffer := new(bytes.Buffer)
 	if _, err = buffer.ReadFrom(parsedResponse.Body); err != nil {
 		return nil, err

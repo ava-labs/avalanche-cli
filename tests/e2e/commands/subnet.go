@@ -19,7 +19,6 @@ import (
 
 const subnetEVMMainnetChainID = 11
 
-/* #nosec G204 */
 func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
@@ -29,7 +28,6 @@ func CreateSubnetEvmConfig(subnetName string, genesisPath string) (string, strin
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
-/* #nosec G204 */
 func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, version string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -69,7 +67,6 @@ func CreateSubnetEvmConfigWithVersion(subnetName string, genesisPath string, ver
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-/* #nosec G204 */
 func ConfigureChainConfig(subnetName string, genesisPath string) {
 	// run configure
 	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--chain-config", genesisPath, "--" + constants.SkipUpdateFlag}
@@ -87,7 +84,6 @@ func ConfigureChainConfig(subnetName string, genesisPath string) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-/* #nosec G204 */
 func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath string) {
 	// run configure
 	cmdArgs := []string{SubnetCmd, "configure", subnetName, "--per-node-chain-config", perNodeChainConfigPath, "--" + constants.SkipUpdateFlag}
@@ -105,7 +101,6 @@ func ConfigurePerNodeChainConfig(subnetName string, perNodeChainConfigPath strin
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-/* #nosec G204 */
 func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -131,7 +126,7 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 		"--teleporter=false",
 		"--evm-token",
 		"TOK",
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (
@@ -156,7 +151,6 @@ func CreateCustomVMConfig(subnetName string, genesisPath string, vmPath string) 
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-/* #nosec G204 */
 func DeleteSubnetConfig(subnetName string) {
 	// Config should exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -164,7 +158,7 @@ func DeleteSubnetConfig(subnetName string) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Now delete config
-	cmd := exec.Command(CLIBinary, SubnetCmd, "delete", subnetName, "--"+constants.SkipUpdateFlag)
+	cmd := exec.Command(CLIBinary, SubnetCmd, "delete", subnetName, "--"+constants.SkipUpdateFlag) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -180,12 +174,11 @@ func DeleteSubnetConfig(subnetName string) {
 }
 
 // Returns the deploy output
-/* #nosec G204 */
+
 func DeploySubnetLocally(subnetName string) string {
 	return DeploySubnetLocallyWithArgs(subnetName, "", "")
 }
 
-/* #nosec G204 */
 func DeploySubnetLocallyExpectError(subnetName string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
@@ -195,7 +188,7 @@ func DeploySubnetLocallyExpectError(subnetName string) {
 }
 
 // Returns the deploy output
-/* #nosec G204 */
+
 func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
@@ -205,13 +198,13 @@ func DeploySubnetLocallyWithViperConf(subnetName string, confPath string) string
 }
 
 // Returns the deploy output
-/* #nosec G204 */
+
 func DeploySubnetLocallyWithVersion(subnetName string, version string) string {
 	return DeploySubnetLocallyWithArgs(subnetName, version, "")
 }
 
 // Returns the deploy output
-/* #nosec G204 */
+
 func DeploySubnetLocallyWithArgs(subnetName string, version string, confPath string) string {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -273,14 +266,13 @@ func DeploySubnetLocallyWithArgsAndOutput(subnetName string, version string, con
 	return cmd.CombinedOutput()
 }
 
-/* #nosec G204 */
 func DeploySubnetLocallyWithArgsExpectError(subnetName string, version string, confPath string) {
 	_, err := DeploySubnetLocallyWithArgsAndOutput(subnetName, version, confPath)
 	gomega.Expect(err).Should(gomega.HaveOccurred())
 }
 
 // simulates fuji deploy execution path on a local network
-/* #nosec G204 */
+
 func SimulateFujiDeploy(
 	subnetName string,
 	key string,
@@ -309,7 +301,7 @@ func SimulateFujiDeploy(
 		controlKeys,
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -326,7 +318,7 @@ func SimulateFujiDeploy(
 }
 
 // simulates mainnet deploy execution path on a local network
-/* #nosec G204 */
+
 func SimulateMainnetDeploy(
 	subnetName string,
 	mainnetChainID int,
@@ -366,7 +358,7 @@ func SimulateMainnetDeploy(
 }
 
 // simulates multisig mainnet deploy execution path on a local network
-/* #nosec G204 */
+
 func SimulateMultisigMainnetDeploy(
 	subnetName string,
 	subnetControlAddrs []string,
@@ -407,7 +399,7 @@ func SimulateMultisigMainnetDeploy(
 }
 
 // transaction signing with ledger
-/* #nosec G204 */
+
 func TransactionSignWithLedger(
 	subnetName string,
 	txPath string,
@@ -435,7 +427,7 @@ func TransactionSignWithLedger(
 }
 
 // transaction commit
-/* #nosec G204 */
+
 func TransactionCommit(
 	subnetName string,
 	txPath string,
@@ -462,7 +454,7 @@ func TransactionCommit(
 }
 
 // simulates fuji add validator execution path on a local network
-/* #nosec G204 */
+
 func SimulateFujiAddValidator(
 	subnetName string,
 	key string,
@@ -497,7 +489,7 @@ func SimulateFujiAddValidator(
 		weight,
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -555,7 +547,7 @@ func SimulateFujiRemoveValidator(
 }
 
 // simulates mainnet add validator execution path on a local network
-/* #nosec G204 */
+
 func SimulateMainnetAddValidator(
 	subnetName string,
 	nodeID string,
@@ -595,7 +587,7 @@ func SimulateMainnetAddValidator(
 }
 
 // simulates fuji join execution path on a local network
-/* #nosec G204 */
+
 func SimulateFujiJoin(
 	subnetName string,
 	avalanchegoConfig string,
@@ -625,7 +617,7 @@ func SimulateFujiJoin(
 		"--force-write",
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
@@ -641,7 +633,7 @@ func SimulateFujiJoin(
 }
 
 // simulates mainnet join execution path on a local network
-/* #nosec G204 */
+
 func SimulateMainnetJoin(
 	subnetName string,
 	avalanchegoConfig string,
@@ -671,7 +663,7 @@ func SimulateMainnetJoin(
 		"--force-write",
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -687,7 +679,6 @@ func SimulateMainnetJoin(
 	return string(output)
 }
 
-/* #nosec G204 */
 func ImportSubnetConfig(repoAlias string, subnetName string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -709,7 +700,7 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 		"--subnet",
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (
@@ -733,7 +724,6 @@ func ImportSubnetConfig(repoAlias string, subnetName string) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-/* #nosec G204 */
 func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
@@ -757,7 +747,7 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 		"--subnet",
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (
@@ -781,7 +771,6 @@ func ImportSubnetConfigFromURL(repoURL string, branch string, subnetName string)
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-/* #nosec G204 */
 func DescribeSubnet(subnetName string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -790,7 +779,7 @@ func DescribeSubnet(subnetName string) (string, error) {
 		"describe",
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -801,7 +790,6 @@ func DescribeSubnet(subnetName string) (string, error) {
 	return string(output), err
 }
 
-/* #nosec G204 */
 func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	// Check config does already exist:
 	// We want to run stats on an existing subnet
@@ -822,7 +810,7 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 		subnetName,
 		"--fuji",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	var exitErr *exec.ExitError
 	if err != nil {
@@ -838,7 +826,6 @@ func SimulateGetSubnetStatsFuji(subnetName, subnetID string) string {
 	return string(output)
 }
 
-/* #nosec G204 */
 func ListValidators(subnetName string, network string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -848,7 +835,7 @@ func ListValidators(subnetName string, network string) (string, error) {
 		subnetName,
 		"--"+network,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	out, err := cmd.CombinedOutput()
 	return string(out), err

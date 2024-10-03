@@ -12,7 +12,6 @@ import (
 	"github.com/onsi/gomega"
 )
 
-/* #nosec G204 */
 func ImportUpgradeBytes(subnetName, filepath string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -23,7 +22,7 @@ func ImportUpgradeBytes(subnetName, filepath string) (string, error) {
 		"--upgrade-filepath",
 		filepath,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -34,7 +33,6 @@ func ImportUpgradeBytes(subnetName, filepath string) (string, error) {
 	return string(output), err
 }
 
-/* #nosec G204 */
 func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -46,7 +44,7 @@ func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 		"--version",
 		targetVersion,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -57,7 +55,6 @@ func UpgradeVMConfig(subnetName string, targetVersion string) (string, error) {
 	return string(output), err
 }
 
-/* #nosec G204 */
 func UpgradeCustomVM(subnetName string, binaryPath string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -69,7 +66,7 @@ func UpgradeCustomVM(subnetName string, binaryPath string) (string, error) {
 		"--binary",
 		binaryPath,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -80,7 +77,6 @@ func UpgradeCustomVM(subnetName string, binaryPath string) (string, error) {
 	return string(output), err
 }
 
-/* #nosec G204 */
 func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -94,7 +90,7 @@ func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) 
 		"--plugin-dir",
 		pluginDir,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -105,7 +101,6 @@ func UpgradeVMPublic(subnetName string, targetVersion string, pluginDir string) 
 	return string(output), err
 }
 
-/* #nosec G204 */
 func UpgradeVMLocal(subnetName string, targetVersion string) string {
 	cmd := exec.Command(
 		CLIBinary,
@@ -117,7 +112,7 @@ func UpgradeVMLocal(subnetName string, targetVersion string) string {
 		"--version",
 		targetVersion,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -130,7 +125,6 @@ func UpgradeVMLocal(subnetName string, targetVersion string) string {
 	return string(output)
 }
 
-/* #nosec G204 */
 func UpgradeCustomVMLocal(subnetName string, binaryPath string) string {
 	cmd := exec.Command(
 		CLIBinary,
@@ -142,7 +136,7 @@ func UpgradeCustomVMLocal(subnetName string, binaryPath string) string {
 		"--binary",
 		binaryPath,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -154,7 +148,6 @@ func UpgradeCustomVMLocal(subnetName string, binaryPath string) string {
 	return string(output)
 }
 
-/* #nosec G204 */
 func ApplyUpgradeLocal(subnetName string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -164,7 +157,7 @@ func ApplyUpgradeLocal(subnetName string) (string, error) {
 		subnetName,
 		"--local",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -175,7 +168,6 @@ func ApplyUpgradeLocal(subnetName string) (string, error) {
 	return string(output), err
 }
 
-/* #nosec G204 */
 func ApplyUpgradeToPublicNode(subnetName, avagoChainConfDir string) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -187,7 +179,7 @@ func ApplyUpgradeToPublicNode(subnetName, avagoChainConfDir string) (string, err
 		"--avalanchego-chain-config-dir",
 		avagoChainConfDir,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {

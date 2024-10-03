@@ -28,7 +28,7 @@ func setupTest(t *testing.T) *require.Assertions {
 func Test_getChainId(t *testing.T) {
 	require := setupTest(t)
 	app := application.New()
-	mockPrompt := &mocks.Prompter{}
+	mockPrompt := mocks.NewPrompter(t)
 	app.Prompt = mockPrompt
 
 	mockPrompt.On("CaptureString", mock.Anything).Return(testToken, nil)
@@ -41,7 +41,7 @@ func Test_getChainId(t *testing.T) {
 func Test_getChainId_Err(t *testing.T) {
 	require := setupTest(t)
 	app := application.New()
-	mockPrompt := &mocks.Prompter{}
+	mockPrompt := mocks.NewPrompter(t)
 	app.Prompt = mockPrompt
 
 	testErr := errors.New("Bad prompt")

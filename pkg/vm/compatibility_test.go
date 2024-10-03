@@ -6,8 +6,11 @@ package vm
 import (
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/internal/mocks"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +32,13 @@ func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {
 	expectedRPC := 18
 	var vm models.VMType = models.SubnetEvm
 
-	rpcVersion, err := GetRPCProtocolVersion(vm, testAvagoVersion)
+	mockDownloader := mocks.NewDownloader(t)
+	mockDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
+
+	app := application.New()
+	app.Downloader = mockDownloader
+
+	rpcVersion, err := GetRPCProtocolVersion(app, vm, testAvagoVersion)
 	require.NoError(err)
 	require.Equal(expectedRPC, rpcVersion)
 }
@@ -37,13 +46,19 @@ func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {
 func TestGetRPCProtocolVersionUnknownVM(t *testing.T) {
 	require := require.New(t)
 	var vm models.VMType = "unknown"
-	_, err := GetRPCProtocolVersion(vm, testAvagoVersion)
+	app := application.New()
+	_, err := GetRPCProtocolVersion(app, vm, testAvagoVersion)
 	require.ErrorContains(err, "unknown VM type")
 }
 
 func TestGetRPCProtocolVersionMissing(t *testing.T) {
 	require := require.New(t)
-	_, err := GetRPCProtocolVersion(models.SubnetEvm, testUnlistedAvagoVersion)
+	mockDownloader := mocks.NewDownloader(t)
+	mockDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
+
+	app := application.New()
+	app.Downloader = mockDownloader
+	_, err := GetRPCProtocolVersion(app, models.SubnetEvm, testUnlistedAvagoVersion)
 	require.ErrorContains(err, "no RPC version found")
 }
 
@@ -104,7 +119,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			testData:        testAvagoCompat2,
 			latestVersion:   "v1.9.2",
 			expectedVersion: "",
-			expectedErr:     ErrNoAvagoVersion,
+			expectedErr:     ErrNoAvalancheGoVersion,
 		},
 		{
 			name:            "existing rpc, but no eligible version",
@@ -112,7 +127,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 			testData:        testAvagoCompat,
 			latestVersion:   "v1.9.1",
 			expectedVersion: "",
-			expectedErr:     ErrNoAvagoVersion,
+			expectedErr:     ErrNoAvalancheGoVersion,
 		},
 		{
 			name:            "string sorting test",
@@ -134,7 +149,15 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			avagoVersion, err := GetLatestAvalancheGoByProtocolVersion(tt.rpc, constants.AvalancheGoCompatibilityURL)
+
+			mockDownloader := &mocks.Downloader{}
+			mockDownloader.On("Download", mock.Anything).Return(tt.testData, nil)
+			mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.latestVersion, nil)
+
+			app := application.New()
+			app.Downloader = mockDownloader
+
+			avagoVersion, err := GetLatestAvalancheGoByProtocolVersion(app, tt.rpc, constants.AvalancheGoCompatibilityURL)
 			if tt.expectedErr == nil {
 				require.NoError(err)
 			} else {

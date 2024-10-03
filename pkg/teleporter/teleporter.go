@@ -458,7 +458,7 @@ func GetInfo(
 	if err != nil {
 		return nil, err
 	}
-	ti.Version, err = application.GetLatestReleaseVersion(
+	ti.Version, err = app.Downloader.GetLatestReleaseVersion(
 		binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName),
 	)
 	if err != nil {

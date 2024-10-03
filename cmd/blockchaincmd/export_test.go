@@ -9,12 +9,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -25,15 +27,17 @@ func TestExportImportSubnet(t *testing.T) {
 	require := require.New(t)
 	testSubnet := "testSubnet"
 	vmVersion := "v0.9.99"
+	testSubnetEVMCompat := []byte("{\"rpcChainVMProtocolVersion\": {\"v0.9.99\": 18}}")
 
 	app = application.New()
 
-	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter())
+	mockAppDownloader := mocks.Downloader{}
+	mockAppDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
+	app.Downloader = &mockAppDownloader
+
+	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
-	genBytes, err := vm.LoadCustomGenesis(
-		app,
-		"../../"+utils.SubnetEvmGenesisPath,
-	)
+	genBytes, err := os.ReadFile("../../" + utils.SubnetEvmGenesisPath)
 	require.NoError(err)
 	sc, err := vm.CreateEVMSidecar(
 		app,

@@ -487,7 +487,7 @@ func GetLoadTestScript(app *application.Avalanche) error {
 	var err error
 	if loadTestRepoURL != "" {
 		ux.Logger.PrintToUser("Checking source code repository URL %s", loadTestRepoURL)
-		if _, err := utils.MakeGetRequest(context.Background(), loadTestRepoURL, ""); err != nil {
+		if _, err := utils.MakeGetRequest(context.Background(), loadTestRepoURL); err != nil {
 			ux.Logger.PrintToUser("Invalid repository url %s: %s", loadTestRepoURL, err)
 			loadTestRepoURL = ""
 		}

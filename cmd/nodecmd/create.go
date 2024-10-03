@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -997,14 +996,14 @@ func getAvalancheGoVersion() (string, error) {
 	if useCustomAvalanchegoVersion != "" {
 		return useCustomAvalanchegoVersion, nil
 	}
-	latestReleaseVersion, err := application.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
 	))
 	if err != nil {
 		return "", err
 	}
-	latestPreReleaseVersion, err := application.GetLatestPreReleaseVersion(
+	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
 	)
@@ -1042,10 +1041,11 @@ func getAvalancheGoVersion() (string, error) {
 
 func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
 	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
+		app,
 		configuredRPCVersion,
 		constants.AvalancheGoCompatibilityURL,
 	)
-	if err == vm.ErrNoAvagoVersion {
+	if err == vm.ErrNoAvalancheGoVersion {
 		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
 		return latestPreReleaseVersion, nil
 	}

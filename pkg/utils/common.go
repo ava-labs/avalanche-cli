@@ -300,7 +300,7 @@ func Sum(s []int) int {
 }
 
 func DownloadWithTee(url string, path string) ([]byte, error) {
-	bs, err := MakeGetRequest(context.Background(), url, "")
+	bs, err := MakeGetRequest(context.Background(), url)
 	if err != nil {
 		return nil, err
 	}

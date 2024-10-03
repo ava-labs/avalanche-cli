@@ -92,9 +92,9 @@ func TestDeployToLocal(t *testing.T) {
 	}()
 
 	app := &application.Avalanche{}
-	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
 
-	binDir := filepath.Join(app.GetAvalanchegoBinDir(), "avalanchego-"+avagoVersion)
+	binDir := filepath.Join(app.GetAvalancheGoBinDir(), "avalanchego-"+avagoVersion)
 
 	// create a dummy plugins dir, deploy will check it exists
 	binChecker := &mocks.BinaryChecker{}
@@ -162,7 +162,8 @@ func TestGetLatestAvagoVersion(t *testing.T) {
 	s := httptest.NewServer(testHandler)
 	defer s.Close()
 
-	v, err := application.GetLatestReleaseVersion(s.URL)
+	dl := application.NewDownloader()
+	v, err := dl.GetLatestReleaseVersion(s.URL)
 	require.NoError(err)
 	require.Equal(v, testVersion)
 }

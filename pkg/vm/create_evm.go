@@ -53,7 +53,7 @@ func CreateEVMSidecar(
 			return nil, fmt.Errorf("unable to get RPC version: %w", err)
 		}
 	} else {
-		rpcVersion, err = GetRPCProtocolVersion(models.SubnetEvm, subnetEVMVersion)
+		rpcVersion, err = GetRPCProtocolVersion(app, models.SubnetEvm, subnetEVMVersion)
 		if err != nil {
 			return nil, err
 		}

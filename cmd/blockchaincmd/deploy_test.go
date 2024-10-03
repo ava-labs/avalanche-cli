@@ -8,11 +8,15 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 const (
-	testAvagoVersion1      = "v1.9.3"
+	testAvagoVersion1      = "v1.9.2"
 	testAvagoVersion2      = "v1.9.1"
 	testLatestAvagoVersion = "latest"
 )
@@ -187,6 +191,16 @@ func TestCheckForInvalidDeployAndSetAvagoVersion(t *testing.T) {
 			mockSC.On("GetCurrentNetworkVersion").Return(tt.networkVersion, tt.networkRPC, tt.networkUp, tt.networkErr)
 
 			userProvidedAvagoVersion = tt.desiredVersion
+
+			mockDownloader := &mocks.Downloader{}
+			mockDownloader.On("Download", mock.Anything).Return(tt.compatData, nil)
+			mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.expectedVersion, nil)
+			mockDownloader.On("GetLatestPreReleaseVersion", mock.Anything, mock.Anything).Return(tt.expectedVersion, nil)
+
+			app = application.New()
+			app.Log = logging.NoLog{}
+			app.Downloader = mockDownloader
+
 			desiredAvagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(&mockSC, tt.desiredRPC)
 
 			if tt.expectError {

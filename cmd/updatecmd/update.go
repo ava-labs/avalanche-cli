@@ -51,7 +51,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *application.LastActions) error {
 	// first check if there is a new version exists
 	url := binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.CliRepoName)
-	latest, err := application.GetLatestReleaseVersion(url)
+	latest, err := app.Downloader.GetLatestReleaseVersion(url)
 	if err != nil {
 		app.Log.Warn("failed to get latest version for cli from repo", zap.Error(err))
 		return err

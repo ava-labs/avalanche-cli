@@ -416,7 +416,7 @@ func setupTestEnv(t *testing.T) (*require.Assertions, *mocks.Prompter) {
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	app = &application.Avalanche{}
 	mockPrompt := mocks.NewPrompter(t)
-	app.Setup(testDir, logging.NoLog{}, config.New(), mockPrompt)
+	app.Setup(testDir, logging.NoLog{}, config.New(), mockPrompt, application.NewDownloader())
 
 	return require, mockPrompt
 }

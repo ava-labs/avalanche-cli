@@ -63,7 +63,7 @@ func TestSubnetEVMRenameMigration(t *testing.T) {
 			testDir := t.TempDir()
 
 			app := &application.Avalanche{}
-			app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
+			app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
 
 			err := app.CreateSidecar(tt.sc)
 			require.NoError(err)
@@ -92,7 +92,7 @@ func TestSubnetEVMRenameMigration_EmptyDir(t *testing.T) {
 	testDir := t.TempDir()
 
 	app := &application.Avalanche{}
-	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter())
+	app.Setup(testDir, logging.NoLog{}, config.New(), prompts.NewPrompter(), application.NewDownloader())
 
 	emptySubnetName := "emptySubnet"
 

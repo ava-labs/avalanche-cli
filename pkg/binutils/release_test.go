@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -37,28 +38,28 @@ func setupInstallDir(require *require.Assertions) *application.Avalanche {
 	defer os.RemoveAll(rootDir)
 
 	app := application.New()
-	app.Setup(rootDir, logging.NoLog{}, &config.Config{}, prompts.NewPrompter())
+	app.Setup(rootDir, logging.NoLog{}, &config.Config{}, prompts.NewPrompter(), application.NewDownloader())
 	return app
 }
 
 func Test_installAvalancheGoWithVersion_Zip(t *testing.T) {
 	require := testutils.SetupTest(t)
+
+	zipBytes := testutils.CreateDummyAvagoZip(require, binary1)
 	app := setupInstallDir(require)
 
-	mockInstaller := &mocks.Installer{}
+	mockInstaller := mocks.NewInstaller(t)
 	mockInstaller.On("GetArch").Return("amd64", "darwin")
 
 	githubDownloader := NewAvalancheGoDownloader()
-	expectedDir := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
 
-	binDir, err := installBinaryWithVersion(
-		app,
-		version1,
-		app.GetAvalanchegoBinDir(),
-		avalanchegoBinPrefix,
-		githubDownloader,
-		mockInstaller,
-	)
+	mockAppDownloader := mocks.NewDownloader(t)
+	mockAppDownloader.On("Download", mock.Anything).Return(zipBytes, nil)
+	app.Downloader = mockAppDownloader
+
+	expectedDir := filepath.Join(app.GetAvalancheGoBinDir(), avalanchegoBinPrefix+version1)
+
+	binDir, err := installBinaryWithVersion(app, version1, app.GetAvalancheGoBinDir(), avalanchegoBinPrefix, githubDownloader, mockInstaller)
 	require.Equal(expectedDir, binDir)
 	require.NoError(err)
 
@@ -71,16 +72,22 @@ func Test_installAvalancheGoWithVersion_Zip(t *testing.T) {
 func Test_installAvalancheGoWithVersion_Tar(t *testing.T) {
 	require := testutils.SetupTest(t)
 
+	tarBytes := testutils.CreateDummyAvagoTar(require, binary1, version1)
+
 	app := setupInstallDir(require)
 
-	mockInstaller := &mocks.Installer{}
+	mockInstaller := mocks.NewInstaller(t)
 	mockInstaller.On("GetArch").Return("amd64", "linux")
 
 	downloader := NewAvalancheGoDownloader()
 
-	expectedDir := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
+	mockAppDownloader := mocks.NewDownloader(t)
+	mockAppDownloader.On("Download", mock.Anything).Return(tarBytes, nil)
+	app.Downloader = mockAppDownloader
 
-	binDir, err := installBinaryWithVersion(app, version1, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
+	expectedDir := filepath.Join(app.GetAvalancheGoBinDir(), avalanchegoBinPrefix+version1)
+
+	binDir, err := installBinaryWithVersion(app, version1, app.GetAvalancheGoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
 	require.Equal(expectedDir, binDir)
 	require.NoError(err)
 
@@ -97,7 +104,7 @@ func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
 	zipBytes2 := testutils.CreateDummyAvagoZip(require, binary2)
 	app := setupInstallDir(require)
 
-	mockInstaller := &mocks.Installer{}
+	mockInstaller := mocks.NewInstaller(t)
 	mockInstaller.On("GetArch").Return("amd64", "darwin")
 
 	downloader := NewAvalancheGoDownloader()
@@ -105,17 +112,19 @@ func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
 	require.NoError(err)
 	url2, _, err := downloader.GetDownloadURL(version2, mockInstaller)
 	require.NoError(err)
-	mockInstaller.On("DownloadRelease", url1).Return(zipBytes1, nil)
-	mockInstaller.On("DownloadRelease", url2).Return(zipBytes2, nil)
+	mockAppDownloader := mocks.NewDownloader(t)
+	mockAppDownloader.On("Download", url1).Return(zipBytes1, nil)
+	mockAppDownloader.On("Download", url2).Return(zipBytes2, nil)
+	app.Downloader = mockAppDownloader
 
-	expectedDir1 := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version1)
-	expectedDir2 := filepath.Join(app.GetAvalanchegoBinDir(), avalanchegoBinPrefix+version2)
+	expectedDir1 := filepath.Join(app.GetAvalancheGoBinDir(), avalanchegoBinPrefix+version1)
+	expectedDir2 := filepath.Join(app.GetAvalancheGoBinDir(), avalanchegoBinPrefix+version2)
 
-	binDir1, err := installBinaryWithVersion(app, version1, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
+	binDir1, err := installBinaryWithVersion(app, version1, app.GetAvalancheGoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
 	require.Equal(expectedDir1, binDir1)
 	require.NoError(err)
 
-	binDir2, err := installBinaryWithVersion(app, version2, app.GetAvalanchegoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
+	binDir2, err := installBinaryWithVersion(app, version2, app.GetAvalancheGoBinDir(), avalanchegoBinPrefix, downloader, mockInstaller)
 	require.Equal(expectedDir2, binDir2)
 	require.NoError(err)
 
@@ -133,12 +142,18 @@ func Test_installAvalancheGoWithVersion_MultipleCoinstalls(t *testing.T) {
 
 func Test_installSubnetEVMWithVersion(t *testing.T) {
 	require := testutils.SetupTest(t)
+
+	tarBytes := testutils.CreateDummySubnetEVMTar(require, binary1)
 	app := setupInstallDir(require)
 
-	mockInstaller := &mocks.Installer{}
+	mockInstaller := mocks.NewInstaller(t)
 	mockInstaller.On("GetArch").Return("amd64", "darwin")
 
 	downloader := NewSubnetEVMDownloader()
+
+	mockAppDownloader := mocks.NewDownloader(t)
+	mockAppDownloader.On("Download", mock.Anything).Return(tarBytes, nil)
+	app.Downloader = mockAppDownloader
 
 	expectedDir := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version1)
 
@@ -156,12 +171,24 @@ func Test_installSubnetEVMWithVersion(t *testing.T) {
 
 func Test_installSubnetEVMWithVersion_MultipleCoinstalls(t *testing.T) {
 	require := testutils.SetupTest(t)
+
+	tarBytes1 := testutils.CreateDummySubnetEVMTar(require, binary1)
+	tarBytes2 := testutils.CreateDummySubnetEVMTar(require, binary2)
 	app := setupInstallDir(require)
 
-	mockInstaller := &mocks.Installer{}
+	mockInstaller := mocks.NewInstaller(t)
 	mockInstaller.On("GetArch").Return("arm64", "linux")
 
 	downloader := NewSubnetEVMDownloader()
+	url1, _, err := downloader.GetDownloadURL(version1, mockInstaller)
+	require.NoError(err)
+	url2, _, err := downloader.GetDownloadURL(version2, mockInstaller)
+	require.NoError(err)
+
+	mockAppDownloader := mocks.NewDownloader(t)
+	mockAppDownloader.On("Download", url1).Return(tarBytes1, nil)
+	mockAppDownloader.On("Download", url2).Return(tarBytes2, nil)
+	app.Downloader = mockAppDownloader
 
 	expectedDir1 := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version1)
 	expectedDir2 := filepath.Join(app.GetSubnetEVMBinDir(), subnetEVMBinPrefix+version2)

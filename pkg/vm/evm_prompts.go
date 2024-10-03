@@ -841,12 +841,12 @@ func PromptVMVersion(
 ) (string, error) {
 	switch vmVersion {
 	case latest:
-		return application.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		return app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 			constants.AvaLabsOrg,
 			repoName,
 		))
 	case preRelease:
-		return application.GetLatestPreReleaseVersion(
+		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
 		)
@@ -866,7 +866,7 @@ func promptUserForVMVersion(
 		err                     error
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
-		latestReleaseVersion, err = application.GetLatestReleaseVersion(
+		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
 			binutils.GetGithubLatestReleaseURL(
 				constants.AvaLabsOrg,
 				repoName,
@@ -875,7 +875,7 @@ func promptUserForVMVersion(
 		if err != nil {
 			return "", err
 		}
-		latestPreReleaseVersion, err = application.GetLatestPreReleaseVersion(
+		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
 		)
@@ -915,7 +915,7 @@ func promptUserForVMVersion(
 	}
 
 	// prompt for version
-	versions, err := application.GetAllReleasesForRepo(
+	versions, err := app.Downloader.GetAllReleasesForRepo(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
 	)

@@ -10,9 +10,11 @@ const (
 	Forward StateDirection = iota
 	Backward
 	Stop
+
+	notRunningState = ""
 )
 
-const notRunningState = ""
+var errNoStates = errors.New("number of states must be greater than zero")
 
 // keeps track of a linear state sequence given by the non empty slice [states], which can
 // be updated with steps forward and backward by using NextState() with suitable direction.
@@ -35,7 +37,7 @@ type StateMachine struct {
 
 func NewStateMachine(states []string) (*StateMachine, error) {
 	if len(states) == 0 {
-		return nil, errors.New("number of states must be greater than zero")
+		return nil, errNoStates
 	}
 	return &StateMachine{
 		states: states,

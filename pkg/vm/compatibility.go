@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"golang.org/x/mod/semver"
 
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/grpcutils"
@@ -28,10 +27,9 @@ import (
 	pb "github.com/ava-labs/avalanchego/proto/pb/vm/runtime"
 )
 
-var ErrNoAvagoVersion = errors.New("unable to find a compatible avalanchego version")
+var ErrNoAvalancheGoVersion = errors.New("unable to find a compatible avalanchego version")
 
 // protocolVersionQueryInitializer gets vm protocol version during handshake and provides it on a channel
-
 var _ runtime.Initializer = (*protocolVersionQueryInitializer)(nil)
 
 type protocolVersionQueryInitializer struct {
@@ -137,13 +135,13 @@ func dumpProcessOutput(stdoutPipe io.ReadCloser, stderrPipe io.ReadCloser) error
 	return nil
 }
 
-func GetRPCProtocolVersion(vmType models.VMType, vmVersion string) (int, error) {
+func GetRPCProtocolVersion(app *application.Avalanche, vmType models.VMType, vmVersion string) (int, error) {
 	// Only subnet-evm is currently supported.
 	if vmType != models.SubnetEvm {
 		return 0, errors.New("unknown VM type")
 	}
 
-	compatibilityBytes, err := utils.MakeGetRequest(context.Background(), constants.SubnetEVMRPCCompatibilityURL)
+	compatibilityBytes, err := app.Downloader.Download(constants.SubnetEVMRPCCompatibilityURL)
 	if err != nil {
 		return 0, err
 	}
@@ -161,9 +159,9 @@ func GetRPCProtocolVersion(vmType models.VMType, vmVersion string) (int, error) 
 	return version, nil
 }
 
-// GetAvalancheGoVersionsForRPC returns list of compatible avalanche go versions for a specified rpcVersion
-func GetAvalancheGoVersionsForRPC(rpcVersion int, url string) ([]string, error) {
-	compatibilityBytes, err := utils.MakeGetRequest(context.Background(), url)
+// getAvalancheGoVersionsForRPC returns list of compatible avalanche go versions for a specified rpcVersion
+func getAvalancheGoVersionsForRPC(app *application.Avalanche, rpcVersion int, url string) ([]string, error) {
+	compatibilityBytes, err := app.Downloader.Download(url)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +173,7 @@ func GetAvalancheGoVersionsForRPC(rpcVersion int, url string) ([]string, error) 
 
 	eligibleVersions, ok := parsedCompat[strconv.Itoa(rpcVersion)]
 	if !ok {
-		return nil, ErrNoAvagoVersion
+		return nil, ErrNoAvalancheGoVersion
 	}
 
 	// versions are not necessarily sorted, so we need to sort them, tho this puts them in ascending order
@@ -185,13 +183,13 @@ func GetAvalancheGoVersionsForRPC(rpcVersion int, url string) ([]string, error) 
 
 // GetAvailableAvalancheGoVersions returns list of only available for download avalanche go versions,
 // with latest version in first index
-func GetAvailableAvalancheGoVersions(rpcVersion int, url string) ([]string, error) {
-	eligibleVersions, err := GetAvalancheGoVersionsForRPC(rpcVersion, url)
+func GetAvailableAvalancheGoVersions(app *application.Avalanche, rpcVersion int, url string) ([]string, error) {
+	eligibleVersions, err := getAvalancheGoVersionsForRPC(app, rpcVersion, url)
 	if err != nil {
-		return nil, ErrNoAvagoVersion
+		return nil, ErrNoAvalancheGoVersion
 	}
 	// get latest avago release to make sure we're not picking a release currently in progress but not available for download
-	latestAvagoVersion, err := application.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
 	))
@@ -206,13 +204,13 @@ func GetAvailableAvalancheGoVersions(rpcVersion int, url string) ([]string, erro
 		}
 	}
 	if len(availableVersions) == 0 {
-		return nil, ErrNoAvagoVersion
+		return nil, ErrNoAvalancheGoVersion
 	}
 	return availableVersions, nil
 }
 
-func GetLatestAvalancheGoByProtocolVersion(rpcVersion int, url string) (string, error) {
-	useVersion, err := GetAvailableAvalancheGoVersions(rpcVersion, url)
+func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
+	useVersion, err := GetAvailableAvalancheGoVersions(app, rpcVersion, url)
 	if err != nil {
 		return "", err
 	}

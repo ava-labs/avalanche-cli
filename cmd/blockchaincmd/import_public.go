@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -181,7 +180,7 @@ func importPublic(*cobra.Command, []string) error {
 		// no node was queried, ask the user
 		switch vmType {
 		case models.SubnetEvm:
-			versions, err = application.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
+			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName)
 			if err != nil {
 				return err
 			}
@@ -194,7 +193,7 @@ func importPublic(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		sc.RPCVersion, err = vm.GetRPCProtocolVersion(vmType, sc.VMVersion)
+		sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
 		if err != nil {
 			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
 		}

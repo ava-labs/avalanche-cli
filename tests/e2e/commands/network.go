@@ -13,14 +13,13 @@ import (
 	"github.com/onsi/gomega"
 )
 
-/* #nosec G204 */
 func CleanNetwork() {
 	cmd := exec.Command(
 		CLIBinary,
 		NetworkCmd,
 		"clean",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -30,7 +29,6 @@ func CleanNetwork() {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
-/* #nosec G204 */
 func CleanNetworkHard() {
 	cmd := exec.Command(
 		CLIBinary,
@@ -38,7 +36,7 @@ func CleanNetworkHard() {
 		"clean",
 		"--hard",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -48,7 +46,6 @@ func CleanNetworkHard() {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
-/* #nosec G204 */
 func StartNetwork() string {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
@@ -57,7 +54,6 @@ func StartNetwork() string {
 	return StartNetworkWithVersion(mapping[utils.OnlyAvagoKey])
 }
 
-/* #nosec G204 */
 func StartNetworkWithVersion(version string) string {
 	cmdArgs := []string{NetworkCmd, "start"}
 	cmdArgs = append(cmdArgs, "--"+constants.SkipUpdateFlag)
@@ -73,7 +69,7 @@ func StartNetworkWithVersion(version string) string {
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
+	cmd := exec.Command(CLIBinary, cmdArgs...) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -84,14 +80,13 @@ func StartNetworkWithVersion(version string) string {
 	return string(output)
 }
 
-/* #nosec G204 */
 func StopNetwork() {
 	cmd := exec.Command(
 		CLIBinary,
 		NetworkCmd,
 		"stop",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())

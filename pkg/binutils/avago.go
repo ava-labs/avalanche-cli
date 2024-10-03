@@ -9,7 +9,7 @@ import (
 )
 
 func SetupAvalanchego(app *application.Avalanche, avagoVersion string) (string, string, error) {
-	binDir := app.GetAvalanchegoBinDir()
+	binDir := app.GetAvalancheGoBinDir()
 
 	installer := NewInstaller()
 	downloader := NewAvalancheGoDownloader()

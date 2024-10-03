@@ -307,7 +307,7 @@ func TestUpdateToCustomBin(t *testing.T) {
 	ux.NewUserLog(log, os.Stdout)
 
 	app = &application.Avalanche{}
-	app.Setup(testDir, log, config.New(), prompts.NewPrompter())
+	app.Setup(testDir, log, config.New(), prompts.NewPrompter(), application.NewDownloader())
 
 	err = os.MkdirAll(app.GetSubnetDir(), constants.DefaultPerms755)
 	assert.NoError(err)

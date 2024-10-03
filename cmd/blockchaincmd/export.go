@@ -81,7 +81,7 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Custom VM source code repository, branch and build script not defined for subnet. Filling in the details now.")
 			if customVMRepoURL != "" {
 				ux.Logger.PrintToUser("Checking source code repository URL %s", customVMRepoURL)
-				if _, err := utils.MakeGetRequest(context.Background(), customVMRepoURL, ""); err != nil {
+				if _, err := utils.MakeGetRequest(context.Background(), customVMRepoURL); err != nil {
 					ux.Logger.PrintToUser("Invalid repository url %s: %s", customVMRepoURL, err)
 					customVMRepoURL = ""
 				}

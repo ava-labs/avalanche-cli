@@ -66,7 +66,7 @@ func TestGetDownloadURL_AvalancheGo(t *testing.T) {
 
 	for _, tt := range tests {
 		require := require.New(t)
-		mockInstaller := &mocks.Installer{}
+		mockInstaller := mocks.NewInstaller(t)
 		mockInstaller.On("GetArch").Return(tt.goarch, tt.goos)
 
 		downloader := NewAvalancheGoDownloader()
@@ -108,7 +108,7 @@ func TestGetDownloadURL_SubnetEVM(t *testing.T) {
 
 	for _, tt := range tests {
 		require := require.New(t)
-		mockInstaller := &mocks.Installer{}
+		mockInstaller := mocks.NewInstaller(t)
 		mockInstaller.On("GetArch").Return(tt.goarch, tt.goos)
 
 		downloader := NewSubnetEVMDownloader()

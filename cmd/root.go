@@ -144,7 +144,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	log.Info("-----------")
 	log.Info("cmd: " + strings.Join(os.Args[1:], " "))
 	cf := config.New()
-	app.Setup(baseDir, log, cf, prompts.NewPrompter())
+	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
 	initConfig()
 

@@ -50,7 +50,8 @@ type testMapper struct {
 
 func newTestMapper(t *testing.T) *testMapper {
 	app := &application.Avalanche{
-		Log: logging.NoLog{},
+		Downloader: application.NewDownloader(),
+		Log:        logging.NoLog{},
 	}
 	return &testMapper{
 		app,
@@ -66,13 +67,13 @@ func (*testMapper) FilterAvailableVersions(versions []string) []string {
 }
 
 // implement VersionMapper
-func (*testMapper) GetEligibleVersions(sorted []string, _ string) ([]string, error) {
+func (*testMapper) GetEligibleVersions(_ *application.Avalanche, sorted []string, _ string) ([]string, error) {
 	// tests were written with the assumption that the first version is always in progress
 	return sorted[1:], nil
 }
 
 // implement VersionMapper
-func (m *testMapper) GetLatestAvalancheGoByProtoVersion(rpcVersion int, _ string) (string, error) {
+func (m *testMapper) GetLatestAvalancheGoByProtoVersion(_ *application.Avalanche, rpcVersion int, _ string) (string, error) {
 	cBytes := []byte(m.currentContext.sourceAvago)
 
 	var compat models.AvagoCompatiblity
@@ -119,10 +120,10 @@ func (m *testMapper) GetCompatURL(vmType models.VMType) string {
 	return ""
 }
 
-// GetAvalancheGoURL fakes a github endpoint for
+// GetAvagoURL fakes a github endpoint for
 // avalanchego releases
 // implement VersionMapper
-func (m *testMapper) GetAvalancheGoURL() string {
+func (m *testMapper) GetAvagoURL() string {
 	return m.srv.URL + "/avago"
 }
 

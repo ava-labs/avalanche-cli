@@ -8,7 +8,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
-/* #nosec G204 */
 func CreateKey(keyName string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -17,13 +16,12 @@ func CreateKey(keyName string) (string, error) {
 		"create",
 		keyName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	out, err := cmd.Output()
 	return string(out), err
 }
 
-/* #nosec G204 */
 func CreateKeyFromPath(keyName string, keyPath string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -35,12 +33,11 @@ func CreateKeyFromPath(keyName string, keyPath string) (string, error) {
 		keyName,
 		"--skip-balances",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 	out, err := cmd.Output()
 	return string(out), err
 }
 
-/* #nosec G204 */
 func CreateKeyForce(keyName string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -50,13 +47,12 @@ func CreateKeyForce(keyName string) (string, error) {
 		keyName,
 		"--force",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	out, err := cmd.Output()
 	return string(out), err
 }
 
-/* #nosec G204 */
 func ListKeys(network string, omitCChain bool, useNanoAvax bool) (string, error) {
 	args := []string{KeyCmd, "list", "--" + network, "--" + constants.SkipUpdateFlag}
 	if omitCChain {
@@ -70,7 +66,6 @@ func ListKeys(network string, omitCChain bool, useNanoAvax bool) (string, error)
 	return string(out), err
 }
 
-/* #nosec G204 */
 func DeleteKey(keyName string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -80,13 +75,12 @@ func DeleteKey(keyName string) (string, error) {
 		keyName,
 		"--force",
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	out, err := cmd.Output()
 	return string(out), err
 }
 
-/* #nosec G204 */
 func ExportKey(keyName string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -95,13 +89,12 @@ func ExportKey(keyName string) (string, error) {
 		"export",
 		keyName,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	out, err := cmd.Output()
 	return string(out), err
 }
 
-/* #nosec G204 */
 func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 	// Create config
 	cmd := exec.Command(
@@ -112,13 +105,12 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 		"-o",
 		outputPath,
 		"--"+constants.SkipUpdateFlag,
-	)
+	) // #nosec G204
 
 	out, err := cmd.Output()
 	return string(out), err
 }
 
-/* #nosec G204 */
 func KeyTransferSend(keyName string, targetAddr string, amount string) (string, error) {
 	// Create config
 	args := []string{
@@ -142,7 +134,6 @@ func KeyTransferSend(keyName string, targetAddr string, amount string) (string, 
 	return string(out), err
 }
 
-/* #nosec G204 */
 func KeyTransferReceive(keyName string, amount string, recoveryStep string) (string, error) {
 	// Create config
 	args := []string{

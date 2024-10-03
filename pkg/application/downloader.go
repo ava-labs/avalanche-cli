@@ -16,9 +16,29 @@ import (
 
 const githubVersionTagName = "tag_name"
 
+// This is a generic interface for performing highly testable downloads. All methods here involve
+// external http requests. To write tests using these functions, provide a mocked version of this
+// interface to your application object.
+type Downloader interface {
+	Download(url string) ([]byte, error)
+	GetLatestReleaseVersion(releaseURL string) (string, error)
+	GetLatestPreReleaseVersion(org, repo string) (string, error)
+	GetAllReleasesForRepo(org, repo string) ([]string, error)
+}
+
+type downloader struct{}
+
+func NewDownloader() Downloader {
+	return &downloader{}
+}
+
+func (downloader) Download(url string) ([]byte, error) {
+	return utils.MakeGetRequest(context.Background(), url)
+}
+
 // GetLatestPreReleaseVersion returns the latest available pre release version from github
-func GetLatestPreReleaseVersion(org, repo string) (string, error) {
-	releases, err := GetAllReleasesForRepo(org, repo)
+func (d downloader) GetLatestPreReleaseVersion(org, repo string) (string, error) {
+	releases, err := d.GetAllReleasesForRepo(org, repo)
 	if err != nil {
 		return "", err
 	}
@@ -28,16 +48,16 @@ func GetLatestPreReleaseVersion(org, repo string) (string, error) {
 	return releases[0], nil
 }
 
-func GetAllReleasesForRepo(org, repo string) ([]string, error) {
+func (downloader) GetAllReleasesForRepo(org, repo string) ([]string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", org, repo)
 	token := os.Getenv(constants.GithubAPITokenEnvVarName)
-	jsonBytes, err := utils.MakeGetRequest(context.Background(), url, token)
+	resp, err := utils.MakeGetRequestWithAuthToken(context.Background(), url, token)
 	if err != nil {
 		return nil, err
 	}
 
 	var releaseArr []map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &releaseArr); err != nil {
+	if err := json.Unmarshal(resp, &releaseArr); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal binary json version string: %w", err)
 	}
 
@@ -54,17 +74,17 @@ func GetAllReleasesForRepo(org, repo string) ([]string, error) {
 }
 
 // GetLatestReleaseVersion returns the latest available release version from github
-func GetLatestReleaseVersion(releaseURL string) (string, error) {
+func (downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
 	// TODO: Question if there is a less error prone (= simpler) way to install latest avalanchego
 	// Maybe the binary package manager should also allow the actual avalanchego binary for download
 	token := os.Getenv(constants.GithubAPITokenEnvVarName)
-	jsonBytes, err := utils.MakeGetRequest(context.Background(), releaseURL, token)
+	resp, err := utils.MakeGetRequestWithAuthToken(context.Background(), releaseURL, token)
 	if err != nil {
 		return "", err
 	}
 
 	var jsonStr map[string]interface{}
-	if err := json.Unmarshal(jsonBytes, &jsonStr); err != nil {
+	if err := json.Unmarshal(resp, &jsonStr); err != nil {
 		return "", fmt.Errorf("failed to unmarshal binary json version string: %w", err)
 	}
 

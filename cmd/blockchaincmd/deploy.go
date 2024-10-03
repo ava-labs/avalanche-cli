@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -717,11 +716,12 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 	} else if userProvidedAvagoVersion == "latest" {
 		// find latest avago version for this rpc version
 		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
+			app,
 			configuredRPCVersion,
 			constants.AvalancheGoCompatibilityURL,
 		)
-		if err == vm.ErrNoAvagoVersion {
-			latestPreReleaseVersion, err := application.GetLatestPreReleaseVersion(
+		if err == vm.ErrNoAvalancheGoVersion {
+			latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
 				constants.AvaLabsOrg,
 				constants.AvalancheGoRepoName,
 			)

@@ -238,6 +238,7 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 	}
 
 	return vm.GetLatestAvalancheGoByProtocolVersion(
+		app,
 		currentRPCVersion,
 		constants.AvalancheGoCompatibilityURL,
 	)
