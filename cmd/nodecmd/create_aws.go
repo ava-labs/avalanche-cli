@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -554,17 +553,6 @@ func createAWSInstances(
 		}
 	}
 	return awsCloudConfig, nil
-}
-
-// addCertToSSH takes the cert file downloaded from AWS and moves it to .ssh directory
-func addCertToSSH(certName string) error {
-	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	return cmd.Run()
 }
 
 // checkRegions checks if the given regions are available in AWS.
