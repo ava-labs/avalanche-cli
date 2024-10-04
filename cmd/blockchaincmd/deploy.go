@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
