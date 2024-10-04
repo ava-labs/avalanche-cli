@@ -13,35 +13,37 @@ import (
 )
 
 type AvalancheConfigInputs struct {
-	HTTPHost         string
-	APIAdminEnabled  bool
-	IndexEnabled     bool
-	NetworkID        string
-	DBDir            string
-	LogDir           string
-	PublicIP         string
-	StateSyncEnabled bool
-	PruningEnabled   bool
-	Aliases          []string
-	BlockChainID     string
-	TrackSubnets     string
-	BootstrapIDs     string
-	BootstrapIPs     string
-	GenesisPath      string
+	HTTPHost                   string
+	APIAdminEnabled            bool
+	IndexEnabled               bool
+	NetworkID                  string
+	DBDir                      string
+	LogDir                     string
+	PublicIP                   string
+	StateSyncEnabled           bool
+	PruningEnabled             bool
+	Aliases                    []string
+	BlockChainID               string
+	TrackSubnets               string
+	BootstrapIDs               string
+	BootstrapIPs               string
+	GenesisPath                string
+	ProposerVMUseCurrentHeight bool
 }
 
 func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
-		HTTPHost:         "127.0.0.1",
-		NetworkID:        networkID,
-		DBDir:            "/.avalanchego/db/",
-		LogDir:           "/.avalanchego/logs/",
-		PublicIP:         publicIP,
-		StateSyncEnabled: true,
-		PruningEnabled:   false,
-		TrackSubnets:     strings.Join(subnets, ","),
-		Aliases:          nil,
-		BlockChainID:     "",
+		HTTPHost:                   "127.0.0.1",
+		NetworkID:                  networkID,
+		DBDir:                      "/.avalanchego/db/",
+		LogDir:                     "/.avalanchego/logs/",
+		PublicIP:                   publicIP,
+		StateSyncEnabled:           true,
+		PruningEnabled:             false,
+		TrackSubnets:               strings.Join(subnets, ","),
+		Aliases:                    nil,
+		BlockChainID:               "",
+		ProposerVMUseCurrentHeight: true,
 	}
 }
 
