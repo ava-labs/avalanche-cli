@@ -53,7 +53,7 @@ The node local command suite provides a collection of commands related to local 
 
 func newLocalStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "start",
+		Use:   "start [clusterName]",
 		Short: "(ALPHA Warning) Create a new validator on local machine",
 		Long: `(ALPHA Warning) This command is currently in experimental mode. 
 
@@ -66,6 +66,7 @@ to finish bootstrapping on the primary network before running further
 commands on it, e.g. validating a Subnet. You can check the bootstrapping
 status by running avalanche node status local 
 `,
+		Args:              cobra.ExactArgs(1),
 		RunE:              localStartNode,
 		PersistentPostRun: handlePostRun,
 	}
@@ -84,18 +85,20 @@ status by running avalanche node status local
 
 func newLocalStopCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stop",
+		Use:   "stop [clusterName]",
 		Short: "(ALPHA Warning) Stop local node",
 		Long:  `Stop local node.`,
+		Args:  cobra.ExactArgs(1),
 		RunE:  localStopNode,
 	}
 }
 
 func newLocalCleanupCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "cleanup",
+		Use:   "destroy [clusterName]",
 		Short: "(ALPHA Warning) Cleanup local node",
 		Long:  `Cleanup local node.`,
+		Args:  cobra.ExactArgs(1),
 		RunE:  localCleanupNode,
 	}
 }
@@ -140,8 +143,13 @@ func preLocalChecks() error {
 	return nil
 }
 
-func localStartNode(_ *cobra.Command, _ []string) error {
+func localStartNode(_ *cobra.Command, args []string) error {
 	var err error
+
+	clusterName := args[0]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
 	network := models.UndefinedNetwork
 	networkID := uint32(0)
 	if useEtnaDevnet {
@@ -333,7 +341,11 @@ func localStartNode(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func localStopNode(_ *cobra.Command, _ []string) error {
+func localStopNode(_ *cobra.Command, args []string) error {
+	clusterName := args[0]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
@@ -363,15 +375,19 @@ func localStopNode(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func localCleanupNode(_ *cobra.Command, _ []string) error {
-	if err := cleanupLocalNode(); err != nil {
+func localDestroyNode(_ *cobra.Command, args []string) error {
+	clusterName := args[0]
+	if err := checkCluster(clusterName); err != nil {
+		return err
+	}
+	if err := cleanupLocalNode(clusterName); err != nil {
 		return fmt.Errorf("failed to cleanup local node: %w", err)
 	}
 	ux.Logger.PrintToUser("Local node cleaned up.")
 	return nil
 }
 
-func cleanupLocalNode() error {
+func cleanupLocalNode(clusterName string) error {
 	rootDir := app.GetLocalDir()
 	return os.RemoveAll(rootDir)
 }
