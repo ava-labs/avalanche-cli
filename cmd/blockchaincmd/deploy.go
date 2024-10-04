@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"os"
 	"path/filepath"
 	"strings"
@@ -643,6 +644,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
+		if err := nodecmd.syncSubnet(cmd, []string{"devnetacp", blockchainName}); err != nil {
+			return err
+		}
+
 	}
 
 	flags := make(map[string]string)

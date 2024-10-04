@@ -3,6 +3,7 @@
 package subnet
 
 import (
+	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -66,4 +67,24 @@ func GetSubnetAirdropKeyInfo(
 		}
 	}
 	return "", "", "", nil
+}
+
+func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
+	// this should not be necessary but some bright guy might just be creating
+	// the genesis by hand or something...
+	if err := checkInvalidSubnetNames(args[0]); err != nil {
+		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
+	}
+	// Check subnet exists
+	// TODO create a file that lists chains by subnet for fast querying
+	chains, err := getChainsInSubnet(args[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to getChainsInSubnet: %w", err)
+	}
+
+	if len(chains) == 0 {
+		return nil, errors.New("Invalid subnet " + args[0])
+	}
+
+	return chains, nil
 }
