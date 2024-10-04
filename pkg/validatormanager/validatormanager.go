@@ -210,21 +210,12 @@ func PoAValidatorManagerInitializeValidatorsSet(
 func SetupPoA(
 	app *application.Avalanche,
 	network models.Network,
+	rpcURL string,
 	chainSpec contract.ChainSpec,
 	privateKey string,
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
 ) error {
-	rpcURL, _, err := contract.GetBlockchainEndpoints(
-		app,
-		network,
-		chainSpec,
-		true,
-		false,
-	)
-	if err != nil {
-		return err
-	}
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,

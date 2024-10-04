@@ -616,7 +616,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if !sidecar.NotSOV {
-		avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
+		avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 		if err != nil {
 			return err
 		}
@@ -682,9 +682,20 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
+		rpcURL, _, err := contract.GetBlockchainEndpoints(
+			app,
+			network,
+			chainSpec,
+			true,
+			false,
+		)
+		if err != nil {
+			return err
+		}
 		if err := validatormanager.SetupPoA(
 			app,
 			network,
+			rpcURL,
 			contract.ChainSpec{
 				BlockchainName: blockchainName,
 			},
@@ -731,7 +742,7 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, e
 }
 
 // TODO: add deactivation owner?
-func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
+func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
 	bootstrapValidators := []*txs.ConvertSubnetValidator{}
 	for _, validator := range subnetValidators {
 		nodeID, err := ids.NodeIDFromString(validator.NodeID)
