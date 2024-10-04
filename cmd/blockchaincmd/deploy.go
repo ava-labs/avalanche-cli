@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -499,6 +500,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	network.HandlePublicNetworkSimulation()
 
 	if createSubnet {
+		if !sidecar.NotSOV {
+			sameControlKey = true
+		}
 		controlKeys, threshold, err = promptOwners(
 			kc,
 			controlKeys,
@@ -610,7 +614,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
+		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -624,11 +628,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		savePartialTx = !isFullySigned && err == nil
-		ux.Logger.PrintToUser("ConvertSubnetTx ID: %s", convertSubnetTxID)
+		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", ConvertL1TxID)
 
 		if savePartialTx {
 			if err := SaveNotFullySignedTx(
-				"ConvertSubnetTx",
+				"ConvertL1Tx",
 				tx,
 				chain,
 				subnetAuthKeys,
@@ -672,8 +676,8 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, e
 }
 
 // TODO: add deactivation owner?
-func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]txs.ConvertSubnetValidator, error) {
-	bootstrapValidators := []txs.ConvertSubnetValidator{}
+func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
+	bootstrapValidators := []*txs.ConvertSubnetValidator{}
 	for _, validator := range subnetValidators {
 		nodeID, err := ids.NodeIDFromString(validator.NodeID)
 		if err != nil {
@@ -687,7 +691,7 @@ func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		if err != nil {
 			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
 		}
-		bootstrapValidator := txs.ConvertSubnetValidator{
+		bootstrapValidator := &txs.ConvertSubnetValidator{
 			NodeID:  nodeID[:],
 			Weight:  validator.Weight,
 			Balance: validator.Balance,
