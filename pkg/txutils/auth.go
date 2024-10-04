@@ -37,6 +37,8 @@ func GetAuthSigners(tx *txs.Tx, controlKeys []string) ([]string, error) {
 		subnetAuth = unsignedTx.SubnetAuth
 	case *txs.TransferSubnetOwnershipTx:
 		subnetAuth = unsignedTx.SubnetAuth
+	case *txs.ConvertSubnetTx:
+		subnetAuth = unsignedTx.SubnetAuth
 	default:
 		return nil, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}

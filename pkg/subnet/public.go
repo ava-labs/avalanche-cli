@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
 	"github.com/ava-labs/avalanchego/vms/components/avax"
@@ -58,7 +61,7 @@ func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, networ
 //   - signs the tx with the wallet as the owner of fee outputs and a possible subnet auth key
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
-func (d *PublicDeployer) AddValidator(
+func (d *PublicDeployer) AddValidatorNonSOV(
 	waitForTxAcceptance bool,
 	controlKeys []string,
 	subnetAuthKeysStrs []string,
@@ -109,6 +112,54 @@ func (d *PublicDeployer) AddValidator(
 
 	ux.Logger.PrintToUser("Partial tx created")
 	return false, tx, remainingSubnetAuthKeys, nil
+}
+
+//	type SetSubnetValidatorWeightTx struct {
+//		// Metadata, inputs and outputs
+//		BaseTx
+//		// AddressedCall with Payload:
+//		//   - ValidationID (SHA256 of the AddressedCall Payload of the RegisterSubnetValidatorTx adding the validator)
+//		//   - Nonce
+//		//   - Weight
+//		Message warp.Message `json:"message"`
+//	}
+func (d *PublicDeployer) SetL1ValidatorWeight(
+	message warp.Message,
+) (*txs.Tx, error) {
+	// create tx
+	//unsignedTx, err := wallet.P().Builder().NewSetL1ValidatorWeightTx(args...)
+	//if err != nil {
+	//	return nil, fmt.Errorf("error building tx: %w", err)
+	//}
+	//tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet that contains EVM address controlling POA Validator Manager
+	// TODO: change code below
+	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	//	return nil, fmt.Errorf("error signing tx: %w", err)
+	//}
+	//return &tx, nil
+	return nil, nil
+}
+
+func (d *PublicDeployer) RegisterL1Validator(
+	balance uint64,
+	signer signer.ProofOfPossession,
+	changeOwner fx.Owner,
+	message warp.Message,
+) (*txs.Tx, error) {
+	// create tx
+	//unsignedTx, err := wallet.P().Builder().NewRegisterL1ValidatorTx(args...)
+	//if err != nil {
+	//	return nil, fmt.Errorf("error building tx: %w", err)
+	//}
+	//tx := txs.Tx{Unsigned: unsignedTx}
+	// sign with current wallet that contains EVM address controlling POA Validator Manager
+	// TODO: change code below
+	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+	//	return nil, fmt.Errorf("error signing tx: %w", err)
+	//}
+	//return &tx, nil
+	return nil, nil
 }
 
 // change subnet owner for [subnetID]
@@ -360,6 +411,50 @@ func (d *PublicDeployer) DeployBlockchain(
 	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
 }
 
+func (d *PublicDeployer) ConvertL1(
+	controlKeys []string,
+	subnetAuthKeysStrs []string,
+	subnetID ids.ID,
+	chainID ids.ID,
+	validators []*txs.ConvertSubnetValidator,
+) (bool, ids.ID, *txs.Tx, []string, error) {
+	ux.Logger.PrintToUser("Now calling ConvertL1 Tx...")
+
+	wallet, err := d.loadCacheWallet(subnetID)
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
+
+	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	if err != nil {
+		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+	}
+
+	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertL1 transaction")
+
+	var validatorManagerAddress []byte
+	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress, validators, wallet)
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
+
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	if err != nil {
+		return false, ids.Empty, nil, nil, err
+	}
+	isFullySigned := len(remainingSubnetAuthKeys) == 0
+
+	id := ids.Empty
+	if isFullySigned {
+		id, err = d.Commit(tx, true)
+		if err != nil {
+			return false, ids.Empty, nil, nil, err
+		}
+	}
+
+	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
+}
+
 func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
 	waitForTxAcceptance bool,
@@ -501,6 +596,32 @@ func (d *PublicDeployer) createBlockchainTx(
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, fmt.Errorf("error signing tx: %w", err)
+	}
+	return &tx, nil
+}
+
+func (d *PublicDeployer) createConvertL1Tx(
+	subnetAuthKeys []ids.ShortID,
+	subnetID ids.ID,
+	chainID ids.ID,
+	address []byte,
+	validators []*txs.ConvertSubnetValidator,
+	wallet primary.Wallet,
+) (*txs.Tx, error) {
+	options := d.getMultisigTxOptions(subnetAuthKeys)
+	unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
+		subnetID,
+		chainID,
+		address,
+		validators,
+		options...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error building tx: %w", err)
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
 		return nil, fmt.Errorf("error signing tx: %w", err)
 	}

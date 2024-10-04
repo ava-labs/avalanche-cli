@@ -156,11 +156,12 @@ const (
 	// Default balance when we prompt users for bootstrap validators
 	BootstrapValidatorBalance = 1
 	// Default weight when we prompt users for bootstrap validators
-	BootstrapValidatorWeight    = 1000000
-	DefaultStakeWeight          = 20
-	AVAXSymbol                  = "AVAX"
-	DefaultFujiStakeDuration    = "48h"
-	DefaultMainnetStakeDuration = "336h"
+	BootstrapValidatorWeight          = 1000000
+	DefaultStakeWeight                = 20
+	AVAXSymbol                        = "AVAX"
+	DefaultFujiStakeDuration          = "48h"
+	DefaultMainnetStakeDuration       = "336h"
+	DefaultValidationIDExpiryDuration = 48 * time.Hour
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	DevnetStakingStartLeadTime                   = 30 * time.Second
