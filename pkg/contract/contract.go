@@ -284,6 +284,9 @@ func ParseSpec(
 	return name, string(abiBytes), nil
 }
 
+// get method name and types from [methodsSpec], then call it
+// at the smart contract [contractAddress] with the given [params].
+// also send [payment] tokens to it
 func TxToMethod(
 	rpcURL string,
 	privateKey string,
@@ -327,14 +330,17 @@ func TxToMethod(
 	return tx, receipt, nil
 }
 
-// The warp message signature is going to be validated before
-// executing the method. The methods is expected to try
-// to get the validated message
+// get method name and types from [methodsSpec], then call it
+// at the smart contract [contractAddress] with the given [params].
+// send [warpMessage] on the same call, whose signature is
+// going to be verified previously to pass it to the method
+// also send [payment] tokens to it
 func TxToMethodWithWarpMessage(
 	rpcURL string,
 	privateKey string,
 	contractAddress common.Address,
 	warpMessage *avalancheWarp.Message,
+	payment *big.Int,
 	methodSpec string,
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
@@ -364,6 +370,7 @@ func TxToMethodWithWarpMessage(
 		warpMessage,
 		contractAddress,
 		callData,
+		payment,
 	)
 	if err != nil {
 		return nil, nil, err

@@ -77,6 +77,15 @@ func PoAValidatorManagerInitialize(
 	)
 }
 
+func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {
+	msgSuffix := ":%w"
+	if tx != nil {
+		msgSuffix += fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
+	}
+	args = append(args, err)
+	return fmt.Errorf(msg+msgSuffix, args...)
+}
+
 // constructs p-chain-validated (signed) subnet conversion warp
 // message, to be sent to the validators manager when
 // initializing validators set
@@ -186,6 +195,7 @@ func PoAValidatorManagerInitializeValidatorsSet(
 		privateKey,
 		managerAddress,
 		subnetConversionSignedMessage,
+		big.NewInt(0),
 		"initializeValidatorSet((bytes32,bytes32,address,[(bytes,bytes,uint64)]),uint32)",
 		subnetConversionData,
 		uint32(0),
@@ -240,11 +250,7 @@ func SetupPoA(
 		ownerAddress,
 	)
 	if err != nil {
-		txHashMsg := ""
-		if tx != nil {
-			txHashMsg = fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
-		}
-		return fmt.Errorf("failure initializing poa validator manager: %w%s", err, txHashMsg)
+		return TransactionError(tx, err, "failure initializing poa validator manager")
 	}
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
@@ -269,11 +275,7 @@ func SetupPoA(
 		subnetConversionSignedMessage,
 	)
 	if err != nil {
-		txHashMsg := ""
-		if tx != nil {
-			txHashMsg = fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
-		}
-		return fmt.Errorf("failure initializing validators set on poa manager: %w%s", err, txHashMsg)
+		return TransactionError(tx, err, "failure initializing validators set on poa  manager")
 	}
 	return nil
 }

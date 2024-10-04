@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/predicate"
 	"github.com/ava-labs/subnet-evm/rpc"
@@ -180,6 +181,28 @@ func EstimateBaseFee(
 	return baseFee, err
 }
 
+func EstimateGasLimit(
+	client ethclient.Client,
+	msg interfaces.CallMsg,
+) (uint64, error) {
+	var (
+		gasLimit uint64
+		err      error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		gasLimit, err = client.EstimateGas(ctx, msg)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure estimating gas limit on %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return gasLimit, err
+}
+
 func FundAddress(
 	client ethclient.Client,
 	sourceAddressPrivateKeyStr string,
@@ -231,6 +254,7 @@ func GetSignedTxToMethodWithWarpMessage(
 	warpMessage *avalancheWarp.Message,
 	contract common.Address,
 	callData []byte,
+	value *big.Int,
 ) (*types.Transaction, error) {
 	privateKey, err := crypto.HexToECDSA(privateKeyStr)
 	if err != nil {
@@ -251,14 +275,28 @@ func GetSignedTxToMethodWithWarpMessage(
 			StorageKeys: subnetEvmUtils.BytesToHashSlice(predicate.PackPredicate(warpMessage.Bytes())),
 		},
 	}
+	msg := interfaces.CallMsg{
+		From:       address,
+		To:         &contract,
+		GasPrice:   nil,
+		GasTipCap:  gasTipCap,
+		GasFeeCap:  gasFeeCap,
+		Value:      value,
+		Data:       callData,
+		AccessList: accessList,
+	}
+	gasLimit, err := EstimateGasLimit(client, msg)
+	if err != nil {
+		return nil, err
+	}
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:    chainID,
 		Nonce:      nonce,
 		To:         &contract,
-		Gas:        2_000_000,
+		Gas:        gasLimit,
 		GasFeeCap:  gasFeeCap,
 		GasTipCap:  gasTipCap,
-		Value:      big.NewInt(0),
+		Value:      value,
 		Data:       callData,
 		AccessList: accessList,
 	})
