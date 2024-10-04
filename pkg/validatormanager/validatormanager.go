@@ -100,7 +100,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
-	convertSubnetValidators []txs.ConvertSubnetValidator,
+	convertSubnetValidators []*txs.ConvertSubnetValidator,
 ) (*warp.Message, error) {
 	validators := []warpMessage.SubnetConversionValidatorData{}
 	for _, convertSubnetValidator := range convertSubnetValidators {
@@ -162,7 +162,7 @@ func PoAValidatorManagerInitializeValidatorsSet(
 	privateKey string,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
-	convertSubnetValidators []txs.ConvertSubnetValidator,
+	convertSubnetValidators []*txs.ConvertSubnetValidator,
 	subnetConversionSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
 	type InitialValidator struct {
@@ -213,7 +213,7 @@ func SetupPoA(
 	chainSpec contract.ChainSpec,
 	privateKey string,
 	ownerAddress common.Address,
-	convertSubnetValidators []txs.ConvertSubnetValidator,
+	convertSubnetValidators []*txs.ConvertSubnetValidator,
 ) error {
 	rpcURL, _, err := contract.GetBlockchainEndpoints(
 		app,
