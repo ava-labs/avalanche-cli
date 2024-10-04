@@ -455,6 +455,43 @@ func (d *PublicDeployer) ConvertL1(
 	return isFullySigned, id, tx, remainingSubnetAuthKeys, nil
 }
 
+func (d *PublicDeployer) PChainTransfer(
+	destination ids.ShortID,
+	amount uint64,
+) (ids.ID, *txs.Tx, error) {
+	wallet, err := d.loadCacheWallet()
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	to := secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     []ids.ShortID{destination},
+	}
+	output := &avax.TransferableOutput{
+		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Out: &secp256k1fx.TransferOutput{
+			Amt:          amount,
+			OutputOwners: to,
+		},
+	}
+	outputs := []*avax.TransferableOutput{output}
+	unsignedTx, err := wallet.P().Builder().NewBaseTx(
+		outputs,
+	)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, nil, err
+	}
+	id, err := d.Commit(&tx, true)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	return id, &tx, nil
+}
+
 func (d *PublicDeployer) Commit(
 	tx *txs.Tx,
 	waitForTxAcceptance bool,

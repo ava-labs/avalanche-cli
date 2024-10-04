@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
@@ -650,60 +651,76 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 
+		ux.Logger.PrintToUser("Waiting for validators info to be properly updated on P-Chain")
+		time.Sleep(30 * time.Second)
+		// Issue random transaction >30s after ConverSubnetTx to evict its block from the block map
+		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
+		if err != nil {
+			return err
+		}
+		// Issue random transaction to advance the p-chain height now that the
+		// ConvertSubnetTx block isn't in the block map
+		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
+		if err != nil {
+			return err
+		}
+
 		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators); err != nil {
 			return err
 		}
 
-		chainSpec := contract.ChainSpec{
-			BlockchainName: blockchainName,
-		}
-		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-			app,
-			network,
-			chainSpec,
-		)
-		if err != nil {
-			return err
-		}
-		privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-		if err != nil {
-			return err
-		}
-		if privateKey == "" {
-			privateKey, err = prompts.PromptPrivateKey(
-				app.Prompt,
-				"initialize validator manager",
-				app.GetKeyDir(),
-				app.GetKey,
-				genesisAddress,
-				genesisPrivateKey,
+		if false {
+			chainSpec := contract.ChainSpec{
+				BlockchainName: blockchainName,
+			}
+			genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+				app,
+				network,
+				chainSpec,
 			)
 			if err != nil {
 				return err
 			}
-		}
-		rpcURL, _, err := contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-		if err := validatormanager.SetupPoA(
-			app,
-			network,
-			rpcURL,
-			contract.ChainSpec{
-				BlockchainName: blockchainName,
-			},
-			privateKey,
-			common.HexToAddress(sidecar.PoAValidatorManagerOwner),
-			avaGoBootstrapValidators,
-		); err != nil {
-			return err
+			privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+			if err != nil {
+				return err
+			}
+			if privateKey == "" {
+				privateKey, err = prompts.PromptPrivateKey(
+					app.Prompt,
+					"initialize validator manager",
+					app.GetKeyDir(),
+					app.GetKey,
+					genesisAddress,
+					genesisPrivateKey,
+				)
+				if err != nil {
+					return err
+				}
+			}
+			rpcURL, _, err := contract.GetBlockchainEndpoints(
+				app,
+				network,
+				chainSpec,
+				true,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+			if err := validatormanager.SetupPoA(
+				app,
+				network,
+				rpcURL,
+				contract.ChainSpec{
+					BlockchainName: blockchainName,
+				},
+				privateKey,
+				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
+				avaGoBootstrapValidators,
+			); err != nil {
+				return err
+			}
 		}
 	} else {
 		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators); err != nil {
