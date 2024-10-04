@@ -234,7 +234,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	tx, err := deployer.RegisterL1Validator(balance, blsInfo, changeOwner, message)
+	tx, err := deployer.RegisterL1Validator(balance, blsInfo.ProofOfPossession, message)
 	if err != nil {
 		return err
 	}
