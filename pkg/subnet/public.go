@@ -656,13 +656,13 @@ func (d *PublicDeployer) createConvertL1Tx(
 	validators []*txs.ConvertSubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	//options := d.getMultisigTxOptions(subnetAuthKeys)
+	options := d.getMultisigTxOptions(subnetAuthKeys)
 	unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
 		subnetID,
 		chainID,
 		address,
 		validators,
-		//options...,
+		options...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error building tx: %w", err)
