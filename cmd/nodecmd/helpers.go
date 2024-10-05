@@ -240,7 +240,10 @@ func getWSEndpoint(endpoint string, blockchainID string) string {
 	return models.NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
 }
 
-func getPublicEndpoints(clusterName string) ([]string, error) {
+func getPublicEndpoints(
+	clusterName string,
+	trackers []*models.Host,
+) ([]string, error) {
 	endpoints := []string{}
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
@@ -251,11 +254,15 @@ func getPublicEndpoints(clusterName string) ([]string, error) {
 		publicNodes = clusterConfig.Nodes
 	}
 	for _, cloudID := range publicNodes {
-		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-		if err != nil {
-			return nil, err
+		for _, host := range trackers {
+			if host.GetCloudID() == cloudID {
+				nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
+				if err != nil {
+					return nil, err
+				}
+				endpoints = append(endpoints, getAvalancheGoEndpoint(nodeConfig.ElasticIP))
+			}
 		}
-		endpoints = append(endpoints, getAvalancheGoEndpoint(nodeConfig.ElasticIP))
 	}
 	return endpoints, nil
 }
