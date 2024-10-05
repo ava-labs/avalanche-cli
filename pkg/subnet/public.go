@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
+	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/components/verify"
 
@@ -35,6 +37,8 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
+
+const showFees = true
 
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
 
@@ -525,7 +529,7 @@ func (d *PublicDeployer) Commit(
 		time.Sleep(sleepBetweenRepeats)
 	}
 	if issueTxErr != nil {
-		d.cleanCacheWallet()
+		d.CleanCacheWallet()
 	}
 	return tx.ID(), issueTxErr
 }
@@ -579,7 +583,7 @@ func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (primary.Wallet, error)
 	return wallet, nil
 }
 
-func (d *PublicDeployer) cleanCacheWallet() {
+func (d *PublicDeployer) CleanCacheWallet() {
 	d.wallet = nil
 }
 
@@ -631,6 +635,11 @@ func (d *PublicDeployer) createBlockchainTx(
 	if err != nil {
 		return nil, fmt.Errorf("error building tx: %w", err)
 	}
+	if unsignedTx != nil {
+		if err := printFee("CreateChainTx", wallet, unsignedTx); err != nil {
+			return nil, err
+		}
+	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	// sign with current wallet
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
@@ -647,16 +656,21 @@ func (d *PublicDeployer) createConvertL1Tx(
 	validators []*txs.ConvertSubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
+	//options := d.getMultisigTxOptions(subnetAuthKeys)
 	unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
 		subnetID,
 		chainID,
 		address,
 		validators,
-		options...,
+		//options...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error building tx: %w", err)
+	}
+	if unsignedTx != nil {
+		if err := printFee("ConvertSubnetTX", wallet, unsignedTx); err != nil {
+			return nil, err
+		}
 	}
 	tx := txs.Tx{Unsigned: unsignedTx}
 	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
@@ -849,6 +863,11 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	unsignedTx, err := wallet.P().Builder().NewCreateSubnetTx(
 		owners,
 	)
+	if unsignedTx != nil {
+		if err := printFee("CreateSubnetTx", wallet, unsignedTx); err != nil {
+			return ids.Empty, err
+		}
+	}
 	if err != nil {
 		return ids.Empty, fmt.Errorf("error building tx: %w", err)
 	}
@@ -858,6 +877,24 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	}
 
 	return d.Commit(&tx, true)
+}
+
+func printFee(kind string, wallet primary.Wallet, unsignedTx txs.UnsignedTx) error {
+	if showFees {
+		var pFeeCalculator avagofee.Calculator
+		pContext := wallet.P().Builder().Context()
+		if pContext.GasPrice != 0 {
+			pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
+		} else {
+			pFeeCalculator = avagofee.NewStaticCalculator(pContext.StaticFeeConfig)
+		}
+		txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("%s fee: %.9f AVAX"), kind, float64(txFee)/float64(units.Avax))
+	}
+	return nil
 }
 
 func (d *PublicDeployer) getSubnetAuthAddressesInWallet(subnetAuth []ids.ShortID) []ids.ShortID {

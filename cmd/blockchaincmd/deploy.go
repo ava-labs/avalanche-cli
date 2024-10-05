@@ -13,6 +13,8 @@ import (
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
+	ansi "github.com/k0kubun/go-ansi"
+	progressbar "github.com/schollz/progressbar/v3"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -566,6 +568,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
 		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
@@ -621,6 +624,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		deployer.CleanCacheWallet()
 		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
@@ -651,19 +655,46 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		ux.Logger.PrintToUser("Waiting for validators info to be properly updated on P-Chain")
-		time.Sleep(30 * time.Second)
+		bar := progressbar.NewOptions(1002,
+			progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+			progressbar.OptionEnableColorCodes(true),
+			progressbar.OptionSetElapsedTime(false),
+			progressbar.OptionSetWidth(15),
+			progressbar.OptionSetDescription("[cyan][1/3][reset] Waiting for validators info update on P-Chain..."),
+			progressbar.OptionSetTheme(progressbar.Theme{
+				Saucer:        "[green]=[reset]",
+				SaucerHead:    "[green]>[reset]",
+				SaucerPadding: " ",
+				BarStart:      "[",
+				BarEnd:        "]",
+			}))
+		for i := 0; i < 1000; i++ {
+			if err := bar.Add(1); err != nil {
+				return err
+			}
+			time.Sleep(30 * time.Millisecond)
+		}
+
 		// Issue random transaction >30s after ConverSubnetTx to evict its block from the block map
+		bar.Describe("[cyan][2/3][reset] Waiting for validators info update on P-Chain...")
 		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
 		if err != nil {
+			return err
+		}
+		if err := bar.Add(1); err != nil {
 			return err
 		}
 		// Issue random transaction to advance the p-chain height now that the
 		// ConvertSubnetTx block isn't in the block map
+		bar.Describe("[cyan][3/3][reset] Waiting for validators info update on P-Chain...")
 		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
 		if err != nil {
 			return err
 		}
+		if err := bar.Add(1); err != nil {
+			return err
+		}
+		fmt.Println()
 
 		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators); err != nil {
 			return err
