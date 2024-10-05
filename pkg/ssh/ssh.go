@@ -430,6 +430,13 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 		return err
 	}
 	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.UpgradeFileName),
+		filepath.Join(constants.CloudNodeConfigPath, constants.UpgradeFileName),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
 		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
 		constants.SSHFileOpsTimeout,

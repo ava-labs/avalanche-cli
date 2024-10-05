@@ -26,6 +26,7 @@ const (
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
 	GenesisFileName              = "genesis.json"
+	UpgradeFileName              = "upgrade.json"
 	AliasesFileName              = "aliases.json"
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
@@ -328,7 +329,6 @@ const (
 	AvalancheGoDockerImage = "avaplatform/avalanchego"
 	AvalancheGoGitRepo     = "https://github.com/ava-labs/avalanchego"
 
-	UpgradeBytesFileName      = "upgrade.json"
 	UpgradeBytesLockExtension = ".lock"
 	NotAvailableLabel         = "Not available"
 	BackendCmd                = "avalanche-cli-backend"

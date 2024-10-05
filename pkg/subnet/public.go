@@ -883,16 +883,23 @@ func printFee(kind string, wallet primary.Wallet, unsignedTx txs.UnsignedTx) err
 	if showFees {
 		var pFeeCalculator avagofee.Calculator
 		pContext := wallet.P().Builder().Context()
+		calcKind := "dynamic"
 		if pContext.GasPrice != 0 {
 			pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 		} else {
 			pFeeCalculator = avagofee.NewStaticCalculator(pContext.StaticFeeConfig)
+			calcKind = "static"
 		}
 		txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 		if err != nil {
-			return err
+			if errors.Is(err, avagofee.ErrUnsupportedTx) {
+				ux.Logger.PrintToUser(logging.Yellow.Wrap("unable to get %s fee: not supported by %s calculator"), kind, calcKind)
+			} else {
+				return err
+			}
+		} else {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("%s fee: %.9f AVAX"), kind, float64(txFee)/float64(units.Avax))
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("%s fee: %.9f AVAX"), kind, float64(txFee)/float64(units.Avax))
 	}
 	return nil
 }

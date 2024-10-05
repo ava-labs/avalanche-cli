@@ -636,6 +636,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err),
 			))
+			return err
 		}
 
 		savePartialTx = !isFullySigned && err == nil
