@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -31,8 +30,7 @@ var (
 	useEtnaDevnet bool
 )
 
-const snapshotName = "local_snapshot"
-
+// const snapshotName = "local_snapshot"
 func newLocalCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "local",
@@ -46,8 +44,8 @@ The node local command suite provides a collection of commands related to local 
 	cmd.AddCommand(newLocalStartCmd())
 	// node local stop
 	cmd.AddCommand(newLocalStopCmd())
-	// node local cleanup
-	cmd.AddCommand(newLocalCleanupCmd())
+	// node local destroy
+	cmd.AddCommand(newLocalDestroyCmd())
 	return cmd
 }
 
@@ -93,18 +91,25 @@ func newLocalStopCmd() *cobra.Command {
 	}
 }
 
-func newLocalCleanupCmd() *cobra.Command {
+func newLocalDestroyCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "destroy [clusterName]",
 		Short: "(ALPHA Warning) Cleanup local node",
 		Long:  `Cleanup local node.`,
 		Args:  cobra.ExactArgs(1),
-		RunE:  localCleanupNode,
+		RunE:  localDestroyNode,
 	}
 }
 
 // stub for now
-func preLocalChecks() error {
+func preLocalChecks(clusterName string) error {
+	clusterExists, err := checkClusterExists(clusterName)
+	if err != nil {
+		return fmt.Errorf("error checking cluster: %w", err)
+	}
+	if clusterExists {
+		return fmt.Errorf("cluster %q already exists", clusterName)
+	}
 	// expand passed paths
 	if genesisPath != "" {
 		genesisPath = utils.ExpandHome(genesisPath)
@@ -143,96 +148,24 @@ func preLocalChecks() error {
 	return nil
 }
 
+func localClusterDataExists(clusterName string) bool {
+	return utils.FileExists(filepath.Join(app.GetLocalDir(clusterName), "state.json"))
+}
+
+func localClusterSnapshotName(clusterName string) string {
+	return fmt.Sprintf("local-snapshot-%s", clusterName)
+}
+
 func localStartNode(_ *cobra.Command, args []string) error {
 	var err error
-
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
-		return err
-	}
 	network := models.UndefinedNetwork
 	networkID := uint32(0)
-	if useEtnaDevnet {
-		networkID = constants.EtnaDevnetNetworkID
-	} else {
-		network, err = networkoptions.GetNetworkFromCmdLineFlags(
-			app,
-			"",
-			globalNetworkFlags,
-			false,
-			true,
-			createSupportedNetworkOptions,
-			"",
-		)
-		if err != nil {
-			return err
-		}
-		networkID = network.ID
-	}
 
-	if err := preLocalChecks(); err != nil {
-		return err
-	}
-	avalancheGoVersion := "latest"
-	if avalanchegoBinaryPath == "" {
-		avalancheGoVersion, err = getAvalancheGoVersion()
-		if err != nil {
-			return err
-		} else {
-			ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
-		}
-	}
-
-	if useEtnaDevnet {
-		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
-		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
-		// prepare genesis and upgrade files for anr
-		genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
-		if err != nil {
-			return fmt.Errorf("could not create save Etna Devnet genesis file: %w", err)
-		}
-		if _, err := genesisFile.Write(constants.EtnaDevnetGenesisData); err != nil {
-			return fmt.Errorf("could not write Etna Devnet genesis data: %w", err)
-		}
-		if err := genesisFile.Close(); err != nil {
-			return fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
-		}
-		genesisPath = genesisFile.Name()
-		defer os.Remove(genesisPath)
-
-		upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
-		if err != nil {
-			return fmt.Errorf("could not create save Etna Devnet upgrade file: %w", err)
-		}
-		if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
-			return fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
-		}
-		upgradePath = upgradeFile.Name()
-		if err := upgradeFile.Close(); err != nil {
-			return fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
-		}
-		defer os.Remove(upgradePath)
-	}
-	if err != nil {
-		return fmt.Errorf("could not configure network: %w", err)
-	}
-
-	// cleanup for Devnet
-	if network.Kind == models.Devnet {
-		if err := cleanupLocalNode(); err != nil {
-			return fmt.Errorf("could not make sure root directory is empty: %w", err)
-		}
-	}
-	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
-
-	if err := sd.StartServer(); err != nil {
-		return err
-	}
-
-	needsRestart, avalancheGoBinPath, err := sd.SetupLocalEnv()
-	if err != nil {
-		return err
-	}
+	// check if this is existing cluster
+	rootDir := app.GetLocalDir(clusterName)
+	logDir := filepath.Join(rootDir, "logs")
+	pluginDir := app.GetPluginsDir()
 
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
@@ -242,98 +175,157 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	bootstrapped, err := networkcmd.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
-	if err != nil {
-		return err
-	}
-
-	if bootstrapped {
-		if !needsRestart {
-			ux.Logger.PrintToUser("Network has already been booted.")
-			return nil
+	if localClusterDataExists(clusterName) {
+		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
+	} else {
+		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
+		if useEtnaDevnet {
+			networkID = constants.EtnaDevnetNetworkID
+		} else {
+			network, err = networkoptions.GetNetworkFromCmdLineFlags(
+				app,
+				"",
+				globalNetworkFlags,
+				false,
+				true,
+				createSupportedNetworkOptions,
+				"",
+			)
+			if err != nil {
+				return err
+			}
+			networkID = network.ID
 		}
-		if _, err := cli.Stop(ctx); err != nil {
+		avalancheGoVersion := "latest"
+		if avalanchegoBinaryPath == "" {
+			avalancheGoVersion, err = getAvalancheGoVersion()
+			if err != nil {
+				return err
+			} else {
+				ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
+			}
+		}
+		if err := preLocalChecks(clusterName); err != nil {
 			return err
 		}
-		if err := app.ResetPluginsDir(); err != nil {
+		if useEtnaDevnet {
+			bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
+			bootstrapIPs = constants.EtnaDevnetBootstrapIPs
+			// prepare genesis and upgrade files for anr
+			genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
+			if err != nil {
+				return fmt.Errorf("could not create save Etna Devnet genesis file: %w", err)
+			}
+			if _, err := genesisFile.Write(constants.EtnaDevnetGenesisData); err != nil {
+				return fmt.Errorf("could not write Etna Devnet genesis data: %w", err)
+			}
+			if err := genesisFile.Close(); err != nil {
+				return fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
+			}
+			genesisPath = genesisFile.Name()
+			defer os.Remove(genesisPath)
+
+			upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
+			if err != nil {
+				return fmt.Errorf("could not create save Etna Devnet upgrade file: %w", err)
+			}
+			if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
+				return fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
+			}
+			upgradePath = upgradeFile.Name()
+			if err := upgradeFile.Close(); err != nil {
+				return fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
+			}
+			defer os.Remove(upgradePath)
+		}
+
+		sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
+
+		if err := sd.StartServer(); err != nil {
 			return err
+		}
+
+		_, avalancheGoBinPath, err := sd.SetupLocalEnv()
+		if err != nil {
+			return err
+		}
+
+		// make sure rootDir exists
+		if err := os.MkdirAll(rootDir, 0o700); err != nil {
+			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+		}
+		if err := os.MkdirAll(logDir, 0o700); err != nil {
+			return fmt.Errorf("could not create log directory %s: %w", logDir, err)
+		}
+
+		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
+
+		anrOpts := []client.OpOption{
+			client.WithNumNodes(1),
+			client.WithNetworkID(networkID),
+			client.WithExecPath(avalancheGoBinPath),
+			client.WithRootDataDir(rootDir),
+			client.WithLogRootDir(logDir),
+			client.WithReassignPortsIfUsed(true),
+			client.WithPluginDir(pluginDir),
+		}
+		// load global node configs if they exist
+		configStr, err := app.Conf.LoadNodeConfig()
+		if err != nil {
+			return err
+		}
+		if configStr != "" {
+			anrOpts = append(anrOpts, client.WithGlobalNodeConfig(configStr))
+		}
+		if genesisPath != "" && utils.FileExists(genesisPath) {
+			anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
+		}
+		if upgradePath != "" && utils.FileExists(upgradePath) {
+			anrOpts = append(anrOpts, client.WithUpgradePath(upgradePath))
+		}
+		if bootstrapIDs != nil {
+			anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(bootstrapIDs))
+		}
+		if bootstrapIPs != nil {
+			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(bootstrapIPs))
+		}
+
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+
+		startResp, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...)
+		if err != nil {
+			return fmt.Errorf("failed to start local avalanchego: %w \n %s", err, startResp)
+		}
+		// save snapshot after successful start
+		saveSnapshotResponse, err := cli.SaveSnapshot(
+			ctx,
+			localClusterSnapshotName(clusterName),
+			true, // force
+		)
+		if err != nil {
+			return fmt.Errorf("failed to save snapshot: %w \n %s", err, saveSnapshotResponse)
 		}
 	}
 
-	rootDir := app.GetLocalDir()
-	logDir := filepath.Join(rootDir, "logs")
-	// make sure rootDir exists
-	if err := os.MkdirAll(rootDir, 0o700); err != nil {
-		return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
-	}
-	if err := os.MkdirAll(logDir, 0o700); err != nil {
-		return fmt.Errorf("could not create log directory %s: %w", logDir, err)
-	}
-
-	ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
-	pluginDir := app.GetPluginsDir()
-	anrOpts := []client.OpOption{
-		client.WithNumNodes(1),
-		client.WithNetworkID(networkID),
-		client.WithExecPath(avalancheGoBinPath),
+	loadSnapshotOpts := []client.OpOption{
 		client.WithRootDataDir(rootDir),
 		client.WithLogRootDir(logDir),
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(pluginDir),
 	}
-	// load global node configs if they exist
-	configStr, err := app.Conf.LoadNodeConfig()
-	if err != nil {
-		return err
-	}
-	if configStr != "" {
-		anrOpts = append(anrOpts, client.WithGlobalNodeConfig(configStr))
-	}
-	if genesisPath != "" && utils.FileExists(genesisPath) {
-		anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
-	}
-	if upgradePath != "" && utils.FileExists(upgradePath) {
-		anrOpts = append(anrOpts, client.WithUpgradePath(upgradePath))
-	}
-	if bootstrapIDs != nil {
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(bootstrapIDs))
-	}
-	if bootstrapIPs != nil {
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(bootstrapIPs))
-	}
-
-	ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-
-	startResp, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...)
-	if err != nil {
-		return fmt.Errorf("failed to start local avalanchego: %w \n %s", err, startResp)
-	}
-
-	ux.Logger.PrintToUser("Local Avalanchego started. Saving state to %s", rootDir)
-
-	saveSnapshotResp, err := cli.SaveSnapshot(
+	// load snapshot for existing network
+	loadSnapshotResponse, err := cli.LoadSnapshot(
 		ctx,
-		snapshotName,
-		true, // force
-	)
-	if err != nil {
-		return fmt.Errorf("failed to save avalanche state : %w  \n %s", err, saveSnapshotResp)
-	}
-	// start it again by loading the saved state
-	ux.Logger.PrintToUser("Continue booting avalanchego using %s", rootDir)
-	// ready to load saved state and continue booting
-	loadSnapshotResp, err := cli.LoadSnapshot(
-		ctx,
-		snapshotName,
+		localClusterSnapshotName(clusterName),
 		false, // in-place
-		anrOpts...,
-	)
+		loadSnapshotOpts...)
 	if err != nil {
-		return fmt.Errorf("failed to continue booting avalanchego : %w  \n %s", err, loadSnapshotResp)
+		return fmt.Errorf("failed to load snapshot: %w \n %s", err, loadSnapshotResponse)
 	}
+
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", startResp.ClusterInfo.LogRootDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", logDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
@@ -341,11 +333,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func localStopNode(_ *cobra.Command, args []string) error {
-	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
-		return err
-	}
+func localStopNode(_ *cobra.Command, _ []string) error {
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
@@ -364,10 +352,6 @@ func localStopNode(_ *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to get avalanchego status: %w", err)
 	}
-	if _, err = cli.SaveSnapshot(ctx, snapshotName, true); err != nil {
-		return fmt.Errorf("failed to save avalanchego state: %w", err)
-	}
-
 	if _, err = cli.Stop(ctx); err != nil {
 		return fmt.Errorf("failed to stop avalanchego: %w", err)
 	}
@@ -377,9 +361,10 @@ func localStopNode(_ *cobra.Command, args []string) error {
 
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	/*if err := checkCluster(clusterName); err != nil {
 		return err
 	}
+	*/
 	if err := cleanupLocalNode(clusterName); err != nil {
 		return fmt.Errorf("failed to cleanup local node: %w", err)
 	}
@@ -388,6 +373,6 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 }
 
 func cleanupLocalNode(clusterName string) error {
-	rootDir := app.GetLocalDir()
+	rootDir := app.GetLocalDir(clusterName)
 	return os.RemoveAll(rootDir)
 }
