@@ -28,6 +28,7 @@ type ClusterConfig struct {
 	ExtraNetworkData   ExtraNetworkData
 	Subnets            []string
 	External           bool
+	Local              bool
 	HTTPAccess         constants.HTTPAccess
 }
 
