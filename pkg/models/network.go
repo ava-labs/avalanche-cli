@@ -20,7 +20,6 @@ const (
 	Fuji
 	Local
 	Devnet
-	Custom
 )
 
 func (nk NetworkKind) String() string {
@@ -33,8 +32,6 @@ func (nk NetworkKind) String() string {
 		return "Local Network"
 	case Devnet:
 		return "Devnet"
-	case Custom:
-		return "Custom Network"
 	}
 	return "invalid network"
 }

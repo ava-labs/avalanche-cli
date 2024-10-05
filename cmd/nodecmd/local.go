@@ -180,7 +180,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		if useEtnaDevnet {
 			network = models.NewNetwork(
-				models.Custom,
+				models.Devnet,
 				constants.EtnaDevnetNetworkID,
 				constants.EtnaDevnetEndpoint,
 				clusterName,
