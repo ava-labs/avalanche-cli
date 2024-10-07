@@ -625,11 +625,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		deployer.CleanCacheWallet()
+		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
 		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
 			blockchainID,
+			managerAddress,
 			avaGoBootstrapValidators,
 		)
 		if err != nil {

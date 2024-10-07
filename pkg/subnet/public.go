@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+	goethereumcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
@@ -420,6 +421,7 @@ func (d *PublicDeployer) ConvertL1(
 	subnetAuthKeysStrs []string,
 	subnetID ids.ID,
 	chainID ids.ID,
+	validatorManagerAddress goethereumcommon.Address,
 	validators []*txs.ConvertSubnetValidator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now calling ConvertL1 Tx...")
@@ -436,8 +438,7 @@ func (d *PublicDeployer) ConvertL1(
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertL1 transaction")
 
-	var validatorManagerAddress []byte
-	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress, validators, wallet)
+	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress.Bytes(), validators, wallet)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/ids"
@@ -149,7 +150,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	if err != nil {
 		return nil, err
 	}
-	return signatureAggregator.Sign(subnetConversionUnsignedMessage, nil)
+	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
 // calls poa manager validators set init method,
@@ -216,6 +217,12 @@ func SetupPoA(
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
 ) error {
+	if err := evm.SetupProposerVM(
+		rpcURL,
+		privateKey,
+	); err != nil {
+		return err
+	}
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -266,7 +273,7 @@ func SetupPoA(
 		subnetConversionSignedMessage,
 	)
 	if err != nil {
-		return TransactionError(tx, err, "failure initializing validators set on poa  manager")
+		return TransactionError(tx, err, "failure initializing validators set on poa manager")
 	}
 	return nil
 }
