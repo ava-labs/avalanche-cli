@@ -28,6 +28,7 @@ type AvalancheConfigInputs struct {
 	BootstrapIDs               string
 	BootstrapIPs               string
 	GenesisPath                string
+	UpgradePath                string
 	ProposerVMUseCurrentHeight bool
 }
 

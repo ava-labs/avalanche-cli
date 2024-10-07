@@ -13,6 +13,9 @@
 {{- if .GenesisPath }}
 	"genesis-file": "{{ .GenesisPath }}",
 {{- end }}
+{{- if .UpgradePath }}
+	"upgrade-file": "{{ .UpgradePath }}",
+{{- end }}
 {{- if .PublicIP }}
 	"public-ip": "{{.PublicIP}}",
 {{- else }}
