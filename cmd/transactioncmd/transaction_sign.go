@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -64,7 +64,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	}
 
 	if useLedger && keyName != "" {
-		return subnetcmd.ErrMutuallyExlusiveKeyLedger
+		return blockchaincmd.ErrMutuallyExlusiveKeyLedger
 	}
 
 	// we need network to decide if ledger is forced (mainnet)
@@ -73,9 +73,16 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 	switch network.Kind {
-	case models.Fuji, models.Local:
+	case models.Local:
 		if !useLedger && keyName == "" {
-			useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir())
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir(), true)
+			if err != nil {
+				return err
+			}
+		}
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir(), false)
 			if err != nil {
 				return err
 			}
@@ -83,7 +90,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	case models.Mainnet:
 		useLedger = true
 		if keyName != "" {
-			return subnetcmd.ErrStoredKeyOnMainnet
+			return blockchaincmd.ErrStoredKeyOnMainnet
 		}
 	default:
 		return errors.New("unsupported network")
@@ -99,7 +106,6 @@ func signTx(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
 	subnetIDFromTX, err := txutils.GetSubnetID(tx)
 	if err != nil {
@@ -109,9 +115,12 @@ func signTx(_ *cobra.Command, args []string) error {
 		subnetID = subnetIDFromTX
 	}
 
-	controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return blockchaincmd.ErrNotPermissionedSubnet
 	}
 
 	// get the remaining tx signers so as to check that the wallet does contain an expected signer
@@ -121,7 +130,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	}
 
 	if len(remainingSubnetAuthKeys) == 0 {
-		subnetcmd.PrintReadyToSignMsg(subnetName, inputTxPath)
+		blockchaincmd.PrintReadyToSignMsg(subnetName, inputTxPath)
 		ux.Logger.PrintToUser("")
 		return fmt.Errorf("tx is already fully signed")
 	}
@@ -142,7 +151,6 @@ func signTx(_ *cobra.Command, args []string) error {
 		tx,
 		remainingSubnetAuthKeys,
 		subnetID,
-		transferSubnetOwnershipTxID,
 	); err != nil {
 		if errors.Is(err, subnet.ErrNoSubnetAuthKeysInWallet) {
 			ux.Logger.PrintToUser("There are no required subnet auth keys present in the wallet")
@@ -163,7 +171,7 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := subnetcmd.SaveNotFullySignedTx(
+	if err := blockchaincmd.SaveNotFullySignedTx(
 		"Tx",
 		tx,
 		subnetName,

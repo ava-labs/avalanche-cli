@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -159,20 +160,22 @@ func StartNetwork(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
-	if err := ux.PrintLocalNetworkEndpointsInfo(resp.ClusterInfo); err != nil {
+
+	if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
 		return err
 	}
 
-	if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+	if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
 		return err
 	} else if b {
 		ux.Logger.PrintToUser("")
 		if err := teleporter.DeployRelayer(
+			"latest",
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
-			app.GetAWMRelayerLogPath(),
-			app.GetAWMRelayerRunPath(),
-			app.GetAWMRelayerStorageDir(),
+			app.GetLocalRelayerLogPath(models.Local),
+			app.GetLocalRelayerRunPath(models.Local),
+			app.GetLocalRelayerStorageDir(models.Local),
 		); err != nil {
 			return err
 		}

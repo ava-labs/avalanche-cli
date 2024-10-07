@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -193,7 +194,7 @@ func transferF(*cobra.Command, []string) error {
 		app,
 		"On what Network do you want to execute the transfer?",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		transferSupportedNetworkOptions,
 		"",
@@ -202,14 +203,14 @@ func transferF(*cobra.Command, []string) error {
 		return err
 	}
 
-	subnetNames, err := app.GetSubnetNamesOnNetwork(network)
+	subnetNames, err := app.GetBlockchainNamesOnNetwork(network)
 	if err != nil {
 		return err
 	}
 
 	if originSubnet == "" && !PToX && !PToP {
 		prompt := "Where are the funds to transfer?"
-		cancel, pChainChoosen, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+		cancel, pChainChoosen, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 			app.Prompt,
 			prompt,
 			subnetNames,
@@ -217,6 +218,7 @@ func transferF(*cobra.Command, []string) error {
 			true,
 			false,
 			"",
+			false,
 		)
 		if err != nil {
 			return err
@@ -252,7 +254,7 @@ func transferF(*cobra.Command, []string) error {
 			if originSubnet == cChain {
 				avoidSubnet = ""
 			}
-			cancel, _, _, cChainChoosen, subnetName, err := prompts.PromptChain(
+			cancel, _, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 				app.Prompt,
 				prompt,
 				subnetNames,
@@ -260,6 +262,7 @@ func transferF(*cobra.Command, []string) error {
 				true,
 				originSubnet == cChain,
 				avoidSubnet,
+				false,
 			)
 			if err != nil {
 				return err
@@ -275,15 +278,18 @@ func transferF(*cobra.Command, []string) error {
 		}
 		originURL := network.CChainEndpoint()
 		if strings.ToLower(originSubnet) != cChain {
-			sc, err := app.LoadSidecar(originSubnet)
+			originURL, _, err = contract.GetBlockchainEndpoints(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainName: originSubnet,
+				},
+				true,
+				false,
+			)
 			if err != nil {
 				return err
 			}
-			blockchainID := sc.Networks[network.Name()].BlockchainID
-			if blockchainID == ids.Empty {
-				return fmt.Errorf("subnet %s is not deployed to %s", originSubnet, network.Name())
-			}
-			originURL = network.BlockchainEndpoint(blockchainID.String())
 		}
 		var destinationBlockchainID ids.ID
 		if strings.ToLower(destinationSubnet) == cChain {
@@ -390,45 +396,15 @@ func transferF(*cobra.Command, []string) error {
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 		amountInt, _ := amount.Int(nil)
-		endpointKind, err := ictt.GetEndpointKind(
+		return ictt.Send(
 			originURL,
 			goethereumcommon.HexToAddress(originTransferrerAddress),
+			privateKey,
+			destinationBlockchainID,
+			goethereumcommon.HexToAddress(destinationTransferrerAddress),
+			destinationAddr,
+			amountInt,
 		)
-		if err != nil {
-			return err
-		}
-		switch endpointKind {
-		case ictt.ERC20TokenRemote:
-			return ictt.ERC20TokenRemoteSend(
-				originURL,
-				goethereumcommon.HexToAddress(originTransferrerAddress),
-				privateKey,
-				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationTransferrerAddress),
-				destinationAddr,
-				amountInt,
-			)
-		case ictt.ERC20TokenHome:
-			return ictt.ERC20TokenHomeSend(
-				originURL,
-				goethereumcommon.HexToAddress(originTransferrerAddress),
-				privateKey,
-				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationTransferrerAddress),
-				destinationAddr,
-				amountInt,
-			)
-		case ictt.NativeTokenHome:
-			return ictt.NativeTokenHomeSend(
-				originURL,
-				goethereumcommon.HexToAddress(originTransferrerAddress),
-				privateKey,
-				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationTransferrerAddress),
-				destinationAddr,
-				amountInt,
-			)
-		}
 	}
 
 	if !send && !receive {
@@ -454,7 +430,7 @@ func transferF(*cobra.Command, []string) error {
 		} else {
 			goalStr = " for the destination address"
 		}
-		useLedger, keyName, err = prompts.GetFujiKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir())
+		useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir(), true)
 		if err != nil {
 			return err
 		}
@@ -474,7 +450,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	fee := network.GenesisParams().TxFee
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 
 	var kc keychain.Keychain
 	if keyName != "" {
@@ -522,6 +498,8 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
+	usingLedger := ledgerIndex != wrongLedgerIndexVal
+
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("this operation is going to:")
 	if send {
@@ -535,6 +513,9 @@ func transferF(*cobra.Command, []string) error {
 		}
 		ux.Logger.PrintToUser("- send %.9f AVAX from %s to destination address %s", float64(amount)/float64(units.Avax), addrStr, destinationAddrStr)
 		totalFee := 4 * fee
+		if !usingLedger {
+			totalFee = fee
+		}
 		if PToX {
 			totalFee = 2 * fee
 		}
@@ -573,9 +554,14 @@ func transferF(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		amountPlusFee := amount + fee*3
+		amountPlusFee := amount
+		if PToP {
+			if usingLedger {
+				amountPlusFee += fee * 3
+			}
+		}
 		if PToX {
-			amountPlusFee = amount + fee
+			amountPlusFee += fee
 		}
 		output := &avax.TransferableOutput{
 			Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
@@ -585,17 +571,27 @@ func transferF(*cobra.Command, []string) error {
 			},
 		}
 		outputs := []*avax.TransferableOutput{output}
-		ux.Logger.PrintToUser("Issuing ExportTx P -> X")
-
-		if ledgerIndex != wrongLedgerIndexVal {
-			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
-		}
-		unsignedTx, err := wallet.P().Builder().NewExportTx(
-			wallet.X().Builder().Context().BlockchainID,
-			outputs,
-		)
-		if err != nil {
-			return fmt.Errorf("error building tx: %w", err)
+		var unsignedTx txs.UnsignedTx
+		if PToP && !usingLedger {
+			ux.Logger.PrintToUser("Issuing BaseTx P -> P")
+			unsignedTx, err = wallet.P().Builder().NewBaseTx(
+				outputs,
+			)
+			if err != nil {
+				return fmt.Errorf("error building tx: %w", err)
+			}
+		} else {
+			ux.Logger.PrintToUser("Issuing ExportTx P -> X")
+			if usingLedger {
+				ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+			}
+			unsignedTx, err = wallet.P().Builder().NewExportTx(
+				wallet.X().Builder().Context().BlockchainID,
+				outputs,
+			)
+			if err != nil {
+				return fmt.Errorf("error building tx: %w", err)
+			}
 		}
 		tx := txs.Tx{Unsigned: unsignedTx}
 		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
@@ -631,7 +627,7 @@ func transferF(*cobra.Command, []string) error {
 				return err
 			}
 			ux.Logger.PrintToUser("Issuing ImportTx P -> X")
-			if ledgerIndex != wrongLedgerIndexVal {
+			if usingLedger {
 				ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 			}
 			unsignedTx, err := wallet.X().Builder().NewImportTx(
@@ -687,7 +683,7 @@ func transferF(*cobra.Command, []string) error {
 			ux.Logger.PrintToUser("Issuing ExportTx X -> P")
 			_, err = subnet.IssueXToPExportTx(
 				wallet,
-				ledgerIndex != wrongLedgerIndexVal,
+				usingLedger,
 				true,
 				wallet.P().Builder().Context().AVAXAssetID,
 				amount+fee*1,
@@ -716,7 +712,7 @@ func transferF(*cobra.Command, []string) error {
 			ux.Logger.PrintToUser("Issuing ImportTx X -> P")
 			_, err = subnet.IssuePFromXImportTx(
 				wallet,
-				ledgerIndex != wrongLedgerIndexVal,
+				usingLedger,
 				true,
 				&to,
 			)

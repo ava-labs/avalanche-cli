@@ -4,7 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
-	"os/exec"
+	"os"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -102,9 +102,9 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
-	case globalNetworkFlags.UseDevnet && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and regions should be the same")
-	case globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(numValidatorsNodes):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
@@ -127,7 +127,7 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 		}
 	default:
 		for i, region := range cmdLineRegion {
-			if globalNetworkFlags.UseDevnet {
+			if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
 			} else {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], 0}
@@ -192,6 +192,7 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	regions []string,
 	regionConf map[string]models.RegionConfig,
 	forMonitoring bool,
+	publicHTTPPortAccess bool,
 ) (map[string][]string, map[string][]string, map[string]string, map[string]string, error) {
 	if !forMonitoring {
 		ux.Logger.PrintToUser("Creating new EC2 instance(s) on AWS...")
@@ -225,45 +226,65 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 		if err != nil {
 			return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 		}
-		if !keyPairExists {
-			switch {
-			case useSSHAgent:
-				ux.Logger.PrintToUser("Using ssh agent identity %s to create key pair %s in AWS[%s]", sshIdentity, keyPairName[region], region)
-				if err := ec2Svc[region].UploadSSHIdentityKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-			case !useSSHAgent && certInSSHDir:
-				ux.Logger.PrintToUser("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix)
-				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region)
-				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
-				if err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-				}
-			case !useSSHAgent && !certInSSHDir:
-				ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+		if replaceKeyPair && !forMonitoring {
+			// delete existing key pair on AWS console and download the newly created key pair file
+			// in .ssh dir (will overwrite existing file in .ssh dir)
+			if keyPairExists {
+				if err := ec2Svc[region].DeleteKeyPair(regionConf[region].Prefix); err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair %s in AWS console due to %w", regionConf[region].Prefix, err)
 				}
 			}
+			if err = os.RemoveAll(privKey); err != nil {
+				return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair file %s in .ssh dir due to %w", privKey, err)
+			}
+			if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+			}
 		} else {
-			// keypair exists
-			switch {
-			case useSSHAgent:
-				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s] via ssh-agent", keyPairName[region], region)
-			case !useSSHAgent && certInSSHDir:
-				ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
-			case !useSSHAgent && !certInSSHDir:
-				ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
-				ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName)
-				keyPairName[region], err = promptKeyPairName(ec2Svc[region])
-				if err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+			if !keyPairExists {
+				switch {
+				case useSSHAgent:
+					ux.Logger.PrintToUser("Using ssh agent identity %s to create key pair %s in AWS[%s]", sshIdentity, keyPairName[region], region)
+					if err := ec2Svc[region].UploadSSHIdentityKeyPair(regionConf[region].Prefix, sshIdentity); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+				case !useSSHAgent && certInSSHDir:
+					ux.Logger.PrintToUser("Default Key Pair named %s already exists on your .ssh directory but not on AWS", regionConf[region].Prefix)
+					ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in AWS[%s]", regionConf[region].Prefix, region)
+					keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+				case !useSSHAgent && !certInSSHDir:
+					ux.Logger.PrintToUser(fmt.Sprintf("Creating new key pair %s in AWS[%s]", keyPairName, region))
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
-				if err := ec2Svc[region].CreateAndDownloadKeyPair(regionConf[region].Prefix, privKey); err != nil {
-					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+			} else {
+				// keypair exists
+				switch {
+				case useSSHAgent:
+					ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s] via ssh-agent", keyPairName[region], region)
+				case !useSSHAgent && certInSSHDir:
+					ux.Logger.PrintToUser("Using existing key pair %s in AWS[%s]", keyPairName[region], region)
+				case !useSSHAgent && !certInSSHDir:
+					ux.Logger.PrintToUser("Default Key Pair named %s already exists in AWS[%s]", keyPairName[region], region)
+					ux.Logger.PrintToUser("We need to create a new Key Pair in AWS as we can't find Key Pair named %s in your .ssh directory", keyPairName[region])
+					keyPairName[region], err = promptKeyPairName(ec2Svc[region])
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					privKey, err = app.GetSSHCertFilePath(keyPairName[region] + constants.CertSuffix)
+					if err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
+					if err := ec2Svc[region].CreateAndDownloadKeyPair(keyPairName[region], privKey); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
 			}
 		}
@@ -277,6 +298,12 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
 			} else {
 				sgID = newSGID
+			}
+			// allow public access to API avalanchego port
+			if publicHTTPPortAccess {
+				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort); err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
 			}
 		} else {
 			sgID = *sg.GroupId
@@ -310,6 +337,15 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			if !ipInLoki {
 				if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoLokiPort); err != nil {
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
+			}
+			// check for public access to API port if flag is set
+			if publicHTTPPortAccess {
+				ipInPublicAPI := awsAPI.CheckIPInSg(&sg, "0.0.0.0/0", constants.AvalanchegoAPIPort)
+				if !ipInPublicAPI {
+					if err := ec2Svc[region].AddSecurityGroupRule(sgID, "ingress", "tcp", "0.0.0.0/0", constants.AvalanchegoAPIPort); err != nil {
+						return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+					}
 				}
 			}
 		}
@@ -365,16 +401,14 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	ux.Logger.GreenCheckmarkToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
 		if useSSHAgent {
-			// takes the cert file downloaded from AWS and moves it to .ssh directory
-			err = addCertToSSH(regionConf[region].CertName)
-			if err != nil {
-				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-			}
 			sshCertPath[region] = ""
 		} else {
-			sshCertPath[region], err = app.GetSSHCertFilePath(regionConf[region].CertName)
-			if err != nil {
-				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+			// don't overwrite existing sshCertPath for a particular region
+			if _, ok := sshCertPath[region]; !ok {
+				sshCertPath[region], err = app.GetSSHCertFilePath(regionConf[region].CertName)
+				if err != nil {
+					return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
+				}
 			}
 		}
 	}
@@ -458,7 +492,8 @@ func createAWSInstances(
 	numNodes map[string]NumNodes,
 	regions []string,
 	ami map[string]string,
-	forMonitoring bool) (
+	forMonitoring bool,
+	publicHTTPPortAccess bool) (
 	models.CloudConfig, error,
 ) {
 	regionConf := map[string]models.RegionConfig{}
@@ -477,7 +512,7 @@ func createAWSInstances(
 		}
 	}
 	// Create new EC2 instances
-	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf, forMonitoring)
+	instanceIDs, elasticIPs, certFilePath, keyPairName, err := createEC2Instances(ec2Svc, regions, regionConf, forMonitoring, publicHTTPPortAccess)
 	if err != nil {
 		if err.Error() == constants.EIPLimitErr {
 			ux.Logger.PrintToUser("Failed to create AWS cloud server(s), please try creating again in a different region")
@@ -518,17 +553,6 @@ func createAWSInstances(
 		}
 	}
 	return awsCloudConfig, nil
-}
-
-// addCertToSSH takes the cert file downloaded from AWS and moves it to .ssh directory
-func addCertToSSH(certName string) error {
-	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	return cmd.Run()
 }
 
 // checkRegions checks if the given regions are available in AWS.

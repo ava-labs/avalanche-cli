@@ -24,6 +24,14 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+type AddressFormat int64
+
+const (
+	Undefined AddressFormat = iota
+	PChainFormat
+	EVMFormat
+)
+
 const (
 	Yes = "Yes"
 	No  = "No"
@@ -38,6 +46,8 @@ const (
 	MoreThanEq = "More Than Or Eq"
 	MoreThan   = "More Than"
 	NotEq      = "Not Eq"
+
+	customOption = "Custom"
 )
 
 var errNoKeys = errors.New("no keys")
@@ -485,6 +495,7 @@ func (*realPrompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	pathStr = utils.ExpandHome(pathStr)
 
 	return pathStr, nil
 }
@@ -830,7 +841,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 	return subnetAuthKeys, nil
 }
 
-func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, string, error) {
+func GetKeyOrLedger(prompt Prompter, goal string, keyDir string, includeEwoq bool) (bool, string, error) {
 	useStoredKey, err := prompt.ChooseKeyOrLedger(goal)
 	if err != nil {
 		return false, "", err
@@ -838,7 +849,7 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	if !useStoredKey {
 		return true, "", nil
 	}
-	keyName, err := CaptureKeyName(prompt, goal, keyDir, true)
+	keyName, err := CaptureKeyName(prompt, goal, keyDir, includeEwoq)
 	if err != nil {
 		if errors.Is(err, errNoKeys) {
 			ux.Logger.PrintToUser("No private keys have been found. Create a new one with `avalanche key create`")
@@ -848,8 +859,8 @@ func GetFujiKeyOrLedger(prompt Prompter, goal string, keyDir string) (bool, stri
 	return false, keyName, nil
 }
 
-func CaptureKeyName(prompt Prompter, goal string, keyDir string, addEwoq bool) (string, error) {
-	keyNames, err := utils.GetKeyNames(keyDir, addEwoq)
+func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq bool) (string, error) {
+	keyNames, err := utils.GetKeyNames(keyDir, includeEwoq)
 	if err != nil {
 		return "", err
 	}
@@ -892,7 +903,8 @@ func PromptChain(
 	avoidXChain bool,
 	avoidCChain bool,
 	avoidSubnet string,
-) (bool, bool, bool, bool, string, error) {
+	includeCustom bool,
+) (bool, bool, bool, bool, string, string, error) {
 	pChainOption := "P-Chain"
 	xChainOption := "X-Chain"
 	cChainOption := "C-Chain"
@@ -908,29 +920,40 @@ func PromptChain(
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
 	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
-	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Subnet " + s })...)
-	subnetOptions = append(subnetOptions, notListedOption)
+	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
+	if includeCustom {
+		subnetOptions = append(subnetOptions, customOption)
+	} else {
+		subnetOptions = append(subnetOptions, notListedOption)
+	}
 	subnetOption, err := prompter.CaptureListWithSize(
 		prompt,
 		subnetOptions,
 		11,
 	)
 	if err != nil {
-		return false, false, false, false, "", err
+		return false, false, false, false, "", "", err
+	}
+	if subnetOption == customOption {
+		blockchainID, err := prompter.CaptureString("Blockchain ID/Alias")
+		if err != nil {
+			return false, false, false, false, "", "", err
+		}
+		return false, false, false, false, "", blockchainID, nil
 	}
 	if subnetOption == notListedOption {
 		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
-		return true, false, false, false, "", nil
+		return true, false, false, false, "", "", nil
 	}
 	switch subnetOption {
 	case pChainOption:
-		return false, true, false, false, "", nil
+		return false, true, false, false, "", "", nil
 	case xChainOption:
-		return false, false, true, false, "", nil
+		return false, false, true, false, "", "", nil
 	case cChainOption:
-		return false, false, false, true, "", nil
+		return false, false, false, true, "", "", nil
 	default:
-		return false, false, false, false, strings.TrimPrefix(subnetOption, "Subnet "), nil
+		return false, false, false, false, strings.TrimPrefix(subnetOption, "Blockchain "), "", nil
 	}
 }
 
@@ -944,11 +967,10 @@ func PromptPrivateKey(
 ) (string, error) {
 	privateKey := ""
 	cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
-	customKeyOpt := "Custom"
 	genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Allocated address %s", genesisAddress)
-	keyOptions := []string{cliKeyOpt, customKeyOpt}
+	keyOptions := []string{cliKeyOpt, customOption}
 	if genesisPrivateKey != "" {
-		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}
 	}
 	keyOption, err := prompter.CaptureList(
 		fmt.Sprintf("Which private key do you want to use to %s?", goal),
@@ -968,7 +990,7 @@ func PromptPrivateKey(
 			return "", err
 		}
 		privateKey = k.PrivKeyHex()
-	case customKeyOpt:
+	case customOption:
 		privateKey, err = prompter.CaptureString("Private Key")
 		if err != nil {
 			return "", err
@@ -985,14 +1007,16 @@ func PromptAddress(
 	keyDir string,
 	getKey func(string, models.Network, bool) (*key.SoftKey, error),
 	genesisAddress string,
+	network models.Network,
+	format AddressFormat,
+	customPrompt string,
 ) (string, error) {
 	address := ""
 	cliKeyOpt := "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
-	customKeyOpt := "Custom"
 	genesisKeyOpt := fmt.Sprintf("Use the Genesis Allocated address %s", genesisAddress)
-	keyOptions := []string{cliKeyOpt, customKeyOpt}
+	keyOptions := []string{cliKeyOpt, customOption}
 	if genesisAddress != "" {
-		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}
 	}
 	keyOption, err := prompter.CaptureList(
 		fmt.Sprintf("Which address do you want to %s?", goal),
@@ -1003,23 +1027,62 @@ func PromptAddress(
 	}
 	switch keyOption {
 	case cliKeyOpt:
-		keyName, err := CaptureKeyName(prompter, goal, keyDir, true)
+		address, err = CaptureKeyAddress(
+			prompter,
+			goal,
+			keyDir,
+			getKey,
+			network,
+			format,
+		)
 		if err != nil {
 			return "", err
 		}
-		k, err := getKey(keyName, models.NewLocalNetwork(), false)
-		if err != nil {
-			return "", err
+	case customOption:
+		switch format {
+		case PChainFormat:
+			address, err = prompter.CapturePChainAddress(customPrompt, network)
+			if err != nil {
+				return "", err
+			}
+		case EVMFormat:
+			addr, err := prompter.CaptureAddress(customPrompt)
+			if err != nil {
+				return "", err
+			}
+			address = addr.Hex()
 		}
-		address = k.C()
-	case customKeyOpt:
-		addr, err := prompter.CaptureAddress("Address")
-		if err != nil {
-			return "", err
-		}
-		address = addr.Hex()
 	case genesisKeyOpt:
 		address = genesisAddress
 	}
 	return address, nil
+}
+
+func CaptureKeyAddress(
+	prompter Prompter,
+	goal string,
+	keyDir string,
+	getKey func(string, models.Network, bool) (*key.SoftKey, error),
+	network models.Network,
+	format AddressFormat,
+) (string, error) {
+	includeEwoq := true
+	if network.Kind == models.Fuji {
+		includeEwoq = false
+	}
+	keyName, err := CaptureKeyName(prompter, goal, keyDir, includeEwoq)
+	if err != nil {
+		return "", err
+	}
+	k, err := getKey(keyName, network, false)
+	if err != nil {
+		return "", err
+	}
+	switch format {
+	case PChainFormat:
+		return k.P()[0], nil
+	case EVMFormat:
+		return k.C(), nil
+	}
+	return "", nil
 }

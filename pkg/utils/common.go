@@ -26,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
@@ -484,7 +485,7 @@ func ByteSliceIsSubnetEvmGenesis(bs []byte) bool {
 	return err == nil
 }
 
-func PathIsSubnetEVMGenesis(genesisPath string) (bool, error) {
+func FileIsSubnetEVMGenesis(genesisPath string) (bool, error) {
 	genesisBytes, err := os.ReadFile(genesisPath)
 	if err != nil {
 		return false, err
@@ -523,8 +524,8 @@ func GetKeyNames(keyDir string, addEwoq bool) ([]string, error) {
 	return names, nil
 }
 
-func GetDefaultSubnetAirdropKeyName(subnetName string) string {
-	return "subnet_" + subnetName + "_airdrop"
+func GetDefaultBlockchainAirdropKeyName(blockchainName string) string {
+	return "subnet_" + blockchainName + "_airdrop"
 }
 
 // AppendSlices appends multiple slices into a single slice.
@@ -558,4 +559,33 @@ func Command(cmdLine string, params ...string) *exec.Cmd {
 	c := exec.Command(cmd[0], cmd[1:]...)
 	c.Env = os.Environ()
 	return c
+}
+
+// StringValue returns the value of a key in a map as a string.
+func StringValue(data map[string]interface{}, key string) (string, error) {
+	if value, ok := data[key]; ok {
+		return fmt.Sprintf("%v", value), nil
+	}
+	return "", fmt.Errorf("key %s not found", key)
+}
+
+func LogLevelToEmoji(logLevel string) (string, error) {
+	levelEmoji := ""
+	level, err := logging.ToLevel(logLevel)
+	if err != nil {
+		return "", err
+	}
+	switch level {
+	case logging.Info:
+		levelEmoji = "ℹ️"
+	case logging.Debug:
+		levelEmoji = "🪲"
+	case logging.Warn:
+		levelEmoji = "⚠️"
+	case logging.Error:
+		levelEmoji = "⛔"
+	case logging.Fatal:
+		levelEmoji = "💀"
+	}
+	return levelEmoji, nil
 }

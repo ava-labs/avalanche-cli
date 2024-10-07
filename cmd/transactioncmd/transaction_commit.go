@@ -5,7 +5,7 @@ package transactioncmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -57,11 +57,13 @@ func commitTx(_ *cobra.Command, args []string) error {
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	transferSubnetOwnershipTxID := sc.Networks[network.Name()].TransferSubnetOwnershipTxID
 
-	controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
+	}
+	if !isPermissioned {
+		return blockchaincmd.ErrNotPermissionedSubnet
 	}
 	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
@@ -71,7 +73,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 	if len(remainingSubnetAuthKeys) != 0 {
 		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 		ux.Logger.PrintToUser("%d of %d required signatures have been signed.", signedCount, len(subnetAuthKeys))
-		subnetcmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys, inputTxPath)
+		blockchaincmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys, inputTxPath)
 		return fmt.Errorf("tx is not fully signed")
 	}
 
@@ -88,20 +90,15 @@ func commitTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
+
 	if txutils.IsCreateChainTx(tx) {
 		// TODO: teleporter for multisig
-		if err := subnetcmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
+		if err := blockchaincmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, transferSubnetOwnershipTxID, txID, "", "")
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "")
 	}
-	if txutils.IsTransferSubnetOwnershipTx(tx) {
-		networkData := sc.Networks[network.Name()]
-		networkData.TransferSubnetOwnershipTxID = txID
-		sc.Networks[network.Name()] = networkData
-		return app.UpdateSidecar(&sc)
-	}
-	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 
 	return nil
 }

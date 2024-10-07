@@ -7,7 +7,8 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -49,6 +50,7 @@ var (
 	cchain          bool
 	xchain          bool
 	useNanoAvax     bool
+	useGwei         bool
 	ledgerIndices   []uint
 	keys            []string
 	tokenAddresses  []string
@@ -100,6 +102,12 @@ keys or for the ledger addresses associated to certain indices.`,
 		false,
 		"use nano Avax for balances",
 	)
+	cmd.Flags().BoolVar(
+		&useGwei,
+		"use-gwei",
+		false,
+		"use gwei for EVM balances",
+	)
 	cmd.Flags().UintSliceVarP(
 		&ledgerIndices,
 		ledgerIndicesFlag,
@@ -118,6 +126,12 @@ keys or for the ledger addresses associated to certain indices.`,
 		"subnets",
 		[]string{},
 		"subnets to show information about (p=p-chain, x=x-chain, c=c-chain, and subnet names) (default p,x,c)",
+	)
+	cmd.Flags().StringSliceVar(
+		&subnets,
+		"blockchains",
+		[]string{},
+		"blockchains to show information about (p=p-chain, x=x-chain, c=c-chain, and blockchain names) (default p,x,c)",
 	)
 	cmd.Flags().StringSliceVar(
 		&tokenAddresses,
@@ -169,7 +183,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 		}
 		for _, subnetName := range subnets {
 			if subnetName != "p" && subnetName != "x" && subnetName != "c" {
-				_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{subnetName})
+				_, err = blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName})
 				if err != nil {
 					return nil, err
 				}
@@ -183,13 +197,21 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 						return nil, err
 					}
 					subnetToken = sc.TokenSymbol
-					chainID := sc.Networks[network.Name()].BlockchainID
-					if chainID != ids.Empty {
+					endpoint, _, err := contract.GetBlockchainEndpoints(
+						app,
+						network,
+						contract.ChainSpec{
+							BlockchainName: subnetName,
+						},
+						true,
+						false,
+					)
+					if err == nil {
 						_, b := evmClients[network]
 						if !b {
 							evmClients[network] = map[string]ethclient.Client{}
 						}
-						evmClients[network][subnetName], err = ethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+						evmClients[network][subnetName], err = ethclient.Dial(endpoint)
 						if err != nil {
 							return nil, err
 						}
@@ -198,7 +220,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 							if !b {
 								evmGethClients[network] = map[string]*goethereumethclient.Client{}
 							}
-							evmGethClients[network][subnetName], err = goethereumethclient.Dial(network.BlockchainEndpoint(chainID.String()))
+							evmGethClients[network][subnetName], err = goethereumethclient.Dial(endpoint)
 							if err != nil {
 								return nil, err
 							}
@@ -251,8 +273,8 @@ func listKeys(*cobra.Command, []string) error {
 		network, err := networkoptions.GetNetworkFromCmdLineFlags(
 			app,
 			"",
-			networkoptions.NetworkFlags{},
-			false,
+			globalNetworkFlags,
+			true,
 			false,
 			listSupportedNetworkOptions,
 			"",
@@ -595,6 +617,9 @@ func getCChainBalanceStr(cClient ethclient.Client, addrStr string) (string, erro
 }
 
 func formatCChainBalance(balance *big.Int) (string, error) {
+	if useGwei {
+		return fmt.Sprintf("%d", balance), nil
+	}
 	// convert to nAvax
 	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
 	if balance.Cmp(big.NewInt(0)) == 0 {

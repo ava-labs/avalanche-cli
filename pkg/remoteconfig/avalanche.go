@@ -5,8 +5,9 @@ package remoteconfig
 
 import (
 	"bytes"
-	"html/template"
 	"path/filepath"
+	"strings"
+	"text/template"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
@@ -21,17 +22,26 @@ type AvalancheConfigInputs struct {
 	PublicIP         string
 	StateSyncEnabled bool
 	PruningEnabled   bool
+	Aliases          []string
+	BlockChainID     string
+	TrackSubnets     string
+	BootstrapIDs     string
+	BootstrapIPs     string
+	GenesisPath      string
 }
 
-func DefaultCliAvalancheConfig(publicIP string, networkID string) AvalancheConfigInputs {
+func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string) AvalancheConfigInputs {
 	return AvalancheConfigInputs{
-		HTTPHost:         "0.0.0.0",
+		HTTPHost:         "127.0.0.1",
 		NetworkID:        networkID,
 		DBDir:            "/.avalanchego/db/",
 		LogDir:           "/.avalanchego/logs/",
 		PublicIP:         publicIP,
 		StateSyncEnabled: true,
 		PruningEnabled:   false,
+		TrackSubnets:     strings.Join(subnets, ","),
+		Aliases:          nil,
+		BlockChainID:     "",
 	}
 }
 
@@ -40,7 +50,10 @@ func RenderAvalancheTemplate(templateName string, config AvalancheConfigInputs) 
 	if err != nil {
 		return nil, err
 	}
-	tmpl, err := template.New("config").Parse(string(templateBytes))
+	helperFuncs := template.FuncMap{
+		"join": strings.Join,
+	}
+	tmpl, err := template.New("config").Funcs(helperFuncs).Parse(string(templateBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +82,28 @@ func RenderAvalancheCChainConfig(config AvalancheConfigInputs) ([]byte, error) {
 	}
 }
 
+func RenderAvalancheAliasesConfig(config AvalancheConfigInputs) ([]byte, error) {
+	if output, err := RenderAvalancheTemplate("templates/avalanche-aliases.tmpl", config); err != nil {
+		return nil, err
+	} else {
+		return output, nil
+	}
+}
+
 func GetRemoteAvalancheNodeConfig() string {
-	return filepath.Join(constants.CloudNodeConfigPath, "node.json")
+	return filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
 }
 
 func GetRemoteAvalancheCChainConfig() string {
 	return filepath.Join(constants.CloudNodeConfigPath, "chains", "C", "config.json")
+}
+
+func GetRemoteAvalancheGenesis() string {
+	return filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)
+}
+
+func GetRemoteAvalancheAliasesConfig() string {
+	return filepath.Join(constants.CloudNodeConfigPath, "chains", constants.AliasesFileName)
 }
 
 func AvalancheFolderToCreate() []string {
@@ -82,6 +111,7 @@ func AvalancheFolderToCreate() []string {
 		"/home/ubuntu/.avalanchego/db",
 		"/home/ubuntu/.avalanchego/logs",
 		"/home/ubuntu/.avalanchego/configs",
+		"/home/ubuntu/.avalanchego/configs/subnets/",
 		"/home/ubuntu/.avalanchego/configs/chains/C",
 		"/home/ubuntu/.avalanchego/staking",
 		"/home/ubuntu/.avalanchego/plugins",

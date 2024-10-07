@@ -19,8 +19,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -38,7 +38,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"golang.org/x/mod/semver"
 )
 
 const (
@@ -60,7 +59,6 @@ var (
 	useLatestAvalanchegoPreReleaseVersion bool
 	useCustomAvalanchegoVersion           string
 	useAvalanchegoVersionFromSubnet       string
-	remoteCLIVersion                      string
 	cmdLineGCPCredentialsPath             string
 	cmdLineGCPProjectName                 string
 	cmdLineAlternativeKeyPairName         string
@@ -75,8 +73,9 @@ var (
 	versionComments                       = map[string]string{
 		"v1.11.0-fuji": " (recommended for fuji durango)",
 	}
-	grafanaPkg string
-	wizSubnet  string
+	grafanaPkg           string
+	wizSubnet            string
+	publicHTTPPortAccess bool
 )
 
 func newCreateCmd() *cobra.Command {
@@ -113,7 +112,6 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
-	cmd.Flags().StringVar(&remoteCLIVersion, "remote-cli-version", "", "install given CLI version on remote nodes. defaults to latest CLI release")
 	cmd.Flags().StringVar(&cmdLineGCPCredentialsPath, "gcp-credentials", "", "use given GCP credentials")
 	cmd.Flags().StringVar(&cmdLineGCPProjectName, "gcp-project", "", "use given GCP project")
 	cmd.Flags().StringVar(&cmdLineAlternativeKeyPairName, "alternative-key-pair-name", "", "key pair name to use if default one generates conflicts")
@@ -128,6 +126,8 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntVar(&throughput, "aws-volume-throughput", constants.AWSGP3DefaultThroughput, "AWS throughput in MiB/s (for gp3 volume type only)")
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
+	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
+	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
 	return cmd
 }
 
@@ -161,10 +161,10 @@ func preCreateChecks(clusterName string) error {
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
 		return fmt.Errorf("ssh agent is not available")
 	}
-	if len(numAPINodes) > 0 && !globalNetworkFlags.UseDevnet {
-		return fmt.Errorf("API nodes can only be created in Devnet")
+	if len(numAPINodes) > 0 && !(globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
+		return fmt.Errorf("API nodes can only be created in Devnet/Fuji(Testnet)")
 	}
-	if globalNetworkFlags.UseDevnet && len(numAPINodes) != len(numValidatorsNodes) {
+	if (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) > 0 && len(numAPINodes) != len(numValidatorsNodes) {
 		return fmt.Errorf("API nodes and Validator nodes must be deployed to same number of regions")
 	}
 	if len(numAPINodes) > 0 {
@@ -172,11 +172,6 @@ func preCreateChecks(clusterName string) error {
 			if num <= 0 {
 				return fmt.Errorf("number of API nodes per region must be greater than 0")
 			}
-		}
-	}
-	if remoteCLIVersion != "" {
-		if !semver.IsValid(remoteCLIVersion) {
-			return fmt.Errorf("invalid semantic version for CLI on hosts")
 		}
 	}
 	if customGrafanaDashboardPath != "" && !utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
@@ -262,7 +257,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
-
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
 	avalancheGoVersion, err := getAvalancheGoVersion()
 	if err != nil {
@@ -410,14 +404,14 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			if existingMonitoringInstance == "" {
 				monitoringHostRegion = regions[0]
 			}
-			cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false)
+			cloudConfigMap, err = createAWSInstances(ec2SvcMap, nodeType, numNodesMap, regions, ami, false, publicHTTPPortAccess)
 			if err != nil {
 				return err
 			}
 			monitoringEc2SvcMap := make(map[string]*awsAPI.AwsCloud)
 			if addMonitoring && existingMonitoringInstance == "" {
 				monitoringEc2SvcMap[monitoringHostRegion] = ec2SvcMap[monitoringHostRegion]
-				monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, []string{monitoringHostRegion}, ami, true)
+				monitoringCloudConfig, err := createAWSInstances(monitoringEc2SvcMap, nodeType, map[string]NumNodes{monitoringHostRegion: {1, 0}}, []string{monitoringHostRegion}, ami, true, publicHTTPPortAccess)
 				if err != nil {
 					return err
 				}
@@ -692,7 +686,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				return
 			}
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath(), remoteCLIVersion); err != nil {
+			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath()); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -719,14 +713,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				ux.SpinComplete(spinner)
 			}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			ux.SpinComplete(spinner)
-			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Avalanche-CLI"))
-			if err := ssh.RunSSHSetupCLIFromSource(host, constants.SetupCLIFromSourceBranch); err != nil {
+			// check if host is a API host
+			publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
+			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring, publicAccessToHTTPPort); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -914,6 +903,7 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	if network != models.UndefinedNetwork {
 		clusterConfig.Network = network
 	}
+	clusterConfig.HTTPAccess = constants.HTTPAccess(publicHTTPPortAccess)
 	if clusterConfig.LoadTestInstance == nil {
 		clusterConfig.LoadTestInstance = make(map[string]string)
 	}
@@ -1096,7 +1086,7 @@ func promptAvalancheGoVersionChoice(latestReleaseVersion string, latestPreReleas
 			if err != nil {
 				return err
 			}
-			_, err = subnetcmd.ValidateSubnetNameAndGetChains([]string{useAvalanchegoVersionFromSubnet})
+			_, err = blockchaincmd.ValidateSubnetNameAndGetChains([]string{useAvalanchegoVersionFromSubnet})
 			if err == nil {
 				break
 			}
@@ -1385,7 +1375,7 @@ func getRegionsNodeNum(cloudName string) (
 		if err != nil {
 			return nil, err
 		}
-		if globalNetworkFlags.UseDevnet {
+		if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 			numAPINodes, err = app.Prompt.CaptureUint32(fmt.Sprintf("How many API nodes (nodes without stake) do you want to set up in %s %s?", userRegion, supportedClouds[cloudName].locationName))
 			if err != nil {
 				return nil, err
@@ -1396,7 +1386,7 @@ func getRegionsNodeNum(cloudName string) (
 		}
 		nodes[userRegion] = NumNodes{int(numNodes), int(numAPINodes)}
 		var currentInput []string
-		if globalNetworkFlags.UseDevnet {
+		if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
 			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
 				return fmt.Sprintf("[%s]: %d validator(s) %d api(s)", region, nodes[region].numValidators, nodes[region].numAPI)
 			})

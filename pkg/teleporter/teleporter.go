@@ -29,12 +29,10 @@ const (
 )
 
 var (
-	messengerDeployerRequiredBalance = big.NewInt(0).
-						Mul(big.NewInt(1e18), big.NewInt(10))
 	// 10 AVAX
-	TeleporterPrefundedAddressBalance = big.NewInt(0).
-						Mul(big.NewInt(1e18), big.NewInt(600))
+	messengerDeployerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(10))
 	// 600 AVAX
+	InterchainMessagingPrefundedAddressBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600))
 )
 
 func getTeleporterURLs(version string) (string, string, string, string) {
@@ -436,7 +434,7 @@ func getTeleporterKeyInfo(
 	if err != nil {
 		return "", "", nil, err
 	}
-	return k.C(), k.PrivKeyHex(), TeleporterPrefundedAddressBalance, nil
+	return k.C(), k.PrivKeyHex(), InterchainMessagingPrefundedAddressBalance, nil
 }
 
 type Info struct {
@@ -454,7 +452,7 @@ func GetInfo(
 	ti := Info{}
 	ti.FundedAddress, _, ti.FundedBalance, err = getTeleporterKeyInfo(
 		app,
-		constants.TeleporterKeyName,
+		constants.ICMKeyName,
 	)
 	if err != nil {
 		return nil, err
