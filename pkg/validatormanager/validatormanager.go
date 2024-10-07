@@ -134,7 +134,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	}
 	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		avagoconstants.PlatformChainID, // p-chain sign
+		avagoconstants.PlatformChainID,
 		subnetConversionAddressedCall.Bytes(),
 	)
 	if err != nil {
@@ -144,7 +144,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		aggregatorLogger,
 		aggregatorLogLevel,
-		ids.Empty, // primary network validators sign
+		subnetID,
 		aggregatorQuorumPercentage,
 	)
 	if err != nil {
