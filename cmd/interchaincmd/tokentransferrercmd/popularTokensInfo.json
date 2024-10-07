@@ -2,19 +2,14 @@
   "Fuji": {
     "C-Chain": [
       {
-        "TokenName": "AVAX",
-        "TokenContractAddress": "",
-        "TransferrerHomeAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c"
-      },
-      {
         "TokenName": "USDC",
         "TokenContractAddress": "0x5425890298aed601595a70AB815c96711a31Bc65",
-        "TransferrerHomeAddress": "0x5425890298aed601595a70AB815c96711a31Bc65"
+        "TransferrerHomeAddress": "0x546526F786115af1FE7c11aa8Ac5682b8c181E3A"
       },
       {
         "TokenName": "WAVAX",
         "TokenContractAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c",
-        "TransferrerHomeAddress": "0xd00ae08403B9bbb9124bB305C09058E32C39A48c"
+        "TransferrerHomeAddress": "0xBBeE016016c91302058089E91bcc3be1cb2941Af"
       }
     ]
   }

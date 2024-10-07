@@ -6,11 +6,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"html/template"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+	"text/template"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )

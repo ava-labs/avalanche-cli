@@ -34,11 +34,6 @@ const (
 )
 
 var _ = ginkgo.Describe("[Node devnet]", func() {
-	ginkgo.It("can't create a fuji node with devnet api", func() {
-		output := commands.NodeCreate("fuji", "", 1, false, 1, commands.ExpectFail)
-		fmt.Println(output)
-		gomega.Expect(output).To(gomega.ContainSubstring("Error: API nodes can only be created in Devnet"))
-	})
 	ginkgo.It("can create a node", func() {
 		outputB, err := ansi.Strip([]byte(commands.NodeDevnet(avalanchegoVersion, NumNodes, NumAPINodes)))
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -114,13 +109,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		// make sure there is no API node in the genesis
 		gomega.Expect(genesisFile).To(gomega.Not(gomega.ContainSubstring(apiNodeID)))
 	})
-	ginkgo.It("installs and configures avalanche-cli on the node ", func() {
-		stakingFiles := commands.NodeSSH(constants.E2EClusterName, "cat /home/ubuntu/.avalanche-cli/config.json")
-		gomega.Expect(stakingFiles).To(gomega.ContainSubstring("\"metricsenabled\": false"))
-		avalanceCliVersion := commands.NodeSSH(constants.E2EClusterName, "/home/ubuntu/bin/avalanche --version")
-		gomega.Expect(avalanceCliVersion).To(gomega.ContainSubstring("avalanche version"))
-	})
-	ginkgo.It("can waitßß 20 seconds for avago to startup", func() {
+	ginkgo.It("can wait for 20 seconds for avago to startup", func() {
 		time.Sleep(20 * time.Second)
 	})
 	/*ginkgo.It("can get cluster status", func() {

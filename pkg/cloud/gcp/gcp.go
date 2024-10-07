@@ -321,9 +321,6 @@ func (c *GcpCloud) SetupInstances(
 	return instances, nil
 }
 
-// // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
-// // See the file LICENSE for licensing terms.
-
 func (c *GcpCloud) GetUbuntuImageID() (string, error) {
 	imageListCall := c.gcpClient.Images.List(constants.GCPDefaultImageProvider).Filter(constants.GCPImageFilter)
 	imageList, err := imageListCall.Do()

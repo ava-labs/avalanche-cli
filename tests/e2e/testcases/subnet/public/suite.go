@@ -105,7 +105,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		}
 		// fund ledger address
 		genesisParams := genesis.MainnetParams
-		err := utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
+		err := utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
@@ -166,44 +166,6 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		subnetMainnetChainID, err = utils.GetSubnetEVMMainneChainID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(mainnetChainID)))
-	})
-
-	ginkgo.It("can transform a deployed SubnetEvm subnet to elastic subnet only on fuji", func() {
-		subnetIDStr, _ := deploySubnetToFuji()
-		subnetID, err := ids.FromString(subnetIDStr)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// GetCurrentSupply will return error if queried for non-elastic subnet
-		err = subnet.GetCurrentSupply(subnetID)
-		gomega.Expect(err).Should(gomega.HaveOccurred())
-
-		_, err = commands.SimulateFujiTransformSubnet(subnetName, keyName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		exists, err := utils.ElasticSubnetConfigExists(subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(exists).Should(gomega.BeTrue())
-
-		// GetCurrentSupply will return result if queried for elastic subnet
-		err = subnet.GetCurrentSupply(subnetID)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		_, err = commands.SimulateFujiTransformSubnet(subnetName, keyName)
-		gomega.Expect(err).Should(gomega.HaveOccurred())
-
-		nodeIDs, err := utils.GetValidators(subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(nodeIDs)).Should(gomega.Equal(5))
-
-		_, err = commands.RemoveValidator(subnetName, nodeIDs[0])
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		_, err = commands.SimulateFujiAddPermissionlessValidator(subnetName, keyName, nodeIDs[0], stakeAmount, stakeDuration)
-		gomega.Expect(err).Should(gomega.BeNil())
-		exists, err = utils.PermissionlessValidatorExistsInSidecar(subnetName, nodeIDs[0], localNetwork)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(exists).Should(gomega.BeTrue())
-
-		commands.DeleteElasticSubnetConfig(subnetName)
 	})
 
 	ginkgo.It("remove validator fuji", func() {
@@ -301,7 +263,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 		// let's fund the ledger
 		genesisParams := genesis.MainnetParams
-		err = utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
+		err = utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,

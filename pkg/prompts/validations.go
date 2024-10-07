@@ -19,6 +19,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -110,6 +111,7 @@ func validateAddresses(input string) error {
 }
 
 func validateExistingFilepath(input string) error {
+	input = utils.ExpandHome(input)
 	if fileInfo, err := os.Stat(input); err == nil && !fileInfo.IsDir() {
 		return nil
 	}
@@ -200,6 +202,8 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 	case models.Mainnet:
 		return validatePChainMainAddress
 	case models.Local:
+		return validatePChainLocalAddress
+	case models.Devnet:
 		return validatePChainLocalAddress
 	default:
 		return func(string) error {

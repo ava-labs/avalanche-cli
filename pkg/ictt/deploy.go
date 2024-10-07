@@ -53,9 +53,10 @@ func DeployERC20Remote(
 	teleporterManagerAddress common.Address,
 	tokenHomeBlockchainID [32]byte,
 	tokenHomeAddress common.Address,
-	tokenName string,
-	tokenSymbol string,
-	tokenDecimals uint8,
+	tokenHomeDecimals uint8,
+	tokenRemoteName string,
+	tokenRemoteSymbol string,
+	tokenRemoteDecimals uint8,
 ) (common.Address, error) {
 	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenRemote.sol/ERC20TokenRemote.bin")
 	binBytes, err := os.ReadFile(binPath)
@@ -67,8 +68,7 @@ func DeployERC20Remote(
 		TeleporterManager:         teleporterManagerAddress,
 		TokenHomeBlockchainID:     tokenHomeBlockchainID,
 		TokenHomeAddress:          tokenHomeAddress,
-		// TODO: user case for home having diff decimals
-		TokenHomeDecimals: tokenDecimals,
+		TokenHomeDecimals:         tokenHomeDecimals,
 	}
 	return contract.DeployContract(
 		rpcURL,
@@ -76,9 +76,46 @@ func DeployERC20Remote(
 		binBytes,
 		"((address, address, bytes32, address, uint8), string, string, uint8)",
 		tokenRemoteSettings,
-		tokenName,
-		tokenSymbol,
-		tokenDecimals,
+		tokenRemoteName,
+		tokenRemoteSymbol,
+		tokenRemoteDecimals,
+	)
+}
+
+func DeployNativeRemote(
+	srcDir string,
+	rpcURL string,
+	privateKey string,
+	teleporterRegistryAddress common.Address,
+	teleporterManagerAddress common.Address,
+	tokenHomeBlockchainID [32]byte,
+	tokenHomeAddress common.Address,
+	tokenHomeDecimals uint8,
+	nativeAssetSymbol string,
+	initialReserveImbalance *big.Int,
+	burnedFeesReportingRewardPercentage *big.Int,
+) (common.Address, error) {
+	binPath := filepath.Join(srcDir, "contracts/out/NativeTokenRemote.sol/NativeTokenRemote.bin")
+	binBytes, err := os.ReadFile(binPath)
+	if err != nil {
+		return common.Address{}, err
+	}
+	tokenRemoteSettings := TokenRemoteSettings{
+		TeleporterRegistryAddress: teleporterRegistryAddress,
+		TeleporterManager:         teleporterManagerAddress,
+		TokenHomeBlockchainID:     tokenHomeBlockchainID,
+		TokenHomeAddress:          tokenHomeAddress,
+		TokenHomeDecimals:         tokenHomeDecimals,
+	}
+	return contract.DeployContract(
+		rpcURL,
+		privateKey,
+		binBytes,
+		"((address, address, bytes32, address, uint8), string, uint256, uint256)",
+		tokenRemoteSettings,
+		nativeAssetSymbol,
+		initialReserveImbalance,
+		burnedFeesReportingRewardPercentage,
 	)
 }
 

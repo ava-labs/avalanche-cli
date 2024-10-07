@@ -77,28 +77,28 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfigWithVersion(secondSubnetName, utils.SubnetEvmGenesis2Path, binaryToVersion[utils.SoloSubnetEVMKey2])
 
 		deployOutput := commands.DeploySubnetLocally(subnetName)
-		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		rpcs1, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		gomega.Expect(rpcs1).Should(gomega.HaveLen(1))
 
 		deployOutput = commands.DeploySubnetLocally(secondSubnetName)
-		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
+		rpcs2, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(2))
+		gomega.Expect(rpcs2).Should(gomega.HaveLen(1))
 
-		err = utils.SetHardhatRPC(rpcs[0])
+		err = utils.SetHardhatRPC(rpcs1[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		err = utils.SetHardhatRPC(rpcs[1])
+		err = utils.SetHardhatRPC(rpcs2[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		err = utils.RunHardhatTests(utils.BaseTest)

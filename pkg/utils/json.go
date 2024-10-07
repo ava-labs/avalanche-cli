@@ -25,14 +25,3 @@ func ValidateJSON(path string) ([]byte, error) {
 
 	return contentBytes, nil
 }
-
-// MergeJsonMaps merges two maps of type map[string]interface{}
-func MergeJSONMaps(a, b map[string]interface{}) map[string]interface{} {
-	for k, v := range b {
-		if _, ok := a[k]; !ok {
-			a[k] = v
-		}
-		// skip if key already exists in a
-	}
-	return a
-}

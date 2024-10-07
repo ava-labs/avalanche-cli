@@ -18,13 +18,13 @@ func NewHostInstaller(host *models.Host) *HostInstaller {
 }
 
 func (h *HostInstaller) GetArch() (string, string) {
-	goArhBytes, err := h.Host.Command("go env GOARCH", nil, constants.SSHScriptTimeout)
+	goArhBytes, err := h.Host.Command("dpkg --print-architecture", nil, constants.SSHScriptTimeout)
 	if err != nil {
 		return "", ""
 	}
-	goOSBytes, err := h.Host.Command("go env GOOS", nil, constants.SSHScriptTimeout)
+	goOSBytes, err := h.Host.Command("uname -s", nil, constants.SSHScriptTimeout)
 	if err != nil {
 		return "", ""
 	}
-	return strings.TrimSpace(string(goArhBytes)), strings.TrimSpace(string(goOSBytes))
+	return strings.TrimSpace(string(goArhBytes)), strings.TrimSpace(strings.ToLower(string(goOSBytes)))
 }

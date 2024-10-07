@@ -201,7 +201,7 @@ func getMap(
 	return r, nil
 }
 
-func ParseEsp(
+func ParseSpec(
 	esp string,
 	indexedFields []int,
 	constructor bool,
@@ -288,10 +288,10 @@ func TxToMethod(
 	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
-	methodEsp string,
+	methodSpec string,
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
-	methodName, methodABI, err := ParseEsp(methodEsp, nil, false, false, payment != nil, false, params...)
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, payment != nil, false, params...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -329,10 +329,10 @@ func TxToMethod(
 func CallToMethod(
 	rpcURL string,
 	contractAddress common.Address,
-	methodEsp string,
+	methodSpec string,
 	params ...interface{},
 ) ([]interface{}, error) {
-	methodName, methodABI, err := ParseEsp(methodEsp, nil, false, false, false, true, params...)
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, true, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -361,10 +361,10 @@ func DeployContract(
 	rpcURL string,
 	privateKey string,
 	binBytes []byte,
-	methodEsp string,
+	methodSpec string,
 	params ...interface{},
 ) (common.Address, error) {
-	_, methodABI, err := ParseEsp(methodEsp, nil, true, false, false, false, params...)
+	_, methodABI, err := ParseSpec(methodSpec, nil, true, false, false, false, params...)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -399,12 +399,12 @@ func DeployContract(
 }
 
 func UnpackLog(
-	eventEsp string,
+	eventSpec string,
 	indexedFields []int,
 	log types.Log,
 	event interface{},
 ) error {
-	eventName, eventABI, err := ParseEsp(eventEsp, indexedFields, false, true, false, false, event)
+	eventName, eventABI, err := ParseSpec(eventSpec, indexedFields, false, true, false, false, event)
 	if err != nil {
 		return err
 	}

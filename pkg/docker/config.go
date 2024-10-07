@@ -9,10 +9,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
-func prepareAvalanchegoConfig(host *models.Host, networkID string) (string, string, error) {
-	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, networkID, nil)
+func prepareAvalanchegoConfig(host *models.Host, network models.Network, publicAccess bool) (string, string, error) {
+	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), nil)
+	if publicAccess || utils.IsE2E() {
+		avagoConf.HTTPHost = "0.0.0.0"
+	}
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {
 		return "", "", err

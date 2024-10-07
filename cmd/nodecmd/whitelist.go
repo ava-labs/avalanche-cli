@@ -286,6 +286,9 @@ func whitelistSSHPubKey(clusterName string, pubkey string) error {
 func getCloudSecurityGroupList(clusterNodes []string) ([]regionSecurityGroup, error) {
 	cloudSecurityGroupList := []regionSecurityGroup{}
 	for _, node := range clusterNodes {
+		if !utils.FileExists(app.GetNodeConfigPath(node)) {
+			continue
+		}
 		nodeConfig, err := app.LoadClusterNodeConfig(node)
 		if err != nil {
 			ux.Logger.PrintToUser("Failed to parse node %s due to %s", node, err.Error())

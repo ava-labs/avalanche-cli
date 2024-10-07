@@ -86,23 +86,24 @@ func IsTransferSubnetOwnershipTx(tx *txs.Tx) bool {
 	return ok
 }
 
-func GetOwners(network models.Network, subnetID ids.ID) ([]string, uint32, error) {
+func GetOwners(network models.Network, subnetID ids.ID) (bool, []string, uint32, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()
 	subnetResponse, err := pClient.GetSubnet(ctx, subnetID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)
+		return false, nil, 0, fmt.Errorf("subnet tx %s query error: %w", subnetID, err)
 	}
 	controlKeys := subnetResponse.ControlKeys
 	threshold := subnetResponse.Threshold
+	isPermissioned := subnetResponse.IsPermissioned
 	hrp := key.GetHRP(network.ID)
 	controlKeysStrs := []string{}
 	for _, addr := range controlKeys {
 		addrStr, err := address.Format("P", hrp, addr[:])
 		if err != nil {
-			return nil, 0, err
+			return false, nil, 0, err
 		}
 		controlKeysStrs = append(controlKeysStrs, addrStr)
 	}
-	return controlKeysStrs, threshold, nil
+	return isPermissioned, controlKeysStrs, threshold, nil
 }

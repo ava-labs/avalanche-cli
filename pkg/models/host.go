@@ -125,6 +125,22 @@ func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration
 	return err
 }
 
+// UploadBytes uploads a byte array to a remote file on the host.
+func (h *Host) UploadBytes(data []byte, remoteFile string, timeout time.Duration) error {
+	tmpFile, err := os.CreateTemp("", "HostUploadBytes-*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmpFile.Name())
+	if _, err := tmpFile.Write(data); err != nil {
+		return err
+	}
+	if err := tmpFile.Close(); err != nil {
+		return err
+	}
+	return h.Upload(tmpFile.Name(), remoteFile, timeout)
+}
+
 // Download downloads a file from the remote server to the local machine.
 func (h *Host) Download(remoteFile string, localFile string, timeout time.Duration) error {
 	if !h.Connected() {
@@ -146,6 +162,19 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 		err = fmt.Errorf("%w for host %s", err, h.IP)
 	}
 	return err
+}
+
+// ReadFileBytes downloads a file from the remote server to a byte array
+func (h *Host) ReadFileBytes(remoteFile string, timeout time.Duration) ([]byte, error) {
+	tmpFile, err := os.CreateTemp("", "HostDownloadBytes-*.tmp")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tmpFile.Name())
+	if err := h.Download(remoteFile, tmpFile.Name(), timeout); err != nil {
+		return nil, err
+	}
+	return os.ReadFile(tmpFile.Name())
 }
 
 // ExpandHome expands the ~ symbol to the home directory.
@@ -206,6 +235,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	// ux.Logger.Info("DEBUG Command on host %s: %s", h.IP, script)
 	cmd, err := h.Connection.CommandContext(ctx, "", script)
 	if err != nil {
 		return nil, err

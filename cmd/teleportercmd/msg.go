@@ -25,6 +25,8 @@ type MsgFlags struct {
 	DestinationAddress string
 	HexEncodedMessage  bool
 	PrivateKeyFlags    contract.PrivateKeyFlags
+	SourceRPCEndpoint  string
+	DestRPCEndpoint    string
 }
 
 var (
@@ -39,31 +41,26 @@ var (
 // avalanche teleporter msg
 func newMsgCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "msg [sourceSubnetName] [destinationSubnetName] [messageContent]",
+		Use:   "msg [sourceBlockchainName] [destinationBlockchainName] [messageContent]",
 		Short: "Verifies exchange of teleporter message between two subnets",
 		Long:  `Sends and wait reception for a teleporter msg between two subnets (Currently only for local network).`,
 		RunE:  msg,
 		Args:  cobrautils.ExactArgs(3),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
-	contract.AddPrivateKeyFlagsToCmd(cmd, &msgFlags.PrivateKeyFlags, "as message originator and to pay source blockchain fees")
+	msgFlags.PrivateKeyFlags.AddToCmd(cmd, "as message originator and to pay source blockchain fees")
 	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
+	cmd.Flags().StringVar(&msgFlags.SourceRPCEndpoint, "source-rpc", "", "use the given source blockchain rpc endpoint")
+	cmd.Flags().StringVar(&msgFlags.DestRPCEndpoint, "dest-rpc", "", "use the given destination blockchain rpc endpoint")
 	return cmd
 }
 
 func msg(_ *cobra.Command, args []string) error {
-	sourceSubnetName := args[0]
-	destSubnetName := args[1]
+	sourceBlockchainName := args[0]
+	destBlockchainName := args[1]
 	message := args[2]
 
-	subnetNameToGetNetworkFrom := ""
-	if !isCChain(sourceSubnetName) {
-		subnetNameToGetNetworkFrom = sourceSubnetName
-	}
-	if !isCChain(destSubnetName) {
-		subnetNameToGetNetworkFrom = destSubnetName
-	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -71,34 +68,55 @@ func msg(_ *cobra.Command, args []string) error {
 		true,
 		false,
 		msgSupportedNetworkOptions,
-		subnetNameToGetNetworkFrom,
-	)
-	if err != nil {
-		return err
-	}
-
-	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		sourceSubnetName,
-		isCChain(sourceSubnetName),
 		"",
 	)
 	if err != nil {
 		return err
 	}
-	privateKey, err := contract.GetPrivateKeyFromFlags(
+
+	sourceChainSpec := contract.ChainSpec{
+		BlockchainName: sourceBlockchainName,
+		CChain:         isCChain(sourceBlockchainName),
+	}
+	sourceRPCEndpoint := msgFlags.SourceRPCEndpoint
+	if sourceRPCEndpoint == "" {
+		sourceRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, sourceChainSpec, true, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	destChainSpec := contract.ChainSpec{
+		BlockchainName: destBlockchainName,
+		CChain:         isCChain(destBlockchainName),
+	}
+	destRPCEndpoint := msgFlags.DestRPCEndpoint
+	if destRPCEndpoint == "" {
+		destRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, destChainSpec, true, false)
+		if err != nil {
+			return err
+		}
+	}
+
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
-		msgFlags.PrivateKeyFlags,
-		genesisPrivateKey,
+		network,
+		contract.ChainSpec{
+			BlockchainName: sourceBlockchainName,
+			CChain:         isCChain(sourceBlockchainName),
+		},
 	)
+	if err != nil {
+		return err
+	}
+	privateKey, err := msgFlags.PrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"send the message",
+			"pay for fees at source blockchain",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -109,21 +127,19 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	_, _, sourceBlockchainID, sourceMessengerAddress, _, _, err := teleporter.GetSubnetParams(
-		app,
-		network,
-		sourceSubnetName,
-		isCChain(sourceSubnetName),
-	)
+	sourceBlockchainID, err := contract.GetBlockchainID(app, network, sourceChainSpec)
 	if err != nil {
 		return err
 	}
-	_, _, destBlockchainID, destMessengerAddress, _, _, err := teleporter.GetSubnetParams(
-		app,
-		network,
-		destSubnetName,
-		isCChain(destSubnetName),
-	)
+	_, sourceMessengerAddress, err := contract.GetICMInfo(app, network, sourceChainSpec, false, false, true)
+	if err != nil {
+		return err
+	}
+	destBlockchainID, err := contract.GetBlockchainID(app, network, destChainSpec)
+	if err != nil {
+		return err
+	}
+	_, destMessengerAddress, err := contract.GetICMInfo(app, network, destChainSpec, false, false, true)
 	if err != nil {
 		return err
 	}
@@ -144,9 +160,9 @@ func msg(_ *cobra.Command, args []string) error {
 		destAddr = common.HexToAddress(msgFlags.DestinationAddress)
 	}
 	// send tx to the teleporter contract at the source
-	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceSubnetName, sourceBlockchainID)
+	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
 	tx, receipt, err := teleporter.SendCrossChainMessage(
-		network.BlockchainEndpoint(sourceBlockchainID.String()),
+		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
 		privateKey,
 		destBlockchainID,
@@ -159,7 +175,7 @@ func msg(_ *cobra.Command, args []string) error {
 	if err == contract.ErrFailedReceiptStatus {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(network.BlockchainEndpoint(sourceBlockchainID.String()), txHash)
+		trace, err := evm.GetTrace(sourceRPCEndpoint, txHash)
 		if err != nil {
 			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
 			ux.Logger.PrintToUser("")
@@ -184,14 +200,14 @@ func msg(_ *cobra.Command, args []string) error {
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destSubnetName, destBlockchainID)
+	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destBlockchainName, destBlockchainID)
 
 	arrivalCheckInterval := 100 * time.Millisecond
 	arrivalCheckTimeout := 10 * time.Second
 	t0 := time.Now()
 	for {
 		if b, err := teleporter.MessageReceived(
-			network.BlockchainEndpoint(destBlockchainID.String()),
+			destRPCEndpoint,
 			common.HexToAddress(destMessengerAddress),
 			event.MessageID,
 		); err != nil {

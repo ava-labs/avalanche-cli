@@ -27,10 +27,10 @@ services:
     ports:
       - "9650:9650"
       - "9651:9651"
-    networks:
-      - avalanchego_net
+    network_mode: "host"
 {{ end }}
 {{ end }}
+
 {{if .WithMonitoring}}
   promtail:
     image: grafana/promtail:3.0.0
@@ -48,8 +48,6 @@ services:
     volumes:
       - /home/ubuntu/.avalanchego/logs:/logs:ro
       - /home/ubuntu/.avalanche-cli/services/promtail:/etc/promtail:ro
-    networks:
-      - avalanchego_net
 {{ end }}
   node-exporter:
     image: prom/node-exporter:v1.7.0
@@ -68,11 +66,8 @@ services:
 {{if .E2E }}
     networks:
       - avalanchego_net_{{.E2ESuffix}}
-{{ else }}
-    networks:
-      - avalanchego_net
 {{ end }}
-{{ end }}
+{{end}}
 
 {{if .E2E }}
 volumes:
@@ -80,8 +75,5 @@ volumes:
   avalanchego_logs_{{.E2ESuffix}}:
 networks:
   avalanchego_net_{{.E2ESuffix}}:
-{{ else }}
-networks:
-  avalanchego_net:
 {{ end }}
     

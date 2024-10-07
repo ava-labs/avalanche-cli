@@ -125,29 +125,6 @@ func sidecarExists(subnetName string) (bool, error) {
 	return sidecarExists, nil
 }
 
-func ElasticSubnetConfigExists(subnetName string) (bool, error) {
-	elasticSubnetConfig := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.ElasticSubnetConfigFileName)
-	elasticSubnetConfigExists := true
-	if _, err := os.Stat(elasticSubnetConfig); errors.Is(err, os.ErrNotExist) {
-		// does *not* exist
-		elasticSubnetConfigExists = false
-	} else if err != nil {
-		// Schrodinger: file may or may not exist. See err for details.
-		return false, err
-	}
-	return elasticSubnetConfigExists, nil
-}
-
-func PermissionlessValidatorExistsInSidecar(subnetName string, nodeID string, network string) (bool, error) {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
-	_, ok := elasticSubnetValidators[nodeID]
-	return ok, nil
-}
-
 func SubnetConfigExists(subnetName string) (bool, error) {
 	gen, err := genesisExists(subnetName)
 	if err != nil {
@@ -485,7 +462,8 @@ func RunLedgerSim(
 	showStdout bool,
 ) error {
 	cmd := exec.Command(
-		"ts-node",
+		"npx",
+		"tsx",
 		basicLedgerSimScript,
 		fmt.Sprintf("%d", iters),
 		seed,
@@ -1008,21 +986,6 @@ func CheckAllNodesAreCurrentValidators(subnetName string) (bool, error) {
 		}
 		if !currentValidator {
 			return false, fmt.Errorf("%s is still not a current validator of the elastic subnet", nodeIDstr)
-		}
-	}
-	return true, nil
-}
-
-func AllPermissionlessValidatorExistsInSidecar(subnetName string, network string) (bool, error) {
-	sc, err := getSideCar(subnetName)
-	if err != nil {
-		return false, err
-	}
-	elasticSubnetValidators := sc.ElasticSubnet[network].Validators
-	for _, nodeIDstr := range defaultLocalNetworkNodeIDs {
-		_, ok := elasticSubnetValidators[nodeIDstr]
-		if !ok {
-			return false, err
 		}
 	}
 	return true, nil

@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/ava-labs/avalanche-cli/cmd/subnetcmd/upgradecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd/upgradecmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -31,11 +31,11 @@ const (
 	subnetName       = "e2eSubnetTest"
 	secondSubnetName = "e2eSecondSubnetTest"
 
-	subnetEVMVersion1 = "v0.5.5"
-	subnetEVMVersion2 = "v0.5.6"
+	subnetEVMVersion1 = "v0.6.5"
+	subnetEVMVersion2 = "v0.6.6"
 
-	avagoRPC1Version = "v1.10.11"
-	avagoRPC2Version = "v1.10.12"
+	avagoRPC1Version = "v1.11.4"
+	avagoRPC2Version = "v1.11.5"
 
 	controlKeys = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	keyName     = "ewoq"
