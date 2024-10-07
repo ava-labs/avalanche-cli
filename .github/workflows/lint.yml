@@ -1,0 +1,32 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+        
+      - name: Lint Golang
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.56.2
+          working-directory: .
+          args: --timeout 5m
+
+      - name: Check License
+        run:  |
+          go install github.com/google/addlicense@v1.0.0
+          addlicense -f ./LICENSE.header -check -v ./**/*.go ./**/**/*.go ./**/**/**/*.go ./**/**/**/**/*.go
