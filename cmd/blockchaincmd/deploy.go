@@ -64,7 +64,7 @@ var (
 	useLedger                       bool
 	useEwoq                         bool
 	ledgerAddresses                 []string
-	nonSOV                          bool
+	sovereign                       bool
 	subnetIDStr                     string
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool
@@ -346,8 +346,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sidecar.NotSOV && bootstrapValidatorsJSONFilePath != "" {
-		return fmt.Errorf("--bootstrap-filepath flag is only applicable to SOV (Subnet Only Validator) blockchains")
+	if !sidecar.Sovereign && bootstrapValidatorsJSONFilePath != "" {
+		return fmt.Errorf("--bootstrap-filepath flag is only applicable to sovereign blockchains")
 	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -394,7 +394,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if !sidecar.NotSOV {
+	if sidecar.Sovereign {
 		if bootstrapValidatorsJSONFilePath == "" {
 			bootstrapValidators, err = promptBootstrapValidators(network)
 			if err != nil {
@@ -509,7 +509,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	network.HandlePublicNetworkSimulation()
 
 	if createSubnet {
-		if !sidecar.NotSOV {
+		if sidecar.Sovereign {
 			sameControlKey = true
 		}
 		controlKeys, threshold, err = promptOwners(
@@ -619,8 +619,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if !sidecar.NotSOV {
-		avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
+	if sidecar.Sovereign {
+		avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
 		if err != nil {
 			return err
 		}

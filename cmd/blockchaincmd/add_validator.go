@@ -59,7 +59,7 @@ var (
 // avalanche blockchain addValidator
 func newAddValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "addValidator [blockchainName] [nodeID]",
+		Use:   "addValidator [blockchainName]",
 		Short: "Allow a validator to validate your blockchain's subnet",
 		Long: `The blockchain addValidator command whitelists a primary network validator to
 validate the subnet of the provided deployed Blockchain.
@@ -72,7 +72,7 @@ these prompts by providing the values with flags.
 This command currently only works on Blockchains deployed to either the Fuji
 Testnet or Mainnet.`,
 		RunE: addValidator,
-		Args: cobrautils.ExactArgs(2),
+		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
@@ -82,20 +82,20 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().BoolVar(&nonSOV, "not-sov", false, "set to true if adding validator to a non-SOV blockchain")
-	cmd.Flags().StringVar(&publicKey, "public-key", "", "set the BLS public key of the validator to add")
-	cmd.Flags().StringVar(&pop, "proof-of-possession", "", "set the BLS proof of possession of the validator to add")
+	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if adding validator to a non-sovereign blockchain")
+	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator to add")
+	cmd.Flags().StringVar(&publicKey, "bls-public-key", "", "set the BLS public key of the validator to add")
+	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	cmd.Flags().StringVar(&changeAddr, "change-address", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	return cmd
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
-	_, err := ids.NodeIDFromString(args[1])
+	err := prompts.ValidateNodeID(nodeIDStr)
 	if err != nil {
 		return err
 	}
-	nodeIDStr = args[1]
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -124,13 +124,13 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	network.HandlePublicNetworkSimulation()
-	if nonSOV {
+	if !sovereign {
 		if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
 			return err
 		}
 	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	if nonSOV {
+	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
 	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr)
@@ -197,6 +197,14 @@ func CallAddValidator(
 	//	return err
 	//}
 
+	if nodeIDStr == "" {
+		nodeID, err := PromptNodeID("add as a blockchain validator")
+		if err != nil {
+			return err
+		}
+		nodeIDStr = nodeID.String()
+	}
+
 	publicKey, pop, err = promptProofOfPossession(publicKey == "", pop == "")
 	if err != nil {
 		return err
@@ -222,28 +230,6 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Balance: %d", balance)
 	ux.Logger.PrintToUser("Change Address: %s", changeAddr)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
-
-	//type RegisterSubnetValidatorTx struct {
-	//	// Metadata, inputs and outputs
-	//	BaseTx
-	//	// Balance <= sum($AVAX inputs) - sum($AVAX outputs) - TxFee.
-	//	Balance uint64 `json:"balance"`
-	//	// [Signer] is the BLS key for this validator.
-	//	// Note: We do not enforce that the BLS key is unique across all validators.
-	//	//       This means that validators can share a key if they so choose.
-	//	//       However, a NodeID does uniquely map to a BLS key
-	//	Signer signer.Signer `json:"signer"`
-	//	// Leftover $AVAX from the Subnet Validator's Balance will be issued to
-	//	// this owner after it is removed from the validator set.
-	//	ChangeOwner fx.Owner `json:"changeOwner"`
-	//	// AddressedCall with Payload:
-	//	//   - SubnetID
-	//	//   - NodeID (must be Ed25519 NodeID)
-	//	//   - Weight
-	//	//   - BLS public key
-	//	//   - Expiry
-	//	Message warp.Message `json:"message"`
-	//}
 
 	blsInfo, err := getBLSInfo(publicKey, pop)
 	if err != nil {
@@ -275,7 +261,7 @@ func CallAddValidator(
 	return nil
 }
 
-func generateWarpMessageAddValidator(SubnetID ids.ID, NodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
+func generateWarpMessageAddValidator(subnetID ids.ID, nodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
 	return warpPlatformVM.Message{}, nil
 }
 

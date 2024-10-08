@@ -83,7 +83,7 @@ func validateTime(input string) error {
 	return err
 }
 
-func validateNodeID(input string) error {
+func ValidateNodeID(input string) error {
 	_, err := ids.NodeIDFromString(input)
 	return err
 }
@@ -134,8 +134,8 @@ func validateValidatorBalance(input string) error {
 	if err != nil {
 		return err
 	}
-	if val == 0 {
-		return fmt.Errorf("subnet validator balance must be greater than 0 AVAX")
+	if val < 1 {
+		return fmt.Errorf("subnet validator balance must be at least 1 AVAX")
 	}
 	return nil
 }

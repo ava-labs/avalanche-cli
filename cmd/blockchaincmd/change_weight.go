@@ -5,6 +5,8 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -15,27 +17,25 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
-	"os"
 )
 
-var ()
-
-// avalanche blockchain setWeight
-func newSetWeightCmd() *cobra.Command {
+// avalanche blockchain addValidator
+func newChangeWeightCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "setWeight [blockchainName] [nodeID]",
-		Short: "Updates the weight of a Subnet validator",
-		Long: `The blockchain changeWeight command updates the weight of a Subnet Validator.
+		Use:   "changeWeight [blockchainName]",
+		Short: "Changes the weight of a Subnet validator",
+		Long: `The blockchain changeWeight command changes the weight of a Subnet Validator.
 
 The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 		RunE: setWeight,
-		Args: cobrautils.ExactArgs(2),
+		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
+	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
@@ -43,14 +43,10 @@ The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 
 func setWeight(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
-	_, err := ids.NodeIDFromString(args[1])
+	err := prompts.ValidateNodeID(nodeIDStr)
 	if err != nil {
 		return err
 	}
-	nodeIDStr = args[1]
-
-	//TODO: add check for non SOV subnet
-	// return err if non SOV
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -122,9 +118,17 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
-	nodeID, err := ids.NodeIDFromString(nodeIDStr)
-	if err != nil {
-		return err
+	var nodeID ids.NodeID
+	if nodeIDStr == "" {
+		nodeID, err = PromptNodeID("add as a blockchain validator")
+		if err != nil {
+			return err
+		}
+	} else {
+		nodeID, err = ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			return err
+		}
 	}
 
 	isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
@@ -147,7 +151,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	// TODO: we need to wait for the balance from the removed validator to arrive in changeAddr
 	// set arbitrary time.sleep here?
 
-	weight, err = promptWeightSubnetValidator()
+	weight, err = app.Prompt.CaptureWeight("What weight would you like to assign to the validator?")
 	if err != nil {
 		return err
 	}
@@ -168,17 +172,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	}
 
 	// add back validator to subnet with updated weight
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr)
-}
-
-// TODO: implement checkIfSubnetIsSOV
-// checkIfSubnetIsSOV returns true if Subnet is SOV from P Chain
-func checkIfSubnetIsSOV() (bool, error) {
-	return false, nil
-}
-func promptWeightSubnetValidator() (uint64, error) {
-	txt := "What weight would you like to assign to the validator?"
-	return app.Prompt.CaptureWeight(txt)
+	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeID.String())
 }
 
 // getValidatorBalanceFromPChain gets remaining balance of validator from p chain
