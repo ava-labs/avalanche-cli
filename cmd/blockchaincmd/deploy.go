@@ -9,9 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
@@ -29,6 +32,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -67,6 +71,7 @@ var (
 	icmSpec                         subnet.ICMSpec
 	generateNodeID                  bool
 	bootstrapValidatorsJSONFilePath string
+	privateKeyFlags                 contract.PrivateKeyFlags
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -94,6 +99,8 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
+	privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
+	privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest", "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
@@ -559,6 +566,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
 		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
@@ -610,21 +618,25 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
+		avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 		if err != nil {
 			return err
 		}
+		deployer.CleanCacheWallet()
+		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
 		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
 			blockchainID,
+			managerAddress,
 			avaGoBootstrapValidators,
 		)
 		if err != nil {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err),
 			))
+			return err
 		}
 
 		savePartialTx = !isFullySigned && err == nil
@@ -643,6 +655,93 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
+
+		bar, err := ux.TimedProgressBar(
+			30*time.Second,
+			"Waiting for Blockchain to be converted into Subnet Only Validator (SOV) Blockchain ...",
+			2,
+		)
+		if err != nil {
+			return err
+		}
+
+		// Issue random transaction >30s after ConverSubnetTx to evict its block from the block map
+		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
+		if err != nil {
+			return err
+		}
+		if err := ux.ExtraStepExecuted(bar); err != nil {
+			return err
+		}
+		// Issue random transaction to advance the p-chain height now that the
+		// ConvertSubnetTx block isn't in the block map
+		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
+		if err != nil {
+			return err
+		}
+		if err := ux.ExtraStepExecuted(bar); err != nil {
+			return err
+		}
+		fmt.Println()
+
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators); err != nil {
+			return err
+		}
+
+		if false {
+			chainSpec := contract.ChainSpec{
+				BlockchainName: blockchainName,
+			}
+			genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+				app,
+				network,
+				chainSpec,
+			)
+			if err != nil {
+				return err
+			}
+			privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+			if err != nil {
+				return err
+			}
+			if privateKey == "" {
+				privateKey, err = prompts.PromptPrivateKey(
+					app.Prompt,
+					"Which key to you want to use to pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
+					app.GetKeyDir(),
+					app.GetKey,
+					genesisAddress,
+					genesisPrivateKey,
+				)
+				if err != nil {
+					return err
+				}
+			}
+			rpcURL, _, err := contract.GetBlockchainEndpoints(
+				app,
+				network,
+				chainSpec,
+				true,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+			if err := validatormanager.SetupPoA(
+				app,
+				network,
+				rpcURL,
+				contract.ChainSpec{
+					BlockchainName: blockchainName,
+				},
+				privateKey,
+				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
+				avaGoBootstrapValidators,
+			); err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
+		}
 	}
 
 	flags := make(map[string]string)
@@ -651,7 +750,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators)
+	return nil
 }
 
 func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
@@ -676,7 +775,7 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, e
 }
 
 // TODO: add deactivation owner?
-func convertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
+func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
 	bootstrapValidators := []*txs.ConvertSubnetValidator{}
 	for _, validator := range subnetValidators {
 		nodeID, err := ids.NodeIDFromString(validator.NodeID)

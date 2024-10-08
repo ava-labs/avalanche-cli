@@ -3,6 +3,7 @@
 package evm
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
@@ -15,10 +16,10 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/interfaces"
+	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/predicate"
 	"github.com/ava-labs/subnet-evm/rpc"
-	subnetEvmTestUtils "github.com/ava-labs/subnet-evm/tests/utils"
 	subnetEvmUtils "github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -518,7 +519,7 @@ func IssueTxsToActivateProposerVMFork(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		err = subnetEvmTestUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
+		err = issueTxsToActivateProposerVMFork(client, ctx, chainID, privKey)
 		if err == nil {
 			break
 		}
@@ -531,4 +532,74 @@ func IssueTxsToActivateProposerVMFork(
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return err
+}
+
+// issueTxsToActivateProposerVMFork issues transactions at the current
+// timestamp, which should be after the ProposerVM activation time (aka
+// ApricotPhase4). This should generate a PostForkBlock because its parent block
+// (genesis) has a timestamp (0) that is greater than or equal to the fork
+// activation time of 0. Therefore, subsequent blocks should be built with
+// BuildBlockWithContext.
+func issueTxsToActivateProposerVMFork(
+	client ethclient.Client,
+	ctx context.Context,
+	chainID *big.Int,
+	fundedKey *ecdsa.PrivateKey,
+) error {
+	const numTriggerTxs = 2 // Number of txs needed to activate the proposer VM fork
+	addr := crypto.PubkeyToAddress(fundedKey.PublicKey)
+	nonce, err := client.NonceAt(ctx, addr, nil)
+	if err != nil {
+		return err
+	}
+
+	gasPrice := big.NewInt(params.MinGasPrice)
+	txSigner := types.LatestSignerForChainID(chainID)
+	for i := 0; i < numTriggerTxs; i++ {
+		prevBlockNumber, err := client.BlockNumber(ctx)
+		if err != nil {
+			return err
+		}
+		tx := types.NewTransaction(
+			nonce, addr, common.Big1, params.TxGas, gasPrice, nil)
+		triggerTx, err := types.SignTx(tx, txSigner, fundedKey)
+		if err != nil {
+			return err
+		}
+		if err := client.SendTransaction(ctx, triggerTx); err != nil {
+			return err
+		}
+		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
+			return err
+		}
+		nonce++
+	}
+	return nil
+}
+
+func WaitForNewBlock(
+	client ethclient.Client,
+	ctx context.Context,
+	prevBlockNumber uint64,
+	totalDuration time.Duration,
+	stepDuration time.Duration,
+) error {
+	if stepDuration == 0 {
+		stepDuration = 1 * time.Second
+	}
+	if totalDuration == 0 {
+		totalDuration = 5 * time.Second
+	}
+	steps := totalDuration / stepDuration
+	for seconds := 0; seconds < int(steps); seconds++ {
+		blockNumber, err := client.BlockNumber(ctx)
+		if err != nil {
+			return err
+		}
+		if blockNumber > prevBlockNumber {
+			return nil
+		}
+		time.Sleep(stepDuration)
+	}
+	return fmt.Errorf("new block not produced in %f seconds", totalDuration.Seconds())
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/ids"
@@ -133,7 +134,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	}
 	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		avagoconstants.PlatformChainID, // p-chain sign
+		avagoconstants.PlatformChainID,
 		subnetConversionAddressedCall.Bytes(),
 	)
 	if err != nil {
@@ -143,13 +144,13 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		aggregatorLogger,
 		aggregatorLogLevel,
-		ids.Empty, // primary network validators sign
+		subnetID,
 		aggregatorQuorumPercentage,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return signatureAggregator.Sign(subnetConversionUnsignedMessage, nil)
+	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
 // calls poa manager validators set init method,
@@ -210,19 +211,16 @@ func PoAValidatorManagerInitializeValidatorsSet(
 func SetupPoA(
 	app *application.Avalanche,
 	network models.Network,
+	rpcURL string,
 	chainSpec contract.ChainSpec,
 	privateKey string,
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
 ) error {
-	rpcURL, _, err := contract.GetBlockchainEndpoints(
-		app,
-		network,
-		chainSpec,
-		true,
-		false,
-	)
-	if err != nil {
+	if err := evm.SetupProposerVM(
+		rpcURL,
+		privateKey,
+	); err != nil {
 		return err
 	}
 	subnetID, err := contract.GetSubnetID(
@@ -275,7 +273,7 @@ func SetupPoA(
 		subnetConversionSignedMessage,
 	)
 	if err != nil {
-		return TransactionError(tx, err, "failure initializing validators set on poa  manager")
+		return TransactionError(tx, err, "failure initializing validators set on poa manager")
 	}
 	return nil
 }
