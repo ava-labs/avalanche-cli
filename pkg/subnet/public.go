@@ -114,7 +114,7 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
-func (d *PublicDeployer) SetSubnetValidatorWeight(
+func (d *PublicDeployer) SetL1ValidatorWeight(
 	message warp.Message,
 ) (*txs.Tx, error) {
 	return nil, nil
