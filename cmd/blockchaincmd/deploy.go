@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"path/filepath"
 	"strings"
@@ -610,6 +610,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	var clusterName string
 	if !sidecar.NotSOV {
 		avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
 		if err != nil {
@@ -644,7 +645,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if err := nodecmd.syncSubnet(cmd, []string{"devnetacp", blockchainName}); err != nil {
+
+		if err = node.SyncSubnet(app, clusterName, blockchainName, false, nil); err != nil {
 			return err
 		}
 

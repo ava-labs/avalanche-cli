@@ -17,19 +17,15 @@ import (
 	"sync"
 )
 
-var (
-	app *application.Avalanche
-)
-
-func SyncSubnet(clusterName, blockchainName string) error {
-	if err := checkCluster(clusterName); err != nil {
+func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, avoidChecks bool, subnetAliases []string) error {
+	if err := checkCluster(app, clusterName); err != nil {
 		return err
 	}
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
-	if _, err := subnet.ValidateSubnetNameAndGetChains([]string{blockchainName}); err != nil {
+	if _, err := subnet.ValidateSubnetNameAndGetChains(app, []string{blockchainName}); err != nil {
 		return err
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
@@ -44,14 +40,14 @@ func SyncSubnet(clusterName, blockchainName string) error {
 		if err := checkHostsAreHealthy(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreRPCCompatible(hosts, blockchainName); err != nil {
+		if err := checkHostsAreRPCCompatible(app, hosts, blockchainName); err != nil {
 			return err
 		}
 	}
-	if err := prepareSubnetPlugin(hosts, blockchainName); err != nil {
+	if err := prepareSubnetPlugin(app, hosts, blockchainName); err != nil {
 		return err
 	}
-	if err := trackSubnet(hosts, clusterName, clusterConfig.Network, blockchainName); err != nil {
+	if err := trackSubnet(app, hosts, clusterName, clusterConfig.Network, blockchainName, subnetAliases); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Node(s) successfully started syncing with Blockchain!")
@@ -60,7 +56,7 @@ func SyncSubnet(clusterName, blockchainName string) error {
 }
 
 // prepareSubnetPlugin creates subnet plugin to all nodes in the cluster
-func prepareSubnetPlugin(hosts []*models.Host, blockchainName string) error {
+func prepareSubnetPlugin(app *application.Avalanche, hosts []*models.Host, blockchainName string) error {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
@@ -83,44 +79,13 @@ func prepareSubnetPlugin(hosts []*models.Host, blockchainName string) error {
 	return nil
 }
 
-func checkCluster(clusterName string) error {
-	_, err := getClusterNodes(clusterName)
-	return err
-}
-
-func getClusterNodes(clusterName string) ([]string, error) {
-	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
-		return nil, fmt.Errorf("cluster %q not found", clusterName)
-	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return nil, err
-	}
-	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
-	if len(clusterNodes) == 0 {
-		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
-	}
-	return clusterNodes, nil
-}
-
-func checkClusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
-	}
-	_, ok := clustersConfig.Clusters[clusterName]
-	return ok, nil
-}
-
 func trackSubnet(
+	app *application.Avalanche,
 	hosts []*models.Host,
 	clusterName string,
 	network models.Network,
 	blockchainName string,
+	subnetAliases []string,
 ) error {
 	// load cluster config
 	clusterConfig, err := app.GetClusterConfig(clusterName)
@@ -139,7 +104,7 @@ func trackSubnet(
 
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
-	subnetAliases := append([]string{blockchainName}, subnetAliases...)
+	subnetAliases = append([]string{blockchainName}, subnetAliases...)
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -189,7 +154,7 @@ func trackSubnet(
 	networkInfo := sc.Networks[clusterConfig.Network.Name()]
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	publicEndpoints, err := getPublicEndpoints(clusterName)
+	publicEndpoints, err := getPublicEndpoints(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -210,6 +175,18 @@ func checkHostsAreBootstrapped(hosts []*models.Host) error {
 	}
 	if len(notBootstrappedNodes) > 0 {
 		return fmt.Errorf("node(s) %s are not bootstrapped yet, please try again later", notBootstrappedNodes)
+	}
+	return nil
+}
+
+func checkHostsAreHealthy(hosts []*models.Host) error {
+	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
+	unhealthyNodes, err := getUnhealthyNodes(hosts)
+	if err != nil {
+		return err
+	}
+	if len(unhealthyNodes) > 0 {
+		return fmt.Errorf("node(s) %s are not healthy, please check the issue and try again later", unhealthyNodes)
 	}
 	return nil
 }
