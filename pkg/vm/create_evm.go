@@ -72,7 +72,7 @@ func CreateEvmSidecar(
 	sc.Subnet = subnetName
 	sc.TokenSymbol = tokenSymbol
 	sc.TokenName = tokenSymbol + " Token"
-	sc.NotSOV = notSov
+	sc.NotSOV = !notSov
 	return sc, nil
 }
 
