@@ -3,9 +3,10 @@
 package nodecmd
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"sort"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"

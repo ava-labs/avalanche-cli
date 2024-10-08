@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"

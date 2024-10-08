@@ -5,9 +5,10 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"path/filepath"
+
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"

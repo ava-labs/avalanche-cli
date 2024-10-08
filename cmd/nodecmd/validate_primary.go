@@ -5,10 +5,11 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"

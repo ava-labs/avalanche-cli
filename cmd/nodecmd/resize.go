@@ -4,10 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
-	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 	"math"
 	"strconv"
 	"strings"
+
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"

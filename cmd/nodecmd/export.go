@@ -4,10 +4,11 @@ package nodecmd
 
 import (
 	"encoding/json"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"

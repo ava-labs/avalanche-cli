@@ -6,13 +6,14 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"golang.org/x/exp/slices"
 
