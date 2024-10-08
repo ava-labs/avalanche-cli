@@ -83,7 +83,7 @@ func CreateCustomSidecar(
 	}
 
 	sc.RPCVersion = rpcVersion
-	sc.NotSOV = nonSov
+	sc.Sovereign = nonSov
 	return sc, nil
 }
 
