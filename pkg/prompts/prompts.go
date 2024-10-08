@@ -106,9 +106,9 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
-	CaptureBootstrapInitialBalance(promptStr string) (uint64, error)
+	CaptureValidatorBalance(promptStr string) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
-	CaptureInt(promptStr string) (int, error)
+	CaptureInt(promptStr string, validator func(int) error) (int, error)
 	CaptureUint32(promptStr string) (uint32, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
@@ -258,7 +258,7 @@ func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateNodeID,
+		Validate: ValidateNodeID,
 	}
 
 	nodeIDStr, err := prompt.Run()
@@ -268,10 +268,10 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
-func (*realPrompter) CaptureBootstrapInitialBalance(promptStr string) (uint64, error) {
+func (*realPrompter) CaptureValidatorBalance(promptStr string) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateBootstrapValidatorBalance,
+		Validate: validateValidatorBalance,
 	}
 
 	amountStr, err := prompt.Run()
@@ -296,15 +296,15 @@ func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
 	return strconv.ParseUint(amountStr, 10, 64)
 }
 
-func (*realPrompter) CaptureInt(promptStr string) (int, error) {
+func (*realPrompter) CaptureInt(promptStr string, validator func(int) error) (int, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
-			_, err := strconv.Atoi(input)
+			val, err := strconv.Atoi(input)
 			if err != nil {
 				return err
 			}
-			return nil
+			return validator(val)
 		},
 	}
 	input, err := prompt.Run()
@@ -773,7 +773,7 @@ func (prompter *realPrompter) ChooseKeyOrLedger(goal string) (bool, error) {
 		ledgerOption = "Use ledger"
 	)
 	option, err := prompter.CaptureList(
-		fmt.Sprintf("Which key source should be used to %s?", goal),
+		fmt.Sprintf("Which key should be used %s?", goal),
 		[]string{keyOption, ledgerOption},
 	)
 	if err != nil {
@@ -886,7 +886,7 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq boo
 	if size > 10 {
 		size = 10
 	}
-	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keyNames, size)
+	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used %s?", goal), keyNames, size)
 	if err != nil {
 		return "", err
 	}

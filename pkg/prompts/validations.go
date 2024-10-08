@@ -83,7 +83,7 @@ func validateTime(input string) error {
 	return err
 }
 
-func validateNodeID(input string) error {
+func ValidateNodeID(input string) error {
 	_, err := ids.NodeIDFromString(input)
 	return err
 }
@@ -129,13 +129,13 @@ func validateWeight(input string) error {
 	return nil
 }
 
-func validateBootstrapValidatorBalance(input string) error {
+func validateValidatorBalance(input string) error {
 	val, err := strconv.ParseUint(input, 10, 64)
 	if err != nil {
 		return err
 	}
-	if val == 0 {
-		return fmt.Errorf("initial bootstrap validator balance must be greater than 0 AVAX")
+	if val < 1 {
+		return fmt.Errorf("subnet validator balance must be at least 1 AVAX")
 	}
 	return nil
 }
@@ -362,4 +362,11 @@ func ValidateHexa(input string) error {
 		return errors.New("string not in hexa format")
 	}
 	return err
+}
+
+func ValidatePositiveInt(val int) error {
+	if val <= 0 {
+		return fmt.Errorf("value must be greater than cero")
+	}
+	return nil
 }

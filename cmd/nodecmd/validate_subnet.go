@@ -96,7 +96,7 @@ func addNodeAsSubnetValidator(
 	}
 	ux.Logger.PrintToUser("Adding the node as a Subnet Validator...")
 	defer ux.Logger.PrintLineSeparator()
-	if err := blockchaincmd.CallAddValidator(
+	if err := blockchaincmd.CallAddValidatorNonSOV(
 		deployer,
 		network,
 		kc,

@@ -3,6 +3,7 @@
 package evm
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
@@ -10,11 +11,16 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ava-labs/subnet-evm/interfaces"
+	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
+	"github.com/ava-labs/subnet-evm/predicate"
 	"github.com/ava-labs/subnet-evm/rpc"
-	subnetEvmUtils "github.com/ava-labs/subnet-evm/tests/utils"
+	subnetEvmUtils "github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -176,6 +182,28 @@ func EstimateBaseFee(
 	return baseFee, err
 }
 
+func EstimateGasLimit(
+	client ethclient.Client,
+	msg interfaces.CallMsg,
+) (uint64, error) {
+	var (
+		gasLimit uint64
+		err      error
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		gasLimit, err = client.EstimateGas(ctx, msg)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure estimating gas limit on %#v: %w", client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return gasLimit, err
+}
+
 func FundAddress(
 	client ethclient.Client,
 	sourceAddressPrivateKeyStr string,
@@ -219,6 +247,62 @@ func FundAddress(
 		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
 	}
 	return nil
+}
+
+func GetSignedTxToMethodWithWarpMessage(
+	client ethclient.Client,
+	privateKeyStr string,
+	warpMessage *avalancheWarp.Message,
+	contract common.Address,
+	callData []byte,
+	value *big.Int,
+) (*types.Transaction, error) {
+	privateKey, err := crypto.HexToECDSA(privateKeyStr)
+	if err != nil {
+		return nil, err
+	}
+	address := crypto.PubkeyToAddress(privateKey.PublicKey)
+	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, address.Hex())
+	if err != nil {
+		return nil, err
+	}
+	chainID, err := GetChainID(client)
+	if err != nil {
+		return nil, err
+	}
+	accessList := types.AccessList{
+		types.AccessTuple{
+			Address:     warp.ContractAddress,
+			StorageKeys: subnetEvmUtils.BytesToHashSlice(predicate.PackPredicate(warpMessage.Bytes())),
+		},
+	}
+	msg := interfaces.CallMsg{
+		From:       address,
+		To:         &contract,
+		GasPrice:   nil,
+		GasTipCap:  gasTipCap,
+		GasFeeCap:  gasFeeCap,
+		Value:      value,
+		Data:       callData,
+		AccessList: accessList,
+	}
+	gasLimit, err := EstimateGasLimit(client, msg)
+	if err != nil {
+		return nil, err
+	}
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:    chainID,
+		Nonce:      nonce,
+		To:         &contract,
+		Gas:        gasLimit,
+		GasFeeCap:  gasFeeCap,
+		GasTipCap:  gasTipCap,
+		Value:      value,
+		Data:       callData,
+		AccessList: accessList,
+	})
+	txSigner := types.LatestSignerForChainID(chainID)
+	return types.SignTx(tx, txSigner, privateKey)
 }
 
 func IssueTx(
@@ -435,7 +519,7 @@ func IssueTxsToActivateProposerVMFork(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		err = subnetEvmUtils.IssueTxsToActivateProposerVMFork(ctx, chainID, privKey, client)
+		err = issueTxsToActivateProposerVMFork(client, ctx, chainID, privKey)
 		if err == nil {
 			break
 		}
@@ -448,4 +532,74 @@ func IssueTxsToActivateProposerVMFork(
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return err
+}
+
+// issueTxsToActivateProposerVMFork issues transactions at the current
+// timestamp, which should be after the ProposerVM activation time (aka
+// ApricotPhase4). This should generate a PostForkBlock because its parent block
+// (genesis) has a timestamp (0) that is greater than or equal to the fork
+// activation time of 0. Therefore, subsequent blocks should be built with
+// BuildBlockWithContext.
+func issueTxsToActivateProposerVMFork(
+	client ethclient.Client,
+	ctx context.Context,
+	chainID *big.Int,
+	fundedKey *ecdsa.PrivateKey,
+) error {
+	const numTriggerTxs = 2 // Number of txs needed to activate the proposer VM fork
+	addr := crypto.PubkeyToAddress(fundedKey.PublicKey)
+	nonce, err := client.NonceAt(ctx, addr, nil)
+	if err != nil {
+		return err
+	}
+
+	gasPrice := big.NewInt(params.MinGasPrice)
+	txSigner := types.LatestSignerForChainID(chainID)
+	for i := 0; i < numTriggerTxs; i++ {
+		prevBlockNumber, err := client.BlockNumber(ctx)
+		if err != nil {
+			return err
+		}
+		tx := types.NewTransaction(
+			nonce, addr, common.Big1, params.TxGas, gasPrice, nil)
+		triggerTx, err := types.SignTx(tx, txSigner, fundedKey)
+		if err != nil {
+			return err
+		}
+		if err := client.SendTransaction(ctx, triggerTx); err != nil {
+			return err
+		}
+		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
+			return err
+		}
+		nonce++
+	}
+	return nil
+}
+
+func WaitForNewBlock(
+	client ethclient.Client,
+	ctx context.Context,
+	prevBlockNumber uint64,
+	totalDuration time.Duration,
+	stepDuration time.Duration,
+) error {
+	if stepDuration == 0 {
+		stepDuration = 1 * time.Second
+	}
+	if totalDuration == 0 {
+		totalDuration = 5 * time.Second
+	}
+	steps := totalDuration / stepDuration
+	for seconds := 0; seconds < int(steps); seconds++ {
+		blockNumber, err := client.BlockNumber(ctx)
+		if err != nil {
+			return err
+		}
+		if blockNumber > prevBlockNumber {
+			return nil
+		}
+		time.Sleep(stepDuration)
+	}
+	return fmt.Errorf("new block not produced in %f seconds", totalDuration.Seconds())
 }

@@ -181,7 +181,7 @@ func trackSubnet(
 	networkInfo := sc.Networks[clusterConfig.Network.Name()]
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	publicEndpoints, err := getPublicEndpoints(clusterName)
+	publicEndpoints, err := getPublicEndpoints(clusterName, hosts)
 	if err != nil {
 		return err
 	}

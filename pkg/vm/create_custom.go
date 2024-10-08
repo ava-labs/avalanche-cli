@@ -26,6 +26,7 @@ func CreateCustomSidecar(
 	customVMBuildScript string,
 	vmPath string,
 	tokenSymbol string,
+	sovereign bool,
 ) (*models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
 
@@ -82,21 +83,8 @@ func CreateCustomSidecar(
 	}
 
 	sc.RPCVersion = rpcVersion
-
+	sc.Sovereign = sovereign
 	return sc, nil
-}
-
-func LoadCustomGenesis(app *application.Avalanche, genesisPath string) ([]byte, error) {
-	var err error
-	if genesisPath == "" {
-		genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	genesisBytes, err := os.ReadFile(genesisPath)
-	return genesisBytes, err
 }
 
 func SetCustomVMSourceCodeFields(app *application.Avalanche, sc *models.Sidecar, customVMRepoURL string, customVMBranch string, customVMBuildScript string) error {

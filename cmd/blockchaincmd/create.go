@@ -49,19 +49,22 @@ type CreateFlags struct {
 	proofOfStake                  bool
 	proofOfAuthority              bool
 	poaValidatorManagerOwner      string
+	enableDebugging               bool
 }
 
 var (
-	createFlags             CreateFlags
-	forceCreate             bool
-	genesisFile             string
-	vmFile                  string
-	useRepo                 bool
+	createFlags CreateFlags
+	forceCreate bool
+	genesisPath string
+	vmFile      string
+	useRepo     bool
+
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
+	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority, --proof-of-stake, --poa-manager-owner are only applicable to Subnet Only Validator (SOV) blockchains")
 )
 
 // avalanche blockchain create
@@ -84,7 +87,7 @@ configuration, pass the -f flag.`,
 		RunE:              createBlockchainConfig,
 		PersistentPostRun: handlePostRun,
 	}
-	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
+	cmd.Flags().StringVar(&genesisPath, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM template")
 	cmd.Flags().StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
@@ -109,6 +112,8 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	cmd.Flags().StringVar(&createFlags.poaValidatorManagerOwner, "poa-manager-owner", "", "EVM address that controls Validator Manager Owner (for Proof of Authority only)")
+	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
+	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", false, "enable blockchain debugging")
 	return cmd
 }
 
@@ -116,7 +121,7 @@ func CallCreate(
 	cmd *cobra.Command,
 	blockchainName string,
 	forceCreateParam bool,
-	genesisFileParam string,
+	genesisPathParam string,
 	useSubnetEvmParam bool,
 	useCustomParam bool,
 	vmVersionParam string,
@@ -131,7 +136,7 @@ func CallCreate(
 	customVMBuildScriptParam string,
 ) error {
 	forceCreate = forceCreateParam
-	genesisFile = genesisFileParam
+	genesisPath = genesisPathParam
 	createFlags.useSubnetEvm = useSubnetEvmParam
 	createFlags.vmVersion = vmVersionParam
 	createFlags.chainID = evmChainIDParam
@@ -179,7 +184,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// genesis flags exclusiveness
-	if genesisFile != "" && (createFlags.chainID != 0 || defaultsKind != vm.NoDefaults) {
+	if genesisPath != "" && (createFlags.chainID != 0 || defaultsKind != vm.NoDefaults) {
 		return errMutuallyExclusiveVMConfigOptions
 	}
 
@@ -193,6 +198,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
+	if !sovereign {
+		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.poaValidatorManagerOwner != "" {
+			return errSOVFlagsOnly
+		}
+	}
 	// validator management type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStake}) {
 		return errMutuallyExlusiveValidatorManagementOptions
@@ -225,27 +235,30 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	sc := &models.Sidecar{}
 
-	if err = promptValidatorManagementType(app, sc); err != nil {
-		return err
-	}
-
-	if !sc.PoA() && createFlags.poaValidatorManagerOwner != "" {
-		return errors.New("--poa-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
+	if sovereign {
+		if err = promptValidatorManagementType(app, sc); err != nil {
+			return err
+		}
+		if !sc.PoA() && createFlags.poaValidatorManagerOwner != "" {
+			return errors.New("--poa-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
+		}
 	}
 
 	if vmType == models.SubnetEvm {
-		if sc.PoA() {
-			if createFlags.poaValidatorManagerOwner == "" {
-				createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
-				if err != nil {
-					return err
+		if sovereign {
+			if sc.PoA() {
+				if createFlags.poaValidatorManagerOwner == "" {
+					createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
+					if err != nil {
+						return err
+					}
 				}
+				sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
+				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
 			}
-			sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
-			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
 		}
 
-		if genesisFile == "" {
+		if genesisPath == "" {
 			// Default
 			defaultsKind, err = vm.PromptDefaults(app, defaultsKind)
 			if err != nil {
@@ -271,8 +284,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 		var tokenSymbol string
 
-		if genesisFile != "" {
-			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
+		if genesisPath != "" {
+			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisPath); err != nil {
 				return err
 			} else if !evmCompatibleGenesis {
 				return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
@@ -286,7 +299,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			ux.Logger.PrintToUser("importing genesis for blockchain %s", blockchainName)
-			genesisBytes, err = os.ReadFile(genesisFile)
+			genesisBytes, err = os.ReadFile(genesisPath)
 			if err != nil {
 				return err
 			}
@@ -325,11 +338,18 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			vmVersion,
 			tokenSymbol,
 			true,
+			sovereign,
 		); err != nil {
 			return err
 		}
 	} else {
-		genesisBytes, err = vm.LoadCustomGenesis(app, genesisFile)
+		if genesisPath == "" {
+			genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
+			if err != nil {
+				return err
+			}
+		}
+		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
 			return err
 		}
@@ -354,6 +374,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			customVMBuildScript,
 			vmFile,
 			tokenSymbol,
+			sovereign,
 		); err != nil {
 			return err
 		}
@@ -365,12 +386,16 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		sc.ExternalToken = useExternalGasToken
 		sc.TeleporterKey = constants.ICMKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
-		if genesisFile != "" {
-			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
+		if genesisPath != "" {
+			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisPath); err != nil {
 				return err
-			} else if !evmCompatibleGenesis {
+			} else if evmCompatibleGenesis {
 				// evm genesis file was given. make appropriate checks and customizations for teleporter
-				genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())
+				genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(
+					genesisBytes,
+					teleporterInfo.FundedAddress,
+					teleporterInfo.FundedBalance.String(),
+				)
 				if err != nil {
 					return err
 				}
@@ -380,6 +405,22 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
 		return err
+	}
+
+	// subnet-evm check based on genesis
+	// covers both subnet-evm vms and custom vms
+	if hasSubnetEVMGenesis, rawErr, err := app.HasSubnetEVMGenesis(blockchainName); rawErr != nil {
+		return rawErr
+	} else if err != nil {
+		return err
+	} else if hasSubnetEVMGenesis && createFlags.enableDebugging {
+		if err := SetBlockchainConf(
+			blockchainName,
+			vm.EvmDebugConfig,
+			constants.ChainConfigFileName,
+		); err != nil {
+			return err
+		}
 	}
 
 	if err = app.CreateSidecar(sc); err != nil {
