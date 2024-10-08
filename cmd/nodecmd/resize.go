@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 	"math"
 	"strconv"
 	"strings"
@@ -61,13 +62,13 @@ func preResizeChecks(clusterName string) error {
 
 func resize(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := nodePkg.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if err := preResizeChecks(clusterName); err != nil {
 		return err
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	clusterNodes, err := nodePkg.GetClusterNodes(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -105,7 +106,7 @@ func resize(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(nodeConfig.CloudService) != nil) {
+		if !(authorizeAccess || nodePkg.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(nodeConfig.CloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
 		spinSession := ux.NewUserSpinner()

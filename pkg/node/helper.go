@@ -15,13 +15,17 @@ import (
 	"sync"
 )
 
-func checkCluster(app *application.Avalanche, clusterName string) error {
-	_, err := getClusterNodes(app, clusterName)
+func AuthorizedAccessFromSettings(app *application.Avalanche) bool {
+	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
+}
+
+func CheckCluster(app *application.Avalanche, clusterName string) error {
+	_, err := GetClusterNodes(app, clusterName)
 	return err
 }
 
-func getClusterNodes(app *application.Avalanche, clusterName string) ([]string, error) {
-	if exists, err := checkClusterExists(app, clusterName); err != nil || !exists {
+func GetClusterNodes(app *application.Avalanche, clusterName string) ([]string, error) {
+	if exists, err := CheckClusterExists(app, clusterName); err != nil || !exists {
 		return nil, fmt.Errorf("cluster %q not found", clusterName)
 	}
 	clustersConfig, err := app.LoadClustersConfig()
@@ -35,7 +39,7 @@ func getClusterNodes(app *application.Avalanche, clusterName string) ([]string, 
 	return clusterNodes, nil
 }
 
-func checkClusterExists(app *application.Avalanche, clusterName string) (bool, error) {
+func CheckClusterExists(app *application.Avalanche, clusterName string) (bool, error) {
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
 		var err error
@@ -48,7 +52,7 @@ func checkClusterExists(app *application.Avalanche, clusterName string) (bool, e
 	return ok, nil
 }
 
-func checkHostsAreRPCCompatible(app *application.Avalanche, hosts []*models.Host, subnetName string) error {
+func CheckHostsAreRPCCompatible(app *application.Avalanche, hosts []*models.Host, subnetName string) error {
 	incompatibleNodes, err := getRPCIncompatibleNodes(app, hosts, subnetName)
 	if err != nil {
 		return err
@@ -88,7 +92,7 @@ func getRPCIncompatibleNodes(app *application.Avalanche, hosts []*models.Host, s
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
 				return
 			} else {
-				if _, rpcVersion, err := parseAvalancheGoOutput(resp); err != nil {
+				if _, rpcVersion, err := ParseAvalancheGoOutput(resp); err != nil {
 					nodeResults.AddResult(host.GetCloudID(), nil, err)
 				} else {
 					nodeResults.AddResult(host.GetCloudID(), rpcVersion, err)
@@ -113,7 +117,7 @@ func getRPCIncompatibleNodes(app *application.Avalanche, hosts []*models.Host, s
 	return incompatibleNodes, nil
 }
 
-func parseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
+func ParseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
 	reply := map[string]interface{}{}
 	if err := json.Unmarshal(byteValue, &reply); err != nil {
 		return "", 0, err
@@ -131,7 +135,7 @@ func parseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
 	return nodeVersionReply.VMVersions["platform"], uint32(nodeVersionReply.RPCProtocolVersion), nil
 }
 
-func disconnectHosts(hosts []*models.Host) {
+func DisconnectHosts(hosts []*models.Host) {
 	for _, host := range hosts {
 		_ = host.Disconnect()
 	}
@@ -156,7 +160,7 @@ func getPublicEndpoints(app *application.Avalanche, clusterName string) ([]strin
 		if err != nil {
 			return nil, err
 		}
-		endpoints = append(endpoints, getAvalancheGoEndpoint(nodeConfig.ElasticIP))
+		endpoints = append(endpoints, GetAvalancheGoEndpoint(nodeConfig.ElasticIP))
 	}
 	return endpoints, nil
 }
@@ -165,11 +169,11 @@ func getRPCEndpoint(endpoint string, blockchainID string) string {
 	return models.NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
 }
 
-func getAvalancheGoEndpoint(ip string) string {
+func GetAvalancheGoEndpoint(ip string) string {
 	return fmt.Sprintf("http://%s:%d", ip, constants.AvalanchegoAPIPort)
 }
 
-func getUnhealthyNodes(hosts []*models.Host) ([]string, error) {
+func GetUnhealthyNodes(hosts []*models.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
