@@ -49,14 +49,15 @@ type CreateFlags struct {
 	proofOfStake                  bool
 	proofOfAuthority              bool
 	poaValidatorManagerOwner      string
-  
+	enableDebugging               bool
+}
+
 var (
 	createFlags CreateFlags
 	forceCreate bool
 	genesisPath string
 	vmFile      string
 	useRepo     bool
-	enableDebugging               bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -257,7 +258,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		if genesisFile == "" {
+		if genesisPath == "" {
 			// Default
 			defaultsKind, err = vm.PromptDefaults(app, defaultsKind)
 			if err != nil {
