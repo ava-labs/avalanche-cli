@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -155,7 +156,7 @@ func generateCustomGenesis(
 }
 
 func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[string]string) error {
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
@@ -178,7 +179,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	} else {
 		endpointIP = ansibleHosts[ansibleHostIDs[0]].IP
 	}
-	endpoint := getAvalancheGoEndpoint(endpointIP)
+	endpoint := node.GetAvalancheGoEndpoint(endpointIP)
 	network := models.NewDevnetNetwork(endpoint, 0)
 	network = models.NewNetworkFromCluster(network, clusterName)
 

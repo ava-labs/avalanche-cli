@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"sort"
 	"strings"
 
@@ -44,7 +45,7 @@ func list(_ *cobra.Command, _ []string) error {
 	sort.Strings(clusterNames)
 	for _, clusterName := range clusterNames {
 		clusterConf := clustersConfig.Clusters[clusterName]
-		if err := checkCluster(clusterName); err != nil {
+		if err := node.CheckCluster(app, clusterName); err != nil {
 			return err
 		}
 		nodeIDs := []string{}

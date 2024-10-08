@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"io"
 	"os"
 	"path/filepath"
@@ -42,7 +43,7 @@ affecting cloud nodes like node create or node destroy will be not applicable to
 
 func importFile(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if clusterExists, err := checkClusterExists(clusterName); clusterExists || err != nil {
+	if clusterExists, err := node.CheckClusterExists(app, clusterName); clusterExists || err != nil {
 		ux.Logger.RedXToUser("cluster %s already exists, please use a different name", clusterName)
 		return nil
 	}

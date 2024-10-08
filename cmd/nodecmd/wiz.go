@@ -632,8 +632,8 @@ func checkRPCCompatibility(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
-	return checkHostsAreRPCCompatible(hosts, subnetName)
+	defer node.DisconnectHosts(hosts)
+	return node.CheckHostsAreRPCCompatible(app, hosts, subnetName)
 }
 
 func waitForHealthyCluster(
@@ -656,12 +656,12 @@ func waitForHealthyCluster(
 		return err
 	}
 	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	startTime := time.Now()
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
 	for {
-		unhealthyNodes, err := getUnhealthyNodes(hosts)
+		unhealthyNodes, err := node.GetUnhealthyNodes(hosts)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return err
@@ -710,7 +710,7 @@ func waitForSubnetValidators(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	startTime := time.Now()
 	for {
@@ -777,7 +777,7 @@ func waitForClusterSubnetStatus(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	startTime := time.Now()
 	for {
 		wg := sync.WaitGroup{}
