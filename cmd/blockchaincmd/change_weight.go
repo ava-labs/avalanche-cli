@@ -5,6 +5,8 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -15,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 // avalanche blockchain addValidator
@@ -46,9 +47,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	//TODO: add check for non SOV subnet
-	// return err if non SOV
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -175,12 +173,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	// add back validator to subnet with updated weight
 	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeID.String())
-}
-
-// TODO: implement checkIfSubnetIsSOV
-// checkIfSubnetIsSOV returns true if Subnet is SOV from P Chain
-func checkIfSubnetIsSOV() (bool, error) {
-	return false, nil
 }
 
 // getValidatorBalanceFromPChain gets remaining balance of validator from p chain
