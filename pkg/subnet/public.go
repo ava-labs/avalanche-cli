@@ -114,30 +114,9 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
-//	type SetSubnetValidatorWeightTx struct {
-//		// Metadata, inputs and outputs
-//		BaseTx
-//		// AddressedCall with Payload:
-//		//   - ValidationID (SHA256 of the AddressedCall Payload of the RegisterSubnetValidatorTx adding the validator)
-//		//   - Nonce
-//		//   - Weight
-//		Message warp.Message `json:"message"`
-//	}
 func (d *PublicDeployer) SetSubnetValidatorWeight(
 	message warp.Message,
 ) (*txs.Tx, error) {
-	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewSetSubnetValidatorWeightTx(args...)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error building tx: %w", err)
-	//}
-	//tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet that contains EVM address controlling POA Validator Manager
-	// TODO: change code below
-	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-	//	return nil, fmt.Errorf("error signing tx: %w", err)
-	//}
-	//return &tx, nil
 	return nil, nil
 }
 
@@ -147,18 +126,6 @@ func (d *PublicDeployer) RegisterSubnetValidator(
 	changeOwner fx.Owner,
 	message warp.Message,
 ) (*txs.Tx, error) {
-	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(args...)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error building tx: %w", err)
-	//}
-	//tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet that contains EVM address controlling POA Validator Manager
-	// TODO: change code below
-	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-	//	return nil, fmt.Errorf("error signing tx: %w", err)
-	//}
-	//return &tx, nil
 	return nil, nil
 }
 
@@ -613,24 +580,6 @@ func (d *PublicDeployer) createConvertSubnetTx(
 	// validators []avalanchego.SubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	//fxIDs := make([]ids.ID, 0)
-	//options := d.getMultisigTxOptions(subnetAuthKeys)
-	//unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
-	//	subnetID,
-	//chainID,
-	//address,
-	//validators,
-	//	fxIDs,
-	//	options...,
-	//)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error building tx: %w", err)
-	//}
-	//tx := txs.Tx{Unsigned: unsignedTx}
-	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-	//	return nil, fmt.Errorf("error signing tx: %w", err)
-	//}
-	//return &tx, nil
 	return nil, nil
 }
 
