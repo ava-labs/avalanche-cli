@@ -114,30 +114,9 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
-//	type SetSubnetValidatorWeightTx struct {
-//		// Metadata, inputs and outputs
-//		BaseTx
-//		// AddressedCall with Payload:
-//		//   - ValidationID (SHA256 of the AddressedCall Payload of the RegisterSubnetValidatorTx adding the validator)
-//		//   - Nonce
-//		//   - Weight
-//		Message warp.Message `json:"message"`
-//	}
 func (d *PublicDeployer) SetL1ValidatorWeight(
 	message warp.Message,
 ) (*txs.Tx, error) {
-	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewSetL1ValidatorWeightTx(args...)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error building tx: %w", err)
-	//}
-	//tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet that contains EVM address controlling POA Validator Manager
-	// TODO: change code below
-	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-	//	return nil, fmt.Errorf("error signing tx: %w", err)
-	//}
-	//return &tx, nil
 	return nil, nil
 }
 
@@ -147,18 +126,6 @@ func (d *PublicDeployer) RegisterL1Validator(
 	changeOwner fx.Owner,
 	message warp.Message,
 ) (*txs.Tx, error) {
-	// create tx
-	//unsignedTx, err := wallet.P().Builder().NewRegisterL1ValidatorTx(args...)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error building tx: %w", err)
-	//}
-	//tx := txs.Tx{Unsigned: unsignedTx}
-	// sign with current wallet that contains EVM address controlling POA Validator Manager
-	// TODO: change code below
-	//if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-	//	return nil, fmt.Errorf("error signing tx: %w", err)
-	//}
-	//return &tx, nil
 	return nil, nil
 }
 
