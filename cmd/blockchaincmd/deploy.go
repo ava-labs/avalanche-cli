@@ -392,12 +392,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sidecar.Sovereign {
-		if bootstrapValidatorsJSONFilePath == "" {
-			bootstrapValidators, err = promptBootstrapValidators(network)
-			if err != nil {
-				return err
-			}
+	if sidecar.Sovereign && bootstrapValidatorsJSONFilePath == "" {
+		bootstrapValidators, err = promptBootstrapValidators(network)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -633,9 +631,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			avaGoBootstrapValidators,
 		)
 		if err != nil {
-			ux.Logger.PrintToUser(logging.Red.Wrap(
-				fmt.Sprintf("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err),
-			))
+			ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
 			return err
 		}
 
