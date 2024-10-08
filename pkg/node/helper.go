@@ -5,6 +5,8 @@ package node
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -12,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/api/info"
-	"sync"
 )
 
 func checkCluster(app *application.Avalanche, clusterName string) error {
