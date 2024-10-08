@@ -618,7 +618,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
+		avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 		if err != nil {
 			return err
 		}
