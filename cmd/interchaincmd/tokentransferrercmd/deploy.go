@@ -84,7 +84,7 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
-	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
+	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche Interchain Token Transfer (ICTT) to be used (defaults to main branch)")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", false, "remove the native minter precompile admin found on remote blockchain genesis")
 	deployFlags.homeFlags.privateKeyFlags.SetFlagNames("home-private-key", "home-key", "home-genesis-key")
@@ -283,7 +283,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					}
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("An Avalanche InterChain Token Transferrer consists of one Home and at least one but possibly many Remotes.")
+				ux.Logger.PrintToUser("An Avalanche Interchain Token Transferrer consists of one Home and at least one but possibly many Remotes.")
 				ux.Logger.PrintToUser("The Home manages the asset to be shared to Remote instances. It lives on the Subnet")
 				ux.Logger.PrintToUser("where the asset exists")
 				ux.Logger.PrintToUser("The Remotes live on the other Subnets that want to import the asset managed by the Home.")
@@ -471,7 +471,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Setup Contracts
-	ux.Logger.PrintToUser("Downloading Avalanche InterChain Token Transfer Contracts")
+	ux.Logger.PrintToUser("Downloading Avalanche ICTT Contracts")
 	version := constants.ICTTVersion
 	if flags.version != "" {
 		version = flags.version
@@ -479,7 +479,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err := ictt.DownloadRepo(app, version); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Compiling Avalanche InterChain Token Transfer")
+	ux.Logger.PrintToUser("Compiling Avalanche ICTT Contracts")
 	if err := ictt.BuildContracts(app); err != nil {
 		return err
 	}

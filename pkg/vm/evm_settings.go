@@ -4,10 +4,14 @@
 package vm
 
 import (
+	_ "embed"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 )
+
+//go:embed evm_debug_config.json
+var EvmDebugConfig []byte
 
 var (
 	// current avacloud settings
