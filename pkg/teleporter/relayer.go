@@ -30,9 +30,11 @@ import (
 )
 
 const (
-	localRelayerSetupTime     = 2 * time.Second
-	localRelayerCheckPoolTime = 100 * time.Millisecond
-	localRelayerCheckTimeout  = 3 * time.Second
+	localRelayerSetupTime         = 2 * time.Second
+	localRelayerCheckPoolTime     = 100 * time.Millisecond
+	localRelayerCheckTimeout      = 3 * time.Second
+	defaultDBWriteIntervalSeconds = 10
+	defaultSignatureCacheSize     = 1024 * 1024
 )
 
 var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
@@ -362,6 +364,8 @@ func CreateBaseRelayerConfig(
 		SourceBlockchains:      []*config.SourceBlockchain{},
 		DestinationBlockchains: []*config.DestinationBlockchain{},
 		MetricsPort:            metricsPort,
+		DBWriteIntervalSeconds: defaultDBWriteIntervalSeconds,
+		SignatureCacheSize:     defaultSignatureCacheSize,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }

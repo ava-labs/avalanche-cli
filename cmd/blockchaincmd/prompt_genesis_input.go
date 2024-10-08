@@ -122,6 +122,7 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
 		"How many bootstrap validators do you want to set up?",
+		prompts.ValidatePositiveInt,
 	)
 	if err != nil {
 		return nil, err

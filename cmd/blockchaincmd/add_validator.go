@@ -253,7 +253,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	tx, err := deployer.RegisterSubnetValidator(balance, blsInfo, changeOwner, message)
+	tx, err := deployer.RegisterL1Validator(balance, blsInfo, changeOwner, message)
 	if err != nil {
 		return err
 	}
@@ -261,7 +261,7 @@ func CallAddValidator(
 	return nil
 }
 
-func generateWarpMessageAddValidator(subnetID ids.ID, NodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
+func generateWarpMessageAddValidator(subnetID ids.ID, nodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
 	return warpPlatformVM.Message{}, nil
 }
 

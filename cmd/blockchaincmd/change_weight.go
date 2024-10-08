@@ -27,7 +27,7 @@ func newChangeWeightCmd() *cobra.Command {
 		Long: `The blockchain changeWeight command changes the weight of a Subnet Validator.
 
 The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
-		RunE: updateWeight,
+		RunE: setWeight,
 		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
@@ -41,7 +41,7 @@ The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 	return cmd
 }
 
-func updateWeight(_ *cobra.Command, args []string) error {
+func setWeight(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
 	err := prompts.ValidateNodeID(nodeIDStr)
 	if err != nil {

@@ -47,6 +47,7 @@ func TestExportImportSubnet(t *testing.T) {
 		vmVersion,
 		"Test",
 		false,
+		true,
 	)
 	require.NoError(err)
 	err = app.WriteGenesisFile(testSubnet, genBytes)

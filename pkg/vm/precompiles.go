@@ -99,7 +99,8 @@ func configureRewardManager(
 
 func configureWarp(timestamp *uint64) warp.Config {
 	return warp.Config{
-		QuorumNumerator: warp.WarpDefaultQuorumNumerator,
+		QuorumNumerator:              warp.WarpDefaultQuorumNumerator,
+		RequirePrimaryNetworkSigners: true,
 		Upgrade: precompileconfig.Upgrade{
 			BlockTimestamp: timestamp,
 		},

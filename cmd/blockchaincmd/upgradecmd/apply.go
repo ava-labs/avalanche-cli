@@ -305,7 +305,7 @@ func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sid
 
 	ux.Logger.PrintToUser("Trying to install the upgrade files at the provided %s path", avalanchegoChainConfigDir)
 	chainDir := filepath.Join(avalanchegoChainConfigDir, sc.Networks[networkKey].BlockchainID.String())
-	destPath := filepath.Join(chainDir, constants.UpgradeBytesFileName)
+	destPath := filepath.Join(chainDir, constants.UpgradeFileName)
 	if err = os.Mkdir(chainDir, constants.DefaultPerms755); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("failed to create blockchain directory: %w", err)
 	}
