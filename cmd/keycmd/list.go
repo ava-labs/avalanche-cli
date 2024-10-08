@@ -566,7 +566,7 @@ func getEvmBasedChainAddrInfo(
 				continue
 			}
 
-			log.Info("Getting balance for token", "token", tokenSymbol, "address", tokenAddress, "url", cGethClient.URL)
+			log.Info("Getting balance for token", "token", tokenSymbol, "address", tokenAddress)
 			balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
 			if err != nil {
 				return addressInfos, err
