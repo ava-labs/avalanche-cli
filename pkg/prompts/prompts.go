@@ -773,7 +773,7 @@ func (prompter *realPrompter) ChooseKeyOrLedger(goal string) (bool, error) {
 		ledgerOption = "Use ledger"
 	)
 	option, err := prompter.CaptureList(
-		fmt.Sprintf("Which key source should be used %s?", goal),
+		fmt.Sprintf("Which key should be used %s?", goal),
 		[]string{keyOption, ledgerOption},
 	)
 	if err != nil {
