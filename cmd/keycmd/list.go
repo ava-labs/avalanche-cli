@@ -579,7 +579,12 @@ func getEvmBasedChainAddrInfo(
 			}
 
 			// Format the balance to a human-readable string.
-			formattedBalance := utils.FormatAmount(balance, decimals)
+			var formattedBalance string
+			if useGwei {
+				formattedBalance = fmt.Sprintf("%d", balance)
+			} else {
+				formattedBalance = utils.FormatAmount(balance, decimals)
+			}
 
 			info := addressInfo{
 				kind:    kind,
