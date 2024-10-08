@@ -492,7 +492,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err := ictt.BuildContracts(app); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("")
 
 	// Home Deploy
 	icttSrcDir, err := ictt.RepoDir(app)
@@ -676,8 +675,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
+	ux.Logger.PrintToUser("Remote Deployed to %s", remoteRPCEndpoint)
+	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
-	if err := ictt.RegisterERC20Remote(
+	if err := ictt.RegisterRemote(
 		remoteRPCEndpoint,
 		remoteKey,
 		remoteAddress,
@@ -688,6 +689,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	checkInterval := 100 * time.Millisecond
 	checkTimeout := 10 * time.Second
 	t0 := time.Now()
+	var collateralNeeded *big.Int
 	for {
 		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
 			homeRPCEndpoint,
@@ -699,6 +701,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if registeredRemote.Registered {
+			collateralNeeded = registeredRemote.CollateralNeeded
 			break
 		}
 		elapsed := time.Since(t0)
@@ -708,19 +711,21 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		time.Sleep(checkInterval)
 	}
 
-	if flags.remoteFlags.native {
+	// Collateralize the remote contract on the home contract if necessary
+	if collateralNeeded.Cmp(big.NewInt(0)) != 0 {
 		err = ictt.TokenHomeAddCollateral(
 			homeRPCEndpoint,
 			homeAddress,
 			homeKey,
 			remoteBlockchainID,
 			remoteAddress,
-			remoteSupply,
+			collateralNeeded,
 		)
 		if err != nil {
 			return err
 		}
 
+		// Check that the remote is collateralized on the home contract now.
 		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
 			homeRPCEndpoint,
 			homeAddress,
@@ -733,7 +738,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if registeredRemote.CollateralNeeded.Cmp(big.NewInt(0)) != 0 {
 			return fmt.Errorf("failure setting collateral in home endpoint: remaining collateral=%d", registeredRemote.CollateralNeeded)
 		}
+	}
 
+	if flags.remoteFlags.native {
+		ux.Logger.PrintToUser("Enabling native token remote contract to mint native tokens")
 		if err := precompiles.SetEnabled(
 			remoteRPCEndpoint,
 			precompiles.NativeMinterPrecompile,
@@ -743,6 +751,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 
+		// Send a single token unit to report that the remote is collateralized.
 		err = ictt.Send(
 			homeRPCEndpoint,
 			homeAddress,
@@ -793,9 +802,6 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			ux.Logger.PrintToUser("Original minter %s %s is left in place", minterRole, remoteMinterManagerAddress)
 		}
 	}
-
-	ux.Logger.PrintToUser("Remote Deployed to %s", remoteRPCEndpoint)
-	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
 	return nil
 }
