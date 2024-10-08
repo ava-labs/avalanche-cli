@@ -231,28 +231,6 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Change Address: %s", changeAddr)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	//type RegisterSubnetValidatorTx struct {
-	//	// Metadata, inputs and outputs
-	//	BaseTx
-	//	// Balance <= sum($AVAX inputs) - sum($AVAX outputs) - TxFee.
-	//	Balance uint64 `json:"balance"`
-	//	// [Signer] is the BLS key for this validator.
-	//	// Note: We do not enforce that the BLS key is unique across all validators.
-	//	//       This means that validators can share a key if they so choose.
-	//	//       However, a NodeID does uniquely map to a BLS key
-	//	Signer signer.Signer `json:"signer"`
-	//	// Leftover $AVAX from the Subnet Validator's Balance will be issued to
-	//	// this owner after it is removed from the validator set.
-	//	ChangeOwner fx.Owner `json:"changeOwner"`
-	//	// AddressedCall with Payload:
-	//	//   - SubnetID
-	//	//   - NodeID (must be Ed25519 NodeID)
-	//	//   - Weight
-	//	//   - BLS public key
-	//	//   - Expiry
-	//	Message warp.Message `json:"message"`
-	//}
-
 	blsInfo, err := getBLSInfo(publicKey, pop)
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
@@ -283,7 +261,7 @@ func CallAddValidator(
 	return nil
 }
 
-func generateWarpMessageAddValidator(SubnetID ids.ID, NodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
+func generateWarpMessageAddValidator(subnetID ids.ID, NodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
 	return warpPlatformVM.Message{}, nil
 }
 
