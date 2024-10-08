@@ -26,7 +26,7 @@ func CreateCustomSidecar(
 	customVMBuildScript string,
 	vmPath string,
 	tokenSymbol string,
-	nonSov bool,
+	sovereign bool,
 ) (*models.Sidecar, error) {
 	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
 
@@ -83,7 +83,7 @@ func CreateCustomSidecar(
 	}
 
 	sc.RPCVersion = rpcVersion
-	sc.Sovereign = nonSov
+	sc.Sovereign = sovereign
 	return sc, nil
 }
 
