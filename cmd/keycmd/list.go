@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/coreth/ethclient"
 	"github.com/ethereum/go-ethereum/common"
 	goethereumethclient "github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/liyue201/erc20-go/erc20"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -558,28 +559,32 @@ func getEvmBasedChainAddrInfo(
 			if err != nil {
 				return addressInfos, err
 			}
+
+			// Ignore contract address access errors as those may depend on network
 			tokenSymbol, err := token.Symbol(nil)
-			if err == nil {
-				// just ignore contract address access errors as those may depend on network
-				balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
-				if err != nil {
-					return addressInfos, err
-				}
-				formattedBalance, err := formatCChainBalance(balance)
-				if err != nil {
-					return addressInfos, err
-				}
-				info := addressInfo{
-					kind:    kind,
-					name:    name,
-					chain:   chainName,
-					token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
-					address: cChainAddr,
-					balance: formattedBalance,
-					network: network.Name(),
-				}
-				addressInfos = append(addressInfos, info)
+			if err != nil {
+				continue
 			}
+
+			log.Info("Getting balance for token", "token", tokenSymbol, "address", tokenAddress, "url", cGethClient.URL)
+			balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
+			if err != nil {
+				return addressInfos, err
+			}
+			formattedBalance, err := formatCChainBalance(balance)
+			if err != nil {
+				return addressInfos, err
+			}
+			info := addressInfo{
+				kind:    kind,
+				name:    name,
+				chain:   chainName,
+				token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
+				address: cChainAddr,
+				balance: formattedBalance,
+				network: network.Name(),
+			}
+			addressInfos = append(addressInfos, info)
 		}
 	}
 	return addressInfos, nil
