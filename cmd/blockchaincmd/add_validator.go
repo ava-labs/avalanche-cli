@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	warpPlatformVM "github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -32,6 +36,7 @@ var (
 	}
 
 	nodeIDStr              string
+	balance                uint64
 	weight                 uint64
 	startTimeStr           string
 	duration               time.Duration
@@ -40,6 +45,9 @@ var (
 	useDefaultDuration     bool
 	useDefaultWeight       bool
 	waitForTxAcceptance    bool
+	publicKey              string
+	pop                    string
+	changeAddr             string
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -69,28 +77,26 @@ Testnet or Mainnet.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
-	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
-	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
-
-	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
-	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-
-	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "set duration so as to validate until primary validator ends its period")
-	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
-
-	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
-
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate add validator tx")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the add validator tx")
+	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the staking weight of the validator to add")
+	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee to P-Chain")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "just issue the add validator tx, without waiting for its acceptance")
+	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if adding validator to a non-sovereign blockchain")
+	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator to add")
+	cmd.Flags().StringVar(&publicKey, "bls-public-key", "", "set the BLS public key of the validator to add")
+	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
+	cmd.Flags().StringVar(&changeAddr, "change-address", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	return cmd
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
+	err := prompts.ValidateNodeID(nodeIDStr)
+	if err != nil {
+		return err
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -118,14 +124,148 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	network.HandlePublicNetworkSimulation()
-	if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
-		return err
+	if !sovereign {
+		if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
+			return err
+		}
 	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
+	if !sovereign {
+		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
+	}
+	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeIDStr)
+}
+
+func promptValidatorBalance() (uint64, error) {
+	ux.Logger.PrintToUser("Balance is used to pay for continuous fee to the P-Chain")
+	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
+	return app.Prompt.CaptureValidatorBalance(txt)
 }
 
 func CallAddValidator(
+	deployer *subnet.PublicDeployer,
+	network models.Network,
+	kc *keychain.Keychain,
+	useLedgerSetting bool,
+	blockchainName string,
+	nodeIDStrFormat string,
+) error {
+	useLedger = useLedgerSetting
+
+	_, err := ValidateSubnetNameAndGetChains([]string{blockchainName})
+	if err != nil {
+		return err
+	}
+
+	switch network.Kind {
+	case models.Devnet:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
+			if err != nil {
+				return err
+			}
+		}
+	case models.Fuji:
+		if !useLedger && keyName == "" {
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)
+			if err != nil {
+				return err
+			}
+		}
+	case models.Mainnet:
+		useLedger = true
+		if keyName != "" {
+			return ErrStoredKeyOnMainnet
+		}
+	default:
+		return errors.New("unsupported network")
+	}
+
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+
+	subnetID := sc.Networks[network.Name()].SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
+	}
+
+	// TODO: implement getting validator manager controller address
+	//kcKeys, err := kc.PChainFormattedStrAddresses()
+	//if err != nil {
+	//	return err
+	//}
+
+	if nodeIDStr == "" {
+		nodeID, err := PromptNodeID("add as a blockchain validator")
+		if err != nil {
+			return err
+		}
+		nodeIDStr = nodeID.String()
+	}
+
+	publicKey, pop, err = promptProofOfPossession(publicKey == "", pop == "")
+	if err != nil {
+		return err
+	}
+
+	if balance == 0 {
+		balance, err = promptValidatorBalance()
+		if err != nil {
+			return err
+		}
+	}
+
+	if changeAddr == "" {
+		changeAddr, err = getKeyForChangeOwner("", network)
+		if err != nil {
+			return err
+		}
+	}
+
+	ux.Logger.PrintToUser("NodeID: %s", nodeIDStrFormat)
+	ux.Logger.PrintToUser("Network: %s", network.Name())
+	ux.Logger.PrintToUser("Weight: %d", weight)
+	ux.Logger.PrintToUser("Balance: %d", balance)
+	ux.Logger.PrintToUser("Change Address: %s", changeAddr)
+	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
+
+	blsInfo, err := getBLSInfo(publicKey, pop)
+	if err != nil {
+		return fmt.Errorf("failure parsing BLS info: %w", err)
+	}
+	addrs, err := address.ParseToIDs([]string{changeAddr})
+	if err != nil {
+		return fmt.Errorf("failure parsing change owner address: %w", err)
+	}
+	changeOwner := &secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     addrs,
+	}
+	nodeID, err := ids.NodeIDFromString(nodeIDStrFormat)
+	if err != nil {
+		return err
+	}
+	// TODO: generate warp message
+	// expiry is set to 48 hours from time of transaction
+	message, err := generateWarpMessageAddValidator(subnetID, nodeID, weight, publicKey, uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix()))
+	if err != nil {
+		return err
+	}
+	tx, err := deployer.RegisterL1Validator(balance, blsInfo, changeOwner, message)
+	if err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Register Subnet Validator Tx ID: %s", tx.ID())
+	return nil
+}
+
+func generateWarpMessageAddValidator(subnetID ids.ID, nodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
+	return warpPlatformVM.Message{}, nil
+}
+
+func CallAddValidatorNonSOV(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
 	kc *keychain.Keychain,
@@ -135,12 +275,11 @@ func CallAddValidator(
 	defaultValidatorParamsSetting bool,
 	waitForTxAcceptanceSetting bool,
 ) error {
-	var (
-		nodeID ids.NodeID
-		start  time.Time
-		err    error
-	)
-
+	var start time.Time
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
+	if err != nil {
+		return err
+	}
 	useLedger = useLedgerSetting
 	defaultValidatorParams = defaultValidatorParamsSetting
 	waitForTxAcceptance = waitForTxAcceptanceSetting
@@ -208,18 +347,6 @@ func CallAddValidator(
 	}
 	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
 
-	if nodeIDStr == "" {
-		nodeID, err = PromptNodeID("add as validator")
-		if err != nil {
-			return err
-		}
-	} else {
-		nodeID, err = ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			return err
-		}
-	}
-
 	selectedWeight, err := getWeight()
 	if err != nil {
 		return err
@@ -240,7 +367,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Weight: %d", selectedWeight)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidator(
+	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidatorNonSOV(
 		waitForTxAcceptance,
 		controlKeys,
 		subnetAuthKeys,

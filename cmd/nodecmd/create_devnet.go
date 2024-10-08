@@ -3,6 +3,7 @@
 package nodecmd
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -40,6 +41,9 @@ const (
 	defaultLocalCChainFundedBalance = "0x295BE96E64066972000000"
 	allocationCommonEthAddress      = "0xb3d82b1367d362de99ab59a658165aff520cbd4d"
 )
+
+//go:embed upgrade.json
+var upgradeBytes []byte
 
 func generateCustomCchainGenesis() ([]byte, error) {
 	cChainGenesisMap := map[string]interface{}{}
@@ -222,15 +226,20 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		confMap[config.NetworkNameKey] = fmt.Sprintf("network-%d", network.ID)
 		confMap[config.BootstrapIDsKey] = strings.Join(bootstrapIDs, ",")
 		confMap[config.BootstrapIPsKey] = strings.Join(bootstrapIPs, ",")
-		confMap[config.GenesisFileKey] = filepath.Join(constants.DockerNodeConfigPath, "genesis.json")
+		confMap[config.GenesisFileKey] = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
+		confMap[config.UpgradeFileKey] = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
+		confMap[config.ProposerVMUseCurrentHeightKey] = constants.DevnetFlagsProposerVMUseCurrentHeight
 		confBytes, err := json.MarshalIndent(confMap, "", " ")
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), "genesis.json"), genesisBytes, constants.WriteReadReadPerms); err != nil {
+		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), constants.GenesisFileName), genesisBytes, constants.WriteReadReadPerms); err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), "node.json"), confBytes, constants.WriteReadReadPerms); err != nil {
+		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), constants.UpgradeFileName), upgradeBytes, constants.WriteReadReadPerms); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(app.GetNodeInstanceDirPath(host.GetCloudID()), constants.NodeFileName), confBytes, constants.WriteReadReadPerms); err != nil {
 			return err
 		}
 		if slices.Contains(hostsWithoutAPIIDs, host.NodeID) {

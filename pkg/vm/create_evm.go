@@ -38,6 +38,7 @@ func CreateEvmSidecar(
 	subnetEVMVersion string,
 	tokenSymbol string,
 	getRPCVersionFromBinary bool,
+	sovereign bool,
 ) (*models.Sidecar, error) {
 	var (
 		err        error
@@ -71,7 +72,7 @@ func CreateEvmSidecar(
 	sc.Subnet = subnetName
 	sc.TokenSymbol = tokenSymbol
 	sc.TokenName = tokenSymbol + " Token"
-
+	sc.Sovereign = sovereign
 	return sc, nil
 }
 
