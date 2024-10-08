@@ -600,28 +600,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// type ConvertSubnetTx struct {
-	//		// Metadata, inputs and outputs
-	//		BaseTx
-	//		// ID of the Subnet to transform
-	//		// Restrictions:
-	//		// - Must not be the Primary Network ID
-	//		Subnet ids.ID `json:"subnetID"`
-	//		// BlockchainID where the Subnet manager lives
-	//		ChainID ids.ID `json:"chainID"`
-	//		// Address of the Subnet manager
-	//		Address []byte `json:"address"`
-	//		// Initial pay-as-you-go validators for the Subnet
-	//		Validators []SubnetValidator `json:"validators"`
-	//		// Authorizes this conversion
-	//		SubnetAuth verify.Verifiable `json:"subnetAuthorization"`
-	//	}
-
-	//avaGoBootstrapValidators, err := convertToAvalancheGoSubnetValidator(bootstrapValidators)
-	//if err != nil {
-	//	return err
-	//}
-	// TODO: replace with avalanchego subnetValidators once implemented
 	isFullySigned, convertSubnetTxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertSubnet(
 		controlKeys,
 		subnetAuthKeys,
