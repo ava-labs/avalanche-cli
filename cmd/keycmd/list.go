@@ -22,7 +22,6 @@ import (
 	"github.com/ava-labs/coreth/ethclient"
 	"github.com/ethereum/go-ethereum/common"
 	goethereumethclient "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/liyue201/erc20-go/erc20"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
@@ -566,15 +565,22 @@ func getEvmBasedChainAddrInfo(
 				continue
 			}
 
-			log.Info("Getting balance for token", "token", tokenSymbol, "address", tokenAddress)
+			// Get the raw balance for the given token.
 			balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
 			if err != nil {
 				return addressInfos, err
 			}
-			formattedBalance, err := formatCChainBalance(balance)
+
+			// Get the decimal count for the token to format the balance.
+			// Note: decimals() is not officially part of the IERC20 interface, but is a common extension.
+			decimals, err := token.Decimals(nil)
 			if err != nil {
 				return addressInfos, err
 			}
+
+			// Format the balance to a human-readable string.
+			formattedBalance := utils.FormatAmount(balance, decimals)
+
 			info := addressInfo{
 				kind:    kind,
 				name:    name,
