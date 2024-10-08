@@ -135,7 +135,7 @@ var _ = ginkgo.Describe("[Upgrade public network SOV]", ginkgo.Ordered, func() {
 
 		// we expect the file to be present at the expected location and being
 		// the same content as the original one
-		expectedPath := filepath.Join(avalanchegoConfigDir, blockchainID.String(), constants.UpgradeBytesFileName)
+		expectedPath := filepath.Join(avalanchegoConfigDir, blockchainID.String(), constants.UpgradeFileName)
 		gomega.Expect(expectedPath).Should(gomega.BeARegularFile())
 		ori, err := os.ReadFile(upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())

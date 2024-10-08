@@ -162,6 +162,19 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			t.AppendRow(table.Row{net, "BlockchainID (CB58)", data.BlockchainID.String()})
 			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
 		}
+		endpoint, _, err := contract.GetBlockchainEndpoints(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainName: sc.Name,
+			},
+			false,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+		t.AppendRow(table.Row{net, "RPC Endpoint", endpoint})
 	}
 	ux.Logger.PrintToUser(t.Render())
 

@@ -363,3 +363,10 @@ func ValidateHexa(input string) error {
 	}
 	return err
 }
+
+func ValidatePositiveInt(val int) error {
+	if val <= 0 {
+		return fmt.Errorf("value must be greater than cero")
+	}
+	return nil
+}
