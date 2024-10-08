@@ -569,23 +569,37 @@ func issueTxsToActivateProposerVMFork(
 		if err := client.SendTransaction(ctx, triggerTx); err != nil {
 			return err
 		}
-		produced := false
-		secondsToWait := 5
-		for seconds := 0; seconds < secondsToWait; seconds++ {
-			blockNumber, err := client.BlockNumber(ctx)
-			if err != nil {
-				return err
-			}
-			if blockNumber > prevBlockNumber {
-				produced = true
-				break
-			}
-			time.Sleep(1 * time.Second)
-		}
-		if !produced {
-			return fmt.Errorf("new block not produced in %d seconds", secondsToWait)
+		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
+			return err
 		}
 		nonce++
 	}
 	return nil
+}
+
+func WaitForNewBlock(
+	client ethclient.Client,
+	ctx context.Context,
+	prevBlockNumber uint64,
+	totalDuration time.Duration,
+	stepDuration time.Duration,
+) error {
+	if stepDuration == 0 {
+		stepDuration = 1 * time.Second
+	}
+	if totalDuration == 0 {
+		totalDuration = 5 * time.Second
+	}
+	steps := totalDuration / stepDuration
+	for seconds := 0; seconds < int(steps); seconds++ {
+		blockNumber, err := client.BlockNumber(ctx)
+		if err != nil {
+			return err
+		}
+		if blockNumber > prevBlockNumber {
+			return nil
+		}
+		time.Sleep(stepDuration)
+	}
+	return fmt.Errorf("new block not produced in %f seconds", totalDuration.Seconds())
 }

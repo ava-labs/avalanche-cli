@@ -244,7 +244,6 @@ func getPublicEndpoints(
 	clusterName string,
 	trackers []*models.Host,
 ) ([]string, error) {
-	endpoints := []string{}
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
@@ -253,16 +252,11 @@ func getPublicEndpoints(
 	if clusterConfig.Network.Kind == models.Devnet {
 		publicNodes = clusterConfig.Nodes
 	}
-	for _, cloudID := range publicNodes {
-		for _, host := range trackers {
-			if host.GetCloudID() == cloudID {
-				nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-				if err != nil {
-					return nil, err
-				}
-				endpoints = append(endpoints, getAvalancheGoEndpoint(nodeConfig.ElasticIP))
-			}
-		}
-	}
+	publicTrackers := utils.Filter(trackers, func(tracker *models.Host) bool {
+		return utils.Belongs(publicNodes, tracker.GetCloudID())
+	})
+	endpoints := utils.Map(publicTrackers, func(tracker *models.Host) string {
+		return getAvalancheGoEndpoint(tracker.IP)
+	})
 	return endpoints, nil
 }

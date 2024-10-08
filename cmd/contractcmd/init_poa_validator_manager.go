@@ -37,9 +37,9 @@ var (
 // avalanche contract initpoamanager
 func newInitPOAManagerCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "initpoamanager",
-		Short: "Inits a POA Validator Manager on a given Network and Blockchain",
-		Long:  "Inits a POA Validator Manager on a given Network and Blockchain",
+		Use:   "initPoaManager",
+		Short: "Initializes a Proof of Authority Validator Manager on a given Network and Blockchain",
+		Long:  "Initializes Proof of Authority Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/teleporter/tree/staking-contract/contracts/validator-manager",
 		RunE:  initPOAManager,
 		Args:  cobrautils.ExactArgs(1),
 	}
@@ -77,8 +77,8 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), initPOAManagerFlags.rpcEndpoint)
 	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), initPOAManagerFlags.rpcEndpoint)
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
@@ -94,7 +94,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"init poa validator manager",
+			"Which key to you want to use to pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -127,5 +127,6 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	); err != nil {
 		return err
 	}
+	ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	return nil
 }

@@ -228,7 +228,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		confMap[config.BootstrapIPsKey] = strings.Join(bootstrapIPs, ",")
 		confMap[config.GenesisFileKey] = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 		confMap[config.UpgradeFileKey] = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
-		confMap[config.ProposerVMUseCurrentHeightKey] = true
+		confMap[config.ProposerVMUseCurrentHeightKey] = constants.DevnetFlagsProposerVMUseCurrentHeight
 		confBytes, err := json.MarshalIndent(confMap, "", " ")
 		if err != nil {
 			return err

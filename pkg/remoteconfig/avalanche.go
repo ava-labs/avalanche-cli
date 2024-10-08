@@ -44,7 +44,7 @@ func PrepareAvalancheConfig(publicIP string, networkID string, subnets []string)
 		TrackSubnets:               strings.Join(subnets, ","),
 		Aliases:                    nil,
 		BlockChainID:               "",
-		ProposerVMUseCurrentHeight: true,
+		ProposerVMUseCurrentHeight: constants.DevnetFlagsProposerVMUseCurrentHeight,
 	}
 }
 
