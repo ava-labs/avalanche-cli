@@ -258,7 +258,7 @@ func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateNodeID,
+		Validate: ValidateNodeID,
 	}
 
 	nodeIDStr, err := prompt.Run()

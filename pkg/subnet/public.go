@@ -577,22 +577,7 @@ func (d *PublicDeployer) createConvertL1Tx(
 	validators []*txs.ConvertSubnetValidator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	options := d.getMultisigTxOptions(subnetAuthKeys)
-	unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
-		subnetID,
-		chainID,
-		address,
-		validators,
-		options...,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error building tx: %w", err)
-	}
-	tx := txs.Tx{Unsigned: unsignedTx}
-	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-		return nil, fmt.Errorf("error signing tx: %w", err)
-	}
-	return &tx, nil
+	return nil, nil
 }
 
 func (d *PublicDeployer) createTransferSubnetOwnershipTx(

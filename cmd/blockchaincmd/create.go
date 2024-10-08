@@ -110,7 +110,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	cmd.Flags().StringVar(&createFlags.poaValidatorManagerOwner, "poa-manager-owner", "", "EVM address that controls Validator Manager Owner (for Proof of Authority only)")
-	cmd.Flags().BoolVar(&nonSOV, "not-sov", false, "set to true if creating non-SOV (Subnet Only Validator) blockchain")
+	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
 	return cmd
 }
 
@@ -195,7 +195,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
-	if nonSOV {
+	if !sovereign {
 		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.poaValidatorManagerOwner != "" {
 			return errSOVFlagsOnly
 		}
@@ -232,7 +232,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	sc := &models.Sidecar{}
 
-	if !nonSOV {
+	if sovereign {
 		if err = promptValidatorManagementType(app, sc); err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if vmType == models.SubnetEvm {
-		if !nonSOV {
+		if sovereign {
 			if sc.PoA() {
 				if createFlags.poaValidatorManagerOwner == "" {
 					createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
@@ -335,7 +335,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			vmVersion,
 			tokenSymbol,
 			true,
-			nonSOV,
+			sovereign,
 		); err != nil {
 			return err
 		}
@@ -365,7 +365,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			customVMBuildScript,
 			vmFile,
 			tokenSymbol,
-			nonSOV,
+			sovereign,
 		); err != nil {
 			return err
 		}
