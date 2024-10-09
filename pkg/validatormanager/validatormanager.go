@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -276,4 +277,133 @@ func SetupPoA(
 		return TransactionError(tx, err, "failure initializing validators set on poa manager")
 	}
 	return nil
+}
+
+// step 1 of flow for adding a new validator
+func PoAValidatorManagerInitializeValidatorRegistration(
+	rpcURL string,
+	managerAddress common.Address,
+	managerOwnerPrivateKey string,
+	nodeID ids.NodeID,
+	blsPublicKey []byte,
+	expiry uint64,
+	balanceOwners warpMessage.PChainOwner,
+	disableOwners warpMessage.PChainOwner,
+	weight uint64,
+) (*types.Transaction, *types.Receipt, error) {
+	type PChainOwner struct {
+		Threshold uint32
+		Addresses []common.Address
+	}
+	type ValidatorRegistrationInput struct {
+		NodeID                []byte
+		BlsPublicKey          []byte
+		RegistrationExpiry    uint64
+		RemainingBalanceOwner PChainOwner
+		DisableOwner          PChainOwner
+	}
+	balanceOwnersAux := PChainOwner{
+		Threshold: balanceOwners.Threshold,
+		Addresses: utils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
+			return common.BytesToAddress(addr[:])
+		}),
+	}
+	disableOwnersAux := PChainOwner{
+		Threshold: disableOwners.Threshold,
+		Addresses: utils.Map(disableOwners.Addresses, func(addr ids.ShortID) common.Address {
+			return common.BytesToAddress(addr[:])
+		}),
+	}
+	validatorRegistrationInput := ValidatorRegistrationInput{
+		NodeID:                nodeID[:],
+		BlsPublicKey:          blsPublicKey,
+		RegistrationExpiry:    expiry,
+		RemainingBalanceOwner: balanceOwnersAux,
+		DisableOwner:          disableOwnersAux,
+	}
+	return contract.TxToMethod(
+		rpcURL,
+		managerOwnerPrivateKey,
+		managerAddress,
+		big.NewInt(0),
+		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
+		validatorRegistrationInput,
+		weight,
+	)
+}
+
+func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
+	network models.Network,
+	aggregatorLogger logging.Logger,
+	aggregatorLogLevel logging.Level,
+	aggregatorQuorumPercentage uint64,
+	subnetID ids.ID,
+	managerAddress common.Address,
+	nodeID ids.NodeID,
+	blsPublicKey [48]byte,
+	expiry uint64,
+	balanceOwners warpMessage.PChainOwner,
+	disableOwners warpMessage.PChainOwner,
+	weight uint64,
+) (*warp.Message, error) {
+	addressedCallPayload, err := warpMessage.NewRegisterSubnetValidator(
+		subnetID,
+		nodeID,
+		blsPublicKey,
+		expiry,
+		balanceOwners,
+		disableOwners,
+		weight,
+	)
+	if err != nil {
+		return nil, err
+	}
+	registerSubnetValidatorAddressedCall, err := warpPayload.NewAddressedCall(
+		managerAddress.Bytes(),
+		addressedCallPayload.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	registerSubnetValidatorUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		subnetID,
+		registerSubnetValidatorAddressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("check", registerSubnetValidatorUnsignedMessage.ID())
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		network,
+		aggregatorLogger,
+		aggregatorLogLevel,
+		subnetID,
+		aggregatorQuorumPercentage,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
+}
+
+func GetRegisteredValidator(
+	rpcURL string,
+	managerAddress common.Address,
+	nodeID ids.NodeID,
+) (ids.ID, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"registeredValidators(bytes)->(bytes32)",
+		nodeID[:],
+	)
+	if err != nil {
+		return ids.Empty, err
+	}
+	validatorID, b := out[0].([32]byte)
+	if !b {
+		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
+	}
+	return validatorID, nil
 }

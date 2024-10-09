@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/interfaces"
+	subnetEvmInterfaces "github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/predicate"
@@ -602,4 +603,23 @@ func WaitForNewBlock(
 		time.Sleep(stepDuration)
 	}
 	return fmt.Errorf("new block not produced in %f seconds", totalDuration.Seconds())
+}
+
+func ExtractWarpMessageFromReceipt(
+	client ethclient.Client,
+	ctx context.Context,
+	receipt *types.Receipt,
+) (*avalancheWarp.UnsignedMessage, error) {
+	logs, err := client.FilterLogs(ctx, subnetEvmInterfaces.FilterQuery{
+		BlockHash: &receipt.BlockHash,
+		Addresses: []common.Address{warp.Module.Address},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(logs) != 1 {
+		return nil, fmt.Errorf("expected block to contain 1 warp log, got %d", len(logs))
+	}
+	txLog := logs[0]
+	return warp.UnpackSendWarpEventDataToMessage(txLog.Data)
 }

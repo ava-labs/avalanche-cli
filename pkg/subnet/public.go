@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 
@@ -127,11 +126,18 @@ func (d *PublicDeployer) SetL1ValidatorWeight(
 
 func (d *PublicDeployer) RegisterL1Validator(
 	balance uint64,
-	signer signer.ProofOfPossession,
-	changeOwner fx.Owner,
-	message warp.Message,
+	pop signer.ProofOfPossession,
+	message *warp.Message,
 ) (*txs.Tx, error) {
-	return nil, nil
+	wallet, err := d.loadCacheWallet()
+	if err != nil {
+		return nil, err
+	}
+	return wallet.P().IssueRegisterSubnetValidatorTx(
+		balance,
+		pop.ProofOfPossession,
+		message.Bytes(),
+	)
 }
 
 // change subnet owner for [subnetID]

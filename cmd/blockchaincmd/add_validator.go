@@ -3,16 +3,19 @@
 package blockchaincmd
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/api/info"
 	warpPlatformVM "github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -21,9 +24,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/spf13/cobra"
 )
 
@@ -36,6 +42,7 @@ var (
 	}
 
 	nodeIDStr              string
+	nodeEndpoint           string
 	balance                uint64
 	weight                 uint64
 	startTimeStr           string
@@ -77,7 +84,7 @@ Testnet or Mainnet.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
-	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the staking weight of the validator to add")
+	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
 	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee to P-Chain")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -87,15 +94,33 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&publicKey, "bls-public-key", "", "set the BLS public key of the validator to add")
 	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	cmd.Flags().StringVar(&changeAddr, "change-address", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
+	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	return cmd
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
-	blockchainName := args[0]
-	err := prompts.ValidateNodeID(nodeIDStr)
+	if nodeEndpoint != "" {
+		infoClient := info.NewClient(nodeEndpoint)
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+		if err != nil {
+			return err
+		}
+		nodeIDStr = nodeID.String()
+		publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
+		pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
+	}
+	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
 	}
+	blsInfo, err := getBLSInfo(publicKey, pop)
+	if err != nil {
+		return fmt.Errorf("failure parsing BLS info: %w", err)
+	}
+	expiry := uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix())
+	fmt.Println("Expiry:", expiry)
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -109,8 +134,167 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+
+	chainSpec := contract.ChainSpec{
+		BlockchainName: "poa",
+	}
+	rpcURL, _, err := contract.GetBlockchainEndpoints(
+		app,
+		network,
+		chainSpec,
+		false,
+		false,
+	)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range []string{
+		"NodeID-BJe9MSoteeNtrQkKnicKez1zoLiMXrPKq",
+		"NodeID-FeonWY2gTTTHTvu86BUU4zPYnTzjCrsiu",
+		"NodeID-HfTXNwnR8TFKe6Z3aTKm1Mufuvn6kNaob",
+		"NodeID-8THh1JB8D27gU4qaCLFZqWr4qqDk1xoup",
+	} {
+		nID, err := ids.NodeIDFromString(n)
+		if err != nil {
+			return err
+		}
+		validatorID, err := validatormanager.GetRegisteredValidator(
+			rpcURL,
+			common.HexToAddress(validatormanager.ValidatorContractAddress),
+			nID,
+		)
+		if err != nil {
+			return err
+		}
+		fmt.Println(nID, validatorID)
+	}
+
+	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+	balanceOwners := warpMessage.PChainOwner{}
+	disableOwners := warpMessage.PChainOwner{}
+
+	ownerPrivateKeyFound, n, _, ownerPrivateKey, err := contract.SearchForManagedKey(
+		app,
+		network,
+		common.HexToAddress(sc.PoAValidatorManagerOwner),
+		true,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println(n)
+	if !ownerPrivateKeyFound {
+		return fmt.Errorf("not private key found for PoA manager owner %s", sc.PoAValidatorManagerOwner)
+	}
+
+	fmt.Println("Initialize registration")
+	fmt.Println(rpcURL)
+	evmTx, receipt, err := validatormanager.PoAValidatorManagerInitializeValidatorRegistration(
+		rpcURL,
+		common.HexToAddress(validatormanager.ValidatorContractAddress),
+		ownerPrivateKey,
+		nodeID,
+		blsInfo.PublicKey[:],
+		expiry,
+		balanceOwners,
+		disableOwners,
+		weight,
+	)
+	if err != nil {
+		if evmTx != nil {
+			fmt.Println(evmTx.Hash())
+		}
+		fmt.Println(receipt)
+		return err
+	}
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	ctx, cancel := utils.GetAPILargeContext()
+	defer cancel()
+
+	fmt.Println("receipt:", receipt.BlockNumber, receipt.BlockHash)
+	unsignedMessage, err := evm.ExtractWarpMessageFromReceipt(
+		client,
+		ctx,
+		receipt,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Println("unsigned warp message: ", unsignedMessage.ID())
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	fmt.Println("Get signed message")
+	signedMessage, err := validatormanager.PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
+		network,
+		app.Log,
+		logging.Verbo,
+		0,
+		subnetID,
+		common.HexToAddress(validatormanager.ValidatorContractAddress),
+		nodeID,
+		blsInfo.PublicKey,
+		expiry,
+		balanceOwners,
+		disableOwners,
+		weight,
+	)
+	if err != nil {
+		return err
+	}
+
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		0,
+	)
+	if err != nil {
+		return err
+	}
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+
+	fmt.Println("register validator on pchain")
+	_, err = deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
+	if err != nil {
+		return err
+	}
+	return nil
+
+	blockchainName := args[0]
+	err = prompts.ValidateNodeID(nodeIDStr)
+	if err != nil {
+		return err
+	}
+
+	network, err = networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		"",
+		globalNetworkFlags,
+		true,
+		false,
+		addValidatorSupportedNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
+	}
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+	kc, err = keychain.GetKeychainFromCmdLineFlags(
 		app,
 		constants.PayTxsFeesMsg,
 		network,
@@ -129,7 +313,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	deployer = subnet.NewPublicDeployer(app, kc, network)
 	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
@@ -231,33 +415,27 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("Change Address: %s", changeAddr)
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
 
-	blsInfo, err := getBLSInfo(publicKey, pop)
-	if err != nil {
-		return fmt.Errorf("failure parsing BLS info: %w", err)
-	}
-	addrs, err := address.ParseToIDs([]string{changeAddr})
-	if err != nil {
-		return fmt.Errorf("failure parsing change owner address: %w", err)
-	}
-	changeOwner := &secp256k1fx.OutputOwners{
-		Threshold: 1,
-		Addrs:     addrs,
-	}
-	nodeID, err := ids.NodeIDFromString(nodeIDStrFormat)
-	if err != nil {
-		return err
-	}
-	// TODO: generate warp message
-	// expiry is set to 48 hours from time of transaction
-	message, err := generateWarpMessageAddValidator(subnetID, nodeID, weight, publicKey, uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix()))
-	if err != nil {
-		return err
-	}
-	tx, err := deployer.RegisterL1Validator(balance, blsInfo, changeOwner, message)
-	if err != nil {
-		return err
-	}
-	ux.Logger.GreenCheckmarkToUser("Register Subnet Validator Tx ID: %s", tx.ID())
+	/*
+		blsInfo, err := getBLSInfo(publicKey, pop)
+		if err != nil {
+			return fmt.Errorf("failure parsing BLS info: %w", err)
+		}
+		nodeID, err := ids.NodeIDFromString(nodeIDStrFormat)
+		if err != nil {
+			return err
+		}
+		// TODO: generate warp message
+		// expiry is set to 48 hours from time of transaction
+		message, err := generateWarpMessageAddValidator(subnetID, nodeID, weight, publicKey, uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix()))
+		if err != nil {
+			return err
+		}
+		tx, err := deployer.RegisterL1Validator(balance, blsInfo, message)
+		if err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("Register Subnet Validator Tx ID: %s", tx.ID())
+	*/
 	return nil
 }
 
