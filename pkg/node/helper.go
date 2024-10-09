@@ -5,9 +5,10 @@ package node
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"sync"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
