@@ -51,7 +51,7 @@ func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, 
 	if err := trackSubnet(app, hosts, clusterName, clusterConfig.Network, blockchainName, subnetAliases); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Node(s) successfully started syncing with Blockchain!")
+	ux.Logger.PrintToUser("Node(s) successfully started syncing with blockchain!")
 	ux.Logger.PrintToUser(fmt.Sprintf("Check node blockchain syncing status with avalanche node status %s --blockchain %s", clusterName, blockchainName))
 	return nil
 }
