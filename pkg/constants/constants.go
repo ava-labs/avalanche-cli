@@ -186,7 +186,7 @@ const (
 	// Disable it for releases to save cluster creation time
 	EnableSetupCLIFromSource           = false
 	SetupCLIFromSourceBranch           = "main"
-	BuildEnvGolangVersion              = "1.22.1"
+	BuildEnvGolangVersion              = "1.22.8"
 	IsHealthyJSONFile                  = "isHealthy.json"
 	IsBootstrappedJSONFile             = "isBootstrapped.json"
 	AvalancheGoVersionJSONFile         = "avalancheGoVersion.json"
