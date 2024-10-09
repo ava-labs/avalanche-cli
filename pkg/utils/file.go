@@ -135,7 +135,7 @@ func ReadGoVersion(filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	modFile, err := modfile.Parse("go.mod", data, nil)
+	modFile, err := modfile.Parse(filePath, data, nil)
 	if err != nil {
 		return "", err
 	}

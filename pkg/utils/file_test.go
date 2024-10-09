@@ -67,7 +67,7 @@ func createTempGoMod(t *testing.T, content string) string {
 // TestReadGoVersion tests all scenarios in one function using sub-tests.
 func TestReadGoVersion(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		tempFile := createTempGoMod(t, "module example.com/test\n\ngo 1.18\n")
+		tempFile := createTempGoMod(t, "module example.com/test\n\ngo 1.23\n")
 		defer os.Remove(tempFile) // Clean up the temp file
 
 		version, err := ReadGoVersion(tempFile)
@@ -75,7 +75,7 @@ func TestReadGoVersion(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 
-		expectedVersion := "1.18"
+		expectedVersion := "1.23"
 		if version != expectedVersion {
 			t.Errorf("expected version %s, got %s", expectedVersion, version)
 		}

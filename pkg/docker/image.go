@@ -5,6 +5,7 @@ package docker
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -40,17 +41,31 @@ func parseDockerImageListOutput(output []byte) []string {
 	return strings.Split(string(output), "\n")
 }
 
+func parseRemoteGoModFile(path string, host *models.Host) (string, error) {
+	goMod := filepath.Join(path, "go.mod")
+	// download and parse go.mod
+	tmpFile, err := os.CreateTemp("", "go-mod-*.txt")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmpFile.Name())
+	if err := host.Download(goMod, tmpFile.Name(), constants.SSHFileOpsTimeout); err != nil {
+		return "", err
+	}
+	return utils.ReadGoVersion(tmpFile.Name())
+}
+
 // BuildDockerImage builds a docker image on a remote host.
 func BuildDockerImage(host *models.Host, image string, path string, dockerfile string) error {
-	// expectation is to have go.mod next to Dockerfile
-	goVersion, err := utils.ReadGoVersion(filepath.Join(filepath.Dir(dockerfile), "go.mod"))
+	goVersion, err := parseRemoteGoModFile(path, host)
 	if err != nil {
-		//fall back to default
-		//return err
+		// fall back to default
+		ux.Logger.Info("failed to read go version from go.mod: %s. falling back to default", err)
 		goVersion = constants.BuildEnvGolangVersion
 	}
-	_, err = host.Command(fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, goVersion, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
-	return err
+	cmd := fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, goVersion, image, dockerfile)
+	_, err = host.Command(cmd, nil, constants.SSHLongRunningScriptTimeout)
+	return fmt.Errorf("failed building docker image:  %s %w", cmd, err)
 }
 
 // BuildDockerImageFromGitRepo builds a docker image from a git repo on a remote host.
@@ -68,7 +83,7 @@ func BuildDockerImageFromGitRepo(host *models.Host, image string, gitRepo string
 		}
 	}()
 	// clone the repo and checkout commit
-	if _, err := host.Command(fmt.Sprintf("git clone %s %s && cd %s && git checkout %s ", gitRepo, tmpDir, tmpDir, commit), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+	if _, err := host.Command(fmt.Sprintf("git clone %s %s && cd %s && git checkout %s && sleep 2", gitRepo, tmpDir, tmpDir, commit), nil, constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
 	// build the image
