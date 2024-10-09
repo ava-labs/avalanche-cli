@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -14,6 +17,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/api/info"
+)
+
+const (
+	HealthCheckPoolTime = 60 * time.Second
+	HealthCheckTimeout  = 3 * time.Minute
 )
 
 func AuthorizedAccessFromSettings(app *application.Avalanche) bool {
@@ -217,4 +225,74 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 		}
 	}
 	return false, fmt.Errorf("unable to parse node healthy status")
+}
+
+func WaitForHealthyCluster(
+	app *application.Avalanche,
+	clusterName string,
+	timeout time.Duration,
+	poolTime time.Duration,
+) error {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	cluster, ok := clustersConfig.Clusters[clusterName]
+	if !ok {
+		return fmt.Errorf("cluster %s does not exist", clusterName)
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
+	defer DisconnectHosts(hosts)
+	startTime := time.Now()
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
+	for {
+		unhealthyNodes, err := GetUnhealthyNodes(hosts)
+		if err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return err
+		}
+		if len(unhealthyNodes) == 0 {
+			ux.SpinComplete(spinner)
+			spinSession.Stop()
+			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
+			return nil
+		}
+		if time.Since(startTime) > timeout {
+			ux.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
+			spinSession.Stop()
+			ux.Logger.PrintToUser("")
+			ux.Logger.RedXToUser("Unhealthy Nodes")
+			for _, failedNode := range unhealthyNodes {
+				ux.Logger.PrintToUser("  " + failedNode)
+			}
+			ux.Logger.PrintToUser("")
+			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
+		}
+		time.Sleep(poolTime)
+	}
+}
+
+func GetClusterNameFromList(app *application.Avalanche) (string, error) {
+	clusterNames, err := app.ListClusterNames()
+	if err != nil {
+		return "", err
+	}
+	if len(clusterNames) == 0 {
+		return "", fmt.Errorf("no Avalanche nodes found that can track the blockchain, please create Avalanche nodes first through `avalanche node create`")
+	}
+	clusterName, err := app.Prompt.CaptureList(
+		"Which cluster of Avalanche nodes would you like to use to track the blockchain?",
+		clusterNames,
+	)
+	if err != nil {
+		return "", err
+	}
+	return clusterName, nil
 }
