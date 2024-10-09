@@ -65,7 +65,10 @@ func BuildDockerImage(host *models.Host, image string, path string, dockerfile s
 	}
 	cmd := fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, goVersion, image, dockerfile)
 	_, err = host.Command(cmd, nil, constants.SSHLongRunningScriptTimeout)
-	return fmt.Errorf("failed building docker image:  %s %w", cmd, err)
+	if err != nil {
+		return fmt.Errorf("failed to build docker image %s: %w", image, err)
+	}
+	return nil
 }
 
 // BuildDockerImageFromGitRepo builds a docker image from a git repo on a remote host.
