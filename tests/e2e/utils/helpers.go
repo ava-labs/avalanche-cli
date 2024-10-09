@@ -28,10 +28,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -1042,4 +1044,24 @@ func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected
 	}
 
 	return stdout + string(stderr)
+}
+
+func GetKeyTransferFee(output string) (uint64, error) {
+	feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, "Paid fee") {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return 0, fmt.Errorf("incorrect format for fee output of key transfer: %s", line)
+			}
+			feeAvaxStr := lineFields[2]
+			feeAvax, err := strconv.ParseFloat(feeAvaxStr, 64)
+			if err != nil {
+				return 0, err
+			}
+			feeAvax *= float64(units.Avax)
+			feeNAvax = uint64(feeAvax)
+		}
+	}
+	return feeNAvax, nil
 }

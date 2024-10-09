@@ -5,6 +5,8 @@ package nodecmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/spf13/cobra"
@@ -29,7 +31,7 @@ and updates the local node information used by CLI commands.`,
 
 func refreshIPs(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if err := failForExternal(clusterName); err != nil {

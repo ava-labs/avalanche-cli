@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -287,7 +289,7 @@ func addNodeAsPrimaryNetworkValidator(
 
 func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 
@@ -302,7 +304,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddPrimaryNetworkValidatorFee * uint64(len(hosts))
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
@@ -321,10 +323,10 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	if err := checkHostsAreBootstrapped(hosts); err != nil {
+	if err := node.CheckHostsAreBootstrapped(hosts); err != nil {
 		return err
 	}
-	if err := checkHostsAreHealthy(hosts); err != nil {
+	if err := node.CheckHostsAreHealthy(hosts); err != nil {
 		return err
 	}
 

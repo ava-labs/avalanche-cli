@@ -160,7 +160,7 @@ func (app *Avalanche) GetSubnetEVMBinDir() string {
 }
 
 func (app *Avalanche) GetUpgradeBytesFilepath(blockchainName string) string {
-	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeFileName)
 }
 
 func (app *Avalanche) GetCustomVMPath(blockchainName string) string {
@@ -286,7 +286,7 @@ func (app *Avalanche) GetKey(keyName string, network models.Network, createIfMis
 }
 
 func (app *Avalanche) GetUpgradeBytesFilePath(blockchainName string) string {
-	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeFileName)
 }
 
 func (app *Avalanche) GetDownloader() Downloader {
@@ -533,6 +533,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	blockchainID ids.ID,
 	teleporterMessengerAddress string,
 	teleporterRegistryAddress string,
+	bootstrapValidators []models.SubnetValidator,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -543,6 +544,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		RPCVersion:                 sc.RPCVersion,
 		TeleporterMessengerAddress: teleporterMessengerAddress,
 		TeleporterRegistryAddress:  teleporterRegistryAddress,
+		BootstrapValidators:        bootstrapValidators,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)

@@ -47,7 +47,7 @@ func (n NetworkOption) String() string {
 	return "invalid network"
 }
 
-func networkOptionFromString(s string) NetworkOption {
+func NetworkOptionFromString(s string) NetworkOption {
 	switch s {
 	case "Mainnet":
 		return Mainnet
@@ -289,7 +289,7 @@ func GetNetworkFromCmdLineFlags(
 		if err != nil {
 			return models.UndefinedNetwork, err
 		}
-		networkOption = networkOptionFromString(networkOptionStr)
+		networkOption = NetworkOptionFromString(networkOptionStr)
 		if networkOption == Devnet && !onlyEndpointBasedDevnets && len(clusterNames) != 0 {
 			endpointOptions := []string{
 				"Get Devnet RPC endpoint from an existing node cluster (created from avalanche node create or avalanche devnet wiz)",

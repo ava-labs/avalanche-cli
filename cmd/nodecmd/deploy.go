@@ -5,6 +5,8 @@ package nodecmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -41,7 +43,7 @@ It saves the deploy info both locally and remotely.
 func deploySubnet(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
@@ -58,12 +60,12 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	if !avoidChecks {
-		if err := checkHostsAreHealthy(hosts); err != nil {
+		if err := node.CheckHostsAreHealthy(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
+		if err := node.CheckHostsAreRPCCompatible(app, hosts, subnetName); err != nil {
 			return err
 		}
 	}

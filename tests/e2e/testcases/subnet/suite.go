@@ -24,17 +24,34 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
-	ginkgo.It("can create and delete a subnet evm config", func() {
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+	ginkgo.It("can create and delete a subnet evm config non SOV", func() {
+		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can create and delete a custom vm subnet config", func() {
+	ginkgo.It("can create and delete a subnet evm config SOV", func() {
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can create and delete a custom vm subnet config non SOV", func() {
 		// let's use a SubnetEVM version which would be compatible with an existing Avago
 		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.CreateCustomVMConfig(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
+		commands.CreateCustomVMConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
+		commands.DeleteSubnetConfig(subnetName)
+		exists, err := utils.SubnetCustomVMExists(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeFalse())
+	})
+
+	ginkgo.It("can create and delete a custom vm subnet config SOV", func() {
+		// let's use a SubnetEVM version which would be compatible with an existing Avago
+		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.CreateCustomVMConfigSOV(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
 		commands.DeleteSubnetConfig(subnetName)
 		exists, err := utils.SubnetCustomVMExists(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())

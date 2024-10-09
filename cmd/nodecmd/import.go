@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -42,7 +44,7 @@ affecting cloud nodes like node create or node destroy will be not applicable to
 
 func importFile(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if clusterExists, err := checkClusterExists(clusterName); clusterExists || err != nil {
+	if clusterExists, err := node.CheckClusterExists(app, clusterName); clusterExists || err != nil {
 		ux.Logger.RedXToUser("cluster %s already exists, please use a different name", clusterName)
 		return nil
 	}

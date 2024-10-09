@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
@@ -102,7 +104,7 @@ func stopLoadTest(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	clusterNodes, err := nodePkg.GetClusterNodes(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -214,7 +216,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 		return err
 	}
 	if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
-		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+		if !(authorizeAccess || nodePkg.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
 		if err = ec2Svc.DestroyAWSNode(nodeConfig, ""); err != nil {
@@ -229,7 +231,7 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 			ux.Logger.PrintToUser("node %s is already destroyed", nodeConfig.NodeID)
 		}
 	} else {
-		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+		if !(authorizeAccess || nodePkg.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
 		if err = gcpClient.DestroyGCPNode(nodeConfig, ""); err != nil {
