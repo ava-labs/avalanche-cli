@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"fmt"
 	"math"
+	"net/netip"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -76,6 +77,12 @@ var (
 	grafanaPkg           string
 	wizSubnet            string
 	publicHTTPPortAccess bool
+
+	bootstrapIDs  []string
+	bootstrapIPs  []string
+	genesisPath   string
+	upgradePath   string
+	useEtnaDevnet bool
 )
 
 func newCreateCmd() *cobra.Command {
@@ -128,6 +135,11 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
+	cmd.Flags().StringArrayVar(&bootstrapIDs, "bootstrap-id", []string{}, "nodeIDs of bootstrap nodes")
+	cmd.Flags().StringArrayVar(&bootstrapIPs, "bootstrap-ip", []string{}, "IP:port pairs of bootstrap nodes")
+	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
+	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
+	cmd.Flags().BoolVar(&useEtnaDevnet, "etna-devnet", false, "use Etna devnet. Prepopulated with Etna DevNet bootstrap configuration along with genesis and upgrade files")
 	return cmd
 }
 
@@ -199,6 +211,25 @@ func preCreateChecks(clusterName string) error {
 	if err := failForExternal(clusterName); err != nil {
 		return err
 	}
+	// bootsrap checks
+	if useEtnaDevnet && (len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "") {
+		return fmt.Errorf("etna devnet uses predefined bootsrap configuration")
+	}
+	if len((bootstrapIDs)) != len(bootstrapIPs) {
+		return fmt.Errorf("number of bootstrap ids and ip:port pairs must be equal")
+	}
+	if genesisPath != "" && !utils.FileExists(genesisPath) {
+		return fmt.Errorf("genesis file %s does not exist", genesisPath)
+	}
+	if upgradePath != "" && !utils.FileExists(upgradePath) {
+		return fmt.Errorf("upgrade file %s does not exist", upgradePath)
+	}
+	// check ip:port pairs
+	for _, ip := range bootstrapIPs {
+		if _, err := netip.ParseAddrPort(ip); err != nil {
+			return fmt.Errorf("invalid ip:port pair %s", ip)
+		}
+	}
 
 	return nil
 }
@@ -240,21 +271,45 @@ func stringToAWSVolumeType(input string) types.VolumeType {
 }
 
 func createNodes(cmd *cobra.Command, args []string) error {
+	var err error
 	clusterName := args[0]
+	network := models.UndefinedNetwork
 	if err := preCreateChecks(clusterName); err != nil {
 		return err
 	}
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		globalNetworkFlags,
-		false,
-		true,
-		createSupportedNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
+	// etna devnet constants
+	if useEtnaDevnet {
+		network = models.NewDevnetNetwork(constants.EtnaDevnetEndpoint, constants.EtnaDevnetNetworkID)
+		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
+		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
+		genesisTmpFile, err := os.CreateTemp("", "genesis")
+		if err != nil {
+			return err
+		}
+		genesisPath = genesisTmpFile.Name()
+		upgradeTmpFile, err := os.CreateTemp("", "upgrade")
+		if err != nil {
+			return err
+		}
+		upgradePath = upgradeTmpFile.Name()
+
+		defer func() {
+			_ = os.Remove(genesisTmpFile.Name())
+			_ = os.Remove(upgradeTmpFile.Name())
+		}()
+	} else {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"",
+			globalNetworkFlags,
+			false,
+			true,
+			createSupportedNetworkOptions,
+			"",
+		)
+		if err != nil {
+			return err
+		}
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
@@ -715,7 +770,15 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
 			// check if host is a API host
 			publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
-			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring, publicAccessToHTTPPort); err != nil {
+			if err := docker.ComposeSSHSetupNode(host,
+				network,
+				avalancheGoVersion,
+				bootstrapIDs,
+				bootstrapIPs,
+				genesisPath,
+				upgradePath,
+				addMonitoring,
+				publicAccessToHTTPPort); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -726,7 +789,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	wg.Wait()
 	ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
 	spinSession.Stop()
-	if network.Kind == models.Devnet {
+	if network.Kind == models.Devnet && !useEtnaDevnet {
 		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
 			return err
 		}

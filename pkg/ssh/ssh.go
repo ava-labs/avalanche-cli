@@ -182,8 +182,18 @@ func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalanc
 	if err != nil {
 		return err
 	}
-
-	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring, publicAccessToHTTPPort); err != nil {
+	if err := docker.ComposeOverSSH("Compose Node",
+		host,
+		constants.SSHScriptTimeout,
+		"templates/avalanchego.docker-compose.yml",
+		docker.DockerComposeInputs{
+			AvalanchegoVersion: avalancheGoVersion,
+			WithMonitoring:     withMonitoring,
+			WithAvalanchego:    true,
+			E2E:                utils.IsE2E(),
+			E2EIP:              utils.E2EConvertIP(host.IP),
+			E2ESuffix:          utils.E2ESuffix(host.IP),
+		}); err != nil {
 		return err
 	}
 	return docker.RestartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
@@ -424,21 +434,21 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	}
 	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.GenesisFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName),
+		remoteconfig.GetRemoteAvalancheGenesis(),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
 	}
 	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.UpgradeFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.UpgradeFileName),
+		remoteconfig.GetRemoteAvalancheUpgrade(),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
 	}
 	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		remoteconfig.GetRemoteAvalancheNodeConfig(),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err

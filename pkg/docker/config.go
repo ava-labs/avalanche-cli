@@ -5,6 +5,8 @@ package docker
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -12,10 +14,26 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
-func prepareAvalanchegoConfig(host *models.Host, network models.Network, publicAccess bool) (string, string, error) {
+func prepareAvalanchegoConfig(
+	host *models.Host,
+	network models.Network,
+	avalanchegoBootstrapIDs []string,
+	avalanchegoBootstrapIPs []string,
+	avalanchegoGenesisFilePath string,
+	avalanchegoUpgradeFilePath string,
+	publicAccess bool,
+) (string, string, error) {
 	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), nil)
 	if publicAccess || utils.IsE2E() {
 		avagoConf.HTTPHost = "0.0.0.0"
+	}
+	avagoConf.BootstrapIPs = strings.Join(avalanchegoBootstrapIPs, ",")
+	avagoConf.BootstrapIDs = strings.Join(avalanchegoBootstrapIDs, ",")
+	if avalanchegoGenesisFilePath != "" {
+		avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
+	}
+	if avalanchegoUpgradeFilePath != "" {
+		avagoConf.UpgradePath = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
 	}
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
 	if err != nil {
