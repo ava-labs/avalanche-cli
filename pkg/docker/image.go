@@ -5,10 +5,12 @@ package docker
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
@@ -40,7 +42,12 @@ func parseDockerImageListOutput(output []byte) []string {
 
 // BuildDockerImage builds a docker image on a remote host.
 func BuildDockerImage(host *models.Host, image string, path string, dockerfile string) error {
-	_, err := host.Command(fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, constants.BuildEnvGolangVersion, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
+	goVersion, err := utils.ReadGoVersion(filepath.Join(path, "go.mod"))
+	if err != nil {
+		//fall back to default
+		goVersion = constants.BuildEnvGolangVersion
+	}
+	_, err = host.Command(fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, goVersion, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
 	return err
 }
 

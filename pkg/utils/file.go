@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"golang.org/x/mod/modfile"
 )
 
 func NonEmptyDirectory(dirName string) (bool, error) {
@@ -126,4 +127,20 @@ func GetRemoteComposeFile() string {
 func GetRemoteComposeServicePath(serviceName string, dirs ...string) string {
 	servicePrefix := filepath.Join(constants.CloudNodeCLIConfigBasePath, "services", serviceName)
 	return filepath.Join(append([]string{servicePrefix}, dirs...)...)
+}
+
+// ReadGoVersion reads the Go version from the go.mod file
+func ReadGoVersion(filePath string) (string, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	modFile, err := modfile.Parse("go.mod", data, nil)
+	if err != nil {
+		return "", err
+	}
+	if modFile.Go != nil {
+		return modFile.Go.Version, nil
+	}
+	return "", fmt.Errorf("go version not found in %s", filePath)
 }
