@@ -85,7 +85,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	bootstrapped, err := checkNetworkIsAlreadyBootstrapped(ctx, cli)
+	bootstrapped, err := CheckNetworkIsAlreadyBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 	)
 }
 
-func checkNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
+func CheckNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
 	_, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {

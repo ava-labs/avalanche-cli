@@ -54,6 +54,10 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string
 	}
 }
 
+func (n Network) IsUndefined() bool {
+	return n.Kind == Undefined
+}
+
 func NewLocalNetwork() Network {
 	return NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint, "")
 }
