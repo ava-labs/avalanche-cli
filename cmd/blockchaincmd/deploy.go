@@ -686,7 +686,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		clusterName, err := getClusterNameFromList()
+		clusterName, err := node.GetClusterNameFromList(app)
 		if err != nil {
 			return err
 		}
@@ -733,7 +733,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-		ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
+		ux.Logger.GreenCheckmarkToUser("L1 is successfully converted to sovereign blockchain")
 	} else {
 		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
 			return err

@@ -278,3 +278,21 @@ func WaitForHealthyCluster(
 		time.Sleep(poolTime)
 	}
 }
+
+func GetClusterNameFromList(app *application.Avalanche) (string, error) {
+	clusterNames, err := app.ListClusterNames()
+	if err != nil {
+		return "", err
+	}
+	if len(clusterNames) == 0 {
+		return "", fmt.Errorf("no Avalanche nodes found that can track the blockchain, please create Avalanche nodes first through `avalanche node create`")
+	}
+	clusterName, err := app.Prompt.CaptureList(
+		"Which cluster of Avalanche nodes would you like to use to track the blockchain?",
+		clusterNames,
+	)
+	if err != nil {
+		return "", err
+	}
+	return clusterName, nil
+}
