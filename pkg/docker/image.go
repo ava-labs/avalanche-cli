@@ -42,9 +42,11 @@ func parseDockerImageListOutput(output []byte) []string {
 
 // BuildDockerImage builds a docker image on a remote host.
 func BuildDockerImage(host *models.Host, image string, path string, dockerfile string) error {
-	goVersion, err := utils.ReadGoVersion(filepath.Join(path, "go.mod"))
+	// expectation is to have go.mod next to Dockerfile
+	goVersion, err := utils.ReadGoVersion(filepath.Join(filepath.Dir(dockerfile), "go.mod"))
 	if err != nil {
 		//fall back to default
+		//return err
 		goVersion = constants.BuildEnvGolangVersion
 	}
 	_, err = host.Command(fmt.Sprintf("cd %s && docker build -q --build-arg GO_VERSION=%s -t %s -f %s .", path, goVersion, image, dockerfile), nil, constants.SSHLongRunningScriptTimeout)
