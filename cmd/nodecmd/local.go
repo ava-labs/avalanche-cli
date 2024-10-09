@@ -165,15 +165,8 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	rootDir := app.GetLocalDir(clusterName)
 	logDir := filepath.Join(rootDir, "logs")
 	pluginDir := app.GetPluginsDir()
-
-	cli, err := binutils.NewGRPCClient()
-	if err != nil {
-		return err
-	}
-
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-
 	if localClusterDataExists(clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 	} else {
@@ -243,16 +236,13 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		}
 
 		sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
-
 		if err := sd.StartServer(); err != nil {
 			return err
 		}
-
 		_, avalancheGoBinPath, err := sd.SetupLocalEnv()
 		if err != nil {
 			return err
 		}
-
 		// make sure rootDir exists
 		if err := os.MkdirAll(rootDir, 0o700); err != nil {
 			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
@@ -292,12 +282,19 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		if bootstrapIPs != nil {
 			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(bootstrapIPs))
 		}
-
-		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		spinSession := ux.NewUserSpinner()
+		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
+		cli, err := binutils.NewGRPCClient()
+		if err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return err
+		}
 
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
+			ux.SpinFailWithError(spinner, "", err)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
+		ux.SpinComplete(spinner)
 		// save snapshot after successful start
 		if _, err := cli.SaveSnapshot(
 			ctx,
@@ -310,6 +307,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		if err := addLocalClusterConfig(network); err != nil {
 			return err
 		}
+	}
+	cli, err := binutils.NewGRPCClient()
+	if err != nil {
+		return err
 	}
 
 	loadSnapshotOpts := []client.OpOption{
@@ -338,9 +339,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 }
 
 func localStopNode(_ *cobra.Command, args []string) error {
+	// todo: support only one local node and detect what cluster to stop
 	clusterName := args[0]
 	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
-		return fmt.Errorf("failed to check if cluster %q is local: %w", clusterName, err)
+		return fmt.Errorf("local node %q is not found", clusterName)
 	}
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithAvoidRPCVersionCheck(true),
@@ -373,20 +375,20 @@ func localStopNode(_ *cobra.Command, args []string) error {
 	if _, err = cli.Stop(ctx); err != nil {
 		return fmt.Errorf("failed to stop avalanchego: %w", err)
 	}
-
+	ux.Logger.GreenCheckmarkToUser("avalanchego stopped. State saved for %s", clusterName)
 	return nil
 }
 
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
-		return fmt.Errorf("failed to check if cluster %q is local: %w", clusterName, err)
+		return fmt.Errorf("local cluster %q not found", clusterName)
 	}
 
 	if err := cleanupLocalNode(clusterName); err != nil {
 		return fmt.Errorf("failed to cleanup local node: %w", err)
 	}
-	ux.Logger.PrintToUser("Local node cleaned up.")
+	ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 	return nil
 }
 

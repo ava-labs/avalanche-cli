@@ -355,6 +355,9 @@ func getClusterNodes(clusterName string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	if clustersConfig.Clusters[clusterName].Local {
+		return []string{fmt.Sprintf("local: %s", clusterName)}, nil
+	}
 	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
 	if len(clusterNodes) == 0 {
 		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)

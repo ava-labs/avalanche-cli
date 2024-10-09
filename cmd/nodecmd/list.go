@@ -61,6 +61,8 @@ func list(_ *cobra.Command, _ []string) error {
 		}
 		if clusterConf.External {
 			ux.Logger.PrintToUser("cluster %q (%s) EXTERNAL", clusterName, clusterConf.Network.Kind.String())
+		} else if clusterConf.Local {
+			ux.Logger.PrintToUser("cluster %q (%s) LOCAL", clusterName, clusterConf.Network.Kind.String())
 		} else {
 			ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
 		}
