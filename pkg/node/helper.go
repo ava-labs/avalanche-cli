@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -16,13 +19,22 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 )
 
-func checkCluster(app *application.Avalanche, clusterName string) error {
-	_, err := getClusterNodes(app, clusterName)
+const (
+	HealthCheckPoolTime = 60 * time.Second
+	HealthCheckTimeout  = 3 * time.Minute
+)
+
+func AuthorizedAccessFromSettings(app *application.Avalanche) bool {
+	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
+}
+
+func CheckCluster(app *application.Avalanche, clusterName string) error {
+	_, err := GetClusterNodes(app, clusterName)
 	return err
 }
 
-func getClusterNodes(app *application.Avalanche, clusterName string) ([]string, error) {
-	if exists, err := checkClusterExists(app, clusterName); err != nil || !exists {
+func GetClusterNodes(app *application.Avalanche, clusterName string) ([]string, error) {
+	if exists, err := CheckClusterExists(app, clusterName); err != nil || !exists {
 		return nil, fmt.Errorf("cluster %q not found", clusterName)
 	}
 	clustersConfig, err := app.LoadClustersConfig()
@@ -36,7 +48,7 @@ func getClusterNodes(app *application.Avalanche, clusterName string) ([]string, 
 	return clusterNodes, nil
 }
 
-func checkClusterExists(app *application.Avalanche, clusterName string) (bool, error) {
+func CheckClusterExists(app *application.Avalanche, clusterName string) (bool, error) {
 	clustersConfig := models.ClustersConfig{}
 	if app.ClustersConfigExists() {
 		var err error
@@ -49,7 +61,7 @@ func checkClusterExists(app *application.Avalanche, clusterName string) (bool, e
 	return ok, nil
 }
 
-func checkHostsAreRPCCompatible(app *application.Avalanche, hosts []*models.Host, subnetName string) error {
+func CheckHostsAreRPCCompatible(app *application.Avalanche, hosts []*models.Host, subnetName string) error {
 	incompatibleNodes, err := getRPCIncompatibleNodes(app, hosts, subnetName)
 	if err != nil {
 		return err
@@ -89,7 +101,7 @@ func getRPCIncompatibleNodes(app *application.Avalanche, hosts []*models.Host, s
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
 				return
 			} else {
-				if _, rpcVersion, err := parseAvalancheGoOutput(resp); err != nil {
+				if _, rpcVersion, err := ParseAvalancheGoOutput(resp); err != nil {
 					nodeResults.AddResult(host.GetCloudID(), nil, err)
 				} else {
 					nodeResults.AddResult(host.GetCloudID(), rpcVersion, err)
@@ -114,7 +126,7 @@ func getRPCIncompatibleNodes(app *application.Avalanche, hosts []*models.Host, s
 	return incompatibleNodes, nil
 }
 
-func parseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
+func ParseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
 	reply := map[string]interface{}{}
 	if err := json.Unmarshal(byteValue, &reply); err != nil {
 		return "", 0, err
@@ -132,7 +144,7 @@ func parseAvalancheGoOutput(byteValue []byte) (string, uint32, error) {
 	return nodeVersionReply.VMVersions["platform"], uint32(nodeVersionReply.RPCProtocolVersion), nil
 }
 
-func disconnectHosts(hosts []*models.Host) {
+func DisconnectHosts(hosts []*models.Host) {
 	for _, host := range hosts {
 		_ = host.Disconnect()
 	}
@@ -142,8 +154,11 @@ func getWSEndpoint(endpoint string, blockchainID string) string {
 	return models.NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
 }
 
-func getPublicEndpoints(app *application.Avalanche, clusterName string) ([]string, error) {
-	endpoints := []string{}
+func getPublicEndpoints(
+	app *application.Avalanche,
+	clusterName string,
+	trackers []*models.Host,
+) ([]string, error) {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
@@ -152,13 +167,12 @@ func getPublicEndpoints(app *application.Avalanche, clusterName string) ([]strin
 	if clusterConfig.Network.Kind == models.Devnet {
 		publicNodes = clusterConfig.Nodes
 	}
-	for _, cloudID := range publicNodes {
-		nodeConfig, err := app.LoadClusterNodeConfig(cloudID)
-		if err != nil {
-			return nil, err
-		}
-		endpoints = append(endpoints, getAvalancheGoEndpoint(nodeConfig.ElasticIP))
-	}
+	publicTrackers := utils.Filter(trackers, func(tracker *models.Host) bool {
+		return utils.Belongs(publicNodes, tracker.GetCloudID())
+	})
+	endpoints := utils.Map(publicTrackers, func(tracker *models.Host) string {
+		return GetAvalancheGoEndpoint(tracker.IP)
+	})
 	return endpoints, nil
 }
 
@@ -166,11 +180,11 @@ func getRPCEndpoint(endpoint string, blockchainID string) string {
 	return models.NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
 }
 
-func getAvalancheGoEndpoint(ip string) string {
+func GetAvalancheGoEndpoint(ip string) string {
 	return fmt.Sprintf("http://%s:%d", ip, constants.AvalanchegoAPIPort)
 }
 
-func getUnhealthyNodes(hosts []*models.Host) ([]string, error) {
+func GetUnhealthyNodes(hosts []*models.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
@@ -211,4 +225,74 @@ func parseHealthyOutput(byteValue []byte) (bool, error) {
 		}
 	}
 	return false, fmt.Errorf("unable to parse node healthy status")
+}
+
+func WaitForHealthyCluster(
+	app *application.Avalanche,
+	clusterName string,
+	timeout time.Duration,
+	poolTime time.Duration,
+) error {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	cluster, ok := clustersConfig.Clusters[clusterName]
+	if !ok {
+		return fmt.Errorf("cluster %s does not exist", clusterName)
+	}
+	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
+	if err != nil {
+		return err
+	}
+	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
+	defer DisconnectHosts(hosts)
+	startTime := time.Now()
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
+	for {
+		unhealthyNodes, err := GetUnhealthyNodes(hosts)
+		if err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return err
+		}
+		if len(unhealthyNodes) == 0 {
+			ux.SpinComplete(spinner)
+			spinSession.Stop()
+			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
+			return nil
+		}
+		if time.Since(startTime) > timeout {
+			ux.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
+			spinSession.Stop()
+			ux.Logger.PrintToUser("")
+			ux.Logger.RedXToUser("Unhealthy Nodes")
+			for _, failedNode := range unhealthyNodes {
+				ux.Logger.PrintToUser("  " + failedNode)
+			}
+			ux.Logger.PrintToUser("")
+			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
+		}
+		time.Sleep(poolTime)
+	}
+}
+
+func GetClusterNameFromList(app *application.Avalanche) (string, error) {
+	clusterNames, err := app.ListClusterNames()
+	if err != nil {
+		return "", err
+	}
+	if len(clusterNames) == 0 {
+		return "", fmt.Errorf("no Avalanche nodes found that can track the blockchain, please create Avalanche nodes first through `avalanche node create`")
+	}
+	clusterName, err := app.Prompt.CaptureList(
+		"Which cluster of Avalanche nodes would you like to use to track the blockchain?",
+		clusterNames,
+	)
+	if err != nil {
+		return "", err
+	}
+	return clusterName, nil
 }

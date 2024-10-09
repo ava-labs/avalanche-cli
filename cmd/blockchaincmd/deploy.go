@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -684,62 +686,59 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if false {
-			chainSpec := contract.ChainSpec{
+		clusterName, err := node.GetClusterNameFromList(app)
+		if err != nil {
+			return err
+		}
+
+		if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+			return err
+		}
+
+		if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
+			return err
+		}
+
+		chainSpec := contract.ChainSpec{
+			BlockchainName: blockchainName,
+		}
+		_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			chainSpec,
+		)
+		if err != nil {
+			return err
+		}
+		rpcURL, _, err := contract.GetBlockchainEndpoints(
+			app,
+			network,
+			chainSpec,
+			true,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+		if err := validatormanager.SetupPoA(
+			app,
+			network,
+			rpcURL,
+			contract.ChainSpec{
 				BlockchainName: blockchainName,
-			}
-			genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-				app,
-				network,
-				chainSpec,
-			)
-			if err != nil {
-				return err
-			}
-			privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-			if err != nil {
-				return err
-			}
-			if privateKey == "" {
-				privateKey, err = prompts.PromptPrivateKey(
-					app.Prompt,
-					"Which key to you want to use to pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
-					app.GetKeyDir(),
-					app.GetKey,
-					genesisAddress,
-					genesisPrivateKey,
-				)
-				if err != nil {
-					return err
-				}
-			}
-			rpcURL, _, err := contract.GetBlockchainEndpoints(
-				app,
-				network,
-				chainSpec,
-				true,
-				false,
-			)
-			if err != nil {
-				return err
-			}
-			if err := validatormanager.SetupPoA(
-				app,
-				network,
-				rpcURL,
-				contract.ChainSpec{
-					BlockchainName: blockchainName,
-				},
-				privateKey,
-				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
-				avaGoBootstrapValidators,
-			); err != nil {
-				return err
-			}
-			ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
+			},
+			genesisPrivateKey,
+			common.HexToAddress(sidecar.PoAValidatorManagerOwner),
+			avaGoBootstrapValidators,
+		); err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("L1 is successfully converted to sovereign blockchain")
+	} else {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
+			return err
 		}
 	}
-
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)

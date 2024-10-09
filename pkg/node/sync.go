@@ -19,7 +19,7 @@ import (
 )
 
 func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, avoidChecks bool, subnetAliases []string) error {
-	if err := checkCluster(app, clusterName); err != nil {
+	if err := CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	clusterConfig, err := app.GetClusterConfig(clusterName)
@@ -33,15 +33,15 @@ func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, 
 	if err != nil {
 		return err
 	}
-	defer disconnectHosts(hosts)
+	defer DisconnectHosts(hosts)
 	if !avoidChecks {
-		if err := checkHostsAreBootstrapped(hosts); err != nil {
+		if err := CheckHostsAreBootstrapped(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreHealthy(hosts); err != nil {
+		if err := CheckHostsAreHealthy(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreRPCCompatible(app, hosts, blockchainName); err != nil {
+		if err := CheckHostsAreRPCCompatible(app, hosts, blockchainName); err != nil {
 			return err
 		}
 	}
@@ -51,7 +51,7 @@ func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, 
 	if err := trackSubnet(app, hosts, clusterName, clusterConfig.Network, blockchainName, subnetAliases); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Node(s) successfully started syncing with Blockchain!")
+	ux.Logger.PrintToUser("Node(s) successfully started syncing with blockchain!")
 	ux.Logger.PrintToUser(fmt.Sprintf("Check node blockchain syncing status with avalanche node status %s --blockchain %s", clusterName, blockchainName))
 	return nil
 }
@@ -155,7 +155,7 @@ func trackSubnet(
 	networkInfo := sc.Networks[clusterConfig.Network.Name()]
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	publicEndpoints, err := getPublicEndpoints(app, clusterName)
+	publicEndpoints, err := getPublicEndpoints(app, clusterName, hosts)
 	if err != nil {
 		return err
 	}
@@ -169,8 +169,8 @@ func trackSubnet(
 	return app.UpdateSidecar(&sc)
 }
 
-func checkHostsAreBootstrapped(hosts []*models.Host) error {
-	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
+func CheckHostsAreBootstrapped(hosts []*models.Host) error {
+	notBootstrappedNodes, err := GetNotBootstrappedNodes(hosts)
 	if err != nil {
 		return err
 	}
@@ -180,9 +180,9 @@ func checkHostsAreBootstrapped(hosts []*models.Host) error {
 	return nil
 }
 
-func checkHostsAreHealthy(hosts []*models.Host) error {
+func CheckHostsAreHealthy(hosts []*models.Host) error {
 	ux.Logger.PrintToUser("Checking if node(s) are healthy...")
-	unhealthyNodes, err := getUnhealthyNodes(hosts)
+	unhealthyNodes, err := GetUnhealthyNodes(hosts)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func checkHostsAreHealthy(hosts []*models.Host) error {
 	return nil
 }
 
-func getNotBootstrappedNodes(hosts []*models.Host) ([]string, error) {
+func GetNotBootstrappedNodes(hosts []*models.Host) ([]string, error) {
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	for _, host := range hosts {
