@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
@@ -204,7 +206,7 @@ func preCreateChecks(clusterName string) error {
 }
 
 func checkClusterExternal(clusterName string) (bool, error) {
-	clusterExists, err := checkClusterExists(clusterName)
+	clusterExists, err := node.CheckClusterExists(app, clusterName)
 	if err != nil {
 		return false, fmt.Errorf("error checking cluster: %w", err)
 	}
@@ -392,7 +394,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	} else {
 		if cloudService == constants.AWSCloudService {
 			// Get AWS Credential, region and AMI
-			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+			if !(authorizeAccess || node.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
 			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil, nodeType)
@@ -464,7 +466,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				}
 			}
 		} else {
-			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+			if !(authorizeAccess || node.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
 			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name

@@ -5,7 +5,7 @@ go 1.22.8
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241005224128-cc3c07bb1344
-	github.com/ava-labs/avalanchego v1.12.0-initial-poc.3
+	github.com/ava-labs/avalanchego v1.12.0-initial-poc.5
 	github.com/ava-labs/awm-relayer v1.4.1-0.20241003162124-807fd305670f
 	github.com/ava-labs/coreth v0.13.8
 	github.com/ava-labs/subnet-evm v0.6.10
@@ -115,7 +115,6 @@ require (
 	github.com/gballet/go-verkle v0.1.1-0.20231031103413-a67434b50f46 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/gliderlabs/ssh v0.3.7 // indirect
-	github.com/go-cmd/cmd v1.4.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
