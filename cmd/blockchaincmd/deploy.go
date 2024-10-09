@@ -701,30 +701,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		chainSpec := contract.ChainSpec{
 			BlockchainName: blockchainName,
 		}
-		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 			app,
 			network,
 			chainSpec,
 		)
 		if err != nil {
 			return err
-		}
-		privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-		if err != nil {
-			return err
-		}
-		if privateKey == "" {
-			privateKey, err = prompts.PromptPrivateKey(
-				app.Prompt,
-				"Which key to you want to use to pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
-				app.GetKeyDir(),
-				app.GetKey,
-				genesisAddress,
-				genesisPrivateKey,
-			)
-			if err != nil {
-				return err
-			}
 		}
 		rpcURL, _, err := contract.GetBlockchainEndpoints(
 			app,
@@ -743,15 +726,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			contract.ChainSpec{
 				BlockchainName: blockchainName,
 			},
-			privateKey,
+			genesisPrivateKey,
 			common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 			avaGoBootstrapValidators,
 		); err != nil {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
+	} else {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
+			return err
+		}
 	}
-
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
