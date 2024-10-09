@@ -159,8 +159,8 @@ func RunSSHRestartNode(host *models.Host) error {
 }
 
 // ComposeSSHSetupAWMRelayer used docker compose to setup AWM Relayer
-func ComposeSSHSetupAWMRelayer(host *models.Host) error {
-	if err := docker.ComposeSSHSetupAWMRelayer(host); err != nil {
+func ComposeSSHSetupAWMRelayer(host *models.Host, relayerVersion string) error {
+	if err := docker.ComposeSSHSetupAWMRelayer(host, relayerVersion); err != nil {
 		return err
 	}
 	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
