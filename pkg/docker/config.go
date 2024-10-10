@@ -14,25 +14,29 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
+type AvalancheGoConfigOptions struct {
+	BootstrapIPs      []string
+	BootstrapIDs      []string
+	GenesisPath       string
+	UpgradePath       string
+	AllowPublicAccess bool
+}
+
 func prepareAvalanchegoConfig(
 	host *models.Host,
 	network models.Network,
-	avalanchegoBootstrapIDs []string,
-	avalanchegoBootstrapIPs []string,
-	avalanchegoGenesisFilePath string,
-	avalanchegoUpgradeFilePath string,
-	publicAccess bool,
+	avalancheGoConfig AvalancheGoConfigOptions,
 ) (string, string, error) {
 	avagoConf := remoteconfig.PrepareAvalancheConfig(host.IP, network.NetworkIDFlagValue(), nil)
-	if publicAccess || utils.IsE2E() {
+	if avalancheGoConfig.AllowPublicAccess || utils.IsE2E() {
 		avagoConf.HTTPHost = "0.0.0.0"
 	}
-	avagoConf.BootstrapIPs = strings.Join(avalanchegoBootstrapIPs, ",")
-	avagoConf.BootstrapIDs = strings.Join(avalanchegoBootstrapIDs, ",")
-	if avalanchegoGenesisFilePath != "" {
+	avagoConf.BootstrapIPs = strings.Join(avalancheGoConfig.BootstrapIPs, ",")
+	avagoConf.BootstrapIDs = strings.Join(avalancheGoConfig.BootstrapIDs, ",")
+	if avalancheGoConfig.GenesisPath != "" {
 		avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 	}
-	if avalanchegoUpgradeFilePath != "" {
+	if avalancheGoConfig.UpgradePath != "" {
 		avagoConf.UpgradePath = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
 	}
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)

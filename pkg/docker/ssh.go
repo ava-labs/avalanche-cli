@@ -54,11 +54,13 @@ func ComposeSSHSetupNode(
 	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(
 		host,
 		network,
-		avalanchegoBootstrapIDs,
-		avalanchegoBootstrapIPs,
-		avalanchegoGenesisFilePath,
-		avalanchegoUpgradeFilePath,
-		publicAccessToHTTPPort,
+		AvalancheGoConfigOptions{
+			BootstrapIDs:      avalanchegoBootstrapIDs,
+			BootstrapIPs:      avalanchegoBootstrapIPs,
+			GenesisPath:       avalanchegoGenesisFilePath,
+			UpgradePath:       avalanchegoUpgradeFilePath,
+			AllowPublicAccess: publicAccessToHTTPPort,
+		},
 	)
 	if err != nil {
 		return err
