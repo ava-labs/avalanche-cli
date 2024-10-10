@@ -241,7 +241,7 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 }
 
 func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockchainName string) error {
-	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+	if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
 	sc, err := app.LoadSidecar(blockchainName)

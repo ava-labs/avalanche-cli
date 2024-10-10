@@ -738,20 +738,25 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		var clusterName string
+		clusterName, err := node.GetClusterNameFromList(app)
+		if err != nil {
+			return err
+		}
+
 		if !useLocalMachine {
-			clusterName, err = node.GetClusterNameFromList(app)
-			if err != nil {
+			if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
 				return err
 			}
-		}
+			if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
+				return err
+			}
+		} else {
+			if err := node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName); err != nil {
+				return err
+			}
 
-		if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
-			return err
-		}
-
-		if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
-			return err
+			// TODO: replace wait below wiht check for healhty in local machine
+			time.Sleep(70 * time.Second)
 		}
 
 		chainSpec := contract.ChainSpec{
