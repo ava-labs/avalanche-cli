@@ -285,11 +285,20 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		if _, err := genesisTmpFile.Write([]byte(constants.EtnaDevnetGenesisData)); err != nil {
+			return err
+		}
+		genesisTmpFile.Close()
 		genesisPath = genesisTmpFile.Name()
+
 		upgradeTmpFile, err := os.CreateTemp("", "upgrade")
 		if err != nil {
 			return err
 		}
+		if _, err := upgradeTmpFile.Write([]byte(constants.EtnaDevnetUpgradeData)); err != nil {
+			return err
+		}
+		upgradeTmpFile.Close()
 		upgradePath = upgradeTmpFile.Name()
 
 		defer func() {
