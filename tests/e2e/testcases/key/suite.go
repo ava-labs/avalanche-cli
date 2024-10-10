@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/units"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -269,7 +268,6 @@ var _ = ginkgo.Describe("[Key]", func() {
 
 		amount := 0.2
 		amountStr := fmt.Sprintf("%.2f", amount)
-		feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
 		amountNAvax := uint64(amount * float64(units.Avax))
 
 		// send/receive without recovery
@@ -287,13 +285,16 @@ var _ = ginkgo.Describe("[Key]", func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
+		feeNAvax, err := utils.GetKeyTransferFee(output)
+		gomega.Expect(err).Should(gomega.BeNil())
+
 		output, err = commands.ListKeys("local", true, true)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(ewoqKeyBalance1 - ewoqKeyBalance2).Should(gomega.Equal(feeNAvax + amountNAvax))
+		gomega.Expect(feeNAvax + amountNAvax).Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
 		gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
 
 		output, err = commands.ListKeys("local", true, true)
