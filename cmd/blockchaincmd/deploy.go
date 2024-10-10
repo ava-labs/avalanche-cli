@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"path/filepath"
 	"strings"
@@ -464,6 +465,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return PrintSubnetInfo(blockchainName, true)
 	}
 
+	ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
+	ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
+
+	useLocalMachine, err := app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
+	if err != nil {
+		return err
+	}
+
+	if useLocalMachine {
+		bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
+	}
+
 	if len(bootstrapEndpoints) > 0 {
 		var changeAddr string
 		for _, endpoint := range bootstrapEndpoints {
@@ -725,65 +738,76 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if false {
-			chainSpec := contract.ChainSpec{
-				BlockchainName: blockchainName,
-			}
-			genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-				app,
-				network,
-				chainSpec,
-			)
-			if err != nil {
-				return err
-			}
-			privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-			if err != nil {
-				return err
-			}
-			if privateKey == "" {
-				privateKey, err = prompts.PromptPrivateKey(
-					app.Prompt,
-					"Which key to you want to use to pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
-					app.GetKeyDir(),
-					app.GetKey,
-					genesisAddress,
-					genesisPrivateKey,
-				)
-				if err != nil {
-					return err
-				}
-			}
-			rpcURL, _, err := contract.GetBlockchainEndpoints(
-				app,
-				network,
-				chainSpec,
-				true,
-				false,
-			)
-			if err != nil {
-				return err
-			}
-			aggregatorExtraPeerEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
-			if err != nil {
-				return err
-			}
-			if err := validatormanager.SetupPoA(
-				app,
-				network,
-				rpcURL,
-				contract.ChainSpec{
-					BlockchainName: blockchainName,
-				},
-				privateKey,
-				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
-				avaGoBootstrapValidators,
-				aggregatorExtraPeerEndpoints,
-			); err != nil {
-				return err
-			}
-			ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
+		clusterName, err := node.GetClusterNameFromList(app)
+		if err != nil {
+			return err
 		}
+
+		if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+			return err
+		}
+
+		if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
+			return err
+		}
+
+		chainSpec := contract.ChainSpec{
+			BlockchainName: blockchainName,
+		}
+		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			chainSpec,
+		)
+		if err != nil {
+			return err
+		}
+		privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+		if err != nil {
+			return err
+		}
+		if privateKey == "" {
+			privateKey, err = prompts.PromptPrivateKey(
+				app.Prompt,
+				"Which key to you want to use to pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
+				app.GetKeyDir(),
+				app.GetKey,
+				genesisAddress,
+				genesisPrivateKey,
+			)
+			if err != nil {
+				return err
+			}
+		}
+		rpcURL, _, err := contract.GetBlockchainEndpoints(
+			app,
+			network,
+			chainSpec,
+			true,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+		aggregatorExtraPeerEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
+		if err != nil {
+			return err
+		}
+		if err := validatormanager.SetupPoA(
+			app,
+			network,
+			rpcURL,
+			contract.ChainSpec{
+				BlockchainName: blockchainName,
+			},
+			privateKey,
+			common.HexToAddress(sidecar.PoAValidatorManagerOwner),
+			avaGoBootstrapValidators,
+			aggregatorExtraPeerEndpoints,
+		); err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
 	}
 
 	flags := make(map[string]string)
