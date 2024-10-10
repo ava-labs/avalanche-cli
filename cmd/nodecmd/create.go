@@ -281,24 +281,30 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if network.Kind == models.EtnaDevnet {
 		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
 		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
+
+		// create genesis and upgrade files
 		genesisTmpFile, err := os.CreateTemp("", "genesis")
 		if err != nil {
 			return err
 		}
-		if _, err := genesisTmpFile.Write([]byte(constants.EtnaDevnetGenesisData)); err != nil {
+		if _, err := genesisTmpFile.Write(constants.EtnaDevnetGenesisData); err != nil {
 			return err
 		}
-		genesisTmpFile.Close()
+		if err := genesisTmpFile.Close(); err != nil {
+			return err
+		}
 		genesisPath = genesisTmpFile.Name()
 
 		upgradeTmpFile, err := os.CreateTemp("", "upgrade")
 		if err != nil {
 			return err
 		}
-		if _, err := upgradeTmpFile.Write([]byte(constants.EtnaDevnetUpgradeData)); err != nil {
+		if _, err := upgradeTmpFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
 			return err
 		}
-		upgradeTmpFile.Close()
+		if err := upgradeTmpFile.Close(); err != nil {
+			return err
+		}
 		upgradePath = upgradeTmpFile.Name()
 
 		defer func() {
