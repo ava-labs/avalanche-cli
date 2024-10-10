@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet}
+	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet, networkoptions.EtnaDevnet}
 	globalNetworkFlags                    networkoptions.NetworkFlags
 	useAWS                                bool
 	useGCP                                bool
@@ -77,11 +77,10 @@ var (
 	wizSubnet            string
 	publicHTTPPortAccess bool
 
-	bootstrapIDs  []string
-	bootstrapIPs  []string
-	genesisPath   string
-	upgradePath   string
-	useEtnaDevnet bool
+	bootstrapIDs []string
+	bootstrapIPs []string
+	genesisPath  string
+	upgradePath  string
 )
 
 func newCreateCmd() *cobra.Command {
@@ -138,7 +137,6 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringArrayVar(&bootstrapIPs, "bootstrap-ips", []string{}, "IP:port pairs of bootstrap nodes")
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
-	cmd.Flags().BoolVar(&useEtnaDevnet, "etna-devnet", false, "use Etna devnet. Prepopulated with Etna DevNet bootstrap configuration along with genesis and upgrade files")
 	return cmd
 }
 
@@ -211,7 +209,7 @@ func preCreateChecks(clusterName string) error {
 		return err
 	}
 	// bootsrap checks
-	if useEtnaDevnet && (len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "") {
+	if globalNetworkFlags.UseEtnaDevnet && (len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "") {
 		return fmt.Errorf("etna devnet uses predefined bootsrap configuration")
 	}
 	if len((bootstrapIDs)) != len(bootstrapIPs) {
@@ -270,15 +268,17 @@ func stringToAWSVolumeType(input string) types.VolumeType {
 }
 
 func createNodes(cmd *cobra.Command, args []string) error {
-	var err error
 	clusterName := args[0]
-	network := models.UndefinedNetwork
-	if err := preCreateChecks(clusterName); err != nil {
-		return err
-	}
-	// etna devnet constants
-	if useEtnaDevnet {
-		network = models.NewDevnetNetwork(constants.EtnaDevnetEndpoint, constants.EtnaDevnetNetworkID)
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		"",
+		globalNetworkFlags,
+		false,
+		true,
+		createSupportedNetworkOptions,
+		"",
+	)
+	if network.Kind == models.EtnaDevnet {
 		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
 		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
 		genesisTmpFile, err := os.CreateTemp("", "genesis")
@@ -296,19 +296,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			_ = os.Remove(genesisTmpFile.Name())
 			_ = os.Remove(upgradeTmpFile.Name())
 		}()
-	} else {
-		network, err = networkoptions.GetNetworkFromCmdLineFlags(
-			app,
-			"",
-			globalNetworkFlags,
-			false,
-			true,
-			createSupportedNetworkOptions,
-			"",
-		)
-		if err != nil {
-			return err
-		}
+	}
+	if err := preCreateChecks(clusterName); err != nil {
+		return err
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
@@ -788,7 +778,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	wg.Wait()
 	ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
 	spinSession.Stop()
-	if network.Kind == models.Devnet && !useEtnaDevnet {
+	if network.Kind == models.Devnet {
 		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
 			return err
 		}

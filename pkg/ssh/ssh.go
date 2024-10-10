@@ -177,7 +177,7 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string, publicAccessToHTTPPort bool) error {
+func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err
