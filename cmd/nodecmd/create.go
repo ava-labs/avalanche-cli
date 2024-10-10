@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"math"
-	"net/netip"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -225,9 +224,9 @@ func preCreateChecks(clusterName string) error {
 		return fmt.Errorf("upgrade file %s does not exist", upgradePath)
 	}
 	// check ip:port pairs
-	for _, ip := range bootstrapIPs {
-		if _, err := netip.ParseAddrPort(ip); err != nil {
-			return fmt.Errorf("invalid ip:port pair %s", ip)
+	for _, ipPortPair := range bootstrapIPs {
+		if ok := utils.IsValidIPPort(ipPortPair); !ok {
+			return fmt.Errorf("invalid ip:port pair %s", ipPortPair)
 		}
 	}
 
