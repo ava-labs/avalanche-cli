@@ -114,6 +114,8 @@ func GetNetworkFromSidecarNetworkName(
 	switch {
 	case networkName == models.Local.String():
 		return models.NewLocalNetwork(), nil
+	case networkName == models.EtnaDevnet.String():
+		return models.NewEtnaDevnetNetwork(), nil
 	case strings.HasPrefix(networkName, Cluster.String()):
 		parts := strings.Split(networkName, " ")
 		if len(parts) != 2 {
