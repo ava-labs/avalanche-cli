@@ -105,21 +105,30 @@ func (d *LocalDeployer) DeployToLocalNetwork(
 	genesisPath string,
 	icmSpec ICMSpec,
 	subnetIDStr string,
+	prefix string,
 ) (*DeployInfo, error) {
-	if err := d.StartServer(); err != nil {
+	if err := d.StartServer(
+		constants.ServerRunFileLocalNetworkPrefix,
+		binutils.LocalNetworkGRPCServerPort,
+		binutils.LocalNetworkGRPCGatewayPort,
+	); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(blockchainName, genesisPath, icmSpec, subnetIDStr)
+	return d.doDeploy(blockchainName, genesisPath, icmSpec, subnetIDStr, prefix)
 }
 
-func (d *LocalDeployer) StartServer() error {
-	isRunning, err := d.procChecker.IsServerProcessRunning(d.app)
+func (d *LocalDeployer) StartServer(
+	prefix string,
+	serverPort string,
+	gatewayPort string,
+) error {
+	isRunning, err := d.procChecker.IsServerProcessRunning(d.app, prefix)
 	if err != nil {
 		return fmt.Errorf("failed querying if server process is running: %w", err)
 	}
 	if !isRunning {
 		d.app.Log.Debug("gRPC server is not running")
-		if err := binutils.StartServerProcess(d.app); err != nil {
+		if err := binutils.StartServerProcess(d.app, prefix, serverPort, gatewayPort); err != nil {
 			return fmt.Errorf("failed starting gRPC server process: %w", err)
 		}
 		d.backendStartedHere = true
@@ -153,13 +162,19 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(blockchainName string, genesisPath string, icmSpec ICMSpec, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(
+	blockchainName string,
+	genesisPath string,
+	icmSpec ICMSpec,
+	subnetIDStr string,
+	prefix string,
+) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
 	}
 
-	backendLogFile, err := binutils.GetBackendLogFile(d.app)
+	backendLogFile, err := binutils.GetBackendLogFile(d.app, prefix)
 	var backendLogDir string
 	if err == nil {
 		// TODO should we do something if there _was_ an error?

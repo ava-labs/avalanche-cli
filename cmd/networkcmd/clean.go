@@ -51,7 +51,7 @@ func clean(*cobra.Command, []string) error {
 		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
 	}
 
-	if err := binutils.KillgRPCServerProcess(app); err != nil {
+	if err := binutils.KillgRPCServerProcess(app, constants.ServerRunFileLocalNetworkPrefix); err != nil {
 		app.Log.Warn("failed killing server process", zap.Error(err))
 	} else {
 		ux.Logger.PrintToUser("Process terminated.")

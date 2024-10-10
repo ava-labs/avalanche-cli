@@ -18,7 +18,10 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
-	ServerRunFile      = "gRPCserver.run"
+	ServerRunFile                   = "gRPCserver.run"
+	ServerRunFileLocalNetworkPrefix = ""
+	ServerRunFileLocalClusterPrefix = "localcluster_"
+
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 	ServicesDir        = "services"

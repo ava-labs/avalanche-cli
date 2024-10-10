@@ -46,6 +46,8 @@ The node local command suite provides a collection of commands related to local 
 	cmd.AddCommand(newLocalStopCmd())
 	// node local destroy
 	cmd.AddCommand(newLocalDestroyCmd())
+	// node local track
+	cmd.AddCommand(newLocalTrackCmd())
 	return cmd
 }
 
@@ -88,6 +90,16 @@ func newLocalStopCmd() *cobra.Command {
 		Long:  `Stop local node.`,
 		Args:  cobra.ExactArgs(1),
 		RunE:  localStopNode,
+	}
+}
+
+func newLocalTrackCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "track [clusterName] [blockchainName]",
+		Short: "(ALPHA Warning) make the local node at the cluster to track given blockchain",
+		Long:  "(ALPHA Warning) make the local node at the cluster to track given blockchain",
+		Args:  cobra.ExactArgs(2),
+		RunE:  localTrackSubnet,
 	}
 }
 
@@ -236,7 +248,11 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		}
 
 		sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
-		if err := sd.StartServer(); err != nil {
+		if err := sd.StartServer(
+			constants.ServerRunFileLocalClusterPrefix,
+			binutils.LocalClusterGRPCServerPort,
+			binutils.LocalClusterGRPCGatewayPort,
+		); err != nil {
 			return err
 		}
 		_, avalancheGoBinPath, err := sd.SetupLocalEnv()
@@ -284,7 +300,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		}
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
-		cli, err := binutils.NewGRPCClient()
+		cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return err
@@ -308,7 +324,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	cli, err := binutils.NewGRPCClient()
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 	if err != nil {
 		return err
 	}
@@ -344,7 +360,8 @@ func localStopNode(_ *cobra.Command, args []string) error {
 	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
-	cli, err := binutils.NewGRPCClient(
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
 	)
@@ -421,4 +438,46 @@ func checkClusterIsLocal(clusterName string) (bool, error) {
 	}
 	clusterConf, ok := clustersConfig.Clusters[clusterName]
 	return ok && clusterConf.Local, nil
+}
+
+func localTrackSubnet(_ *cobra.Command, args []string) error {
+	// todo: support only one local node and detect what cluster to stop
+	clusterName := args[0]
+	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
+		return fmt.Errorf("local node %q is not found", clusterName)
+	}
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+
+	if _, err := cli.Status(ctx); err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			ux.Logger.PrintToUser("avalanchego already stopped.")
+			return nil
+		}
+		return fmt.Errorf("failed to get avalanchego status: %w", err)
+	}
+	// save snapshot before stopping
+	if _, err := cli.SaveSnapshot(
+		ctx,
+		localClusterSnapshotName(clusterName),
+		true, // force
+
+	); err != nil {
+		return fmt.Errorf("failed to save state: %w", err)
+	}
+
+	if _, err = cli.Stop(ctx); err != nil {
+		return fmt.Errorf("failed to stop avalanchego: %w", err)
+	}
+	ux.Logger.GreenCheckmarkToUser("avalanchego stopped. State saved for %s", clusterName)
+	return nil
 }

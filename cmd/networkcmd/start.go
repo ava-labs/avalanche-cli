@@ -68,7 +68,11 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "")
 
-	if err := sd.StartServer(); err != nil {
+	if err := sd.StartServer(
+		constants.ServerRunFileLocalNetworkPrefix,
+		binutils.LocalNetworkGRPCServerPort,
+		binutils.LocalNetworkGRPCGatewayPort,
+	); err != nil {
 		return err
 	}
 

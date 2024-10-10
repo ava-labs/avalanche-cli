@@ -392,13 +392,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sidecar.Sovereign && bootstrapValidatorsJSONFilePath == "" {
-		bootstrapValidators, err = promptBootstrapValidators(network)
-		if err != nil {
-			return err
-		}
-	}
-
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {
@@ -431,10 +424,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, icmSpec, subnetIDStr)
+		deployInfo, err := deployer.DeployToLocalNetwork(
+			chain,
+			genesisPath,
+			icmSpec,
+			subnetIDStr,
+			constants.ServerRunFileLocalNetworkPrefix,
+		)
 		if err != nil {
 			if deployer.BackendStartedHere() {
-				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
+				if innerErr := binutils.KillgRPCServerProcess(app, constants.ServerRunFileLocalNetworkPrefix); innerErr != nil {
 					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
 				}
 			}
@@ -455,6 +454,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		return PrintSubnetInfo(blockchainName, true)
+	}
+
+	if sidecar.Sovereign && bootstrapValidatorsJSONFilePath == "" {
+		bootstrapValidators, err = promptBootstrapValidators(network)
+		if err != nil {
+			return err
+		}
 	}
 
 	// from here on we are assuming a public deploy

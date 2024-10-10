@@ -46,8 +46,8 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Downloader = downloader
 }
 
-func (app *Avalanche) GetRunFile() string {
-	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
+func (app *Avalanche) GetRunFile(prefix string) string {
+	return filepath.Join(app.GetRunDir(), prefix+constants.ServerRunFile)
 }
 
 func (app *Avalanche) GetSnapshotsDir() string {
