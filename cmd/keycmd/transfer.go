@@ -426,9 +426,9 @@ func transferF(*cobra.Command, []string) error {
 		var useLedger bool
 		goalStr := ""
 		if send {
-			goalStr = " for the sender address"
+			goalStr = "as the sender address"
 		} else {
-			goalStr = " for the destination address"
+			goalStr = "as the destination address"
 		}
 		useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir(), true)
 		if err != nil {

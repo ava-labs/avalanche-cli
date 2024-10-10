@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -402,11 +401,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	ux.Logger.GreenCheckmarkToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
 		if useSSHAgent {
-			// takes the cert file downloaded from AWS and moves it to .ssh directory
-			err = addCertToSSH(regionConf[region].CertName)
-			if err != nil {
-				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-			}
 			sshCertPath[region] = ""
 		} else {
 			// don't overwrite existing sshCertPath for a particular region
@@ -559,17 +553,6 @@ func createAWSInstances(
 		}
 	}
 	return awsCloudConfig, nil
-}
-
-// addCertToSSH takes the cert file downloaded from AWS and moves it to .ssh directory
-func addCertToSSH(certName string) error {
-	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	return cmd.Run()
 }
 
 // checkRegions checks if the given regions are available in AWS.
