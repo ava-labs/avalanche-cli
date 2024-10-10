@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
@@ -474,6 +475,26 @@ func localTrack(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
+	chainVMID, err := anrutils.VMID(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+	}
+	var vmBin string
+	switch sc.VM {
+	case models.SubnetEvm:
+		_, vmBin, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+		if err != nil {
+			return fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+	case models.CustomVM:
+		vmBin = binutils.SetupCustomBin(app, blockchainName)
+	default:
+		return fmt.Errorf("unknown vm: %s", sc.VM)
+	}
+	binaryDownloader := binutils.NewPluginBinaryDownloader(app)
+	if err := binaryDownloader.InstallVM(chainVMID.String(), vmBin); err != nil {
+		return err
+	}
 	cli, err := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),
