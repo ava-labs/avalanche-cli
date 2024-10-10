@@ -437,7 +437,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		)
 		if err != nil {
 			if deployer.BackendStartedHere() {
-				if innerErr := binutils.KillgRPCServerProcess(app, constants.ServerRunFileLocalNetworkPrefix); innerErr != nil {
+				if innerErr := binutils.KillgRPCServerProcess(
+					app,
+					binutils.LocalNetworkGRPCServerEndpoint,
+					constants.ServerRunFileLocalNetworkPrefix,
+				); innerErr != nil {
 					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
 				}
 			}

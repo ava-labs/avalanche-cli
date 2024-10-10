@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
-	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -89,10 +88,10 @@ status by running avalanche node status local
 
 func newLocalStopCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stop [clusterName]",
+		Use:   "stop",
 		Short: "(ALPHA Warning) Stop local node",
 		Long:  `Stop local node.`,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(0),
 		RunE:  localStopNode,
 	}
 }
@@ -165,11 +164,7 @@ func preLocalChecks(clusterName string) error {
 }
 
 func localClusterDataExists(clusterName string) bool {
-	return utils.FileExists(filepath.Join(app.GetLocalDir(clusterName), "state.json"))
-}
-
-func localClusterSnapshotName(clusterName string) string {
-	return fmt.Sprintf("local-snapshot-%s", clusterName)
+	return utils.FileExists(filepath.Join(app.GetLocalDir(clusterName), "anr-snapshot-"+clusterName, "state.json"))
 }
 
 func localStartNode(_ *cobra.Command, args []string) error {
@@ -179,7 +174,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 
 	// check if this is existing cluster
 	rootDir := app.GetLocalDir(clusterName)
-	logDir := filepath.Join(rootDir, "logs")
 	pluginDir := app.GetPluginsDir()
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
@@ -199,6 +193,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		constants.ServerRunFileLocalClusterPrefix,
 		binutils.LocalClusterGRPCServerPort,
 		binutils.LocalClusterGRPCGatewayPort,
+		rootDir,
 	); err != nil {
 		return err
 	}
@@ -206,9 +201,35 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return err
+	}
+	alreadyBootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	if err != nil {
+		return err
+	}
+	if alreadyBootstrapped {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("A local cluster is already executing")
+		ux.Logger.PrintToUser("please stop it by calling 'node local stop'")
+		return nil
+	}
 
 	if localClusterDataExists(clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
+		loadSnapshotOpts := []client.OpOption{
+			client.WithReassignPortsIfUsed(true),
+			client.WithPluginDir(pluginDir),
+		}
+		// load snapshot for existing network
+		if _, err := cli.LoadSnapshot(
+			ctx,
+			clusterName,
+			true, // in-place
+			loadSnapshotOpts...); err != nil {
+			return fmt.Errorf("failed to load snapshot: %w", err)
+		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		if useEtnaDevnet {
@@ -270,16 +291,12 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		if err := os.MkdirAll(rootDir, 0o700); err != nil {
 			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
 		}
-		if err := os.MkdirAll(logDir, 0o700); err != nil {
-			return fmt.Errorf("could not create log directory %s: %w", logDir, err)
-		}
 
 		anrOpts := []client.OpOption{
 			client.WithNumNodes(1),
 			client.WithNetworkID(network.ID),
 			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(rootDir),
-			client.WithLogRootDir(logDir),
+			client.WithRootDataDir(rootDir + "anr-snapshot-" + clusterName),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 		}
@@ -304,21 +321,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(bootstrapIPs))
 		}
 
-		cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-		if err != nil {
-			return err
-		}
-		alreadyBootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
-		if err != nil {
-			return err
-		}
-		if alreadyBootstrapped {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("A local cluster is already executing")
-			ux.Logger.PrintToUser("please stop it by calling `node local stop`")
-			return nil
-		}
-
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
@@ -327,42 +329,15 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
-		// save snapshot after successful start
-		if _, err := cli.SaveSnapshot(
-			ctx,
-			localClusterSnapshotName(clusterName),
-			true, // force
-		); err != nil {
-			return fmt.Errorf("failed to save local avalanchego state: %w", err)
-		}
 		// save cluster config for the new local cluster
 		if err := addLocalClusterConfig(network); err != nil {
 			return err
 		}
 	}
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err != nil {
-		return err
-	}
-
-	loadSnapshotOpts := []client.OpOption{
-		client.WithRootDataDir(rootDir),
-		client.WithLogRootDir(logDir),
-		client.WithReassignPortsIfUsed(true),
-		client.WithPluginDir(pluginDir),
-	}
-	// load snapshot for existing network
-	if _, err := cli.LoadSnapshot(
-		ctx,
-		localClusterSnapshotName(clusterName),
-		false, // in-place
-		loadSnapshotOpts...); err != nil {
-		return fmt.Errorf("failed to load snapshot: %w", err)
-	}
 
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", logDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/anr-snapshot-%s/node1/logs", rootDir, clusterName)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
@@ -379,12 +354,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func localStopNode(_ *cobra.Command, args []string) error {
-	// todo: support only one local node and detect what cluster to stop
-	clusterName := args[0]
-	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
-		return fmt.Errorf("local node %q is not found", clusterName)
-	}
+func localStopNode(_ *cobra.Command, _ []string) error {
 	cli, err := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),
@@ -393,50 +363,53 @@ func localStopNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-
-	if _, err := cli.Status(ctx); err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser("avalanchego already stopped.")
-			return nil
+	bootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	if err != nil {
+		return err
+	}
+	if bootstrapped {
+		if _, err = cli.Stop(ctx); err != nil {
+			return fmt.Errorf("failed to stop avalanchego: %w", err)
 		}
-		return fmt.Errorf("failed to get avalanchego status: %w", err)
 	}
-	// save snapshot before stopping
-	if _, err := cli.SaveSnapshot(
-		ctx,
-		localClusterSnapshotName(clusterName),
-		true, // force
-
+	if err := binutils.KillgRPCServerProcess(
+		app,
+		binutils.LocalClusterGRPCServerEndpoint,
+		constants.ServerRunFileLocalClusterPrefix,
 	); err != nil {
-		return fmt.Errorf("failed to save state: %w", err)
+		return err
 	}
-
-	if _, err = cli.Stop(ctx); err != nil {
-		return fmt.Errorf("failed to stop avalanchego: %w", err)
-	}
-	ux.Logger.GreenCheckmarkToUser("avalanchego stopped. State saved for %s", clusterName)
+	ux.Logger.GreenCheckmarkToUser("avalanchego stopped")
 	return nil
 }
 
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+
+	localStopNode(nil, nil)
+
+	rootDir := app.GetLocalDir(clusterName)
+	if err := os.RemoveAll(rootDir); err != nil {
+		return err
+	}
+
 	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
 		return fmt.Errorf("local cluster %q not found", clusterName)
 	}
 
-	if err := cleanupLocalNode(clusterName); err != nil {
-		return fmt.Errorf("failed to cleanup local node: %w", err)
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
 	}
+	delete(clustersConfig.Clusters, clusterName)
+	if err := app.WriteClustersConfigFile(&clustersConfig); err != nil {
+		return err
+	}
+
 	ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 	return nil
-}
-
-func cleanupLocalNode(clusterName string) error {
-	rootDir := app.GetLocalDir(clusterName)
-	return os.RemoveAll(rootDir)
 }
 
 func addLocalClusterConfig(network models.Network) error {

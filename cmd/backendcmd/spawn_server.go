@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	app         *application.Avalanche
-	serverPort  string
-	gatewayPort string
+	app          *application.Avalanche
+	serverPort   string
+	gatewayPort  string
+	snapshotsDir string
 )
 
 // backendCmd is the command to run the backend gRPC process
@@ -32,13 +33,15 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&serverPort, "server-port", binutils.LocalNetworkGRPCServerPort, "server port to use")
 	cmd.Flags().StringVar(&gatewayPort, "gateway-port", binutils.LocalNetworkGRPCGatewayPort, "gateway port to use")
+	cmd.Flags().StringVar(&snapshotsDir, "snapshots-dir", "", "snapshots dir to use")
 	return cmd
 }
 
 func startBackend(_ *cobra.Command, _ []string) error {
-	fmt.Println(serverPort)
-	fmt.Println(gatewayPort)
-	s, err := binutils.NewGRPCServer(serverPort, gatewayPort, app.GetSnapshotsDir())
+	if snapshotsDir == "" {
+		snapshotsDir = app.GetSnapshotsDir()
+	}
+	s, err := binutils.NewGRPCServer(serverPort, gatewayPort, snapshotsDir)
 	if err != nil {
 		return err
 	}

@@ -70,6 +70,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		constants.ServerRunFileLocalNetworkPrefix,
 		binutils.LocalNetworkGRPCServerPort,
 		binutils.LocalNetworkGRPCGatewayPort,
+		app.GetSnapshotsDir(),
 	); err != nil {
 		return err
 	}

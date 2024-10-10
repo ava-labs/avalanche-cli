@@ -51,7 +51,11 @@ func StopNetwork(*cobra.Command, []string) error {
 	}
 
 	var err error
-	if err = binutils.KillgRPCServerProcess(app, constants.ServerRunFileLocalNetworkPrefix); err != nil {
+	if err = binutils.KillgRPCServerProcess(
+		app,
+		binutils.LocalNetworkGRPCServerEndpoint,
+		constants.ServerRunFileLocalNetworkPrefix,
+	); err != nil {
 		app.Log.Warn("failed killing server process", zap.Error(err))
 		fmt.Println(err)
 	} else {

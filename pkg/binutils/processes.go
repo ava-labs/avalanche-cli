@@ -224,6 +224,7 @@ func StartServerProcess(
 	prefix string,
 	serverPort string,
 	gatewayPort string,
+	snapshotsDir string,
 ) error {
 	thisBin := reexec.Self()
 
@@ -233,6 +234,8 @@ func StartServerProcess(
 		serverPort,
 		"--gateway-port",
 		gatewayPort,
+		"--snapshots-dir",
+		snapshotsDir,
 	}
 	cmd := exec.Command(thisBin, args...)
 
@@ -274,9 +277,11 @@ func StartServerProcess(
 
 func KillgRPCServerProcess(
 	app *application.Avalanche,
+	serverEndpoint string,
 	prefix string,
 ) error {
-	cli, err := NewGRPCClient(
+	cli, err := NewGRPCClientWithEndpoint(
+		serverEndpoint,
 		WithAvoidRPCVersionCheck(true),
 		WithDialTimeout(constants.FastGRPCDialTimeout),
 	)
