@@ -3,7 +3,9 @@
 package localnet
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +14,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+	"github.com/ava-labs/avalanche-network-runner/server"
 )
 
 func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
@@ -89,6 +93,17 @@ func Deployed(subnetName string) (bool, error) {
 			return false, err
 		}
 		return false, nil
+	}
+	return true, nil
+}
+
+func CheckNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
+	_, err := cli.Status(ctx)
+	if err != nil {
+		if server.IsServerError(err, server.ErrNotBootstrapped) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed trying to get network status: %w", err)
 	}
 	return true, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -273,8 +274,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("could not create log directory %s: %w", logDir, err)
 		}
 
-		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
-
 		anrOpts := []client.OpOption{
 			client.WithNumNodes(1),
 			client.WithNetworkID(network.ID),
@@ -304,14 +303,25 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		if bootstrapIPs != nil {
 			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(bootstrapIPs))
 		}
-		spinSession := ux.NewUserSpinner()
-		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
+
 		cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
 			return err
 		}
+		alreadyBootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+		if err != nil {
+			return err
+		}
+		if alreadyBootstrapped {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("A local cluster is already executing")
+			ux.Logger.PrintToUser("please stop it by calling `node local stop`")
+			return nil
+		}
 
+		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
+		spinSession := ux.NewUserSpinner()
+		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
