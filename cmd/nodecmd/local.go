@@ -181,6 +181,30 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	pluginDir := app.GetPluginsDir()
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
+
+	// starts server
+	avalancheGoVersion := "latest"
+	if avalanchegoBinaryPath == "" {
+		avalancheGoVersion, err = getAvalancheGoVersion()
+		if err != nil {
+			return err
+		} else {
+			ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
+		}
+	}
+	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
+	if err := sd.StartServer(
+		constants.ServerRunFileLocalClusterPrefix,
+		binutils.LocalClusterGRPCServerPort,
+		binutils.LocalClusterGRPCGatewayPort,
+	); err != nil {
+		return err
+	}
+	_, avalancheGoBinPath, err := sd.SetupLocalEnv()
+	if err != nil {
+		return err
+	}
+
 	if localClusterDataExists(clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 	} else {
@@ -204,15 +228,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			)
 			if err != nil {
 				return err
-			}
-		}
-		avalancheGoVersion := "latest"
-		if avalanchegoBinaryPath == "" {
-			avalancheGoVersion, err = getAvalancheGoVersion()
-			if err != nil {
-				return err
-			} else {
-				ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 			}
 		}
 		if err := preLocalChecks(clusterName); err != nil {
@@ -249,18 +264,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			defer os.Remove(upgradePath)
 		}
 
-		sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
-		if err := sd.StartServer(
-			constants.ServerRunFileLocalClusterPrefix,
-			binutils.LocalClusterGRPCServerPort,
-			binutils.LocalClusterGRPCGatewayPort,
-		); err != nil {
-			return err
-		}
-		_, avalancheGoBinPath, err := sd.SetupLocalEnv()
-		if err != nil {
-			return err
-		}
 		// make sure rootDir exists
 		if err := os.MkdirAll(rootDir, 0o700); err != nil {
 			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
