@@ -119,7 +119,9 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	for net, data := range sc.Networks {
 		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
 		if err != nil {
-			return err
+			ux.Logger.RedXToUser("%s is supposed to be deployed to network %s: %s ", blockchainName, network.Name(), err)
+			ux.Logger.PrintToUser("")
+			continue
 		}
 		if network.Kind == models.Local && !locallyDeployed {
 			continue
@@ -191,7 +193,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	for net, data := range sc.Networks {
 		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
 		if err != nil {
-			return err
+			continue
 		}
 		if network.Kind == models.Local && !locallyDeployed {
 			continue
