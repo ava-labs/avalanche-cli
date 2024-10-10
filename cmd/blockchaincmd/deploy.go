@@ -738,9 +738,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		clusterName, err := node.GetClusterNameFromList(app)
-		if err != nil {
-			return err
+		var clusterName string
+		if !useLocalMachine {
+			clusterName, err = node.GetClusterNameFromList(app)
+			if err != nil {
+				return err
+			}
 		}
 
 		if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {

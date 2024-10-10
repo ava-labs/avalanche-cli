@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"path/filepath"
 
@@ -17,9 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
 )
 
@@ -395,7 +393,7 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
+	if ok, err := node.CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local cluster %q not found", clusterName)
 	}
 
@@ -425,93 +423,8 @@ func addLocalClusterConfig(network models.Network) error {
 	return app.WriteClustersConfigFile(&clustersConfig)
 }
 
-func checkClusterIsLocal(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
-	}
-	clusterConf, ok := clustersConfig.Clusters[clusterName]
-	return ok && clusterConf.Local, nil
-}
-
 func localTrack(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	blockchainName := args[1]
-	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
-		return fmt.Errorf("local node %q is not found", clusterName)
-	}
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	clusterConfig := clustersConfig.Clusters[clusterName]
-	network := clusterConfig.Network
-	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
-	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	chainVMID, err := anrutils.VMID(blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
-	}
-	var vmBin string
-	switch sc.VM {
-	case models.SubnetEvm:
-		_, vmBin, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
-		if err != nil {
-			return fmt.Errorf("failed to install subnet-evm: %w", err)
-		}
-	case models.CustomVM:
-		vmBin = binutils.SetupCustomBin(app, blockchainName)
-	default:
-		return fmt.Errorf("unknown vm: %s", sc.VM)
-	}
-	binaryDownloader := binutils.NewPluginBinaryDownloader(app)
-	if err := binaryDownloader.InstallVM(chainVMID.String(), vmBin); err != nil {
-		return err
-	}
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return err
-	}
-	publicEndpoints := []string{}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
-			return err
-		}
-		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
-	}
-	networkInfo := sc.Networks[network.Name()]
-	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
-	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	for _, publicEndpoint := range publicEndpoints {
-		rpcEndpoints.Add(getRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(getWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-	}
-	networkInfo.RPCEndpoints = rpcEndpoints.List()
-	networkInfo.WSEndpoints = wsEndpoints.List()
-	sc.Networks[clusterConfig.Network.Name()] = networkInfo
-	if err := app.UpdateSidecar(&sc); err != nil {
-		return err
-	}
-	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", clusterName, blockchainName)
-	return nil
+	return node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName)
 }
