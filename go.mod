@@ -6,7 +6,7 @@ require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241003175856-6b1bcdf33e7a
 	github.com/ava-labs/avalanchego v1.12.0-initial-poc.3
-	github.com/ava-labs/awm-relayer v1.4.1-0.20241003162124-807fd305670f
+	github.com/ava-labs/awm-relayer v1.4.1-0.20241010130039-bceba83023b8
 	github.com/ava-labs/coreth v0.13.8
 	github.com/ava-labs/subnet-evm v0.6.10
 	github.com/aws/aws-sdk-go-v2 v1.31.0

@@ -17,6 +17,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
 )
 
@@ -99,7 +101,7 @@ func newLocalTrackCmd() *cobra.Command {
 		Short: "(ALPHA Warning) make the local node at the cluster to track given blockchain",
 		Long:  "(ALPHA Warning) make the local node at the cluster to track given blockchain",
 		Args:  cobra.ExactArgs(2),
-		RunE:  localTrackSubnet,
+		RunE:  localTrack,
 	}
 }
 
@@ -351,6 +353,15 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
 
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		ux.Logger.PrintToUser("Node %s URI: %s", nodeInfo.Name, nodeInfo.Uri)
+	}
+	ux.Logger.PrintToUser("")
+
 	return nil
 }
 
@@ -440,12 +451,26 @@ func checkClusterIsLocal(clusterName string) (bool, error) {
 	return ok && clusterConf.Local, nil
 }
 
-func localTrackSubnet(_ *cobra.Command, args []string) error {
-	// todo: support only one local node and detect what cluster to stop
+func localTrack(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	blockchainName := args[1]
 	if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	clusterConfig := clustersConfig.Clusters[clusterName]
+	network := clusterConfig.Network
+	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
+	}
+	subnetID := sc.Networks[network.Name()].SubnetID
 	cli, err := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),
@@ -454,30 +479,32 @@ func localTrackSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-
-	if _, err := cli.Status(ctx); err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser("avalanchego already stopped.")
-			return nil
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	publicEndpoints := []string{}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
+			return err
 		}
-		return fmt.Errorf("failed to get avalanchego status: %w", err)
+		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
 	}
-	// save snapshot before stopping
-	if _, err := cli.SaveSnapshot(
-		ctx,
-		localClusterSnapshotName(clusterName),
-		true, // force
-
-	); err != nil {
-		return fmt.Errorf("failed to save state: %w", err)
+	networkInfo := sc.Networks[network.Name()]
+	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
+	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
+	for _, publicEndpoint := range publicEndpoints {
+		rpcEndpoints.Add(getRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+		wsEndpoints.Add(getWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
 	}
-
-	if _, err = cli.Stop(ctx); err != nil {
-		return fmt.Errorf("failed to stop avalanchego: %w", err)
+	networkInfo.RPCEndpoints = rpcEndpoints.List()
+	networkInfo.WSEndpoints = wsEndpoints.List()
+	sc.Networks[clusterConfig.Network.Name()] = networkInfo
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return err
 	}
-	ux.Logger.GreenCheckmarkToUser("avalanchego stopped. State saved for %s", clusterName)
+	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", clusterName, blockchainName)
 	return nil
 }

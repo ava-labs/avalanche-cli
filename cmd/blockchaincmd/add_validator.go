@@ -218,7 +218,7 @@ func CallAddValidator(
 	}
 
 	if changeAddr == "" {
-		changeAddr, err = getKeyForChangeOwner("", network)
+		changeAddr, err = getKeyForChangeOwner(nodeIDStrFormat, "", network)
 		if err != nil {
 			return err
 		}

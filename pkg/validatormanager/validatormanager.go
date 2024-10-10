@@ -98,6 +98,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []string,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
@@ -146,6 +147,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
 		return nil, err
@@ -216,6 +218,7 @@ func SetupPoA(
 	privateKey string,
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
+	aggregatorExtraPeerEndpoints []string,
 ) error {
 	if err := evm.SetupProposerVM(
 		rpcURL,
@@ -253,8 +256,9 @@ func SetupPoA(
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		app.Log,
-		logging.Info,
+		logging.Trace,
 		0,
+		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
 		managerAddress,

@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -72,6 +74,7 @@ var (
 	generateNodeID                  bool
 	bootstrapValidatorsJSONFilePath string
 	privateKeyFlags                 contract.PrivateKeyFlags
+	bootstrapEndpoints              []string
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -126,6 +129,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an interchain messenger registry bytecode file")
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
+	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	return cmd
 }
 
@@ -449,14 +453,41 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.ICMMessengerAddress,
 			deployInfo.ICMRegistryAddress,
-			bootstrapValidators,
+			nil,
 		); err != nil {
 			return err
 		}
 		return PrintSubnetInfo(blockchainName, true)
 	}
 
-	if sidecar.Sovereign && bootstrapValidatorsJSONFilePath == "" {
+	if len(bootstrapEndpoints) > 0 {
+		var changeAddr string
+		for _, endpoint := range bootstrapEndpoints {
+			infoClient := info.NewClient(endpoint)
+			ctx, cancel := utils.GetAPILargeContext()
+			defer cancel()
+			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+			if err != nil {
+				return err
+			}
+			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
+			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
+			changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+			if err != nil {
+				return err
+			}
+			bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
+				NodeID:               nodeID.String(),
+				Weight:               constants.BootstrapValidatorWeight,
+				Balance:              constants.BootstrapValidatorBalance,
+				BLSPublicKey:         publicKey,
+				BLSProofOfPossession: pop,
+				ChangeOwnerAddr:      changeAddr,
+			})
+		}
+	}
+
+	if sidecar.Sovereign && len(bootstrapValidators) == 0 {
 		bootstrapValidators, err = promptBootstrapValidators(network)
 		if err != nil {
 			return err
@@ -729,6 +760,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+			aggregatorExtraPeerEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
+			if err != nil {
+				return err
+			}
 			if err := validatormanager.SetupPoA(
 				app,
 				network,
@@ -739,6 +774,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				privateKey,
 				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 				avaGoBootstrapValidators,
+				aggregatorExtraPeerEndpoints,
 			); err != nil {
 				return err
 			}
@@ -1002,4 +1038,35 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 		}
 	}
 	return subnetValidators, nil
+}
+
+func GetAggregatorExtraPeerEndpoints(network models.Network) ([]string, error) {
+	aggregatorExtraPeerEndpoints := []string{}
+	if network.ClusterName != "" {
+		clustersConfig, err := app.LoadClustersConfig()
+		if err != nil {
+			return nil, err
+		}
+		clusterConfig := clustersConfig.Clusters[network.ClusterName]
+		if clusterConfig.Local {
+			cli, err := binutils.NewGRPCClientWithEndpoint(
+				binutils.LocalClusterGRPCServerEndpoint,
+				binutils.WithAvoidRPCVersionCheck(true),
+				binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+			)
+			if err != nil {
+				return nil, err
+			}
+			ctx, cancel := utils.GetANRContext()
+			defer cancel()
+			status, err := cli.Status(ctx)
+			if err != nil {
+				return nil, err
+			}
+			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+				aggregatorExtraPeerEndpoints = append(aggregatorExtraPeerEndpoints, nodeInfo.Uri)
+			}
+		}
+	}
+	return aggregatorExtraPeerEndpoints, nil
 }

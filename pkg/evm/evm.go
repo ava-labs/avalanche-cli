@@ -257,6 +257,7 @@ func GetSignedTxToMethodWithWarpMessage(
 	callData []byte,
 	value *big.Int,
 ) (*types.Transaction, error) {
+	const defaultGasLimit = 2_000_000
 	privateKey, err := crypto.HexToECDSA(privateKeyStr)
 	if err != nil {
 		return nil, err
@@ -288,7 +289,10 @@ func GetSignedTxToMethodWithWarpMessage(
 	}
 	gasLimit, err := EstimateGasLimit(client, msg)
 	if err != nil {
-		return nil, err
+		// assuming this is related to the tx itself.
+		// just using default gas limit, and let the user debug the
+		// tx if needed so
+		gasLimit = defaultGasLimit
 	}
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:    chainID,

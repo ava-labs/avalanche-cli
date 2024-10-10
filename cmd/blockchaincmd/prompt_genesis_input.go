@@ -160,7 +160,7 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 				return nil, err
 			}
 		}
-		changeAddr, err := getKeyForChangeOwner(previousAddr, network)
+		changeAddr, err := getKeyForChangeOwner(nodeIDStr, previousAddr, network)
 		if err != nil {
 			return nil, err
 		}
