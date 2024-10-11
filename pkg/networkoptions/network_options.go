@@ -116,6 +116,8 @@ func GetNetworkFromSidecarNetworkName(
 		return models.NewFujiNetwork(), nil
 	case networkName == models.Mainnet.String():
 		return models.NewMainnetNetwork(), nil
+	case networkName == models.Etna.String():
+		return models.NewEtnaNetwork(), nil
 	}
 	return models.UndefinedNetwork, fmt.Errorf("unsupported network name")
 }

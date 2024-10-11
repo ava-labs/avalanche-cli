@@ -20,6 +20,7 @@ const (
 	Fuji
 	Local
 	Devnet
+	Etna
 )
 
 func (nk NetworkKind) String() string {
@@ -32,6 +33,8 @@ func (nk NetworkKind) String() string {
 		return "Local Network"
 	case Devnet:
 		return "Devnet"
+	case Etna:
+		return "Devnet https://etna.avax-dev.network"
 	}
 	return "invalid network"
 }
@@ -74,6 +77,10 @@ func NewFujiNetwork() Network {
 
 func NewMainnetNetwork() Network {
 	return NewNetwork(Mainnet, avagoconstants.MainnetID, constants.MainnetAPIEndpoint, "")
+}
+
+func NewEtnaNetwork() Network {
+	return NewNetwork(Etna, 76, constants.EtnaAPIEndpoint, "")
 }
 
 func NewNetworkFromCluster(n Network, clusterName string) Network {
