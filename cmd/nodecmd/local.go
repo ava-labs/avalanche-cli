@@ -164,7 +164,8 @@ func preLocalChecks(clusterName string) error {
 }
 
 func localClusterDataExists(clusterName string) bool {
-	return utils.FileExists(filepath.Join(app.GetLocalDir(clusterName), "anr-snapshot-"+clusterName, "state.json"))
+	rootDir := app.GetLocalDir(clusterName)
+	return utils.FileExists(filepath.Join(rootDir, "anr-snapshot-"+clusterName, "state.json"))
 }
 
 func localStartNode(_ *cobra.Command, args []string) error {
@@ -296,7 +297,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			client.WithNumNodes(1),
 			client.WithNetworkID(network.ID),
 			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(rootDir + "anr-snapshot-" + clusterName),
+			client.WithRootDataDir(filepath.Join(rootDir, fmt.Sprintf("anr-snapshot-%s", clusterName))),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 		}
