@@ -624,7 +624,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		deployer.CleanCacheWallet()
 		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
-		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
+		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -638,7 +638,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		savePartialTx = !isFullySigned && err == nil
-		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", ConvertL1TxID)
+		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", convertL1TxID)
 
 		if savePartialTx {
 			if err := SaveNotFullySignedTx(
