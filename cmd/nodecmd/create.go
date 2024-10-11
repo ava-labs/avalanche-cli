@@ -279,6 +279,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		"",
 	)
 	if network.Kind == models.EtnaDevnet {
+		publicHTTPPortAccess = true // public http port access for etna devnet api for PoAManagerDeployment
 		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
 		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
 
