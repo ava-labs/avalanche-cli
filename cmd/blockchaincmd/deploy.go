@@ -656,7 +656,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		bar, err := ux.TimedProgressBar(
 			30*time.Second,
-			"Waiting for Blockchain to be converted into Subnet Only Validator (SOV) Blockchain ...",
+			"Waiting for L1 to be converted into sovereign blockchain ...",
 			2,
 		)
 		if err != nil {
@@ -686,54 +686,61 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		clusterName, err := node.GetClusterNameFromList(app)
-		if err != nil {
-			return err
-		}
+		if !generateNodeID {
+			clusterName, err := node.GetClusterNameFromList(app)
+			if err != nil {
+				return err
+			}
 
-		if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
-			return err
-		}
+			if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+				return err
+			}
 
-		if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
-			return err
-		}
+			if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
+				return err
+			}
 
-		chainSpec := contract.ChainSpec{
-			BlockchainName: blockchainName,
-		}
-		_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-			app,
-			network,
-			chainSpec,
-		)
-		if err != nil {
-			return err
-		}
-		rpcURL, _, err := contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-		if err := validatormanager.SetupPoA(
-			app,
-			network,
-			rpcURL,
-			contract.ChainSpec{
+			chainSpec := contract.ChainSpec{
 				BlockchainName: blockchainName,
-			},
-			genesisPrivateKey,
-			common.HexToAddress(sidecar.PoAValidatorManagerOwner),
-			avaGoBootstrapValidators,
-		); err != nil {
-			return err
+			}
+			_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+				app,
+				network,
+				chainSpec,
+			)
+			if err != nil {
+				return err
+			}
+			rpcURL, _, err := contract.GetBlockchainEndpoints(
+				app,
+				network,
+				chainSpec,
+				true,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+			if err := validatormanager.SetupPoA(
+				app,
+				network,
+				rpcURL,
+				contract.ChainSpec{
+					BlockchainName: blockchainName,
+				},
+				genesisPrivateKey,
+				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
+				avaGoBootstrapValidators,
+			); err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("L1 is successfully converted to sovereign blockchain")
+		} else {
+			ux.Logger.GreenCheckmarkToUser("Generated Node ID and BLS info for bootstrap validator(s)")
+			ux.Logger.PrintToUser("To convert L1 to sovereign blockchain, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish converting L1 to sovereign blockchain", blockchainName)
 		}
-		ux.Logger.GreenCheckmarkToUser("L1 is successfully converted to sovereign blockchain")
 	} else {
 		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
 			return err
