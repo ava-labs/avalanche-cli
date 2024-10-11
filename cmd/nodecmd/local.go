@@ -301,6 +301,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			client.WithRootDataDir(filepath.Join(rootDir, fmt.Sprintf("anr-snapshot-%s", clusterName))),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
+			client.WithFreshStakingIds(true),
 		}
 		if genesisPath != "" && utils.FileExists(genesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
@@ -342,7 +343,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		ux.Logger.PrintToUser("Node %s URI: %s", nodeInfo.Name, nodeInfo.Uri)
+		ux.Logger.PrintToUser("Node %s URI: %s NodeID: %s", nodeInfo.Name, nodeInfo.Uri, nodeInfo.Id)
 	}
 	ux.Logger.PrintToUser("")
 
