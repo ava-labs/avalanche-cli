@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - "*"
+    # Remove this and the conditional image tag once acp-77 is merged into main
+    branches:
+      - acp-77
 
 jobs:
   # First confirm that the linting and unit tests pass at this commit prior to creating release artifacts.
@@ -60,11 +63,19 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
+      - name: Determine image tag
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/acp-77" ]]; then
+            echo "IMAGE_TAG=acp-77" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
+          fi
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
           distribution: goreleaser
-          version: latest
+          version: ${{ env.IMAGE_TAG }}
           args: release --clean
           workdir: ./avalanche-cli/
         env:
