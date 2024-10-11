@@ -165,7 +165,7 @@ func preLocalChecks(clusterName string) error {
 
 func localClusterDataExists(clusterName string) bool {
 	rootDir := app.GetLocalDir(clusterName)
-	return utils.FileExists(filepath.Join(rootDir, "anr-snapshot-"+clusterName, "state.json"))
+	return utils.FileExists(filepath.Join(rootDir, "state.json"))
 }
 
 func localStartNode(_ *cobra.Command, args []string) error {
@@ -222,6 +222,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		loadSnapshotOpts := []client.OpOption{
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
+			client.WithSnapshotPath(rootDir),
 		}
 		// load snapshot for existing network
 		if _, err := cli.LoadSnapshot(
@@ -298,9 +299,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			client.WithNumNodes(1),
 			client.WithNetworkID(network.ID),
 			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(filepath.Join(rootDir, fmt.Sprintf("anr-snapshot-%s", clusterName))),
+			client.WithRootDataDir(rootDir),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
+			client.WithAlwaysLoopbackURL(true),
 		}
 		if genesisPath != "" && utils.FileExists(genesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
@@ -332,7 +334,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/anr-snapshot-%s/node1/logs", rootDir, clusterName)
+	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", rootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
