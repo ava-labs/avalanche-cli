@@ -833,28 +833,22 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 }
 
 func getExistingMonitoringInstance(clusterName string) (string, error) {
-	if app.ClustersConfigExists() {
-		clustersConfig, err := app.LoadClustersConfig()
-		if err != nil {
-			return "", err
-		}
-		if _, ok := clustersConfig.Clusters[clusterName]; ok {
-			if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
-				return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
-			}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return "", err
+	}
+	if _, ok := clustersConfig.Clusters[clusterName]; ok {
+		if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
+			return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
 		}
 	}
 	return "", nil
 }
 
 func updateKeyPairClustersConfig(cloudConfig models.NodeConfig) error {
-	clustersConfig := models.ClustersConfig{}
-	var err error
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if clustersConfig.KeyPair == nil {
 		clustersConfig.KeyPair = make(map[string]string)
@@ -887,13 +881,9 @@ func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 }
 
 func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isExternalHost bool, nodeRole, loadTestName string) error {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if clustersConfig.Clusters == nil {
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)

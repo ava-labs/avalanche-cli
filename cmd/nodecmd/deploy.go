@@ -47,11 +47,14 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
-	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
+	if clusterConfig.Local {
+		return notImplementedForLocal(clusterName, "deploy")
+	}
+	if clusterConfig.Network.Kind != models.Devnet {
 		return fmt.Errorf("node deploy command must be applied to devnet clusters")
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))

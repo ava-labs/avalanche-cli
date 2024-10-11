@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
 )
@@ -422,13 +423,9 @@ func addLocalClusterConfig(network models.Network) error {
 }
 
 func checkClusterIsLocal(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return false, err
 	}
 	clusterConf, ok := clustersConfig.Clusters[clusterName]
 	return ok && clusterConf.Local, nil
@@ -509,5 +506,10 @@ func localTrack(_ *cobra.Command, args []string) error {
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", clusterName, blockchainName)
+	return nil
+}
+
+func notImplementedForLocal(clusterName string, what string) error {
+	ux.Logger.PrintToUser("Local cluster %s does not support %s cmd", logging.LightBlue.Wrap(clusterName), logging.LightBlue.Wrap(what))
 	return nil
 }

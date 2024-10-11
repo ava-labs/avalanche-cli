@@ -184,6 +184,9 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if clusterConfig.Local {
+		return notImplementedForLocal(clusterName, "validate subnet")
+	}
 	network := clusterConfig.Network
 
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))

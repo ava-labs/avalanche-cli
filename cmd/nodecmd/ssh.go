@@ -48,13 +48,9 @@ If no [cmd] is provided for the node, it will open ssh shell there.
 }
 
 func sshNode(_ *cobra.Command, args []string) error {
-	var err error
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if len(clustersConfig.Clusters) == 0 {
 		ux.Logger.PrintToUser("There are no clusters defined.")
@@ -63,6 +59,9 @@ func sshNode(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		// provide ssh connection string for all clusters
 		for clusterName, clusterConfig := range clustersConfig.Clusters {
+			if clusterConfig.Local {
+				continue
+			}
 			err := printClusterConnectionString(clusterName, clusterConfig.Network.Kind.String())
 			if err != nil {
 				return err
@@ -77,6 +76,9 @@ func sshNode(_ *cobra.Command, args []string) error {
 			if len(args[1:]) == 0 {
 				return printClusterConnectionString(clusterNameOrNodeID, clustersConfig.Clusters[clusterNameOrNodeID].Network.Kind.String())
 			} else {
+				if clustersConfig.Clusters[clusterNameOrNodeID].Local {
+					return notImplementedForLocal(clusterNameOrNodeID, "ssh")
+				}
 				clusterHosts, err := GetAllClusterHosts(clusterNameOrNodeID)
 				if err != nil {
 					return err

@@ -28,6 +28,13 @@ cluster.`,
 
 func addDashboard(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	if clusterConfig.Local {
+		return notImplementedForLocal(clusterName, "addDashboard")
+	}
 	if customGrafanaDashboardPath != "" {
 		if err := addCustomDashboard(clusterName, blockchainName); err != nil {
 			return err
