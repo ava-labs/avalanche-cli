@@ -228,7 +228,8 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			ctx,
 			clusterName,
 			true, // in-place
-			loadSnapshotOpts...); err != nil {
+			loadSnapshotOpts...,
+		); err != nil {
 			return fmt.Errorf("failed to load snapshot: %w", err)
 		}
 	} else {
@@ -319,6 +320,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
+			localDestroyNode(nil, []string{clusterName})
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
