@@ -301,14 +301,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 		}
-		// load global node configs if they exist
-		configStr, err := app.Conf.LoadNodeConfig()
-		if err != nil {
-			return err
-		}
-		if configStr != "" {
-			anrOpts = append(anrOpts, client.WithGlobalNodeConfig(configStr))
-		}
 		if genesisPath != "" && utils.FileExists(genesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
 		}
