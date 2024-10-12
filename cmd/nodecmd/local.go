@@ -325,7 +325,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithFreshStakingIds(true),
-			client.WithZeroIPIfPublicHTTPHost(false),
+			client.WithZeroIP(false),
 		}
 		if genesisPath != "" && utils.FileExists(genesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
