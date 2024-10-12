@@ -31,7 +31,8 @@ var (
 		networkoptions.Devnet,
 		networkoptions.Fuji,
 	}
-	initPOAManagerFlags InitPOAManagerFlags
+	initPOAManagerFlags        InitPOAManagerFlags
+	privateAggregatorEndpoints []string
 )
 
 // avalanche contract initpoamanager
@@ -46,6 +47,7 @@ func newInitPOAManagerCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &initPOAManagerFlags.Network, true, initPOAManagerSupportedNetworkOptions)
 	initPOAManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&initPOAManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
+	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
 	return cmd
 }
 
@@ -116,9 +118,11 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	aggregatorExtraPeerEndpoints, err := blockchaincmd.GetAggregatorExtraPeerEndpoints(network)
-	if err != nil {
-		return err
+	if len(privateAggregatorEndpoints) == 0 {
+		privateAggregatorEndpoints, err = blockchaincmd.GetAggregatorExtraPeerEndpoints(network)
+		if err != nil {
+			return err
+		}
 	}
 	if err := validatormanager.SetupPoA(
 		app,
@@ -128,7 +132,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		privateKey,
 		common.HexToAddress(sc.PoAValidatorManagerOwner),
 		avaGoBootstrapValidators,
-		aggregatorExtraPeerEndpoints,
+		privateAggregatorEndpoints,
 	); err != nil {
 		return err
 	}
