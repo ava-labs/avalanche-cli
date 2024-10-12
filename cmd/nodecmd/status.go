@@ -57,6 +57,10 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// local cluster doesn't have nodes
+	if clusterConf.Local {
+		return notImplementedForLocal("status")
+	}
 	var blockchainID ids.ID
 	if blockchainName != "" {
 		sc, err := app.LoadSidecar(blockchainName)
@@ -68,6 +72,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 			return ErrNoBlockchainID
 		}
 	}
+
 	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
 	nodeIDs, err := utils.MapWithError(hostIDs, func(s string) (string, error) {
 		n, err := getNodeID(app.GetNodeInstanceDirPath(s))
