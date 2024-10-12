@@ -243,16 +243,13 @@ func SetupPoA(
 		return err
 	}
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
-	tx, _, err := PoAValidatorManagerInitialize(
+	_, _, _ = PoAValidatorManagerInitialize(
 		rpcURL,
 		managerAddress,
 		privateKey,
 		subnetID,
 		ownerAddress,
 	)
-	if err != nil {
-		return TransactionError(tx, err, "failure initializing poa validator manager")
-	}
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		app.Log,
@@ -267,7 +264,7 @@ func SetupPoA(
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
-	tx, _, err = PoAValidatorManagerInitializeValidatorsSet(
+	tx, _, err := PoAValidatorManagerInitializeValidatorsSet(
 		rpcURL,
 		managerAddress,
 		privateKey,
