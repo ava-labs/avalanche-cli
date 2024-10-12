@@ -775,7 +775,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
 			// check if host is a API host
 			publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
-			ux.Logger.PrintToUser("Public access to http port: %t", publicAccessToHTTPPort)
 			if err := docker.ComposeSSHSetupNode(host,
 				network,
 				avalancheGoVersion,
