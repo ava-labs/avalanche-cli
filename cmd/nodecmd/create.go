@@ -199,7 +199,14 @@ func preCreateChecks(clusterName string) error {
 	if err := failForExternal(clusterName); err != nil {
 		return err
 	}
-
+	// check for local
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("addDashboard")
+	}
 	return nil
 }
 
@@ -833,14 +840,13 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 }
 
 func getExistingMonitoringInstance(clusterName string) (string, error) {
-	clustersConfig, err := app.GetClustersConfig()
+	// check for local
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return "", err
 	}
-	if _, ok := clustersConfig.Clusters[clusterName]; ok {
-		if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
-			return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
-		}
+	if clusterConfig.MonitoringInstance != "" {
+		return clusterConfig.MonitoringInstance, nil
 	}
 	return "", nil
 }

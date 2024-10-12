@@ -61,7 +61,7 @@ func preResizeChecks(clusterName string) error {
 		return err
 	}
 	if clusterConfig.Local {
-		return notImplementedForLocal(clusterName, "resize")
+		return notImplementedForLocal("resize")
 	}
 	return nil
 }

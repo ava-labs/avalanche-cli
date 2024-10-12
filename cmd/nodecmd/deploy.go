@@ -52,7 +52,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if clusterConfig.Local {
-		return notImplementedForLocal(clusterName, "deploy")
+		return notImplementedForLocal("deploy")
 	}
 	if clusterConfig.Network.Kind != models.Devnet {
 		return fmt.Errorf("node deploy command must be applied to devnet clusters")

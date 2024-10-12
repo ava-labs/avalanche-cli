@@ -33,7 +33,7 @@ func addDashboard(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if clusterConfig.Local {
-		return notImplementedForLocal(clusterName, "addDashboard")
+		return notImplementedForLocal("addDashboard")
 	}
 	if customGrafanaDashboardPath != "" {
 		if err := addCustomDashboard(clusterName, blockchainName); err != nil {

@@ -59,7 +59,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	}
 	// local cluster doesn't have nodes
 	if clusterConf.Local {
-		return notImplementedForLocal(clusterName, "status")
+		return notImplementedForLocal("status")
 	}
 	var blockchainID ids.ID
 	if blockchainName != "" {

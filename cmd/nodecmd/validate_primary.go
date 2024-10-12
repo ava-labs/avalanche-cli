@@ -296,7 +296,7 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if clusterConfig.Local {
-		return notImplementedForLocal(clusterName, "validate primary")
+		return notImplementedForLocal("validate primary")
 	}
 	network := clusterConfig.Network
 

@@ -509,7 +509,7 @@ func localTrack(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func notImplementedForLocal(clusterName string, what string) error {
-	ux.Logger.PrintToUser("Local cluster %s does not support %s cmd", logging.LightBlue.Wrap(clusterName), logging.LightBlue.Wrap(what))
+func notImplementedForLocal(what string) error {
+	ux.Logger.PrintToUser("Unsupported cmd: %s is not supported by local clusters", logging.LightBlue.Wrap(what))
 	return nil
 }

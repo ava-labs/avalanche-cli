@@ -154,7 +154,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if clusterConfig.Local {
-		return notImplementedForLocal(clusterName, "destroy")
+		return notImplementedForLocal("destroy")
 	}
 	isExternalCluster, err := checkClusterExternal(clusterName)
 	if err != nil {

@@ -74,7 +74,7 @@ func whitelist(_ *cobra.Command, args []string) error {
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	if clusterConfig.Local {
-		return notImplementedForLocal(clusterName, "whitelist")
+		return notImplementedForLocal("whitelist")
 	}
 	if discoverIP {
 		userIPAddress, err = utils.GetUserIPAddress()

@@ -82,12 +82,12 @@ func scpNode(_ *cobra.Command, args []string) error {
 	}
 	sourceClusterConfig := clustersConfig.Clusters[sourceClusterNameOrNodeID]
 	if sourceClusterExists && sourceClusterConfig.Local {
-		return notImplementedForLocal(sourceClusterNameOrNodeID, "scp")
+		return notImplementedForLocal("scp")
 	}
 
 	destClusterConfig := clustersConfig.Clusters[destClusterNameOrNodeID]
 	if destClusterExists && destClusterConfig.Local {
-		return notImplementedForLocal(destClusterNameOrNodeID, "scp")
+		return notImplementedForLocal("scp")
 	}
 
 	switch {

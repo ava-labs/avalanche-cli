@@ -185,7 +185,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if clusterConfig.Local {
-		return notImplementedForLocal(clusterName, "validate subnet")
+		return notImplementedForLocal("validate subnet")
 	}
 	network := clusterConfig.Network
 
