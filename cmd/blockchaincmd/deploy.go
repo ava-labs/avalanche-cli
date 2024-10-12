@@ -393,9 +393,22 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign && bootstrapValidatorsJSONFilePath == "" {
-		bootstrapValidators, err = promptBootstrapValidators(network)
-		if err != nil {
-			return err
+		// TODO: add check for local cluster from another PR
+		if len(bootstrapValidators) == 0 && globalNetworkFlags.ClusterName != "" {
+			// get bootstrap validators from cluster
+			changeOwnerAddr, err := getKeyForChangeOwner("", network)
+			if err != nil {
+				return err
+			}
+			bootstrapValidators, err = getClusterBootstrapValidators(network, globalNetworkFlags.ClusterName, changeOwnerAddr)
+			if err != nil {
+				return err
+			}
+		} else {
+			bootstrapValidators, err = promptBootstrapValidators(network)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

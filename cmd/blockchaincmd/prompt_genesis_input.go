@@ -118,6 +118,30 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
+func getClusterBootstrapValidators(network models.Network, clusterName string, changeOwnerAddr string) ([]models.SubnetValidator, error) {
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	var subnetValidators []models.SubnetValidator
+	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
+	for _, h := range hostIDs {
+		id, pub, pop, err := utils.GetNodeParams(app.GetNodeInstanceDirPath(h))
+		if err != nil {
+			return nil, err
+		}
+		subnetValidators = append(subnetValidators, models.SubnetValidator{
+			NodeID:               id.String(),
+			Weight:               constants.BootstrapValidatorWeight,
+			Balance:              constants.BootstrapValidatorBalance,
+			BLSPublicKey:         string(pub),
+			BLSProofOfPossession: string(pop),
+			ChangeOwnerAddr:      changeOwnerAddr,
+		})
+	}
+	return subnetValidators, nil
+}
+
 func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
