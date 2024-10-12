@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -130,12 +131,13 @@ func getClusterBootstrapValidators(network models.Network, clusterName string, c
 		if err != nil {
 			return nil, err
 		}
+		ux.Logger.Info("Bootstrap validator info for Host: %s | Node ID: %s | Public Key: %s | Proof of Possession: %s", h, id, hex.EncodeToString(pub), hex.EncodeToString(pop))
 		subnetValidators = append(subnetValidators, models.SubnetValidator{
 			NodeID:               id.String(),
 			Weight:               constants.BootstrapValidatorWeight,
 			Balance:              constants.BootstrapValidatorBalance,
-			BLSPublicKey:         string(pub),
-			BLSProofOfPossession: string(pop),
+			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
+			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
 			ChangeOwnerAddr:      changeOwnerAddr,
 		})
 	}
