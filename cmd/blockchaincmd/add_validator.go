@@ -61,6 +61,7 @@ var (
 	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
+	privateAggregatorEndpoints          []string
 )
 
 // avalanche blockchain addValidator
@@ -95,6 +96,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	cmd.Flags().StringVar(&changeAddr, "change-address", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
+	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
 	return cmd
 }
 
@@ -120,6 +122,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 	expiry := uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix())
+	//expiry = 1728906495
+	expiry = 1728913615
 	fmt.Println("Expiry:", expiry)
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -150,10 +154,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 	}
 
 	for _, n := range []string{
-		"NodeID-BJe9MSoteeNtrQkKnicKez1zoLiMXrPKq",
-		"NodeID-FeonWY2gTTTHTvu86BUU4zPYnTzjCrsiu",
-		"NodeID-HfTXNwnR8TFKe6Z3aTKm1Mufuvn6kNaob",
-		"NodeID-8THh1JB8D27gU4qaCLFZqWr4qqDk1xoup",
+		"NodeID-EdozwfGju54Wyq65Hxb2aGRsvsX35AzfR",
+		"NodeID-2aMuVFi1yAah7uQ21umSFWL9MR7sMjHzD",
+		"NodeID-MKvwytUJUXvD4ZrFegX5NN9bataApatKf",
+		"NodeID-EkMcxQtbeYw6aj3pttZLyH33RBdYkSJqK",
 	} {
 		nID, err := ids.NodeIDFromString(n)
 		if err != nil {
@@ -174,8 +178,18 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
-	balanceOwners := warpMessage.PChainOwner{}
-	disableOwners := warpMessage.PChainOwner{}
+	balanceOwners := warpMessage.PChainOwner{
+		Threshold: 1,
+		Addresses: []ids.ShortID{
+			ids.GenerateTestShortID(),
+		},
+	}
+	disableOwners := warpMessage.PChainOwner{
+		Threshold: 1,
+		Addresses: []ids.ShortID{
+			ids.GenerateTestShortID(),
+		},
+	}
 
 	ownerPrivateKeyFound, n, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
@@ -209,38 +223,61 @@ func addValidator(_ *cobra.Command, args []string) error {
 			fmt.Println(evmTx.Hash())
 		}
 		fmt.Println(receipt)
-		return err
+		//return err
+	}
+	if evmTx != nil {
+		fmt.Println("txHash", evmTx.Hash())
 	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	ctx, cancel := utils.GetAPILargeContext()
-	defer cancel()
+	/*
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
 
-	fmt.Println("receipt:", receipt.BlockNumber, receipt.BlockHash)
-	unsignedMessage, err := evm.ExtractWarpMessageFromReceipt(
-		client,
-		ctx,
-		receipt,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println("unsigned warp message: ", unsignedMessage.ID())
+		txHash := "0xa5a3a27c782ab0bfcc04bf0c5dc86903fc51342e791ad13d6ae94a7ed558aff1"
+		receipt, err = client.TransactionReceipt(ctx, common.HexToHash(txHash))
+		if err != nil {
+			return err
+		}
+		fmt.Println("receipt:", receipt.BlockNumber, receipt.BlockHash)
+		unsignedMessage, err := evm.ExtractWarpMessageFromReceipt(
+			client,
+			ctx,
+			receipt,
+		)
+		if err != nil {
+			return err
+		}
+		fmt.Println("unsigned warp message: ", unsignedMessage.ID())
+	*/
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
 		chainSpec,
 	)
-	fmt.Println("Get signed message")
-	signedMessage, err := validatormanager.PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
+	if err != nil {
+		return err
+	}
+	blockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	//fmt.Println(hex.EncodeToString(unsignedMessage.Bytes()))
+	signedMessage, validationID, err := validatormanager.PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
 		app.Log,
-		logging.Verbo,
+		logging.Info,
 		0,
+		privateAggregatorEndpoints,
 		subnetID,
+		blockchainID,
 		common.HexToAddress(validatormanager.ValidatorContractAddress),
 		nodeID,
 		blsInfo.PublicKey,
@@ -252,6 +289,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("validationID", validationID)
+	fmt.Println("TODO BIEN")
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -269,7 +308,24 @@ func addValidator(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	fmt.Println("register validator on pchain")
-	_, err = deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
+	balance = constants.BootstrapValidatorBalance
+	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
+	/*
+		if err != nil {
+			return err
+		}
+	*/
+	fmt.Println(txID)
+	_, err = validatormanager.PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+		network,
+		app.Log,
+		logging.Info,
+		0,
+		privateAggregatorEndpoints,
+		subnetID,
+		validationID,
+		true,
+	)
 	if err != nil {
 		return err
 	}

@@ -733,6 +733,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				privateKey,
 				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 				avaGoBootstrapValidators,
+				nil,
 			); err != nil {
 				return err
 			}

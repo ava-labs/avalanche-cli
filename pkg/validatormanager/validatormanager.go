@@ -4,6 +4,7 @@ package validatormanager
 
 import (
 	_ "embed"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
@@ -99,6 +100,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []string,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
@@ -147,6 +149,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
 		return nil, err
@@ -217,6 +220,7 @@ func SetupPoA(
 	privateKey string,
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
+	aggregatorExtraPeerEndpoints []string,
 ) error {
 	if err := evm.SetupProposerVM(
 		rpcURL,
@@ -256,6 +260,7 @@ func SetupPoA(
 		app.Log,
 		logging.Info,
 		0,
+		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
 		managerAddress,
@@ -337,7 +342,9 @@ func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []string,
 	subnetID ids.ID,
+	blockchainID ids.ID,
 	managerAddress common.Address,
 	nodeID ids.NodeID,
 	blsPublicKey [48]byte,
@@ -345,7 +352,7 @@ func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
-) (*warp.Message, error) {
+) (*warp.Message, ids.ID, error) {
 	addressedCallPayload, err := warpMessage.NewRegisterSubnetValidator(
 		subnetID,
 		nodeID,
@@ -356,35 +363,39 @@ func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		weight,
 	)
 	if err != nil {
-		return nil, err
+		return nil, ids.Empty, err
 	}
+	validationID := addressedCallPayload.ValidationID()
 	registerSubnetValidatorAddressedCall, err := warpPayload.NewAddressedCall(
 		managerAddress.Bytes(),
 		addressedCallPayload.Bytes(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, ids.Empty, err
 	}
 	registerSubnetValidatorUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		subnetID,
+		blockchainID,
 		registerSubnetValidatorAddressedCall.Bytes(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, ids.Empty, err
 	}
 	fmt.Println("check", registerSubnetValidatorUnsignedMessage.ID())
+	fmt.Println(hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes()))
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
 		aggregatorLogger,
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
-		return nil, err
+		return nil, ids.Empty, err
 	}
-	return signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
+	signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
+	return signedMessage, validationID, err
 }
 
 func GetRegisteredValidator(
@@ -406,4 +417,47 @@ func GetRegisteredValidator(
 		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
 	}
 	return validatorID, nil
+}
+
+func PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+	network models.Network,
+	aggregatorLogger logging.Logger,
+	aggregatorLogLevel logging.Level,
+	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []string,
+	subnetID ids.ID,
+	validationID ids.ID,
+	registered bool,
+) (*warp.Message, error) {
+	addressedCallPayload, err := warpMessage.NewSubnetValidatorRegistration(validationID, registered)
+	if err != nil {
+		return nil, err
+	}
+	subnetValidatorRegistrationAddressedCall, err := warpPayload.NewAddressedCall(
+		nil,
+		addressedCallPayload.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	subnetConversionUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		avagoconstants.PlatformChainID,
+		subnetValidatorRegistrationAddressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		network,
+		aggregatorLogger,
+		aggregatorLogLevel,
+		subnetID,
+		aggregatorQuorumPercentage,
+		aggregatorExtraPeerEndpoints,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }

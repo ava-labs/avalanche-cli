@@ -128,16 +128,48 @@ func (d *PublicDeployer) RegisterL1Validator(
 	balance uint64,
 	pop signer.ProofOfPossession,
 	message *warp.Message,
-) (*txs.Tx, error) {
+) (ids.ID, *txs.Tx, error) {
 	wallet, err := d.loadCacheWallet()
 	if err != nil {
-		return nil, err
+		return ids.Empty, nil, err
 	}
-	return wallet.P().IssueRegisterSubnetValidatorTx(
+	tx, err := d.createRegisterSubnetValidatorTx(
+		balance,
+		pop,
+		message,
+		wallet,
+	)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	id, err := d.Commit(tx, true)
+	return id, tx, err
+}
+
+func (d *PublicDeployer) createRegisterSubnetValidatorTx(
+	balance uint64,
+	pop signer.ProofOfPossession,
+	message *warp.Message,
+	wallet primary.Wallet,
+) (*txs.Tx, error) {
+	unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(
 		balance,
 		pop.ProofOfPossession,
 		message.Bytes(),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("error building tx: %w", err)
+	}
+	if unsignedTx != nil {
+		if err := printFee("RegisterSubnetValidatorTX", wallet, unsignedTx); err != nil {
+			return nil, err
+		}
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, fmt.Errorf("error signing tx: %w", err)
+	}
+	return &tx, nil
 }
 
 // change subnet owner for [subnetID]

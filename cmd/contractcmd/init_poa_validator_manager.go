@@ -124,6 +124,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		privateKey,
 		common.HexToAddress(sc.PoAValidatorManagerOwner),
 		avaGoBootstrapValidators,
+		nil,
 	); err != nil {
 		return err
 	}

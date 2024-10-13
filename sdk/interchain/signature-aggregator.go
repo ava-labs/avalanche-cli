@@ -45,11 +45,16 @@ type SignatureAggregator struct {
 // Returns:
 // - peers.AppRequestNetwork: The created AppRequestNetwork, or nil if an error occurred.
 // - error: An error if the creation of the AppRequestNetwork failed.
-func createAppRequestNetwork(network models.Network, logLevel logging.Level) (peers.AppRequestNetwork, error) {
+func createAppRequestNetwork(
+	network models.Network,
+	logLevel logging.Level,
+	extraPeerEndpoints []string,
+) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
 		prometheus.DefaultRegisterer,
 		nil,
+		extraPeerEndpoints,
 		&config.Config{
 			PChainAPI: &apiConfig.APIConfig{
 				BaseURL: network.Endpoint,
@@ -130,8 +135,9 @@ func NewSignatureAggregator(
 	logLevel logging.Level,
 	subnetID ids.ID,
 	quorumPercentage uint64,
+	extraPeerEndpoints []string,
 ) (*SignatureAggregator, error) {
-	peerNetwork, err := createAppRequestNetwork(network, logLevel)
+	peerNetwork, err := createAppRequestNetwork(network, logLevel, extraPeerEndpoints)
 	if err != nil {
 		return nil, err
 	}
