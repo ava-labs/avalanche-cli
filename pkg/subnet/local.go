@@ -112,6 +112,7 @@ func (d *LocalDeployer) DeployToLocalNetwork(
 		binutils.LocalNetworkGRPCServerPort,
 		binutils.LocalNetworkGRPCGatewayPort,
 		d.app.GetSnapshotsDir(),
+		"",
 	); err != nil {
 		return nil, err
 	}
@@ -123,6 +124,7 @@ func (d *LocalDeployer) StartServer(
 	serverPort string,
 	gatewayPort string,
 	snapshotsDir string,
+	logPath string,
 ) error {
 	isRunning, err := d.procChecker.IsServerProcessRunning(d.app, prefix)
 	if err != nil {
@@ -130,7 +132,14 @@ func (d *LocalDeployer) StartServer(
 	}
 	if !isRunning {
 		d.app.Log.Debug("gRPC server is not running")
-		if err := binutils.StartServerProcess(d.app, prefix, serverPort, gatewayPort, snapshotsDir); err != nil {
+		if err := binutils.StartServerProcess(
+			d.app,
+			prefix,
+			serverPort,
+			gatewayPort,
+			snapshotsDir,
+			logPath,
+		); err != nil {
 			return fmt.Errorf("failed starting gRPC server process: %w", err)
 		}
 		d.backendStartedHere = true

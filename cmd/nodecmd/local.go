@@ -182,7 +182,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 
 	// check if this is existing cluster
 	rootDir := app.GetLocalDir(clusterName)
-	pluginDir := app.GetPluginsDir()
+	pluginDir := filepath.Join(rootDir, "node1", "plugins")
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
@@ -196,12 +196,14 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 		}
 	}
+	serverLogPath := filepath.Join(rootDir, "server.log")
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalClusterPrefix,
 		binutils.LocalClusterGRPCServerPort,
 		binutils.LocalClusterGRPCGatewayPort,
 		rootDir,
+		serverLogPath,
 	); err != nil {
 		return err
 	}
@@ -300,6 +302,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		// make sure rootDir exists
 		if err := os.MkdirAll(rootDir, 0o700); err != nil {
 			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+		}
+		// make sure pluginDir exists
+		if err := os.MkdirAll(pluginDir, 0o700); err != nil {
+			return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
 		}
 
 		if stakingTLSKeyPath != "" && stakingCertKeyPath != "" && stakingSignerKeyPath != "" {
@@ -475,7 +481,8 @@ func localTrack(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
-	chainVMID, err := anrutils.VMID(blockchainName)
+	blockchainID := sc.Networks[network.Name()].BlockchainID
+	vmID, err := anrutils.VMID(blockchainName)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 	}
@@ -491,10 +498,25 @@ func localTrack(_ *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("unknown vm: %s", sc.VM)
 	}
-	binaryDownloader := binutils.NewPluginBinaryDownloader(app)
-	if err := binaryDownloader.InstallVM(chainVMID.String(), vmBin); err != nil {
+	rootDir := app.GetLocalDir(clusterName)
+	pluginPath := filepath.Join(rootDir, "node1", "plugins", vmID.String())
+	if err := utils.FileCopy(vmBin, pluginPath); err != nil {
 		return err
 	}
+	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
+		return err
+	}
+	if app.ChainConfigExists(blockchainName) {
+		inputChainConfigPath := app.GetChainConfigPath(blockchainName)
+		outputChainConfigPath := filepath.Join(rootDir, "node1", "configs", "chains", blockchainID.String(), "config.json")
+		if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
+			return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
+		}
+		if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
+			return err
+		}
+	}
+
 	cli, err := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),

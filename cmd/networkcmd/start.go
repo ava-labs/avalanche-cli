@@ -71,6 +71,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		binutils.LocalNetworkGRPCServerPort,
 		binutils.LocalNetworkGRPCGatewayPort,
 		app.GetSnapshotsDir(),
+		"",
 	); err != nil {
 		return err
 	}
