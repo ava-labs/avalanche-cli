@@ -18,17 +18,24 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
 )
 
 var (
 	avalanchegoBinaryPath string
 
-	bootstrapIDs  []string
-	bootstrapIPs  []string
-	genesisPath   string
-	upgradePath   string
-	useEtnaDevnet bool
+	bootstrapIDs         []string
+	bootstrapIPs         []string
+	genesisPath          string
+	upgradePath          string
+	useEtnaDevnet        bool
+	stakingTLSKeyPath    string
+	stakingCertKeyPath   string
+	stakingSignerKeyPath string
 )
 
 // const snapshotName = "local_snapshot"
@@ -81,6 +88,9 @@ status by running avalanche node status local
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
 	cmd.Flags().BoolVar(&useEtnaDevnet, "etna-devnet", false, "use Etna devnet. Prepopulated with Etna DevNet bootstrap configuration along with genesis and upgrade files")
+	cmd.Flags().StringVar(&stakingTLSKeyPath, "staking-tls-key-path", "", "path to provided staking tls key for node")
+	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
+	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
 	return cmd
 }
 
@@ -162,7 +172,8 @@ func preLocalChecks(clusterName string) error {
 }
 
 func localClusterDataExists(clusterName string) bool {
-	return utils.FileExists(filepath.Join(app.GetLocalDir(clusterName), "anr-snapshot-"+clusterName, "state.json"))
+	rootDir := app.GetLocalDir(clusterName)
+	return utils.FileExists(filepath.Join(rootDir, "state.json"))
 }
 
 func localStartNode(_ *cobra.Command, args []string) error {
@@ -172,7 +183,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 
 	// check if this is existing cluster
 	rootDir := app.GetLocalDir(clusterName)
-	pluginDir := app.GetPluginsDir()
+	pluginDir := filepath.Join(rootDir, "node1", "plugins")
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
@@ -186,12 +197,14 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 		}
 	}
+	serverLogPath := filepath.Join(rootDir, "server.log")
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalClusterPrefix,
 		binutils.LocalClusterGRPCServerPort,
 		binutils.LocalClusterGRPCGatewayPort,
 		rootDir,
+		serverLogPath,
 	); err != nil {
 		return err
 	}
@@ -219,13 +232,15 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		loadSnapshotOpts := []client.OpOption{
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
+			client.WithSnapshotPath(rootDir),
 		}
 		// load snapshot for existing network
 		if _, err := cli.LoadSnapshot(
 			ctx,
 			clusterName,
 			true, // in-place
-			loadSnapshotOpts...); err != nil {
+			loadSnapshotOpts...,
+		); err != nil {
 			return fmt.Errorf("failed to load snapshot: %w", err)
 		}
 	} else {
@@ -289,22 +304,35 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		if err := os.MkdirAll(rootDir, 0o700); err != nil {
 			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
 		}
+		// make sure pluginDir exists
+		if err := os.MkdirAll(pluginDir, 0o700); err != nil {
+			return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
+		}
+
+		if stakingTLSKeyPath != "" && stakingCertKeyPath != "" && stakingSignerKeyPath != "" {
+			if err := os.MkdirAll(filepath.Join(rootDir, "node1", "staking"), 0o700); err != nil {
+				return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+			}
+			if err := utils.FileCopy(stakingTLSKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.key")); err != nil {
+				return err
+			}
+			if err := utils.FileCopy(stakingCertKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.crt")); err != nil {
+				return err
+			}
+			if err := utils.FileCopy(stakingSignerKeyPath, filepath.Join(rootDir, "node1", "staking", "signer.key")); err != nil {
+				return err
+			}
+		}
 
 		anrOpts := []client.OpOption{
 			client.WithNumNodes(1),
 			client.WithNetworkID(network.ID),
 			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(rootDir + "anr-snapshot-" + clusterName),
+			client.WithRootDataDir(rootDir),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
-		}
-		// load global node configs if they exist
-		configStr, err := app.Conf.LoadNodeConfig()
-		if err != nil {
-			return err
-		}
-		if configStr != "" {
-			anrOpts = append(anrOpts, client.WithGlobalNodeConfig(configStr))
+			client.WithFreshStakingIds(true),
+			client.WithZeroIP(false),
 		}
 		if genesisPath != "" && utils.FileExists(genesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
@@ -324,6 +352,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
+			localDestroyNode(nil, []string{clusterName})
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
@@ -335,7 +364,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/anr-snapshot-%s/node1/logs", rootDir, clusterName)
+	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", rootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
@@ -345,9 +374,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		return err
 	}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		ux.Logger.PrintToUser("Node %s URI: %s", nodeInfo.Name, nodeInfo.Uri)
+		ux.Logger.PrintToUser("URI: %s", nodeInfo.Uri)
+		ux.Logger.PrintToUser("NodeID: %s", nodeInfo.Id)
+		ux.Logger.PrintToUser("")
 	}
-	ux.Logger.PrintToUser("")
 
 	return nil
 }
@@ -427,4 +457,9 @@ func localTrack(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	blockchainName := args[1]
 	return node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName)
+}
+
+func notImplementedForLocal(what string) error {
+	ux.Logger.PrintToUser("Unsupported cmd: %s is not supported by local clusters", logging.LightBlue.Wrap(what))
+	return nil
 }

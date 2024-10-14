@@ -119,7 +119,7 @@ func GetBlockchainEndpoints(
 		case chainSpec.CChain:
 			rpcEndpoint = network.CChainEndpoint()
 			wsEndpoint = network.CChainWSEndpoint()
-		case network.Kind == models.Local || network.Kind == models.Devnet:
+		case network.Kind == models.Local:
 			blockchainID, err := GetBlockchainID(app, network, chainSpec)
 			if err != nil {
 				return "", "", err

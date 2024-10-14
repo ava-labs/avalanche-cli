@@ -225,6 +225,7 @@ func StartServerProcess(
 	serverPort string,
 	gatewayPort string,
 	snapshotsDir string,
+	logPath string,
 ) error {
 	thisBin := reexec.Self()
 
@@ -239,13 +240,16 @@ func StartServerProcess(
 	}
 	cmd := exec.Command(thisBin, args...)
 
-	outputDirPrefix := path.Join(app.GetRunDir(), prefix+"server")
-	outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
-	if err != nil {
-		return err
+	if logPath == "" {
+		outputDirPrefix := path.Join(app.GetRunDir(), prefix+"server")
+		outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
+		if err != nil {
+			return err
+		}
+		logPath = path.Join(outputDir, "avalanche-cli-backend.log")
 	}
 
-	outputFile, err := os.Create(path.Join(outputDir, "avalanche-cli-backend.log"))
+	outputFile, err := os.Create(logPath)
 	if err != nil {
 		return err
 	}

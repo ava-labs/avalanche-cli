@@ -689,6 +689,13 @@ func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 	return models.ClustersConfig{}, fmt.Errorf("unsupported clusters config version %s", v)
 }
 
+func (app *Avalanche) GetClustersConfig() (models.ClustersConfig, error) {
+	if app.ClustersConfigExists() {
+		return app.LoadClustersConfig()
+	}
+	return models.ClustersConfig{}, nil
+}
+
 func (app *Avalanche) WriteClustersConfigFile(clustersConfig *models.ClustersConfig) error {
 	clustersConfigPath := app.GetClustersConfigPath()
 	if err := os.MkdirAll(filepath.Dir(clustersConfigPath), constants.DefaultPerms755); err != nil {
@@ -787,13 +794,9 @@ func (app *Avalanche) SetupMonitoringEnv() error {
 }
 
 func (app *Avalanche) ClusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return false, err
 	}
 	_, ok := clustersConfig.Clusters[clusterName]
 	return ok, nil

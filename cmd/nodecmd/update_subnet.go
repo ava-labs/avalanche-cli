@@ -41,6 +41,9 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("update")
+	}
 	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}

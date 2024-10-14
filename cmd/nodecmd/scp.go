@@ -55,13 +55,9 @@ $ avalanche node scp node1:/tmp/file.txt NodeID-XXXX:/tmp/file.txt
 }
 
 func scpNode(_ *cobra.Command, args []string) error {
-	var err error
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if len(clustersConfig.Clusters) == 0 {
 		ux.Logger.PrintToUser("There are no clusters defined.")
@@ -83,6 +79,15 @@ func scpNode(_ *cobra.Command, args []string) error {
 	}
 	if sourceClusterExists && destClusterExists {
 		return fmt.Errorf("both source and destination cannot be clusters")
+	}
+	sourceClusterConfig := clustersConfig.Clusters[sourceClusterNameOrNodeID]
+	if sourceClusterExists && sourceClusterConfig.Local {
+		return notImplementedForLocal("scp")
+	}
+
+	destClusterConfig := clustersConfig.Clusters[destClusterNameOrNodeID]
+	if destClusterExists && destClusterConfig.Local {
+		return notImplementedForLocal("scp")
 	}
 
 	switch {
@@ -245,13 +250,9 @@ func prepareSCPTarget(op ClusterOp, host *models.Host, clusterName string, dest 
 
 // getHostClusterPair returns the host and cluster name for the given node or cloudID
 func getHostClusterPair(nodeOrCloudIDOrIP string) (*models.Host, string) {
-	var err error
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return nil, ""
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return nil, ""
 	}
 	for clusterName := range clustersConfig.Clusters {
 		clusterHosts, err := GetAllClusterHosts(clusterName)

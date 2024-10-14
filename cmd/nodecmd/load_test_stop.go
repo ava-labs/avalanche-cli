@@ -40,13 +40,9 @@ separate cloud server created to host the load test.`,
 }
 
 func getLoadTestInstancesInCluster(clusterName string) ([]string, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return nil, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return nil, err
 	}
 	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
 		return nil, fmt.Errorf("cluster %s doesn't exist", clusterName)
@@ -58,13 +54,9 @@ func getLoadTestInstancesInCluster(clusterName string) ([]string, error) {
 }
 
 func checkLoadTestExists(clusterName, loadTestName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return false, err
 	}
 	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
 		return false, fmt.Errorf("cluster %s doesn't exist", clusterName)
@@ -252,13 +244,9 @@ func destroyNode(node, clusterName, loadTestName string, ec2Svc *awsAPI.AwsCloud
 }
 
 func removeLoadTestNodeFromClustersConfig(clusterName, loadTestName string) error {
-	clustersConfig := models.ClustersConfig{}
-	var err error
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if clustersConfig.Clusters != nil {
 		if _, ok := clustersConfig.Clusters[clusterName]; !ok {

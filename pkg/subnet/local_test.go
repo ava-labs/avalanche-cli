@@ -143,7 +143,7 @@ func TestDeployToLocal(t *testing.T) {
 	icmSpec := ICMSpec{
 		SkipICMDeploy: true,
 	}
-	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, testGenesis.Name(), icmSpec, "")
+	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, testGenesis.Name(), icmSpec, "", "")
 	require.NoError(err)
 	require.Equal(testSubnetID2, deployInfo.SubnetID.String())
 	require.Equal(testBlockChainID2, deployInfo.BlockchainID.String())

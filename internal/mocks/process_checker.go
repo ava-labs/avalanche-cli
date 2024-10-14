@@ -14,7 +14,7 @@ type ProcessChecker struct {
 }
 
 // IsServerProcessRunning provides a mock function with given fields: app
-func (_m *ProcessChecker) IsServerProcessRunning(app *application.Avalanche) (bool, error) {
+func (_m *ProcessChecker) IsServerProcessRunning(app *application.Avalanche, _ string) (bool, error) {
 	ret := _m.Called(app)
 
 	if len(ret) == 0 {
