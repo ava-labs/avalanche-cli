@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/api/info"
-	warpPlatformVM "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -41,22 +40,22 @@ var (
 		networkoptions.Mainnet,
 	}
 
-	nodeIDStr                  string
-	nodeEndpoint               string
-	balance                    uint64
-	weight                     uint64
-	startTimeStr               string
-	duration                   time.Duration
-	defaultValidatorParams     bool
-	useDefaultStartTime        bool
-	useDefaultDuration         bool
-	useDefaultWeight           bool
-	waitForTxAcceptance        bool
-	publicKey                  string
-	pop                        string
-	remainingBalancheOwnerAddr string
-	disableOwnerAddr           string
-	rpcURL                     string
+	nodeIDStr                 string
+	nodeEndpoint              string
+	balance                   uint64
+	weight                    uint64
+	startTimeStr              string
+	duration                  time.Duration
+	defaultValidatorParams    bool
+	useDefaultStartTime       bool
+	useDefaultDuration        bool
+	useDefaultWeight          bool
+	waitForTxAcceptance       bool
+	publicKey                 string
+	pop                       string
+	remainingBalanceOwnerAddr string
+	disableOwnerAddr          string
+	rpcURL                    string
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -96,7 +95,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator to add")
 	cmd.Flags().StringVar(&publicKey, "bls-public-key", "", "set the BLS public key of the validator to add")
 	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
-	cmd.Flags().StringVar(&remainingBalancheOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
+	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
@@ -278,45 +277,43 @@ func CallAddValidator(
 		}
 	}
 
-	if remainingBalancheOwnerAddr == "" {
-		remainingBalancheOwnerAddr, err = getKeyForChangeOwner("", network)
+	if remainingBalanceOwnerAddr == "" {
+		remainingBalanceOwnerAddr, err = getKeyForChangeOwner("", network)
 		if err != nil {
 			return err
 		}
 	}
-	addrs, err := address.ParseToIDs([]string{remainingBalancheOwnerAddr})
+	remainingBalanceOwnerAddrID, err := address.ParseToIDs([]string{remainingBalanceOwnerAddr})
 	if err != nil {
-		return fmt.Errorf("failure parsing remaining balanche owner address %s: %w", remainingBalancheOwnerAddr, err)
+		return fmt.Errorf("failure parsing remaining balanche owner address %s: %w", remainingBalanceOwnerAddr, err)
 	}
-	balanceOwners := warpMessage.PChainOwner{
+	remainingBalanceOwners := warpMessage.PChainOwner{
 		Threshold: 1,
-		Addresses: addrs,
+		Addresses: remainingBalanceOwnerAddrID,
 	}
 
 	if disableOwnerAddr == "" {
-		disableOwnerAddr, err := prompts.PromptAddress(
+		disableOwnerAddr, err = prompts.PromptAddress(
 			app.Prompt,
-			"objetivo",
+			"be able to disable the validator using P-Chain transactions",
 			app.GetKeyDir(),
 			app.GetKey,
 			"",
 			network,
 			prompts.PChainFormat,
-			"pepito",
+			"Enter P-Chain address (Example: P-...)",
 		)
 		if err != nil {
 			return err
 		}
-		fmt.Println(disableOwnerAddr)
 	}
-
-	return nil
-
+	disableOwnerAddrID, err := address.ParseToIDs([]string{disableOwnerAddr})
+	if err != nil {
+		return fmt.Errorf("failure parsing disable owner address %s: %w", disableOwnerAddr, err)
+	}
 	disableOwners := warpMessage.PChainOwner{
 		Threshold: 1,
-		Addresses: []ids.ShortID{
-			ids.GenerateTestShortID(),
-		},
+		Addresses: disableOwnerAddrID,
 	}
 
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
@@ -328,7 +325,7 @@ func CallAddValidator(
 		nodeID,
 		blsInfo.PublicKey[:],
 		expiry,
-		balanceOwners,
+		remainingBalanceOwners,
 		disableOwners,
 		weight,
 		privateAggregatorEndpoints,
@@ -364,40 +361,13 @@ func CallAddValidator(
 		return err
 	}
 
+	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
+	ux.Logger.PrintToUser("  Network: %s", network.Name())
+	ux.Logger.PrintToUser("  Weight: %d", weight)
+	ux.Logger.PrintToUser("  Balance: %d", balance)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
 
-	ux.Logger.PrintToUser("NodeID: %s", nodeID)
-	ux.Logger.PrintToUser("Network: %s", network.Name())
-	ux.Logger.PrintToUser("Weight: %d", weight)
-	ux.Logger.PrintToUser("Balance: %d", balance)
-	ux.Logger.PrintToUser("Inputs complete, issuing transaction to add the provided validator information...")
-
-	/*
-		blsInfo, err := getBLSInfo(publicKey, pop)
-		if err != nil {
-			return fmt.Errorf("failure parsing BLS info: %w", err)
-		}
-		nodeID, err := ids.NodeIDFromString(nodeIDStrFormat)
-		if err != nil {
-			return err
-		}
-		// TODO: generate warp message
-		// expiry is set to 48 hours from time of transaction
-		message, err := generateWarpMessageAddValidator(subnetID, nodeID, weight, publicKey, uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix()))
-		if err != nil {
-			return err
-		}
-		tx, err := deployer.RegisterL1Validator(balance, blsInfo, message)
-		if err != nil {
-			return err
-		}
-		ux.Logger.GreenCheckmarkToUser("Register Subnet Validator Tx ID: %s", tx.ID())
-	*/
 	return nil
-}
-
-func generateWarpMessageAddValidator(subnetID ids.ID, nodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
-	return warpPlatformVM.Message{}, nil
 }
 
 func CallAddValidatorNonSOV(

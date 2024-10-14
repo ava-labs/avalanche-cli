@@ -166,7 +166,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	remainingBalancheOwnerAddr, err = getChangeAddrFromPChain()
+	remainingBalanceOwnerAddr, err = getChangeAddrFromPChain()
 	if err != nil {
 		return fmt.Errorf("failure parsing change owner address: %w", err)
 	}
