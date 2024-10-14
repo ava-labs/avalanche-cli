@@ -299,6 +299,10 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 		}
 		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
 	}
+	_, err = cli.WaitForHealthy(ctx)
+	if err != nil {
+		return err
+	}
 	networkInfo := sc.Networks[network.Name()]
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
