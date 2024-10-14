@@ -520,8 +520,7 @@ func InitValidatorRegistration(
 		weight,
 	)
 	if err != nil {
-		_ = tx
-		//return nil, ids.Empty, TransactionError(tx, err, "failure initializing validator registration")
+		return nil, ids.Empty, TransactionError(tx, err, "failure initializing validator registration")
 	}
 	return PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
@@ -585,8 +584,7 @@ func FinishValidatorRegistration(
 		signedMessage,
 	)
 	if err != nil {
-		_ = tx
-		//return TransactionError(tx, err, "failure completing validator registration")
+		return TransactionError(tx, err, "failure completing validator registration")
 	}
 	return nil
 }

@@ -166,13 +166,13 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	changeAddr, err = getChangeAddrFromPChain()
+	remainingBalancheOwnerAddr, err = getChangeAddrFromPChain()
 	if err != nil {
 		return fmt.Errorf("failure parsing change owner address: %w", err)
 	}
 
 	// add back validator to subnet with updated weight
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeID.String())
+	return CallAddValidator(deployer, network, kc, blockchainName, nodeID.String(), publicKey, pop)
 }
 
 // getValidatorBalanceFromPChain gets remaining balance of validator from p chain
