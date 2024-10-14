@@ -2,6 +2,8 @@ module github.com/ava-labs/avalanche-cli
 
 go 1.22.8
 
+replace github.com/ava-labs/awm-relayer => ../awm-relayer
+
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241005224128-cc3c07bb1344

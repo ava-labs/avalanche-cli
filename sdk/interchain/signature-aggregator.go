@@ -48,11 +48,12 @@ type SignatureAggregator struct {
 func createAppRequestNetwork(
 	network models.Network,
 	logLevel logging.Level,
+	registerer prometheus.Registerer,
 	extraPeerEndpoints []string,
 ) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
-		prometheus.DefaultRegisterer,
+		registerer,
 		nil,
 		extraPeerEndpoints,
 		&config.Config{
@@ -81,6 +82,7 @@ func createAppRequestNetwork(
 func initSignatureAggregator(
 	network peers.AppRequestNetwork,
 	logger logging.Logger,
+	registerer prometheus.Registerer,
 	subnetID ids.ID,
 	quorumPercentage uint64,
 ) (*SignatureAggregator, error) {
@@ -96,7 +98,7 @@ func initSignatureAggregator(
 
 	messageCreator, err := message.NewCreator(
 		logger,
-		prometheus.DefaultRegisterer,
+		registerer,
 		constants.DefaultNetworkCompressionType,
 		constants.DefaultNetworkMaximumInboundTimeout,
 	)
@@ -104,7 +106,7 @@ func initSignatureAggregator(
 		return nil, fmt.Errorf("failed to create message creator: %w", err)
 	}
 
-	metricsInstance := metrics.NewSignatureAggregatorMetrics(prometheus.DefaultRegisterer)
+	metricsInstance := metrics.NewSignatureAggregatorMetrics(registerer)
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
 		network,
 		logger,
@@ -137,11 +139,12 @@ func NewSignatureAggregator(
 	quorumPercentage uint64,
 	extraPeerEndpoints []string,
 ) (*SignatureAggregator, error) {
-	peerNetwork, err := createAppRequestNetwork(network, logLevel, extraPeerEndpoints)
+	registerer := prometheus.NewRegistry()
+	peerNetwork, err := createAppRequestNetwork(network, logLevel, registerer, extraPeerEndpoints)
 	if err != nil {
 		return nil, err
 	}
-	return initSignatureAggregator(peerNetwork, logger, subnetID, quorumPercentage)
+	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
 }
 
 // AggregateSignatures aggregates signatures for a given message and justification.

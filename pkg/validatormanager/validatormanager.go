@@ -461,3 +461,21 @@ func PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
 	}
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
+
+// last step of flow for adding a new validator
+func PoAValidatorManagerCompleteValidatorRegistration(
+	rpcURL string,
+	managerAddress common.Address,
+	privateKey string, // not need to be owner atm
+	subnetValidatorRegistrationSignedMessage *warp.Message,
+) (*types.Transaction, *types.Receipt, error) {
+	return contract.TxToMethodWithWarpMessage(
+		rpcURL,
+		privateKey,
+		managerAddress,
+		subnetValidatorRegistrationSignedMessage,
+		big.NewInt(0),
+		"completeValidatorRegistration(uint32)",
+		uint32(0),
+	)
+}

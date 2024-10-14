@@ -97,6 +97,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&changeAddr, "change-address", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
+	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	return cmd
 }
 
@@ -122,8 +123,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 	expiry := uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix())
-	//expiry = 1728906495
-	expiry = 1728913615
 	fmt.Println("Expiry:", expiry)
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -203,6 +202,46 @@ func addValidator(_ *cobra.Command, args []string) error {
 	fmt.Println(n)
 	if !ownerPrivateKeyFound {
 		return fmt.Errorf("not private key found for PoA manager owner %s", sc.PoAValidatorManagerOwner)
+	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+	if err != nil {
+		return err
+	}
+	if privateKey == "" {
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for completing registration of validator? (Blockchain gas token)",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		"to pay for transaction fees on P-Chain",
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		0,
+	)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println("Initialize registration")
@@ -292,19 +331,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	fmt.Println("validationID", validationID)
 	fmt.Println("TODO BIEN")
 
-	kc, err := keychain.GetKeychainFromCmdLineFlags(
-		app,
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		useLedger,
-		ledgerAddresses,
-		0,
-	)
-	if err != nil {
-		return err
-	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	fmt.Println("register validator on pchain")
@@ -316,7 +342,16 @@ func addValidator(_ *cobra.Command, args []string) error {
 		}
 	*/
 	fmt.Println(txID)
-	_, err = validatormanager.PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+
+	if err := UpdatePChainHeight(
+		deployer,
+		kc.Addresses().List()[0],
+		"Waiting for P-Chain to update validator information ...",
+	); err != nil {
+		return err
+	}
+
+	subnetValidatorRegistrationSignedMessage, err := validatormanager.PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
 		network,
 		app.Log,
 		logging.Info,
@@ -329,6 +364,28 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("TODO BIEN")
+
+	if err := evm.SetupProposerVM(
+		rpcURL,
+		privateKey,
+	); err != nil {
+		return err
+	}
+
+	tx, _, err := validatormanager.PoAValidatorManagerCompleteValidatorRegistration(
+		rpcURL,
+		common.HexToAddress(validatormanager.ValidatorContractAddress),
+		privateKey,
+		subnetValidatorRegistrationSignedMessage,
+	)
+	if tx != nil {
+		fmt.Println("tx hash", tx.Hash())
+	}
+	if err != nil {
+		return err
+	}
+	fmt.Println("TODO BIEN")
 	return nil
 
 	blockchainName := args[0]
