@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"

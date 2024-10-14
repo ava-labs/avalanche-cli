@@ -350,7 +350,9 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			localDestroyNode(nil, []string{clusterName})
+			if destroyErr := localDestroyNode(nil, []string{clusterName}); destroyErr != nil {
+				return fmt.Errorf("failed to start local avalanchego: %w, and failed to destroy the local node %s due to %w", err, clusterName, destroyErr)
+			}
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
@@ -414,7 +416,10 @@ func localStopNode(_ *cobra.Command, _ []string) error {
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 
-	localStopNode(nil, nil)
+	if err := localStopNode(nil, nil); err != nil {
+		return fmt.Errorf("failed to destroy local node: %w", err)
+
+	}
 
 	rootDir := app.GetLocalDir(clusterName)
 	if err := os.RemoveAll(rootDir); err != nil {
