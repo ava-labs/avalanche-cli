@@ -198,6 +198,9 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	}
 	serverLogPath := filepath.Join(rootDir, "server.log")
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
+	if err := os.MkdirAll(rootDir, constants.DefaultPerms755); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", rootDir, err)
+	}
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalClusterPrefix,
 		binutils.LocalClusterGRPCServerPort,
