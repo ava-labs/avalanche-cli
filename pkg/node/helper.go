@@ -150,7 +150,7 @@ func DisconnectHosts(hosts []*models.Host) {
 	}
 }
 
-func getWSEndpoint(endpoint string, blockchainID string) string {
+func GetWSEndpoint(endpoint string, blockchainID string) string {
 	return models.NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
 }
 
@@ -176,7 +176,7 @@ func getPublicEndpoints(
 	return endpoints, nil
 }
 
-func getRPCEndpoint(endpoint string, blockchainID string) string {
+func GetRPCEndpoint(endpoint string, blockchainID string) string {
 	return models.NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
 }
 
