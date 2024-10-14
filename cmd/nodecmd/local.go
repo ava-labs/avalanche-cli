@@ -416,10 +416,7 @@ func localStopNode(_ *cobra.Command, _ []string) error {
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 
-	if err := localStopNode(nil, nil); err != nil {
-		return fmt.Errorf("failed to destroy local node: %w", err)
-
-	}
+	localStopNode(nil, nil)
 
 	rootDir := app.GetLocalDir(clusterName)
 	if err := os.RemoveAll(rootDir); err != nil {
