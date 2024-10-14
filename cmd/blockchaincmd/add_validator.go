@@ -316,6 +316,13 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
+	if len(privateAggregatorEndpoints) == 0 {
+		privateAggregatorEndpoints, err = GetAggregatorExtraPeerEndpoints(network)
+		if err != nil {
+			return err
+		}
+	}
+
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,

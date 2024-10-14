@@ -36,6 +36,7 @@ var (
 	stakingTLSKeyPath    string
 	stakingCertKeyPath   string
 	stakingSignerKeyPath string
+	numNodes             uint32
 )
 
 // const snapshotName = "local_snapshot"
@@ -91,6 +92,7 @@ status by running avalanche node status local
 	cmd.Flags().StringVar(&stakingTLSKeyPath, "staking-tls-key-path", "", "path to provided staking tls key for node")
 	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
 	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to start")
 	return cmd
 }
 
@@ -186,6 +188,11 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	pluginDir := filepath.Join(rootDir, "node1", "plugins")
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
+
+	// make sure rootDir exists
+	if err := os.MkdirAll(rootDir, 0o700); err != nil {
+		return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+	}
 
 	// starts server
 	avalancheGoVersion := "latest"
@@ -300,10 +307,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			defer os.Remove(upgradePath)
 		}
 
-		// make sure rootDir exists
-		if err := os.MkdirAll(rootDir, 0o700); err != nil {
-			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
-		}
 		// make sure pluginDir exists
 		if err := os.MkdirAll(pluginDir, 0o700); err != nil {
 			return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
@@ -325,7 +328,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		}
 
 		anrOpts := []client.OpOption{
-			client.WithNumNodes(1),
+			client.WithNumNodes(numNodes),
 			client.WithNetworkID(network.ID),
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),

@@ -96,7 +96,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"Which key to you want to use to pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
+			"pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
