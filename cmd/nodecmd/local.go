@@ -196,6 +196,14 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		}
 	}
 	serverLogPath := filepath.Join(rootDir, "server.log")
+	// make sure rootDir exists
+	if err := os.MkdirAll(rootDir, 0o700); err != nil {
+		return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+	}
+	// make sure pluginDir exists
+	if err := os.MkdirAll(pluginDir, 0o700); err != nil {
+		return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
+	}
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalClusterPrefix,
@@ -298,15 +306,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			defer os.Remove(upgradePath)
 		}
 
-		// make sure rootDir exists
-		if err := os.MkdirAll(rootDir, 0o700); err != nil {
-			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
-		}
-		// make sure pluginDir exists
-		if err := os.MkdirAll(pluginDir, 0o700); err != nil {
-			return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
-		}
-
 		if stakingTLSKeyPath != "" && stakingCertKeyPath != "" && stakingSignerKeyPath != "" {
 			if err := os.MkdirAll(filepath.Join(rootDir, "node1", "staking"), 0o700); err != nil {
 				return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
@@ -350,9 +349,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			if destroyErr := localDestroyNode(nil, []string{clusterName}); destroyErr != nil {
-				return fmt.Errorf("failed to start local avalanchego: %w, and failed to destroy the local node %s due to %w", err, clusterName, destroyErr)
-			}
+			localDestroyNode(nil, []string{clusterName})
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
