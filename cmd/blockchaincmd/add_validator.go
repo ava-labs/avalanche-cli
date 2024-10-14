@@ -102,6 +102,8 @@ Testnet or Mainnet.`,
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
+	blockchainName := args[0]
+
 	if nodeEndpoint != "" {
 		infoClient := info.NewClient(nodeEndpoint)
 		ctx, cancel := utils.GetAPILargeContext()
@@ -123,7 +125,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 	expiry := uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix())
-	fmt.Println("Expiry:", expiry)
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -139,7 +140,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	}
 
 	chainSpec := contract.ChainSpec{
-		BlockchainName: "poa",
+		BlockchainName: blockchainName,
 	}
 	rpcURL, _, err := contract.GetBlockchainEndpoints(
 		app,
@@ -151,27 +152,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	for _, n := range []string{
-		"NodeID-EdozwfGju54Wyq65Hxb2aGRsvsX35AzfR",
-		"NodeID-2aMuVFi1yAah7uQ21umSFWL9MR7sMjHzD",
-		"NodeID-MKvwytUJUXvD4ZrFegX5NN9bataApatKf",
-		"NodeID-EkMcxQtbeYw6aj3pttZLyH33RBdYkSJqK",
-	} {
-		nID, err := ids.NodeIDFromString(n)
-		if err != nil {
-			return err
-		}
-		validatorID, err := validatormanager.GetRegisteredValidator(
-			rpcURL,
-			common.HexToAddress(validatormanager.ValidatorContractAddress),
-			nID,
-		)
-		if err != nil {
-			return err
-		}
-		fmt.Println(nID, validatorID)
-	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
 	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
 	if err != nil {
@@ -190,7 +171,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		},
 	}
 
-	ownerPrivateKeyFound, n, _, ownerPrivateKey, err := contract.SearchForManagedKey(
+	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
 		common.HexToAddress(sc.PoAValidatorManagerOwner),
@@ -199,7 +180,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(n)
 	if !ownerPrivateKeyFound {
 		return fmt.Errorf("not private key found for PoA manager owner %s", sc.PoAValidatorManagerOwner)
 	}
@@ -244,9 +224,58 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println("Initialize registration")
-	fmt.Println(rpcURL)
-	evmTx, receipt, err := validatormanager.PoAValidatorManagerInitializeValidatorRegistration(
+	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+		app,
+		network,
+		rpcURL,
+		chainSpec,
+		ownerPrivateKey,
+		nodeID,
+		blsInfo.PublicKey[:],
+		expiry,
+		balanceOwners,
+		disableOwners,
+		weight,
+		privateAggregatorEndpoints,
+	)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("ValidationID: %s", validationID)
+
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+	balance = constants.BootstrapValidatorBalance
+	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
+	if err != nil {
+		//	return err
+	}
+	ux.Logger.PrintToUser("RegisterSubnetValidatorTx ID: %s", txID)
+
+	if err := UpdatePChainHeight(
+		deployer,
+		kc.Addresses().List()[0],
+		"Waiting for P-Chain to update validator information ...",
+	); err != nil {
+		return err
+	}
+
+	if err := validatormanager.FinishValidatorRegistration(
+		app,
+		network,
+		rpcURL,
+		chainSpec,
+		privateKey,
+		validationID,
+		privateAggregatorEndpoints,
+	); err != nil {
+		return err
+	}
+
+	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
+
+	return nil
+
+	tx, _, err := validatormanager.PoAValidatorManagerInitializeValidatorRegistration(
 		rpcURL,
 		common.HexToAddress(validatormanager.ValidatorContractAddress),
 		ownerPrivateKey,
@@ -258,40 +287,13 @@ func addValidator(_ *cobra.Command, args []string) error {
 		weight,
 	)
 	if err != nil {
-		if evmTx != nil {
-			fmt.Println(evmTx.Hash())
-		}
-		fmt.Println(receipt)
-		//return err
-	}
-	if evmTx != nil {
-		fmt.Println("txHash", evmTx.Hash())
+		//return validatormanager.TransactionError(tx, err, "failure initializing validator registration")
 	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return err
 	}
 	defer client.Close()
-	/*
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-
-		txHash := "0xa5a3a27c782ab0bfcc04bf0c5dc86903fc51342e791ad13d6ae94a7ed558aff1"
-		receipt, err = client.TransactionReceipt(ctx, common.HexToHash(txHash))
-		if err != nil {
-			return err
-		}
-		fmt.Println("receipt:", receipt.BlockNumber, receipt.BlockHash)
-		unsignedMessage, err := evm.ExtractWarpMessageFromReceipt(
-			client,
-			ctx,
-			receipt,
-		)
-		if err != nil {
-			return err
-		}
-		fmt.Println("unsigned warp message: ", unsignedMessage.ID())
-	*/
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -308,8 +310,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//fmt.Println(hex.EncodeToString(unsignedMessage.Bytes()))
-	signedMessage, validationID, err := validatormanager.PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
+	signedMessage, validationID, err = validatormanager.PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
 		app.Log,
 		logging.Info,
@@ -328,20 +329,15 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("validationID", validationID)
-	fmt.Println("TODO BIEN")
 
-	deployer := subnet.NewPublicDeployer(app, kc, network)
+	return nil
 
-	fmt.Println("register validator on pchain")
 	balance = constants.BootstrapValidatorBalance
-	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
-	/*
-		if err != nil {
-			return err
-		}
-	*/
-	fmt.Println(txID)
+	txID, _, err = deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
+	if err != nil {
+		//	return err
+	}
+	ux.Logger.PrintToUser("RegisterSubnetValidatorTx ID: %s", txID)
 
 	if err := UpdatePChainHeight(
 		deployer,
@@ -373,7 +369,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	tx, _, err := validatormanager.PoAValidatorManagerCompleteValidatorRegistration(
+	tx, _, err = validatormanager.PoAValidatorManagerCompleteValidatorRegistration(
 		rpcURL,
 		common.HexToAddress(validatormanager.ValidatorContractAddress),
 		privateKey,
@@ -388,7 +384,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	fmt.Println("TODO BIEN")
 	return nil
 
-	blockchainName := args[0]
 	err = prompts.ValidateNodeID(nodeIDStr)
 	if err != nil {
 		return err

@@ -4,7 +4,6 @@ package validatormanager
 
 import (
 	_ "embed"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
@@ -81,7 +80,7 @@ func PoAValidatorManagerInitialize(
 }
 
 func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {
-	msgSuffix := ":%w"
+	msgSuffix := ": %w"
 	if tx != nil {
 		msgSuffix += fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
 	}
@@ -381,8 +380,6 @@ func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	fmt.Println("check", registerSubnetValidatorUnsignedMessage.ID())
-	fmt.Println(hex.EncodeToString(registerSubnetValidatorUnsignedMessage.Bytes()))
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
 		aggregatorLogger,
@@ -478,4 +475,118 @@ func PoAValidatorManagerCompleteValidatorRegistration(
 		"completeValidatorRegistration(uint32)",
 		uint32(0),
 	)
+}
+
+func InitValidatorRegistration(
+	app *application.Avalanche,
+	network models.Network,
+	rpcURL string,
+	chainSpec contract.ChainSpec,
+	ownerPrivateKey string,
+	nodeID ids.NodeID,
+	blsPublicKey []byte,
+	expiry uint64,
+	balanceOwners warpMessage.PChainOwner,
+	disableOwners warpMessage.PChainOwner,
+	weight uint64,
+	aggregatorExtraPeerEndpoints []string,
+) (*warp.Message, ids.ID, error) {
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return nil, ids.Empty, err
+	}
+	blockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return nil, ids.Empty, err
+	}
+	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	tx, _, err := PoAValidatorManagerInitializeValidatorRegistration(
+		rpcURL,
+		managerAddress,
+		ownerPrivateKey,
+		nodeID,
+		blsPublicKey,
+		expiry,
+		balanceOwners,
+		disableOwners,
+		weight,
+	)
+	if err != nil {
+		_ = tx
+		//return nil, ids.Empty, TransactionError(tx, err, "failure initializing validator registration")
+	}
+	return PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
+		network,
+		app.Log,
+		logging.Info,
+		0,
+		aggregatorExtraPeerEndpoints,
+		subnetID,
+		blockchainID,
+		managerAddress,
+		nodeID,
+		[48]byte(blsPublicKey),
+		expiry,
+		balanceOwners,
+		disableOwners,
+		weight,
+	)
+}
+
+func FinishValidatorRegistration(
+	app *application.Avalanche,
+	network models.Network,
+	rpcURL string,
+	chainSpec contract.ChainSpec,
+	privateKey string,
+	validationID ids.ID,
+	aggregatorExtraPeerEndpoints []string,
+) error {
+	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+		network,
+		app.Log,
+		logging.Info,
+		0,
+		aggregatorExtraPeerEndpoints,
+		subnetID,
+		validationID,
+		true,
+	)
+	if err != nil {
+		return err
+	}
+	if err := evm.SetupProposerVM(
+		rpcURL,
+		privateKey,
+	); err != nil {
+		return err
+	}
+	tx, _, err := PoAValidatorManagerCompleteValidatorRegistration(
+		rpcURL,
+		managerAddress,
+		privateKey,
+		signedMessage,
+	)
+	if err != nil {
+		_ = tx
+		//return TransactionError(tx, err, "failure completing validator registration")
+	}
+	return nil
 }

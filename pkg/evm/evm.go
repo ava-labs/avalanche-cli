@@ -16,7 +16,6 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/interfaces"
-	subnetEvmInterfaces "github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/predicate"
@@ -258,6 +257,7 @@ func GetSignedTxToMethodWithWarpMessage(
 	callData []byte,
 	value *big.Int,
 ) (*types.Transaction, error) {
+	const defaultGasLimit = 2_000_000
 	privateKey, err := crypto.HexToECDSA(privateKeyStr)
 	if err != nil {
 		return nil, err
@@ -289,7 +289,10 @@ func GetSignedTxToMethodWithWarpMessage(
 	}
 	gasLimit, err := EstimateGasLimit(client, msg)
 	if err != nil {
-		return nil, err
+		// assuming this is related to the tx itself.
+		// just using default gas limit, and let the user debug the
+		// tx if needed so
+		gasLimit = defaultGasLimit
 	}
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:    chainID,
@@ -608,7 +611,7 @@ func ExtractWarpMessageFromReceipt(
 	ctx context.Context,
 	receipt *types.Receipt,
 ) (*avalancheWarp.UnsignedMessage, error) {
-	logs, err := client.FilterLogs(ctx, subnetEvmInterfaces.FilterQuery{
+	logs, err := client.FilterLogs(ctx, interfaces.FilterQuery{
 		BlockHash: &receipt.BlockHash,
 		Addresses: []common.Address{warp.Module.Address},
 	})
