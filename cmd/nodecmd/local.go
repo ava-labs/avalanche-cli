@@ -183,6 +183,14 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	// check if this is existing cluster
 	rootDir := app.GetLocalDir(clusterName)
 	pluginDir := filepath.Join(rootDir, "node1", "plugins")
+	// make sure rootDir exists
+	if err := os.MkdirAll(rootDir, 0o700); err != nil {
+		return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+	}
+	// make sure pluginDir exists
+	if err := os.MkdirAll(pluginDir, 0o700); err != nil {
+		return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
+	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
@@ -198,9 +206,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	}
 	serverLogPath := filepath.Join(rootDir, "server.log")
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
-	if err := os.MkdirAll(rootDir, constants.DefaultPerms755); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", rootDir, err)
-	}
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalClusterPrefix,
 		binutils.LocalClusterGRPCServerPort,
