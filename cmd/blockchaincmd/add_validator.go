@@ -316,11 +316,17 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
+	// given by users
+	extraAggregatorPeers, err := UrisToPeers(privateAggregatorEndpoints)
+	if err != nil {
+		return err
+	}
+	// available in local cluster
 	networkAggregatorEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
 	if err != nil {
 		return err
 	}
-	privateAggregatorEndpoints = append(privateAggregatorEndpoints, networkAggregatorEndpoints...)
+	extraAggregatorPeers = append(extraAggregatorPeers, networkAggregatorEndpoints...)
 
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
@@ -334,7 +340,7 @@ func CallAddValidator(
 		remainingBalanceOwners,
 		disableOwners,
 		weight,
-		privateAggregatorEndpoints,
+		extraAggregatorPeers,
 	)
 	if err != nil {
 		return err
@@ -362,7 +368,7 @@ func CallAddValidator(
 		chainSpec,
 		privateKey,
 		validationID,
-		privateAggregatorEndpoints,
+		extraAggregatorPeers,
 	); err != nil {
 		return err
 	}

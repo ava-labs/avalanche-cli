@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -121,7 +122,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []string,
+	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
@@ -241,7 +242,7 @@ func SetupPoA(
 	privateKey string,
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
-	aggregatorExtraPeerEndpoints []string,
+	aggregatorExtraPeerEndpoints []info.Peer,
 ) error {
 	if err := evm.SetupProposerVM(
 		rpcURL,
@@ -366,7 +367,7 @@ func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []string,
+	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	blockchainID ids.ID,
 	managerAddress common.Address,
@@ -446,7 +447,7 @@ func PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
-	aggregatorExtraPeerEndpoints []string,
+	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	validationID ids.ID,
 	registered bool,
@@ -514,7 +515,7 @@ func InitValidatorRegistration(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
-	aggregatorExtraPeerEndpoints []string,
+	aggregatorExtraPeerEndpoints []info.Peer,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -572,7 +573,7 @@ func FinishValidatorRegistration(
 	chainSpec contract.ChainSpec,
 	privateKey string,
 	validationID ids.ID,
-	aggregatorExtraPeerEndpoints []string,
+	aggregatorExtraPeerEndpoints []info.Peer,
 ) error {
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
 	subnetID, err := contract.GetSubnetID(

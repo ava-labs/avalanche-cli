@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/node"
+	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
@@ -764,7 +765,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			aggregatorExtraPeerEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
+			extraAggregatorPeers, err := GetAggregatorExtraPeerEndpoints(network)
 			if err != nil {
 				return err
 			}
@@ -778,7 +779,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				genesisPrivateKey,
 				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 				avaGoBootstrapValidators,
-				aggregatorExtraPeerEndpoints,
+				extraAggregatorPeers,
 			); err != nil {
 				return err
 			}
@@ -1052,8 +1053,54 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 	return subnetValidators, nil
 }
 
-func GetAggregatorExtraPeerEndpoints(network models.Network) ([]string, error) {
-	aggregatorExtraPeerEndpoints := []string{}
+func UrisToPeers(uris []string) ([]info.Peer, error) {
+	peers := []info.Peer{}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	for _, uri := range uris {
+		client := info.NewClient(uri)
+		nodeID, _, err := client.GetNodeID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ip, err := client.GetNodeIP(ctx)
+		if err != nil {
+			return nil, err
+		}
+		peers = append(peers, info.Peer{
+			Info: peer.Info{
+				ID:       nodeID,
+				PublicIP: ip,
+			},
+		})
+	}
+	return peers, nil
+}
+
+func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error) {
+	aggregatorExtraPeerEndpointsUris, err := GetAggregatorExtraPeerEndpointsUris(network)
+	if err != nil {
+		return nil, err
+	}
+	aggregatorPeers, err := UrisToPeers(aggregatorExtraPeerEndpointsUris)
+	if err != nil {
+		return nil, err
+	}
+	for _, uri := range aggregatorExtraPeerEndpointsUris {
+		infoClient := info.NewClient(uri)
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		peers, err := infoClient.Peers(ctx)
+		if err != nil {
+			return nil, err
+		}
+		aggregatorPeers = append(aggregatorPeers, peers...)
+	}
+	return aggregatorPeers, nil
+}
+
+func GetAggregatorExtraPeerEndpointsUris(network models.Network) ([]string, error) {
+	aggregatorExtraPeerEndpointsUris := []string{}
 	if network.ClusterName != "" {
 		clustersConfig, err := app.LoadClustersConfig()
 		if err != nil {
@@ -1076,9 +1123,9 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]string, error) {
 				return nil, err
 			}
 			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-				aggregatorExtraPeerEndpoints = append(aggregatorExtraPeerEndpoints, nodeInfo.Uri)
+				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
 			}
 		}
 	}
-	return aggregatorExtraPeerEndpoints, nil
+	return aggregatorExtraPeerEndpointsUris, nil
 }

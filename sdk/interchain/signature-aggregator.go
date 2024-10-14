@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
 	"github.com/ava-labs/avalanchego/utils/constants"
@@ -49,7 +50,7 @@ func createAppRequestNetwork(
 	network models.Network,
 	logLevel logging.Level,
 	registerer prometheus.Registerer,
-	extraPeerEndpoints []string,
+	extraPeerEndpoints []info.Peer,
 ) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
@@ -137,7 +138,7 @@ func NewSignatureAggregator(
 	logLevel logging.Level,
 	subnetID ids.ID,
 	quorumPercentage uint64,
-	extraPeerEndpoints []string,
+	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
 	registerer := prometheus.NewRegistry()
 	peerNetwork, err := createAppRequestNetwork(network, logLevel, registerer, extraPeerEndpoints)
