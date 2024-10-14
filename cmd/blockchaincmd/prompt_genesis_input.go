@@ -131,12 +131,13 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 	}
 	var setUpNodes bool
 	if generateNodeID {
-		setUpNodes = true
+		setUpNodes = false
 	} else {
 		setUpNodes, err = promptSetUpNodes()
 		if err != nil {
 			return nil, err
 		}
+		generateNodeID = !setUpNodes
 	}
 	previousAddr := ""
 	for len(subnetValidators) < numBootstrapValidators {

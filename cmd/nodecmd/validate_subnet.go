@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -173,7 +175,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
 
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
@@ -197,7 +199,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	nonPrimaryValidators := 0
@@ -232,10 +234,10 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if !avoidChecks {
-		if err := checkHostsAreBootstrapped(hosts); err != nil {
+		if err := node.CheckHostsAreBootstrapped(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreHealthy(hosts); err != nil {
+		if err := node.CheckHostsAreHealthy(hosts); err != nil {
 			return err
 		}
 	}
