@@ -184,7 +184,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 func promptValidatorBalance() (uint64, error) {
 	ux.Logger.PrintToUser("Balance is used to pay for continuous fee to the P-Chain")
-	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
+	txt := "What balance would you like to assign to the bootstrap validator (in nAVAX)?"
 	return app.Prompt.CaptureValidatorBalance(txt)
 }
 
@@ -316,12 +316,11 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
-	if len(privateAggregatorEndpoints) == 0 {
-		privateAggregatorEndpoints, err = GetAggregatorExtraPeerEndpoints(network)
-		if err != nil {
-			return err
-		}
+	networkAggregatorEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
+	if err != nil {
+		return err
 	}
+	privateAggregatorEndpoints = append(privateAggregatorEndpoints, networkAggregatorEndpoints...)
 
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,

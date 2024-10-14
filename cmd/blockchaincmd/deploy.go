@@ -77,6 +77,7 @@ var (
 	bootstrapValidatorsJSONFilePath string
 	privateKeyFlags                 contract.PrivateKeyFlags
 	bootstrapEndpoints              []string
+	convertOnly                     bool
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -132,6 +133,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
+	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 	return cmd
 }
 
@@ -727,7 +729,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if !generateNodeID {
+		if !convertOnly {
 			clusterName, err := node.GetClusterNameFromList(app)
 			if err != nil {
 				return err
@@ -782,7 +784,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			ux.Logger.GreenCheckmarkToUser("L1 is successfully converted to sovereign blockchain")
 		} else {
-			ux.Logger.GreenCheckmarkToUser("Generated Node ID and BLS info for bootstrap validator(s)")
+			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
 			ux.Logger.PrintToUser("To convert L1 to sovereign blockchain, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish converting L1 to sovereign blockchain", blockchainName)
