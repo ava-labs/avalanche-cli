@@ -755,9 +755,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err := node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName); err != nil {
 				return err
 			}
-
-			// TODO: replace wait below wiht check for healhty in local machine
-			time.Sleep(70 * time.Second)
 		}
 
 		chainSpec := contract.ChainSpec{
