@@ -86,7 +86,7 @@ func BuildDockerImageFromGitRepo(host *models.Host, image string, gitRepo string
 		}
 	}()
 	// clone the repo and checkout commit
-	if _, err := host.Command(fmt.Sprintf("git clone %s %s && cd %s && git checkout %s && sleep 2", gitRepo, tmpDir, tmpDir, commit), nil, constants.SSHLongRunningScriptTimeout); err != nil {
+	if _, err := host.Command(fmt.Sprintf("git clone %s %s && cd %s && git checkout %s", gitRepo, tmpDir, tmpDir, commit), nil, constants.SSHLongRunningScriptTimeout); err != nil {
 		return err
 	}
 	// build the image
