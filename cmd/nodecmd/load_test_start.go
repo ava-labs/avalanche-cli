@@ -523,15 +523,13 @@ func GetLoadTestScript(app *application.Avalanche) error {
 }
 
 func getExistingLoadTestInstance(clusterName, loadTestName string) (string, error) {
-	if app.ClustersConfigExists() {
-		clustersConfig, err := app.LoadClustersConfig()
-		if err != nil {
-			return "", err
-		}
-		if _, ok := clustersConfig.Clusters[clusterName]; ok {
-			if _, loadTestExists := clustersConfig.Clusters[clusterName].LoadTestInstance[loadTestName]; loadTestExists {
-				return clustersConfig.Clusters[clusterName].LoadTestInstance[loadTestName], nil
-			}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return "", err
+	}
+	if _, ok := clustersConfig.Clusters[clusterName]; ok {
+		if _, loadTestExists := clustersConfig.Clusters[clusterName].LoadTestInstance[loadTestName]; loadTestExists {
+			return clustersConfig.Clusters[clusterName].LoadTestInstance[loadTestName], nil
 		}
 	}
 	return "", nil

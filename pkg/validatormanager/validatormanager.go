@@ -4,6 +4,7 @@ package validatormanager
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -29,6 +31,8 @@ import (
 const (
 	ValidatorContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
 )
+
+var errAlreadyInitialized = errors.New("the contract is already initialized")
 
 //go:embed deployed_poa_validator_manager_bytecode.txt
 var deployedPoAValidatorManagerBytecode []byte
@@ -68,7 +72,7 @@ func PoAValidatorManagerInitialize(
 		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
 		MaximumChurnPercentage: defaultMaximumChurnPercentage,
 	}
-	return contract.TxToMethod(
+	tx, receipt, err := contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		managerAddress,
@@ -77,15 +81,33 @@ func PoAValidatorManagerInitialize(
 		params,
 		ownerAddress,
 	)
-}
-
-func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {
-	msgSuffix := ": %w"
-	if tx != nil {
-		msgSuffix += fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
+	if err != nil {
+		trace, traceCallErr := contract.DebugTraceCall(
+			rpcURL,
+			privateKey,
+			managerAddress,
+			nil,
+			"initialize((bytes32,uint64,uint8),address)",
+			params,
+			ownerAddress,
+		)
+		if traceCallErr != nil {
+			ux.Logger.PrintToUser("Could not get debug trace for PoA initialization error on %s: %s", rpcURL, traceCallErr)
+			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
+			return tx, receipt, err
+		}
+		errorSignatureToError := map[string]error{
+			"InvalidInitialization()": errAlreadyInitialized,
+		}
+		errorFromSignature, _ := evm.GetErrorFromTrace(trace, errorSignatureToError)
+		if errorFromSignature != nil {
+			return tx, receipt, errorFromSignature
+		} else {
+			ux.Logger.PrintToUser("error trace for PoA initialization error:")
+			ux.Logger.PrintToUser("%#v", trace)
+		}
 	}
-	args = append(args, err)
-	return fmt.Errorf(msg+msgSuffix, args...)
+	return tx, receipt, err
 }
 
 // constructs p-chain-validated (signed) subnet conversion warp
@@ -252,12 +274,15 @@ func SetupPoA(
 		ownerAddress,
 	)
 	if err != nil {
-		return TransactionError(tx, err, "failure initializing poa validator manager")
+		if !errors.Is(err, errAlreadyInitialized) {
+			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
+		}
+		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
 	}
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		app.Log,
-		logging.Info,
+		logging.Trace,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
@@ -278,7 +303,7 @@ func SetupPoA(
 		subnetConversionSignedMessage,
 	)
 	if err != nil {
-		return TransactionError(tx, err, "failure initializing validators set on poa manager")
+		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
 	}
 	return nil
 }
@@ -520,7 +545,7 @@ func InitValidatorRegistration(
 		weight,
 	)
 	if err != nil {
-		return nil, ids.Empty, TransactionError(tx, err, "failure initializing validator registration")
+		return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 	}
 	return PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
@@ -584,7 +609,7 @@ func FinishValidatorRegistration(
 		signedMessage,
 	)
 	if err != nil {
-		return TransactionError(tx, err, "failure completing validator registration")
+		return evm.TransactionError(tx, err, "failure completing validator registration")
 	}
 	return nil
 }

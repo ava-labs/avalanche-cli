@@ -111,13 +111,12 @@ func importFile(_ *cobra.Command, args []string) error {
 	// add cluster
 	clustersConfig := models.ClustersConfig{}
 	clustersConfig.Clusters = make(map[string]models.ClusterConfig)
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			ux.Logger.RedXToUser("error loading clusters config: %v", err)
-			return err
-		}
+	clustersConfig, err = app.GetClustersConfig()
+	if err != nil {
+		ux.Logger.RedXToUser("error loading clusters config: %v", err)
+		return err
 	}
+
 	importCluster.ClusterConfig.Network.ClusterName = clusterName
 	clustersConfig.Clusters[clusterName] = importCluster.ClusterConfig
 	if err := app.WriteClustersConfigFile(&clustersConfig); err != nil {

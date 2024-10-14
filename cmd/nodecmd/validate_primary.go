@@ -297,6 +297,9 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("validate primary")
+	}
 	network := clusterConfig.Network
 
 	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))

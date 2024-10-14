@@ -70,6 +70,14 @@ func whitelist(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	clusterConfig := clustersConfig.Clusters[clusterName]
+	if clusterConfig.Local {
+		return notImplementedForLocal("whitelist")
+	}
 	if discoverIP {
 		userIPAddress, err = utils.GetUserIPAddress()
 		if err != nil {
