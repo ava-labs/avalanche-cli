@@ -4,7 +4,7 @@ go 1.22.8
 
 require (
 	github.com/ava-labs/apm v1.0.0
-	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241014200823-e2da066cad54
+	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241015010657-ba267a387235
 	github.com/ava-labs/avalanchego v1.12.0-initial-poc.5
 	github.com/ava-labs/awm-relayer v1.4.1-0.20241010130039-bceba83023b8
 	github.com/ava-labs/coreth v0.13.8
