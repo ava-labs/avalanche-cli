@@ -614,3 +614,128 @@ func FinishValidatorRegistration(
 	}
 	return nil
 }
+
+func PoAValidatorManagerInitializeValidatorRemoval(
+	rpcURL string,
+	managerAddress common.Address,
+	managerOwnerPrivateKey string,
+	validationID [32]byte,
+) (*types.Transaction, *types.Receipt, error) {
+	return contract.TxToMethod(
+		rpcURL,
+		managerOwnerPrivateKey,
+		managerAddress,
+		big.NewInt(0),
+		"initializeEndValidation(bytes32)",
+		validationID,
+	)
+}
+
+func PoaValidatorManagerGetSubnetValidatorWeightMessage(
+	network models.Network,
+	aggregatorLogger logging.Logger,
+	aggregatorLogLevel logging.Level,
+	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	subnetID ids.ID,
+	blockchainID ids.ID,
+	managerAddress common.Address,
+	validationID ids.ID,
+	nonce uint64,
+	weight uint64,
+) (*warp.Message, error) {
+	addressedCallPayload, err := warpMessage.NewSubnetValidatorWeight(
+		validationID,
+		nonce,
+		weight,
+	)
+	if err != nil {
+		return nil, err
+	}
+	addressedCall, err := warpPayload.NewAddressedCall(
+		managerAddress.Bytes(),
+		addressedCallPayload.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	unsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		blockchainID,
+		addressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		network,
+		aggregatorLogger,
+		aggregatorLogLevel,
+		subnetID,
+		aggregatorQuorumPercentage,
+		aggregatorExtraPeerEndpoints,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return signatureAggregator.Sign(unsignedMessage, nil)
+}
+
+func InitValidatorRemoval(
+	app *application.Avalanche,
+	network models.Network,
+	rpcURL string,
+	chainSpec contract.ChainSpec,
+	ownerPrivateKey string,
+	nodeID ids.NodeID,
+	aggregatorExtraPeerEndpoints []info.Peer,
+) (*warp.Message, error) {
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return nil, err
+	}
+	blockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return nil, err
+	}
+	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	validationID, err := GetRegisteredValidator(
+		rpcURL,
+		managerAddress,
+		nodeID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	tx, _, err := PoAValidatorManagerInitializeValidatorRemoval(
+		rpcURL,
+		managerAddress,
+		ownerPrivateKey,
+		validationID,
+	)
+	if err != nil {
+		return nil, evm.TransactionError(tx, err, "failure initializing validator removal")
+	}
+	nonce := uint64(1)
+	return PoaValidatorManagerGetSubnetValidatorWeightMessage(
+		network,
+		app.Log,
+		logging.Info,
+		0,
+		aggregatorExtraPeerEndpoints,
+		subnetID,
+		blockchainID,
+		managerAddress,
+		validationID,
+		nonce,
+		0,
+	)
+}
