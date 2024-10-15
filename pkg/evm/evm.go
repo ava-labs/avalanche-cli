@@ -6,6 +6,8 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -259,15 +261,80 @@ func SendTransaction(
 	return err
 }
 
+func FindOutScheme(rpcURL string) (ethclient.Client, string, error) {
+	if b, err := HasScheme(rpcURL); err != nil {
+		return nil, "", err
+	} else if b {
+		return nil, "", fmt.Errorf("url does have scheme")
+	}
+	notDeterminedErr := fmt.Errorf("url %s has no scheme and protocol could not be determined", rpcURL)
+	// let's start with ws it always give same error for http/https/wss
+	scheme := "ws://"
+	ctx, cancel := utils.GetAPILargeContext()
+	defer cancel()
+	client, err := ethclient.DialContext(ctx, scheme+rpcURL)
+	if err == nil {
+		return client, scheme, nil
+	} else if !strings.Contains(err.Error(), "websocket: bad handshake") {
+		return nil, "", notDeterminedErr
+	}
+	// wss give specific errors for http/http
+	scheme = "wss://"
+	client, err = ethclient.DialContext(ctx, scheme+rpcURL)
+	if err == nil {
+		return client, scheme, nil
+	} else if !strings.Contains(err.Error(), "websocket: bad handshake") && // may be https
+		!strings.Contains(err.Error(), "first record does not look like a TLS handshake") { // may be http
+		return nil, "", notDeterminedErr
+	}
+	// https/http discrimination based on sending a specific query
+	scheme = "https://"
+	client, err = ethclient.DialContext(ctx, scheme+rpcURL)
+	if err == nil {
+		_, err = client.ChainID(ctx)
+		switch {
+		case err == nil:
+			return client, scheme, nil
+		case strings.Contains(err.Error(), "server gave HTTP response to HTTPS client"):
+			scheme = "http://"
+			client, err = ethclient.DialContext(ctx, scheme+rpcURL)
+			if err == nil {
+				return client, scheme, nil
+			}
+		}
+	}
+	return nil, "", notDeterminedErr
+}
+
+func HasScheme(rpcURL string) (bool, error) {
+	if parsedURL, err := url.Parse(rpcURL); err != nil {
+		if !strings.Contains(err.Error(), "first path segment in URL cannot contain colon") {
+			return false, err
+		}
+		return false, nil
+	} else if parsedURL.Scheme == "" {
+		return false, nil
+	}
+	return true, nil
+}
+
 func GetClient(rpcURL string) (ethclient.Client, error) {
 	var (
 		client ethclient.Client
 		err    error
 	)
+	hasScheme, err := HasScheme(rpcURL)
+	if err != nil {
+		return nil, err
+	}
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		client, err = ethclient.DialContext(ctx, rpcURL)
+		if hasScheme {
+			client, err = ethclient.DialContext(ctx, rpcURL)
+		} else {
+			client, _, err = FindOutScheme(rpcURL)
+		}
 		if err == nil {
 			break
 		}

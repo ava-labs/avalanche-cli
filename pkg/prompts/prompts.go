@@ -758,7 +758,7 @@ func (prompter *realPrompter) ChooseKeyOrLedger(goal string) (bool, error) {
 		ledgerOption = "Use ledger"
 	)
 	option, err := prompter.CaptureList(
-		fmt.Sprintf("Which key source should be used to %s?", goal),
+		fmt.Sprintf("Which key should be used %s?", goal),
 		[]string{keyOption, ledgerOption},
 	)
 	if err != nil {
@@ -871,7 +871,7 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq boo
 	if size > 10 {
 		size = 10
 	}
-	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keyNames, size)
+	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used %s?", goal), keyNames, size)
 	if err != nil {
 		return "", err
 	}

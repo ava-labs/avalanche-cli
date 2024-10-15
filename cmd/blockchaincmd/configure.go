@@ -113,8 +113,8 @@ func configure(_ *cobra.Command, args []string) error {
 	}
 
 	// load each provided file
-	for filename, configPath := range configsToLoad {
-		if err = updateConf(blockchainName, configPath, filename); err != nil {
+	for filename, path := range configsToLoad {
+		if err = copyBlockchainConf(blockchainName, path, filename); err != nil {
 			return err
 		}
 	}
@@ -122,12 +122,12 @@ func configure(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func updateConf(subnet, path, filename string) error {
+func copyBlockchainConf(blockchainName, path, configFilename string) error {
 	var (
 		fileBytes []byte
 		err       error
 	)
-	if strings.ToLower(filepath.Ext(filename)) == "json" {
+	if strings.ToLower(filepath.Ext(configFilename)) == "json" {
 		fileBytes, err = utils.ValidateJSON(path)
 		if err != nil {
 			return err
@@ -138,16 +138,23 @@ func updateConf(subnet, path, filename string) error {
 			return err
 		}
 	}
-	subnetDir := filepath.Join(app.GetSubnetDir(), subnet)
-	if err := os.MkdirAll(subnetDir, constants.DefaultPerms755); err != nil {
+	return SetBlockchainConf(blockchainName, fileBytes, configFilename)
+}
+
+func SetBlockchainConf(
+	blockchainName string,
+	fileBytes []byte,
+	configFilename string,
+) error {
+	blockchainDir := filepath.Join(app.GetSubnetDir(), blockchainName)
+	if err := os.MkdirAll(blockchainDir, constants.DefaultPerms755); err != nil {
 		return err
 	}
-	fileName := filepath.Join(subnetDir, filename)
+	fileName := filepath.Join(blockchainDir, configFilename)
 	_ = os.RemoveAll(fileName)
 	if err := os.WriteFile(fileName, fileBytes, constants.WriteReadReadPerms); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("File %s successfully written", fileName)
-
 	return nil
 }
