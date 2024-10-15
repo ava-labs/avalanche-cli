@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanchego/api/info"
