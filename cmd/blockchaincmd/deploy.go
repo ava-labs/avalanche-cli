@@ -53,6 +53,7 @@ import (
 var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Devnet,
+	networkoptions.EtnaDevnet,
 	networkoptions.Fuji,
 	networkoptions.Mainnet,
 }
@@ -482,6 +483,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
 			anrSettings := node.ANRSettings{}
 			avagoVersionSettings := node.AvalancheGoVersionSettings{}
+			if network.Name() ==  {
+
+			}
 			node.StartLocalNode(app, fmt.Sprintf("%s-local-node", blockchainName, true, "", anrSettings, avagoVersionSettings))
 		}
 	}
