@@ -66,3 +66,5 @@ release:
     name: avalanche-cli
   # If tag indicates rc, will mark it as prerelease
   prerelease: auto
+snapshot:
+  version_template: "{{ incpatch .Version }}-devel"
