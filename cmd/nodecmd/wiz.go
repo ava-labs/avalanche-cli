@@ -257,7 +257,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 
@@ -349,7 +349,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
@@ -632,59 +632,8 @@ func checkRPCCompatibility(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
-	return checkHostsAreRPCCompatible(hosts, subnetName)
-}
-
-func waitForHealthyCluster(
-	clusterName string,
-	timeout time.Duration,
-	poolTime time.Duration,
-) error {
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	cluster, ok := clustersConfig.Clusters[clusterName]
-	if !ok {
-		return fmt.Errorf("cluster %s does not exist", clusterName)
-	}
-	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
-	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
-	defer disconnectHosts(hosts)
-	startTime := time.Now()
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
-	for {
-		unhealthyNodes, err := getUnhealthyNodes(hosts)
-		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
-			return err
-		}
-		if len(unhealthyNodes) == 0 {
-			ux.SpinComplete(spinner)
-			spinSession.Stop()
-			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
-			return nil
-		}
-		if time.Since(startTime) > timeout {
-			ux.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
-			spinSession.Stop()
-			ux.Logger.PrintToUser("")
-			ux.Logger.RedXToUser("Unhealthy Nodes")
-			for _, failedNode := range unhealthyNodes {
-				ux.Logger.PrintToUser("  " + failedNode)
-			}
-			ux.Logger.PrintToUser("")
-			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
-		}
-		time.Sleep(poolTime)
-	}
+	defer node.DisconnectHosts(hosts)
+	return node.CheckHostsAreRPCCompatible(app, hosts, subnetName)
 }
 
 func waitForSubnetValidators(
@@ -710,7 +659,7 @@ func waitForSubnetValidators(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	startTime := time.Now()
 	for {
@@ -777,7 +726,7 @@ func waitForClusterSubnetStatus(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	startTime := time.Now()
 	for {
 		wg := sync.WaitGroup{}

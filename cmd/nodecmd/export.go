@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -51,7 +53,7 @@ func exportFile(_ *cobra.Command, args []string) error {
 		ux.Logger.RedXToUser("file already exists, use --force to overwrite")
 		return nil
 	}
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		ux.Logger.RedXToUser("cluster not found: %v", err)
 		return err
 	}

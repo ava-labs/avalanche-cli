@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -663,7 +665,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		deployer.CleanCacheWallet()
 		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
-		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
+		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -677,7 +679,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		savePartialTx = !isFullySigned && err == nil
-		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", ConvertL1TxID)
+		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", convertL1TxID)
 
 		if savePartialTx {
 			if err := SaveNotFullySignedTx(
@@ -695,7 +697,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		bar, err := ux.TimedProgressBar(
 			30*time.Second,
-			"Waiting for Blockchain to be converted into Subnet Only Validator (SOV) Blockchain ...",
+			"Waiting for L1 to be converted into sovereign blockchain ...",
 			2,
 		)
 		if err != nil {
@@ -725,34 +727,30 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if false {
+		if !generateNodeID {
+			clusterName, err := node.GetClusterNameFromList(app)
+			if err != nil {
+				return err
+			}
+
+			if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+				return err
+			}
+
+			if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
+				return err
+			}
+
 			chainSpec := contract.ChainSpec{
 				BlockchainName: blockchainName,
 			}
-			genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+			_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 				app,
 				network,
 				chainSpec,
 			)
 			if err != nil {
 				return err
-			}
-			privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-			if err != nil {
-				return err
-			}
-			if privateKey == "" {
-				privateKey, err = prompts.PromptPrivateKey(
-					app.Prompt,
-					"Which key to you want to use to pay for initializing Validator Manager contract? (Uses Blockchain gas token)",
-					app.GetKeyDir(),
-					app.GetKey,
-					genesisAddress,
-					genesisPrivateKey,
-				)
-				if err != nil {
-					return err
-				}
 			}
 			rpcURL, _, err := contract.GetBlockchainEndpoints(
 				app,
@@ -775,17 +773,25 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				contract.ChainSpec{
 					BlockchainName: blockchainName,
 				},
-				privateKey,
+				genesisPrivateKey,
 				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 				avaGoBootstrapValidators,
 				aggregatorExtraPeerEndpoints,
 			); err != nil {
 				return err
 			}
-			ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
+			ux.Logger.GreenCheckmarkToUser("L1 is successfully converted to sovereign blockchain")
+		} else {
+			ux.Logger.GreenCheckmarkToUser("Generated Node ID and BLS info for bootstrap validator(s)")
+			ux.Logger.PrintToUser("To convert L1 to sovereign blockchain, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish converting L1 to sovereign blockchain", blockchainName)
+		}
+	} else {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
+			return err
 		}
 	}
-
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
