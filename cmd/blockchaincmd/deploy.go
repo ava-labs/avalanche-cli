@@ -480,6 +480,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if useLocalMachine {
 			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
+			anrSettings := node.ANRSettings{}
+			avagoVersionSettings := node.AvalancheGoVersionSettings{}
+			node.StartLocalNode(app, fmt.Sprintf("%s-local-node", blockchainName, true, "", anrSettings, avagoVersionSettings))
 		}
 	}
 

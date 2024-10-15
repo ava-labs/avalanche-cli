@@ -122,8 +122,9 @@ func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 	return ok && clusterConf.Local, nil
 }
 
-func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevnet bool, avalanchegoBinaryPath string, anrSettings ANRSettings, avaGoVersionSetting AvalancheGoVersionSettings) error {
+func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevnet bool, avalanchegoBinaryPath string, anrSettings ANRSettings, avaGoVersionSetting AvalancheGoVersionSettings, globalNetworkFlags networkoptions.NetworkFlags, createSupportedNetworkOptions []networkoptions.NetworkOption) error {
 	network := models.UndefinedNetwork
+	var err error
 
 	// check if this is existing cluster
 	rootDir := app.GetLocalDir(clusterName)
@@ -142,7 +143,7 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 	// starts server
 	avalancheGoVersion := "latest"
 	if avalanchegoBinaryPath == "" {
-		avalancheGoVersion, err = getAvalancheGoVersion()
+		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
 		if err != nil {
 			return err
 		} else {
@@ -179,7 +180,7 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 		return nil
 	}
 
-	if localClusterDataExists(clusterName) {
+	if localClusterDataExists(app, clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 		loadSnapshotOpts := []client.OpOption{
 			client.WithReassignPortsIfUsed(true),
@@ -218,12 +219,12 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 				return err
 			}
 		}
-		if err := preLocalChecks(clusterName); err != nil {
+		if err := preLocalChecks(app, clusterName, anrSettings, avaGoVersionSetting, avalanchegoBinaryPath, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err
 		}
 		if useEtnaDevnet {
-			bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
-			bootstrapIPs = constants.EtnaDevnetBootstrapIPs
+			anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
+			anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
 			// prepare genesis and upgrade files for anr
 			genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
 			if err != nil {
@@ -235,8 +236,8 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 			if err := genesisFile.Close(); err != nil {
 				return fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
 			}
-			genesisPath = genesisFile.Name()
-			defer os.Remove(genesisPath)
+			anrSettings.GenesisPath = genesisFile.Name()
+			defer os.Remove(anrSettings.GenesisPath)
 
 			upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
 			if err != nil {
@@ -245,24 +246,24 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 			if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
 				return fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
 			}
-			upgradePath = upgradeFile.Name()
+			anrSettings.UpgradePath = upgradeFile.Name()
 			if err := upgradeFile.Close(); err != nil {
 				return fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
 			}
-			defer os.Remove(upgradePath)
+			defer os.Remove(anrSettings.UpgradePath)
 		}
 
-		if stakingTLSKeyPath != "" && stakingCertKeyPath != "" && stakingSignerKeyPath != "" {
+		if anrSettings.StakingTLSKeyPath != "" && anrSettings.StakingCertKeyPath != "" && anrSettings.StakingSignerKeyPath != "" {
 			if err := os.MkdirAll(filepath.Join(rootDir, "node1", "staking"), 0o700); err != nil {
 				return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
 			}
-			if err := utils.FileCopy(stakingTLSKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.key")); err != nil {
+			if err := utils.FileCopy(anrSettings.StakingTLSKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.key")); err != nil {
 				return err
 			}
-			if err := utils.FileCopy(stakingCertKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.crt")); err != nil {
+			if err := utils.FileCopy(anrSettings.StakingCertKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.crt")); err != nil {
 				return err
 			}
-			if err := utils.FileCopy(stakingSignerKeyPath, filepath.Join(rootDir, "node1", "staking", "signer.key")); err != nil {
+			if err := utils.FileCopy(anrSettings.StakingSignerKeyPath, filepath.Join(rootDir, "node1", "staking", "signer.key")); err != nil {
 				return err
 			}
 		}
@@ -277,17 +278,17 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 			client.WithFreshStakingIds(true),
 			client.WithZeroIP(false),
 		}
-		if genesisPath != "" && utils.FileExists(genesisPath) {
-			anrOpts = append(anrOpts, client.WithGenesisPath(genesisPath))
+		if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
+			anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
 		}
-		if upgradePath != "" && utils.FileExists(upgradePath) {
-			anrOpts = append(anrOpts, client.WithUpgradePath(upgradePath))
+		if anrSettings.UpgradePath != "" && utils.FileExists(anrSettings.UpgradePath) {
+			anrOpts = append(anrOpts, client.WithUpgradePath(anrSettings.UpgradePath))
 		}
-		if bootstrapIDs != nil {
-			anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(bootstrapIDs))
+		if anrSettings.BootstrapIDs != nil {
+			anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(anrSettings.BootstrapIDs))
 		}
-		if bootstrapIPs != nil {
-			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(bootstrapIPs))
+		if anrSettings.BootstrapIPs != nil {
+			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
 		}
 
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
@@ -295,12 +296,12 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			localDestroyNode(nil, []string{clusterName})
+			DestroyLocalNode(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
 		// save cluster config for the new local cluster
-		if err := addLocalClusterConfig(network); err != nil {
+		if err := addLocalClusterConfig(app, network); err != nil {
 			return err
 		}
 	}
@@ -322,5 +323,126 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 		ux.Logger.PrintToUser("")
 	}
 
+	return nil
+}
+
+func localClusterDataExists(app *application.Avalanche, clusterName string) bool {
+	rootDir := app.GetLocalDir(clusterName)
+	return utils.FileExists(filepath.Join(rootDir, "state.json"))
+}
+
+// stub for now
+func preLocalChecks(app *application.Avalanche, clusterName string, anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, avalanchegoBinaryPath string, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
+	clusterExists, err := CheckClusterExists(app, clusterName)
+	if err != nil {
+		return fmt.Errorf("error checking cluster: %w", err)
+	}
+	if clusterExists {
+		return fmt.Errorf("cluster %q already exists", clusterName)
+	}
+	// expand passed paths
+	if anrSettings.GenesisPath != "" {
+		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)
+	}
+	if anrSettings.UpgradePath != "" {
+		anrSettings.UpgradePath = utils.ExpandHome(anrSettings.UpgradePath)
+	}
+	// checks
+	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
+		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
+	}
+	if avalanchegoBinaryPath != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion || avaGoVersionSettings.UseCustomAvalanchegoVersion != "") {
+		return fmt.Errorf("specify either --avalanchego-path or --latest-avalanchego-version or --custom-avalanchego-version")
+	}
+	if useEtnaDevnet && (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
+		return fmt.Errorf("etna devnet can only be used with devnet")
+	}
+	if useEtnaDevnet && anrSettings.GenesisPath != "" {
+		return fmt.Errorf("etna devnet uses predefined genesis file")
+	}
+	if useEtnaDevnet && anrSettings.UpgradePath != "" {
+		return fmt.Errorf("etna devnet uses predefined upgrade file")
+	}
+	if useEtnaDevnet && (len(anrSettings.BootstrapIDs) != 0 || len(anrSettings.BootstrapIPs) != 0) {
+		return fmt.Errorf("etna devnet uses predefined bootstrap configuration")
+	}
+	if len(anrSettings.BootstrapIDs) != len(anrSettings.BootstrapIPs) {
+		return fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
+	}
+	if anrSettings.GenesisPath != "" && !utils.FileExists(anrSettings.GenesisPath) {
+		return fmt.Errorf("genesis file %s does not exist", anrSettings.GenesisPath)
+	}
+	if anrSettings.UpgradePath != "" && !utils.FileExists(anrSettings.UpgradePath) {
+		return fmt.Errorf("upgrade file %s does not exist", anrSettings.UpgradePath)
+	}
+	return nil
+}
+
+func addLocalClusterConfig(app *application.Avalanche, network models.Network) error {
+	clusterName := network.ClusterName
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	clusterConfig := clustersConfig.Clusters[clusterName]
+	clusterConfig.Local = true
+	clusterConfig.Network = network
+	clustersConfig.Clusters[clusterName] = clusterConfig
+	return app.WriteClustersConfigFile(&clustersConfig)
+}
+
+func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
+	StopLocalNode(app)
+
+	rootDir := app.GetLocalDir(clusterName)
+	if err := os.RemoveAll(rootDir); err != nil {
+		return err
+	}
+
+	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+		return fmt.Errorf("local cluster %q not found", clusterName)
+	}
+
+	clustersConfig, err := app.LoadClustersConfig()
+	if err != nil {
+		return err
+	}
+	delete(clustersConfig.Clusters, clusterName)
+	if err := app.WriteClustersConfigFile(&clustersConfig); err != nil {
+		return err
+	}
+
+	ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
+	return nil
+}
+
+func StopLocalNode(app *application.Avalanche) error {
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	bootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	if err != nil {
+		return err
+	}
+	if bootstrapped {
+		if _, err = cli.Stop(ctx); err != nil {
+			return fmt.Errorf("failed to stop avalanchego: %w", err)
+		}
+	}
+	if err := binutils.KillgRPCServerProcess(
+		app,
+		binutils.LocalClusterGRPCServerEndpoint,
+		constants.ServerRunFileLocalClusterPrefix,
+	); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("avalanchego stopped")
 	return nil
 }
