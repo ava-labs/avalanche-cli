@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
+	"github.com/ava-labs/avalanchego/api/info"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
@@ -64,6 +64,7 @@ var (
 	userProvidedAvagoVersion        string
 	outputTxPath                    string
 	useLedger                       bool
+	useLocalMachine                 bool
 	useEwoq                         bool
 	ledgerAddresses                 []string
 	sovereign                       bool
@@ -132,6 +133,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
+	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	return cmd
 }
 
@@ -466,6 +468,19 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return PrintSubnetInfo(blockchainName, true)
 	}
 
+	if !useLocalMachine {
+		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
+		ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
+
+		useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
+		if err != nil {
+			return err
+		}
+		if useLocalMachine {
+			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
+		}
+	}
+
 	if len(bootstrapEndpoints) > 0 {
 		var changeAddr string
 		for _, endpoint := range bootstrapEndpoints {
@@ -733,12 +748,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
-				return err
-			}
+			if !useLocalMachine {
+				if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+					return err
+				}
 
-			if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
-				return err
+				if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
+					return err
+				}
+			} else {
+				if err := node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName); err != nil {
+					return err
+				}
 			}
 
 			chainSpec := contract.ChainSpec{
