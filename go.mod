@@ -5,7 +5,7 @@ go 1.22.8
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241003175856-6b1bcdf33e7a
-	github.com/ava-labs/avalanchego v1.11.12-rc.2.0.20241010160225-b0b5045d3ecc
+	github.com/ava-labs/avalanchego v1.11.12-rc.2.0.20241015031831-6bd8ace26666
 	github.com/ava-labs/awm-relayer v1.3.0
 	github.com/ava-labs/coreth v0.13.8
 	github.com/ava-labs/subnet-evm v0.6.9-0.20240815191823-9f3608326298
@@ -62,7 +62,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.1 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
-	github.com/ava-labs/ledger-avalanche/go v0.0.0-20241009183145-e6f90a8a1a60 // indirect
+	github.com/ava-labs/ledger-avalanche/go v0.0.0-20241015031452-3d88e625f24c // indirect
 	github.com/ava-labs/teleporter v1.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.26 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.11 // indirect
@@ -104,6 +104,7 @@ require (
 	github.com/dop251/goja v0.0.0-20230806174421-c933cf95e127 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
+	github.com/felipemadero/ledger-go v0.0.0-20241015030130-68f69d0f83c5 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fjl/memsize v0.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
@@ -201,7 +202,6 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zondax/hid v0.9.2 // indirect
-	github.com/zondax/ledger-go v1.0.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
 	go.opentelemetry.io/otel v1.24.0 // indirect
