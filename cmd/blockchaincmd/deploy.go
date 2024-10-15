@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"os"
 	"path/filepath"
 	"strings"
@@ -743,9 +744,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		if !generateNodeID {
-			clusterName, err := node.GetClusterNameFromList(app)
-			if err != nil {
-				return err
+			clusterName := network.ClusterName
+			if clusterName == "" {
+				clusterName, err = node.GetClusterNameFromList(app)
+				if err != nil {
+					return err
+				}
 			}
 
 			if !useLocalMachine {
@@ -761,7 +765,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
-
 			chainSpec := contract.ChainSpec{
 				BlockchainName: blockchainName,
 			}
@@ -783,25 +786,29 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			aggregatorExtraPeerEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
+			client, err := evm.GetClient(rpcURL)
 			if err != nil {
 				return err
 			}
+			evm.WaitForChainID(client)
+			privateAggregatorEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
+			if err != nil {
+				return err
+			}
+			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...\", blockchainName")
 			if err := validatormanager.SetupPoA(
 				app,
 				network,
 				rpcURL,
-				contract.ChainSpec{
-					BlockchainName: blockchainName,
-				},
+				chainSpec,
 				genesisPrivateKey,
 				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 				avaGoBootstrapValidators,
-				aggregatorExtraPeerEndpoints,
+				privateAggregatorEndpoints,
 			); err != nil {
 				return err
 			}
-			ux.Logger.GreenCheckmarkToUser("L1 is successfully converted to sovereign blockchain")
+			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("Generated Node ID and BLS info for bootstrap validator(s)")
 			ux.Logger.PrintToUser("To convert L1 to sovereign blockchain, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")

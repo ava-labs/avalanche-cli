@@ -80,6 +80,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	fmt.Printf("obtained rpc url %s \n", initPOAManagerFlags.rpcEndpoint)
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), initPOAManagerFlags.rpcEndpoint)
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
