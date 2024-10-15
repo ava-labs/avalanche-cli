@@ -24,6 +24,20 @@ const (
 	HealthCheckTimeout  = 3 * time.Minute
 )
 
+type AvalancheGoVersionSettings struct {
+	UseCustomAvalanchegoVersion           string
+	UseLatestAvalanchegoReleaseVersion    bool
+	UseLatestAvalanchegoPreReleaseVersion bool
+	UseAvalanchegoVersionFromSubnet       string
+}
+
+type ANRSettings struct {
+	GenesisPath  string
+	UpgradePath  string
+	BootstrapIDs []string
+	BootstrapIPs []string
+}
+
 func AuthorizedAccessFromSettings(app *application.Avalanche) bool {
 	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
 }

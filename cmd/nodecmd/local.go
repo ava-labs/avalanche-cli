@@ -466,11 +466,3 @@ func notImplementedForLocal(what string) error {
 	ux.Logger.PrintToUser("Unsupported cmd: %s is not supported by local clusters", logging.LightBlue.Wrap(what))
 	return nil
 }
-
-func getRPCEndpoint(endpoint string, blockchainID string) string {
-	return models.NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
-}
-
-func getWSEndpoint(endpoint string, blockchainID string) string {
-	return models.NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
-}
