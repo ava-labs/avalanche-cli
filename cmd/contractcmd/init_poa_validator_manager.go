@@ -116,6 +116,10 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeerEndpoints(network)
+	if err != nil {
+		return err
+	}
 	if err := validatormanager.SetupPoA(
 		app,
 		network,
@@ -124,6 +128,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		privateKey,
 		common.HexToAddress(sc.PoAValidatorManagerOwner),
 		avaGoBootstrapValidators,
+		extraAggregatorPeers,
 	); err != nil {
 		return err
 	}

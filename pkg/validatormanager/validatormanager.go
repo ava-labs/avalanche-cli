@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -102,6 +103,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
+	extraAggregatorPeers []info.Peer,
 ) (*warp.Message, error) {
 	validators := []warpMessage.SubnetConversionValidatorData{}
 	for _, convertSubnetValidator := range convertSubnetValidators {
@@ -146,6 +148,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		extraAggregatorPeers,
 	)
 	if err != nil {
 		return nil, err
@@ -216,6 +219,7 @@ func SetupPoA(
 	privateKey string,
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
+	extraAggregatorPeers []info.Peer,
 ) error {
 	if err := evm.SetupProposerVM(
 		rpcURL,
@@ -259,6 +263,7 @@ func SetupPoA(
 		blockchainID,
 		managerAddress,
 		convertSubnetValidators,
+		extraAggregatorPeers,
 	)
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
