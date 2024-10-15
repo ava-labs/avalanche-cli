@@ -95,14 +95,14 @@ func InitValidatorRemoval(
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-) (*warp.Message, error) {
+) (ids.ID, *warp.Message, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
 		chainSpec,
 	)
 	if err != nil {
-		return nil, err
+		return ids.Empty, nil, err
 	}
 	blockchainID, err := contract.GetBlockchainID(
 		app,
@@ -110,7 +110,7 @@ func InitValidatorRemoval(
 		chainSpec,
 	)
 	if err != nil {
-		return nil, err
+		return ids.Empty, nil, err
 	}
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
 	validationID, err := GetRegisteredValidator(
@@ -119,7 +119,7 @@ func InitValidatorRemoval(
 		nodeID,
 	)
 	if err != nil {
-		return nil, err
+		return ids.Empty, nil, err
 	}
 	tx, _, err := PoAValidatorManagerInitializeValidatorRemoval(
 		rpcURL,
@@ -128,10 +128,10 @@ func InitValidatorRemoval(
 		validationID,
 	)
 	if err != nil {
-		return nil, evm.TransactionError(tx, err, "failure initializing validator removal")
+		return ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator removal")
 	}
 	nonce := uint64(1)
-	return PoaValidatorManagerGetSubnetValidatorWeightMessage(
+	signedMsg, err := PoaValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
 		app.Log,
 		logging.Info,
@@ -144,6 +144,7 @@ func InitValidatorRemoval(
 		nonce,
 		0,
 	)
+	return validationID, signedMsg, err
 }
 
 func PoAValidatorManagerCompleteValidatorRemoval(
