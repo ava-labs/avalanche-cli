@@ -739,3 +739,69 @@ func InitValidatorRemoval(
 		0,
 	)
 }
+
+func PoAValidatorManagerCompleteValidatorRemoval(
+	rpcURL string,
+	managerAddress common.Address,
+	privateKey string, // not need to be owner atm
+	subnetValidatorRegistrationSignedMessage *warp.Message,
+) (*types.Transaction, *types.Receipt, error) {
+	return contract.TxToMethodWithWarpMessage(
+		rpcURL,
+		privateKey,
+		managerAddress,
+		subnetValidatorRegistrationSignedMessage,
+		big.NewInt(0),
+		"completeEndValidation(uint32)",
+		uint32(0),
+	)
+}
+
+func FinishValidatorRemoval(
+	app *application.Avalanche,
+	network models.Network,
+	rpcURL string,
+	chainSpec contract.ChainSpec,
+	privateKey string,
+	validationID ids.ID,
+	aggregatorExtraPeerEndpoints []info.Peer,
+) error {
+	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+		network,
+		app.Log,
+		logging.Info,
+		0,
+		aggregatorExtraPeerEndpoints,
+		subnetID,
+		validationID,
+		false,
+	)
+	if err != nil {
+		return err
+	}
+	if err := evm.SetupProposerVM(
+		rpcURL,
+		privateKey,
+	); err != nil {
+		return err
+	}
+	tx, _, err := PoAValidatorManagerCompleteValidatorRemoval(
+		rpcURL,
+		managerAddress,
+		privateKey,
+		signedMessage,
+	)
+	if err != nil {
+		return evm.TransactionError(tx, err, "failure completing validator removal")
+	}
+	return nil
+}
