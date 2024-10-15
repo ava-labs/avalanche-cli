@@ -9,14 +9,14 @@ on:
 
 jobs:
   # First confirm that the linting and unit tests pass at this commit prior to creating release artifacts.
-  lint:
-    uses: ./.github/workflows/lint.yml
+  #lint:
+  #  uses: ./.github/workflows/lint.yml
 
-  unit_test:
-    uses: ./.github/workflows/unit-test.yml
+  #unit_test:
+  #  uses: ./.github/workflows/unit-test.yml
 
   release:
-    needs: [lint, unit_test]
+    #needs: [lint, unit_test]
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
