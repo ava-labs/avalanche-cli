@@ -5,18 +5,18 @@ on:
     tags:
       - "*"
     branches:
-      - docker-acp77-latest
+      - acp-77
 
 jobs:
   # First confirm that the linting and unit tests pass at this commit prior to creating release artifacts.
-  #lint:
-  #  uses: ./.github/workflows/lint.yml
+  lint:
+    uses: ./.github/workflows/lint.yml
 
-  #unit_test:
-  #  uses: ./.github/workflows/unit-test.yml
+  unit_test:
+    uses: ./.github/workflows/unit-test.yml
 
   release:
-    #needs: [lint, unit_test]
+    needs: [lint, unit_test]
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -40,7 +40,6 @@ jobs:
 
       - name: Build osxcross
         run: |
-          exit 0
           sudo apt-get -y install clang llvm-dev libxml2-dev uuid-dev libssl-dev bash patch make tar xz-utils bzip2 gzip sed cpio libbz2-dev
           cd osxcross
           wget https://github.com/joseluisq/macosx-sdks/releases/download/12.3/$MACOS_SDK_FNAME -O tarballs/$MACOS_SDK_FNAME
@@ -64,10 +63,9 @@ jobs:
         uses: docker/setup-qemu-action@v3
       
       - name: Build Docker Image with acp77-latest tag
-        if: github.ref == 'refs/heads/docker-acp77-latest'
+        if: github.ref == 'refs/heads/acp-77' # special case for acp-77 branch
         run: |
-          #,linux/arm64
-          docker buildx build --pull --push --platform=linux/amd64 \
+          docker buildx build --pull --push --platform=linux/amd64,linux/arm64 \
             -t avaplatform/avalanche-cli:acp77-latest \
             -f ./Dockerfile .
         env:
@@ -75,7 +73,7 @@ jobs:
           TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
 
       - name: Run GoReleaser
-        if: github.ref != 'refs/heads/docker-acp77-latest'
+        if: github.ref != 'refs/heads/acp-77' # skip for acp-77 branch
         uses: goreleaser/goreleaser-action@v2
         with:
           distribution: goreleaser
