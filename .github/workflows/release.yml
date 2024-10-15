@@ -63,24 +63,13 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       
-      - name: Run GoReleaser
-        if: github.ref == 'refs/heads/docker-acp77-latest'
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          distribution: goreleaser
-          version: latest
-          args: build --snapshot --single-target --id avalanche-cli
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
-          DOCKERFILE: ./Dockerfile.release
-
       - name: Build Docker Image with acp77-latest tag
         if: github.ref == 'refs/heads/docker-acp77-latest'
         run: |
+          cp -vf dist/avalanche-cli_linux_amd64_v1/avalanche 
           docker buildx build --pull --platform=linux/amd64,linux/arm64 \
             -t avaplatform/avalanche-cli:acp77-latest \
-            -f ./Dockerfile.release .
+            -f ./Dockerfile .
           docker push avaplatform/avalanche-cli:acp77-latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
