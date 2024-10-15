@@ -66,10 +66,10 @@ jobs:
       - name: Build Docker Image with acp77-latest tag
         if: github.ref == 'refs/heads/docker-acp77-latest'
         run: |
-          docker buildx build --pull --platform=linux/amd64,linux/arm64 \
+          #,linux/arm64
+          docker buildx build --pull --push --platform=linux/amd64 \
             -t avaplatform/avalanche-cli:acp77-latest \
             -f ./Dockerfile .
-          docker push avaplatform/avalanche-cli:acp77-latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
