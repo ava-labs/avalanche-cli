@@ -183,6 +183,14 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	// check if this is existing cluster
 	rootDir := app.GetLocalDir(clusterName)
 	pluginDir := filepath.Join(rootDir, "node1", "plugins")
+	// make sure rootDir exists
+	if err := os.MkdirAll(rootDir, 0o700); err != nil {
+		return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+	}
+	// make sure pluginDir exists
+	if err := os.MkdirAll(pluginDir, 0o700); err != nil {
+		return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
+	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
@@ -297,15 +305,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 				return fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
 			}
 			defer os.Remove(upgradePath)
-		}
-
-		// make sure rootDir exists
-		if err := os.MkdirAll(rootDir, 0o700); err != nil {
-			return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
-		}
-		// make sure pluginDir exists
-		if err := os.MkdirAll(pluginDir, 0o700); err != nil {
-			return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
 		}
 
 		if stakingTLSKeyPath != "" && stakingCertKeyPath != "" && stakingSignerKeyPath != "" {
