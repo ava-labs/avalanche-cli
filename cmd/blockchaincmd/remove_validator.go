@@ -218,11 +218,11 @@ func removeValidatorSOV(deployer *subnet.PublicDeployer, network models.Network,
 	if err != nil {
 		return err
 	}
-	tx, err := deployer.SetL1ValidatorWeight(message)
+	id, _, err := deployer.SetL1ValidatorWeight(&message)
 	if err != nil {
 		return err
 	}
-	ux.Logger.GreenCheckmarkToUser("Set Subnet Validator Weight to 0 Tx ID: %s", tx.ID())
+	ux.Logger.GreenCheckmarkToUser("Set Subnet Validator Weight to 0 Tx ID: %s", id)
 	return nil
 }
 
