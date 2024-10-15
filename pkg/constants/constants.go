@@ -100,7 +100,7 @@ const (
 	Durango11Version = "v1.11.11"
 	Durango12Version = "v1.11.12"
 
-	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/update-snapshot/"
+	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
 	CurrentBootstrapNamePath = "currentBootstrapName.txt"
 
