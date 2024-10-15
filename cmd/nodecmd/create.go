@@ -280,6 +280,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		createSupportedNetworkOptions,
 		"",
 	)
+	if err := preCreateChecks(clusterName); err != nil {
+		return err
+	}
 	if network.Kind == models.EtnaDevnet {
 		publicHTTPPortAccess = true // public http port access for etna devnet api for PoAManagerDeployment
 		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
@@ -314,9 +317,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			_ = os.Remove(genesisTmpFile.Name())
 			_ = os.Remove(upgradeTmpFile.Name())
 		}()
-	}
-	if err := preCreateChecks(clusterName); err != nil {
-		return err
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use

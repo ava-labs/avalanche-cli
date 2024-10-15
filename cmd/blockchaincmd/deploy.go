@@ -702,9 +702,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		if !generateNodeID {
-			clusterName, err := node.GetClusterNameFromList(app)
-			if err != nil {
-				return err
+			clusterName := network.ClusterName
+			if clusterName == "" {
+				clusterName, err = node.GetClusterNameFromList(app)
+				if err != nil {
+					return err
+				}
 			}
 
 			if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
@@ -1026,7 +1029,7 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 
 func UrisToPeers(uris []string) ([]info.Peer, error) {
 	peers := []info.Peer{}
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	for _, uri := range uris {
 		client := info.NewClient(uri)
@@ -1073,34 +1076,21 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 func GetAggregatorExtraPeerEndpointsUris(network models.Network) ([]string, error) {
 	aggregatorExtraPeerEndpointsUris := []string{}
 	if network.ClusterName != "" {
-		clustersConfig, err := app.LoadClustersConfig()
+		clusterConfig, err := app.GetClusterConfig(network.ClusterName)
 		if err != nil {
 			return nil, err
 		}
-		clusterConfig := clustersConfig.Clusters[network.ClusterName]
-		_ = clusterConfig
-		// MAKE THIS TO RETURN THE URI/URIS OF YOUR DEVNET
-		/*
-			if clusterConfig.Local {
-				cli, err := binutils.NewGRPCClientWithEndpoint(
-					binutils.LocalClusterGRPCServerEndpoint,
-					binutils.WithAvoidRPCVersionCheck(true),
-					binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-				)
+		// support etna devnet
+		if clusterConfig.Network.Kind == models.EtnaDevnet {
+			for _, node := range clusterConfig.Nodes {
+				nodeConfig, err := app.LoadClusterNodeConfig(node)
 				if err != nil {
 					return nil, err
 				}
-				ctx, cancel := utils.GetANRContext()
-				defer cancel()
-				status, err := cli.Status(ctx)
-				if err != nil {
-					return nil, err
-				}
-				for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
-				}
+				uri := fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalanchegoAPIPort)
+				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, uri)
 			}
-		*/
+		}
 	}
 	return aggregatorExtraPeerEndpointsUris, nil
 }
