@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -83,7 +84,7 @@ The command will then run the load test binary based on the provided load test r
 }
 
 func preLoadTestChecks(clusterName string) error {
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if useAWS && useGCP {
@@ -98,7 +99,7 @@ func preLoadTestChecks(clusterName string) error {
 	if useSSHAgent && !utils.IsSSHAgentAvailable() {
 		return fmt.Errorf("ssh agent is not available")
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	clusterNodes, err := node.GetClusterNodes(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -134,7 +135,7 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	clusterNodes, err := node.GetClusterNodes(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -409,7 +410,7 @@ func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *
 	if err != nil {
 		return err
 	}
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	var apiNodes []nodeInfo

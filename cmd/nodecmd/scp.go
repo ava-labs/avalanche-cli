@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -69,11 +71,11 @@ func scpNode(_ *cobra.Command, args []string) error {
 	destClusterNameOrNodeID, destPath := utils.SplitSCPPath(destPath)
 
 	// check if source and destination are both clusters
-	sourceClusterExists, err := checkClusterExists(sourceClusterNameOrNodeID)
+	sourceClusterExists, err := node.CheckClusterExists(app, sourceClusterNameOrNodeID)
 	if err != nil {
 		return err
 	}
-	destClusterExists, err := checkClusterExists(destClusterNameOrNodeID)
+	destClusterExists, err := node.CheckClusterExists(app, destClusterNameOrNodeID)
 	if err != nil {
 		return err
 	}

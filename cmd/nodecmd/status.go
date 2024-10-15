@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -50,7 +52,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		return list(nil, nil)
 	}
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	clusterConf, err := app.GetClusterConfig(clusterName)
@@ -92,11 +94,11 @@ func statusNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Checking node(s) status...")
-	notBootstrappedNodes, err := getNotBootstrappedNodes(hosts)
+	notBootstrappedNodes, err := node.GetNotBootstrappedNodes(hosts)
 	if err != nil {
 		ux.SpinFailWithError(spinner, "", err)
 		return err
@@ -104,7 +106,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 	ux.SpinComplete(spinner)
 
 	spinner = spinSession.SpinToUser("Checking if node(s) are healthy...")
-	unhealthyNodes, err := getUnhealthyNodes(hosts)
+	unhealthyNodes, err := node.GetUnhealthyNodes(hosts)
 	if err != nil {
 		ux.SpinFailWithError(spinner, "", err)
 		return err
@@ -122,7 +124,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 				nodeResults.AddResult(host.GetCloudID(), nil, err)
 				return
 			} else {
-				if avalancheGoVersion, _, err := parseAvalancheGoOutput(resp); err != nil {
+				if avalancheGoVersion, _, err := node.ParseAvalancheGoOutput(resp); err != nil {
 					nodeResults.AddResult(host.GetCloudID(), nil, err)
 				} else {
 					nodeResults.AddResult(host.GetCloudID(), avalancheGoVersion, err)

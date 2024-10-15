@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -34,7 +36,7 @@ You can check the updated subnet bootstrap status by calling avalanche node stat
 func updateSubnet(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	clusterConfig, err := app.GetClusterConfig(clusterName)
@@ -51,14 +53,14 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer disconnectHosts(hosts)
-	if err := checkHostsAreBootstrapped(hosts); err != nil {
+	defer node.DisconnectHosts(hosts)
+	if err := node.CheckHostsAreBootstrapped(hosts); err != nil {
 		return err
 	}
-	if err := checkHostsAreHealthy(hosts); err != nil {
+	if err := node.CheckHostsAreHealthy(hosts); err != nil {
 		return err
 	}
-	if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
+	if err := node.CheckHostsAreRPCCompatible(app, hosts, subnetName); err != nil {
 		return err
 	}
 	nonUpdatedNodes, err := doUpdateSubnet(hosts, clusterName, clusterConfig.Network, subnetName)

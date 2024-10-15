@@ -15,6 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -680,7 +682,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		deployer.CleanCacheWallet()
 		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
-		isFullySigned, ConvertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
+		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -694,7 +696,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		savePartialTx = !isFullySigned && err == nil
-		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", ConvertL1TxID)
+		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", convertL1TxID)
 
 		if savePartialTx {
 			if err := SaveNotFullySignedTx(
@@ -712,7 +714,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		bar, err := ux.TimedProgressBar(
 			30*time.Second,
-			"Waiting for Blockchain to be converted into Subnet Only Validator (SOV) Blockchain ...",
+			"Waiting for L1 to be converted into sovereign blockchain ...",
 			2,
 		)
 		if err != nil {
@@ -818,7 +820,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
 	}
-
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)

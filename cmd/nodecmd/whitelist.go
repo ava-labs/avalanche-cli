@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -61,7 +63,7 @@ type regionSecurityGroup struct {
 func whitelist(_ *cobra.Command, args []string) error {
 	var err error
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if err := failForExternal(clusterName); err != nil {
@@ -124,7 +126,7 @@ func whitelist(_ *cobra.Command, args []string) error {
 	if userIPAddress != "" {
 		ux.Logger.GreenCheckmarkToUser("Whitelisting IP: %s", logging.LightBlue.Wrap(userIPAddress))
 		cloudSecurityGroupList := []regionSecurityGroup{}
-		clusterNodes, err := getClusterNodes(clusterName)
+		clusterNodes, err := node.GetClusterNodes(app, clusterName)
 		if err != nil {
 			return err
 		}
@@ -242,7 +244,7 @@ func GrantAccessToIPinGCP(userIPAddress string) error {
 
 func whitelistSSHPubKey(clusterName string, pubkey string) error {
 	sshPubKey := strings.Trim(pubkey, "\"'")
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	clustersConfig, err := app.LoadClustersConfig()
