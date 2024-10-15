@@ -322,13 +322,9 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 }
 
 func CheckClusterIsLocal(app *application.Avalanche, clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return false, err
 	}
 	clusterConf, ok := clustersConfig.Clusters[clusterName]
 	return ok && clusterConf.Local, nil

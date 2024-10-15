@@ -818,7 +818,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Subnet is successfully converted into Subnet Only Validator")
+	} else {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
+			return err
+		}
 	}
+
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
