@@ -40,6 +40,7 @@ jobs:
 
       - name: Build osxcross
         run: |
+          exit 0
           sudo apt-get -y install clang llvm-dev libxml2-dev uuid-dev libssl-dev bash patch make tar xz-utils bzip2 gzip sed cpio libbz2-dev
           cd osxcross
           wget https://github.com/joseluisq/macosx-sdks/releases/download/12.3/$MACOS_SDK_FNAME -O tarballs/$MACOS_SDK_FNAME
@@ -61,6 +62,18 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+      
+      - name: Run GoReleaser
+        if: github.ref == 'refs/heads/docker-acp77-latest'
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
+          version: latest
+          args: build --single-target --id avalanche-cli
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
+          DOCKERFILE: ./Dockerfile.release
 
       - name: Build Docker Image with acp77-latest tag
         if: github.ref == 'refs/heads/docker-acp77-latest'
