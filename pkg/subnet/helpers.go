@@ -9,15 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"unicode"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"os"
-	"path/filepath"
-	"unicode"
 )
 
 var errIllegalNameCharacter = errors.New(
