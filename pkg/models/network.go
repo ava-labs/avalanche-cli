@@ -18,9 +18,9 @@ const (
 	Undefined NetworkKind = iota
 	Mainnet
 	Fuji
-	EtnaDevnet
 	Local
 	Devnet
+	EtnaDevnet
 )
 
 func (nk NetworkKind) String() string {
@@ -104,7 +104,7 @@ func (n Network) StandardPublicEndpoint() bool {
 }
 
 func (n Network) Name() string {
-	if n.ClusterName != "" && n.Kind == Devnet {
+	if n.ClusterName != "" && (n.Kind == Devnet || n.Kind == EtnaDevnet) {
 		return "Cluster " + n.ClusterName
 	}
 	name := n.Kind.String()

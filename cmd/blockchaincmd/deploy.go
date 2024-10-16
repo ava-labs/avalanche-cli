@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/k0kubun/go-ansi"
 	"os"
 	"path/filepath"
 	"strings"
@@ -506,8 +505,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			network = models.NewNetworkFromCluster(network, clusterName)
 			// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 			node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil)
-			time.Sleep(3 * time.Second)
-			ansi.CursorShow()
 		}
 	}
 
@@ -824,7 +821,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...\", blockchainName")
+			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 			if err := validatormanager.SetupPoA(
 				app,
 				network,

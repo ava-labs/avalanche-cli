@@ -300,6 +300,7 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
+		spinSession.Stop()
 		// save cluster config for the new local cluster
 		if err := addLocalClusterConfig(app, network); err != nil {
 			return err
