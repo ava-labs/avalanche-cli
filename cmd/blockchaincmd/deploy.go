@@ -491,11 +491,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				// don't destroy cluster if local cluster name is provided
 				clusterName = localMachineCluster
 			} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
-					_ = node.DestroyLocalNode(app, clusterName)
-				}
-				// destroy any cluster with same name before we start local node
-				// we don't want to reuse snapshots from previous sessions
+				_ = node.DestroyLocalNode(app, clusterName)
 			}
+			// destroy any cluster with same name before we start local node
+			// we don't want to reuse snapshots from previous sessions
 			// TODO: replace bootstrapEndpoints with dynamic port number
 			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
 			anrSettings := node.ANRSettings{}
@@ -516,37 +515,37 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
+	}
 
-		if len(bootstrapEndpoints) > 0 {
-			var changeAddr string
-			for _, endpoint := range bootstrapEndpoints {
-				infoClient := info.NewClient(endpoint)
-				ctx, cancel := utils.GetAPILargeContext()
-				defer cancel()
-				nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
-				if err != nil {
-					return err
-				}
-				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
-				changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
-				if err != nil {
-					return err
-				}
-				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
-					NodeID:               nodeID.String(),
-					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              constants.BootstrapValidatorBalance,
-					BLSPublicKey:         publicKey,
-					BLSProofOfPossession: pop,
-					ChangeOwnerAddr:      changeAddr,
-				})
-			}
-		} else {
-			bootstrapValidators, err = promptBootstrapValidators(network)
+	if len(bootstrapEndpoints) > 0 {
+		var changeAddr string
+		for _, endpoint := range bootstrapEndpoints {
+			infoClient := info.NewClient(endpoint)
+			ctx, cancel := utils.GetAPILargeContext()
+			defer cancel()
+			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
 			if err != nil {
 				return err
 			}
+			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
+			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
+			changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+			if err != nil {
+				return err
+			}
+			bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
+				NodeID:               nodeID.String(),
+				Weight:               constants.BootstrapValidatorWeight,
+				Balance:              constants.BootstrapValidatorBalance,
+				BLSPublicKey:         publicKey,
+				BLSProofOfPossession: pop,
+				ChangeOwnerAddr:      changeAddr,
+			})
+		}
+	} else {
+		bootstrapValidators, err = promptBootstrapValidators(network)
+		if err != nil {
+			return err
 		}
 	}
 
