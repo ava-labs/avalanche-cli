@@ -478,9 +478,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if useLocalMachine {
-			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
-		}
+	}
+	if useLocalMachine {
+		bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
 	}
 
 	if len(bootstrapEndpoints) > 0 {
