@@ -702,7 +702,12 @@ func (d *LocalDeployer) removeInstalledPlugin(
 	return d.binaryDownloader.RemoveVM(vmID.String())
 }
 
-func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool) (string, string, string, string) {
+func getSnapshotLocs(
+	isSingleNode bool,
+	isPreCortina17 bool,
+	isPreDurango11 bool,
+	isPreDurango12 bool,
+) (string, string, string, string) {
 	bootstrapSnapshotArchiveName := ""
 	url := ""
 	shaSumURL := ""
@@ -719,6 +724,11 @@ func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool
 			url = constants.BootstrapSnapshotSingleNodePreDurango11URL
 			shaSumURL = constants.BootstrapSnapshotSingleNodePreDurango11SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotSingleNodePreDurango11LocalPath
+		case isPreDurango12:
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodePreDurango12ArchiveName
+			url = constants.BootstrapSnapshotSingleNodePreDurango12URL
+			shaSumURL = constants.BootstrapSnapshotSingleNodePreDurango12SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotSingleNodePreDurango12LocalPath
 		default:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodeArchiveName
 			url = constants.BootstrapSnapshotSingleNodeURL
@@ -737,6 +747,11 @@ func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool
 			url = constants.BootstrapSnapshotPreDurango11URL
 			shaSumURL = constants.BootstrapSnapshotPreDurango11SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotPreDurango11LocalPath
+		case isPreDurango12:
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotPreDurango12ArchiveName
+			url = constants.BootstrapSnapshotPreDurango12URL
+			shaSumURL = constants.BootstrapSnapshotPreDurango12SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotPreDurango12LocalPath
 		default:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotArchiveName
 			url = constants.BootstrapSnapshotURL
@@ -747,8 +762,13 @@ func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool
 	return bootstrapSnapshotArchiveName, url, shaSumURL, pathInShaSum
 }
 
-func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool, isPreCortina17 bool, isPreDurango11 bool) (string, error) {
-	_, _, url, path := getSnapshotLocs(isSingleNode, isPreCortina17, isPreDurango11)
+func getExpectedDefaultSnapshotSHA256Sum(
+	isSingleNode bool,
+	isPreCortina17 bool,
+	isPreDurango11 bool,
+	isPreDurango12 bool,
+) (string, error) {
+	_, _, url, path := getSnapshotLocs(isSingleNode, isPreCortina17, isPreDurango11, isPreDurango12)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
@@ -774,12 +794,14 @@ func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVer
 	var (
 		isPreCortina17 bool
 		isPreDurango11 bool
+		isPreDurango12 bool
 	)
 	if avagoVersion != "" {
 		isPreCortina17 = semver.Compare(avagoVersion, constants.Cortina17Version) < 0
 		isPreDurango11 = semver.Compare(avagoVersion, constants.Durango11Version) < 0
+		isPreDurango12 = semver.Compare(avagoVersion, constants.Durango12Version) < 0
 	}
-	bootstrapSnapshotArchiveName, url, _, _ := getSnapshotLocs(isSingleNode, isPreCortina17, isPreDurango11)
+	bootstrapSnapshotArchiveName, url, _, _ := getSnapshotLocs(isSingleNode, isPreCortina17, isPreDurango11, isPreDurango12)
 	currentBootstrapNamePath := filepath.Join(snapshotsDir, constants.CurrentBootstrapNamePath)
 	exists, err := storage.FileExists(currentBootstrapNamePath)
 	if err != nil {
@@ -814,7 +836,7 @@ func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVer
 		if err != nil {
 			return false, err
 		}
-		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode, isPreCortina17, isPreDurango11)
+		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode, isPreCortina17, isPreDurango11, isPreDurango12)
 		if err != nil {
 			ux.Logger.PrintToUser("Warning: failure verifying that the local snapshot is the latest one: %s", err)
 		} else if gotSum != expectedSum {
