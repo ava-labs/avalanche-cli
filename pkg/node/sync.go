@@ -6,13 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-network-runner/client"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/ids"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -240,104 +233,4 @@ func parseBootstrappedOutput(byteValue []byte) (bool, error) {
 		}
 	}
 	return false, errors.New("unable to parse node bootstrap status")
-}
-
-func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockchainName string) error {
-	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
-		return fmt.Errorf("local node %q is not found", clusterName)
-	}
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
-	clusterConfig, err := app.GetClusterConfig(clusterName)
-	if err != nil {
-		return err
-	}
-	network := clusterConfig.Network
-	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
-	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	blockchainID := sc.Networks[network.Name()].BlockchainID
-	vmID, err := anrutils.VMID(blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
-	}
-	var vmBin string
-	switch sc.VM {
-	case models.SubnetEvm:
-		_, vmBin, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
-		if err != nil {
-			return fmt.Errorf("failed to install subnet-evm: %w", err)
-		}
-	case models.CustomVM:
-		vmBin = binutils.SetupCustomBin(app, blockchainName)
-	default:
-		return fmt.Errorf("unknown vm: %s", sc.VM)
-	}
-	rootDir := app.GetLocalDir(clusterName)
-	pluginPath := filepath.Join(rootDir, "node1", "plugins", vmID.String())
-	if err := utils.FileCopy(vmBin, pluginPath); err != nil {
-		return err
-	}
-	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
-		return err
-	}
-	if app.ChainConfigExists(blockchainName) {
-		inputChainConfigPath := app.GetChainConfigPath(blockchainName)
-		outputChainConfigPath := filepath.Join(rootDir, "node1", "configs", "chains", blockchainID.String(), "config.json")
-		if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-			return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-		}
-		if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
-			return err
-		}
-	}
-
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return err
-	}
-	publicEndpoints := []string{}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
-			return err
-		}
-		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
-	}
-	networkInfo := sc.Networks[network.Name()]
-	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
-	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	for _, publicEndpoint := range publicEndpoints {
-		rpcEndpoints.Add(getRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(getWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-	}
-	networkInfo.RPCEndpoints = rpcEndpoints.List()
-	networkInfo.WSEndpoints = wsEndpoints.List()
-	sc.Networks[clusterConfig.Network.Name()] = networkInfo
-	if err := app.UpdateSidecar(&sc); err != nil {
-		return err
-	}
-	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", clusterName, blockchainName)
-	return nil
-}
-
-func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, error) {
-	clustersConfig, err := app.GetClustersConfig()
-	if err != nil {
-		return false, err
-	}
-	clusterConf, ok := clustersConfig.Clusters[clusterName]
-	return ok && clusterConf.Local, nil
 }
