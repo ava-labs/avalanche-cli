@@ -59,12 +59,12 @@ func GetClusterNodes(app *application.Avalanche, clusterName string) ([]string, 
 	if exists, err := CheckClusterExists(app, clusterName); err != nil || !exists {
 		return nil, fmt.Errorf("cluster %q not found", clusterName)
 	}
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
 	}
-	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
-	if len(clusterNodes) == 0 {
+	clusterNodes := clusterConfig.Nodes
+	if len(clusterNodes) == 0 && !clusterConfig.Local {
 		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
 	return clusterNodes, nil

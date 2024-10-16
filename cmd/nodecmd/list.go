@@ -44,8 +44,9 @@ func list(_ *cobra.Command, _ []string) error {
 		if err := node.CheckCluster(app, clusterName); err != nil {
 			return err
 		}
+		cloudIDs := clusterConf.GetCloudIDs()
 		nodeIDs := []string{}
-		for _, cloudID := range clusterConf.GetCloudIDs() {
+		for _, cloudID := range cloudIDs {
 			nodeIDStr := "----------------------------------------"
 			if clusterConf.IsAvalancheGoHost(cloudID) {
 				if nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID)); err != nil {

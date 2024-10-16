@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-
 	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -325,37 +323,4 @@ func getClusterMonitoringNode(clusterName string) (string, error) {
 		return "", fmt.Errorf("cluster %q does not exist", clusterName)
 	}
 	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
-}
-
-func checkCluster(clusterName string) error {
-	_, err := getClusterNodes(clusterName)
-	return err
-}
-
-func checkClusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
-	}
-	_, ok := clustersConfig.Clusters[clusterName]
-	return ok, nil
-}
-
-func getClusterNodes(clusterName string) ([]string, error) {
-	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
-		return nil, fmt.Errorf("cluster %q not found", clusterName)
-	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return nil, err
-	}
-	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
-	if len(clusterNodes) == 0 {
-		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
-	}
-	return clusterNodes, nil
 }
