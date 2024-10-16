@@ -70,12 +70,9 @@ var (
 	iops                                  int
 	volumeType                            string
 	volumeSize                            int
-	versionComments                       = map[string]string{
-		"v1.11.0-fuji": " (recommended for fuji durango)",
-	}
-	grafanaPkg           string
-	wizSubnet            string
-	publicHTTPPortAccess bool
+	grafanaPkg                            string
+	wizSubnet                             string
+	publicHTTPPortAccess                  bool
 )
 
 func newCreateCmd() *cobra.Command {

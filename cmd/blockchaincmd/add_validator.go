@@ -145,7 +145,7 @@ func promptValidatorBalance() (uint64, error) {
 func CallAddValidator(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
-	kc *keychain.Keychain,
+	_ *keychain.Keychain,
 	useLedgerSetting bool,
 	blockchainName string,
 	nodeIDStrFormat string,
@@ -192,10 +192,10 @@ func CallAddValidator(
 	}
 
 	// TODO: implement getting validator manager controller address
-	//kcKeys, err := kc.PChainFormattedStrAddresses()
-	//if err != nil {
-	//	return err
-	//}
+	// kcKeys, err := kc.PChainFormattedStrAddresses()
+	// if err != nil {
+	//	 return err
+	// }
 
 	if nodeIDStr == "" {
 		nodeID, err := PromptNodeID("add as a blockchain validator")
@@ -261,6 +261,9 @@ func CallAddValidator(
 	return nil
 }
 
+// TODO: generate warp message
+//
+//nolint:all
 func generateWarpMessageAddValidator(subnetID ids.ID, nodeID ids.NodeID, weight uint64, blsPublicKey string, expiry uint64) (warpPlatformVM.Message, error) {
 	return warpPlatformVM.Message{}, nil
 }
