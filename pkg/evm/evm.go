@@ -434,6 +434,30 @@ func GetClient(rpcURL string) (ethclient.Client, error) {
 	return client, err
 }
 
+func WaitForChainID(client ethclient.Client) {
+	startTime := time.Now()
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Checking if node is healthy...")
+	for {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		_, err := client.ChainID(ctx)
+		if err == nil {
+			ux.SpinComplete(spinner)
+			spinSession.Stop()
+			ux.Logger.GreenCheckmarkToUser("Node is healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
+			break
+		} else {
+			if time.Since(startTime) > 60*time.Second {
+				ux.SpinFailWithError(spinner, "", fmt.Errorf("failure getting chain id from client %#v: %w", client, err))
+				spinSession.Stop()
+				break
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}
+}
+
 func GetChainID(client ethclient.Client) (*big.Int, error) {
 	var (
 		chainID *big.Int
