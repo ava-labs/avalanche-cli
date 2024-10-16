@@ -250,11 +250,10 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 	if err != nil {
 		return err
 	}
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
-	clusterConfig := clustersConfig.Clusters[clusterName]
 	network := clusterConfig.Network
 	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
