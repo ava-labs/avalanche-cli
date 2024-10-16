@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/k0kubun/go-ansi"
 	"os"
 	"path/filepath"
 	"strings"
@@ -484,6 +485,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			anrSettings := node.ANRSettings{}
 			avagoVersionSettings := node.AvalancheGoVersionSettings{}
 			useEtnaDevnet := false
+			fmt.Printf("network kind %s \n", network.Kind)
 			if network.Kind == models.EtnaDevnet {
 				useEtnaDevnet = true
 			}
@@ -496,8 +498,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
+			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+			//network, err = app.GetClusterNetwork(clusterName)
+			//if err != nil {
+			//	return err
+			//}
+			network = models.NewNetworkFromCluster(network, clusterName)
 			// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-			node.StartLocalNode(app, fmt.Sprintf("%s-local-node", blockchainName), useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil)
+			node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil)
+			time.Sleep(3 * time.Second)
+			ansi.CursorShow()
 		}
 	}
 
