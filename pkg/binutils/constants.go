@@ -6,12 +6,17 @@ import "time"
 
 const (
 	gRPCClientLogLevel = "error"
-	gRPCServerPort     = ":8097"
-	gRPCGatewayPort    = ":8098"
-	gRPCServerEndpoint = "localhost" + gRPCServerPort
 	gRPCDialTimeout    = 10 * time.Second
 
 	avalanchegoBinPrefix = "avalanchego-"
 	subnetEVMBinPrefix   = "subnet-evm-"
 	maxCopy              = 2147483648 // 2 GB
+
+	LocalNetworkGRPCServerPort     = ":8097"
+	LocalNetworkGRPCGatewayPort    = ":8098"
+	LocalNetworkGRPCServerEndpoint = "localhost" + LocalNetworkGRPCServerPort
+
+	LocalClusterGRPCServerPort     = ":8090"
+	LocalClusterGRPCGatewayPort    = ":8091"
+	LocalClusterGRPCServerEndpoint = "localhost" + LocalClusterGRPCServerPort
 )

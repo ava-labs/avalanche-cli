@@ -66,6 +66,7 @@ func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
 }
 
 func SpinComplete(s *ysmrr.Spinner) {
+	ansi.CursorShow()
 	if s.IsComplete() {
 		return
 	}

@@ -46,8 +46,8 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Downloader = downloader
 }
 
-func (app *Avalanche) GetRunFile() string {
-	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
+func (app *Avalanche) GetRunFile(prefix string) string {
+	return filepath.Join(app.GetRunDir(), prefix+constants.ServerRunFile)
 }
 
 func (app *Avalanche) GetSnapshotsDir() string {
@@ -87,6 +87,10 @@ func (app *Avalanche) GetCustomVMDir() string {
 
 func (app *Avalanche) GetPluginsDir() string {
 	return filepath.Join(app.baseDir, constants.PluginDir)
+}
+
+func (app *Avalanche) GetLocalDir(clusterName string) string {
+	return filepath.Join(app.baseDir, constants.LocalDir, clusterName)
 }
 
 // Remove all plugins from plugin dir
@@ -685,6 +689,13 @@ func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 	return models.ClustersConfig{}, fmt.Errorf("unsupported clusters config version %s", v)
 }
 
+func (app *Avalanche) GetClustersConfig() (models.ClustersConfig, error) {
+	if app.ClustersConfigExists() {
+		return app.LoadClustersConfig()
+	}
+	return models.ClustersConfig{}, nil
+}
+
 func (app *Avalanche) WriteClustersConfigFile(clustersConfig *models.ClustersConfig) error {
 	clustersConfigPath := app.GetClustersConfigPath()
 	if err := os.MkdirAll(filepath.Dir(clustersConfigPath), constants.DefaultPerms755); err != nil {
@@ -783,13 +794,9 @@ func (app *Avalanche) SetupMonitoringEnv() error {
 }
 
 func (app *Avalanche) ClusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return false, err
 	}
 	_, ok := clustersConfig.Clusters[clusterName]
 	return ok, nil
@@ -801,7 +808,7 @@ func (app *Avalanche) GetClusterConfig(clusterName string) (models.ClusterConfig
 		return models.ClusterConfig{}, err
 	}
 	if !exists {
-		return models.ClusterConfig{}, fmt.Errorf("cluster %q does not exists", clusterName)
+		return models.ClusterConfig{}, fmt.Errorf("cluster %q does not exist", clusterName)
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {

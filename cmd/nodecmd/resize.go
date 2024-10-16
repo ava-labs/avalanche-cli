@@ -58,6 +58,13 @@ func preResizeChecks(clusterName string) error {
 	if err := failForExternal(clusterName); err != nil {
 		return fmt.Errorf("cannot resize external cluster %s", clusterName)
 	}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("resize")
+	}
 	return nil
 }
 

@@ -4,6 +4,7 @@ package contract
 
 import (
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -16,6 +17,8 @@ import (
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var ErrFailedReceiptStatus = fmt.Errorf("failed receipt status")
@@ -385,6 +388,54 @@ func TxToMethodWithWarpMessage(
 		return tx, receipt, ErrFailedReceiptStatus
 	}
 	return tx, receipt, nil
+}
+
+func DebugTraceCall(
+	rpcURL string,
+	privateKey string,
+	contractAddress common.Address,
+	payment *big.Int,
+	methodSpec string,
+	params ...interface{},
+) (map[string]interface{}, error) {
+	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, params...)
+	if err != nil {
+		return nil, err
+	}
+	metadata := &bind.MetaData{
+		ABI: methodABI,
+	}
+	abi, err := metadata.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+	callData, err := abi.Pack(methodName, params...)
+	if err != nil {
+		return nil, err
+	}
+	client, err := evm.GetRPCClient(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+	pk, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	from := crypto.PubkeyToAddress(pk.PublicKey)
+	data := map[string]string{
+		"from":  from.Hex(),
+		"to":    contractAddress.Hex(),
+		"input": "0x" + hex.EncodeToString(callData),
+	}
+	if payment != nil {
+		hexBytes, _ := hexutil.Big(*payment).MarshalText()
+		data["value"] = string(hexBytes)
+	}
+	return evm.DebugTraceCall(
+		client,
+		data,
+	)
 }
 
 func CallToMethod(

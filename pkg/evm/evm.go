@@ -5,6 +5,7 @@ package evm
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"net/url"
@@ -259,6 +260,7 @@ func GetSignedTxToMethodWithWarpMessage(
 	callData []byte,
 	value *big.Int,
 ) (*types.Transaction, error) {
+	const defaultGasLimit = 2_000_000
 	privateKey, err := crypto.HexToECDSA(privateKeyStr)
 	if err != nil {
 		return nil, err
@@ -290,7 +292,10 @@ func GetSignedTxToMethodWithWarpMessage(
 	}
 	gasLimit, err := EstimateGasLimit(client, msg)
 	if err != nil {
-		return nil, err
+		// assuming this is related to the tx itself.
+		// just using default gas limit, and let the user debug the
+		// tx if needed so
+		gasLimit = defaultGasLimit
 	}
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:    chainID,
@@ -429,6 +434,30 @@ func GetClient(rpcURL string) (ethclient.Client, error) {
 	return client, err
 }
 
+func WaitForChainID(client ethclient.Client) {
+	startTime := time.Now()
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Checking if node is healthy...")
+	for {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		_, err := client.ChainID(ctx)
+		if err == nil {
+			ux.SpinComplete(spinner)
+			spinSession.Stop()
+			ux.Logger.GreenCheckmarkToUser("Node is healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
+			break
+		} else {
+			if time.Since(startTime) > 60*time.Second {
+				ux.SpinFailWithError(spinner, "", fmt.Errorf("failure getting chain id from client %#v: %w", client, err))
+				spinSession.Stop()
+				break
+			}
+			time.Sleep(5 * time.Second)
+		}
+	}
+}
+
 func GetChainID(client ethclient.Client) (*big.Int, error) {
 	var (
 		chainID *big.Int
@@ -508,10 +537,23 @@ func GetRPCClient(rpcURL string) (*rpc.Client, error) {
 		client *rpc.Client
 		err    error
 	)
+	hasScheme, err := HasScheme(rpcURL)
+	if err != nil {
+		return nil, err
+	}
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		client, err = rpc.DialContext(ctx, rpcURL)
+		if !hasScheme {
+			_, scheme, findErr := FindOutScheme(rpcURL)
+			if findErr == nil {
+				client, err = rpc.DialContext(ctx, scheme+rpcURL)
+			} else {
+				err = findErr
+			}
+		} else {
+			client, err = rpc.DialContext(ctx, rpcURL)
+		}
 		if err == nil {
 			break
 		}
@@ -544,6 +586,40 @@ func DebugTraceTransaction(
 			break
 		}
 		err = fmt.Errorf("failure tracing tx %s for client %#v: %w", txID, client, err)
+		ux.Logger.RedXToUser("%s", err)
+		time.Sleep(sleepBetweenRepeats)
+	}
+	return trace, err
+}
+
+func DebugTraceCall(
+	client *rpc.Client,
+	toTrace map[string]string,
+) (map[string]interface{}, error) {
+	var (
+		err   error
+		trace map[string]interface{}
+	)
+	for i := 0; i < repeatsOnFailure; i++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		err = client.CallContext(
+			ctx,
+			&trace,
+			"debug_traceCall",
+			toTrace,
+			"latest",
+			map[string]interface{}{
+				"tracer": "callTracer",
+				"tracerConfig": map[string]interface{}{
+					"onlyTopCall": false,
+				},
+			},
+		)
+		if err == nil {
+			break
+		}
+		err = fmt.Errorf("failure tracing call for client %#v: %w", client, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -669,4 +745,46 @@ func WaitForNewBlock(
 		time.Sleep(stepDuration)
 	}
 	return fmt.Errorf("new block not produced in %f seconds", totalDuration.Seconds())
+}
+
+func GetFunctionSelector(functionSignature string) string {
+	return "0x" + hex.EncodeToString(crypto.Keccak256([]byte(functionSignature))[:4])
+}
+
+func GetErrorFromTrace(
+	trace map[string]interface{},
+	functionSignatureToError map[string]error,
+) (error, error) {
+	traceOutputI, ok := trace["output"]
+	if !ok {
+		return nil, fmt.Errorf("trace does not contain output field")
+	}
+	traceOutput, ok := traceOutputI.(string)
+	if !ok {
+		return nil, fmt.Errorf("expected type string for trace output, got %T", traceOutputI)
+	}
+	traceOutputBytes, err := hex.DecodeString(strings.TrimPrefix(traceOutput, "0x"))
+	if err != nil {
+		return nil, fmt.Errorf("failure decoding trace output: %w", err)
+	}
+	if len(traceOutputBytes) < 4 {
+		return nil, fmt.Errorf("less than 4 bytes in trace output")
+	}
+	traceErrorSelector := "0x" + hex.EncodeToString(traceOutputBytes[:4])
+	for errorSignature, err := range functionSignatureToError {
+		errorSelector := GetFunctionSelector(errorSignature)
+		if traceErrorSelector == errorSelector {
+			return err, nil
+		}
+	}
+	return nil, fmt.Errorf("unknown error selector: %s", traceErrorSelector)
+}
+
+func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {
+	msgSuffix := ": %w"
+	if tx != nil {
+		msgSuffix += fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
+	}
+	args = append(args, err)
+	return fmt.Errorf(msg+msgSuffix, args...)
 }
