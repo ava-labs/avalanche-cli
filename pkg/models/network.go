@@ -18,6 +18,7 @@ const (
 	Undefined NetworkKind = iota
 	Mainnet
 	Fuji
+	EtnaDevnet
 	Local
 	Devnet
 )
@@ -32,6 +33,8 @@ func (nk NetworkKind) String() string {
 		return "Local Network"
 	case Devnet:
 		return "Devnet"
+	case EtnaDevnet:
+		return "Etna Devnet"
 	}
 	return "invalid network"
 }
@@ -54,10 +57,6 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string
 	}
 }
 
-func (n Network) IsUndefined() bool {
-	return n.Kind == Undefined
-}
-
 func NewLocalNetwork() Network {
 	return NewNetwork(Local, constants.LocalNetworkID, constants.LocalAPIEndpoint, "")
 }
@@ -70,6 +69,10 @@ func NewDevnetNetwork(endpoint string, id uint32) Network {
 		id = constants.DevnetNetworkID
 	}
 	return NewNetwork(Devnet, id, endpoint, "")
+}
+
+func NewEtnaDevnetNetwork() Network {
+	return NewNetwork(EtnaDevnet, constants.EtnaDevnetNetworkID, constants.EtnaDevnetEndpoint, "")
 }
 
 func NewFujiNetwork() Network {
@@ -141,6 +144,8 @@ func (n Network) NetworkIDFlagValue() string {
 	switch n.Kind {
 	case Local:
 		return fmt.Sprintf("network-%d", n.ID)
+	case EtnaDevnet:
+		return fmt.Sprintf("%d", n.ID)
 	case Devnet:
 		return fmt.Sprintf("network-%d", n.ID)
 	case Fuji:
@@ -155,6 +160,8 @@ func (n Network) GenesisParams() *genesis.Params {
 	switch n.Kind {
 	case Local:
 		return &genesis.LocalParams
+	case EtnaDevnet:
+		return &genesis.LocalParams // use LocalParams for now
 	case Devnet:
 		return &genesis.LocalParams
 	case Fuji:

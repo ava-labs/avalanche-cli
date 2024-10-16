@@ -483,10 +483,21 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
 			anrSettings := node.ANRSettings{}
 			avagoVersionSettings := node.AvalancheGoVersionSettings{}
-			if network.Name() ==  {
-
+			useEtnaDevnet := false
+			if network.Kind == models.EtnaDevnet {
+				useEtnaDevnet = true
 			}
-			node.StartLocalNode(app, fmt.Sprintf("%s-local-node", blockchainName, true, "", anrSettings, avagoVersionSettings))
+			if avagoBinaryPath == "" {
+				ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
+				ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
+				ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
+				avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
+				if err != nil {
+					return err
+				}
+			}
+			// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+			node.StartLocalNode(app, fmt.Sprintf("%s-local-node", blockchainName), useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil)
 		}
 	}
 
