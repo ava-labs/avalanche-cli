@@ -93,8 +93,8 @@ github.com/ava-labs/coreth v0.13.8 h1:f14X3KgwHl9LwzfxlN6S4bbn5VA2rhEsNnHaRLSTo/
 github.com/ava-labs/coreth v0.13.8/go.mod h1:t3BSv/eQv0AlDPMfEDCMMoD/jq1RkUsbFzQAFg5qBcE=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20241009183145-e6f90a8a1a60 h1:EL66gtXOAwR/4KYBjOV03LTWgkEXvLePribLlJNu4g0=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20241009183145-e6f90a8a1a60/go.mod h1:/7qKobTfbzBu7eSTVaXMTr56yTYk4j2Px6/8G+idxHo=
-github.com/ava-labs/subnet-evm v0.6.9-0.20240815191823-9f3608326298 h1:g7JdXUEZ5Hk3sKhJPoZattE4obRaF7qapHREnB4O+Rg=
-github.com/ava-labs/subnet-evm v0.6.9-0.20240815191823-9f3608326298/go.mod h1:QfIzh7YxKj97jbendOHQbaAxM7SMj5MWdV13o1VLn70=
+github.com/ava-labs/subnet-evm v0.6.10 h1:uIh6bFMA4GCMVMQ3agBPxTMlYHL8FBR5FrhMR+drfKI=
+github.com/ava-labs/subnet-evm v0.6.10/go.mod h1:dw4kg0o58dvYlndj2ZcwB7hioRc1kjg00yXYrcSmnj8=
 github.com/ava-labs/teleporter v1.0.0 h1:io209qZh3SDpwLre0oStMzOFRcPvOrmMQuLq5OFvzJo=
 github.com/ava-labs/teleporter v1.0.0/go.mod h1:4Wyz/5sZDHMaaLegh2ULyrAOWnyaBk6upTmbwSrVSMs=
 github.com/aws/aws-sdk-go-v2 v1.2.0/go.mod h1:zEQs02YRBw1DjK0PoJv3ygDYOFTre1ejlJWl8FwAuQo=
