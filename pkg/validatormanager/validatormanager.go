@@ -32,7 +32,20 @@ const (
 	ValidatorContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
 )
 
-var errAlreadyInitialized = errors.New("the contract is already initialized")
+var (
+	errAlreadyInitialized            = errors.New("the contract is already initialized")
+	errInvalidMaximumChurnPercentage = fmt.Errorf("unvalid churn percentage")
+	errInvalidValidationID           = fmt.Errorf("invalid validation id")
+	errInvalidValidatorStatus        = fmt.Errorf("invalid validator status")
+	errMaxChurnRateExceeded          = fmt.Errorf("max churn rate exceeded")
+	errorSignatureToError            = map[string]error{
+		"InvalidInitialization()":              errAlreadyInitialized,
+		"InvalidMaximumChurnPercentage(uint8)": errInvalidMaximumChurnPercentage,
+		"InvalidValidationID(bytes32)":         errInvalidValidationID,
+		"InvalidValidatorStatus(uint8)":        errInvalidValidatorStatus,
+		"MaxChurnRateExceeded(uint64)":         errMaxChurnRateExceeded,
+	}
+)
 
 //go:embed deployed_poa_validator_manager_bytecode.txt
 var deployedPoAValidatorManagerBytecode []byte
@@ -72,42 +85,17 @@ func PoAValidatorManagerInitialize(
 		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
 		MaximumChurnPercentage: defaultMaximumChurnPercentage,
 	}
-	tx, receipt, err := contract.TxToMethod(
+	return contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		managerAddress,
 		nil,
+		"initialize PoA manager",
+		errorSignatureToError,
 		"initialize((bytes32,uint64,uint8),address)",
 		params,
 		ownerAddress,
 	)
-	if err != nil {
-		trace, traceCallErr := contract.DebugTraceCall(
-			rpcURL,
-			privateKey,
-			managerAddress,
-			nil,
-			"initialize((bytes32,uint64,uint8),address)",
-			params,
-			ownerAddress,
-		)
-		if traceCallErr != nil {
-			ux.Logger.PrintToUser("Could not get debug trace for PoA initialization error on %s: %s", rpcURL, traceCallErr)
-			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
-			return tx, receipt, err
-		}
-		errorSignatureToError := map[string]error{
-			"InvalidInitialization()": errAlreadyInitialized,
-		}
-		errorFromSignature, _ := evm.GetErrorFromTrace(trace, errorSignatureToError)
-		if errorFromSignature != nil {
-			return tx, receipt, errorFromSignature
-		} else {
-			ux.Logger.PrintToUser("error trace for PoA initialization error:")
-			ux.Logger.PrintToUser("%#v", trace)
-		}
-	}
-	return tx, receipt, err
 }
 
 // constructs p-chain-validated (signed) subnet conversion warp
@@ -282,7 +270,7 @@ func SetupPoA(
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		app.Log,
-		logging.Trace,
+		logging.Info,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,

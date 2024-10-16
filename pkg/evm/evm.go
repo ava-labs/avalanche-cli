@@ -562,7 +562,6 @@ func DebugTraceTransaction(
 			break
 		}
 		err = fmt.Errorf("failure tracing tx %s for client %#v: %w", txID, client, err)
-		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return trace, err
@@ -596,7 +595,6 @@ func DebugTraceCall(
 			break
 		}
 		err = fmt.Errorf("failure tracing call for client %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return trace, err
@@ -764,10 +762,12 @@ func GetErrorFromTrace(
 		return nil, fmt.Errorf("less than 4 bytes in trace output")
 	}
 	traceErrorSelector := "0x" + hex.EncodeToString(traceOutputBytes[:4])
-	for errorSignature, err := range functionSignatureToError {
-		errorSelector := GetFunctionSelector(errorSignature)
-		if traceErrorSelector == errorSelector {
-			return err, nil
+	if functionSignatureToError != nil {
+		for errorSignature, err := range functionSignatureToError {
+			errorSelector := GetFunctionSelector(errorSignature)
+			if traceErrorSelector == errorSelector {
+				return err, nil
+			}
 		}
 	}
 	return nil, fmt.Errorf("unknown error selector: %s", traceErrorSelector)
@@ -777,6 +777,8 @@ func TransactionError(tx *types.Transaction, err error, msg string, args ...inte
 	msgSuffix := ": %w"
 	if tx != nil {
 		msgSuffix += fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
+	} else {
+		msgSuffix += " (tx failed to be submitted)"
 	}
 	args = append(args, err)
 	return fmt.Errorf(msg+msgSuffix, args...)

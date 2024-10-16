@@ -24,14 +24,16 @@ import (
 func PoAValidatorManagerInitializeValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
-	managerOwnerPrivateKey string,
+	ownerPrivateKey string,
 	validationID [32]byte,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethod(
 		rpcURL,
-		managerOwnerPrivateKey,
+		ownerPrivateKey,
 		managerAddress,
 		big.NewInt(0),
+		"validator removal initialization",
+		errorSignatureToError,
 		"initializeEndValidation(bytes32)",
 		validationID,
 	)

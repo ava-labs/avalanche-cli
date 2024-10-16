@@ -510,16 +510,6 @@ func localTrack(_ *cobra.Command, args []string) error {
 	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
 		return err
 	}
-	if app.ChainConfigExists(blockchainName) {
-		inputChainConfigPath := app.GetChainConfigPath(blockchainName)
-		outputChainConfigPath := filepath.Join(rootDir, "node1", "configs", "chains", blockchainID.String(), "config.json")
-		if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-			return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-		}
-		if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
-			return err
-		}
-	}
 
 	cli, err := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
@@ -537,6 +527,16 @@ func localTrack(_ *cobra.Command, args []string) error {
 	}
 	publicEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		if app.ChainConfigExists(blockchainName) {
+			inputChainConfigPath := app.GetChainConfigPath(blockchainName)
+			outputChainConfigPath := filepath.Join(rootDir, nodeInfo.Name, "configs", "chains", blockchainID.String(), "config.json")
+			if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
+				return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
+			}
+			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
+				return err
+			}
+		}
 		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
 			return err
 		}

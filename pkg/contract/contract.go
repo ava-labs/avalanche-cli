@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -295,6 +296,8 @@ func TxToMethod(
 	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
+	description string,
+	errorSignatureToError map[string]error,
 	methodSpec string,
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
@@ -322,6 +325,26 @@ func TxToMethod(
 	txOpts.Value = payment
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
+		trace, traceCallErr := DebugTraceCall(
+			rpcURL,
+			privateKey,
+			contractAddress,
+			payment,
+			methodSpec,
+			params...,
+		)
+		if traceCallErr != nil {
+			ux.Logger.PrintToUser("Could not get debug trace for %s error on %s: %s", description, rpcURL, traceCallErr)
+			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
+			return nil, nil, err
+		}
+		errorFromSignature, _ := evm.GetErrorFromTrace(trace, errorSignatureToError)
+		if errorFromSignature != nil {
+			return nil, nil, errorFromSignature
+		} else {
+			ux.Logger.PrintToUser("error trace for %s error:", description)
+			ux.Logger.PrintToUser("%#v", trace)
+		}
 		return nil, nil, err
 	}
 	receipt, success, err := evm.WaitForTransaction(client, tx)

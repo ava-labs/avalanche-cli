@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -1086,6 +1087,10 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 	if err != nil {
 		return nil, err
 	}
+	nodeIDs := utils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
+		return peer.Info.ID
+	})
+	nodeIDsSet := set.Of(nodeIDs...)
 	for _, uri := range aggregatorExtraPeerEndpointsUris {
 		infoClient := info.NewClient(uri)
 		ctx, cancel := utils.GetAPILargeContext()
@@ -1094,7 +1099,12 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 		if err != nil {
 			return nil, err
 		}
-		aggregatorPeers = append(aggregatorPeers, peers...)
+		for _, peer := range peers {
+			if !nodeIDsSet.Contains(peer.Info.ID) {
+				aggregatorPeers = append(aggregatorPeers, peer)
+				nodeIDsSet.Add(peer.Info.ID)
+			}
+		}
 	}
 	return aggregatorPeers, nil
 }
