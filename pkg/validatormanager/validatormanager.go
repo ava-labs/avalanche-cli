@@ -442,7 +442,7 @@ func GetRegisteredValidator(
 	return validatorID, nil
 }
 
-func PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+func PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
@@ -584,7 +584,7 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return err
 	}
-	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		app.Log,
 		logging.Info,
