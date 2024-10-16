@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanchego/api/info"
 
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
@@ -515,37 +515,36 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-	}
-
-	if len(bootstrapEndpoints) > 0 {
-		var changeAddr string
-		for _, endpoint := range bootstrapEndpoints {
-			infoClient := info.NewClient(endpoint)
-			ctx, cancel := utils.GetAPILargeContext()
-			defer cancel()
-			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+		if len(bootstrapEndpoints) > 0 {
+			var changeAddr string
+			for _, endpoint := range bootstrapEndpoints {
+				infoClient := info.NewClient(endpoint)
+				ctx, cancel := utils.GetAPILargeContext()
+				defer cancel()
+				nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+				if err != nil {
+					return err
+				}
+				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
+				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
+				changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+				if err != nil {
+					return err
+				}
+				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
+					NodeID:               nodeID.String(),
+					Weight:               constants.BootstrapValidatorWeight,
+					Balance:              constants.BootstrapValidatorBalance,
+					BLSPublicKey:         publicKey,
+					BLSProofOfPossession: pop,
+					ChangeOwnerAddr:      changeAddr,
+				})
+			}
+		} else {
+			bootstrapValidators, err = promptBootstrapValidators(network)
 			if err != nil {
 				return err
 			}
-			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
-			changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
-			if err != nil {
-				return err
-			}
-			bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
-				NodeID:               nodeID.String(),
-				Weight:               constants.BootstrapValidatorWeight,
-				Balance:              constants.BootstrapValidatorBalance,
-				BLSPublicKey:         publicKey,
-				BLSProofOfPossession: pop,
-				ChangeOwnerAddr:      changeAddr,
-			})
-		}
-	} else {
-		bootstrapValidators, err = promptBootstrapValidators(network)
-		if err != nil {
-			return err
 		}
 	}
 
