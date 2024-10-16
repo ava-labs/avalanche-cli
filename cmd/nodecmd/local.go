@@ -363,7 +363,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			localDestroyNode(nil, []string{clusterName})
+			_ = localDestroyNode(nil, []string{clusterName}) // ignore error
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
@@ -427,7 +427,7 @@ func localStopNode(_ *cobra.Command, _ []string) error {
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 
-	localStopNode(nil, nil)
+	_ = localStopNode(nil, nil) // try to stop node and ignore error as it might not be running
 
 	rootDir := app.GetLocalDir(clusterName)
 	if err := os.RemoveAll(rootDir); err != nil {
@@ -583,7 +583,7 @@ func localStatus(_ *cobra.Command, args []string) error {
 	defer cancel()
 	currentlyRunningRootDir := ""
 	isHealthy := false
-	cli, _ := binutils.NewGRPCClientWithEndpoint( //ignore error as ANR might be not running
+	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
@@ -601,8 +601,8 @@ func localStatus(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to list local clusters: %w", err)
 	}
-	if clusterName == "" {
-		ux.Logger.PrintToUser("%s %s", logging.LightBlue.Wrap("Local cluster:"), clusterName)
+	if clusterName != "" {
+		ux.Logger.PrintToUser("%s %s", logging.LightBlue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
 	} else {
 		ux.Logger.PrintToUser(logging.LightBlue.Wrap("Local clusters:"))
 	}
