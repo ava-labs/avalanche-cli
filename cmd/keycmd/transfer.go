@@ -28,6 +28,7 @@ import (
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -597,6 +598,20 @@ func transferF(*cobra.Command, []string) error {
 		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
 			return fmt.Errorf("error signing tx: %w", err)
 		}
+
+		pContext := wallet.P().Builder().Context()
+		var pFeeCalculator avagofee.Calculator
+		if pContext.GasPrice != 0 {
+			pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
+		} else {
+			pFeeCalculator = avagofee.NewStaticCalculator(pContext.StaticFeeConfig)
+		}
+		txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Paid fee: %.9f", float64(txFee)/float64(units.Avax))
 
 		ctx, cancel := utils.GetAPIContext()
 		defer cancel()
