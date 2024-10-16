@@ -56,11 +56,12 @@ func list(_ *cobra.Command, _ []string) error {
 			}
 			nodeIDs = append(nodeIDs, nodeIDStr)
 		}
-		if clusterConf.External {
+		switch {
+		case clusterConf.External:
 			ux.Logger.PrintToUser("cluster %q (%s) EXTERNAL", clusterName, clusterConf.Network.Kind.String())
-		} else if clusterConf.Local {
+		case clusterConf.Local:
 			ux.Logger.PrintToUser("cluster %q (%s) LOCAL", clusterName, clusterConf.Network.Kind.String())
-		} else {
+		default:
 			ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
 		}
 		for i, cloudID := range clusterConf.GetCloudIDs() {

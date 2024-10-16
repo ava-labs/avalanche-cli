@@ -299,7 +299,7 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			DestroyLocalNode(app, clusterName)
+			_ = DestroyLocalNode(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
@@ -396,7 +396,7 @@ func addLocalClusterConfig(app *application.Avalanche, network models.Network) e
 }
 
 func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
-	StopLocalNode(app)
+	_ = StopLocalNode(app)
 
 	rootDir := app.GetLocalDir(clusterName)
 	if err := os.RemoveAll(rootDir); err != nil {

@@ -417,7 +417,6 @@ func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVer
 			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", useAvalanchegoVersionFromSubnet))
 		}
 		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
-
 	}
 }
 

@@ -490,12 +490,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if localMachineCluster != "" {
 				// don't destroy cluster if local cluster name is provided
 				clusterName = localMachineCluster
-			} else {
-				// destroy any cluster with same name before we start local node
-				// we don't want to reuse snapshots from previous sessions
-				if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
+			} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
 					_ = node.DestroyLocalNode(app, clusterName)
 				}
+				// destroy any cluster with same name before we start local node
+				// we don't want to reuse snapshots from previous sessions
 			}
 			// TODO: replace bootstrapEndpoints with dynamic port number
 			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
