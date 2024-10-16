@@ -514,8 +514,8 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 			} else {
 				healthStatus = fmt.Sprintf(" [%s]", logging.Red.Wrap("Unhealthy"))
 			}
-		} else if len(clustersToList) > 0 {
-			currenlyRunning = fmt.Sprintf(" [%s]", logging.Blue.Wrap("Stopped"))
+		} else {
+			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
 		}
 		ux.Logger.PrintToUser("- %s: %s %s %s", clusterName, rootDir, currenlyRunning, healthStatus)
 	}
