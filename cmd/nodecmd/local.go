@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
 var (
@@ -55,6 +56,8 @@ The node local command suite provides a collection of commands related to local 
 	cmd.AddCommand(newLocalDestroyCmd())
 	// node local track
 	cmd.AddCommand(newLocalTrackCmd())
+	// node local status
+	cmd.AddCommand(newLocalStatusCmd())
 	return cmd
 }
 
@@ -120,6 +123,16 @@ func newLocalDestroyCmd() *cobra.Command {
 		Long:  `Cleanup local node.`,
 		Args:  cobra.ExactArgs(1),
 		RunE:  localDestroyNode,
+	}
+}
+
+func newLocalStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "(ALPHA Warning) Get status of local node",
+		Long:  `Get status of local node.`,
+		Args:  cobra.MaximumNArgs(1),
+		RunE:  localStatus,
 	}
 }
 
@@ -552,6 +565,78 @@ func localTrack(_ *cobra.Command, args []string) error {
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", clusterName, blockchainName)
 	return nil
+}
+
+func localStatus(_ *cobra.Command, args []string) error {
+	clusterName := ""
+	clustersToList := make([]string, 0)
+	if len(args) > 0 {
+		clusterName = args[0]
+		if ok, err := checkClusterIsLocal(clusterName); err != nil || !ok {
+			return fmt.Errorf("local cluster %q not found", clusterName)
+		}
+		clustersToList = append(clustersToList, clusterName)
+	}
+
+	// get currently running local cluster
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	currentlyRunningRootDir := ""
+	isHealthy := false
+	cli, _ := binutils.NewGRPCClientWithEndpoint( //ignore error as ANR might be not running
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if cli != nil {
+		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
+		if status != nil && status.ClusterInfo != nil {
+			if status.ClusterInfo.RootDataDir != "" {
+				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
+			}
+			isHealthy = status.ClusterInfo.Healthy
+		}
+	}
+	localClusters, err := listLocalClusters(clustersToList)
+	if err != nil {
+		return fmt.Errorf("failed to list local clusters: %w", err)
+	}
+	if clusterName == "" {
+		ux.Logger.PrintToUser("%s %s", logging.LightBlue.Wrap("Local cluster:"), clusterName)
+	} else {
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("Local clusters:"))
+	}
+	for clusterName, rootDir := range localClusters {
+		currenlyRunning := ""
+		healthStatus := ""
+		if rootDir == currentlyRunningRootDir {
+			currenlyRunning = fmt.Sprintf(" [%s]", logging.Blue.Wrap("Running"))
+			if isHealthy {
+				healthStatus = fmt.Sprintf(" [%s]", logging.Green.Wrap("Healthy"))
+			} else {
+				healthStatus = fmt.Sprintf(" [%s]", logging.Red.Wrap("Unhealthy"))
+			}
+		}
+		ux.Logger.PrintToUser("- %s: %s %s %s", clusterName, rootDir, currenlyRunning, healthStatus)
+	}
+
+	return nil
+}
+
+func listLocalClusters(clusterNamesToInclude []string) (map[string]string, error) {
+	localClusters := map[string]string{} // map[clusterName]rootDir
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return localClusters, err
+	}
+	for clusterName := range clustersConfig.Clusters {
+		if len(clusterNamesToInclude) == 0 || slices.Contains(clusterNamesToInclude, clusterName) {
+			if ok, err := checkClusterIsLocal(clusterName); err == nil && ok {
+				localClusters[clusterName] = app.GetLocalDir(clusterName)
+			}
+		}
+	}
+	return localClusters, nil
 }
 
 func notImplementedForLocal(what string) error {
