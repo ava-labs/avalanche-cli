@@ -15,13 +15,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/proto/pb/platformvm"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
+	"github.com/ava-labs/subnet-evm/interfaces"
+	subnetEvmWarp "github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ethereum/go-ethereum/common"
+	"google.golang.org/protobuf/proto"
 )
 
 // step 1 of flow for adding a new validator
@@ -157,8 +161,9 @@ func GetRegisteredValidator(
 	return validatorID, nil
 }
 
-func PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+func PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 	network models.Network,
+	rpcURL string,
 	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -197,7 +202,23 @@ func PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
 	if err != nil {
 		return nil, err
 	}
-	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
+	var justificationBytes []byte
+	if !registered {
+		msg, err := GetRegistrationMessage(rpcURL, validationID)
+		if err != nil {
+			return nil, err
+		}
+		justification := platformvm.SubnetValidatorRegistrationJustification{
+			Preimage: &platformvm.SubnetValidatorRegistrationJustification_RegisterSubnetValidatorMessage{
+				RegisterSubnetValidatorMessage: msg,
+			},
+		}
+		justificationBytes, err = proto.Marshal(&justification)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return signatureAggregator.Sign(subnetConversionUnsignedMessage, justificationBytes)
 }
 
 // last step of flow for adding a new validator
@@ -299,8 +320,9 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return err
 	}
-	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
+		rpcURL,
 		app.Log,
 		logging.Info,
 		0,
@@ -328,4 +350,49 @@ func FinishValidatorRegistration(
 		return evm.TransactionError(tx, err, "failure completing validator registration")
 	}
 	return nil
+}
+
+func GetRegistrationMessage(rpcURL string, validationID ids.ID) ([]byte, error) {
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := utils.GetAPILargeContext()
+	defer cancel()
+	height, err := client.BlockNumber(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for blockNumber := uint64(0); blockNumber <= height; blockNumber++ {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		block, err := client.BlockByNumber(ctx, big.NewInt(int64(blockNumber)))
+		if err != nil {
+			return nil, err
+		}
+		blockHash := block.Hash()
+		logs, err := client.FilterLogs(ctx, interfaces.FilterQuery{
+			BlockHash: &blockHash,
+			Addresses: []common.Address{subnetEvmWarp.Module.Address},
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, txLog := range logs {
+			msg, err := subnetEvmWarp.UnpackSendWarpEventDataToMessage(txLog.Data)
+			if err == nil {
+				payload := msg.Payload
+				addressedCall, err := warpPayload.ParseAddressedCall(payload)
+				if err == nil {
+					reg, err := warpMessage.ParseRegisterSubnetValidator(addressedCall.Payload)
+					if err == nil {
+						if reg.ValidationID() == validationID {
+							return addressedCall.Payload, nil
+						}
+					}
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("validation id %s not found on warp events", validationID)
 }

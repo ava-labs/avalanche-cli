@@ -130,11 +130,12 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 	}
+
 	nonce := uint64(1)
 	signedMsg, err := PoaValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
 		app.Log,
-		logging.Info,
+		logging.Debug,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
@@ -182,10 +183,11 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return err
 	}
-	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationnWarpMessage(
+	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
+		rpcURL,
 		app.Log,
-		logging.Info,
+		logging.Debug,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,

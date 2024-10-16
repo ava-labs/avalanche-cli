@@ -115,7 +115,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 
 	var nodeID ids.NodeID
-	if nodeEndpoint != "" {
+	switch {
+	case nodeEndpoint != "":
 		infoClient := info.NewClient(nodeEndpoint)
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
@@ -123,12 +124,12 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	} else if nodeIDStr == "" {
+	case nodeIDStr == "":
 		nodeID, err = PromptNodeID("remove as a blockchain validator")
 		if err != nil {
 			return err
 		}
-	} else {
+	default:
 		nodeID, err = ids.NodeIDFromString(nodeIDStr)
 		if err != nil {
 			return err
@@ -264,6 +265,9 @@ func removeValidatorSOV(
 		nodeID,
 		extraAggregatorPeers,
 	)
+	if err != nil {
+		return err
+	}
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 
 	txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
