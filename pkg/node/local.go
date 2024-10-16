@@ -4,6 +4,10 @@ package node
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -16,9 +20,8 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
-	"os"
-	"path/filepath"
 )
 
 func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockchainName string) error {
@@ -296,7 +299,7 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			DestroyLocalNode(app, clusterName)
+			_ = DestroyLocalNode(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
@@ -393,7 +396,7 @@ func addLocalClusterConfig(app *application.Avalanche, network models.Network) e
 }
 
 func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
-	StopLocalNode(app)
+	_ = StopLocalNode(app)
 
 	rootDir := app.GetLocalDir(clusterName)
 	if err := os.RemoveAll(rootDir); err != nil {
@@ -445,5 +448,77 @@ func StopLocalNode(app *application.Avalanche) error {
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("avalanchego stopped")
+	return nil
+}
+
+func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []string) (map[string]string, error) {
+	localClusters := map[string]string{} // map[clusterName]rootDir
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return localClusters, err
+	}
+	for clusterName := range clustersConfig.Clusters {
+		if len(clusterNamesToInclude) == 0 || slices.Contains(clusterNamesToInclude, clusterName) {
+			if ok, err := checkClusterIsLocal(app, clusterName); err == nil && ok {
+				localClusters[clusterName] = app.GetLocalDir(clusterName)
+			}
+		}
+	}
+	return localClusters, nil
+}
+
+func LocalStatus(app *application.Avalanche, clusterName string) error {
+	clustersToList := make([]string, 0)
+	if clusterName != "" {
+		if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+			return fmt.Errorf("local cluster %q not found", clusterName)
+		}
+		clustersToList = append(clustersToList, clusterName)
+	}
+
+	// get currently running local cluster
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	currentlyRunningRootDir := ""
+	isHealthy := false
+	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if cli != nil {
+		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
+		if status != nil && status.ClusterInfo != nil {
+			if status.ClusterInfo.RootDataDir != "" {
+				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
+			}
+			isHealthy = status.ClusterInfo.Healthy
+		}
+	}
+	localClusters, err := listLocalClusters(app, clustersToList)
+	if err != nil {
+		return fmt.Errorf("failed to list local clusters: %w", err)
+	}
+	if clusterName != "" {
+		ux.Logger.PrintToUser("%s %s", logging.LightBlue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
+	} else {
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("Local clusters:"))
+	}
+	for clusterName, rootDir := range localClusters {
+		currenlyRunning := ""
+		healthStatus := ""
+		if rootDir == currentlyRunningRootDir {
+			currenlyRunning = fmt.Sprintf(" [%s]", logging.Blue.Wrap("Running"))
+			if isHealthy {
+				healthStatus = fmt.Sprintf(" [%s]", logging.Green.Wrap("Healthy"))
+			} else {
+				healthStatus = fmt.Sprintf(" [%s]", logging.Red.Wrap("Unhealthy"))
+			}
+		} else {
+			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
+		}
+		ux.Logger.PrintToUser("- %s: %s %s %s", clusterName, rootDir, currenlyRunning, healthStatus)
+	}
+
 	return nil
 }

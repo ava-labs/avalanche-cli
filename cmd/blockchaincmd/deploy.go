@@ -7,14 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/api/info"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanchego/api/info"
 
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
@@ -135,9 +135,10 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an interchain messenger registry bytecode file")
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
-	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-enu dpoints", nil, "take validator node info from the given endpoints")
+	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().StringVar(&localMachineCluster, "local-machine-cluster", "", "existing local machine to be used as a blockchain validator")
+
 	return cmd
 }
 
@@ -489,21 +490,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if localMachineCluster != "" {
 				// don't destroy cluster if local cluster name is provided
 				clusterName = localMachineCluster
-			} else {
-				// destroy any cluster with same name before we start local node
-				// we don't want to reuse snapshots from previous sessions
-				if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
-					_ = node.DestroyLocalNode(app, clusterName)
-				}
+			} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
+				_ = node.DestroyLocalNode(app, clusterName)
 			}
+			// destroy any cluster with same name before we start local node
+			// we don't want to reuse snapshots from previous sessions
 			// TODO: replace bootstrapEndpoints with dynamic port number
 			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
 			anrSettings := node.ANRSettings{}
 			avagoVersionSettings := node.AvalancheGoVersionSettings{}
-			useEtnaDevnet := false
-			if network.Kind == models.EtnaDevnet {
-				useEtnaDevnet = true
-			}
+			useEtnaDevnet := network.Kind == models.EtnaDevnet
 			if avagoBinaryPath == "" {
 				ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
 				ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
@@ -519,7 +515,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-
 		if len(bootstrapEndpoints) > 0 {
 			var changeAddr string
 			for _, endpoint := range bootstrapEndpoints {
@@ -545,8 +540,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					ChangeOwnerAddr:      changeAddr,
 				})
 			}
-		}
-		if len(bootstrapValidators) == 0 {
+		} else {
 			bootstrapValidators, err = promptBootstrapValidators(network)
 			if err != nil {
 				return err

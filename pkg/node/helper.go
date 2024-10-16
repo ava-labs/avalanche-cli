@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"sync"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 
@@ -58,12 +59,12 @@ func GetClusterNodes(app *application.Avalanche, clusterName string) ([]string, 
 	if exists, err := CheckClusterExists(app, clusterName); err != nil || !exists {
 		return nil, fmt.Errorf("cluster %q not found", clusterName)
 	}
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
 	}
-	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
-	if len(clusterNodes) == 0 {
+	clusterNodes := clusterConfig.Nodes
+	if len(clusterNodes) == 0 && !clusterConfig.Local {
 		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
 	}
 	return clusterNodes, nil
@@ -416,7 +417,6 @@ func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVer
 			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", useAvalanchegoVersionFromSubnet))
 		}
 		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
-
 	}
 }
 

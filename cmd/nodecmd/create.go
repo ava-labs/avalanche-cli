@@ -902,7 +902,7 @@ func addNodeToClustersConfig(network models.Network, nodeID, clusterName string,
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	// if supplied network in argument is empty, don't change current cluster network in cluster_config.json
-	if network != models.UndefinedNetwork {
+	if !network.IsUndefined() {
 		clusterConfig.Network = network
 	}
 	clusterConfig.HTTPAccess = constants.HTTPAccess(publicHTTPPortAccess)
