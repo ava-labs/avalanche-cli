@@ -7,17 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/api/info"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanchego/network/peer"
 
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanchego/api/info"
 
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
