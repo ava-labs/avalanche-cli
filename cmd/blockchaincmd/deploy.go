@@ -482,11 +482,19 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if useLocalMachine {
+		// stop any local avalanche go process running before we start local node
+		_ = node.StopLocalNode(app)
+		clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+		// destroy any cluster with same name before we start local node
+		// we don't want to reuse snapshots from previous sessions
+		if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
+			_ = node.DestroyLocalNode(app, clusterName)
+		}
+		// TODO: replace bootstrapEndpoints with dynamic port number
 		bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
 		anrSettings := node.ANRSettings{}
 		avagoVersionSettings := node.AvalancheGoVersionSettings{}
 		useEtnaDevnet := false
-		fmt.Printf("network kind %s \n", network.Kind)
 		if network.Kind == models.EtnaDevnet {
 			useEtnaDevnet = true
 		}
@@ -499,10 +507,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		clusterName := fmt.Sprintf("%s-local-node", blockchainName)
 		network = models.NewNetworkFromCluster(network, clusterName)
 		// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-		node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil)
+		if err = node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil); err != nil {
+			return err
+		}
 	}
 
 	if len(bootstrapEndpoints) > 0 {
