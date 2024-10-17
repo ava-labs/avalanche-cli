@@ -22,6 +22,7 @@ var (
 	stakingTLSKeyPath    string
 	stakingCertKeyPath   string
 	stakingSignerKeyPath string
+	numNodes             uint32
 )
 
 // const snapshotName = "local_snapshot"
@@ -79,6 +80,7 @@ status by running avalanche node status local
 	cmd.Flags().StringVar(&stakingTLSKeyPath, "staking-tls-key-path", "", "path to provided staking tls key for node")
 	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
 	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to start")
 	return cmd
 }
 

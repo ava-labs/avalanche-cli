@@ -32,8 +32,10 @@ func getValidatorContractManagerAddr() (string, error) {
 }
 
 func promptProofOfPossession(promptPublicKey, promptPop bool) (string, string, error) {
-	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
-	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
+	if promptPublicKey || promptPop {
+		ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
+	}
 	var err error
 	publicKey := ""
 	proofOfPossesion := ""

@@ -28,10 +28,6 @@ type Prompter struct {
 func (_m *Prompter) CaptureAddress(promptStr string) (common.Address, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureAddress")
-	}
-
 	var r0 common.Address
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (common.Address, error)); ok {
@@ -88,10 +84,6 @@ func (_m *Prompter) CaptureAddresses(promptStr string) ([]common.Address, error)
 func (_m *Prompter) CaptureDate(promptStr string) (time.Time, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureDate")
-	}
-
 	var r0 time.Time
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (time.Time, error)); ok {
@@ -115,10 +107,6 @@ func (_m *Prompter) CaptureDate(promptStr string) (time.Time, error) {
 // CaptureEmail provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureEmail(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureEmail")
-	}
 
 	var r0 string
 	var r1 error
@@ -144,10 +132,6 @@ func (_m *Prompter) CaptureEmail(promptStr string) (string, error) {
 func (_m *Prompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureExistingFilepath")
-	}
-
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
@@ -171,10 +155,6 @@ func (_m *Prompter) CaptureExistingFilepath(promptStr string) (string, error) {
 // CaptureFloat provides a mock function with given fields: promptStr, validator
 func (_m *Prompter) CaptureFloat(promptStr string, validator func(float64) error) (float64, error) {
 	ret := _m.Called(promptStr, validator)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureFloat")
-	}
 
 	var r0 float64
 	var r1 error
@@ -200,10 +180,6 @@ func (_m *Prompter) CaptureFloat(promptStr string, validator func(float64) error
 func (_m *Prompter) CaptureFujiDuration(promptStr string) (time.Duration, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureFujiDuration")
-	}
-
 	var r0 time.Duration
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (time.Duration, error)); ok {
@@ -228,10 +204,6 @@ func (_m *Prompter) CaptureFujiDuration(promptStr string) (time.Duration, error)
 func (_m *Prompter) CaptureFutureDate(promptStr string, minDate time.Time) (time.Time, error) {
 	ret := _m.Called(promptStr, minDate)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureFutureDate")
-	}
-
 	var r0 time.Time
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, time.Time) (time.Time, error)); ok {
@@ -255,10 +227,6 @@ func (_m *Prompter) CaptureFutureDate(promptStr string, minDate time.Time) (time
 // CaptureGitURL provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureGitURL")
-	}
 
 	var r0 *url.URL
 	var r1 error
@@ -286,10 +254,6 @@ func (_m *Prompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 func (_m *Prompter) CaptureID(promptStr string) (ids.ID, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureID")
-	}
-
 	var r0 ids.ID
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (ids.ID, error)); ok {
@@ -316,10 +280,6 @@ func (_m *Prompter) CaptureID(promptStr string) (ids.ID, error) {
 func (_m *Prompter) CaptureIndex(promptStr string, options []interface{}) (int, error) {
 	ret := _m.Called(promptStr, options)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureIndex")
-	}
-
 	var r0 int
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, []interface{}) (int, error)); ok {
@@ -343,10 +303,6 @@ func (_m *Prompter) CaptureIndex(promptStr string, options []interface{}) (int, 
 // CaptureInt provides a mock function with given fields: promptStr, validator
 func (_m *Prompter) CaptureInt(promptStr string, validator func(int) error) (int, error) {
 	ret := _m.Called(promptStr, validator)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureInt")
-	}
 
 	var r0 int
 	var r1 error
@@ -372,10 +328,6 @@ func (_m *Prompter) CaptureInt(promptStr string, validator func(int) error) (int
 func (_m *Prompter) CaptureList(promptStr string, options []string) (string, error) {
 	ret := _m.Called(promptStr, options)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureList")
-	}
-
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, []string) (string, error)); ok {
@@ -399,10 +351,6 @@ func (_m *Prompter) CaptureList(promptStr string, options []string) (string, err
 // CaptureListWithSize provides a mock function with given fields: promptStr, options, size
 func (_m *Prompter) CaptureListWithSize(promptStr string, options []string, size int) (string, error) {
 	ret := _m.Called(promptStr, options, size)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureListWithSize")
-	}
 
 	var r0 string
 	var r1 error
@@ -428,10 +376,6 @@ func (_m *Prompter) CaptureListWithSize(promptStr string, options []string, size
 func (_m *Prompter) CaptureMainnetDuration(promptStr string) (time.Duration, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureMainnetDuration")
-	}
-
 	var r0 time.Duration
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (time.Duration, error)); ok {
@@ -455,10 +399,6 @@ func (_m *Prompter) CaptureMainnetDuration(promptStr string) (time.Duration, err
 // CaptureNewFilepath provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureNewFilepath(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureNewFilepath")
-	}
 
 	var r0 string
 	var r1 error
@@ -484,10 +424,6 @@ func (_m *Prompter) CaptureNewFilepath(promptStr string) (string, error) {
 func (_m *Prompter) CaptureNoYes(promptStr string) (bool, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureNoYes")
-	}
-
 	var r0 bool
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
@@ -511,10 +447,6 @@ func (_m *Prompter) CaptureNoYes(promptStr string) (bool, error) {
 // CaptureNodeID provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureNodeID")
-	}
 
 	var r0 ids.NodeID
 	var r1 error
@@ -542,10 +474,6 @@ func (_m *Prompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 func (_m *Prompter) CapturePChainAddress(promptStr string, network models.Network) (string, error) {
 	ret := _m.Called(promptStr, network)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CapturePChainAddress")
-	}
-
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, models.Network) (string, error)); ok {
@@ -569,10 +497,6 @@ func (_m *Prompter) CapturePChainAddress(promptStr string, network models.Networ
 // CapturePositiveBigInt provides a mock function with given fields: promptStr
 func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CapturePositiveBigInt")
-	}
 
 	var r0 *big.Int
 	var r1 error
@@ -600,10 +524,6 @@ func (_m *Prompter) CapturePositiveBigInt(promptStr string) (*big.Int, error) {
 func (_m *Prompter) CapturePositiveInt(promptStr string, comparators []prompts.Comparator) (int, error) {
 	ret := _m.Called(promptStr, comparators)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CapturePositiveInt")
-	}
-
 	var r0 int
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) (int, error)); ok {
@@ -627,10 +547,6 @@ func (_m *Prompter) CapturePositiveInt(promptStr string, comparators []prompts.C
 // CaptureRepoBranch provides a mock function with given fields: promptStr, repo
 func (_m *Prompter) CaptureRepoBranch(promptStr string, repo string) (string, error) {
 	ret := _m.Called(promptStr, repo)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureRepoBranch")
-	}
 
 	var r0 string
 	var r1 error
@@ -656,10 +572,6 @@ func (_m *Prompter) CaptureRepoBranch(promptStr string, repo string) (string, er
 func (_m *Prompter) CaptureRepoFile(promptStr string, repo string, branch string) (string, error) {
 	ret := _m.Called(promptStr, repo, branch)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureRepoFile")
-	}
-
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, string, string) (string, error)); ok {
@@ -683,10 +595,6 @@ func (_m *Prompter) CaptureRepoFile(promptStr string, repo string, branch string
 // CaptureString provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureString(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureString")
-	}
 
 	var r0 string
 	var r1 error
@@ -712,10 +620,6 @@ func (_m *Prompter) CaptureString(promptStr string) (string, error) {
 func (_m *Prompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureStringAllowEmpty")
-	}
-
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
@@ -739,10 +643,6 @@ func (_m *Prompter) CaptureStringAllowEmpty(promptStr string) (string, error) {
 // CaptureURL provides a mock function with given fields: promptStr, validateConnection
 func (_m *Prompter) CaptureURL(promptStr string, validateConnection bool) (string, error) {
 	ret := _m.Called(promptStr, validateConnection)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureURL")
-	}
 
 	var r0 string
 	var r1 error
@@ -768,10 +668,6 @@ func (_m *Prompter) CaptureURL(promptStr string, validateConnection bool) (strin
 func (_m *Prompter) CaptureUint32(promptStr string) (uint32, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureUint32")
-	}
-
 	var r0 uint32
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (uint32, error)); ok {
@@ -795,10 +691,6 @@ func (_m *Prompter) CaptureUint32(promptStr string) (uint32, error) {
 // CaptureUint64 provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureUint64(promptStr string) (uint64, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureUint64")
-	}
 
 	var r0 uint64
 	var r1 error
@@ -824,10 +716,6 @@ func (_m *Prompter) CaptureUint64(promptStr string) (uint64, error) {
 func (_m *Prompter) CaptureUint64Compare(promptStr string, comparators []prompts.Comparator) (uint64, error) {
 	ret := _m.Called(promptStr, comparators)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureUint64Compare")
-	}
-
 	var r0 uint64
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, []prompts.Comparator) (uint64, error)); ok {
@@ -851,10 +739,6 @@ func (_m *Prompter) CaptureUint64Compare(promptStr string, comparators []prompts
 // CaptureValidatedString provides a mock function with given fields: promptStr, validator
 func (_m *Prompter) CaptureValidatedString(promptStr string, validator func(string) error) (string, error) {
 	ret := _m.Called(promptStr, validator)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureValidatedString")
-	}
 
 	var r0 string
 	var r1 error
@@ -908,10 +792,6 @@ func (_m *Prompter) CaptureValidatorBalance(promptStr string) (uint64, error) {
 func (_m *Prompter) CaptureVersion(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureVersion")
-	}
-
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (string, error)); ok {
@@ -935,10 +815,6 @@ func (_m *Prompter) CaptureVersion(promptStr string) (string, error) {
 // CaptureWeight provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureWeight(promptStr string) (uint64, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureWeight")
-	}
 
 	var r0 uint64
 	var r1 error
@@ -964,10 +840,6 @@ func (_m *Prompter) CaptureWeight(promptStr string) (uint64, error) {
 func (_m *Prompter) CaptureXChainAddress(promptStr string, network models.Network) (string, error) {
 	ret := _m.Called(promptStr, network)
 
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureXChainAddress")
-	}
-
 	var r0 string
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string, models.Network) (string, error)); ok {
@@ -991,10 +863,6 @@ func (_m *Prompter) CaptureXChainAddress(promptStr string, network models.Networ
 // CaptureYesNo provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureYesNo(promptStr string) (bool, error) {
 	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureYesNo")
-	}
 
 	var r0 bool
 	var r1 error
@@ -1020,10 +888,6 @@ func (_m *Prompter) CaptureYesNo(promptStr string) (bool, error) {
 func (_m *Prompter) ChooseKeyOrLedger(goal string) (bool, error) {
 	ret := _m.Called(goal)
 
-	if len(ret) == 0 {
-		panic("no return value specified for ChooseKeyOrLedger")
-	}
-
 	var r0 bool
 	var r1 error
 	if rf, ok := ret.Get(0).(func(string) (bool, error)); ok {
@@ -1044,12 +908,13 @@ func (_m *Prompter) ChooseKeyOrLedger(goal string) (bool, error) {
 	return r0, r1
 }
 
-// NewPrompter creates a new instance of Prompter. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
-// The first argument is typically a *testing.T value.
-func NewPrompter(t interface {
+type mockConstructorTestingTNewPrompter interface {
 	mock.TestingT
 	Cleanup(func())
-}) *Prompter {
+}
+
+// NewPrompter creates a new instance of Prompter. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+func NewPrompter(t mockConstructorTestingTNewPrompter) *Prompter {
 	mock := &Prompter{}
 	mock.Mock.Test(t)
 

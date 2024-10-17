@@ -172,12 +172,14 @@ const (
 	// nAVAX
 	BootstrapValidatorBalance = 1000000000
 	// Default weight when we prompt users for bootstrap validators
-	BootstrapValidatorWeight          = 1000000
+	BootstrapValidatorWeight = 100
+	// Default weight when we prompt users for non bootstrap validators
+	NonBootstrapValidatorWeight       = 20
 	DefaultStakeWeight                = 20
 	AVAXSymbol                        = "AVAX"
 	DefaultFujiStakeDuration          = "48h"
 	DefaultMainnetStakeDuration       = "336h"
-	DefaultValidationIDExpiryDuration = 48 * time.Hour
+	DefaultValidationIDExpiryDuration = 24 * time.Hour
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	DevnetStakingStartLeadTime                   = 30 * time.Second

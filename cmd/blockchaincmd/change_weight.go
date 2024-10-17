@@ -33,7 +33,7 @@ The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
-	cmd.Flags().Uint64Var(&weight, "weight", constants.BootstrapValidatorWeight, "set the new staking weight of the validator")
+	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -166,13 +166,13 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	changeAddr, err = getChangeAddrFromPChain()
+	remainingBalanceOwnerAddr, err = getChangeAddrFromPChain()
 	if err != nil {
 		return fmt.Errorf("failure parsing change owner address: %w", err)
 	}
 
 	// add back validator to subnet with updated weight
-	return CallAddValidator(deployer, network, kc, useLedger, blockchainName, nodeID.String())
+	return CallAddValidator(deployer, network, kc, blockchainName, nodeID.String(), publicKey, pop)
 }
 
 // getValidatorBalanceFromPChain gets remaining balance of validator from p chain

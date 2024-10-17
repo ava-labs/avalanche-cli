@@ -38,7 +38,7 @@ var (
 // avalanche contract initpoamanager
 func newInitPOAManagerCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "initPoaManager",
+		Use:   "initPoaManager blockchainName",
 		Short: "Initializes a Proof of Authority Validator Manager on a given Network and Blockchain",
 		Long:  "Initializes Proof of Authority Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/teleporter/tree/staking-contract/contracts/validator-manager",
 		RunE:  initPOAManager,
@@ -96,7 +96,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"Which key to you want to use to pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
+			"pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -118,12 +118,17 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if len(privateAggregatorEndpoints) == 0 {
-		privateAggregatorEndpoints, err = blockchaincmd.GetAggregatorExtraPeerEndpoints(network)
-		if err != nil {
-			return err
-		}
+	// given by users
+	extraAggregatorPeers, err := blockchaincmd.UrisToPeers(privateAggregatorEndpoints)
+	if err != nil {
+		return err
 	}
+	// available in local cluster
+	networkAggregatorEndpoints, err := blockchaincmd.GetAggregatorExtraPeerEndpoints(network)
+	if err != nil {
+		return err
+	}
+	extraAggregatorPeers = append(extraAggregatorPeers, networkAggregatorEndpoints...)
 	if err := validatormanager.SetupPoA(
 		app,
 		network,
@@ -132,7 +137,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		privateKey,
 		common.HexToAddress(sc.PoAValidatorManagerOwner),
 		avaGoBootstrapValidators,
-		privateAggregatorEndpoints,
+		extraAggregatorPeers,
 	); err != nil {
 		return err
 	}

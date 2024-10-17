@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
 	"github.com/ava-labs/avalanchego/utils/constants"
@@ -48,11 +49,12 @@ type SignatureAggregator struct {
 func createAppRequestNetwork(
 	network models.Network,
 	logLevel logging.Level,
-	extraPeerEndpoints []string,
+	registerer prometheus.Registerer,
+	extraPeerEndpoints []info.Peer,
 ) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
-		prometheus.DefaultRegisterer,
+		registerer,
 		nil,
 		extraPeerEndpoints,
 		&config.Config{
@@ -81,6 +83,7 @@ func createAppRequestNetwork(
 func initSignatureAggregator(
 	network peers.AppRequestNetwork,
 	logger logging.Logger,
+	registerer prometheus.Registerer,
 	subnetID ids.ID,
 	quorumPercentage uint64,
 ) (*SignatureAggregator, error) {
@@ -96,7 +99,7 @@ func initSignatureAggregator(
 
 	messageCreator, err := message.NewCreator(
 		logger,
-		prometheus.DefaultRegisterer,
+		registerer,
 		constants.DefaultNetworkCompressionType,
 		constants.DefaultNetworkMaximumInboundTimeout,
 	)
@@ -104,7 +107,7 @@ func initSignatureAggregator(
 		return nil, fmt.Errorf("failed to create message creator: %w", err)
 	}
 
-	metricsInstance := metrics.NewSignatureAggregatorMetrics(prometheus.DefaultRegisterer)
+	metricsInstance := metrics.NewSignatureAggregatorMetrics(registerer)
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
 		network,
 		logger,
@@ -135,13 +138,14 @@ func NewSignatureAggregator(
 	logLevel logging.Level,
 	subnetID ids.ID,
 	quorumPercentage uint64,
-	extraPeerEndpoints []string,
+	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
-	peerNetwork, err := createAppRequestNetwork(network, logLevel, extraPeerEndpoints)
+	registerer := prometheus.NewRegistry()
+	peerNetwork, err := createAppRequestNetwork(network, logLevel, registerer, extraPeerEndpoints)
 	if err != nil {
 		return nil, err
 	}
-	return initSignatureAggregator(peerNetwork, logger, subnetID, quorumPercentage)
+	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
 }
 
 // AggregateSignatures aggregates signatures for a given message and justification.
