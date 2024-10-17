@@ -509,7 +509,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
-
 			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
 			if useLocalMachine && globalNetworkFlags.ClusterName == "" {
 				// stop local avalanchego process so that we can generate new local cluster
@@ -548,7 +547,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 							"please create your local node again and call subnet deploy command again", err)
 					}
 				}
-
 			}
 		}
 		if len(bootstrapEndpoints) > 0 {
