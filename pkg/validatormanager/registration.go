@@ -206,16 +206,7 @@ func PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 	}
 	var justificationBytes []byte
 	if !registered {
-		msg, err := GetRegistrationMessage(rpcURL, validationID)
-		if err != nil {
-			return nil, err
-		}
-		justification := platformvm.SubnetValidatorRegistrationJustification{
-			Preimage: &platformvm.SubnetValidatorRegistrationJustification_RegisterSubnetValidatorMessage{
-				RegisterSubnetValidatorMessage: msg,
-			},
-		}
-		justificationBytes, err = proto.Marshal(&justification)
+		justificationBytes, err = GetRegistrationMessage(rpcURL, validationID, subnetID)
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +357,26 @@ func FinishValidatorRegistration(
 	return nil
 }
 
-func GetRegistrationMessage(rpcURL string, validationID ids.ID) ([]byte, error) {
+func GetRegistrationMessage(
+	rpcURL string,
+	validationID ids.ID,
+	subnetID ids.ID,
+) ([]byte, error) {
+	const numBootstrapValidatorsToSearch = 100
+	for validationIndex := uint32(0); validationIndex < numBootstrapValidatorsToSearch; validationIndex++ {
+		bootstrapValidationID := subnetID.Append(validationIndex)
+		if bootstrapValidationID == validationID {
+			justification := platformvm.SubnetValidatorRegistrationJustification{
+				Preimage: &platformvm.SubnetValidatorRegistrationJustification_ConvertSubnetTxData{
+					ConvertSubnetTxData: &platformvm.SubnetIDIndex{
+						SubnetId: subnetID[:],
+						Index:    validationIndex,
+					},
+				},
+			}
+			return proto.Marshal(&justification)
+		}
+	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return nil, err
@@ -401,7 +411,12 @@ func GetRegistrationMessage(rpcURL string, validationID ids.ID) ([]byte, error) 
 					reg, err := warpMessage.ParseRegisterSubnetValidator(addressedCall.Payload)
 					if err == nil {
 						if reg.ValidationID() == validationID {
-							return addressedCall.Payload, nil
+							justification := platformvm.SubnetValidatorRegistrationJustification{
+								Preimage: &platformvm.SubnetValidatorRegistrationJustification_RegisterSubnetValidatorMessage{
+									RegisterSubnetValidatorMessage: addressedCall.Payload,
+								},
+							}
+							return proto.Marshal(&justification)
 						}
 					}
 				}
