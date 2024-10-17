@@ -794,7 +794,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if !convertOnly {
+		if !convertOnly && !generateNodeID {
 			clusterName := network.ClusterName
 			if clusterName == "" {
 				clusterName, err = node.GetClusterNameFromList(app)
@@ -863,9 +863,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
-			ux.Logger.PrintToUser("To convert L1 to sovereign blockchain, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
-			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish converting L1 to sovereign blockchain", blockchainName)
+			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish conversion to sovereign L1", blockchainName)
 		}
 	} else {
 		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
