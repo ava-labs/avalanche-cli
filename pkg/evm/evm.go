@@ -691,15 +691,14 @@ func issueTxsToActivateProposerVMFork(
 ) error {
 	const numTriggerTxs = 2 // Number of txs needed to activate the proposer VM fork
 	addr := crypto.PubkeyToAddress(fundedKey.PublicKey)
-	nonce, err := client.NonceAt(ctx, addr, nil)
-	if err != nil {
-		return err
-	}
-
 	gasPrice := big.NewInt(params.MinGasPrice)
 	txSigner := types.LatestSignerForChainID(chainID)
 	for i := 0; i < numTriggerTxs; i++ {
 		prevBlockNumber, err := client.BlockNumber(ctx)
+		if err != nil {
+			return err
+		}
+		nonce, err := client.NonceAt(ctx, addr, nil)
 		if err != nil {
 			return err
 		}
@@ -715,7 +714,6 @@ func issueTxsToActivateProposerVMFork(
 		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
 			return err
 		}
-		nonce++
 	}
 	return nil
 }
@@ -731,7 +729,7 @@ func WaitForNewBlock(
 		stepDuration = 1 * time.Second
 	}
 	if totalDuration == 0 {
-		totalDuration = 5 * time.Second
+		totalDuration = 10 * time.Second
 	}
 	steps := totalDuration / stepDuration
 	for seconds := 0; seconds < int(steps); seconds++ {
@@ -745,6 +743,25 @@ func WaitForNewBlock(
 		time.Sleep(stepDuration)
 	}
 	return fmt.Errorf("new block not produced in %f seconds", totalDuration.Seconds())
+}
+
+func ExtractWarpMessageFromReceipt(
+	client ethclient.Client,
+	ctx context.Context,
+	receipt *types.Receipt,
+) (*avalancheWarp.UnsignedMessage, error) {
+	logs, err := client.FilterLogs(ctx, interfaces.FilterQuery{
+		BlockHash: &receipt.BlockHash,
+		Addresses: []common.Address{warp.Module.Address},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(logs) != 1 {
+		return nil, fmt.Errorf("expected block to contain 1 warp log, got %d", len(logs))
+	}
+	txLog := logs[0]
+	return warp.UnpackSendWarpEventDataToMessage(txLog.Data)
 }
 
 func GetFunctionSelector(functionSignature string) string {

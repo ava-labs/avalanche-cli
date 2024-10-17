@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// / Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package blockchaincmd
 
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -81,6 +82,7 @@ var (
 	bootstrapValidatorsJSONFilePath string
 	privateKeyFlags                 contract.PrivateKeyFlags
 	bootstrapEndpoints              []string
+	convertOnly                     bool
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -136,6 +138,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
+	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().StringVar(&localMachineCluster, "local-machine-cluster", "", "existing local machine to be used as a blockchain validator")
 
@@ -474,45 +477,47 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		if !useLocalMachine {
-			ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
-			ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
+		if !convertOnly {
+			if !useLocalMachine {
+				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
+				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
-			useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
-			if err != nil {
-				return err
-			}
-		}
-		if useLocalMachine {
-			// stop any local avalanche go process running before we start local node
-			_ = node.StopLocalNode(app)
-			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
-			if localMachineCluster != "" {
-				// don't destroy cluster if local cluster name is provided
-				clusterName = localMachineCluster
-			} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
-				_ = node.DestroyLocalNode(app, clusterName)
-			}
-			// destroy any cluster with same name before we start local node
-			// we don't want to reuse snapshots from previous sessions
-			// TODO: replace bootstrapEndpoints with dynamic port number
-			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
-			anrSettings := node.ANRSettings{}
-			avagoVersionSettings := node.AvalancheGoVersionSettings{}
-			useEtnaDevnet := network.Kind == models.EtnaDevnet
-			if avagoBinaryPath == "" {
-				ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
-				ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
-				ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
-				avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
+				useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
 				if err != nil {
 					return err
 				}
 			}
-			network = models.NewNetworkFromCluster(network, clusterName)
-			// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-			if err = node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil); err != nil {
-				return err
+			if useLocalMachine {
+				// stop any local avalanche go process running before we start local node
+				_ = node.StopLocalNode(app)
+				clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+				if localMachineCluster != "" {
+					// don't destroy cluster if local cluster name is provided
+					clusterName = localMachineCluster
+				} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
+					_ = node.DestroyLocalNode(app, clusterName)
+				}
+				// destroy any cluster with same name before we start local node
+				// we don't want to reuse snapshots from previous sessions
+				// TODO: replace bootstrapEndpoints with dynamic port number
+				bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
+				anrSettings := node.ANRSettings{}
+				avagoVersionSettings := node.AvalancheGoVersionSettings{}
+				useEtnaDevnet := network.Kind == models.EtnaDevnet
+				if avagoBinaryPath == "" {
+					ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
+					ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
+					ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
+					avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
+					if err != nil {
+						return err
+					}
+				}
+				network = models.NewNetworkFromCluster(network, clusterName)
+				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+				if err = node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil); err != nil {
+					return err
+				}
 			}
 		}
 		if len(bootstrapEndpoints) > 0 {
@@ -775,7 +780,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if !generateNodeID {
+		if !convertOnly {
 			clusterName := network.ClusterName
 			if clusterName == "" {
 				clusterName, err = node.GetClusterNameFromList(app)
@@ -842,7 +847,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		} else {
-			ux.Logger.GreenCheckmarkToUser("Generated Node ID and BLS info for bootstrap validator(s)")
+			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
 			ux.Logger.PrintToUser("To convert L1 to sovereign blockchain, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish converting L1 to sovereign blockchain", blockchainName)
@@ -1110,8 +1115,54 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 	return subnetValidators, nil
 }
 
-func GetAggregatorExtraPeerEndpoints(network models.Network) ([]string, error) {
-	aggregatorExtraPeerEndpoints := []string{}
+func UrisToPeers(uris []string) ([]info.Peer, error) {
+	peers := []info.Peer{}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	for _, uri := range uris {
+		client := info.NewClient(uri)
+		nodeID, _, err := client.GetNodeID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ip, err := client.GetNodeIP(ctx)
+		if err != nil {
+			return nil, err
+		}
+		peers = append(peers, info.Peer{
+			Info: peer.Info{
+				ID:       nodeID,
+				PublicIP: ip,
+			},
+		})
+	}
+	return peers, nil
+}
+
+func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error) {
+	aggregatorExtraPeerEndpointsUris, err := GetAggregatorExtraPeerEndpointsUris(network)
+	if err != nil {
+		return nil, err
+	}
+	aggregatorPeers, err := UrisToPeers(aggregatorExtraPeerEndpointsUris)
+	if err != nil {
+		return nil, err
+	}
+	for _, uri := range aggregatorExtraPeerEndpointsUris {
+		infoClient := info.NewClient(uri)
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		peers, err := infoClient.Peers(ctx)
+		if err != nil {
+			return nil, err
+		}
+		aggregatorPeers = append(aggregatorPeers, peers...)
+	}
+	return aggregatorPeers, nil
+}
+
+func GetAggregatorExtraPeerEndpointsUris(network models.Network) ([]string, error) {
+	aggregatorExtraPeerEndpointsUris := []string{}
 	if network.ClusterName != "" {
 		clustersConfig, err := app.LoadClustersConfig()
 		if err != nil {
@@ -1134,9 +1185,9 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]string, error) {
 				return nil, err
 			}
 			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-				aggregatorExtraPeerEndpoints = append(aggregatorExtraPeerEndpoints, nodeInfo.Uri)
+				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
 			}
 		}
 	}
-	return aggregatorExtraPeerEndpoints, nil
+	return aggregatorExtraPeerEndpointsUris, nil
 }
