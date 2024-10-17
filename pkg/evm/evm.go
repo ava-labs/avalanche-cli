@@ -36,7 +36,7 @@ const (
 	sleepBetweenRepeats         = 1 * time.Second
 )
 
-var UnknownErrorSelector = fmt.Errorf("unknown error selector")
+var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")
 
 func ContractAlreadyDeployed(
 	client ethclient.Client,
@@ -793,7 +793,7 @@ func GetErrorFromTrace(
 			return err, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: %s", UnknownErrorSelector, traceErrorSelector)
+	return nil, fmt.Errorf("%w: %s", ErrUnknownErrorSelector, traceErrorSelector)
 }
 
 func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {
