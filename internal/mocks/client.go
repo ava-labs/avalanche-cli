@@ -562,7 +562,7 @@ func (_m *Client) RemoveNode(ctx context.Context, name string) (*rpcpb.RemoveNod
 }
 
 // RemoveSnapshot provides a mock function with given fields: ctx, snapshotName
-func (_m *Client) RemoveSnapshot(ctx context.Context, snapshotName string) (*rpcpb.RemoveSnapshotResponse, error) {
+func (_m *Client) RemoveSnapshot(ctx context.Context, snapshotName string, opts ...client.OpOption) (*rpcpb.RemoveSnapshotResponse, error) {
 	ret := _m.Called(ctx, snapshotName)
 
 	if len(ret) == 0 {
@@ -689,7 +689,7 @@ func (_m *Client) ResumeNode(ctx context.Context, name string) (*rpcpb.ResumeNod
 }
 
 // SaveSnapshot provides a mock function with given fields: ctx, snapshotName, force
-func (_m *Client) SaveSnapshot(ctx context.Context, snapshotName string, force bool) (*rpcpb.SaveSnapshotResponse, error) {
+func (_m *Client) SaveSnapshot(ctx context.Context, snapshotName string, force bool, opts ...client.OpOption) (*rpcpb.SaveSnapshotResponse, error) {
 	ret := _m.Called(ctx, snapshotName, force)
 
 	if len(ret) == 0 {

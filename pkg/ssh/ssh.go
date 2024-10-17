@@ -430,6 +430,13 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 		return err
 	}
 	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.UpgradeFileName),
+		filepath.Join(constants.CloudNodeConfigPath, constants.UpgradeFileName),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
 		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
 		constants.SSHFileOpsTimeout,
@@ -554,6 +561,9 @@ func RunSSHRenderAvalancheNodeConfig(
 		// make sure that genesis and bootstrap data is preserved
 		if genesisFileExists(host) {
 			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
+		}
+		if upgradeFileExists(host) {
+			avagoConf.UpgradePath = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
 		}
 		if network.Kind == models.Local || network.Kind == models.Devnet || isAPIHost {
 			avagoConf.HTTPHost = "0.0.0.0"
@@ -896,6 +906,11 @@ func composeFileExists(host *models.Host) bool {
 func genesisFileExists(host *models.Host) bool {
 	genesisFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName))
 	return genesisFileExists
+}
+
+func upgradeFileExists(host *models.Host) bool {
+	upgradeFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.UpgradeFileName))
+	return upgradeFileExists
 }
 
 func nodeConfigFileExists(host *models.Host) bool {
