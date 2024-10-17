@@ -97,6 +97,7 @@ func InitValidatorRemoval(
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevelStr string,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -133,6 +134,10 @@ func InitValidatorRemoval(
 		return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 	}
 
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
+	}
 	nonce := uint64(1)
 	signedMsg, err := PoaValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
@@ -177,6 +182,7 @@ func FinishValidatorRemoval(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevelStr string,
 ) error {
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
 	subnetID, err := contract.GetSubnetID(
@@ -186,6 +192,10 @@ func FinishValidatorRemoval(
 	)
 	if err != nil {
 		return err
+	}
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
 	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,

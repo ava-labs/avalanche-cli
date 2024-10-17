@@ -60,6 +60,7 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's removal (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
 }
 
@@ -264,6 +265,7 @@ func removeValidatorSOV(
 		ownerPrivateKey,
 		nodeID,
 		extraAggregatorPeers,
+		aggregatorLogLevel,
 	)
 	if err != nil {
 		return err
@@ -292,6 +294,7 @@ func removeValidatorSOV(
 		privateKey,
 		validationID,
 		extraAggregatorPeers,
+		aggregatorLogLevel,
 	); err != nil {
 		return err
 	}

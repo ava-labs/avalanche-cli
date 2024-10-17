@@ -55,7 +55,7 @@ var (
 		"NodeAlreadyRegistered(bytes)":                 errNodeAlreadyRegistered,
 		"InvalidSubnetConversionID(bytes32,bytes32)":   errInvalidSubnetConversionID,
 	}
-	aggregatorLogLevel = logging.Debug
+	defaultAggregatorLogLevel = logging.Off
 )
 
 //go:embed deployed_poa_validator_manager_bytecode.txt
@@ -243,6 +243,7 @@ func SetupPoA(
 	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevelStr string,
 ) error {
 	if err := evm.SetupProposerVM(
 		rpcURL,
@@ -279,6 +280,10 @@ func SetupPoA(
 			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
 		}
 		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
+	}
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,

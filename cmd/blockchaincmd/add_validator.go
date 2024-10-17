@@ -56,6 +56,7 @@ var (
 	remainingBalanceOwnerAddr string
 	disableOwnerAddr          string
 	rpcURL                    string
+	aggregatorLogLevel        string
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -101,6 +102,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
 }
 
@@ -341,6 +343,7 @@ func CallAddValidator(
 		disableOwners,
 		weight,
 		extraAggregatorPeers,
+		aggregatorLogLevel,
 	)
 	if err != nil {
 		return err
@@ -369,6 +372,7 @@ func CallAddValidator(
 		privateKey,
 		validationID,
 		extraAggregatorPeers,
+		aggregatorLogLevel,
 	); err != nil {
 		return err
 	}

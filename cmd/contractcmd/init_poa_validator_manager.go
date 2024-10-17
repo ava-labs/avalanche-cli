@@ -20,9 +20,10 @@ import (
 )
 
 type InitPOAManagerFlags struct {
-	Network         networkoptions.NetworkFlags
-	PrivateKeyFlags contract.PrivateKeyFlags
-	rpcEndpoint     string
+	Network            networkoptions.NetworkFlags
+	PrivateKeyFlags    contract.PrivateKeyFlags
+	rpcEndpoint        string
+	aggregatorLogLevel string
 }
 
 var (
@@ -48,6 +49,7 @@ func newInitPOAManagerCmd() *cobra.Command {
 	initPOAManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&initPOAManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
 	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
+	cmd.Flags().StringVar(&initPOAManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
 }
 
@@ -138,6 +140,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		common.HexToAddress(sc.PoAValidatorManagerOwner),
 		avaGoBootstrapValidators,
 		extraAggregatorPeers,
+		initPOAManagerFlags.aggregatorLogLevel,
 	); err != nil {
 		return err
 	}

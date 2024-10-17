@@ -256,6 +256,7 @@ func InitValidatorRegistration(
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevelStr string,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -288,6 +289,10 @@ func InitValidatorRegistration(
 	if err != nil {
 		return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 	}
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
+	}
 	return PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
 		app.Log,
@@ -314,6 +319,7 @@ func FinishValidatorRegistration(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevelStr string,
 ) error {
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
 	subnetID, err := contract.GetSubnetID(
@@ -323,6 +329,10 @@ func FinishValidatorRegistration(
 	)
 	if err != nil {
 		return err
+	}
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
 	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,

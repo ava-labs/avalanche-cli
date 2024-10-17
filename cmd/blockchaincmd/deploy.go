@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	avagoutils "github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
@@ -136,6 +137,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
 }
 
@@ -781,6 +783,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 				avaGoBootstrapValidators,
 				extraAggregatorPeers,
+				aggregatorLogLevel,
 			); err != nil {
 				return err
 			}
@@ -854,6 +857,7 @@ func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		}
 		bootstrapValidators = append(bootstrapValidators, bootstrapValidator)
 	}
+	avagoutils.Sort(bootstrapValidators)
 	return bootstrapValidators, nil
 }
 
@@ -1106,7 +1110,6 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 			}
 		}
 	}
-	fmt.Println(len(aggregatorPeers))
 	return aggregatorPeers, nil
 }
 
