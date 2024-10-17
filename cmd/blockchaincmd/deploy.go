@@ -414,7 +414,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		// TODO: add check for local cluster from another PR
 		if len(bootstrapValidators) == 0 && globalNetworkFlags.ClusterName != "" {
 			// get bootstrap validators from cluster
-			changeOwnerAddr, err := getKeyForChangeOwner("", network)
+			changeOwnerAddr, err := getKeyForChangeOwner("", "", network)
 			if err != nil {
 				return err
 			}

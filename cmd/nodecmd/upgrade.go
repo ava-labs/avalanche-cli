@@ -59,7 +59,6 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if clusterConfig.Local {
 		return notImplementedForLocal("upgrade")
 	}
-	network := clusterConfig.Network
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err

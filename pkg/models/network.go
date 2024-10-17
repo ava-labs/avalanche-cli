@@ -18,7 +18,6 @@ const (
 	Undefined NetworkKind = iota
 	Mainnet
 	Fuji
-	EtnaDevnet
 	Local
 	Devnet
 	EtnaDevnet
