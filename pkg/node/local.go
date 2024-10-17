@@ -133,7 +133,16 @@ func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 	return ok && clusterConf.Local, nil
 }
 
-func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevnet bool, avalanchegoBinaryPath string, anrSettings ANRSettings, avaGoVersionSetting AvalancheGoVersionSettings, globalNetworkFlags networkoptions.NetworkFlags, createSupportedNetworkOptions []networkoptions.NetworkOption) error {
+func StartLocalNode(
+	app *application.Avalanche,
+	clusterName string, useEtnaDevnet bool,
+	avalanchegoBinaryPath string,
+	numNodes uint32,
+	anrSettings ANRSettings,
+	avaGoVersionSetting AvalancheGoVersionSettings,
+	globalNetworkFlags networkoptions.NetworkFlags,
+	createSupportedNetworkOptions []networkoptions.NetworkOption,
+) error {
 	network := models.UndefinedNetwork
 	var err error
 
@@ -280,7 +289,7 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 		}
 
 		anrOpts := []client.OpOption{
-			client.WithNumNodes(1),
+			client.WithNumNodes(numNodes),
 			client.WithNetworkID(network.ID),
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),

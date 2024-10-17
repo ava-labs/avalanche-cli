@@ -519,7 +519,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				network = models.NewNetworkFromCluster(network, clusterName)
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-				if err = node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil); err != nil {
+				if err = node.StartLocalNode(
+					app,
+					clusterName,
+					useEtnaDevnet,
+					avagoBinaryPath,
+					1,
+					anrSettings,
+					avagoVersionSettings,
+					globalNetworkFlags,
+					nil,
+				); err != nil {
 					return err
 				}
 			}
