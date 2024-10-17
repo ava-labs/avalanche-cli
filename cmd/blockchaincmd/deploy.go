@@ -489,10 +489,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				// check if cluster is local
 				if clusterConfig.Local {
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
-					if err != nil {
-						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-							"please create your local node again and call subnet deploy command again", err)
+					if len(bootstrapEndpoints) == 0 {
+						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+						if err != nil {
+							return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+								"please create your local node again and call subnet deploy command again", err)
+						}
 					}
 					network = models.NewNetworkFromCluster(network, clusterName)
 				}
@@ -539,11 +541,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				); err != nil {
 					return err
 				}
-				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
-				if err != nil {
-					return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-						"please create your local node again and call subnet deploy command again", err)
+				if len(bootstrapEndpoints) == 0 {
+					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+					if err != nil {
+						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+							"please create your local node again and call subnet deploy command again", err)
+					}
 				}
+
 			}
 		}
 		if len(bootstrapEndpoints) > 0 {
