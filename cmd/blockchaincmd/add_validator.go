@@ -56,13 +56,14 @@ var (
 	remainingBalanceOwnerAddr string
 	disableOwnerAddr          string
 	rpcURL                    string
+	aggregatorLogLevel        string
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
 	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
-	privateAggregatorEndpoints          []string
+	aggregatorExtraEndpoints            []string
 )
 
 // avalanche blockchain addValidator
@@ -97,9 +98,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
-	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
+	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
 }
 
@@ -322,17 +324,10 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
-	// given by users
-	extraAggregatorPeers, err := UrisToPeers(privateAggregatorEndpoints)
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
-	// available in local cluster
-	networkAggregatorEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
-	if err != nil {
-		return err
-	}
-	extraAggregatorPeers = append(extraAggregatorPeers, networkAggregatorEndpoints...)
 
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
@@ -347,6 +342,7 @@ func CallAddValidator(
 		disableOwners,
 		weight,
 		extraAggregatorPeers,
+		aggregatorLogLevel,
 	)
 	if err != nil {
 		return err
@@ -375,6 +371,7 @@ func CallAddValidator(
 		privateKey,
 		validationID,
 		extraAggregatorPeers,
+		aggregatorLogLevel,
 	); err != nil {
 		return err
 	}

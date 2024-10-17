@@ -17,6 +17,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
+	avagoutils "github.com/ava-labs/avalanchego/utils"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -139,6 +141,8 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().StringVar(&localMachineCluster, "local-machine-cluster", "", "existing local machine to be used as a blockchain validator")
 
@@ -515,7 +519,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				network = models.NewNetworkFromCluster(network, clusterName)
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-				if err = node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil); err != nil {
+				if err = node.StartLocalNode(
+					app,
+					clusterName,
+					useEtnaDevnet,
+					avagoBinaryPath,
+					1,
+					anrSettings,
+					avagoVersionSettings,
+					globalNetworkFlags,
+					nil,
+				); err != nil {
 					return err
 				}
 			}
@@ -828,7 +842,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			evm.WaitForChainID(client)
-			privateAggregatorEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
+			extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
 			if err != nil {
 				return err
 			}
@@ -841,7 +855,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				genesisPrivateKey,
 				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 				avaGoBootstrapValidators,
-				privateAggregatorEndpoints,
+				extraAggregatorPeers,
+				aggregatorLogLevel,
 			); err != nil {
 				return err
 			}
@@ -915,6 +930,7 @@ func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		}
 		bootstrapValidators = append(bootstrapValidators, bootstrapValidator)
 	}
+	avagoutils.Sort(bootstrapValidators)
 	return bootstrapValidators, nil
 }
 
@@ -1139,16 +1155,26 @@ func UrisToPeers(uris []string) ([]info.Peer, error) {
 	return peers, nil
 }
 
-func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error) {
-	aggregatorExtraPeerEndpointsUris, err := GetAggregatorExtraPeerEndpointsUris(network)
+func GetAggregatorExtraPeers(
+	network models.Network,
+	extraURIs []string,
+) ([]info.Peer, error) {
+	uris, err := GetAggregatorNetworkUris(network)
 	if err != nil {
 		return nil, err
 	}
-	aggregatorPeers, err := UrisToPeers(aggregatorExtraPeerEndpointsUris)
+	uris = append(uris, extraURIs...)
+	urisSet := set.Of(uris...)
+	uris = urisSet.List()
+	aggregatorPeers, err := UrisToPeers(uris)
 	if err != nil {
 		return nil, err
 	}
-	for _, uri := range aggregatorExtraPeerEndpointsUris {
+	nodeIDs := utils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
+		return peer.Info.ID
+	})
+	nodeIDsSet := set.Of(nodeIDs...)
+	for _, uri := range uris {
 		infoClient := info.NewClient(uri)
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
@@ -1156,12 +1182,17 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 		if err != nil {
 			return nil, err
 		}
-		aggregatorPeers = append(aggregatorPeers, peers...)
+		for _, peer := range peers {
+			if !nodeIDsSet.Contains(peer.Info.ID) {
+				aggregatorPeers = append(aggregatorPeers, peer)
+				nodeIDsSet.Add(peer.Info.ID)
+			}
+		}
 	}
 	return aggregatorPeers, nil
 }
 
-func GetAggregatorExtraPeerEndpointsUris(network models.Network) ([]string, error) {
+func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
 	aggregatorExtraPeerEndpointsUris := []string{}
 	if network.ClusterName != "" {
 		clustersConfig, err := app.LoadClustersConfig()

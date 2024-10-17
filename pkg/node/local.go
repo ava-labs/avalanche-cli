@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -67,16 +68,6 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
 		return err
 	}
-	if app.ChainConfigExists(blockchainName) {
-		inputChainConfigPath := app.GetChainConfigPath(blockchainName)
-		outputChainConfigPath := filepath.Join(rootDir, "node1", "configs", "chains", blockchainID.String(), "config.json")
-		if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-			return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-		}
-		if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
-			return err
-		}
-	}
 
 	cli, err := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
@@ -94,6 +85,17 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 	}
 	publicEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		if app.ChainConfigExists(blockchainName) {
+			inputChainConfigPath := app.GetChainConfigPath(blockchainName)
+			outputChainConfigPath := filepath.Join(rootDir, nodeInfo.Name, "configs", "chains", blockchainID.String(), "config.json")
+			if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
+				return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
+			}
+			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
+				return err
+			}
+		}
+		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
 		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
 			return err
 		}
@@ -108,6 +110,12 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 	}
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()
+	for _, rpcURL := range networkInfo.RPCEndpoints {
+		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
+		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
+			return err
+		}
+	}
 	sc.Networks[clusterConfig.Network.Name()] = networkInfo
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err
@@ -125,7 +133,16 @@ func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 	return ok && clusterConf.Local, nil
 }
 
-func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevnet bool, avalanchegoBinaryPath string, anrSettings ANRSettings, avaGoVersionSetting AvalancheGoVersionSettings, globalNetworkFlags networkoptions.NetworkFlags, createSupportedNetworkOptions []networkoptions.NetworkOption) error {
+func StartLocalNode(
+	app *application.Avalanche,
+	clusterName string, useEtnaDevnet bool,
+	avalanchegoBinaryPath string,
+	numNodes uint32,
+	anrSettings ANRSettings,
+	avaGoVersionSetting AvalancheGoVersionSettings,
+	globalNetworkFlags networkoptions.NetworkFlags,
+	createSupportedNetworkOptions []networkoptions.NetworkOption,
+) error {
 	network := models.UndefinedNetwork
 	var err error
 
@@ -272,7 +289,7 @@ func StartLocalNode(app *application.Avalanche, clusterName string, useEtnaDevne
 		}
 
 		anrOpts := []client.OpOption{
-			client.WithNumNodes(1),
+			client.WithNumNodes(numNodes),
 			client.WithNetworkID(network.ID),
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),

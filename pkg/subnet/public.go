@@ -118,11 +118,44 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
-//nolint:all
 func (d *PublicDeployer) SetL1ValidatorWeight(
-	message warp.Message,
+	message *warp.Message,
+) (ids.ID, *txs.Tx, error) {
+	wallet, err := d.loadCacheWallet()
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	tx, err := d.createSetSubnetValidatorWeightTx(
+		message,
+		wallet,
+	)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	id, err := d.Commit(tx, true)
+	return id, tx, err
+}
+
+func (*PublicDeployer) createSetSubnetValidatorWeightTx(
+	message *warp.Message,
+	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	return nil, nil
+	unsignedTx, err := wallet.P().Builder().NewSetSubnetValidatorWeightTx(
+		message.Bytes(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error building tx: %w", err)
+	}
+	if unsignedTx != nil {
+		if err := printFee("SetSubnetValidatorWeightTX", wallet, unsignedTx); err != nil {
+			return nil, err
+		}
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, fmt.Errorf("error signing tx: %w", err)
+	}
+	return &tx, nil
 }
 
 func (d *PublicDeployer) RegisterL1Validator(

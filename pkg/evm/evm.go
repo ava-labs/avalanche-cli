@@ -36,6 +36,8 @@ const (
 	sleepBetweenRepeats         = 1 * time.Second
 )
 
+var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")
+
 func ContractAlreadyDeployed(
 	client ethclient.Client,
 	contractAddress string,
@@ -201,7 +203,6 @@ func EstimateGasLimit(
 			break
 		}
 		err = fmt.Errorf("failure estimating gas limit on %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return gasLimit, err
@@ -586,7 +587,6 @@ func DebugTraceTransaction(
 			break
 		}
 		err = fmt.Errorf("failure tracing tx %s for client %#v: %w", txID, client, err)
-		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return trace, err
@@ -620,7 +620,6 @@ func DebugTraceCall(
 			break
 		}
 		err = fmt.Errorf("failure tracing call for client %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return trace, err
@@ -794,14 +793,34 @@ func GetErrorFromTrace(
 			return err, nil
 		}
 	}
-	return nil, fmt.Errorf("unknown error selector: %s", traceErrorSelector)
+	return nil, fmt.Errorf("%w: %s", ErrUnknownErrorSelector, traceErrorSelector)
 }
 
 func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {
 	msgSuffix := ": %w"
 	if tx != nil {
 		msgSuffix += fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
+	} else {
+		msgSuffix += " (tx failed to be submitted)"
 	}
 	args = append(args, err)
 	return fmt.Errorf(msg+msgSuffix, args...)
+}
+
+func WaitForRPC(ctx context.Context, rpcURL string) error {
+	client, err := GetClient(rpcURL)
+	if err != nil {
+		return err
+	}
+	for {
+		_, err := client.ChainID(ctx)
+		if err == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(1 * time.Second):
+		}
+	}
 }

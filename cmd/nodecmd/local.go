@@ -141,7 +141,17 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 	}
-	return node.StartLocalNode(app, clusterName, useEtnaDevnet, avalanchegoBinaryPath, anrSettings, avaGoVersionSetting, globalNetworkFlags, createSupportedNetworkOptions)
+	return node.StartLocalNode(
+		app,
+		clusterName,
+		useEtnaDevnet,
+		avalanchegoBinaryPath,
+		numNodes,
+		anrSettings,
+		avaGoVersionSetting,
+		globalNetworkFlags,
+		createSupportedNetworkOptions,
+	)
 }
 
 func localStopNode(_ *cobra.Command, _ []string) error {
