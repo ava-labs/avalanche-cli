@@ -489,6 +489,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				// check if cluster is local
 				if clusterConfig.Local {
+					useLocalMachine = true
 					if len(bootstrapEndpoints) == 0 {
 						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 						if err != nil {
@@ -817,12 +818,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			// load cluster config
-			clusterConfig, err := app.GetClusterConfig(clusterName)
-			if err != nil {
-				return fmt.Errorf("failed to get cluster config: %w", err)
-			}
-			if !useLocalMachine && !clusterConfig.Local {
+			if !useLocalMachine {
 				if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
 					return err
 				}
