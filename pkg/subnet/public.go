@@ -125,7 +125,6 @@ func (d *PublicDeployer) SetL1ValidatorWeight(
 	return nil, nil
 }
 
-//nolint:all
 func (d *PublicDeployer) RegisterL1Validator(
 	balance uint64,
 	pop signer.ProofOfPossession,
@@ -148,7 +147,7 @@ func (d *PublicDeployer) RegisterL1Validator(
 	return id, tx, err
 }
 
-func (d *PublicDeployer) createRegisterSubnetValidatorTx(
+func (*PublicDeployer) createRegisterSubnetValidatorTx(
 	balance uint64,
 	pop signer.ProofOfPossession,
 	message *warp.Message,

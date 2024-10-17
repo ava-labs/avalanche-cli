@@ -91,7 +91,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if adding validator to a non-sovereign blockchain")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator to add")
 	cmd.Flags().StringVar(&publicKey, "bls-public-key", "", "set the BLS public key of the validator to add")
 	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
@@ -158,14 +157,21 @@ func addValidator(_ *cobra.Command, args []string) error {
 		}
 		nodeIDStr = nodeID.String()
 	}
+	if err := prompts.ValidateNodeID(nodeIDStr); err != nil {
+		return err
+	}
+
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+	sovereign := sc.Sovereign
+
 	if sovereign && publicKey == "" && pop == "" {
 		publicKey, pop, err = promptProofOfPossession(true, true)
 		if err != nil {
 			return err
 		}
-	}
-	if err := prompts.ValidateNodeID(nodeIDStr); err != nil {
-		return err
 	}
 
 	network.HandlePublicNetworkSimulation()
@@ -226,7 +232,7 @@ func CallAddValidator(
 		return err
 	}
 	if !ownerPrivateKeyFound {
-		return fmt.Errorf("not private key found for PoA manager owner %s", sc.PoAValidatorManagerOwner)
+		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
 
@@ -245,7 +251,7 @@ func CallAddValidator(
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"pay for completing registration of validator? (Blockchain gas token)",
+			"pay for registering validator on blockchain? (Blockchain gas token)",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
