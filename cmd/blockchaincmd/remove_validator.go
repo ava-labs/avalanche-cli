@@ -57,7 +57,7 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
 	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if removing validator in a non-sovereign blockchain")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "remove validator that responds to the given endpoint")
-	cmd.Flags().StringSliceVar(&privateAggregatorEndpoints, "private-aggregator-endpoints", nil, "endpoints for private nodes that are not available as network peers but are needed in signature aggregation")
+	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's removal (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
@@ -245,17 +245,10 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
-	// given by users
-	extraAggregatorPeers, err := UrisToPeers(privateAggregatorEndpoints)
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
-	// available in local cluster
-	networkAggregatorEndpoints, err := GetAggregatorExtraPeerEndpoints(network)
-	if err != nil {
-		return err
-	}
-	extraAggregatorPeers = append(extraAggregatorPeers, networkAggregatorEndpoints...)
 
 	signedMessage, validationID, err := validatormanager.InitValidatorRemoval(
 		app,

@@ -768,7 +768,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			extraAggregatorPeers, err := GetAggregatorExtraPeerEndpoints(network)
+			extraAggregatorPeers, err := GetAggregatorExtraPeers(network, nil)
 			if err != nil {
 				return err
 			}
@@ -1082,12 +1082,18 @@ func UrisToPeers(uris []string) ([]info.Peer, error) {
 	return peers, nil
 }
 
-func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error) {
-	aggregatorExtraPeerEndpointsUris, err := GetAggregatorExtraPeerEndpointsUris(network)
+func GetAggregatorExtraPeers(
+	network models.Network,
+	extraURIs []string,
+) ([]info.Peer, error) {
+	uris, err := GetAggregatorNetworkUris(network)
 	if err != nil {
 		return nil, err
 	}
-	aggregatorPeers, err := UrisToPeers(aggregatorExtraPeerEndpointsUris)
+	uris = append(uris, extraURIs...)
+	urisSet := set.Of(uris...)
+	uris = urisSet.List()
+	aggregatorPeers, err := UrisToPeers(uris)
 	if err != nil {
 		return nil, err
 	}
@@ -1095,7 +1101,7 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 		return peer.Info.ID
 	})
 	nodeIDsSet := set.Of(nodeIDs...)
-	for _, uri := range aggregatorExtraPeerEndpointsUris {
+	for _, uri := range uris {
 		infoClient := info.NewClient(uri)
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
@@ -1113,7 +1119,7 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 	return aggregatorPeers, nil
 }
 
-func GetAggregatorExtraPeerEndpointsUris(network models.Network) ([]string, error) {
+func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
 	aggregatorExtraPeerEndpointsUris := []string{}
 	if network.ClusterName != "" {
 		clustersConfig, err := app.LoadClustersConfig()
