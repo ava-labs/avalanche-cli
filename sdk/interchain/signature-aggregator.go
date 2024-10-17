@@ -5,6 +5,7 @@ package interchain
 import (
 	"encoding/hex"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -145,6 +146,14 @@ func NewSignatureAggregator(
 	if err != nil {
 		return nil, err
 	}
+	logger = logging.NewLogger(
+		"init-aggregator",
+		logging.NewWrappedCore(
+			logLevel,
+			os.Stdout,
+			logging.JSON.ConsoleEncoder(),
+		),
+	)
 	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
 }
 
