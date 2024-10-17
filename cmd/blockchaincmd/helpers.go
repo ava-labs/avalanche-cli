@@ -4,9 +4,10 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
