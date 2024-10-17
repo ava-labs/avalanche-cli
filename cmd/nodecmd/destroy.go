@@ -324,35 +324,3 @@ func getClusterMonitoringNode(clusterName string) (string, error) {
 	}
 	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
 }
-
-func checkCluster(clusterName string) error {
-	_, err := getClusterNodes(clusterName)
-	return err
-}
-
-func checkClusterExists(clusterName string) (bool, error) {
-	clustersConfig, err := app.GetClustersConfig()
-	if err != nil {
-		return false, err
-	}
-	_, ok := clustersConfig.Clusters[clusterName]
-	return ok, nil
-}
-
-func getClusterNodes(clusterName string) ([]string, error) {
-	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
-		return nil, fmt.Errorf("cluster %q not found", clusterName)
-	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return nil, err
-	}
-	if clustersConfig.Clusters[clusterName].Local {
-		return []string{fmt.Sprintf("local: %s", clusterName)}, nil
-	}
-	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
-	if len(clusterNodes) == 0 {
-		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
-	}
-	return clusterNodes, nil
-}

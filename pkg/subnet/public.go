@@ -118,6 +118,7 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
+//nolint:all
 func (d *PublicDeployer) SetL1ValidatorWeight(
 	message *warp.Message,
 ) (ids.ID, *txs.Tx, error) {
@@ -180,7 +181,7 @@ func (d *PublicDeployer) RegisterL1Validator(
 	return id, tx, err
 }
 
-func (d *PublicDeployer) createRegisterSubnetValidatorTx(
+func (*PublicDeployer) createRegisterSubnetValidatorTx(
 	balance uint64,
 	pop signer.ProofOfPossession,
 	message *warp.Message,
@@ -932,11 +933,10 @@ func printFee(kind string, wallet primary.Wallet, unsignedTx txs.UnsignedTx) err
 		}
 		txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 		if err != nil {
-			if errors.Is(err, avagofee.ErrUnsupportedTx) {
-				ux.Logger.PrintToUser(logging.Yellow.Wrap("unable to get %s fee: not supported by %s calculator"), kind, calcKind)
-			} else {
+			if !errors.Is(err, avagofee.ErrUnsupportedTx) {
 				return err
 			}
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("unable to get %s fee: not supported by %s calculator"), kind, calcKind)
 		} else {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("%s fee: %.9f AVAX"), kind, float64(txFee)/float64(units.Avax))
 		}

@@ -55,7 +55,6 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
-	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if removing validator in a non-sovereign blockchain")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "remove validator that responds to the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's removal (blockchain gas token)")
@@ -100,7 +99,12 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 	network.HandlePublicNetworkSimulation()
 
-	if !sovereign {
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+
+	if !sc.Sovereign {
 		if outputTxPath != "" {
 			return errors.New("--output-tx-path flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")
 		}
@@ -137,13 +141,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if network.Kind == models.Local && !sovereign {
+	if network.Kind == models.Local && !sc.Sovereign {
 		return removeFromLocalNonSOV(blockchainName, nodeID)
-	}
-
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
 	}
 
 	subnetID := sc.Networks[network.Name()].SubnetID
@@ -152,7 +151,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 
 	// check that this guy actually is a validator on the subnet
-	if !sovereign {
+	if !sc.Sovereign {
 		isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
 		if err != nil {
 			// just warn the user, don't fail
@@ -163,13 +162,13 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if !sovereign {
+	if !sc.Sovereign {
 		if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
 			return err
 		}
 	}
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	if !sovereign {
+	if !sc.Sovereign {
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
 	return removeValidatorSOV(deployer, network, subnetID, kc, blockchainName, nodeID)

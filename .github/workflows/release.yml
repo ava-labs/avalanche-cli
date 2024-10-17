@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "*"
+    branches:
+      - acp-77
 
 jobs:
   # First confirm that the linting and unit tests pass at this commit prior to creating release artifacts.
@@ -59,14 +61,24 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+      
+      - name: Build Docker Image with acp77-latest tag
+        if: github.ref == 'refs/heads/acp-77' # special case for acp-77 branch
+        run: |
+          docker buildx build --pull --push --platform=linux/amd64,linux/arm64 \
+            -t avaplatform/avalanche-cli:acp77-latest \
+            -f ./Dockerfile .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
 
       - name: Run GoReleaser
+        if: github.ref != 'refs/heads/acp-77' # skip for acp-77 branch
         uses: goreleaser/goreleaser-action@v2
         with:
           distribution: goreleaser
           version: latest
           args: release --clean
-          workdir: ./avalanche-cli/
         env:
           # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
