@@ -41,7 +41,6 @@ func PoAValidatorManagerInitializeValidatorRemoval(
 
 func PoaValidatorManagerGetSubnetValidatorWeightMessage(
 	network models.Network,
-	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -77,7 +76,6 @@ func PoaValidatorManagerGetSubnetValidatorWeightMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogger,
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
@@ -141,7 +139,6 @@ func InitValidatorRemoval(
 	nonce := uint64(1)
 	signedMsg, err := PoaValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
-		app.Log,
 		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,
@@ -200,7 +197,6 @@ func FinishValidatorRemoval(
 	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
-		app.Log,
 		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,

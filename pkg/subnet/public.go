@@ -118,7 +118,6 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	return false, tx, remainingSubnetAuthKeys, nil
 }
 
-//nolint:all
 func (d *PublicDeployer) SetL1ValidatorWeight(
 	message *warp.Message,
 ) (ids.ID, *txs.Tx, error) {
@@ -137,7 +136,7 @@ func (d *PublicDeployer) SetL1ValidatorWeight(
 	return id, tx, err
 }
 
-func (d *PublicDeployer) createSetSubnetValidatorWeightTx(
+func (*PublicDeployer) createSetSubnetValidatorWeightTx(
 	message *warp.Message,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {

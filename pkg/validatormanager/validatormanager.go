@@ -129,7 +129,6 @@ func PoAValidatorManagerInitialize(
 // [managerAddress], and the initial list of [validators]
 func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	network models.Network,
-	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -177,7 +176,6 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogger,
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
@@ -299,7 +297,6 @@ func SetupPoA(
 	}
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
-		app.Log,
 		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,

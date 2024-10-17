@@ -135,7 +135,6 @@ func initSignatureAggregator(
 // Returns a new signature aggregator instance, or an error if creation fails.
 func NewSignatureAggregator(
 	network models.Network,
-	logger logging.Logger,
 	logLevel logging.Level,
 	subnetID ids.ID,
 	quorumPercentage uint64,
@@ -146,7 +145,7 @@ func NewSignatureAggregator(
 	if err != nil {
 		return nil, err
 	}
-	logger = logging.NewLogger(
+	logger := logging.NewLogger(
 		"init-aggregator",
 		logging.NewWrappedCore(
 			logLevel,

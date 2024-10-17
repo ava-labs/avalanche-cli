@@ -85,7 +85,6 @@ func PoAValidatorManagerInitializeValidatorRegistration(
 
 func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 	network models.Network,
-	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -129,7 +128,6 @@ func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogger,
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
@@ -166,7 +164,6 @@ func GetRegisteredValidator(
 func PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 	network models.Network,
 	rpcURL string,
-	aggregatorLogger logging.Logger,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -195,7 +192,6 @@ func PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogger,
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
@@ -286,7 +282,6 @@ func InitValidatorRegistration(
 	}
 	return PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
-		app.Log,
 		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,
@@ -328,7 +323,6 @@ func FinishValidatorRegistration(
 	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
-		app.Log,
 		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,

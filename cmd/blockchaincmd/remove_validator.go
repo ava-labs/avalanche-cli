@@ -171,13 +171,12 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if !sc.Sovereign {
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
-	return removeValidatorSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
+	return removeValidatorSOV(deployer, network, kc, blockchainName, nodeID)
 }
 
 func removeValidatorSOV(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
-	subnetID ids.ID,
 	kc *keychain.Keychain,
 	blockchainName string,
 	nodeID ids.NodeID,
