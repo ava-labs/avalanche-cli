@@ -70,7 +70,6 @@ var (
 	outputTxPath                    string
 	useLedger                       bool
 	useLocalMachine                 bool
-	localMachineCluster             string
 	useEwoq                         bool
 	ledgerAddresses                 []string
 	sovereign                       bool
@@ -144,7 +143,6 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-	cmd.Flags().StringVar(&localMachineCluster, "local-machine-cluster", "", "existing local machine to be used as a blockchain validator")
 
 	return cmd
 }
@@ -482,7 +480,25 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.Sovereign {
 		if !convertOnly && !generateNodeID {
-			if !useLocalMachine {
+			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+			if globalNetworkFlags.ClusterName != "" {
+				clusterName = globalNetworkFlags.ClusterName
+				clusterConfig, err := app.GetClusterConfig(clusterName)
+				if err != nil {
+					return err
+				}
+				// check if cluster is local
+				if clusterConfig.Local {
+					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+					if err != nil {
+						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+							"please create your local node again and call subnet deploy command again", err)
+					}
+					network = models.NewNetworkFromCluster(network, clusterName)
+				}
+			}
+			// ask user if we wants to use local machine if cluster is not provided
+			if !useLocalMachine && globalNetworkFlags.ClusterName == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
@@ -491,55 +507,42 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if useLocalMachine {
-				// stop any local avalanche go process running before we start local node
-				clusterName := fmt.Sprintf("%s-local-node", blockchainName)
-				if localMachineCluster != "" {
-					// don't generate new cluster if local cluster name is provided
-					// use that cluster
-					clusterName = localMachineCluster
-					// get all endpoints of the all nodes in the cluster
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+
+			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
+			if useLocalMachine && globalNetworkFlags.ClusterName == "" {
+				// stop local avalanchego process so that we can generate new local cluster
+				_ = node.StopLocalNode(app)
+				anrSettings := node.ANRSettings{}
+				avagoVersionSettings := node.AvalancheGoVersionSettings{}
+				useEtnaDevnet := network.Kind == models.EtnaDevnet
+				if avagoBinaryPath == "" {
+					ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
+					ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
+					ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
+					avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
 					if err != nil {
-						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-							"please create your local node again and call subnet deploy command again", err)
-					}
-					network = models.NewNetworkFromCluster(network, clusterName)
-				} else {
-					// stop local avalanchego process so that we can generate new local cluster
-					_ = node.StopLocalNode(app)
-					anrSettings := node.ANRSettings{}
-					avagoVersionSettings := node.AvalancheGoVersionSettings{}
-					useEtnaDevnet := network.Kind == models.EtnaDevnet
-					if avagoBinaryPath == "" {
-						ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
-						ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
-						ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
-						avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
-						if err != nil {
-							return err
-						}
-					}
-					network = models.NewNetworkFromCluster(network, clusterName)
-					// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-					if err = node.StartLocalNode(
-						app,
-						clusterName,
-						useEtnaDevnet,
-						avagoBinaryPath,
-						5,
-						anrSettings,
-						avagoVersionSettings,
-						globalNetworkFlags,
-						nil,
-					); err != nil {
 						return err
 					}
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
-					if err != nil {
-						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-							"please create your local node again and call subnet deploy command again", err)
-					}
+				}
+				network = models.NewNetworkFromCluster(network, clusterName)
+				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+				if err = node.StartLocalNode(
+					app,
+					clusterName,
+					useEtnaDevnet,
+					avagoBinaryPath,
+					5,
+					anrSettings,
+					avagoVersionSettings,
+					globalNetworkFlags,
+					nil,
+				); err != nil {
+					return err
+				}
+				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+				if err != nil {
+					return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+						"please create your local node again and call subnet deploy command again", err)
 				}
 			}
 		}
