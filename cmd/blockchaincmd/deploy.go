@@ -477,45 +477,47 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		if !useLocalMachine {
-			ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
-			ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
+		if !convertOnly {
+			if !useLocalMachine {
+				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
+				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
-			useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
-			if err != nil {
-				return err
-			}
-		}
-		if useLocalMachine {
-			// stop any local avalanche go process running before we start local node
-			_ = node.StopLocalNode(app)
-			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
-			if localMachineCluster != "" {
-				// don't destroy cluster if local cluster name is provided
-				clusterName = localMachineCluster
-			} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
-				_ = node.DestroyLocalNode(app, clusterName)
-			}
-			// destroy any cluster with same name before we start local node
-			// we don't want to reuse snapshots from previous sessions
-			// TODO: replace bootstrapEndpoints with dynamic port number
-			bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
-			anrSettings := node.ANRSettings{}
-			avagoVersionSettings := node.AvalancheGoVersionSettings{}
-			useEtnaDevnet := network.Kind == models.EtnaDevnet
-			if avagoBinaryPath == "" {
-				ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
-				ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
-				ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
-				avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
+				useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
 				if err != nil {
 					return err
 				}
 			}
-			network = models.NewNetworkFromCluster(network, clusterName)
-			// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-			if err = node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil); err != nil {
-				return err
+			if useLocalMachine {
+				// stop any local avalanche go process running before we start local node
+				_ = node.StopLocalNode(app)
+				clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+				if localMachineCluster != "" {
+					// don't destroy cluster if local cluster name is provided
+					clusterName = localMachineCluster
+				} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
+					_ = node.DestroyLocalNode(app, clusterName)
+				}
+				// destroy any cluster with same name before we start local node
+				// we don't want to reuse snapshots from previous sessions
+				// TODO: replace bootstrapEndpoints with dynamic port number
+				bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
+				anrSettings := node.ANRSettings{}
+				avagoVersionSettings := node.AvalancheGoVersionSettings{}
+				useEtnaDevnet := network.Kind == models.EtnaDevnet
+				if avagoBinaryPath == "" {
+					ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
+					ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
+					ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
+					avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
+					if err != nil {
+						return err
+					}
+				}
+				network = models.NewNetworkFromCluster(network, clusterName)
+				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+				if err = node.StartLocalNode(app, clusterName, useEtnaDevnet, avagoBinaryPath, anrSettings, avagoVersionSettings, globalNetworkFlags, nil); err != nil {
+					return err
+				}
 			}
 		}
 		if len(bootstrapEndpoints) > 0 {
