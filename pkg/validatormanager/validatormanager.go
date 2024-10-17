@@ -33,18 +33,29 @@ const (
 )
 
 var (
-	errAlreadyInitialized            = errors.New("the contract is already initialized")
-	errInvalidMaximumChurnPercentage = fmt.Errorf("unvalid churn percentage")
-	errInvalidValidationID           = fmt.Errorf("invalid validation id")
-	errInvalidValidatorStatus        = fmt.Errorf("invalid validator status")
-	errMaxChurnRateExceeded          = fmt.Errorf("max churn rate exceeded")
-	errorSignatureToError            = map[string]error{
-		"InvalidInitialization()":              errAlreadyInitialized,
-		"InvalidMaximumChurnPercentage(uint8)": errInvalidMaximumChurnPercentage,
-		"InvalidValidationID(bytes32)":         errInvalidValidationID,
-		"InvalidValidatorStatus(uint8)":        errInvalidValidatorStatus,
-		"MaxChurnRateExceeded(uint64)":         errMaxChurnRateExceeded,
+	errAlreadyInitialized                  = errors.New("the contract is already initialized")
+	errInvalidMaximumChurnPercentage       = fmt.Errorf("unvalid churn percentage")
+	errInvalidValidationID                 = fmt.Errorf("invalid validation id")
+	errInvalidValidatorStatus              = fmt.Errorf("invalid validator status")
+	errMaxChurnRateExceeded                = fmt.Errorf("max churn rate exceeded")
+	errInvalidInitializationStatus         = fmt.Errorf("validators set already initialized")
+	errInvalidValidatorManagerBlockchainID = fmt.Errorf("invalid validator manager blockchain ID")
+	errInvalidValidatorManagerAddress      = fmt.Errorf("invalid validator manager address")
+	errNodeAlreadyRegistered               = fmt.Errorf("node already registered")
+	errInvalidSubnetConversionID           = fmt.Errorf("invalid subnet conversion id")
+	errorSignatureToError                  = map[string]error{
+		"InvalidInitialization()":                      errAlreadyInitialized,
+		"InvalidMaximumChurnPercentage(uint8)":         errInvalidMaximumChurnPercentage,
+		"InvalidValidationID(bytes32)":                 errInvalidValidationID,
+		"InvalidValidatorStatus(uint8)":                errInvalidValidatorStatus,
+		"MaxChurnRateExceeded(uint64)":                 errMaxChurnRateExceeded,
+		"InvalidInitializationStatus()":                errInvalidInitializationStatus,
+		"InvalidValidatorManagerBlockchainID(bytes32)": errInvalidValidatorManagerBlockchainID,
+		"InvalidValidatorManagerAddress(address)":      errInvalidValidatorManagerAddress,
+		"NodeAlreadyRegistered(bytes)":                 errNodeAlreadyRegistered,
+		"InvalidSubnetConversionID(bytes32,bytes32)":   errInvalidSubnetConversionID,
 	}
+	aggregatorLogLevel = logging.Debug
 )
 
 //go:embed deployed_poa_validator_manager_bytecode.txt
@@ -210,6 +221,8 @@ func PoAValidatorManagerInitializeValidatorsSet(
 		managerAddress,
 		subnetConversionSignedMessage,
 		big.NewInt(0),
+		"initialize validator set",
+		errorSignatureToError,
 		"initializeValidatorSet((bytes32,bytes32,address,[(bytes,bytes,uint64)]),uint32)",
 		subnetConversionData,
 		uint32(0),
@@ -270,7 +283,7 @@ func SetupPoA(
 	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		app.Log,
-		logging.Info,
+		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,

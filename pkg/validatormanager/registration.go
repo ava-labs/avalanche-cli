@@ -236,6 +236,8 @@ func PoAValidatorManagerCompleteValidatorRegistration(
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
+		"complete poa validator registration",
+		errorSignatureToError,
 		"completeValidatorRegistration(uint32)",
 		uint32(0),
 	)
@@ -289,7 +291,7 @@ func InitValidatorRegistration(
 	return PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
 		app.Log,
-		logging.Info,
+		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
@@ -326,7 +328,7 @@ func FinishValidatorRegistration(
 		network,
 		rpcURL,
 		app.Log,
-		logging.Info,
+		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,

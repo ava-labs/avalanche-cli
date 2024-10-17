@@ -36,6 +36,8 @@ const (
 	sleepBetweenRepeats         = 1 * time.Second
 )
 
+var UnknownErrorSelector = fmt.Errorf("unknown error selector")
+
 func ContractAlreadyDeployed(
 	client ethclient.Client,
 	contractAddress string,
@@ -201,7 +203,6 @@ func EstimateGasLimit(
 			break
 		}
 		err = fmt.Errorf("failure estimating gas limit on %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return gasLimit, err
@@ -762,15 +763,13 @@ func GetErrorFromTrace(
 		return nil, fmt.Errorf("less than 4 bytes in trace output")
 	}
 	traceErrorSelector := "0x" + hex.EncodeToString(traceOutputBytes[:4])
-	if functionSignatureToError != nil {
-		for errorSignature, err := range functionSignatureToError {
-			errorSelector := GetFunctionSelector(errorSignature)
-			if traceErrorSelector == errorSelector {
-				return err, nil
-			}
+	for errorSignature, err := range functionSignatureToError {
+		errorSelector := GetFunctionSelector(errorSignature)
+		if traceErrorSelector == errorSelector {
+			return err, nil
 		}
 	}
-	return nil, fmt.Errorf("unknown error selector: %s", traceErrorSelector)
+	return nil, fmt.Errorf("%w: %s", UnknownErrorSelector, traceErrorSelector)
 }
 
 func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {

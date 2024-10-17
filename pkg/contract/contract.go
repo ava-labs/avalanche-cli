@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -345,13 +346,19 @@ func TxToMethod(
 			ux.Logger.PrintToUser("error trace for %s error:", description)
 			ux.Logger.PrintToUser("%#v", trace)
 		}
-		return nil, nil, err
+		return tx, nil, err
 	}
 	receipt, success, err := evm.WaitForTransaction(client, tx)
 	if err != nil {
 		return tx, nil, err
 	} else if !success {
-		return tx, receipt, ErrFailedReceiptStatus
+		return handleFailedReceiptStatus(
+			rpcURL,
+			description,
+			errorSignatureToError,
+			tx,
+			receipt,
+		)
 	}
 	return tx, receipt, nil
 }
@@ -367,6 +374,8 @@ func TxToMethodWithWarpMessage(
 	contractAddress common.Address,
 	warpMessage *avalancheWarp.Message,
 	payment *big.Int,
+	description string,
+	errorSignatureToError map[string]error,
 	methodSpec string,
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
@@ -402,15 +411,70 @@ func TxToMethodWithWarpMessage(
 		return nil, nil, err
 	}
 	if err := evm.SendTransaction(client, tx); err != nil {
-		return nil, nil, err
+		return tx, nil, err
 	}
 	receipt, success, err := evm.WaitForTransaction(client, tx)
 	if err != nil {
-		return tx, nil, err
+		return tx, receipt, err
 	} else if !success {
-		return tx, receipt, ErrFailedReceiptStatus
+		return handleFailedReceiptStatus(
+			rpcURL,
+			description,
+			errorSignatureToError,
+			tx,
+			receipt,
+		)
 	}
 	return tx, receipt, nil
+}
+
+func handleFailedReceiptStatus(
+	rpcURL string,
+	description string,
+	errorSignatureToError map[string]error,
+	tx *types.Transaction,
+	receipt *types.Receipt,
+) (*types.Transaction, *types.Receipt, error) {
+	trace, err := DebugTraceTransaction(
+		rpcURL,
+		tx.Hash().String(),
+	)
+	if err != nil {
+		ux.Logger.PrintToUser(
+			"Could not get debug trace for %s error on %s, tx hash %s: %s",
+			description,
+			rpcURL,
+			tx.Hash(),
+			err,
+		)
+		ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
+		return tx, receipt, err
+	}
+	errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError)
+	if err != nil && !errors.Is(err, evm.UnknownErrorSelector) {
+		ux.Logger.RedXToUser("failure traying to match error selector on trace: %s", err)
+	}
+	if errorFromSignature != nil {
+		return tx, receipt, errorFromSignature
+	} else {
+		ux.Logger.PrintToUser("error trace for %s error:", description)
+		ux.Logger.PrintToUser("%#v", trace)
+	}
+	return tx, receipt, ErrFailedReceiptStatus
+}
+
+func DebugTraceTransaction(
+	rpcURL string,
+	txHash string,
+) (map[string]interface{}, error) {
+	client, err := evm.GetRPCClient(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	return evm.DebugTraceTransaction(
+		client,
+		txHash,
+	)
 }
 
 func DebugTraceCall(

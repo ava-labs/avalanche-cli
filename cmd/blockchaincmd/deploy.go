@@ -1106,6 +1106,7 @@ func GetAggregatorExtraPeerEndpoints(network models.Network) ([]info.Peer, error
 			}
 		}
 	}
+	fmt.Println(len(aggregatorPeers))
 	return aggregatorPeers, nil
 }
 

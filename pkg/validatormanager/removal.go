@@ -137,7 +137,7 @@ func InitValidatorRemoval(
 	signedMsg, err := PoaValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
 		app.Log,
-		logging.Debug,
+		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
@@ -162,6 +162,8 @@ func PoAValidatorManagerCompleteValidatorRemoval(
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
+		"complete poa validator removal",
+		errorSignatureToError,
 		"completeEndValidation(uint32)",
 		uint32(0),
 	)
@@ -189,7 +191,7 @@ func FinishValidatorRemoval(
 		network,
 		rpcURL,
 		app.Log,
-		logging.Debug,
+		aggregatorLogLevel,
 		0,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
