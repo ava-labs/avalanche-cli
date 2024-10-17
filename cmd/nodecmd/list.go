@@ -44,8 +44,9 @@ func list(_ *cobra.Command, _ []string) error {
 		if err := node.CheckCluster(app, clusterName); err != nil {
 			return err
 		}
+		cloudIDs := clusterConf.GetCloudIDs()
 		nodeIDs := []string{}
-		for _, cloudID := range clusterConf.GetCloudIDs() {
+		for _, cloudID := range cloudIDs {
 			nodeIDStr := "----------------------------------------"
 			if clusterConf.IsAvalancheGoHost(cloudID) {
 				if nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID)); err != nil {
@@ -56,11 +57,12 @@ func list(_ *cobra.Command, _ []string) error {
 			}
 			nodeIDs = append(nodeIDs, nodeIDStr)
 		}
-		if clusterConf.External {
+		switch {
+		case clusterConf.External:
 			ux.Logger.PrintToUser("cluster %q (%s) EXTERNAL", clusterName, clusterConf.Network.Kind.String())
-		} else if clusterConf.Local {
+		case clusterConf.Local:
 			ux.Logger.PrintToUser("cluster %q (%s) LOCAL", clusterName, clusterConf.Network.Kind.String())
-		} else {
+		default:
 			ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
 		}
 		for i, cloudID := range clusterConf.GetCloudIDs() {

@@ -184,18 +184,18 @@ func removeValidator(_ *cobra.Command, args []string) error {
 
 // TODO: implement getMinNonce
 // getMinNonce gets minNonce associated with the validationID from P-Chain
-func getMinNonce(validationID [32]byte) (uint64, error) {
+func getMinNonce(validationID [32]byte) (uint64, error) { //nolint:all
 	return 0, nil
 }
 
 // TODO: implement getValidationID
 // get validation ID for a node from P Chain
-func getValidationID(nodeID ids.NodeID) [32]byte {
+func getValidationID(nodeID ids.NodeID) [32]byte { //nolint:all
 	return [32]byte{}
 }
 
 // TODO: implement generateWarpMessageRemoveValidator
-func generateWarpMessageRemoveValidator(validationID [32]byte, nonce, weight uint64) (warpPlatformVM.Message, error) {
+func generateWarpMessageRemoveValidator(validationID [32]byte, nonce, weight uint64) (warpPlatformVM.Message, error) { //nolint:all
 	return warpPlatformVM.Message{}, nil
 }
 

@@ -43,6 +43,8 @@ The node local command suite provides a collection of commands related to local 
 	cmd.AddCommand(newLocalDestroyCmd())
 	// node local track
 	cmd.AddCommand(newLocalTrackCmd())
+	// node local status
+	cmd.AddCommand(newLocalStatusCmd())
 	return cmd
 }
 
@@ -112,6 +114,16 @@ func newLocalDestroyCmd() *cobra.Command {
 	}
 }
 
+func newLocalStatusCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "(ALPHA Warning) Get status of local node",
+		Long:  `Get status of local node.`,
+		Args:  cobra.MaximumNArgs(1),
+		RunE:  localStatus,
+	}
+}
+
 func localStartNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	anrSettings := node.ANRSettings{
@@ -143,6 +155,14 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 
 func localTrack(_ *cobra.Command, args []string) error {
 	return node.TrackSubnetWithLocalMachine(app, args[0], args[1])
+}
+
+func localStatus(_ *cobra.Command, args []string) error {
+	clusterName := ""
+	if len(args) > 0 {
+		clusterName = args[0]
+	}
+	return node.LocalStatus(app, clusterName)
 }
 
 func notImplementedForLocal(what string) error {
