@@ -135,7 +135,8 @@ func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 
 func StartLocalNode(
 	app *application.Avalanche,
-	clusterName string, useEtnaDevnet bool,
+	clusterName string,
+	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
 	anrSettings ANRSettings,
