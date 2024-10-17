@@ -33,8 +33,10 @@ func getValidatorContractManagerAddr() (string, error) {
 }
 
 func promptProofOfPossession(promptPublicKey, promptPop bool) (string, string, error) {
-	ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
-	ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
+	if promptPublicKey || promptPop {
+		ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
+	}
 	var err error
 	publicKey := ""
 	proofOfPossesion := ""
@@ -155,12 +157,13 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 	}
 	var setUpNodes bool
 	if generateNodeID {
-		setUpNodes = true
+		setUpNodes = false
 	} else {
 		setUpNodes, err = promptSetUpNodes()
 		if err != nil {
 			return nil, err
 		}
+		generateNodeID = !setUpNodes
 	}
 	previousAddr := ""
 	for len(subnetValidators) < numBootstrapValidators {
@@ -186,7 +189,7 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 				return nil, err
 			}
 		}
-		changeAddr, err := getKeyForChangeOwner(previousAddr, network)
+		changeAddr, err := getKeyForChangeOwner(nodeIDStr, previousAddr, network)
 		if err != nil {
 			return nil, err
 		}

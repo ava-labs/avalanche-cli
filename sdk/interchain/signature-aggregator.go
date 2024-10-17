@@ -5,9 +5,11 @@ package interchain
 import (
 	"encoding/hex"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
 	"github.com/ava-labs/avalanchego/utils/constants"
@@ -45,11 +47,17 @@ type SignatureAggregator struct {
 // Returns:
 // - peers.AppRequestNetwork: The created AppRequestNetwork, or nil if an error occurred.
 // - error: An error if the creation of the AppRequestNetwork failed.
-func createAppRequestNetwork(network models.Network, logLevel logging.Level) (peers.AppRequestNetwork, error) {
+func createAppRequestNetwork(
+	network models.Network,
+	logLevel logging.Level,
+	registerer prometheus.Registerer,
+	extraPeerEndpoints []info.Peer,
+) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
-		prometheus.DefaultRegisterer,
+		registerer,
 		nil,
+		extraPeerEndpoints,
 		&config.Config{
 			PChainAPI: &apiConfig.APIConfig{
 				BaseURL: network.Endpoint,
@@ -76,6 +84,7 @@ func createAppRequestNetwork(network models.Network, logLevel logging.Level) (pe
 func initSignatureAggregator(
 	network peers.AppRequestNetwork,
 	logger logging.Logger,
+	registerer prometheus.Registerer,
 	subnetID ids.ID,
 	quorumPercentage uint64,
 ) (*SignatureAggregator, error) {
@@ -91,7 +100,7 @@ func initSignatureAggregator(
 
 	messageCreator, err := message.NewCreator(
 		logger,
-		prometheus.DefaultRegisterer,
+		registerer,
 		constants.DefaultNetworkCompressionType,
 		constants.DefaultNetworkMaximumInboundTimeout,
 	)
@@ -99,7 +108,7 @@ func initSignatureAggregator(
 		return nil, fmt.Errorf("failed to create message creator: %w", err)
 	}
 
-	metricsInstance := metrics.NewSignatureAggregatorMetrics(prometheus.DefaultRegisterer)
+	metricsInstance := metrics.NewSignatureAggregatorMetrics(registerer)
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
 		network,
 		logger,
@@ -126,16 +135,25 @@ func initSignatureAggregator(
 // Returns a new signature aggregator instance, or an error if creation fails.
 func NewSignatureAggregator(
 	network models.Network,
-	logger logging.Logger,
 	logLevel logging.Level,
 	subnetID ids.ID,
 	quorumPercentage uint64,
+	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
-	peerNetwork, err := createAppRequestNetwork(network, logLevel)
+	registerer := prometheus.NewRegistry()
+	peerNetwork, err := createAppRequestNetwork(network, logLevel, registerer, extraPeerEndpoints)
 	if err != nil {
 		return nil, err
 	}
-	return initSignatureAggregator(peerNetwork, logger, subnetID, quorumPercentage)
+	logger := logging.NewLogger(
+		"init-aggregator",
+		logging.NewWrappedCore(
+			logLevel,
+			os.Stdout,
+			logging.JSON.ConsoleEncoder(),
+		),
+	)
+	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
 }
 
 // AggregateSignatures aggregates signatures for a given message and justification.

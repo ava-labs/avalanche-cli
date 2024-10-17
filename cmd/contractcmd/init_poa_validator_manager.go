@@ -20,9 +20,11 @@ import (
 )
 
 type InitPOAManagerFlags struct {
-	Network         networkoptions.NetworkFlags
-	PrivateKeyFlags contract.PrivateKeyFlags
-	rpcEndpoint     string
+	Network                  networkoptions.NetworkFlags
+	PrivateKeyFlags          contract.PrivateKeyFlags
+	rpcEndpoint              string
+	aggregatorLogLevel       string
+	aggregatorExtraEndpoints []string
 }
 
 var (
@@ -37,7 +39,7 @@ var (
 // avalanche contract initpoamanager
 func newInitPOAManagerCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "initPoaManager",
+		Use:   "initPoaManager blockchainName",
 		Short: "Initializes a Proof of Authority Validator Manager on a given Network and Blockchain",
 		Long:  "Initializes Proof of Authority Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/teleporter/tree/staking-contract/contracts/validator-manager",
 		RunE:  initPOAManager,
@@ -46,6 +48,8 @@ func newInitPOAManagerCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &initPOAManagerFlags.Network, true, initPOAManagerSupportedNetworkOptions)
 	initPOAManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&initPOAManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
+	cmd.Flags().StringSliceVar(&initPOAManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
+	cmd.Flags().StringVar(&initPOAManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
 }
 
@@ -94,7 +98,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"Which key to you want to use to pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
+			"pay for initializing Proof of Authority Validator Manager contract? (Uses Blockchain gas token)",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -116,6 +120,10 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network, initPOAManagerFlags.aggregatorExtraEndpoints)
+	if err != nil {
+		return err
+	}
 	if err := validatormanager.SetupPoA(
 		app,
 		network,
@@ -124,6 +132,8 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		privateKey,
 		common.HexToAddress(sc.PoAValidatorManagerOwner),
 		avaGoBootstrapValidators,
+		extraAggregatorPeers,
+		initPOAManagerFlags.aggregatorLogLevel,
 	); err != nil {
 		return err
 	}

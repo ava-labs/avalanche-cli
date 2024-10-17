@@ -85,7 +85,7 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 		case Local:
 			cmd.Flags().BoolVarP(&networkFlags.UseLocal, "local", "l", false, "operate on a local network")
 		case EtnaDevnet:
-			cmd.Flags().BoolVarP(&networkFlags.UseEtnaDevnet, "etna-devnet", "e", false, "operate on an etna devnet network")
+			cmd.Flags().BoolVarP(&networkFlags.UseEtnaDevnet, "etna-devnet", "", false, "operate on an etna devnet network")
 		case Devnet:
 			cmd.Flags().BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
 			addEndpoint = true

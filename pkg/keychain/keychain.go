@@ -120,7 +120,6 @@ func GetKeychainFromCmdLineFlags(
 	if len(ledgerAddresses) > 0 {
 		useLedger = true
 	}
-
 	// check mutually exclusive flags
 	if !flags.EnsureMutuallyExclusive([]bool{useLedger, useEwoq, keyName != ""}) {
 		return nil, ErrMutuallyExlusiveKeySource
@@ -161,6 +160,15 @@ func GetKeychainFromCmdLineFlags(
 		if !useLedger && keyName == "" {
 			var err error
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), false)
+			if err != nil {
+				return nil, err
+			}
+		}
+	case network.Kind == models.EtnaDevnet:
+		// prompt the user if no key source was provided
+		if !useEwoq && !useLedger && keyName == "" {
+			var err error
+			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), true)
 			if err != nil {
 				return nil, err
 			}

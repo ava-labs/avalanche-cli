@@ -4,11 +4,17 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -92,4 +98,56 @@ func UpdateKeychainWithSubnetControlKeys(
 		return err
 	}
 	return nil
+}
+
+func UpdatePChainHeight(
+	deployer *subnet.PublicDeployer,
+	destinationAddress ids.ShortID,
+	title string,
+) error {
+	bar, err := ux.TimedProgressBar(
+		30*time.Second,
+		title,
+		2,
+	)
+	if err != nil {
+		return err
+	}
+	// Issue random transaction >30s after ConverSubnetTx to evict its block from the block map
+	_, _, err = deployer.PChainTransfer(destinationAddress, 1)
+	if err != nil {
+		return err
+	}
+	if err := ux.ExtraStepExecuted(bar); err != nil {
+		return err
+	}
+	// Issue random transaction to advance the p-chain height now that the
+	// ConvertSubnetTx block isn't in the block map
+	_, _, err = deployer.PChainTransfer(destinationAddress, 1)
+	if err != nil {
+		return err
+	}
+	if err := ux.ExtraStepExecuted(bar); err != nil {
+		return err
+	}
+	fmt.Println()
+	return nil
+}
+
+func getLocalBootstrapEndpoints() ([]string, error) {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	localBootstrapEndpoints := []string{}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		localBootstrapEndpoints = append(localBootstrapEndpoints, nodeInfo.Uri)
+	}
+	return localBootstrapEndpoints, nil
 }

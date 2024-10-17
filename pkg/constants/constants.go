@@ -18,7 +18,10 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
-	ServerRunFile      = "gRPCserver.run"
+	ServerRunFile                   = "gRPCserver.run"
+	ServerRunFileLocalNetworkPrefix = ""
+	ServerRunFileLocalClusterPrefix = "localcluster_"
+
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 	ServicesDir        = "services"
@@ -52,8 +55,8 @@ const (
 	CloudOperationTimeout = 2 * time.Minute
 
 	ANRRequestTimeout      = 3 * time.Minute
-	APIRequestTimeout      = 30 * time.Second
-	APIRequestLargeTimeout = 2 * time.Minute
+	APIRequestTimeout      = 5 * time.Second
+	APIRequestLargeTimeout = 5 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
 	SSHServerStartTimeout       = 1 * time.Minute
@@ -99,6 +102,7 @@ const (
 
 	Cortina17Version = "v1.10.17"
 	Durango11Version = "v1.11.11"
+	Durango12Version = "v1.11.12"
 
 	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
@@ -136,6 +140,16 @@ const (
 	BootstrapSnapshotSingleNodePreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango11LocalPath
 	BootstrapSnapshotSingleNodePreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango11.txt"
 
+	BootstrapSnapshotPreDurango12ArchiveName = "bootstrapSnapshot.PreDurango12.tar.gz"
+	BootstrapSnapshotPreDurango12LocalPath   = AssetsDir + BootstrapSnapshotPreDurango12ArchiveName
+	BootstrapSnapshotPreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango12LocalPath
+	BootstrapSnapshotPreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango12.txt"
+
+	BootstrapSnapshotSingleNodePreDurango12ArchiveName = "bootstrapSnapshotSingleNode.PreDurango12.tar.gz"
+	BootstrapSnapshotSingleNodePreDurango12LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango12ArchiveName
+	BootstrapSnapshotSingleNodePreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango12LocalPath
+	BootstrapSnapshotSingleNodePreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango12.txt"
+
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
 	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
@@ -158,12 +172,14 @@ const (
 	// nAVAX
 	BootstrapValidatorBalance = 1000000000
 	// Default weight when we prompt users for bootstrap validators
-	BootstrapValidatorWeight          = 1000000
+	BootstrapValidatorWeight = 100
+	// Default weight when we prompt users for non bootstrap validators
+	NonBootstrapValidatorWeight       = BootstrapValidatorWeight / 5
 	DefaultStakeWeight                = 20
 	AVAXSymbol                        = "AVAX"
 	DefaultFujiStakeDuration          = "48h"
 	DefaultMainnetStakeDuration       = "336h"
-	DefaultValidationIDExpiryDuration = 48 * time.Hour
+	DefaultValidationIDExpiryDuration = 24 * time.Hour
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	DevnetStakingStartLeadTime                   = 30 * time.Second
@@ -348,6 +364,7 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+	LocalDir  = "local"
 
 	MetricsNetwork               = "network"
 	MultiSig                     = "multi-sig"

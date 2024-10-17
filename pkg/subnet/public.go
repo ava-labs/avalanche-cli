@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 
@@ -120,18 +119,91 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 }
 
 func (d *PublicDeployer) SetL1ValidatorWeight(
-	message warp.Message,
+	message *warp.Message,
+) (ids.ID, *txs.Tx, error) {
+	wallet, err := d.loadCacheWallet()
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	tx, err := d.createSetSubnetValidatorWeightTx(
+		message,
+		wallet,
+	)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	id, err := d.Commit(tx, true)
+	return id, tx, err
+}
+
+func (*PublicDeployer) createSetSubnetValidatorWeightTx(
+	message *warp.Message,
+	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	return nil, nil
+	unsignedTx, err := wallet.P().Builder().NewSetSubnetValidatorWeightTx(
+		message.Bytes(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error building tx: %w", err)
+	}
+	if unsignedTx != nil {
+		if err := printFee("SetSubnetValidatorWeightTX", wallet, unsignedTx); err != nil {
+			return nil, err
+		}
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, fmt.Errorf("error signing tx: %w", err)
+	}
+	return &tx, nil
 }
 
 func (d *PublicDeployer) RegisterL1Validator(
 	balance uint64,
-	signer signer.ProofOfPossession,
-	changeOwner fx.Owner,
-	message warp.Message,
+	pop signer.ProofOfPossession,
+	message *warp.Message,
+) (ids.ID, *txs.Tx, error) {
+	wallet, err := d.loadCacheWallet()
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	tx, err := d.createRegisterSubnetValidatorTx(
+		balance,
+		pop,
+		message,
+		wallet,
+	)
+	if err != nil {
+		return ids.Empty, nil, err
+	}
+	id, err := d.Commit(tx, true)
+	return id, tx, err
+}
+
+func (*PublicDeployer) createRegisterSubnetValidatorTx(
+	balance uint64,
+	pop signer.ProofOfPossession,
+	message *warp.Message,
+	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	return nil, nil
+	unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(
+		balance,
+		pop.ProofOfPossession,
+		message.Bytes(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error building tx: %w", err)
+	}
+	if unsignedTx != nil {
+		if err := printFee("RegisterSubnetValidatorTX", wallet, unsignedTx); err != nil {
+			return nil, err
+		}
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return nil, fmt.Errorf("error signing tx: %w", err)
+	}
+	return &tx, nil
 }
 
 // change subnet owner for [subnetID]
@@ -860,11 +932,10 @@ func printFee(kind string, wallet primary.Wallet, unsignedTx txs.UnsignedTx) err
 		}
 		txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 		if err != nil {
-			if errors.Is(err, avagofee.ErrUnsupportedTx) {
-				ux.Logger.PrintToUser(logging.Yellow.Wrap("unable to get %s fee: not supported by %s calculator"), kind, calcKind)
-			} else {
+			if !errors.Is(err, avagofee.ErrUnsupportedTx) {
 				return err
 			}
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("unable to get %s fee: not supported by %s calculator"), kind, calcKind)
 		} else {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("%s fee: %.9f AVAX"), kind, float64(txFee)/float64(units.Avax))
 		}

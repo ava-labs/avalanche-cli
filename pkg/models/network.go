@@ -21,6 +21,7 @@ const (
 	EtnaDevnet
 	Local
 	Devnet
+	EtnaDevnet
 )
 
 func (nk NetworkKind) String() string {
@@ -55,6 +56,10 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string
 		Endpoint:    endpoint,
 		ClusterName: clusterName,
 	}
+}
+
+func (n Network) IsUndefined() bool {
+	return n.Kind == Undefined
 }
 
 func NewLocalNetwork() Network {
@@ -104,7 +109,7 @@ func (n Network) StandardPublicEndpoint() bool {
 }
 
 func (n Network) Name() string {
-	if n.ClusterName != "" && n.Kind == Devnet {
+	if n.ClusterName != "" && (n.Kind == Devnet || n.Kind == EtnaDevnet) {
 		return "Cluster " + n.ClusterName
 	}
 	name := n.Kind.String()

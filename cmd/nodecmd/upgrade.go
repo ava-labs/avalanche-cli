@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -47,14 +49,22 @@ You can check the status after upgrade by calling avalanche node status`,
 
 func upgrade(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("upgrade")
+	}
+	network := clusterConfig.Network
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	toUpgradeNodesMap, err := getNodesUpgradeInfo(hosts)
 	if err != nil {
 		return err
