@@ -43,6 +43,12 @@ var (
 	errInvalidValidatorManagerAddress      = fmt.Errorf("invalid validator manager address")
 	errNodeAlreadyRegistered               = fmt.Errorf("node already registered")
 	errInvalidSubnetConversionID           = fmt.Errorf("invalid subnet conversion id")
+	errInvalidRegistrationExpiry           = fmt.Errorf("invalid registration expiry")
+	errInvalidBLSKeyLength                 = fmt.Errorf("invalid BLS key length")
+	errInvalidNodeID                       = fmt.Errorf("invalid node id")
+	errInvalidWarpMessage                  = fmt.Errorf("invalid warp message")
+	errInvalidWarpSourceChainID            = fmt.Errorf("invalid wapr source chain ID")
+	errInvalidWarpOriginSenderAddress      = fmt.Errorf("invalid warp origin sender address")
 	errorSignatureToError                  = map[string]error{
 		"InvalidInitialization()":                      errAlreadyInitialized,
 		"InvalidMaximumChurnPercentage(uint8)":         errInvalidMaximumChurnPercentage,
@@ -54,6 +60,12 @@ var (
 		"InvalidValidatorManagerAddress(address)":      errInvalidValidatorManagerAddress,
 		"NodeAlreadyRegistered(bytes)":                 errNodeAlreadyRegistered,
 		"InvalidSubnetConversionID(bytes32,bytes32)":   errInvalidSubnetConversionID,
+		"InvalidRegistrationExpiry(uint64)":            errInvalidRegistrationExpiry,
+		"InvalidBLSKeyLength(uint256)":                 errInvalidBLSKeyLength,
+		"InvalidNodeID(bytes)":                         errInvalidNodeID,
+		"InvalidWarpMessage()":                         errInvalidWarpMessage,
+		"InvalidWarpSourceChainID(bytes32)":            errInvalidWarpSourceChainID,
+		"InvalidWarpOriginSenderAddress(address)":      errInvalidWarpOriginSenderAddress,
 	}
 	defaultAggregatorLogLevel = logging.Off
 )

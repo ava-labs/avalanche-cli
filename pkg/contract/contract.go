@@ -337,11 +337,14 @@ func TxToMethod(
 		if traceCallErr != nil {
 			ux.Logger.PrintToUser("Could not get debug trace for %s error on %s: %s", description, rpcURL, traceCallErr)
 			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
-			return nil, nil, err
+			return tx, nil, err
 		}
-		errorFromSignature, _ := evm.GetErrorFromTrace(trace, errorSignatureToError)
+		errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError)
+		if err != nil && !errors.Is(err, evm.UnknownErrorSelector) {
+			ux.Logger.RedXToUser("failure traying to match error selector on trace: %s", err)
+		}
 		if errorFromSignature != nil {
-			return nil, nil, errorFromSignature
+			return tx, nil, errorFromSignature
 		} else {
 			ux.Logger.PrintToUser("error trace for %s error:", description)
 			ux.Logger.PrintToUser("%#v", trace)

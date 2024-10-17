@@ -76,7 +76,7 @@ func PoAValidatorManagerInitializeValidatorRegistration(
 		managerAddress,
 		big.NewInt(0),
 		"initialize validator registration",
-		nil,
+		errorSignatureToError,
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
 		validatorRegistrationInput,
 		weight,
