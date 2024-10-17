@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -129,4 +132,22 @@ func UpdatePChainHeight(
 	}
 	fmt.Println()
 	return nil
+}
+
+func getLocalBootstrapEndpoints() ([]string, error) {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	localBootstrapEndpoints := []string{}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		localBootstrapEndpoints = append(localBootstrapEndpoints, nodeInfo.Uri)
+	}
+	return localBootstrapEndpoints, nil
 }

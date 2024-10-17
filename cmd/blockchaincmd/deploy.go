@@ -70,7 +70,6 @@ var (
 	outputTxPath                    string
 	useLedger                       bool
 	useLocalMachine                 bool
-	localMachineCluster             string
 	useEwoq                         bool
 	ledgerAddresses                 []string
 	sovereign                       bool
@@ -144,7 +143,6 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-	cmd.Flags().StringVar(&localMachineCluster, "local-machine-cluster", "", "existing local machine to be used as a blockchain validator")
 
 	return cmd
 }
@@ -482,7 +480,28 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.Sovereign {
 		if !convertOnly && !generateNodeID {
-			if !useLocalMachine {
+			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+			if globalNetworkFlags.ClusterName != "" {
+				clusterName = globalNetworkFlags.ClusterName
+				clusterConfig, err := app.GetClusterConfig(clusterName)
+				if err != nil {
+					return err
+				}
+				// check if cluster is local
+				if clusterConfig.Local {
+					useLocalMachine = true
+					if len(bootstrapEndpoints) == 0 {
+						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+						if err != nil {
+							return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+								"please create your local node again and call subnet deploy command again", err)
+						}
+					}
+					network = models.NewNetworkFromCluster(network, clusterName)
+				}
+			}
+			// ask user if we wants to use local machine if cluster is not provided
+			if !useLocalMachine && globalNetworkFlags.ClusterName == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
@@ -491,20 +510,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
-			if useLocalMachine {
-				// stop any local avalanche go process running before we start local node
+			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
+			if useLocalMachine && globalNetworkFlags.ClusterName == "" {
+				// stop local avalanchego process so that we can generate new local cluster
 				_ = node.StopLocalNode(app)
-				clusterName := fmt.Sprintf("%s-local-node", blockchainName)
-				if localMachineCluster != "" {
-					// don't destroy cluster if local cluster name is provided
-					clusterName = localMachineCluster
-				} else if utils.DirectoryExists(app.GetLocalDir(clusterName)) {
-					_ = node.DestroyLocalNode(app, clusterName)
-				}
-				// destroy any cluster with same name before we start local node
-				// we don't want to reuse snapshots from previous sessions
-				// TODO: replace bootstrapEndpoints with dynamic port number
-				bootstrapEndpoints = []string{"http://127.0.0.1:9650"}
 				anrSettings := node.ANRSettings{}
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
 				useEtnaDevnet := network.Kind == models.EtnaDevnet
@@ -524,13 +533,20 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					clusterName,
 					useEtnaDevnet,
 					avagoBinaryPath,
-					1,
+					5,
 					anrSettings,
 					avagoVersionSettings,
 					globalNetworkFlags,
 					nil,
 				); err != nil {
 					return err
+				}
+				if len(bootstrapEndpoints) == 0 {
+					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+					if err != nil {
+						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+							"please create your local node again and call subnet deploy command again", err)
+					}
 				}
 			}
 		}
@@ -802,7 +818,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
-
 			if !useLocalMachine {
 				if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
 					return err
