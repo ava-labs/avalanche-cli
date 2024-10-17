@@ -20,6 +20,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/utils/units"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
