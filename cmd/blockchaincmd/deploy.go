@@ -219,7 +219,7 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 }
 
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
-	if network.Kind != models.Local && network.Kind != models.Devnet && os.Getenv(constants.SimulatePublicNetwork) == "" {
+	if network.Kind != models.Local && network.Kind != models.Devnet && network.Kind != models.EtnaDevnet && os.Getenv(constants.SimulatePublicNetwork) == "" {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
 			return err
@@ -407,6 +407,26 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		err = checkSubnetEVMDefaultAddressNotInAlloc(network, chain)
 		if err != nil {
 			return err
+		}
+	}
+
+	if sidecar.Sovereign && bootstrapValidatorsJSONFilePath == "" {
+		// TODO: add check for local cluster from another PR
+		if len(bootstrapValidators) == 0 && globalNetworkFlags.ClusterName != "" {
+			// get bootstrap validators from cluster
+			changeOwnerAddr, err := getKeyForChangeOwner("", "", network)
+			if err != nil {
+				return err
+			}
+			bootstrapValidators, err = getClusterBootstrapValidators(globalNetworkFlags.ClusterName, changeOwnerAddr)
+			if err != nil {
+				return err
+			}
+		} else {
+			bootstrapValidators, err = promptBootstrapValidators(network)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

@@ -59,7 +59,6 @@ func upgrade(_ *cobra.Command, args []string) error {
 	if clusterConfig.Local {
 		return notImplementedForLocal("upgrade")
 	}
-	network := clusterConfig.Network
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
@@ -73,9 +72,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 	for host, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading avalanchego to version %s...", upgradeInfo.AvalancheGoVersion)))
-			// check if host is API host
-			publicAccessToHTTPPort := clusterConfig.IsAPIHost(host.GetCloudID()) || clusterConfig.HTTPAccess == constants.PublicAccess
-			if err := upgradeAvalancheGo(host, network, upgradeInfo.AvalancheGoVersion, publicAccessToHTTPPort); err != nil {
+			if err := upgradeAvalancheGo(host, upgradeInfo.AvalancheGoVersion); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -221,11 +218,9 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 
 func upgradeAvalancheGo(
 	host *models.Host,
-	network models.Network,
 	avaGoVersionToUpdateTo string,
-	publicAccessToHTTPPort bool,
 ) error {
-	if err := ssh.RunSSHUpgradeAvalanchego(host, network, avaGoVersionToUpdateTo, publicAccessToHTTPPort); err != nil {
+	if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
 	return nil
