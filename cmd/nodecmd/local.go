@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -537,6 +538,7 @@ func localTrack(_ *cobra.Command, args []string) error {
 				return err
 			}
 		}
+		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
 		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
 			return err
 		}
@@ -551,6 +553,12 @@ func localTrack(_ *cobra.Command, args []string) error {
 	}
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()
+	for _, rpcURL := range networkInfo.RPCEndpoints {
+		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
+		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
+			return err
+		}
+	}
 	sc.Networks[clusterConfig.Network.Name()] = networkInfo
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err
