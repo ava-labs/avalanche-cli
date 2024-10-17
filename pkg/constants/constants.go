@@ -163,7 +163,7 @@ const (
 	// Default weight when we prompt users for bootstrap validators
 	BootstrapValidatorWeight = 100
 	// Default weight when we prompt users for non bootstrap validators
-	NonBootstrapValidatorWeight       = 20
+	NonBootstrapValidatorWeight       = BootstrapValidatorWeight / 5
 	DefaultStakeWeight                = 20
 	AVAXSymbol                        = "AVAX"
 	DefaultFujiStakeDuration          = "48h"

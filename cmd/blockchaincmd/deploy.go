@@ -490,7 +490,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
 				NodeID:               nodeID.String(),
-				Weight:               constants.BootstrapValidatorWeight,
+				Weight:               constants.BootstrapValidatorWeight / uint64(len(bootstrapEndpoints)),
 				Balance:              constants.BootstrapValidatorBalance,
 				BLSPublicKey:         publicKey,
 				BLSProofOfPossession: pop,
