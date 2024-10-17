@@ -418,7 +418,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			bootstrapValidators, err = getClusterBootstrapValidators(network, globalNetworkFlags.ClusterName, changeOwnerAddr)
+			bootstrapValidators, err = getClusterBootstrapValidators(globalNetworkFlags.ClusterName, changeOwnerAddr)
 			if err != nil {
 				return err
 			}

@@ -121,12 +121,12 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func getClusterBootstrapValidators(network models.Network, clusterName string, changeOwnerAddr string) ([]models.SubnetValidator, error) {
+func getClusterBootstrapValidators(clusterName string, changeOwnerAddr string) ([]models.SubnetValidator, error) {
 	clusterConf, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
 	}
-	var subnetValidators []models.SubnetValidator
+	subnetValidators := []models.SubnetValidator{}
 	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
 	for _, h := range hostIDs {
 		id, pub, pop, err := utils.GetNodeParams(app.GetNodeInstanceDirPath(h))
