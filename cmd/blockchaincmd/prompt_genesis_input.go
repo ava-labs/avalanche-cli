@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -119,31 +118,6 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 		return "", "", "", err
 	}
 	return nodeID.String(), publicKey, pop, nil
-}
-
-func getClusterBootstrapValidators(clusterName string, changeOwnerAddr string) ([]models.SubnetValidator, error) {
-	clusterConf, err := app.GetClusterConfig(clusterName)
-	if err != nil {
-		return nil, err
-	}
-	subnetValidators := []models.SubnetValidator{}
-	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
-	for _, h := range hostIDs {
-		id, pub, pop, err := utils.GetNodeParams(app.GetNodeInstanceDirPath(h))
-		if err != nil {
-			return nil, err
-		}
-		ux.Logger.Info("Bootstrap validator info for Host: %s | Node ID: %s | Public Key: %s | Proof of Possession: %s", h, id, hex.EncodeToString(pub), hex.EncodeToString(pop))
-		subnetValidators = append(subnetValidators, models.SubnetValidator{
-			NodeID:               id.String(),
-			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              constants.BootstrapValidatorBalance,
-			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
-			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
-			ChangeOwnerAddr:      changeOwnerAddr,
-		})
-	}
-	return subnetValidators, nil
 }
 
 func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator, error) {
