@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/units"
+
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -191,8 +193,9 @@ func addValidator(_ *cobra.Command, args []string) error {
 }
 
 func promptValidatorBalance() (uint64, error) {
-	ux.Logger.PrintToUser("Balance is used to pay for continuous fee to the P-Chain")
-	txt := "What balance would you like to assign to the bootstrap validator (in nAVAX)?"
+	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
+	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
+	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
 	return app.Prompt.CaptureValidatorBalance(txt)
 }
 
@@ -238,32 +241,6 @@ func CallAddValidator(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
 
-	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return err
-	}
-	privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-	if err != nil {
-		return err
-	}
-	if privateKey == "" {
-		privateKey, err = prompts.PromptPrivateKey(
-			app.Prompt,
-			"pay for registering validator on blockchain? (Blockchain gas token)",
-			app.GetKeyDir(),
-			app.GetKey,
-			genesisAddress,
-			genesisPrivateKey,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
@@ -276,13 +253,14 @@ func CallAddValidator(
 			return err
 		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
 	if balance == 0 {
-		balance, err = promptValidatorBalance()
+		balanceAVAX, err := promptValidatorBalance()
 		if err != nil {
 			return err
 		}
+		// convert to nanoAVAX
+		balance = balanceAVAX * units.Avax
 	}
 
 	if remainingBalanceOwnerAddr == "" {
@@ -368,7 +346,7 @@ func CallAddValidator(
 		network,
 		rpcURL,
 		chainSpec,
-		privateKey,
+		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
@@ -379,7 +357,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
 	ux.Logger.PrintToUser("  Weight: %d", weight)
-	ux.Logger.PrintToUser("  Balance: %d", balance)
+	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
 
 	return nil
