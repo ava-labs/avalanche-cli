@@ -657,6 +657,7 @@ func IssueTxsToActivateProposerVMFork(
 	chainID *big.Int,
 	privKey *ecdsa.PrivateKey,
 ) error {
+	var errorList []error
 	var err error
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
@@ -670,10 +671,15 @@ func IssueTxsToActivateProposerVMFork(
 			client,
 			err,
 		)
+		errorList = append(errorList, err)
 		time.Sleep(sleepBetweenRepeats)
 	}
+	// this means that on the last try there is error
+	// print out all previous errors
 	if err != nil {
-		ux.Logger.RedXToUser("%s", err)
+		for _, indivError := range errorList {
+			ux.Logger.RedXToUser("%s", indivError)
+		}
 	}
 	return err
 }
