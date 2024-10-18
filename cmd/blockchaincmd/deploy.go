@@ -550,7 +550,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		if len(bootstrapEndpoints) > 0 {
+		switch {
+		case len(bootstrapEndpoints) > 0:
 			var changeAddr string
 			for _, endpoint := range bootstrapEndpoints {
 				infoClient := info.NewClient(endpoint)
@@ -575,13 +576,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					ChangeOwnerAddr:      changeAddr,
 				})
 			}
-		} else if globalNetworkFlags.ClusterName != "" {
+
+		case globalNetworkFlags.ClusterName != "":
 			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
 			bootstrapValidators, err = getClusterBootstrapValidators(globalNetworkFlags.ClusterName, network)
 			if err != nil {
 				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", globalNetworkFlags.ClusterName, err)
 			}
-		} else {
+
+		default:
 			bootstrapValidators, err = promptBootstrapValidators(network)
 			if err != nil {
 				return err
