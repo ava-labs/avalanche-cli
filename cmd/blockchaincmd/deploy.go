@@ -1272,6 +1272,15 @@ func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
 			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
 			}
+		} else { // remote cluster case
+			hostIDs := utils.Filter(clusterConfig.GetCloudIDs(), clusterConfig.IsAvalancheGoHost)
+			for _, hostID := range hostIDs {
+				if nodeConfig, err := app.LoadClusterNodeConfig(hostID); err != nil {
+					return nil, err
+				} else {
+					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalanchegoAPIPort))
+				}
+			}
 		}
 	}
 	return aggregatorExtraPeerEndpointsUris, nil
