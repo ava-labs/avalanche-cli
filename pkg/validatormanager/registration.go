@@ -4,6 +4,7 @@ package validatormanager
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -274,7 +276,10 @@ func InitValidatorRegistration(
 		weight,
 	)
 	if err != nil {
-		return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
+		if !errors.Is(err, errNodeAlreadyRegistered) {
+			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
+		}
+		ux.Logger.PrintToUser("Warning: the validator registration was already initialized")
 	}
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
 	if err != nil {

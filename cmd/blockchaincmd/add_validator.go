@@ -192,11 +192,11 @@ func addValidator(_ *cobra.Command, args []string) error {
 	return CallAddValidator(deployer, network, kc, blockchainName, nodeIDStr, publicKey, pop)
 }
 
-func promptValidatorBalance() (uint64, error) {
+func promptValidatorBalance(availableBalance uint64) (uint64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
 	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
-	return app.Prompt.CaptureValidatorBalance(txt)
+	return app.Prompt.CaptureValidatorBalance(txt, availableBalance)
 }
 
 func CallAddValidator(
@@ -254,8 +254,17 @@ func CallAddValidator(
 		}
 	}
 
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	pClient := platformvm.NewClient(network.Endpoint)
+	bal, err := pClient.GetBalance(ctx, kc.Addresses().List())
+	if err != nil {
+		return err
+	}
+	availableBalance := uint64(bal.Balance) / units.Avax
+
 	if balance == 0 {
-		balanceAVAX, err := promptValidatorBalance()
+		balanceAVAX, err := promptValidatorBalance(availableBalance)
 		if err != nil {
 			return err
 		}
