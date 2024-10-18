@@ -279,7 +279,7 @@ func InitValidatorRegistration(
 		if !errors.Is(err, errNodeAlreadyRegistered) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 		}
-		ux.Logger.PrintToUser("Warning: the validator registration was already initialized")
+		ux.Logger.PrintToUser("Warning: the validator registration was already initialized. Proceeding to the next step")
 	}
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
 	if err != nil {
