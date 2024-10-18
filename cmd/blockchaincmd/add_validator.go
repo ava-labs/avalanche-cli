@@ -6,8 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/units"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ethereum/go-ethereum/common"
