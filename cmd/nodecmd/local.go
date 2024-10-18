@@ -18,7 +18,6 @@ var (
 	bootstrapIPs         []string
 	genesisPath          string
 	upgradePath          string
-	useEtnaDevnet        bool
 	stakingTLSKeyPath    string
 	stakingCertKeyPath   string
 	stakingSignerKeyPath string
@@ -143,7 +142,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	return node.StartLocalNode(
 		app,
 		clusterName,
-		useEtnaDevnet,
+		globalNetworkFlags.UseEtnaDevnet,
 		avalanchegoBinaryPath,
 		numNodes,
 		anrSettings,

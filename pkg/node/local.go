@@ -312,6 +312,7 @@ func StartLocalNode(
 			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
 		}
 
+		ux.Logger.PrintToUser("Starting local avalanche node using settings: %s ...", anrSettings)
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
