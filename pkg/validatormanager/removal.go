@@ -134,7 +134,7 @@ func InitValidatorRemoval(
 		if !errors.Is(err, errInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 		}
-		ux.Logger.PrintToUser("Warning: the validator removal process was already initialized. Proceesing to the next step.")
+		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceesing to the next step")
 	}
 
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
