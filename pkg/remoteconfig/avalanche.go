@@ -105,6 +105,10 @@ func GetRemoteAvalancheGenesis() string {
 	return filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName)
 }
 
+func GetRemoteAvalancheUpgrade() string {
+	return filepath.Join(constants.CloudNodeConfigPath, constants.UpgradeFileName)
+}
+
 func GetRemoteAvalancheAliasesConfig() string {
 	return filepath.Join(constants.CloudNodeConfigPath, "chains", constants.AliasesFileName)
 }
