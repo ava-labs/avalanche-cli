@@ -5,10 +5,14 @@ package utils
 import (
 	"encoding/pem"
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
 func NewBlsSecretKeyBytes() ([]byte, error) {
@@ -29,4 +33,43 @@ func ToNodeID(certBytes []byte) (ids.NodeID, error) {
 		return ids.EmptyNodeID, err
 	}
 	return ids.NodeIDFromCert(cert), nil
+}
+
+func ToBLSPoP(keyBytes []byte) (
+	[]byte, // bls public key
+	[]byte, // bls proof of possession
+	error,
+) {
+	sk, err := bls.SecretKeyFromBytes(keyBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	pop := signer.NewProofOfPossession(sk)
+	return pop.PublicKey[:], pop.ProofOfPossession[:], nil
+}
+
+// GetNodeParams returns node id, bls public key and bls proof of possession
+func GetNodeParams(nodeDir string) (
+	ids.NodeID,
+	[]byte, // bls public key
+	[]byte, // bls proof of possession
+	error,
+) {
+	certBytes, err := os.ReadFile(filepath.Join(nodeDir, constants.StakerCertFileName))
+	if err != nil {
+		return ids.EmptyNodeID, nil, nil, err
+	}
+	nodeID, err := ToNodeID(certBytes)
+	if err != nil {
+		return ids.EmptyNodeID, nil, nil, err
+	}
+	blsKeyBytes, err := os.ReadFile(filepath.Join(nodeDir, constants.BLSKeyFileName))
+	if err != nil {
+		return ids.EmptyNodeID, nil, nil, err
+	}
+	blsPub, blsPoP, err := ToBLSPoP(blsKeyBytes)
+	if err != nil {
+		return ids.EmptyNodeID, nil, nil, err
+	}
+	return nodeID, blsPub, blsPoP, nil
 }

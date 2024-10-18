@@ -53,16 +53,13 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	var err error
 	var gcpCredentialsPath string
 	var gcpProjectName string
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return nil, "", "", err
-		}
-		if clustersConfig.GCPConfig != (models.GCPConfig{}) {
-			gcpProjectName = clustersConfig.GCPConfig.ProjectName
-			gcpCredentialsPath = clustersConfig.GCPConfig.ServiceAccFilePath
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return nil, "", "", err
+	}
+	if clustersConfig.GCPConfig != (models.GCPConfig{}) {
+		gcpProjectName = clustersConfig.GCPConfig.ProjectName
+		gcpCredentialsPath = clustersConfig.GCPConfig.ServiceAccFilePath
 	}
 	if gcpProjectName == "" {
 		if cmdLineGCPProjectName != "" {
@@ -380,13 +377,9 @@ func createGCPInstance(
 }
 
 func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath string) error {
-	clustersConfig := models.ClustersConfig{}
-	var err error
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if projectName != "" {
 		clustersConfig.GCPConfig.ProjectName = projectName
