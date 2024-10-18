@@ -672,7 +672,9 @@ func IssueTxsToActivateProposerVMFork(
 		)
 		time.Sleep(sleepBetweenRepeats)
 	}
-	ux.Logger.RedXToUser("%s", err)
+	if err != nil {
+		ux.Logger.RedXToUser("%s", err)
+	}
 	return err
 }
 
