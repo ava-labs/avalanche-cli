@@ -409,9 +409,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	// subnet-evm check based on genesis
 	// covers both subnet-evm vms and custom vms
-	if hasSubnetEVMGenesis, rawErr, err := app.HasSubnetEVMGenesis(blockchainName); rawErr != nil {
-		return rawErr
-	} else if err != nil {
+	if hasSubnetEVMGenesis, _, err := app.HasSubnetEVMGenesis(blockchainName); err != nil {
 		return err
 	} else if hasSubnetEVMGenesis && createFlags.enableDebugging {
 		if err := SetBlockchainConf(
@@ -426,6 +424,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
+
 	if vmType == models.SubnetEvm {
 		err = sendMetrics(cmd, vmType.RepoName(), blockchainName)
 		if err != nil {
