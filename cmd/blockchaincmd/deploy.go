@@ -498,10 +498,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						}
 					}
 					network = models.NewNetworkFromCluster(network, clusterName)
-				} else {
-					// get bootrstrap endpoints from  remote cluster
 				}
-
 			}
 			// ask user if we wants to use local machine if cluster is not provided
 			if !useLocalMachine && globalNetworkFlags.ClusterName == "" {
