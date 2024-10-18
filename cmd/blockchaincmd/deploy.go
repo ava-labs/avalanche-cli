@@ -498,7 +498,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						}
 					}
 					network = models.NewNetworkFromCluster(network, clusterName)
+				} else {
+					// get bootrstrap endpoints from  remote cluster
 				}
+
 			}
 			// ask user if we wants to use local machine if cluster is not provided
 			if !useLocalMachine && globalNetworkFlags.ClusterName == "" {
@@ -574,6 +577,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					BLSProofOfPossession: pop,
 					ChangeOwnerAddr:      changeAddr,
 				})
+			}
+		} else if globalNetworkFlags.ClusterName != "" {
+			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
+			bootstrapValidators, err = getClusterBootstrapValidators(globalNetworkFlags.ClusterName, network)
+			if err != nil {
+				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", globalNetworkFlags.ClusterName, err)
 			}
 		} else {
 			bootstrapValidators, err = promptBootstrapValidators(network)
@@ -894,6 +903,39 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return nil
+}
+
+func getClusterBootstrapValidators(clusterName string, network models.Network) ([]models.SubnetValidator, error) {
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	subnetValidators := []models.SubnetValidator{}
+	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
+	changeAddr := ""
+	for _, h := range hostIDs {
+		nodeID, pub, pop, err := utils.GetNodeParams(app.GetNodeInstanceDirPath(h))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse nodeID: %w", err)
+		}
+		changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+		if err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		ux.Logger.Info("Bootstrap validator info for Host: %s | Node ID: %s | Public Key: %s | Proof of Possession: %s", h, nodeID, hex.EncodeToString(pub), hex.EncodeToString(pop))
+		subnetValidators = append(subnetValidators, models.SubnetValidator{
+			NodeID:               nodeID.String(),
+			Weight:               constants.BootstrapValidatorWeight,
+			Balance:              constants.BootstrapValidatorBalance,
+			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
+			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
+			ChangeOwnerAddr:      changeAddr,
+		})
+	}
+	return subnetValidators, nil
 }
 
 func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
