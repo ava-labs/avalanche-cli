@@ -241,33 +241,6 @@ func CallAddValidator(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
 
-	//genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-	//	app,
-	//	network,
-	//	chainSpec,
-	//)
-	//if err != nil {
-	//	return err
-	//}
-	//fmt.Printf("GetEVMSubnetPrefundedKey %s \n", genesisAddress)
-	//privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-	//if err != nil {
-	//	return err
-	//}
-	//if privateKey == "" {
-	//	privateKey, err = prompts.PromptPrivateKey(
-	//		app.Prompt,
-	//		"pay for registering validator on blockchain? (Blockchain gas token)",
-	//		app.GetKeyDir(),
-	//		app.GetKey,
-	//		genesisAddress,
-	//		genesisPrivateKey,
-	//	)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
-
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
