@@ -203,32 +203,6 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
 
-	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return err
-	}
-	privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
-	if err != nil {
-		return err
-	}
-	if privateKey == "" {
-		privateKey, err = prompts.PromptPrivateKey(
-			app.Prompt,
-			"pay for completing removal of validator? (Blockchain gas token)",
-			app.GetKeyDir(),
-			app.GetKey,
-			genesisAddress,
-			genesisPrivateKey,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
@@ -282,7 +256,7 @@ func removeValidatorSOV(
 		network,
 		rpcURL,
 		chainSpec,
-		privateKey,
+		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
