@@ -652,6 +652,11 @@ func (app *Avalanche) LoadClusterNodeConfig(nodeName string) (models.NodeConfig,
 
 func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 	clustersConfigPath := app.GetClustersConfigPath()
+	if !utils.FileExists(clustersConfigPath) {
+		return models.ClustersConfig{
+			Clusters: map[string]models.ClusterConfig{},
+		}, nil
+	}
 	jsonBytes, err := os.ReadFile(clustersConfigPath)
 	if err != nil {
 		return models.ClustersConfig{}, err
