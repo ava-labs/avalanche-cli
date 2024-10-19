@@ -28,6 +28,7 @@ import (
 	avmtxs "github.com/ava-labs/avalanchego/vms/avm/txs"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -223,7 +224,7 @@ func transferF(*cobra.Command, []string) error {
 
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
 		var useLedger bool
-		goalStr := "specify the sender address"
+		goalStr := "as the sender address"
 		if receiverChainFlags.XChain {
 			ux.Logger.PrintToUser("P->X transfer is an intra-account operation.")
 			ux.Logger.PrintToUser("Tokens will be transferred to the same account address on the other chain")
@@ -232,7 +233,7 @@ func transferF(*cobra.Command, []string) error {
 		if senderChainFlags.CChain && receiverChainFlags.PChain {
 			ux.Logger.PrintToUser("C->P transfer is an intra-account operation.")
 			ux.Logger.PrintToUser("Tokens will be transferred to the same account address on the other chain")
-			goalStr = "specify the sender/receiver address"
+			goalStr = "as the sender/receiver address"
 		}
 		useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir(), true)
 		if err != nil {
@@ -598,6 +599,19 @@ func pToPSend(
 		}
 		return err
 	}
+	pContext := wallet.P().Builder().Context()
+	var pFeeCalculator avagofee.Calculator
+	if pContext.GasPrice != 0 {
+		pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
+	} else {
+		pFeeCalculator = avagofee.NewStaticCalculator(pContext.StaticFeeConfig)
+	}
+	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Paid fee: %.9f", float64(txFee)/float64(units.Avax))
 	return nil
 }
 

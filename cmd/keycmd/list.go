@@ -558,28 +558,44 @@ func getEvmBasedChainAddrInfo(
 			if err != nil {
 				return addressInfos, err
 			}
+
+			// Ignore contract address access errors as those may depend on network
 			tokenSymbol, err := token.Symbol(nil)
-			if err == nil {
-				// just ignore contract address access errors as those may depend on network
-				balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
-				if err != nil {
-					return addressInfos, err
-				}
-				formattedBalance, err := formatCChainBalance(balance)
-				if err != nil {
-					return addressInfos, err
-				}
-				info := addressInfo{
-					kind:    kind,
-					name:    name,
-					chain:   chainName,
-					token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
-					address: cChainAddr,
-					balance: formattedBalance,
-					network: network.Name(),
-				}
-				addressInfos = append(addressInfos, info)
+			if err != nil {
+				continue
 			}
+
+			// Get the raw balance for the given token.
+			balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
+			if err != nil {
+				return addressInfos, err
+			}
+
+			// Get the decimal count for the token to format the balance.
+			// Note: decimals() is not officially part of the IERC20 interface, but is a common extension.
+			decimals, err := token.Decimals(nil)
+			if err != nil {
+				return addressInfos, err
+			}
+
+			// Format the balance to a human-readable string.
+			var formattedBalance string
+			if useGwei {
+				formattedBalance = fmt.Sprintf("%d", balance)
+			} else {
+				formattedBalance = utils.FormatAmount(balance, decimals)
+			}
+
+			info := addressInfo{
+				kind:    kind,
+				name:    name,
+				chain:   chainName,
+				token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
+				address: cChainAddr,
+				balance: formattedBalance,
+				network: network.Name(),
+			}
+			addressInfos = append(addressInfos, info)
 		}
 	}
 	return addressInfos, nil

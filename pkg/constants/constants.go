@@ -98,6 +98,7 @@ const (
 
 	Cortina17Version = "v1.10.17"
 	Durango11Version = "v1.11.11"
+	Durango12Version = "v1.11.12"
 
 	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
@@ -134,6 +135,16 @@ const (
 	BootstrapSnapshotSingleNodePreDurango11LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango11ArchiveName
 	BootstrapSnapshotSingleNodePreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango11LocalPath
 	BootstrapSnapshotSingleNodePreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango11.txt"
+
+	BootstrapSnapshotPreDurango12ArchiveName = "bootstrapSnapshot.PreDurango12.tar.gz"
+	BootstrapSnapshotPreDurango12LocalPath   = AssetsDir + BootstrapSnapshotPreDurango12ArchiveName
+	BootstrapSnapshotPreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango12LocalPath
+	BootstrapSnapshotPreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango12.txt"
+
+	BootstrapSnapshotSingleNodePreDurango12ArchiveName = "bootstrapSnapshotSingleNode.PreDurango12.tar.gz"
+	BootstrapSnapshotSingleNodePreDurango12LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango12ArchiveName
+	BootstrapSnapshotSingleNodePreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango12LocalPath
+	BootstrapSnapshotSingleNodePreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango12.txt"
 
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
