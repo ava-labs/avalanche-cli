@@ -105,14 +105,13 @@ func GetBlockchainEndpoints(
 		if err != nil {
 			return "", "", fmt.Errorf("failed to load sidecar: %w", err)
 		}
-		if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-			return "", "", fmt.Errorf("blockchain has not been deployed to %s", network.Name())
-		}
-		if len(sc.Networks[network.Name()].RPCEndpoints) > 0 {
-			rpcEndpoint = sc.Networks[network.Name()].RPCEndpoints[0]
-		}
-		if len(sc.Networks[network.Name()].WSEndpoints) > 0 {
-			wsEndpoint = sc.Networks[network.Name()].WSEndpoints[0]
+		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
+			if len(sc.Networks[network.Name()].RPCEndpoints) > 0 {
+				rpcEndpoint = sc.Networks[network.Name()].RPCEndpoints[0]
+			}
+			if len(sc.Networks[network.Name()].WSEndpoints) > 0 {
+				wsEndpoint = sc.Networks[network.Name()].WSEndpoints[0]
+			}
 		}
 	case chainSpec.CChain:
 		rpcEndpoint = network.CChainEndpoint()
