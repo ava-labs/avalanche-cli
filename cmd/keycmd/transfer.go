@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -274,7 +275,7 @@ func transferF(*cobra.Command, []string) error {
 				subnetNames,
 				false,
 				false,
-				originSubnet == cChain,
+				false,
 				avoidSubnet,
 				false,
 			)
@@ -293,6 +294,55 @@ func transferF(*cobra.Command, []string) error {
 			default:
 				destinationSubnet = subnetName
 			}
+		}
+		if originSubnet == cChain && destinationSubnet == cChain {
+			privateKey, err := prompts.PromptPrivateKey(
+				app.Prompt,
+				fmt.Sprintf("sender private key"),
+				app.GetKeyDir(),
+				app.GetKey,
+				"",
+				"",
+			)
+			if err != nil {
+				return err
+			}
+			destinationAddr, err := prompts.PromptAddress(
+				app.Prompt,
+				"destination address",
+				app.GetKeyDir(),
+				app.GetKey,
+				"",
+				network,
+				prompts.EVMFormat,
+				"destination address",
+			)
+			if err != nil {
+				return err
+			}
+			amountFlt, err := app.Prompt.CaptureFloat(
+				"Amount to transfer",
+				func(f float64) error {
+					if f <= 0 {
+						return fmt.Errorf("not positive")
+					}
+					return nil
+				},
+			)
+			if err != nil {
+				return err
+			}
+			amountBigFlt := new(big.Float).SetFloat64(amountFlt)
+			amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
+			amount, _ := amountBigFlt.Int(nil)
+			client, err := clievm.GetClient(network.CChainEndpoint())
+			if err != nil {
+				return err
+			}
+			if err := clievm.FundAddress(client, privateKey, destinationAddr, amount); err != nil {
+				return err
+			}
+			return nil
 		}
 		if destinationSubnet != "" {
 			originURL := network.CChainEndpoint()
