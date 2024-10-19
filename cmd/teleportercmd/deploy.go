@@ -59,7 +59,8 @@ func newDeployCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	deployFlags.PrivateKeyFlags.AddToCmd(cmd, "to fund ICM deploy")
-	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM", true)
+	deployFlags.ChainFlags.SetEnabled(true, true, false, false, true)
+	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM into %s")
 	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
 	cmd.Flags().StringVar(&deployFlags.RPCURL, "rpc-url", "", "use the given RPC URL to connect to the subnet")

@@ -73,14 +73,18 @@ func NewDeployCmd() *cobra.Command {
 		"home-blockchain",
 		"c-chain-home",
 		"",
+		"",
+		"",
 	)
-	deployFlags.homeFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Home Chain", false)
+	deployFlags.homeFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Home Chain into %s")
 	deployFlags.remoteFlags.chainFlags.SetFlagNames(
 		"remote-blockchain",
 		"c-chain-remote",
 		"",
+		"",
+		"",
 	)
-	deployFlags.remoteFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Remote Chain", false)
+	deployFlags.remoteFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Remote Chain into %s")
 	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")

@@ -4,6 +4,7 @@ package contract
 
 import (
 	"fmt"
+	"strings"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -17,18 +18,29 @@ import (
 )
 
 type ChainSpec struct {
-	blockchainFlagName   string
-	cChainFlagName       string
-	blockchainIDFlagName string
-	BlockchainName       string
-	CChain               bool
-	BlockchainID         string
+	BlockchainName            string
+	blockchainNameFlagEnabled bool
+	blockchainNameFlagName    string
+	CChain                    bool
+	cChainFlagEnabled         bool
+	cChainFlagName            string
+	PChain                    bool
+	pChainFlagEnabled         bool
+	pChainFlagName            string
+	XChain                    bool
+	xChainFlagEnabled         bool
+	xChainFlagName            string
+	BlockchainID              string
+	blockchainIDFlagEnabled   bool
+	blockchainIDFlagName      string
 }
 
 const (
-	defaultBlockchainFlagName   = "blockchain"
-	defaultCChainFlagName       = "c-chain"
-	defaultBlockchainIDFlagName = "blockchain-id"
+	defaultBlockchainNameFlagName = "blockchain"
+	defaultCChainFlagName         = "c-chain"
+	defaultPChainFlagName         = "p-chain"
+	defaultXChainFlagName         = "x-chain"
+	defaultBlockchainIDFlagName   = "blockchain-id"
 )
 
 func (cs *ChainSpec) CheckMutuallyExclusiveFields() error {
@@ -36,26 +48,65 @@ func (cs *ChainSpec) CheckMutuallyExclusiveFields() error {
 		cs.BlockchainName != "",
 		cs.BlockchainID != "",
 		cs.CChain,
+		cs.PChain,
+		cs.XChain,
 	}) {
-		return fmt.Errorf("%s, %s and %s are mutually exclusive flags",
-			cs.blockchainFlagName,
-			cs.cChainFlagName,
-			cs.blockchainIDFlagName,
+		flags := []string{}
+		if cs.blockchainNameFlagEnabled {
+			flags = append(flags, cs.blockchainNameFlagName)
+		}
+		if cs.cChainFlagEnabled {
+			flags = append(flags, cs.cChainFlagName)
+		}
+		if cs.pChainFlagEnabled {
+			flags = append(flags, cs.pChainFlagName)
+		}
+		if cs.xChainFlagEnabled {
+			flags = append(flags, cs.xChainFlagName)
+		}
+		if cs.blockchainIDFlagEnabled {
+			flags = append(flags, cs.blockchainIDFlagName)
+		}
+		return fmt.Errorf("%s are mutually exclusive flags",
+			strings.Join(flags, ", "),
 		)
 	}
 	return nil
 }
 
 func (cs *ChainSpec) Defined() bool {
-	return cs.BlockchainName != "" || cs.BlockchainID != "" || cs.CChain
+	if cs.blockchainNameFlagEnabled && cs.BlockchainName != "" {
+		return true
+	}
+	if cs.cChainFlagEnabled && cs.CChain {
+		return true
+	}
+	if cs.pChainFlagEnabled && cs.PChain {
+		return true
+	}
+	if cs.xChainFlagEnabled && cs.XChain {
+		return true
+	}
+	if cs.blockchainIDFlagEnabled && cs.BlockchainID != "" {
+		return true
+	}
+	return false
 }
 
-func (cs *ChainSpec) fillDefaultFlagNames() {
-	if cs.blockchainFlagName == "" {
-		cs.blockchainFlagName = defaultBlockchainFlagName
+func (cs *ChainSpec) fillDefaults() {
+	if cs.blockchainNameFlagName == "" {
+		cs.blockchainIDFlagEnabled = true
+		cs.blockchainNameFlagName = defaultBlockchainNameFlagName
 	}
 	if cs.cChainFlagName == "" {
+		cs.cChainFlagEnabled = true
 		cs.cChainFlagName = defaultCChainFlagName
+	}
+	if cs.pChainFlagName == "" {
+		cs.pChainFlagName = defaultPChainFlagName
+	}
+	if cs.xChainFlagName == "" {
+		cs.xChainFlagName = defaultXChainFlagName
 	}
 	if cs.blockchainIDFlagName == "" {
 		cs.blockchainIDFlagName = defaultBlockchainIDFlagName
@@ -63,28 +114,52 @@ func (cs *ChainSpec) fillDefaultFlagNames() {
 }
 
 func (cs *ChainSpec) SetFlagNames(
-	blockchainFlagName string,
+	blockchainNameFlagName string,
 	cChainFlagName string,
+	pChainFlagName string,
+	xChainFlagName string,
 	blockchainIDFlagName string,
 ) {
-	cs.blockchainFlagName = blockchainFlagName
+	cs.blockchainNameFlagName = blockchainNameFlagName
 	cs.cChainFlagName = cChainFlagName
+	cs.pChainFlagName = pChainFlagName
+	cs.xChainFlagName = xChainFlagName
 	cs.blockchainIDFlagName = blockchainIDFlagName
+}
+
+func (cs *ChainSpec) SetEnabled(
+	blockchainNameFlagEnabled bool,
+	cChainFlagEnabled bool,
+	pChainFlagEnabled bool,
+	xChainFlagEnabled bool,
+	blockchainIDFlagEnabled bool,
+) {
+	cs.blockchainNameFlagEnabled = blockchainNameFlagEnabled
+	cs.cChainFlagEnabled = cChainFlagEnabled
+	cs.pChainFlagEnabled = pChainFlagEnabled
+	cs.xChainFlagEnabled = xChainFlagEnabled
+	cs.blockchainIDFlagEnabled = blockchainIDFlagEnabled
 }
 
 func (cs *ChainSpec) AddToCmd(
 	cmd *cobra.Command,
-	goal string,
-	addBlockchainIDFlag bool,
+	goalFmt string,
 ) {
-	cs.fillDefaultFlagNames()
-	if cs.blockchainFlagName == defaultBlockchainFlagName {
-		cmd.Flags().StringVar(&cs.BlockchainName, "subnet", "", fmt.Sprintf("%s into the given CLI blockchain", goal))
+	cs.fillDefaults()
+	if cs.blockchainNameFlagEnabled {
+		cmd.Flags().StringVar(&cs.BlockchainName, cs.blockchainNameFlagName, "", fmt.Sprintf(goalFmt, "the given CLI blockchain"))
 	}
-	cmd.Flags().StringVar(&cs.BlockchainName, cs.blockchainFlagName, "", fmt.Sprintf("%s into the given CLI blockchain", goal))
-	cmd.Flags().BoolVar(&cs.CChain, cs.cChainFlagName, false, fmt.Sprintf("%s into C-Chain", goal))
-	if addBlockchainIDFlag {
-		cmd.Flags().StringVar(&cs.BlockchainID, cs.blockchainIDFlagName, "", fmt.Sprintf("%s into the given blockchain ID/Alias", goal))
+	if cs.cChainFlagEnabled {
+		cmd.Flags().BoolVar(&cs.CChain, cs.cChainFlagName, false, fmt.Sprintf(goalFmt, "C-Chain"))
+	}
+	if cs.pChainFlagEnabled {
+		cmd.Flags().BoolVar(&cs.PChain, cs.pChainFlagName, false, fmt.Sprintf(goalFmt, "P-Chain"))
+	}
+	if cs.xChainFlagEnabled {
+		cmd.Flags().BoolVar(&cs.XChain, cs.xChainFlagName, false, fmt.Sprintf(goalFmt, "X-Chain"))
+	}
+	if cs.blockchainIDFlagEnabled {
+		cmd.Flags().StringVar(&cs.BlockchainID, cs.blockchainIDFlagName, "", fmt.Sprintf(goalFmt, "the given blockchain ID/Alias"))
 	}
 }
 
