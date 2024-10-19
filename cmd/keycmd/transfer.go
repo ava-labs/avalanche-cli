@@ -353,62 +353,13 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if senderChainFlags.PChain && receiverChainFlags.PChain {
-		destinationAddr, err := address.ParseToID(destinationAddrStr)
-		if err != nil {
-			return err
-		}
-		ethKeychain := secp256k1fx.NewKeychain()
-		wallet, err := primary.MakeWallet(
-			context.Background(),
-			&primary.WalletConfig{
-				URI:          network.Endpoint,
-				AVAXKeychain: kc,
-				EthKeychain:  ethKeychain,
-			},
+		return pToPSend(
+			network,
+			kc,
+			usingLedger,
+			destinationAddrStr,
+			amount,
 		)
-		if err != nil {
-			return err
-		}
-		to := secp256k1fx.OutputOwners{
-			Threshold: 1,
-			Addrs:     []ids.ShortID{destinationAddr},
-		}
-		output := &avax.TransferableOutput{
-			Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
-			Out: &secp256k1fx.TransferOutput{
-				Amt:          amount,
-				OutputOwners: to,
-			},
-		}
-		outputs := []*avax.TransferableOutput{output}
-		ux.Logger.PrintToUser("Issuing BaseTx P -> P")
-		if usingLedger {
-			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
-		}
-		unsignedTx, err := wallet.P().Builder().NewBaseTx(
-			outputs,
-		)
-		if err != nil {
-			return fmt.Errorf("error building tx: %w", err)
-		}
-		tx := txs.Tx{Unsigned: unsignedTx}
-		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
-			return fmt.Errorf("error signing tx: %w", err)
-		}
-		ctx, cancel := utils.GetAPIContext()
-		defer cancel()
-		err = wallet.P().IssueTx(
-			&tx,
-			common.WithContext(ctx),
-		)
-		if err != nil {
-			if ctx.Err() != nil {
-				err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
-			} else {
-				err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
-			}
-			return err
-		}
 	}
 
 	if senderChainFlags.PChain && receiverChainFlags.CChain {
@@ -1023,4 +974,70 @@ func interEvmSend(
 		destinationAddr,
 		amountInt,
 	)
+}
+
+func pToPSend(
+	network models.Network,
+	kc keychain.Keychain,
+	usingLedger bool,
+	destinationAddrStr string,
+	amount uint64,
+) error {
+	destinationAddr, err := address.ParseToID(destinationAddrStr)
+	if err != nil {
+		return err
+	}
+	ethKeychain := secp256k1fx.NewKeychain()
+	wallet, err := primary.MakeWallet(
+		context.Background(),
+		&primary.WalletConfig{
+			URI:          network.Endpoint,
+			AVAXKeychain: kc,
+			EthKeychain:  ethKeychain,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	to := secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     []ids.ShortID{destinationAddr},
+	}
+	output := &avax.TransferableOutput{
+		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Out: &secp256k1fx.TransferOutput{
+			Amt:          amount,
+			OutputOwners: to,
+		},
+	}
+	outputs := []*avax.TransferableOutput{output}
+	ux.Logger.PrintToUser("Issuing BaseTx P -> P")
+	if usingLedger {
+		ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.P().Builder().NewBaseTx(
+		outputs,
+	)
+	if err != nil {
+		return fmt.Errorf("error building tx: %w", err)
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return fmt.Errorf("error signing tx: %w", err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		return err
+	}
+	return nil
 }
