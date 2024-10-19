@@ -899,10 +899,10 @@ func PromptChain(
 	prompter Prompter,
 	prompt string,
 	subnetNames []string,
-	avoidPChain bool,
-	avoidXChain bool,
-	avoidCChain bool,
-	avoidSubnet string,
+	includePChain bool,
+	includeXChain bool,
+	includeCChain bool,
+	avoidBlockchainName string,
 	includeCustom bool,
 ) (bool, bool, bool, bool, string, string, error) {
 	pChainOption := "P-Chain"
@@ -910,16 +910,15 @@ func PromptChain(
 	cChainOption := "C-Chain"
 	notListedOption := "My blockchain isn't listed"
 	subnetOptions := []string{}
-	if !avoidPChain {
+	if includePChain {
 		subnetOptions = append(subnetOptions, pChainOption)
 	}
-	if !avoidXChain {
+	if includeXChain {
 		subnetOptions = append(subnetOptions, xChainOption)
 	}
-	if !avoidCChain {
+	if includeCChain {
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
-	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
 	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	if includeCustom {
 		subnetOptions = append(subnetOptions, customOption)

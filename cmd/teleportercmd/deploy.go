@@ -101,9 +101,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			app,
 			network,
 			prompt,
-			false,
 			"",
-			false,
 			&flags.ChainFlags,
 		); err != nil {
 			return err

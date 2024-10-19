@@ -77,9 +77,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			app,
 			network,
 			prompt,
-			false,
 			"",
-			true,
 			&deployERC20Flags.chainFlags,
 		); cancel || err != nil {
 			return err

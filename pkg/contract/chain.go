@@ -125,6 +125,13 @@ func (cs *ChainSpec) SetFlagNames(
 	cs.pChainFlagName = pChainFlagName
 	cs.xChainFlagName = xChainFlagName
 	cs.blockchainIDFlagName = blockchainIDFlagName
+	cs.SetEnabled(
+		cs.blockchainNameFlagName != "",
+		cs.cChainFlagName != "",
+		cs.pChainFlagName != "",
+		cs.xChainFlagName != "",
+		cs.blockchainIDFlagName != "",
+	)
 }
 
 func (cs *ChainSpec) SetEnabled(
@@ -377,24 +384,28 @@ func PromptChain(
 	app *application.Avalanche,
 	network models.Network,
 	prompt string,
-	avoidCChain bool,
-	avoidBlockchain string,
-	includeCustom bool,
+	blockchainNameToAvoid string,
 	chainSpec *ChainSpec,
 ) (bool, error) {
-	blockchainNames, err := app.GetBlockchainNamesOnNetwork(network)
-	if err != nil {
-		return false, err
+	var (
+		err             error
+		blockchainNames []string
+	)
+	if chainSpec.blockchainNameFlagEnabled {
+		blockchainNames, err = app.GetBlockchainNamesOnNetwork(network)
+		if err != nil {
+			return false, err
+		}
 	}
-	cancel, _, _, cChain, blockchainName, blockchainID, err := prompts.PromptChain(
+	cancel, pChain, xChain, cChain, blockchainName, blockchainID, err := prompts.PromptChain(
 		app.Prompt,
 		prompt,
 		blockchainNames,
-		true,
-		true,
-		avoidCChain,
-		avoidBlockchain,
-		includeCustom,
+		chainSpec.pChainFlagEnabled,
+		chainSpec.xChainFlagEnabled,
+		chainSpec.cChainFlagEnabled,
+		blockchainNameToAvoid,
+		chainSpec.blockchainIDFlagEnabled,
 	)
 	if err != nil || cancel {
 		return cancel, err
@@ -409,6 +420,8 @@ func PromptChain(
 	}
 	chainSpec.BlockchainName = blockchainName
 	chainSpec.CChain = cChain
+	chainSpec.PChain = pChain
+	chainSpec.XChain = xChain
 	chainSpec.BlockchainID = blockchainID
 	return false, nil
 }

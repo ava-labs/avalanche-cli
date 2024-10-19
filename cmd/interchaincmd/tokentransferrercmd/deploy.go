@@ -142,7 +142,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// Home Chain Prompts
 	if !flags.homeFlags.chainFlags.Defined() {
 		prompt := "Where is the Token origin?"
-		if cancel, err := contract.PromptChain(app, network, prompt, false, "", false, &flags.homeFlags.chainFlags); err != nil {
+		if cancel, err := contract.PromptChain(app, network, prompt, "", &flags.homeFlags.chainFlags); err != nil {
 			return err
 		} else if cancel {
 			return nil
@@ -358,13 +358,18 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if flags.remoteFlags.native {
 			prompt = "Where should the token be available as a Native Token?"
 		}
+		flags.remoteFlags.chainFlags.SetEnabled(
+			true,
+			!flags.homeFlags.chainFlags.CChain,
+			false,
+			false,
+			false,
+		)
 		if cancel, err := contract.PromptChain(
 			app,
 			network,
 			prompt,
-			flags.homeFlags.chainFlags.CChain,
 			flags.homeFlags.chainFlags.BlockchainName,
-			false,
 			&flags.remoteFlags.chainFlags,
 		); err != nil {
 			return err

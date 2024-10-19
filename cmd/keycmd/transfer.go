@@ -76,6 +76,9 @@ var (
 	originTransferrerAddress      string
 	destinationTransferrerAddress string
 	destinationKeyName            string
+	//
+	senderChainFlags   contract.ChainSpec
+	receiverChainFlags contract.ChainSpec
 )
 
 func newTransferCmd() *cobra.Command {
@@ -190,6 +193,22 @@ func newTransferCmd() *cobra.Command {
 		"",
 		"token transferrer address at the destination subnet (token transferrer experimental)",
 	)
+	senderChainFlags.SetFlagNames(
+		"sender-blockchain",
+		"c-chain-sender",
+		"p-chain-sender",
+		"x-chain-sender",
+		"sender-blockchain-id",
+	)
+	senderChainFlags.AddToCmd(cmd, "send from %s")
+	receiverChainFlags.SetFlagNames(
+		"receiver-blockchain",
+		"c-chain-receiver",
+		"p-chain-receiver",
+		"x-chain-receiver",
+		"receiver-blockchain-id",
+	)
+	receiverChainFlags.AddToCmd(cmd, "receive at %s")
 	return cmd
 }
 
@@ -215,149 +234,99 @@ func transferF(*cobra.Command, []string) error {
 		return err
 	}
 
-	subnetNames, err := app.GetBlockchainNamesOnNetwork(network)
-	if err != nil {
-		return err
+	if !senderChainFlags.Defined() {
+		prompt := "Where are the funds to transfer?"
+		if cancel, err := contract.PromptChain(
+			app,
+			network,
+			prompt,
+			"",
+			&senderChainFlags,
+		); err != nil {
+			return err
+		} else if cancel {
+			return nil
+		}
 	}
 
-	if originSubnet == "" && !PToX && !PToP {
-		prompt := "Where are the funds to transfer?"
-		cancel, pChainChoosen, _, cChainChoosen, subnetName, _, err := prompts.PromptChain(
-			app.Prompt,
+	if !receiverChainFlags.Defined() {
+		prompt := "Where are the funds going to?"
+		if cancel, err := contract.PromptChain(
+			app,
+			network,
 			prompt,
-			subnetNames,
-			false,
-			true,
-			false,
 			"",
+			&receiverChainFlags,
+		); err != nil {
+			return err
+		} else if cancel {
+			return nil
+		}
+	}
+
+	if (senderChainFlags.CChain && receiverChainFlags.CChain) ||
+		(senderChainFlags.BlockchainName != "" && receiverChainFlags.BlockchainName != "") {
+		// intra evm send
+		privateKey, err := prompts.PromptPrivateKey(
+			app.Prompt,
+			"sender private key",
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		destinationAddr, err := prompts.PromptAddress(
+			app.Prompt,
+			"destination address",
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			network,
+			prompts.EVMFormat,
+			"destination address",
+		)
+		if err != nil {
+			return err
+		}
+		amountFlt, err := app.Prompt.CaptureFloat(
+			"Amount to transfer",
+			func(f float64) error {
+				if f <= 0 {
+					return fmt.Errorf("not positive")
+				}
+				return nil
+			},
+		)
+		if err != nil {
+			return err
+		}
+		amountBigFlt := new(big.Float).SetFloat64(amountFlt)
+		amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
+		amount, _ := amountBigFlt.Int(nil)
+		senderURL, _, err := contract.GetBlockchainEndpoints(
+			app,
+			network,
+			senderChainFlags,
+			true,
 			false,
 		)
 		if err != nil {
 			return err
 		}
-		switch {
-		case cancel:
-			return nil
-		case pChainChoosen:
-			option, err := app.Prompt.CaptureList(
-				"Destination Chain",
-				[]string{"P-Chain", "X-Chain", "C-Chain"},
-			)
-			if err != nil {
-				return err
-			}
-			switch option {
-			case "P-Chain":
-				PToP = true
-			case "C-Chain":
-				PToC = true
-			case "X-Chain":
-				PToX = true
-			}
-		case cChainChoosen:
-			originSubnet = cChain
-		default:
-			originSubnet = subnetName
+		client, err := clievm.GetClient(senderURL)
+		if err != nil {
+			return err
 		}
+		return clievm.FundAddress(client, privateKey, destinationAddr, amount)
 	}
 
-	// token transferrer experimental
-	if originSubnet != "" {
-		if destinationSubnet == "" {
-			prompt := "Where are the funds going to?"
-			cancel, pChainChoosen, xChainChoosen, cChainChoosen, subnetName, _, err := prompts.PromptChain(
-				app.Prompt,
-				prompt,
-				subnetNames,
-				false,
-				false,
-				false,
-				"",
-				false,
-			)
-			if err != nil {
-				return err
-			}
-			switch {
-			case cancel:
-				return nil
-			case pChainChoosen:
-				CToP = true
-			case xChainChoosen:
-				CToX = true
-			case cChainChoosen:
-				destinationSubnet = cChain
-			default:
-				destinationSubnet = subnetName
-			}
-		}
-		if originSubnet == destinationSubnet {
-			privateKey, err := prompts.PromptPrivateKey(
-				app.Prompt,
-				"sender private key",
-				app.GetKeyDir(),
-				app.GetKey,
-				"",
-				"",
-			)
-			if err != nil {
-				return err
-			}
-			destinationAddr, err := prompts.PromptAddress(
-				app.Prompt,
-				"destination address",
-				app.GetKeyDir(),
-				app.GetKey,
-				"",
-				network,
-				prompts.EVMFormat,
-				"destination address",
-			)
-			if err != nil {
-				return err
-			}
-			amountFlt, err := app.Prompt.CaptureFloat(
-				"Amount to transfer",
-				func(f float64) error {
-					if f <= 0 {
-						return fmt.Errorf("not positive")
-					}
-					return nil
-				},
-			)
-			if err != nil {
-				return err
-			}
-			amountBigFlt := new(big.Float).SetFloat64(amountFlt)
-			amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
-			amount, _ := amountBigFlt.Int(nil)
-			originChainSpec := contract.ChainSpec{
-				BlockchainName: originSubnet,
-			}
-			if originSubnet == cChain {
-				originChainSpec = contract.ChainSpec{
-					CChain: true,
-				}
-			}
-			originURL, _, err := contract.GetBlockchainEndpoints(
-				app,
-				network,
-				originChainSpec,
-				true,
-				false,
-			)
-			if err != nil {
-				return err
-			}
-			client, err := clievm.GetClient(originURL)
-			if err != nil {
-				return err
-			}
-			if err := clievm.FundAddress(client, privateKey, destinationAddr, amount); err != nil {
-				return err
-			}
-			return nil
-		}
+	return nil
+
+	if false {
+		// token transferrer experimental
 		if destinationSubnet != "" {
 			originURL := network.CChainEndpoint()
 			if strings.ToLower(originSubnet) != cChain {
