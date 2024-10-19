@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -110,7 +109,7 @@ func GetBlockchainEndpoints(
 		if sc.Networks[networkName].BlockchainID == ids.Empty {
 			// look into the cluster deploys
 			for k := range sc.Networks {
-				sidecarNetwork, err := networkoptions.GetNetworkFromSidecarNetworkName(app, k)
+				sidecarNetwork, err := app.GetNetworkFromSidecarNetworkName(k)
 				if err == nil {
 					if sidecarNetwork.Kind == network.Kind && sidecarNetwork.Endpoint == network.Endpoint {
 						networkName = sidecarNetwork.Name()
