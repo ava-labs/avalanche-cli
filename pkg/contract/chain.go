@@ -316,6 +316,10 @@ func GetBlockchainDesc(
 		blockchainDesc = chainSpec.BlockchainName
 	case chainSpec.CChain:
 		blockchainDesc = "C-Chain"
+	case chainSpec.PChain:
+		blockchainDesc = "P-Chain"
+	case chainSpec.XChain:
+		blockchainDesc = "X-Chain"
 	case chainSpec.BlockchainID != "":
 		blockchainDesc = chainSpec.BlockchainID
 	default:

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -266,161 +265,39 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if (senderChainFlags.CChain && receiverChainFlags.CChain) ||
-		(senderChainFlags.BlockchainName != "" && receiverChainFlags.BlockchainName != "") {
+		(senderChainFlags.BlockchainName != "" && senderChainFlags.BlockchainName == receiverChainFlags.BlockchainName) {
 		return intraEvmSend(network, senderChainFlags)
 	}
 
-	return nil
-
-	if false {
-		// token transferrer experimental
-		if destinationSubnet != "" {
-			originURL := network.CChainEndpoint()
-			if strings.ToLower(originSubnet) != cChain {
-				originURL, _, err = contract.GetBlockchainEndpoints(
-					app,
-					network,
-					contract.ChainSpec{
-						BlockchainName: originSubnet,
-					},
-					true,
-					false,
-				)
-				if err != nil {
-					return err
-				}
-			}
-			var destinationBlockchainID ids.ID
-			if strings.ToLower(destinationSubnet) == cChain {
-				destinationBlockchainID, err = utils.GetChainID(network.Endpoint, "C")
-				if err != nil {
-					return err
-				}
-			} else {
-				sc, err := app.LoadSidecar(destinationSubnet)
-				if err != nil {
-					return err
-				}
-				blockchainID := sc.Networks[network.Name()].BlockchainID
-				if blockchainID == ids.Empty {
-					return fmt.Errorf("subnet %s is not deployed to %s", destinationSubnet, network.Name())
-				}
-				destinationBlockchainID = blockchainID
-			}
-			if originTransferrerAddress == "" {
-				addr, err := app.Prompt.CaptureAddress(
-					fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
-				)
-				if err != nil {
-					return err
-				}
-				originTransferrerAddress = addr.Hex()
-			} else {
-				if err := prompts.ValidateAddress(originTransferrerAddress); err != nil {
-					return err
-				}
-			}
-			if destinationTransferrerAddress == "" {
-				addr, err := app.Prompt.CaptureAddress(
-					fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
-				)
-				if err != nil {
-					return err
-				}
-				destinationTransferrerAddress = addr.Hex()
-			} else {
-				if err := prompts.ValidateAddress(destinationTransferrerAddress); err != nil {
-					return err
-				}
-			}
-			if keyName == "" {
-				keyName, err = prompts.CaptureKeyName(app.Prompt, "fund the transfer", app.GetKeyDir(), true)
-				if err != nil {
-					return err
-				}
-			}
-			originK, err := app.GetKey(keyName, network, false)
-			if err != nil {
-				return err
-			}
-			privateKey := originK.PrivKeyHex()
-			var destinationAddr goethereumcommon.Address
-			if destinationAddrStr == "" && destinationKeyName == "" {
-				option, err := app.Prompt.CaptureList(
-					"Do you want to choose a stored key for the destination, or input a destination address?",
-					[]string{"Key", "Address"},
-				)
-				if err != nil {
-					return err
-				}
-				switch option {
-				case "Key":
-					destinationKeyName, err = prompts.CaptureKeyName(app.Prompt, "receive the transfer", app.GetKeyDir(), true)
-					if err != nil {
-						return err
-					}
-				case "Address":
-					addr, err := app.Prompt.CaptureAddress(
-						"Enter the destination address",
-					)
-					if err != nil {
-						return err
-					}
-					destinationAddrStr = addr.Hex()
-				}
-			}
-			switch {
-			case destinationAddrStr != "":
-				if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
-					return err
-				}
-				destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
-			case destinationKeyName != "":
-				destinationK, err := app.GetKey(destinationKeyName, network, false)
-				if err != nil {
-					return err
-				}
-				destinationAddrStr = destinationK.C()
-				destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
-			default:
-				return fmt.Errorf("you should set the destination address or destination key")
-			}
-			if amountFlt == 0 {
-				amountFlt, err = captureAmount(true, "TOKEN units")
-				if err != nil {
-					return err
-				}
-			}
-			amount := new(big.Float).SetFloat64(amountFlt)
-			amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
-			amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
-			amountInt, _ := amount.Int(nil)
-			return ictt.Send(
-				originURL,
-				goethereumcommon.HexToAddress(originTransferrerAddress),
-				privateKey,
-				destinationBlockchainID,
-				goethereumcommon.HexToAddress(destinationTransferrerAddress),
-				destinationAddr,
-				amountInt,
-			)
-		}
+	if !senderChainFlags.PChain && !senderChainFlags.XChain && !receiverChainFlags.PChain && !receiverChainFlags.XChain {
+		return interEvmSend(network, senderChainFlags, receiverChainFlags)
 	}
 
-	if !send && !receive {
-		option, err := app.Prompt.CaptureList(
-			"Step of the transfer",
-			[]string{"Send", "Receive"},
-		)
-		if err != nil {
-			return err
-		}
-		if option == "Send" {
-			send = true
-		} else {
-			receive = true
-		}
+	senderDesc, err := contract.GetBlockchainDesc(senderChainFlags)
+	if err != nil {
+		return err
 	}
+	receiverDesc, err := contract.GetBlockchainDesc(receiverChainFlags)
+	if err != nil {
+		return err
+	}
+	if senderChainFlags.BlockchainName != "" || receiverChainFlags.BlockchainName != "" {
+		return fmt.Errorf("tranfer from %s to %s is not supported", senderDesc, receiverDesc)
+	}
+
+	if senderChainFlags.PChain && receiverChainFlags.PChain {
+	}
+
+	if senderChainFlags.PChain && receiverChainFlags.CChain {
+	}
+
+	if senderChainFlags.CChain && receiverChainFlags.PChain {
+	}
+
+	if senderChainFlags.PChain && receiverChainFlags.XChain {
+	}
+
+	return fmt.Errorf("tranfer from %s to %s is not supported", senderDesc, receiverDesc)
 
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
 		var useLedger bool
@@ -971,4 +848,126 @@ func intraEvmSend(
 		return err
 	}
 	return clievm.FundAddress(client, privateKey, destinationAddr, amount)
+}
+
+func interEvmSend(
+	network models.Network,
+	senderChain contract.ChainSpec,
+	receiverChain contract.ChainSpec,
+) error {
+	senderURL, _, err := contract.GetBlockchainEndpoints(
+		app,
+		network,
+		senderChain,
+		true,
+		false,
+	)
+	if err != nil {
+		return err
+	}
+	receiverBlockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		receiverChain,
+	)
+	if err != nil {
+		return err
+	}
+	if originTransferrerAddress == "" {
+		addr, err := app.Prompt.CaptureAddress(
+			fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
+		)
+		if err != nil {
+			return err
+		}
+		originTransferrerAddress = addr.Hex()
+	} else {
+		if err := prompts.ValidateAddress(originTransferrerAddress); err != nil {
+			return err
+		}
+	}
+	if destinationTransferrerAddress == "" {
+		addr, err := app.Prompt.CaptureAddress(
+			fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
+		)
+		if err != nil {
+			return err
+		}
+		destinationTransferrerAddress = addr.Hex()
+	} else {
+		if err := prompts.ValidateAddress(destinationTransferrerAddress); err != nil {
+			return err
+		}
+	}
+	if keyName == "" {
+		keyName, err = prompts.CaptureKeyName(app.Prompt, "fund the transfer", app.GetKeyDir(), true)
+		if err != nil {
+			return err
+		}
+	}
+	originK, err := app.GetKey(keyName, network, false)
+	if err != nil {
+		return err
+	}
+	privateKey := originK.PrivKeyHex()
+	var destinationAddr goethereumcommon.Address
+	if destinationAddrStr == "" && destinationKeyName == "" {
+		option, err := app.Prompt.CaptureList(
+			"Do you want to choose a stored key for the destination, or input a destination address?",
+			[]string{"Key", "Address"},
+		)
+		if err != nil {
+			return err
+		}
+		switch option {
+		case "Key":
+			destinationKeyName, err = prompts.CaptureKeyName(app.Prompt, "receive the transfer", app.GetKeyDir(), true)
+			if err != nil {
+				return err
+			}
+		case "Address":
+			addr, err := app.Prompt.CaptureAddress(
+				"Enter the destination address",
+			)
+			if err != nil {
+				return err
+			}
+			destinationAddrStr = addr.Hex()
+		}
+	}
+	switch {
+	case destinationAddrStr != "":
+		if err := prompts.ValidateAddress(destinationAddrStr); err != nil {
+			return err
+		}
+		destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+	case destinationKeyName != "":
+		destinationK, err := app.GetKey(destinationKeyName, network, false)
+		if err != nil {
+			return err
+		}
+		destinationAddrStr = destinationK.C()
+		destinationAddr = goethereumcommon.HexToAddress(destinationAddrStr)
+	default:
+		return fmt.Errorf("you should set the destination address or destination key")
+	}
+	if amountFlt == 0 {
+		amountFlt, err = captureAmount(true, "TOKEN units")
+		if err != nil {
+			return err
+		}
+	}
+	amount := new(big.Float).SetFloat64(amountFlt)
+	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
+	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
+	amountInt, _ := amount.Int(nil)
+	return ictt.Send(
+		senderURL,
+		goethereumcommon.HexToAddress(originTransferrerAddress),
+		privateKey,
+		receiverBlockchainID,
+		goethereumcommon.HexToAddress(destinationTransferrerAddress),
+		destinationAddr,
+		amountInt,
+	)
 }
