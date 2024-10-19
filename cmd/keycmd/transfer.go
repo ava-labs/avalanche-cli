@@ -14,6 +14,7 @@ import (
 	clievm "github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -266,61 +267,7 @@ func transferF(*cobra.Command, []string) error {
 
 	if (senderChainFlags.CChain && receiverChainFlags.CChain) ||
 		(senderChainFlags.BlockchainName != "" && receiverChainFlags.BlockchainName != "") {
-		// intra evm send
-		privateKey, err := prompts.PromptPrivateKey(
-			app.Prompt,
-			"sender private key",
-			app.GetKeyDir(),
-			app.GetKey,
-			"",
-			"",
-		)
-		if err != nil {
-			return err
-		}
-		destinationAddr, err := prompts.PromptAddress(
-			app.Prompt,
-			"destination address",
-			app.GetKeyDir(),
-			app.GetKey,
-			"",
-			network,
-			prompts.EVMFormat,
-			"destination address",
-		)
-		if err != nil {
-			return err
-		}
-		amountFlt, err := app.Prompt.CaptureFloat(
-			"Amount to transfer",
-			func(f float64) error {
-				if f <= 0 {
-					return fmt.Errorf("not positive")
-				}
-				return nil
-			},
-		)
-		if err != nil {
-			return err
-		}
-		amountBigFlt := new(big.Float).SetFloat64(amountFlt)
-		amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
-		amount, _ := amountBigFlt.Int(nil)
-		senderURL, _, err := contract.GetBlockchainEndpoints(
-			app,
-			network,
-			senderChainFlags,
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-		client, err := clievm.GetClient(senderURL)
-		if err != nil {
-			return err
-		}
-		return clievm.FundAddress(client, privateKey, destinationAddr, amount)
+		return intraEvmSend(network, senderChainFlags)
 	}
 
 	return nil
@@ -964,4 +911,64 @@ func captureAmount(sending bool, tokenDesc string) (float64, error) {
 		return 0, err
 	}
 	return amountFlt, nil
+}
+
+func intraEvmSend(
+	network models.Network,
+	senderChain contract.ChainSpec,
+) error {
+	privateKey, err := prompts.PromptPrivateKey(
+		app.Prompt,
+		"sender private key",
+		app.GetKeyDir(),
+		app.GetKey,
+		"",
+		"",
+	)
+	if err != nil {
+		return err
+	}
+	destinationAddr, err := prompts.PromptAddress(
+		app.Prompt,
+		"destination address",
+		app.GetKeyDir(),
+		app.GetKey,
+		"",
+		network,
+		prompts.EVMFormat,
+		"destination address",
+	)
+	if err != nil {
+		return err
+	}
+	amountFlt, err := app.Prompt.CaptureFloat(
+		"Amount to transfer",
+		func(f float64) error {
+			if f <= 0 {
+				return fmt.Errorf("not positive")
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+	amountBigFlt := new(big.Float).SetFloat64(amountFlt)
+	amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
+	amount, _ := amountBigFlt.Int(nil)
+	senderURL, _, err := contract.GetBlockchainEndpoints(
+		app,
+		network,
+		senderChain,
+		true,
+		false,
+	)
+	if err != nil {
+		return err
+	}
+	client, err := clievm.GetClient(senderURL)
+	if err != nil {
+		return err
+	}
+	return clievm.FundAddress(client, privateKey, destinationAddr, amount)
 }
