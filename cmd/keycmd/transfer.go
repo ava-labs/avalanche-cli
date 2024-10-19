@@ -281,32 +281,13 @@ func transferF(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-	if senderChainFlags.BlockchainName != "" || receiverChainFlags.BlockchainName != "" {
+	if senderChainFlags.BlockchainName != "" || receiverChainFlags.BlockchainName != "" || senderChainFlags.XChain {
 		return fmt.Errorf("tranfer from %s to %s is not supported", senderDesc, receiverDesc)
 	}
 
-	if senderChainFlags.PChain && receiverChainFlags.PChain {
-	}
-
-	if senderChainFlags.PChain && receiverChainFlags.CChain {
-	}
-
-	if senderChainFlags.CChain && receiverChainFlags.PChain {
-	}
-
-	if senderChainFlags.PChain && receiverChainFlags.XChain {
-	}
-
-	return fmt.Errorf("tranfer from %s to %s is not supported", senderDesc, receiverDesc)
-
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
 		var useLedger bool
-		goalStr := ""
-		if send {
-			goalStr = "specify the sender address"
-		} else {
-			goalStr = "specify the destination address"
-		}
+		goalStr := "specify the sender address"
 		useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir(), true)
 		if err != nil {
 			return err
@@ -318,16 +299,6 @@ func transferF(*cobra.Command, []string) error {
 			}
 		}
 	}
-
-	if amountFlt == 0 {
-		amountFlt, err = captureAmount(send, "AVAX units")
-		if err != nil {
-			return err
-		}
-	}
-	amount := uint64(amountFlt * float64(units.Avax))
-
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 
 	var kc keychain.Keychain
 	var sk *key.SoftKey
@@ -348,36 +319,120 @@ func transferF(*cobra.Command, []string) error {
 			return err
 		}
 	}
+	usingLedger := ledgerIndex != wrongLedgerIndexVal
 
-	var destinationAddr ids.ShortID
-	if send {
-		if destinationAddrStr == "" {
-			if PToP || CToP || PToC {
-				destinationAddrStr, err = app.Prompt.CapturePChainAddress("Destination address", network)
-				if err != nil {
-					return err
-				}
-			} else if PToX || CToX {
-				destinationAddrStr, err = app.Prompt.CaptureXChainAddress("Destination address", network)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		destinationAddr, err = address.ParseToID(destinationAddrStr)
+	if amountFlt == 0 {
+		amountFlt, err = captureAmount(send, "AVAX units")
 		if err != nil {
 			return err
 		}
-	} else {
-		destinationAddr = kc.Addresses().List()[0]
-		destinationAddrStr, err = address.Format("P", key.GetHRP(network.ID), destinationAddr[:])
+	}
+	amount := uint64(amountFlt * float64(units.Avax))
+
+	if destinationAddrStr == "" {
+		format := prompts.EVMFormat
+		if receiverChainFlags.PChain {
+			format = prompts.PChainFormat
+		}
+		if receiverChainFlags.XChain {
+			format = prompts.XChainFormat
+		}
+		destinationAddrStr, err = prompts.PromptAddress(
+			app.Prompt,
+			"destination address",
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			network,
+			format,
+			"destination address",
+		)
 		if err != nil {
 			return err
 		}
 	}
 
-	usingLedger := ledgerIndex != wrongLedgerIndexVal
+	if senderChainFlags.PChain && receiverChainFlags.PChain {
+		destinationAddr, err := address.ParseToID(destinationAddrStr)
+		if err != nil {
+			return err
+		}
+		ethKeychain := secp256k1fx.NewKeychain()
+		wallet, err := primary.MakeWallet(
+			context.Background(),
+			&primary.WalletConfig{
+				URI:          network.Endpoint,
+				AVAXKeychain: kc,
+				EthKeychain:  ethKeychain,
+			},
+		)
+		if err != nil {
+			return err
+		}
+		to := secp256k1fx.OutputOwners{
+			Threshold: 1,
+			Addrs:     []ids.ShortID{destinationAddr},
+		}
+		output := &avax.TransferableOutput{
+			Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+			Out: &secp256k1fx.TransferOutput{
+				Amt:          amount,
+				OutputOwners: to,
+			},
+		}
+		outputs := []*avax.TransferableOutput{output}
+		ux.Logger.PrintToUser("Issuing BaseTx P -> P")
+		if usingLedger {
+			ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+		}
+		unsignedTx, err := wallet.P().Builder().NewBaseTx(
+			outputs,
+		)
+		if err != nil {
+			return fmt.Errorf("error building tx: %w", err)
+		}
+		tx := txs.Tx{Unsigned: unsignedTx}
+		if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+			return fmt.Errorf("error signing tx: %w", err)
+		}
+		ctx, cancel := utils.GetAPIContext()
+		defer cancel()
+		err = wallet.P().IssueTx(
+			&tx,
+			common.WithContext(ctx),
+		)
+		if err != nil {
+			if ctx.Err() != nil {
+				err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+			} else {
+				err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+			}
+			return err
+		}
+	}
 
+	if senderChainFlags.PChain && receiverChainFlags.CChain {
+	}
+	if senderChainFlags.CChain && receiverChainFlags.PChain {
+		destinationAddr, err := address.ParseToID(destinationAddrStr)
+		if err != nil {
+			return err
+		}
+		_ = destinationAddr
+	}
+	if senderChainFlags.PChain && receiverChainFlags.XChain {
+		destinationAddr, err := address.ParseToID(destinationAddrStr)
+		if err != nil {
+			return err
+		}
+		_ = destinationAddr
+	}
+
+	return nil
+
+	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
+
+	var destinationAddr ids.ShortID
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("this operation is going to:")
 	if send {
@@ -525,6 +580,9 @@ func transferF(*cobra.Command, []string) error {
 			switch {
 			case PToP && !usingLedger:
 				ux.Logger.PrintToUser("Issuing BaseTx P -> P")
+				if usingLedger {
+					ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+				}
 				unsignedTx, err = wallet.P().Builder().NewBaseTx(
 					outputs,
 				)
@@ -772,12 +830,7 @@ func transferF(*cobra.Command, []string) error {
 }
 
 func captureAmount(sending bool, tokenDesc string) (float64, error) {
-	var promptStr string
-	if sending {
-		promptStr = fmt.Sprintf("Amount to send (%s)", tokenDesc)
-	} else {
-		promptStr = fmt.Sprintf("Amount to receive (%s)", tokenDesc)
-	}
+	promptStr := fmt.Sprintf("Amount to send (%s)", tokenDesc)
 	amountFlt, err := app.Prompt.CaptureFloat(promptStr, func(v float64) error {
 		if v <= 0 {
 			return fmt.Errorf("value %f must be greater than zero", v)

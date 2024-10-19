@@ -30,6 +30,7 @@ const (
 	Undefined AddressFormat = iota
 	PChainFormat
 	EVMFormat
+	XChainFormat
 )
 
 const (
@@ -1044,6 +1045,11 @@ func PromptAddress(
 			if err != nil {
 				return "", err
 			}
+		case XChainFormat:
+			address, err = prompter.CaptureXChainAddress(customPrompt, network)
+			if err != nil {
+				return "", err
+			}
 		case EVMFormat:
 			addr, err := prompter.CaptureAddress(customPrompt)
 			if err != nil {
@@ -1080,6 +1086,8 @@ func CaptureKeyAddress(
 	switch format {
 	case PChainFormat:
 		return k.P()[0], nil
+	case XChainFormat:
+		return k.X()[0], nil
 	case EVMFormat:
 		return k.C(), nil
 	}
