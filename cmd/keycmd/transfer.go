@@ -265,10 +265,6 @@ func transferF(*cobra.Command, []string) error {
 	if originSubnet != "" {
 		if destinationSubnet == "" {
 			prompt := "Where are the funds going to?"
-			avoidSubnet := originSubnet
-			if originSubnet == cChain {
-				avoidSubnet = ""
-			}
 			cancel, pChainChoosen, xChainChoosen, cChainChoosen, subnetName, _, err := prompts.PromptChain(
 				app.Prompt,
 				prompt,
@@ -276,7 +272,7 @@ func transferF(*cobra.Command, []string) error {
 				false,
 				false,
 				false,
-				avoidSubnet,
+				"",
 				false,
 			)
 			if err != nil {
@@ -295,7 +291,7 @@ func transferF(*cobra.Command, []string) error {
 				destinationSubnet = subnetName
 			}
 		}
-		if originSubnet == cChain && destinationSubnet == cChain {
+		if originSubnet == destinationSubnet {
 			privateKey, err := prompts.PromptPrivateKey(
 				app.Prompt,
 				fmt.Sprintf("sender private key"),
@@ -335,7 +331,19 @@ func transferF(*cobra.Command, []string) error {
 			amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 			amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
 			amount, _ := amountBigFlt.Int(nil)
-			client, err := clievm.GetClient(network.CChainEndpoint())
+			originURL, _, err := contract.GetBlockchainEndpoints(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainName: originSubnet,
+				},
+				true,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+			client, err := clievm.GetClient(originURL)
 			if err != nil {
 				return err
 			}
