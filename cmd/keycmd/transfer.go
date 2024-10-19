@@ -288,6 +288,11 @@ func transferF(*cobra.Command, []string) error {
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {
 		var useLedger bool
 		goalStr := "specify the sender address"
+		if receiverChainFlags.XChain {
+			ux.Logger.PrintToUser("P->X transfer is an intra-account operation.")
+			ux.Logger.PrintToUser("Tokens will be transferred to the same account address on the other chain")
+			goalStr = "specify the sender/receiver address"
+		}
 		useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, goalStr, app.GetKeyDir(), true)
 		if err != nil {
 			return err
@@ -322,14 +327,14 @@ func transferF(*cobra.Command, []string) error {
 	usingLedger := ledgerIndex != wrongLedgerIndexVal
 
 	if amountFlt == 0 {
-		amountFlt, err = captureAmount(send, "AVAX units")
+		amountFlt, err = captureAmount("AVAX units")
 		if err != nil {
 			return err
 		}
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	if destinationAddrStr == "" {
+	if destinationAddrStr == "" && !receiverChainFlags.XChain {
 		format := prompts.EVMFormat
 		if receiverChainFlags.PChain {
 			format = prompts.PChainFormat
@@ -363,20 +368,23 @@ func transferF(*cobra.Command, []string) error {
 	}
 
 	if senderChainFlags.PChain && receiverChainFlags.CChain {
+		return pToCSend(
+			network,
+			kc,
+			usingLedger,
+			destinationAddrStr,
+			amount,
+		)
 	}
 	if senderChainFlags.CChain && receiverChainFlags.PChain {
-		destinationAddr, err := address.ParseToID(destinationAddrStr)
-		if err != nil {
-			return err
-		}
-		_ = destinationAddr
 	}
 	if senderChainFlags.PChain && receiverChainFlags.XChain {
-		destinationAddr, err := address.ParseToID(destinationAddrStr)
-		if err != nil {
-			return err
-		}
-		_ = destinationAddr
+		return pToXSend(
+			network,
+			kc,
+			usingLedger,
+			amount,
+		)
 	}
 
 	return nil
@@ -780,7 +788,7 @@ func transferF(*cobra.Command, []string) error {
 	return nil
 }
 
-func captureAmount(sending bool, tokenDesc string) (float64, error) {
+func captureAmount(tokenDesc string) (float64, error) {
 	promptStr := fmt.Sprintf("Amount to send (%s)", tokenDesc)
 	amountFlt, err := app.Prompt.CaptureFloat(promptStr, func(v float64) error {
 		if v <= 0 {
@@ -956,7 +964,7 @@ func interEvmSend(
 		return fmt.Errorf("you should set the destination address or destination key")
 	}
 	if amountFlt == 0 {
-		amountFlt, err = captureAmount(true, "TOKEN units")
+		amountFlt, err = captureAmount("TOKEN units")
 		if err != nil {
 			return err
 		}
@@ -983,10 +991,6 @@ func pToPSend(
 	destinationAddrStr string,
 	amount uint64,
 ) error {
-	destinationAddr, err := address.ParseToID(destinationAddrStr)
-	if err != nil {
-		return err
-	}
 	ethKeychain := secp256k1fx.NewKeychain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
@@ -996,6 +1000,10 @@ func pToPSend(
 			EthKeychain:  ethKeychain,
 		},
 	)
+	if err != nil {
+		return err
+	}
+	destinationAddr, err := address.ParseToID(destinationAddrStr)
 	if err != nil {
 		return err
 	}
@@ -1028,6 +1036,234 @@ func pToPSend(
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		return err
+	}
+	return nil
+}
+
+func pToXSend(
+	network models.Network,
+	kc keychain.Keychain,
+	usingLedger bool,
+	amount uint64,
+) error {
+	ethKeychain := secp256k1fx.NewKeychain()
+	wallet, err := primary.MakeWallet(
+		context.Background(),
+		&primary.WalletConfig{
+			URI:          network.Endpoint,
+			AVAXKeychain: kc,
+			EthKeychain:  ethKeychain,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	to := secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     kc.Addresses().List(),
+	}
+	if err := exportFromP(
+		amount,
+		wallet,
+		wallet.X().Builder().Context().BlockchainID,
+		to,
+		usingLedger,
+	); err != nil {
+		return err
+	}
+	time.Sleep(5 * time.Second)
+	return importIntoX(
+		wallet,
+		avagoconstants.PlatformChainID,
+		to,
+		usingLedger,
+	)
+}
+
+func exportFromP(
+	amount uint64,
+	wallet primary.Wallet,
+	blockchainID ids.ID,
+	to secp256k1fx.OutputOwners,
+	usingLedger bool,
+) error {
+	output := &avax.TransferableOutput{
+		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Out: &secp256k1fx.TransferOutput{
+			Amt:          amount,
+			OutputOwners: to,
+		},
+	}
+	outputs := []*avax.TransferableOutput{output}
+	ux.Logger.PrintToUser("Issuing ExportTx P -> X")
+	if usingLedger {
+		ux.Logger.PrintToUser("*** Please sign 'Export Tx / P to X Chain' transaction on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.P().Builder().NewExportTx(
+		blockchainID,
+		outputs,
+	)
+	if err != nil {
+		return fmt.Errorf("error building tx: %w", err)
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return fmt.Errorf("error signing tx: %w", err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.P().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		return err
+	}
+	return nil
+}
+
+func importIntoX(
+	wallet primary.Wallet,
+	blockchainID ids.ID,
+	to secp256k1fx.OutputOwners,
+	usingLedger bool,
+) error {
+	ux.Logger.PrintToUser("Issuing ImportTx P -> X")
+	if usingLedger {
+		ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
+	}
+	unsignedTx, err := wallet.X().Builder().NewImportTx(
+		blockchainID,
+		&to,
+	)
+	if err != nil {
+		return fmt.Errorf("error building tx: %w", err)
+	}
+	tx := avmtxs.Tx{Unsigned: unsignedTx}
+	if err := wallet.X().Signer().Sign(context.Background(), &tx); err != nil {
+		return fmt.Errorf("error signing tx: %w", err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.X().IssueTx(
+		&tx,
+		common.WithContext(ctx),
+	)
+	if err != nil {
+		if ctx.Err() != nil {
+			err = fmt.Errorf("timeout issuing/verifying tx with ID %s: %w", tx.ID(), err)
+		} else {
+			err = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), err)
+		}
+		return err
+	}
+	return nil
+}
+
+func pToCSend(
+	network models.Network,
+	kc keychain.Keychain,
+	usingLedger bool,
+	destinationAddrStr string,
+	amount uint64,
+) error {
+	ethKeychain := secp256k1fx.NewKeychain()
+	wallet, err := primary.MakeWallet(
+		context.Background(),
+		&primary.WalletConfig{
+			URI:          network.Endpoint,
+			AVAXKeychain: kc,
+			EthKeychain:  ethKeychain,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	to := secp256k1fx.OutputOwners{
+		Threshold: 1,
+		Addrs:     kc.Addresses().List(),
+	}
+	if err := exportFromP(
+		amount,
+		wallet,
+		wallet.C().Builder().Context().BlockchainID,
+		to,
+		usingLedger,
+	); err != nil {
+		return err
+	}
+	time.Sleep(5 * time.Second)
+	wallet, err = primary.MakeWallet(
+		context.Background(),
+		&primary.WalletConfig{
+			URI:          network.Endpoint,
+			AVAXKeychain: kc,
+			EthKeychain:  ethKeychain,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	return importIntoC(
+		network,
+		wallet,
+		avagoconstants.PlatformChainID,
+		to,
+		destinationAddrStr,
+		usingLedger,
+	)
+}
+
+func importIntoC(
+	network models.Network,
+	wallet primary.Wallet,
+	blockchainID ids.ID,
+	to secp256k1fx.OutputOwners,
+	destinationAddrStr string,
+	usingLedger bool,
+) error {
+	ux.Logger.PrintToUser("Issuing ImportTx P -> C")
+	if usingLedger {
+		ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
+	}
+	client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+	if err != nil {
+		return err
+	}
+	baseFee, err := clievm.EstimateBaseFee(client)
+	if err != nil {
+		return err
+	}
+	unsignedTx, err := wallet.C().Builder().NewImportTx(
+		avagoconstants.PlatformChainID,
+		goethereumcommon.HexToAddress(destinationAddrStr),
+		baseFee,
+	)
+	if err != nil {
+		return fmt.Errorf("error building tx: %w", err)
+	}
+	tx := evm.Tx{UnsignedAtomicTx: unsignedTx}
+	if err := wallet.C().Signer().SignAtomic(context.Background(), &tx); err != nil {
+		return fmt.Errorf("error signing tx: %w", err)
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	err = wallet.C().IssueAtomicTx(
 		&tx,
 		common.WithContext(ctx),
 	)
