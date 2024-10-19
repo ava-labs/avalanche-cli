@@ -294,7 +294,7 @@ func transferF(*cobra.Command, []string) error {
 		if originSubnet == destinationSubnet {
 			privateKey, err := prompts.PromptPrivateKey(
 				app.Prompt,
-				fmt.Sprintf("sender private key"),
+				"sender private key",
 				app.GetKeyDir(),
 				app.GetKey,
 				"",
@@ -331,12 +331,18 @@ func transferF(*cobra.Command, []string) error {
 			amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 			amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
 			amount, _ := amountBigFlt.Int(nil)
+			originChainSpec := contract.ChainSpec{
+				BlockchainName: originSubnet,
+			}
+			if originSubnet == cChain {
+				originChainSpec = contract.ChainSpec{
+					CChain: true,
+				}
+			}
 			originURL, _, err := contract.GetBlockchainEndpoints(
 				app,
 				network,
-				contract.ChainSpec{
-					BlockchainName: originSubnet,
-				},
+				originChainSpec,
 				true,
 				false,
 			)

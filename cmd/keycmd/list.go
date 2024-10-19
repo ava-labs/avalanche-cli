@@ -207,7 +207,6 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 						false,
 					)
 					if err == nil {
-						fmt.Println(endpoint)
 						_, b := evmClients[network]
 						if !b {
 							evmClients[network] = map[string]ethclient.Client{}
