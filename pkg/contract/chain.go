@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -105,13 +106,23 @@ func GetBlockchainEndpoints(
 		if err != nil {
 			return "", "", fmt.Errorf("failed to load sidecar: %w", err)
 		}
-		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
-			if len(sc.Networks[network.Name()].RPCEndpoints) > 0 {
-				rpcEndpoint = sc.Networks[network.Name()].RPCEndpoints[0]
+		networkName := network.Name()
+		if sc.Networks[networkName].BlockchainID == ids.Empty {
+			// look into the cluster deploys
+			for k := range sc.Networks {
+				sidecarNetwork, err := networkoptions.GetNetworkFromSidecarNetworkName(app, k)
+				if err == nil {
+					if sidecarNetwork.Kind == network.Kind && sidecarNetwork.Endpoint == network.Endpoint {
+						networkName = sidecarNetwork.Name()
+					}
+				}
 			}
-			if len(sc.Networks[network.Name()].WSEndpoints) > 0 {
-				wsEndpoint = sc.Networks[network.Name()].WSEndpoints[0]
-			}
+		}
+		if len(sc.Networks[networkName].RPCEndpoints) > 0 {
+			rpcEndpoint = sc.Networks[networkName].RPCEndpoints[0]
+		}
+		if len(sc.Networks[networkName].WSEndpoints) > 0 {
+			wsEndpoint = sc.Networks[networkName].WSEndpoints[0]
 		}
 	case chainSpec.CChain:
 		rpcEndpoint = network.CChainEndpoint()

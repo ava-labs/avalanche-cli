@@ -238,6 +238,17 @@ func GetNetworkFromCmdLineFlags(
 		networkOption = Mainnet
 	case networkFlags.ClusterName != "":
 		networkOption = Cluster
+	case networkFlags.Endpoint != "":
+		switch networkFlags.Endpoint {
+		case constants.MainnetAPIEndpoint:
+			networkOption = Mainnet
+		case constants.FujiAPIEndpoint:
+			networkOption = Fuji
+		case constants.LocalAPIEndpoint:
+			networkOption = Local
+		default:
+			networkOption = Devnet
+		}
 	}
 	// unsupported option
 	if networkOption != Undefined && !slices.Contains(supportedNetworkOptions, networkOption) {
