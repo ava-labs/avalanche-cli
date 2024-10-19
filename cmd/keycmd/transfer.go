@@ -610,7 +610,6 @@ func pToPSend(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Paid fee: %.9f", float64(txFee)/float64(units.Avax))
 	return nil
 }
