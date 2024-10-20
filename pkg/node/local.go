@@ -25,7 +25,12 @@ import (
 	"github.com/ava-labs/avalanchego/utils/set"
 )
 
-func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockchainName string) error {
+func TrackSubnetWithLocalMachine(
+	app *application.Avalanche,
+	clusterName,
+	blockchainName string,
+	avalancheGoBinPath string,
+) error {
 	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
@@ -96,7 +101,11 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 			}
 		}
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
-		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
+		opts := []client.OpOption{
+			client.WithWhitelistedSubnets(subnetID.String()),
+			client.WithExecPath(avalancheGoBinPath),
+		}
+		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
 			return err
 		}
 		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
@@ -204,6 +213,7 @@ func StartLocalNode(
 	if localClusterDataExists(app, clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 		loadSnapshotOpts := []client.OpOption{
+			client.WithExecPath(avalancheGoBinPath),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithSnapshotPath(rootDir),
