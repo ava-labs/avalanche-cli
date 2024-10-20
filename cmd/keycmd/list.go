@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -376,7 +377,8 @@ func getStoredKeyInfo(
 					keyName,
 				)
 				if err != nil {
-					return nil, err
+					ux.Logger.RedXToUser("failure obtaining info for blockchain %s", subnetName)
+					continue
 				}
 				addrInfos = append(addrInfos, addrInfo...)
 			}
