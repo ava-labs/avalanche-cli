@@ -827,7 +827,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			} else {
-				if err := node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName); err != nil {
+				if err := node.TrackSubnetWithLocalMachine(
+					app,
+					clusterName,
+					blockchainName,
+					avagoBinaryPath,
+				); err != nil {
 					return err
 				}
 			}

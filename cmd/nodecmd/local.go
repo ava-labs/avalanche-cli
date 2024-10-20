@@ -93,13 +93,15 @@ func newLocalStopCmd() *cobra.Command {
 }
 
 func newLocalTrackCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "track [clusterName] [blockchainName]",
 		Short: "(ALPHA Warning) make the local node at the cluster to track given blockchain",
 		Long:  "(ALPHA Warning) make the local node at the cluster to track given blockchain",
 		Args:  cobra.ExactArgs(2),
 		RunE:  localTrack,
 	}
+	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
+	return cmd
 }
 
 func newLocalDestroyCmd() *cobra.Command {
@@ -162,7 +164,7 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 }
 
 func localTrack(_ *cobra.Command, args []string) error {
-	return node.TrackSubnetWithLocalMachine(app, args[0], args[1])
+	return node.TrackSubnetWithLocalMachine(app, args[0], args[1], avalanchegoBinaryPath)
 }
 
 func localStatus(_ *cobra.Command, args []string) error {
