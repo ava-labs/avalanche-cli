@@ -86,13 +86,12 @@ func addBoth(network models.Network, configSpec ConfigSpec) (ConfigSpec, error) 
 
 func getBlockchain(network models.Network, prompt string) (contract.ChainSpec, error) {
 	chainSpec := contract.ChainSpec{}
+	chainSpec.SetEnabled(true, true, false, false, true)
 	if cancel, err := contract.PromptChain(
 		app,
 		network,
 		prompt,
-		false,
 		"",
-		true,
 		&chainSpec,
 	); err != nil {
 		return chainSpec, err
