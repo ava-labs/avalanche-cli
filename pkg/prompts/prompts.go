@@ -920,6 +920,7 @@ func PromptChain(
 	if includeCChain {
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidBlockchainName)
 	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	if includeCustom {
 		subnetOptions = append(subnetOptions, customOption)
