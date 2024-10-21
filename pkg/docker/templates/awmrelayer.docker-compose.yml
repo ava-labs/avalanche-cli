@@ -1,7 +1,7 @@
 name: avalanche-cli
 services:
   awm-relayer:
-    image: avaplatform/awm-relayer
+    image: avaplatform/awm-relayer:{{ .AWMRelayerVersion }}
     container_name: awm-relayer
     restart: unless-stopped
     user: "1000:1000"  # ubuntu user

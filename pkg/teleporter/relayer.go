@@ -210,11 +210,15 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 	return nil
 }
 
+func GetLatestRelayerReleaseVersion() (string, error) {
+	downloader := application.NewDownloader()
+	return downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+}
+
 func InstallRelayer(binDir, version string) (string, error) {
 	if version == "" || version == "latest" {
-		downloader := application.NewDownloader()
 		var err error
-		version, err = downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+		version, err = GetLatestRelayerReleaseVersion()
 		if err != nil {
 			return "", err
 		}
