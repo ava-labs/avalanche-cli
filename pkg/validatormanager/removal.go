@@ -4,12 +4,14 @@ package validatormanager
 
 import (
 	_ "embed"
+	"errors"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -129,7 +131,10 @@ func InitValidatorRemoval(
 		validationID,
 	)
 	if err != nil {
-		return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
+		if !errors.Is(err, errInvalidValidatorStatus) {
+			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
+		}
+		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceeding to the next step")
 	}
 
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)

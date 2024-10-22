@@ -30,6 +30,7 @@ const (
 	Undefined AddressFormat = iota
 	PChainFormat
 	EVMFormat
+	XChainFormat
 )
 
 const (
@@ -106,7 +107,7 @@ type Prompter interface {
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
-	CaptureValidatorBalance(promptStr string) (uint64, error)
+	CaptureValidatorBalance(promptStr string, availableBalance uint64) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string, validator func(int) error) (int, error)
 	CaptureUint32(promptStr string) (uint32, error)
@@ -268,12 +269,14 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
-func (*realPrompter) CaptureValidatorBalance(promptStr string) (uint64, error) {
+func (*realPrompter) CaptureValidatorBalance(
+	promptStr string,
+	availableBalance uint64,
+) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateValidatorBalance,
+		Validate: validateValidatorBalanceFunc(availableBalance),
 	}
-
 	amountStr, err := prompt.Run()
 	if err != nil {
 		return 0, err
@@ -914,10 +917,10 @@ func PromptChain(
 	prompter Prompter,
 	prompt string,
 	subnetNames []string,
-	avoidPChain bool,
-	avoidXChain bool,
-	avoidCChain bool,
-	avoidSubnet string,
+	includePChain bool,
+	includeXChain bool,
+	includeCChain bool,
+	avoidBlockchainName string,
 	includeCustom bool,
 ) (bool, bool, bool, bool, string, string, error) {
 	pChainOption := "P-Chain"
@@ -925,16 +928,16 @@ func PromptChain(
 	cChainOption := "C-Chain"
 	notListedOption := "My blockchain isn't listed"
 	subnetOptions := []string{}
-	if !avoidPChain {
+	if includePChain {
 		subnetOptions = append(subnetOptions, pChainOption)
 	}
-	if !avoidXChain {
+	if includeXChain {
 		subnetOptions = append(subnetOptions, xChainOption)
 	}
-	if !avoidCChain {
+	if includeCChain {
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
-	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidBlockchainName)
 	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	if includeCustom {
 		subnetOptions = append(subnetOptions, customOption)
@@ -1060,6 +1063,11 @@ func PromptAddress(
 			if err != nil {
 				return "", err
 			}
+		case XChainFormat:
+			address, err = prompter.CaptureXChainAddress(customPrompt, network)
+			if err != nil {
+				return "", err
+			}
 		case EVMFormat:
 			addr, err := prompter.CaptureAddress(customPrompt)
 			if err != nil {
@@ -1096,6 +1104,8 @@ func CaptureKeyAddress(
 	switch format {
 	case PChainFormat:
 		return k.P()[0], nil
+	case XChainFormat:
+		return k.X()[0], nil
 	case EVMFormat:
 		return k.C(), nil
 	}

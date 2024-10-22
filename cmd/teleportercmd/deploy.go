@@ -60,7 +60,8 @@ func newDeployCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	deployFlags.PrivateKeyFlags.AddToCmd(cmd, "to fund ICM deploy")
-	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM", true)
+	deployFlags.ChainFlags.SetEnabled(true, true, false, false, true)
+	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM into %s")
 	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
 	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
 	cmd.Flags().BoolVar(&deployFlags.ForceRegistryDeploy, "force-registry-deploy", false, "deploy Teleporter Registry even if Messenger has already been deployed")
@@ -102,9 +103,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			app,
 			network,
 			prompt,
-			false,
 			"",
-			false,
 			&flags.ChainFlags,
 		); err != nil {
 			return err
