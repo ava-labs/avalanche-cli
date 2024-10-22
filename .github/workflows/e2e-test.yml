@@ -37,6 +37,8 @@ jobs:
           ]
         os: [ubuntu-latest, macos-14]
         exclude:
+          - os: ubuntu-latest
+            suite: "\\[Etna Subnet SOV\\]"
           - os: macos-14
             suite: "\\[Node create\\]"
           - os: macos-14
