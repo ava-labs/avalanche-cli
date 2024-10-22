@@ -3,10 +3,12 @@
 package node
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -25,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
 func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockchainName string) error {
@@ -487,7 +490,7 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	return localClusters, nil
 }
 
-func LocalStatus(app *application.Avalanche, clusterName string) error {
+func LocalStatus(app *application.Avalanche, clusterName string, blockchainName string) error {
 	clustersToList := make([]string, 0)
 	if clusterName != "" {
 		if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
@@ -533,6 +536,20 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 		currenlyRunning := ""
 		healthStatus := ""
 		avagoURIOuput := ""
+
+		// load sidecar and cluster config for the cluster  if blockchainName is not empty
+		blockchainID := ids.Empty
+		if blockchainName != "" {
+			clusterConf, err := app.GetClusterConfig(clusterName)
+			if err != nil {
+				return fmt.Errorf("failed to get cluster config: %w", err)
+			}
+			sc, err := app.LoadSidecar(blockchainName)
+			if err != nil {
+				return err
+			}
+			blockchainID = sc.Networks[clusterConf.Network.Name()].BlockchainID
+		}
 		if rootDir == currentlyRunningRootDir {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Blue.Wrap("Running"))
 			if isHealthy {
@@ -541,7 +558,31 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 				healthStatus = fmt.Sprintf(" [%s]", logging.Red.Wrap("Unhealthy"))
 			}
 			for _, avagoURI := range runningAvagoURIs {
-				avagoURIOuput += fmt.Sprintf("   - %s \n", logging.LightBlue.Wrap(avagoURI))
+				nodeID, nodePOP, isBoot, err := GetInfo(avagoURI, blockchainID.String())
+				if err != nil {
+					ux.Logger.RedXToUser("failed to get node  %s info: %v", avagoURI, err)
+					continue
+				}
+				nodePOPPubKey := "0x" + hex.EncodeToString(nodePOP.PublicKey[:])
+				nodePOPProof := "0x" + hex.EncodeToString(nodePOP.ProofOfPossession[:])
+
+				isBootStr := logging.Red.Wrap("Not Bootstrapped")
+				if isBoot {
+					isBootStr = logging.Green.Wrap("Bootstrapped")
+				}
+
+				blockchainStatus := ""
+				if blockchainID != ids.Empty {
+					blockchainStatus, _ = GetBlockchainStatus(avagoURI, blockchainID.String()) // silence errors
+				}
+
+				avagoURIOuput += fmt.Sprintf("   - %s [%s] [%s]\n publicKey: %s | proofOfPossession: %s \n",
+					logging.LightBlue.Wrap(avagoURI),
+					nodeID,
+					strings.TrimRight(strings.Join([]string{isBootStr, blockchainStatus}, " "), " "),
+					nodePOPPubKey,
+					nodePOPProof,
+				)
 			}
 		} else {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
@@ -555,21 +596,22 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 
 func GetInfo(uri string, blockchainID string) (
 	ids.NodeID, // nodeID
+	*signer.ProofOfPossession, // nodePOP
 	bool, // isBootstrapped
 	error, // error
 ) {
 	client := info.NewClient(uri)
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := utils.GetAPILargeContext()
 	defer cancel()
-	nodeID, _, err := client.GetNodeID(ctx)
+	nodeID, nodePOP, err := client.GetNodeID(ctx)
 	if err != nil {
-		return ids.EmptyNodeID, false, err
+		return ids.EmptyNodeID, &signer.ProofOfPossession{}, false, err
 	}
 	isBootstrapped, err := client.IsBootstrapped(ctx, blockchainID)
 	if err != nil {
-		return ids.EmptyNodeID, isBootstrapped, err
+		return nodeID, nodePOP, isBootstrapped, err
 	}
-	return nodeID, isBootstrapped, nil
+	return nodeID, nodePOP, isBootstrapped, err
 }
 
 func GetBlockchainStatus(uri string, blockchainID string) (
@@ -577,11 +619,11 @@ func GetBlockchainStatus(uri string, blockchainID string) (
 	error, // error
 ) {
 	client := platformvm.NewClient(uri)
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := utils.GetAPILargeContext()
 	defer cancel()
-	status, err := client.GetStatus(ctx, blockchainID)
+	status, err := client.GetBlockchainStatus(ctx, blockchainID)
 	if err != nil {
 		return "", err
 	}
-	return status, nil
+	return status.String(), nil
 }
