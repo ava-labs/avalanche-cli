@@ -550,7 +550,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		if len(bootstrapEndpoints) > 0 {
+		switch {
+		case len(bootstrapEndpoints) > 0:
 			var changeAddr string
 			for _, endpoint := range bootstrapEndpoints {
 				infoClient := info.NewClient(endpoint)
@@ -575,7 +576,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					ChangeOwnerAddr:      changeAddr,
 				})
 			}
-		} else {
+
+		case globalNetworkFlags.ClusterName != "":
+			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
+			bootstrapValidators, err = getClusterBootstrapValidators(globalNetworkFlags.ClusterName, network)
+			if err != nil {
+				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", globalNetworkFlags.ClusterName, err)
+			}
+
+		default:
 			bootstrapValidators, err = promptBootstrapValidators(network)
 			if err != nil {
 				return err
@@ -894,6 +903,39 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return nil
+}
+
+func getClusterBootstrapValidators(clusterName string, network models.Network) ([]models.SubnetValidator, error) {
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	subnetValidators := []models.SubnetValidator{}
+	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
+	changeAddr := ""
+	for _, h := range hostIDs {
+		nodeID, pub, pop, err := utils.GetNodeParams(app.GetNodeInstanceDirPath(h))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse nodeID: %w", err)
+		}
+		changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+		if err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		ux.Logger.Info("Bootstrap validator info for Host: %s | Node ID: %s | Public Key: %s | Proof of Possession: %s", h, nodeID, hex.EncodeToString(pub), hex.EncodeToString(pop))
+		subnetValidators = append(subnetValidators, models.SubnetValidator{
+			NodeID:               nodeID.String(),
+			Weight:               constants.BootstrapValidatorWeight,
+			Balance:              constants.BootstrapValidatorBalance,
+			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
+			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
+			ChangeOwnerAddr:      changeAddr,
+		})
+	}
+	return subnetValidators, nil
 }
 
 func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
@@ -1232,6 +1274,15 @@ func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
 			}
 			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
+			}
+		} else { // remote cluster case
+			hostIDs := utils.Filter(clusterConfig.GetCloudIDs(), clusterConfig.IsAvalancheGoHost)
+			for _, hostID := range hostIDs {
+				if nodeConfig, err := app.LoadClusterNodeConfig(hostID); err != nil {
+					return nil, err
+				} else {
+					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalanchegoAPIPort))
+				}
 			}
 		}
 	}
