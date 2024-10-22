@@ -15,19 +15,12 @@ import (
 )
 
 const (
-	CLIBinary       = "./bin/avalanche"
-	subnetName      = "e2eSubnetTest"
-	controlKeys     = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	keyName         = "ewoq"
-	stakeAmount     = "2000"
-	stakeDuration   = "336h"
-	localNetwork    = "Local Network"
-	ledger1Seed     = "ledger1"
-	ledger2Seed     = "ledger2"
-	ledger3Seed     = "ledger3"
-	txFnamePrefix   = "avalanche-cli-tx-"
-	mainnetChainID  = 123456
-	avalancheGoPath = "--avalanchego-path"
+	CLIBinary         = "./bin/avalanche"
+	subnetName        = "e2eSubnetTest"
+	keyName           = "ewoq"
+	avalancheGoPath   = "--avalanchego-path"
+	ewoqEVMAddress    = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
+	ewoqPChainAddress = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 )
 
 func deploySubnetToEtnaSOV() (string, map[string]utils.NodeInfo) {
@@ -80,7 +73,7 @@ func CreateEtnaSubnetEvmConfig() {
 		"--evm",
 		"--proof-of-authority",
 		"--poa-manager-owner",
-		keyName,
+		ewoqEVMAddress,
 		"--production-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
@@ -123,7 +116,7 @@ func DeployEtnaSubnet(
 		"--num-local-nodes=1",
 		"--ewoq",
 		"--change-owner-address",
-		keyName,
+		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
