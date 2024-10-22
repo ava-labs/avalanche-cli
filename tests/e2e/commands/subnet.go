@@ -813,7 +813,7 @@ func SimulateFujiAddValidator(
 		"--fuji",
 		"--key",
 		key,
-		"--nodeID",
+		"--node-id",
 		nodeID,
 		"--start-time",
 		start,
@@ -861,7 +861,7 @@ func SimulateFujiRemoveValidator(
 		"--fuji",
 		"--key",
 		key,
-		"--nodeID",
+		"--node-id",
 		nodeID,
 		subnetName,
 	)
