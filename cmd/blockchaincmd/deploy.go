@@ -922,7 +922,7 @@ func getClusterBootstrapValidators(clusterName string, network models.Network) (
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse nodeID: %w", err)
 		}
-		changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+		changeAddr, err = getKeyForChangeOwner(network)
 		if err != nil {
 			return nil, err
 		}
