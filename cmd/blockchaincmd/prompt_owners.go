@@ -291,9 +291,7 @@ func getThreshold(maxLen int) (uint32, error) {
 }
 
 func getKeyForChangeOwner(network models.Network) (string, error) {
-	changeAddrPrompt := fmt.Sprintf(
-		"Which key would you like to set as change owner for leftover AVAX if the node is removed from validator set?",
-	)
+	changeAddrPrompt := "Which key would you like to set as change owner for leftover AVAX if the node is removed from validator set?"
 
 	const (
 		getFromStored = "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
