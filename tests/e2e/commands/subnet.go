@@ -527,58 +527,6 @@ func SimulateFujiDeployNonSOV(
 	return string(output)
 }
 
-func DestroyLocalNode() {
-	cmd := exec.Command(
-		CLIBinary,
-		"node",
-		"local",
-		"destroy",
-		localNodeClusterName,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-}
-
-func SimulateEtnaDeploySOV(
-	subnetName string,
-	key string,
-	controlKeys string,
-) string {
-	//cmd := exec.Command(
-	//	CLIBinary,
-	//	"node",
-	//	"local",
-	//	"start",
-	//	localNodeClusterName,
-	//	"--etna-devnet",
-	//	"--num-nodes=1",
-	//	avalancheGoPath+"="+utils.EtnaAvalancheGoBinaryPath,
-	//)
-	cmd := exec.Command(
-		CLIBinary,
-		"subnet",
-		"deploy",
-		etnaTestSubnet,
-		"--use-local-machine",
-		"--etna-devnet",
-		"--num-nodes=1",
-		avalancheGoPath+"="+utils.EtnaAvalancheGoBinaryPath,
-	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
-}
-
 func SimulateFujiDeploySOV(
 	subnetName string,
 	key string,
