@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -117,7 +116,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	localChainID := ""
 	for net, data := range sc.Networks {
-		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
 			ux.Logger.RedXToUser("%s is supposed to be deployed to network %s: %s ", blockchainName, network.Name(), err)
 			ux.Logger.PrintToUser("")
@@ -191,7 +190,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t.SetTitle("Teleporter")
 	hasTeleporterInfo := false
 	for net, data := range sc.Networks {
-		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
 			continue
 		}
