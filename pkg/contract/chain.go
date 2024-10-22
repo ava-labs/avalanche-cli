@@ -193,7 +193,7 @@ func GetBlockchainEndpoints(
 			for k := range sc.Networks {
 				sidecarNetwork, err := app.GetNetworkFromSidecarNetworkName(k)
 				if err == nil {
-					if sidecarNetwork.Kind == network.Kind && sidecarNetwork.Endpoint == network.Endpoint {
+					if sidecarNetwork.Equals(network) {
 						networkName = sidecarNetwork.Name()
 					}
 				}
