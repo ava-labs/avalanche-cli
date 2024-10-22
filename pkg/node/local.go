@@ -20,9 +20,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
 
 func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockchainName string) error {
@@ -504,6 +506,7 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
 	)
+	runningAvagoURIs := []string{}
 	if cli != nil {
 		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
 		if status != nil && status.ClusterInfo != nil {
@@ -511,6 +514,10 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
 			}
 			isHealthy = status.ClusterInfo.Healthy
+			// get list of the nodes
+			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+				runningAvagoURIs = append(runningAvagoURIs, nodeInfo.Uri)
+			}
 		}
 	}
 	localClusters, err := listLocalClusters(app, clustersToList)
@@ -525,6 +532,7 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 	for clusterName, rootDir := range localClusters {
 		currenlyRunning := ""
 		healthStatus := ""
+		avagoURIOuput := ""
 		if rootDir == currentlyRunningRootDir {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Blue.Wrap("Running"))
 			if isHealthy {
@@ -532,11 +540,48 @@ func LocalStatus(app *application.Avalanche, clusterName string) error {
 			} else {
 				healthStatus = fmt.Sprintf(" [%s]", logging.Red.Wrap("Unhealthy"))
 			}
+			for _, avagoURI := range runningAvagoURIs {
+				avagoURIOuput += fmt.Sprintf("   - %s \n", logging.LightBlue.Wrap(avagoURI))
+			}
 		} else {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
 		}
 		ux.Logger.PrintToUser("- %s: %s %s %s", clusterName, rootDir, currenlyRunning, healthStatus)
+		ux.Logger.PrintToUser(avagoURIOuput)
 	}
 
 	return nil
+}
+
+func GetInfo(uri string, blockchainID string) (
+	ids.NodeID, // nodeID
+	bool, // isBootstrapped
+	error, // error
+) {
+	client := info.NewClient(uri)
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	nodeID, _, err := client.GetNodeID(ctx)
+	if err != nil {
+		return ids.EmptyNodeID, false, err
+	}
+	isBootstrapped, err := client.IsBootstrapped(ctx, blockchainID)
+	if err != nil {
+		return ids.EmptyNodeID, isBootstrapped, err
+	}
+	return nodeID, isBootstrapped, nil
+}
+
+func GetBlockchainStatus(uri string, blockchainID string) (
+	string, // status
+	error, // error
+) {
+	client := platformvm.NewClient(uri)
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := client.GetStatus(ctx, blockchainID)
+	if err != nil {
+		return "", err
+	}
+	return status, nil
 }
