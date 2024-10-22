@@ -150,7 +150,7 @@ type Clients struct {
 	cGeth         map[models.Network]*goethereumethclient.Client
 	evm           map[models.Network]map[string]ethclient.Client
 	evmGeth       map[models.Network]map[string]*goethereumethclient.Client
-	blockchainRpc map[models.Network]map[string]string
+	blockchainRPC map[models.Network]map[string]string
 }
 
 func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, subnets []string) (
@@ -164,7 +164,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 	cGethClients := map[models.Network]*goethereumethclient.Client{}
 	evmClients := map[models.Network]map[string]ethclient.Client{}
 	evmGethClients := map[models.Network]map[string]*goethereumethclient.Client{}
-	blockchainRpcs := map[models.Network]map[string]string{}
+	blockchainRPCs := map[models.Network]map[string]string{}
 	for _, network := range networks {
 		if pchain {
 			pClients[network] = platformvm.NewClient(network.Endpoint)
@@ -210,11 +210,11 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 						false,
 					)
 					if err == nil {
-						_, b := blockchainRpcs[network]
+						_, b := blockchainRPCs[network]
 						if !b {
-							blockchainRpcs[network] = map[string]string{}
+							blockchainRPCs[network] = map[string]string{}
 						}
-						blockchainRpcs[network][subnetName] = endpoint
+						blockchainRPCs[network][subnetName] = endpoint
 						_, b = evmClients[network]
 						if !b {
 							evmClients[network] = map[string]ethclient.Client{}
@@ -245,7 +245,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 		evm:           evmClients,
 		cGeth:         cGethClients,
 		evmGeth:       evmGethClients,
-		blockchainRpc: blockchainRpcs,
+		blockchainRPC: blockchainRPCs,
 	}, nil
 }
 
@@ -388,7 +388,7 @@ func getStoredKeyInfo(
 					ux.Logger.RedXToUser(
 						"failure obtaining info for blockchain %s on url %s",
 						subnetName,
-						clients.blockchainRpc[network][subnetName],
+						clients.blockchainRPC[network][subnetName],
 					)
 					continue
 				}
