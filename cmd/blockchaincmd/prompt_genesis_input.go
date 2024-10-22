@@ -120,12 +120,15 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func promptBootstrapValidators(network models.Network, changeOwnerAddress string) ([]models.SubnetValidator, error) {
+func promptBootstrapValidators(network models.Network, changeOwnerAddress string, numBootstrapValidators int) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
-	numBootstrapValidators, err := app.Prompt.CaptureInt(
-		"How many bootstrap validators do you want to set up?",
-		prompts.ValidatePositiveInt,
-	)
+	var err error
+	if numBootstrapValidators == 0 {
+		numBootstrapValidators, err = app.Prompt.CaptureInt(
+			"How many bootstrap validators do you want to set up?",
+			prompts.ValidatePositiveInt,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}

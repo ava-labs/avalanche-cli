@@ -77,6 +77,7 @@ var (
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
+	numBootstrapValidators          int
 	numLocalNodes                   int
 	changeOwnerAddress              string
 	subnetOnly                      bool
@@ -145,6 +146,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
+	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	return cmd
@@ -503,7 +505,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					network = models.NewNetworkFromCluster(network, clusterName)
 				}
 			}
-			// ask user if we wants to use local machine if cluster is not provided
+			// ask user if we want to use local machine if cluster is not provided
 			if !useLocalMachine && globalNetworkFlags.ClusterName == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
@@ -589,7 +591,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 
 		default:
-			bootstrapValidators, err = promptBootstrapValidators(network, changeOwnerAddress)
+			bootstrapValidators, err = promptBootstrapValidators(network, changeOwnerAddress, numBootstrapValidators)
 			if err != nil {
 				return err
 			}
