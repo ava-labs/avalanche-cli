@@ -47,9 +47,9 @@ func createEtnaSubnetEvmConfig() {
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
 	if err != nil {
 		fmt.Println(cmd.String())
-		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -106,9 +106,9 @@ func deployEtnaSubnet() string {
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
 	if err != nil {
 		fmt.Println(cmd.String())
-		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
