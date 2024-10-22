@@ -856,6 +856,9 @@ func (app *Avalanche) GetNetworkFromSidecarNetworkName(
 	case networkName == models.Local.String():
 		return models.NewLocalNetwork(), nil
 	case strings.HasPrefix(networkName, "Cluster"):
+		// network names on sidecar can refer to a cluster in the form "Cluster <clusterName>"
+		// we use clusterName to find out the underlying network for the cluster
+		// (one of local, devnet, fuji, mainnet)
 		parts := strings.Split(networkName, " ")
 		if len(parts) != 2 {
 			return models.UndefinedNetwork, fmt.Errorf("expected 'Cluster clusterName' on network name %s", networkName)

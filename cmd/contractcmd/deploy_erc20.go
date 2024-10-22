@@ -46,6 +46,7 @@ func newDeployERC20Cmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
 	deployERC20Flags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
+	// enabling blockchain names, C-Chain and blockchain IDs
 	deployERC20Flags.chainFlags.SetEnabled(true, true, false, false, true)
 	deployERC20Flags.chainFlags.AddToCmd(cmd, "deploy the ERC20 contract into %s")
 	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the token symbol")
