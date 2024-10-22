@@ -264,7 +264,7 @@ func CallAddValidator(
 	}
 
 	if remainingBalanceOwnerAddr == "" {
-		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(nodeID.String(), "", network)
+		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
 		if err != nil {
 			return err
 		}

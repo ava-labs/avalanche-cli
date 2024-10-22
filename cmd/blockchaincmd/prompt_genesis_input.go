@@ -120,7 +120,7 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator, error) {
+func promptBootstrapValidators(network models.Network, changeOwnerAddress string) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	numBootstrapValidators, err := app.Prompt.CaptureInt(
 		"How many bootstrap validators do you want to set up?",
@@ -139,7 +139,12 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 		}
 		generateNodeID = !setUpNodes
 	}
-	previousAddr := ""
+	if changeOwnerAddress == "" {
+		changeOwnerAddress, err = getKeyForChangeOwner(network)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for len(subnetValidators) < numBootstrapValidators {
 		ux.Logger.PrintToUser("Getting info for bootstrap validator %d", len(subnetValidators)+1)
 		var nodeID ids.NodeID
@@ -163,23 +168,18 @@ func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator
 				return nil, err
 			}
 		}
-		changeAddr, err := getKeyForChangeOwner(nodeIDStr, previousAddr, network)
-		if err != nil {
-			return nil, err
-		}
-		previousAddr = changeAddr
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
 			Balance:              constants.BootstrapValidatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
-			ChangeOwnerAddr:      changeAddr,
+			ChangeOwnerAddr:      changeOwnerAddress,
 		}
 		subnetValidators = append(subnetValidators, subnetValidator)
 		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
 		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
-		ux.Logger.PrintToUser("- Change Address: %s", changeAddr)
+		ux.Logger.PrintToUser("- Change Address: %s", changeOwnerAddress)
 	}
 	return subnetValidators, nil
 }

@@ -77,6 +77,8 @@ var (
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
+	numLocalNodes                   int
+	changeOwnerAddress              string
 	subnetOnly                      bool
 	icmSpec                         subnet.ICMSpec
 	generateNodeID                  bool
@@ -143,7 +145,8 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-
+	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
+	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	return cmd
 }
 
@@ -533,7 +536,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					clusterName,
 					useEtnaDevnet,
 					avagoBinaryPath,
-					5,
+					uint32(numLocalNodes),
 					anrSettings,
 					avagoVersionSettings,
 					globalNetworkFlags,
@@ -551,7 +554,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if len(bootstrapEndpoints) > 0 {
-			var changeAddr string
+			if changeOwnerAddress == "" {
+				changeOwnerAddress, err = getKeyForChangeOwner(network)
+				if err != nil {
+					return err
+				}
+			}
 			for _, endpoint := range bootstrapEndpoints {
 				infoClient := info.NewClient(endpoint)
 				ctx, cancel := utils.GetAPILargeContext()
@@ -562,21 +570,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
 				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
-				changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
-				if err != nil {
-					return err
-				}
+
 				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
 					NodeID:               nodeID.String(),
 					Weight:               constants.BootstrapValidatorWeight,
 					Balance:              constants.BootstrapValidatorBalance,
 					BLSPublicKey:         publicKey,
 					BLSProofOfPossession: pop,
-					ChangeOwnerAddr:      changeAddr,
+					ChangeOwnerAddr:      changeOwnerAddress,
 				})
 			}
 		} else {
-			bootstrapValidators, err = promptBootstrapValidators(network)
+			bootstrapValidators, err = promptBootstrapValidators(network, changeOwnerAddress)
 			if err != nil {
 				return err
 			}
