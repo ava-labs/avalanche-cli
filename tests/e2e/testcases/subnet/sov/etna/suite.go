@@ -60,10 +60,10 @@ func createEtnaSubnetEvmConfig() {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func destroyLocalNode() string {
+func destroyLocalNode() {
 	_, err := os.Stat(testLocalNodeName)
 	if os.IsNotExist(err) {
-		return ""
+		return
 	}
 	cmd := exec.Command(
 		CLIBinary,
@@ -80,11 +80,9 @@ func destroyLocalNode() string {
 		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
-
-	return string(output)
 }
 
-func deployEtnaSubnet() string {
+func deployEtnaSubnet() {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -112,8 +110,6 @@ func deployEtnaSubnet() string {
 		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
-
-	return string(output)
 }
 
 var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
@@ -128,11 +124,11 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
 		_ = utils.DeleteConfigs(subnetName)
-		_ = destroyLocalNode()
+		destroyLocalNode()
 	})
 
 	ginkgo.AfterEach(func() {
-		_ = destroyLocalNode()
+		destroyLocalNode()
 		commands.DeleteSubnetConfig(subnetName)
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
