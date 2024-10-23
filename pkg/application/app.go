@@ -819,9 +819,10 @@ func (app *Avalanche) ClusterExists(clusterName string) (bool, error) {
 }
 
 func (app *Avalanche) GetClusterConfig(clusterName string) (models.ClusterConfig, error) {
-	exists, err := app.ClusterExists(clusterName)
-	if err != nil || !exists {
+	if exists, err := app.ClusterExists(clusterName); err != nil {
 		return models.ClusterConfig{}, err
+	} else if !exists {
+		return models.ClusterConfig{}, fmt.Errorf("cluster does not exists")
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {
