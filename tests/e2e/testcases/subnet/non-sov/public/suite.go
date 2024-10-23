@@ -45,8 +45,7 @@ func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
 	nodeInfos, err := utils.GetNodesInfo()
 	gomega.Expect(err).Should(gomega.BeNil())
 	for _, nodeInfo := range nodeInfos {
-		start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-		_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+		_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, "24h", "20")
 	}
 	// join to copy vm binary and update config file
 	for _, nodeInfo := range nodeInfos {

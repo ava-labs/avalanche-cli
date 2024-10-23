@@ -104,6 +104,7 @@ Testnet or Mainnet.`,
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().DurationVar(&duration, "staking-period", 0, "(for non sovereign blockchain) how long this validator will be staking")
 	return cmd
 }
 

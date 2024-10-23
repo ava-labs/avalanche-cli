@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd/upgradecmd"
@@ -395,8 +394,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 		nodeInfos, err := utils.GetNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
 		for _, nodeInfo := range nodeInfos {
-			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-			_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+			_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, "24h", "20")
 		}
 		// join to copy vm binary and update config file
 		for _, nodeInfo := range nodeInfos {
