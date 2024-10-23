@@ -166,10 +166,12 @@ func ComposeSSHSetupMonitoring(host *models.Host) error {
 		DockerComposeInputs{})
 }
 
-func ComposeSSHSetupAWMRelayer(host *models.Host) error {
+func ComposeSSHSetupAWMRelayer(host *models.Host, relayerVersion string) error {
 	return ComposeOverSSH("Setup AWM Relayer",
 		host,
 		constants.SSHScriptTimeout,
 		"templates/awmrelayer.docker-compose.yml",
-		DockerComposeInputs{})
+		dockerComposeInputs{
+			AWMRelayerVersion: relayerVersion,
+		})
 }
