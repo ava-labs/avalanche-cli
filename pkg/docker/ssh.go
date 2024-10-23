@@ -171,7 +171,7 @@ func ComposeSSHSetupAWMRelayer(host *models.Host, relayerVersion string) error {
 		host,
 		constants.SSHScriptTimeout,
 		"templates/awmrelayer.docker-compose.yml",
-		dockerComposeInputs{
+		DockerComposeInputs{
 			AWMRelayerVersion: relayerVersion,
 		})
 }
