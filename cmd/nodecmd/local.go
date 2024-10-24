@@ -113,13 +113,18 @@ func newLocalDestroyCmd() *cobra.Command {
 }
 
 func newLocalStatusCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "(ALPHA Warning) Get status of local node",
 		Long:  `Get status of local node.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE:  localStatus,
 	}
+
+	cmd.Flags().StringVar(&blockchainName, "subnet", "", "specify the blockchain the node is syncing with")
+	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
+
+	return cmd
 }
 
 func localStartNode(_ *cobra.Command, args []string) error {
@@ -170,7 +175,7 @@ func localStatus(_ *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		clusterName = args[0]
 	}
-	return node.LocalStatus(app, clusterName)
+	return node.LocalStatus(app, clusterName, blockchainName)
 }
 
 func notImplementedForLocal(what string) error {
