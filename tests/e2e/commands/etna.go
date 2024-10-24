@@ -256,6 +256,8 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		"--blockchain-genesis-key",
 		"--blockchain-key",
 		keyName,
+		"--key",
+		keyName,
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
