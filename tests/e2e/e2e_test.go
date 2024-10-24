@@ -21,6 +21,8 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/non-sov/local"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/non-sov/public"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/addRemoveValidator"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/etna"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/local"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/subnet/sov/public"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/upgrade/non-sov"

@@ -325,7 +325,6 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 	blockchainIDs := map[string]struct{}{}
 	// split output by newline
 	lines := strings.Split(output, "\n")
-	i := 0
 	for _, line := range lines {
 		if !strings.Contains(line, "rpc") {
 			continue
@@ -333,11 +332,6 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		startIndex := strings.Index(line, "http")
 		if startIndex == -1 {
 			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
-		}
-		i++
-		if i%2 == 1 {
-			// only returning blockchainID based RPCs, not aliased
-			continue
 		}
 		endIndex := strings.Index(line, "rpc")
 		rpc := line[startIndex : endIndex+3]
@@ -357,7 +351,7 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		}
 	}
 	if len(rpcs) == 0 {
-		return nil, errors.New("no RPCs where found")
+		return nil, errors.New("no RPCs were found")
 	}
 	return rpcs, nil
 }
