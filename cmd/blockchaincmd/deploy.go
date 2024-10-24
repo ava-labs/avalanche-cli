@@ -787,30 +787,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		bar, err := ux.TimedProgressBar(
+		_, err = ux.TimedProgressBar(
 			30*time.Second,
 			"Waiting for L1 to be converted into sovereign blockchain ...",
-			2,
+			0,
 		)
 		if err != nil {
-			return err
-		}
-
-		// Issue random transaction >30s after ConverSubnetTx to evict its block from the block map
-		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
-		if err != nil {
-			return err
-		}
-		if err := ux.ExtraStepExecuted(bar); err != nil {
-			return err
-		}
-		// Issue random transaction to advance the p-chain height now that the
-		// ConvertSubnetTx block isn't in the block map
-		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
-		if err != nil {
-			return err
-		}
-		if err := ux.ExtraStepExecuted(bar); err != nil {
 			return err
 		}
 		fmt.Println()
