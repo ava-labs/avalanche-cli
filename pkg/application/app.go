@@ -596,7 +596,18 @@ func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]str
 		if err != nil {
 			return nil, err
 		}
-		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
+		networkName := network.Name()
+		if sc.Networks[networkName].BlockchainID == ids.Empty {
+			for k := range sc.Networks {
+				sidecarNetwork, err := app.GetNetworkFromSidecarNetworkName(k)
+				if err == nil {
+					if sidecarNetwork.Kind == network.Kind && sidecarNetwork.Endpoint == network.Endpoint {
+						networkName = sidecarNetwork.Name()
+					}
+				}
+			}
+		}
+		if sc.Networks[networkName].BlockchainID != ids.Empty {
 			filtered = append(filtered, blockchainName)
 		}
 	}
@@ -836,4 +847,27 @@ func (app *Avalanche) ListClusterNames() ([]string, error) {
 		return []string{}, err
 	}
 	return maps.Keys(clustersConfig.Clusters), nil
+}
+
+func (app *Avalanche) GetNetworkFromSidecarNetworkName(
+	networkName string,
+) (models.Network, error) {
+	switch {
+	case networkName == models.Local.String():
+		return models.NewLocalNetwork(), nil
+	case strings.HasPrefix(networkName, "Cluster"):
+		// network names on sidecar can refer to a cluster in the form "Cluster <clusterName>"
+		// we use clusterName to find out the underlying network for the cluster
+		// (one of local, devnet, fuji, mainnet)
+		parts := strings.Split(networkName, " ")
+		if len(parts) != 2 {
+			return models.UndefinedNetwork, fmt.Errorf("expected 'Cluster clusterName' on network name %s", networkName)
+		}
+		return app.GetClusterNetwork(parts[1])
+	case networkName == models.Fuji.String():
+		return models.NewFujiNetwork(), nil
+	case networkName == models.Mainnet.String():
+		return models.NewMainnetNetwork(), nil
+	}
+	return models.UndefinedNetwork, fmt.Errorf("unsupported network name")
 }
