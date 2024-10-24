@@ -131,7 +131,6 @@ func trackSubnet(
 
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
-	subnetAliases := append([]string{blockchainName}, subnetAliases...)
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
