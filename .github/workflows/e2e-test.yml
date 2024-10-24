@@ -25,6 +25,7 @@ jobs:
             "\\[Subnet Compatibility\\]",
             "\\[Public Subnet non SOV\\]",
             "\\[Etna Subnet SOV\\]",
+            "\\[Etna AddRemove Validator SOV\\]",
             "\\[Subnet\\]",
             "\\[Upgrade expect network failure\\]",
             "\\[Upgrade public network\\]",
