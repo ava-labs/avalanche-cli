@@ -6,6 +6,7 @@ package commands
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -178,7 +179,6 @@ func InitPoaManager(
 	endpoint string,
 	blockchainID string,
 ) (string, error) {
-	//./bin/avalanche contract initPoaManager e2eSubnetTest  --cluster local7 --endpoint http://127.0.0.1:9650 --rpc http://127.0.0.1:9650/ext/bc/YksdxeFxir84wXbnxUwJUKuoLJbpBoCE1B49ZMvNn4SjxLa94/rpc --genesis-key
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
@@ -189,7 +189,7 @@ func InitPoaManager(
 		"--endpoint",
 		endpoint,
 		"--rpc",
-		fmt.Sprintf("http://%s/ext/bc/%s/rpc", endpoint, blockchainID),
+		fmt.Sprintf("%s/ext/bc/%s/rpc", endpoint, blockchainID),
 		"--genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
@@ -207,6 +207,8 @@ func AddEtnaSubnetValidatorToCluster(
 	clusterName string,
 	subnetName string,
 	nodeEndpoint string,
+	ewoqPChainAddress string,
+	balance int,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -217,6 +219,13 @@ func AddEtnaSubnetValidatorToCluster(
 		clusterName,
 		"--node-endpoint",
 		nodeEndpoint,
+		"--ewoq",
+		"--balance",
+		strconv.Itoa(balance),
+		"--remaining-balance-owner",
+		ewoqPChainAddress,
+		"--disable-owner",
+		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
@@ -233,6 +242,8 @@ func RemoveEtnaSubnetValidatorFromCluster(
 	clusterName string,
 	subnetName string,
 	nodeEndpoint string,
+	keyName string,
+
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -243,6 +254,9 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		clusterName,
 		"--node-endpoint",
 		nodeEndpoint,
+		"--blockchain-genesis-key",
+		"--blockchain-key",
+		keyName,
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()

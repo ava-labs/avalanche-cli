@@ -74,7 +74,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 		}
 		gomega.Expect(blockchainID).Should(gomega.Not(gomega.BeEmpty()))
 		ginkgo.GinkgoWriter.Printf("Blockchain ID: %s\n", blockchainID)
-
 	})
 
 	ginkgo.It("Can initialize a PoA Manager contract", func() {
@@ -92,6 +91,8 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 			testLocalNodeName,
 			subnetName,
 			"http://127.0.0.1:9660",
+			ewoqPChainAddress,
+			1,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -102,6 +103,8 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 			testLocalNodeName,
 			subnetName,
 			"http://127.0.0.1:9662",
+			ewoqPChainAddress,
+			1,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -112,6 +115,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 			testLocalNodeName,
 			subnetName,
 			"http://127.0.0.1:9654",
+			keyName,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -122,6 +126,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 			testLocalNodeName,
 			subnetName,
 			"http://127.0.0.1:9660",
+			keyName,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
