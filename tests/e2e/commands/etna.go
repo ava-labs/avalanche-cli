@@ -106,7 +106,6 @@ func DestroyLocalNode(
 
 func DeployEtnaSubnetToCluster(
 	subnetName string,
-	ewoqPChainAddress string,
 	clusterName string,
 	bootstrapEndpoints []string,
 	convertOnly bool,
@@ -132,9 +131,6 @@ func DeployEtnaSubnetToCluster(
 		subnetName,
 		"--cluster",
 		clusterName,
-		"--ewoq",
-		"--change-owner-address",
-		ewoqPChainAddress,
 		bootstrapEndpointsFlag,
 		convertOnlyFlag,
 		"--"+constants.SkipUpdateFlag,
@@ -155,10 +151,35 @@ func TrackLocalEtnaSubnet(
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
-		"blockchain",
+		"node",
+		"local",
 		"track",
 		clusterName,
 		subnetName,
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
+}
+
+func InitPoaManager(
+	subnetName string,
+	clusterName string,
+) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		"contract",
+		"initPoaManager",
+		subnetName,
+		"--cluster",
+		clusterName,
+		"--genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
