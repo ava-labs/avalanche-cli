@@ -793,6 +793,7 @@ func SimulateFujiAddValidator(
 	subnetName string,
 	key string,
 	nodeID string,
+	start string,
 	period string,
 	weight string,
 ) string {
@@ -814,6 +815,8 @@ func SimulateFujiAddValidator(
 		key,
 		"--node-id",
 		nodeID,
+		"--start-time",
+		start,
 		"--staking-period",
 		period,
 		"--weight",
