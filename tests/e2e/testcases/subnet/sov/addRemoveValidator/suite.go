@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 		fmt.Println(output)
 	})
 
-	ginkgo.It("Can destroy local noce", func() {
+	ginkgo.It("Can destroy local node", func() {
 		output, err := commands.DestroyLocalNode(testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
