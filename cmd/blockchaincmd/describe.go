@@ -115,6 +115,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 
 	localChainID := ""
+	blockchainID := ""
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
@@ -159,6 +160,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			}
 		}
 		if data.BlockchainID != ids.Empty {
+			blockchainID = data.BlockchainID.String()
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			t.AppendRow(table.Row{net, "BlockchainID (CB58)", data.BlockchainID.String()})
 			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
@@ -243,7 +245,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			return err
 		}
 
-		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(sc.Name)
+		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(blockchainID)
 		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
 		if err != nil {
 			return err
