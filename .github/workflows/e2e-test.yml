@@ -46,6 +46,8 @@ jobs:
             suite: "\\[Docker\\]"
           - os: macos-14
             suite: "\\[Public Subnet\\]"
+          - os: macos-14
+            suite: "\\[Etna AddRemove Validator SOV\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
