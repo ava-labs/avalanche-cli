@@ -108,7 +108,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for non sovereign blockchain) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for non sovereign blockchain) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "(for non sovereign blockchain) set duration so as to validate until primary validator ends its period")
-	cmd.Flags().DurationVar(&duration, "staking-period", 0, "(for non sovereign blockchain) how long this validator will be staking")
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "(for non sovereign blockchain) use default weight/start/duration params for subnet validator")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non sovereign blockchain) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non sovereign blockchain) file path of the add validator tx")
