@@ -64,7 +64,7 @@ func CreateLocalEtnaDevnetNode(
 		CLIBinary,
 		"node",
 		"local",
-		"create",
+		"start",
 		clusterName,
 		etnaDevnetFlag,
 		"--num-nodes",
