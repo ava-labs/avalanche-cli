@@ -58,6 +58,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		commands.StopNetwork()
 		restartOutput := commands.StartNetwork()
 		rpcs, err = utils.ParseRPCsFromOutput(restartOutput)
+		fmt.Println(restartOutput)
 		if err != nil {
 			fmt.Println(restartOutput)
 		}
