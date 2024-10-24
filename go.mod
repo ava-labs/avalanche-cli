@@ -5,7 +5,7 @@ go 1.22.8
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241015011122-81bbf3a1dca2
-	github.com/ava-labs/avalanchego v1.12.0-initial-poc.5
+	github.com/ava-labs/avalanchego v1.12.0-initial-poc.6
 	github.com/ava-labs/awm-relayer v1.4.1-0.20241014222901-4b34ab86afd0
 	github.com/ava-labs/coreth v0.13.8
 	github.com/ava-labs/subnet-evm v0.6.10
@@ -66,7 +66,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.1 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
-	github.com/ava-labs/ledger-avalanche/go v0.0.0-20240610153809-9c955cc90a95 // indirect
+	github.com/ava-labs/ledger-avalanche/go v0.0.0-20241009183145-e6f90a8a1a60 // indirect
 	github.com/ava-labs/teleporter v1.0.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.26 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.11 // indirect
