@@ -54,6 +54,15 @@ scrape_configs:
         nodeID: {{ .NodeID }}
         __path__: /logs/{{ .ChainID }}.log
 {{ end }}
+{{ if .SubnetName }}
+    - targets:
+        - localhost
+      labels:
+        job: subnet
+        host: {{ .Host }}
+        nodeID: {{ .NodeID }}
+        __path__: /logs/{{ .SubnetName }}.log
+{{ end }}
   - job_name: avalanchego-loadtest
     static_configs:
     - targets:
