@@ -22,5 +22,7 @@ and interacting with smart contracts.`,
 	app = injectedApp
 	// contract deploy
 	cmd.AddCommand(newDeployCmd())
+	// contract initpoamanager
+	cmd.AddCommand(newInitPOAManagerCmd())
 	return cmd
 }

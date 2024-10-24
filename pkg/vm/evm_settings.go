@@ -29,4 +29,5 @@ var (
 
 	OneAvax                 = new(big.Int).SetUint64(1000000000000000000)
 	defaultEVMAirdropAmount = new(big.Int).Exp(big.NewInt(10), big.NewInt(24), nil) // 10^24
+	defaultPoAOwnerBalance  = new(big.Int).Mul(OneAvax, big.NewInt(10))             // 10 Native Tokens
 )

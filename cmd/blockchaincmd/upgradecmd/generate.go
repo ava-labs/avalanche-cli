@@ -598,7 +598,7 @@ func promptAdminManagerAndEnabledAddresses(
 	sc *models.Sidecar,
 	action string,
 ) ([]common.Address, []common.Address, []common.Address, bool, error) {
-	allowList, cancelled, err := vm.GenerateAllowList(app, action, sc.VMVersion)
+	allowList, cancelled, err := vm.GenerateAllowList(app, vm.AllowList{}, action, sc.VMVersion)
 	if cancelled || err != nil {
 		return nil, nil, nil, cancelled, err
 	}

@@ -19,7 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-type dockerComposeInputs struct {
+type DockerComposeInputs struct {
 	WithMonitoring     bool
 	WithAvalanchego    bool
 	AvalanchegoVersion string
@@ -32,7 +32,7 @@ type dockerComposeInputs struct {
 //go:embed templates/*.docker-compose.yml
 var composeTemplate embed.FS
 
-func renderComposeFile(composePath string, composeDesc string, templateVars dockerComposeInputs) ([]byte, error) {
+func renderComposeFile(composePath string, composeDesc string, templateVars DockerComposeInputs) ([]byte, error) {
 	compose, err := composeTemplate.ReadFile(composePath)
 	if err != nil {
 		return nil, err
@@ -207,7 +207,7 @@ func ComposeOverSSH(
 	host *models.Host,
 	timeout time.Duration,
 	composePath string,
-	composeVars dockerComposeInputs,
+	composeVars DockerComposeInputs,
 ) error {
 	remoteComposeFile := utils.GetRemoteComposeFile()
 	startTime := time.Now()

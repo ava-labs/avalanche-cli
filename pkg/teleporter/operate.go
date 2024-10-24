@@ -91,6 +91,8 @@ func SendCrossChainMessage(
 		privateKey,
 		messengerAddress,
 		nil,
+		"send cross chain message",
+		nil,
 		"sendCrossChainMessage((bytes32, address, (address, uint256), uint256, [address], bytes))->(bytes32)",
 		params,
 	)

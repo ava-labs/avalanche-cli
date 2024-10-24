@@ -24,14 +24,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/awm-relayer/config"
+	apiConfig "github.com/ava-labs/awm-relayer/config"
 	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
+	"github.com/ava-labs/awm-relayer/relayer/config"
 )
 
 const (
-	localRelayerSetupTime     = 2 * time.Second
-	localRelayerCheckPoolTime = 100 * time.Millisecond
-	localRelayerCheckTimeout  = 3 * time.Second
+	localRelayerSetupTime         = 2 * time.Second
+	localRelayerCheckPoolTime     = 100 * time.Millisecond
+	localRelayerCheckTimeout      = 3 * time.Second
+	defaultDBWriteIntervalSeconds = 10
+	defaultSignatureCacheSize     = 1024 * 1024
 )
 
 var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
@@ -352,11 +355,11 @@ func CreateBaseRelayerConfig(
 ) error {
 	awmRelayerConfig := &config.Config{
 		LogLevel: logLevel,
-		PChainAPI: &config.APIConfig{
+		PChainAPI: &apiConfig.APIConfig{
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
-		InfoAPI: &config.APIConfig{
+		InfoAPI: &apiConfig.APIConfig{
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
@@ -365,6 +368,8 @@ func CreateBaseRelayerConfig(
 		SourceBlockchains:      []*config.SourceBlockchain{},
 		DestinationBlockchains: []*config.DestinationBlockchain{},
 		MetricsPort:            metricsPort,
+		DBWriteIntervalSeconds: defaultDBWriteIntervalSeconds,
+		SignatureCacheSize:     defaultSignatureCacheSize,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }
@@ -472,10 +477,10 @@ func addSourceToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: rpcEndpoint,
 		},
-		WSEndpoint: config.APIConfig{
+		WSEndpoint: apiConfig.APIConfig{
 			BaseURL: wsEndpoint,
 		},
 		MessageContracts: map[string]config.MessageProtocolConfig{
@@ -509,7 +514,7 @@ func addDestinationToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: rpcEndpoint,
 		},
 		AccountPrivateKey: relayerFundedAddressKey,

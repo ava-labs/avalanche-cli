@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 )
 
@@ -52,6 +53,14 @@ func IsValidIP(ipStr string) bool {
 func IsValidURL(urlString string) bool {
 	u, err := url.Parse(urlString)
 	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+	return true
+}
+
+// IsValidIPPort checks if an  string IP:port pair is valid.
+func IsValidIPPort(ipPortPair string) bool {
+	if _, err := netip.ParseAddrPort(ipPortPair); err != nil {
 		return false
 	}
 	return true

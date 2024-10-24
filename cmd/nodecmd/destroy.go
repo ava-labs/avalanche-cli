@@ -8,11 +8,12 @@ import (
 	"os"
 	"strings"
 
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"golang.org/x/exp/maps"
@@ -49,13 +50,9 @@ If there is a static IP address attached, it will be released.`,
 }
 
 func removeNodeFromClustersConfig(clusterName string) error {
-	clustersConfig := models.ClustersConfig{}
-	var err error
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if clustersConfig.Clusters != nil {
 		delete(clustersConfig.Clusters, clusterName)
@@ -124,13 +121,9 @@ func getFirstAvailableNode(nodesToStop []string) (string, bool) {
 }
 
 func Cleanup() error {
-	var err error
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	clusterNames := maps.Keys(clustersConfig.Clusters)
 	for _, clusterName := range clusterNames {
@@ -155,8 +148,15 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 		return Cleanup()
 	}
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := nodePkg.CheckCluster(app, clusterName); err != nil {
 		return err
+	}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("destroy")
 	}
 	isExternalCluster, err := checkClusterExternal(clusterName)
 	if err != nil {
@@ -169,7 +169,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 	if err := getDeleteConfigConfirmation(); err != nil {
 		return err
 	}
-	nodesToStop, err := getClusterNodes(clusterName)
+	nodesToStop, err := nodePkg.GetClusterNodes(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -236,7 +236,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 				continue
 			}
 			if nodeConfig.CloudService == "" || nodeConfig.CloudService == constants.AWSCloudService {
-				if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+				if !(authorizeAccess || nodePkg.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 					return fmt.Errorf("cloud access is required")
 				}
 				if err = ec2SvcMap[nodeConfig.Region].DestroyAWSNode(nodeConfig, clusterName); err != nil {
@@ -258,7 +258,7 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 					}
 				}
 			} else {
-				if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+				if !(authorizeAccess || nodePkg.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 					return fmt.Errorf("cloud access is required")
 				}
 				if gcpCloud == nil {
@@ -315,49 +315,12 @@ func destroyNodes(_ *cobra.Command, args []string) error {
 }
 
 func getClusterMonitoringNode(clusterName string) (string, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return "", err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return "", err
 	}
 	if _, ok := clustersConfig.Clusters[clusterName]; !ok {
 		return "", fmt.Errorf("cluster %q does not exist", clusterName)
 	}
 	return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
-}
-
-func checkCluster(clusterName string) error {
-	_, err := getClusterNodes(clusterName)
-	return err
-}
-
-func checkClusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
-	}
-	_, ok := clustersConfig.Clusters[clusterName]
-	return ok, nil
-}
-
-func getClusterNodes(clusterName string) ([]string, error) {
-	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
-		return nil, fmt.Errorf("cluster %q not found", clusterName)
-	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return nil, err
-	}
-	clusterNodes := clustersConfig.Clusters[clusterName].Nodes
-	if len(clusterNodes) == 0 {
-		return nil, fmt.Errorf("no nodes found in cluster %s", clusterName)
-	}
-	return clusterNodes, nil
 }
