@@ -108,6 +108,7 @@ func DeployEtnaSubnetToCluster(
 	subnetName string,
 	clusterName string,
 	bootstrapEndpoints []string,
+	ewoqPChainAddress string,
 	convertOnly bool,
 ) (string, error) {
 	convertOnlyFlag := ""
@@ -133,6 +134,9 @@ func DeployEtnaSubnetToCluster(
 		clusterName,
 		bootstrapEndpointsFlag,
 		convertOnlyFlag,
+		"--ewoq",
+		"--change-owner-address",
+		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
@@ -171,7 +175,10 @@ func TrackLocalEtnaSubnet(
 func InitPoaManager(
 	subnetName string,
 	clusterName string,
+	endpoint string,
+	blockchainID string,
 ) (string, error) {
+	//./bin/avalanche contract initPoaManager e2eSubnetTest  --cluster local7 --endpoint http://127.0.0.1:9650 --rpc http://127.0.0.1:9650/ext/bc/YksdxeFxir84wXbnxUwJUKuoLJbpBoCE1B49ZMvNn4SjxLa94/rpc --genesis-key
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
@@ -179,6 +186,10 @@ func InitPoaManager(
 		subnetName,
 		"--cluster",
 		clusterName,
+		"--endpoint",
+		endpoint,
+		"--rpc",
+		fmt.Sprintf("http://%s/ext/bc/%s/rpc", endpoint, blockchainID),
 		"--genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)

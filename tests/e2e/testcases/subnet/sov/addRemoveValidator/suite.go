@@ -5,12 +5,15 @@ package subnet
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
+
+var blockchainID = ""
 
 const (
 	CLIBinary         = "./bin/avalanche"
@@ -49,6 +52,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 				"http://127.0.0.1:9656",
 				"http://127.0.0.1:9658",
 			},
+			ewoqPChainAddress,
 			true, // convertOnly
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -59,10 +63,26 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 		output, err := commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
+		// parse blockchainID from output
+		re := regexp.MustCompile(`Waiting for rpc http://.*?/bc/([A-Za-z0-9]+)/rpc`)
+		// Find the first match
+		match := re.FindStringSubmatch(output)
+		gomega.Expect(match).ToNot(gomega.BeEmpty())
+		if len(match) > 1 {
+			// The first submatch will contain the chain ID
+			blockchainID = match[1]
+		}
+		gomega.Expect(blockchainID).Should(gomega.Not(gomega.BeEmpty()))
+		ginkgo.GinkgoWriter.Printf("Blockchain ID: %s\n", blockchainID)
+
 	})
 
 	ginkgo.It("Can initialize a PoA Manager contract", func() {
-		output, err := commands.InitPoaManager(subnetName, testLocalNodeName)
+		output, err := commands.InitPoaManager(subnetName,
+			testLocalNodeName,
+			"http://127.0.0.1:9650",
+			blockchainID,
+		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 	})
