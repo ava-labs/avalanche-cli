@@ -25,6 +25,7 @@ jobs:
             "\\[Subnet Compatibility\\]",
             "\\[Public Subnet non SOV\\]",
             "\\[Etna Subnet SOV\\]",
+            "\\[Etna AddRemove Validator SOV\\]",
             "\\[Subnet\\]",
             "\\[Upgrade expect network failure\\]",
             "\\[Upgrade public network\\]",
@@ -45,6 +46,8 @@ jobs:
             suite: "\\[Docker\\]"
           - os: macos-14
             suite: "\\[Public Subnet\\]"
+          - os: ubuntu-latest
+            suite: "\\[Etna AddRemove Validator SOV\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
