@@ -243,7 +243,6 @@ func RemoveEtnaSubnetValidatorFromCluster(
 	subnetName string,
 	nodeEndpoint string,
 	keyName string,
-
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
