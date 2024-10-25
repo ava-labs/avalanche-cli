@@ -86,6 +86,7 @@ type SubnetEVMGenesisParams struct {
 	contractDeployerPrecompileAllowList AllowList
 	enableWarpPrecompile                bool
 	UsePoAValidatorManager              bool
+	UsePoSValidatorManager              bool
 }
 
 func PromptTokenSymbol(
@@ -180,10 +181,17 @@ func PromptSubnetEVMGenesisParams(
 	}
 
 	if sc.PoS() {
+		params.UsePoSValidatorManager = true
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
 			common.HexToAddress(validatormanager.ValidatorContractAddress),
 		}
+		params.enableRewardManagerPrecompile = true
+		// todo: change reward manager precompile allow list
+		params.rewardManagerPrecompileAllowList.EnabledAddresses = []common.Address{
+			common.HexToAddress(validatormanager.ValidatorContractAddress),
+		}
+
 	}
 
 	// Chain ID

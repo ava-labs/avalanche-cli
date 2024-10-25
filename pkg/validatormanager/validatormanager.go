@@ -84,6 +84,20 @@ func AddPoAValidatorManagerContractToAllocations(
 	}
 }
 
+//go:embed deployed_poa_validator_manager_bytecode.txt
+var deployedPoSValidatorManagerBytecode []byte
+
+func AddPoSValidatorManagerContractToAllocations(
+	allocs core.GenesisAlloc,
+) {
+	deployedPoSValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoSValidatorManagerBytecode)))
+	allocs[common.HexToAddress(ValidatorContractAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedPoSValidatorManagerBytes,
+		Nonce:   1,
+	}
+}
+
 // initializes contract [managerAddress] at [rpcURL], to
 // manage validators on [subnetID], with
 // owner given by [ownerAddress]
@@ -121,13 +135,81 @@ func PoAValidatorManagerInitialize(
 	)
 }
 
+// initializes contract [managerAddress] at [rpcURL], to
+// manage validators on [subnetID], with
+// owner given by [ownerAddress]
+func PoSValidatorManagerInitialize(
+	rpcURL string,
+	managerAddress common.Address,
+	privateKey string,
+	subnetID ids.ID,
+) (*types.Transaction, *types.Receipt, error) {
+	const (
+		RewardCalculatorPrecompileAddress = "0x0200000000000000000000000000000000000004"
+	)
+	const (
+		defaultChurnPeriodSeconds     = uint64(0)
+		defaultMaximumChurnPercentage = uint8(20)
+		defaultMinumumStakeAmount     = uint64(0)
+		defaultMaximumStakeAmount     = uint64(0)
+		defaultMinimumDelegationFee   = uint64(0)
+		defaultMaximumStakeMultiplier = uint8(1)
+		defaultWeightToValueFactor    = uint64(1)
+		defaultMinimumStakeDuration   = uint64(0)
+	)
+
+	type BaseParams struct {
+		SubnetID               [32]byte
+		ChurnPeriodSeconds     uint64
+		MaximumChurnPercentage uint8
+	}
+
+	type PoSParams struct {
+		MinimumStakeAmount       uint64
+		MaximumStakeAmount       uint64
+		MinimumStakeDuration     uint64
+		MinimumDelegationFeeBips uint64
+		MaximumStakeMultiplier   uint8
+		WeightToValueFactor      uint64
+		RewardCalculator         common.Address
+	}
+
+	params := BaseParams{
+		SubnetID:               subnetID,
+		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
+		MaximumChurnPercentage: defaultMaximumChurnPercentage,
+	}
+
+	posParams := PoSParams{
+		MinimumStakeAmount:       defaultMinumumStakeAmount,
+		MaximumStakeAmount:       defaultMaximumStakeAmount,
+		MinimumStakeDuration:     defaultMinimumStakeDuration,
+		MinimumDelegationFeeBips: defaultMinimumDelegationFee,
+		MaximumStakeMultiplier:   defaultMaximumStakeMultiplier,
+		WeightToValueFactor:      defaultWeightToValueFactor,
+		RewardCalculator:         common.HexToAddress(RewardCalculatorPrecompileAddress),
+	}
+
+	return contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		managerAddress,
+		big.NewInt(int64(defaultMinumumStakeAmount)),
+		"initialize Native PoS manager",
+		errorSignatureToError,
+		"initialize((bytes32,uint64,uint8),uint64,uint64,uint64,uint64,uint8,uint64,address)",
+		params,
+		posParams,
+	)
+}
+
 // constructs p-chain-validated (signed) subnet conversion warp
 // message, to be sent to the validators manager when
 // initializing validators set
 // the message specifies [subnetID] that is being converted
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
-func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
+func GetPChainSubnetConversionWarpMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -191,7 +273,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // so as to verify p-chain already proceesed the associated
 // ConvertSubnetTx
-func PoAValidatorManagerInitializeValidatorsSet(
+func InitializeValidatorsSet(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,
@@ -295,7 +377,7 @@ func SetupPoA(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	subnetConversionSignedMessage, err := PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
+	subnetConversionSignedMessage, err := GetPChainSubnetConversionWarpMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -308,7 +390,7 @@ func SetupPoA(
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
-	tx, _, err = PoAValidatorManagerInitializeValidatorsSet(
+	tx, _, err = InitializeValidatorsSet(
 		rpcURL,
 		managerAddress,
 		privateKey,
@@ -319,6 +401,87 @@ func SetupPoA(
 	)
 	if err != nil {
 		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
+	}
+	return nil
+}
+
+// setups PoS manager after a successful execution of
+// ConvertSubnetTx on P-Chain
+
+func SetupPoS(
+	app *application.Avalanche,
+	network models.Network,
+	rpcURL string,
+	chainSpec contract.ChainSpec,
+	privateKey string,
+	ownerAddress common.Address,
+	convertSubnetValidators []*txs.ConvertSubnetValidator,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevelStr string,
+) error {
+	if err := evm.SetupProposerVM(
+		rpcURL,
+		privateKey,
+	); err != nil {
+		return err
+	}
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	blockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	tx, _, err := PoSValidatorManagerInitialize(
+		rpcURL,
+		managerAddress,
+		privateKey,
+		subnetID,
+	)
+	if err != nil {
+		if !errors.Is(err, errAlreadyInitialized) {
+			return evm.TransactionError(tx, err, "failure initializing pos validator manager")
+		}
+		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
+	}
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
+	}
+	subnetConversionSignedMessage, err := GetPChainSubnetConversionWarpMessage(
+		network,
+		aggregatorLogLevel,
+		0,
+		aggregatorExtraPeerEndpoints,
+		subnetID,
+		blockchainID,
+		managerAddress,
+		convertSubnetValidators,
+	)
+	if err != nil {
+		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
+	}
+	tx, _, err = InitializeValidatorsSet(
+		rpcURL,
+		managerAddress,
+		privateKey,
+		subnetID,
+		blockchainID,
+		convertSubnetValidators,
+		subnetConversionSignedMessage,
+	)
+	if err != nil {
+		return evm.TransactionError(tx, err, "failure initializing validators set on pos manager")
 	}
 	return nil
 }

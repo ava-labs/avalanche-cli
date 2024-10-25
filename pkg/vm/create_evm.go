@@ -122,6 +122,20 @@ func CreateEVMGenesis(
 		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 	}
 
+	if params.UsePoSValidatorManager {
+		validatormanager.AddPoSValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		params.enableNativeMinterPrecompile = true
+		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
+			params.nativeMinterPrecompileAllowList.AdminAddresses,
+			common.HexToAddress(validatormanager.ValidatorContractAddress),
+		)
+		params.enableRewardManagerPrecompile = true
+		// todo: change reward manager precompile allow list
+		params.rewardManagerPrecompileAllowList.EnabledAddresses = []common.Address{
+			common.HexToAddress(validatormanager.ValidatorContractAddress),
+		}
+	}
+
 	if params.UseExternalGasToken {
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
