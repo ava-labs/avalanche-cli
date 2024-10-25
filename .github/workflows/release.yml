@@ -1,69 +1,43 @@
-name: Release (with lint and test)
+name: Release
 
 on:
   push:
     tags:
       - "*"
+    branches:
+      - acp-77
 
 jobs:
+  # First confirm that the linting and unit tests pass at this commit prior to creating release artifacts.
   lint:
-    name: Lint
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/setup-go@v3
-        with:
-          go-version: "1.21.7"
-      - uses: actions/checkout@v3
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.56.2
-          working-directory: .
-          args: --timeout 3m
-      - name: Install license check
-        run: go install github.com/google/addlicense@v1.0.0
-      - name: Check license
-        run: addlicense -f ./LICENSE.header -check -v ./**/*.go
-  test:
-    name: Golang Unit Tests v${{ matrix.go }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        go: ["1.21.7"]
-        os: [ubuntu-20.04]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go }}
-      - run: go mod download
-      - run: scripts/build.sh
-      - run: go test -v -coverprofile=coverage.out $(go list ./... | grep -v /tests/ | grep -v '/sdk/')
-        env:
-          CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
-      - run: go tool cover -func=coverage.out
+    uses: ./.github/workflows/lint.yml
+
+  unit_test:
+    uses: ./.github/workflows/unit-test.yml
+
   release:
-    needs: [lint, test]
-    runs-on: ubuntu-20.04
+    needs: [lint, unit_test]
+    runs-on: ubuntu-22.04
     steps:
-      - name: Git checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          path: avalanche-cli
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.21.7"
+          go-version-file: 'go.mod'
+
       - name: Set up arm64 cross compiler
         run: |
           sudo apt-get -y update
           sudo apt-get -y install gcc-aarch64-linux-gnu
+
       - name: Checkout osxcross
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: tpoechtrager/osxcross
           path: osxcross
+
       - name: Build osxcross
         run: |
           sudo apt-get -y install clang llvm-dev libxml2-dev uuid-dev libssl-dev bash patch make tar xz-utils bzip2 gzip sed cpio libbz2-dev
@@ -75,24 +49,38 @@ jobs:
         env:
           MACOS_SDK_FNAME: MacOSX12.3.sdk.tar.xz
           MACOS_SDK_CHECKSUM: 3abd261ceb483c44295a6623fdffe5d44fc4ac2c872526576ec5ab5ad0f6e26c
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASS }}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+      
+      - name: Build Docker Image with acp77-latest tag
+        if: github.ref == 'refs/heads/acp-77' # special case for acp-77 branch
+        run: |
+          docker buildx build --pull --push --platform=linux/amd64,linux/arm64 \
+            -t avaplatform/avalanche-cli:acp77-latest \
+            -f ./Dockerfile .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
+
       - name: Run GoReleaser
+        if: github.ref != 'refs/heads/acp-77' # skip for acp-77 branch
         uses: goreleaser/goreleaser-action@v2
         with:
           distribution: goreleaser
           version: latest
           args: release --clean
-          workdir: ./avalanche-cli/
         env:
-          #https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
+          # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEMETRY_TOKEN: ${{ secrets.POSTHOG_PROD_TOKEN }}
           DOCKERFILE: ./Dockerfile.release

@@ -169,3 +169,8 @@ func (n *Network) HandlePublicNetworkSimulation() {
 		n.Endpoint = constants.LocalAPIEndpoint
 	}
 }
+
+// Equals checks the underlying fields Kind and Endpoint
+func (n *Network) Equals(n2 Network) bool {
+	return n.Kind == n2.Kind && n.Endpoint == n2.Endpoint
+}

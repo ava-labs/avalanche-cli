@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -143,12 +144,13 @@ keys or for the ledger addresses associated to certain indices.`,
 }
 
 type Clients struct {
-	x       map[models.Network]avm.Client
-	p       map[models.Network]platformvm.Client
-	c       map[models.Network]ethclient.Client
-	cGeth   map[models.Network]*goethereumethclient.Client
-	evm     map[models.Network]map[string]ethclient.Client
-	evmGeth map[models.Network]map[string]*goethereumethclient.Client
+	x             map[models.Network]avm.Client
+	p             map[models.Network]platformvm.Client
+	c             map[models.Network]ethclient.Client
+	cGeth         map[models.Network]*goethereumethclient.Client
+	evm           map[models.Network]map[string]ethclient.Client
+	evmGeth       map[models.Network]map[string]*goethereumethclient.Client
+	blockchainRPC map[models.Network]map[string]string
 }
 
 func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, subnets []string) (
@@ -162,6 +164,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 	cGethClients := map[models.Network]*goethereumethclient.Client{}
 	evmClients := map[models.Network]map[string]ethclient.Client{}
 	evmGethClients := map[models.Network]map[string]*goethereumethclient.Client{}
+	blockchainRPCs := map[models.Network]map[string]string{}
 	for _, network := range networks {
 		if pchain {
 			pClients[network] = platformvm.NewClient(network.Endpoint)
@@ -207,7 +210,12 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 						false,
 					)
 					if err == nil {
-						_, b := evmClients[network]
+						_, b := blockchainRPCs[network]
+						if !b {
+							blockchainRPCs[network] = map[string]string{}
+						}
+						blockchainRPCs[network][subnetName] = endpoint
+						_, b = evmClients[network]
 						if !b {
 							evmClients[network] = map[string]ethclient.Client{}
 						}
@@ -231,12 +239,13 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 		}
 	}
 	return &Clients{
-		p:       pClients,
-		x:       xClients,
-		c:       cClients,
-		evm:     evmClients,
-		cGeth:   cGethClients,
-		evmGeth: evmGethClients,
+		p:             pClients,
+		x:             xClients,
+		c:             cClients,
+		evm:           evmClients,
+		cGeth:         cGethClients,
+		evmGeth:       evmGethClients,
+		blockchainRPC: blockchainRPCs,
 	}, nil
 }
 
@@ -376,7 +385,12 @@ func getStoredKeyInfo(
 					keyName,
 				)
 				if err != nil {
-					return nil, err
+					ux.Logger.RedXToUser(
+						"failure obtaining info for blockchain %s on url %s",
+						subnetName,
+						clients.blockchainRPC[network][subnetName],
+					)
+					continue
 				}
 				addrInfos = append(addrInfos, addrInfo...)
 			}
@@ -558,28 +572,44 @@ func getEvmBasedChainAddrInfo(
 			if err != nil {
 				return addressInfos, err
 			}
+
+			// Ignore contract address access errors as those may depend on network
 			tokenSymbol, err := token.Symbol(nil)
-			if err == nil {
-				// just ignore contract address access errors as those may depend on network
-				balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
-				if err != nil {
-					return addressInfos, err
-				}
-				formattedBalance, err := formatCChainBalance(balance)
-				if err != nil {
-					return addressInfos, err
-				}
-				info := addressInfo{
-					kind:    kind,
-					name:    name,
-					chain:   chainName,
-					token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
-					address: cChainAddr,
-					balance: formattedBalance,
-					network: network.Name(),
-				}
-				addressInfos = append(addressInfos, info)
+			if err != nil {
+				continue
 			}
+
+			// Get the raw balance for the given token.
+			balance, err := token.BalanceOf(nil, common.HexToAddress(cChainAddr))
+			if err != nil {
+				return addressInfos, err
+			}
+
+			// Get the decimal count for the token to format the balance.
+			// Note: decimals() is not officially part of the IERC20 interface, but is a common extension.
+			decimals, err := token.Decimals(nil)
+			if err != nil {
+				return addressInfos, err
+			}
+
+			// Format the balance to a human-readable string.
+			var formattedBalance string
+			if useGwei {
+				formattedBalance = fmt.Sprintf("%d", balance)
+			} else {
+				formattedBalance = utils.FormatAmount(balance, decimals)
+			}
+
+			info := addressInfo{
+				kind:    kind,
+				name:    name,
+				chain:   chainName,
+				token:   fmt.Sprintf("%s (%s.)", tokenSymbol, tokenAddress[:6]),
+				address: cChainAddr,
+				balance: formattedBalance,
+				network: network.Name(),
+			}
+			addressInfos = append(addressInfos, info)
 		}
 	}
 	return addressInfos, nil

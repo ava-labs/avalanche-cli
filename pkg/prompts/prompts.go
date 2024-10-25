@@ -30,6 +30,7 @@ const (
 	Undefined AddressFormat = iota
 	PChainFormat
 	EVMFormat
+	XChainFormat
 )
 
 const (
@@ -758,7 +759,7 @@ func (prompter *realPrompter) ChooseKeyOrLedger(goal string) (bool, error) {
 		ledgerOption = "Use ledger"
 	)
 	option, err := prompter.CaptureList(
-		fmt.Sprintf("Which key source should be used to %s?", goal),
+		fmt.Sprintf("Which key should be used %s?", goal),
 		[]string{keyOption, ledgerOption},
 	)
 	if err != nil {
@@ -871,7 +872,7 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq boo
 	if size > 10 {
 		size = 10
 	}
-	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keyNames, size)
+	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used %s?", goal), keyNames, size)
 	if err != nil {
 		return "", err
 	}
@@ -899,10 +900,10 @@ func PromptChain(
 	prompter Prompter,
 	prompt string,
 	subnetNames []string,
-	avoidPChain bool,
-	avoidXChain bool,
-	avoidCChain bool,
-	avoidSubnet string,
+	includePChain bool,
+	includeXChain bool,
+	includeCChain bool,
+	avoidBlockchainName string,
 	includeCustom bool,
 ) (bool, bool, bool, bool, string, string, error) {
 	pChainOption := "P-Chain"
@@ -910,16 +911,16 @@ func PromptChain(
 	cChainOption := "C-Chain"
 	notListedOption := "My blockchain isn't listed"
 	subnetOptions := []string{}
-	if !avoidPChain {
+	if includePChain {
 		subnetOptions = append(subnetOptions, pChainOption)
 	}
-	if !avoidXChain {
+	if includeXChain {
 		subnetOptions = append(subnetOptions, xChainOption)
 	}
-	if !avoidCChain {
+	if includeCChain {
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
-	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidBlockchainName)
 	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	if includeCustom {
 		subnetOptions = append(subnetOptions, customOption)
@@ -1045,6 +1046,11 @@ func PromptAddress(
 			if err != nil {
 				return "", err
 			}
+		case XChainFormat:
+			address, err = prompter.CaptureXChainAddress(customPrompt, network)
+			if err != nil {
+				return "", err
+			}
 		case EVMFormat:
 			addr, err := prompter.CaptureAddress(customPrompt)
 			if err != nil {
@@ -1081,6 +1087,8 @@ func CaptureKeyAddress(
 	switch format {
 	case PChainFormat:
 		return k.P()[0], nil
+	case XChainFormat:
+		return k.X()[0], nil
 	case EVMFormat:
 		return k.C(), nil
 	}
