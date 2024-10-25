@@ -528,9 +528,9 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 		return fmt.Errorf("failed to list local clusters: %w", err)
 	}
 	if clusterName != "" {
-		ux.Logger.PrintToUser("%s %s", logging.LightBlue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
+		ux.Logger.PrintToUser("%s %s", logging.Blue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
 	} else {
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("Local clusters:"))
+		ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:"))
 	}
 	for clusterName, rootDir := range localClusters {
 		currenlyRunning := ""
@@ -576,10 +576,10 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 					blockchainStatus, _ = GetBlockchainStatus(avagoURI, blockchainID.String()) // silence errors
 				}
 
-				avagoURIOuput += fmt.Sprintf("   - %s [%s] [%s]\n      publicKey: %s \n      proofOfPossession: %s \n",
+				avagoURIOuput += fmt.Sprintf("   - %s [%s] [%s]\n     publicKey: %s \n     proofOfPossession: %s \n",
 					logging.LightBlue.Wrap(avagoURI),
 					nodeID,
-					strings.TrimRight(strings.Join([]string{isBootStr, "L1:" + blockchainStatus}, " "), " "),
+					strings.TrimRight(strings.Join([]string{isBootStr, "L1:" + logging.Orange.Wrap(blockchainStatus)}, " "), " "),
 					nodePOPPubKey,
 					nodePOPProof,
 				)
