@@ -351,8 +351,6 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("RegisterSubnetValidatorTx ID: %s", txID)
 
 	if err := UpdatePChainHeight(
-		deployer,
-		kc.Addresses().List()[0],
 		"Waiting for P-Chain to update validator information ...",
 	); err != nil {
 		return err

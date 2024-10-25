@@ -244,8 +244,6 @@ func removeValidatorSOV(
 	ux.Logger.PrintToUser("SetSubnetValidatorWeightTx ID: %s", txID)
 
 	if err := UpdatePChainHeight(
-		deployer,
-		kc.Addresses().List()[0],
 		"Waiting for P-Chain to update validator information ...",
 	); err != nil {
 		return err

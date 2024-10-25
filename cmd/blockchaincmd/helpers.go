@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -101,8 +100,6 @@ func UpdateKeychainWithSubnetControlKeys(
 }
 
 func UpdatePChainHeight(
-	deployer *subnet.PublicDeployer,
-	destinationAddress ids.ShortID,
 	title string,
 ) error {
 	_, err := ux.TimedProgressBar(
