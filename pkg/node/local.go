@@ -566,9 +566,9 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 				nodePOPPubKey := "0x" + hex.EncodeToString(nodePOP.PublicKey[:])
 				nodePOPProof := "0x" + hex.EncodeToString(nodePOP.ProofOfPossession[:])
 
-				isBootStr := logging.Red.Wrap("Not Bootstrapped")
+				isBootStr := "Primary:" + logging.Red.Wrap("Not Bootstrapped")
 				if isBoot {
-					isBootStr = logging.Green.Wrap("Bootstrapped")
+					isBootStr = "Primary:" + logging.Green.Wrap("Bootstrapped")
 				}
 
 				blockchainStatus := ""
@@ -576,10 +576,10 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 					blockchainStatus, _ = GetBlockchainStatus(avagoURI, blockchainID.String()) // silence errors
 				}
 
-				avagoURIOuput += fmt.Sprintf("   - %s [%s] [%s]\n publicKey: %s | proofOfPossession: %s \n",
+				avagoURIOuput += fmt.Sprintf("   - %s [%s] [%s]\n      publicKey: %s \n      proofOfPossession: %s \n",
 					logging.LightBlue.Wrap(avagoURI),
 					nodeID,
-					strings.TrimRight(strings.Join([]string{isBootStr, blockchainStatus}, " "), " "),
+					strings.TrimRight(strings.Join([]string{isBootStr, "L1:" + blockchainStatus}, " "), " "),
 					nodePOPPubKey,
 					nodePOPProof,
 				)
@@ -624,6 +624,9 @@ func GetBlockchainStatus(uri string, blockchainID string) (
 	status, err := client.GetBlockchainStatus(ctx, blockchainID)
 	if err != nil {
 		return "", err
+	}
+	if status.String() == "" {
+		return "Not Syncing", nil
 	}
 	return status.String(), nil
 }

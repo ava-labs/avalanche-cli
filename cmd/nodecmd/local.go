@@ -3,6 +3,8 @@
 package nodecmd
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -174,6 +176,9 @@ func localStatus(_ *cobra.Command, args []string) error {
 	clusterName := ""
 	if len(args) > 0 {
 		clusterName = args[0]
+	}
+	if blockchainName != "" && clusterName == "" {
+		return fmt.Errorf("--blockchain flag is only supported if clusterName is specified")
 	}
 	return node.LocalStatus(app, clusterName, blockchainName)
 }
