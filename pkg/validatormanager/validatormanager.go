@@ -84,7 +84,7 @@ func AddPoAValidatorManagerContractToAllocations(
 	}
 }
 
-//go:embed deployed_poa_validator_manager_bytecode.txt
+//go:embed deployed_native_pos_validator_manager_bytecode.txt
 var deployedPoSValidatorManagerBytecode []byte
 
 func AddPoSValidatorManagerContractToAllocations(
@@ -136,52 +136,53 @@ func PoAValidatorManagerInitialize(
 }
 
 // initializes contract [managerAddress] at [rpcURL], to
-// manage validators on [subnetID], with
-// owner given by [ownerAddress]
+// manage validators on [subnetID]
 func PoSValidatorManagerInitialize(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,
-	subnetID ids.ID,
+	subnetID [32]byte,
 ) (*types.Transaction, *types.Receipt, error) {
 	const (
 		RewardCalculatorPrecompileAddress = "0x0200000000000000000000000000000000000004"
 	)
-	const (
-		defaultChurnPeriodSeconds     = uint64(0)
-		defaultMaximumChurnPercentage = uint8(20)
-		defaultMinumumStakeAmount     = uint64(0)
-		defaultMaximumStakeAmount     = uint64(0)
-		defaultMinimumDelegationFee   = uint64(0)
-		defaultMaximumStakeMultiplier = uint8(1)
-		defaultWeightToValueFactor    = uint64(1)
-		defaultMinimumStakeDuration   = uint64(0)
+	var (
+		defaultChurnPeriodSeconds     uint64 = 100
+		defaultMaximumChurnPercentage uint8  = 10
+		defaultMinimumStakeAmount            = big.NewInt(1)
+		defaultMaximumStakeAmount            = big.NewInt(100000)
+		defaultMinimumStakeDuration   uint64 = 604800 // 1 week in seconds
+		defaultMinimumDelegationFee   uint16 = 100    // 1% in basis points
+		defaultMaximumStakeMultiplier uint8  = 2
+		defaultWeightToValueFactor           = big.NewInt(1)
 	)
 
-	type BaseParams struct {
+	type ValidatorManagerSettings struct {
 		SubnetID               [32]byte
 		ChurnPeriodSeconds     uint64
 		MaximumChurnPercentage uint8
 	}
 
-	type PoSParams struct {
-		MinimumStakeAmount       uint64
-		MaximumStakeAmount       uint64
+	type PoSValidatorManagerSettings struct {
+		BaseSettings             ValidatorManagerSettings
+		MinimumStakeAmount       *big.Int
+		MaximumStakeAmount       *big.Int
 		MinimumStakeDuration     uint64
-		MinimumDelegationFeeBips uint64
+		MinimumDelegationFeeBips uint16
 		MaximumStakeMultiplier   uint8
-		WeightToValueFactor      uint64
+		WeightToValueFactor      *big.Int
 		RewardCalculator         common.Address
 	}
 
-	params := BaseParams{
+	baseSettings := ValidatorManagerSettings{
 		SubnetID:               subnetID,
 		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
 		MaximumChurnPercentage: defaultMaximumChurnPercentage,
 	}
 
-	posParams := PoSParams{
-		MinimumStakeAmount:       defaultMinumumStakeAmount,
+	params := PoSValidatorManagerSettings{
+		BaseSettings:             baseSettings,
+		MinimumStakeAmount:       defaultMinimumStakeAmount,
 		MaximumStakeAmount:       defaultMaximumStakeAmount,
 		MinimumStakeDuration:     defaultMinimumStakeDuration,
 		MinimumDelegationFeeBips: defaultMinimumDelegationFee,
@@ -190,16 +191,18 @@ func PoSValidatorManagerInitialize(
 		RewardCalculator:         common.HexToAddress(RewardCalculatorPrecompileAddress),
 	}
 
+	methodSignature := "initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))"
+
+	// Call the TxToMethod function
 	return contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		managerAddress,
-		big.NewInt(int64(defaultMinumumStakeAmount)),
+		nil,
 		"initialize Native PoS manager",
 		errorSignatureToError,
-		"initialize((bytes32,uint64,uint8),uint64,uint64,uint64,uint64,uint8,uint64,address)",
+		methodSignature,
 		params,
-		posParams,
 	)
 }
 

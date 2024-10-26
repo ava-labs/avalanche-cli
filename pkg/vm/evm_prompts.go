@@ -182,16 +182,13 @@ func PromptSubnetEVMGenesisParams(
 
 	if sc.PoS() {
 		params.UsePoSValidatorManager = true
-		params.enableNativeMinterPrecompile = true
-		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
-			common.HexToAddress(validatormanager.ValidatorContractAddress),
-		}
-		params.enableRewardManagerPrecompile = true
-		// todo: change reward manager precompile allow list
-		params.rewardManagerPrecompileAllowList.EnabledAddresses = []common.Address{
-			common.HexToAddress(validatormanager.ValidatorContractAddress),
-		}
 
+		params.enableNativeMinterPrecompile = true
+		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
+			params.nativeMinterPrecompileAllowList.AdminAddresses,
+			common.HexToAddress(validatormanager.ValidatorContractAddress),
+		)
+		params.enableRewardManagerPrecompile = true
 	}
 
 	// Chain ID
@@ -239,6 +236,10 @@ func PromptSubnetEVMGenesisParams(
 	params, err = promptPermissioning(app, version, defaultsKind, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
+	}
+
+	if sc.PoS() {
+		params.UseTeleporter = false
 	}
 
 	return params, tokenSymbol, nil

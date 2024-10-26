@@ -84,6 +84,7 @@ var (
 	privateKeyFlags                 contract.PrivateKeyFlags
 	bootstrapEndpoints              []string
 	convertOnly                     bool
+	pos                             bool
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -143,6 +144,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
+	cmd.Flags().BoolVar(&pos, "pos", false, "initialize the validator manager contract with proof of stake (first make sure genesis includes correct ValidatorManager bytecode)")
 
 	return cmd
 }
@@ -861,21 +863,40 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-			if err := validatormanager.SetupPoA(
-				app,
-				network,
-				rpcURL,
-				chainSpec,
-				genesisPrivateKey,
-				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
-				avaGoBootstrapValidators,
-				extraAggregatorPeers,
-				aggregatorLogLevel,
-			); err != nil {
-				return err
+
+			if pos {
+				ux.Logger.PrintToUser("Initializing Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+				if err := validatormanager.SetupPoS(
+					app,
+					network,
+					rpcURL,
+					chainSpec,
+					genesisPrivateKey,
+					common.HexToAddress(sidecar.PoAValidatorManagerOwner),
+					avaGoBootstrapValidators,
+					extraAggregatorPeers,
+					aggregatorLogLevel,
+				); err != nil {
+					return err
+				}
+				ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s. Newly added validators will start receiving rewards.", blockchainName)
+			} else {
+				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
+				if err := validatormanager.SetupPoA(
+					app,
+					network,
+					rpcURL,
+					chainSpec,
+					genesisPrivateKey,
+					common.HexToAddress(sidecar.PoAValidatorManagerOwner),
+					avaGoBootstrapValidators,
+					extraAggregatorPeers,
+					aggregatorLogLevel,
+				); err != nil {
+					return err
+				}
+				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			}
-			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
