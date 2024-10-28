@@ -1,29 +1,27 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package validatormanager
+
+package validator_manager
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-	warp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
-	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/ava-labs/avalanchego/ids"
 )
 
 const (
@@ -31,7 +29,7 @@ const (
 )
 
 var (
-	errAlreadyInitialized                  = errors.New("the contract is already initialized")
+	ErrAlreadyInitialized                  = errors.New("the contract is already initialized")
 	errInvalidMaximumChurnPercentage       = fmt.Errorf("unvalid churn percentage")
 	errInvalidValidationID                 = fmt.Errorf("invalid validation id")
 	errInvalidValidatorStatus              = fmt.Errorf("invalid validator status")
@@ -48,7 +46,7 @@ var (
 	errInvalidWarpSourceChainID            = fmt.Errorf("invalid wapr source chain ID")
 	errInvalidWarpOriginSenderAddress      = fmt.Errorf("invalid warp origin sender address")
 	errorSignatureToError                  = map[string]error{
-		"InvalidInitialization()":                      errAlreadyInitialized,
+		"InvalidInitialization()":                      ErrAlreadyInitialized,
 		"InvalidMaximumChurnPercentage(uint8)":         errInvalidMaximumChurnPercentage,
 		"InvalidValidationID(bytes32)":                 errInvalidValidationID,
 		"InvalidValidatorStatus(uint8)":                errInvalidValidatorStatus,
@@ -65,24 +63,9 @@ var (
 		"InvalidWarpSourceChainID(bytes32)":            errInvalidWarpSourceChainID,
 		"InvalidWarpOriginSenderAddress(address)":      errInvalidWarpOriginSenderAddress,
 	}
-	defaultAggregatorLogLevel = logging.Off
 )
 
-//go:embed deployed_poa_validator_manager_bytecode.txt
-var deployedPoAValidatorManagerBytecode []byte
-
-func AddPoAValidatorManagerContractToAllocations(
-	allocs core.GenesisAlloc,
-) {
-	deployedPoaValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoAValidatorManagerBytecode)))
-	allocs[common.HexToAddress(ValidatorContractAddress)] = core.GenesisAccount{
-		Balance: big.NewInt(0),
-		Code:    deployedPoaValidatorManagerBytes,
-		Nonce:   1,
-	}
-}
-
-// initializes contract [managerAddress] at [rpcURL], to
+// PoAValidatorManagerInitialize initializes contract [managerAddress] at [rpcURL], to
 // manage validators on [subnetID], with
 // owner given by [ownerAddress]
 func PoAValidatorManagerInitialize(
@@ -119,7 +102,7 @@ func PoAValidatorManagerInitialize(
 	)
 }
 
-// constructs p-chain-validated (signed) subnet conversion warp
+// PoaValidatorManagerGetPChainSubnetConversionWarpMessage constructs p-chain-validated (signed) subnet conversion warp
 // message, to be sent to the validators manager when
 // initializing validators set
 // the message specifies [subnetID] that is being converted
@@ -185,7 +168,7 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
-// calls poa manager validators set init method,
+// PoAValidatorManagerInitializeValidatorsSet calls poa manager validators set init method,
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // so as to verify p-chain already proceesed the associated
 // ConvertSubnetTx
@@ -235,23 +218,4 @@ func PoAValidatorManagerInitializeValidatorsSet(
 		subnetConversionData,
 		uint32(0),
 	)
-}
-
-// setups PoA manager after a successful execution of
-// ConvertSubnetTx on P-Chain
-// needs the list of validators for that tx,
-// [convertSubnetValidators], together with an evm [ownerAddress]
-// to set as the owner of the PoA manager
-func SetupPoA(
-	subnet blockchainSDK.Subnet,
-	network models.Network,
-	privateKey string,
-	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorLogLevelStr string,
-) error {
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
-	return subnet.InitializeProofOfAuthority(network, privateKey, aggregatorExtraPeerEndpoints, aggregatorLogLevel)
 }

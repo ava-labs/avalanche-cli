@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/network/peer"
 
@@ -873,14 +875,34 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-			if err := validatormanager.SetupPoA(
+			subnetID, err := contract.GetSubnetID(
 				app,
 				network,
-				rpcURL,
 				chainSpec,
+			)
+			if err != nil {
+				return err
+			}
+			blockchainID, err := contract.GetBlockchainID(
+				app,
+				network,
+				chainSpec,
+			)
+			if err != nil {
+				return err
+			}
+			ownerAddress := common.HexToAddress(sidecar.PoAValidatorManagerOwner)
+			subnetSDK := blockchainSDK.Subnet{
+				SubnetID:            subnetID,
+				BlockchainID:        blockchainID,
+				OwnerAddress:        &ownerAddress,
+				RPC:                 rpcURL,
+				BootstrapValidators: avaGoBootstrapValidators,
+			}
+			if err := validatormanager.SetupPoA(
+				subnetSDK,
+				network,
 				genesisPrivateKey,
-				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
-				avaGoBootstrapValidators,
 				extraAggregatorPeers,
 				aggregatorLogLevel,
 			); err != nil {

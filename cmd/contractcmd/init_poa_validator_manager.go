@@ -12,10 +12,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/spf13/cobra"
 )
 
@@ -124,14 +124,34 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validatormanager.SetupPoA(
+	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
-		initPOAManagerFlags.rpcEndpoint,
 		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	blockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	ownerAddress := common.HexToAddress(sc.PoAValidatorManagerOwner)
+	subnetSDK := blockchainSDK.Subnet{
+		SubnetID:            subnetID,
+		BlockchainID:        blockchainID,
+		BootstrapValidators: avaGoBootstrapValidators,
+		OwnerAddress:        &ownerAddress,
+		RPC:                 initPOAManagerFlags.rpcEndpoint,
+	}
+	if err := validatormanager.SetupPoA(
+		subnetSDK,
+		network,
 		privateKey,
-		common.HexToAddress(sc.PoAValidatorManagerOwner),
-		avaGoBootstrapValidators,
 		extraAggregatorPeers,
 		initPOAManagerFlags.aggregatorLogLevel,
 	); err != nil {
