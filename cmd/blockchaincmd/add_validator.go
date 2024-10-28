@@ -240,11 +240,24 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if !ownerPrivateKeyFound && !initWithPoS {
-		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
+	if !ownerPrivateKeyFound {
+		// it will be used to pay for the gas and recieve rewards
+		if initWithPoS {
+			if err != nil {
+				return err
+			}
+			// should prompt for this key
+			_, ownerPrivateKey, err = contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
+		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
-
+	if ownerPrivateKeyFound {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
+	}
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
@@ -318,14 +331,6 @@ func CallAddValidator(
 	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
-	}
-
-	// can be whatever funded key
-	if initWithPoS {
-		_, ownerPrivateKey, err = contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
-		if err != nil {
-			return err
-		}
 	}
 
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(

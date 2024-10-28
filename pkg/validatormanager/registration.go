@@ -239,7 +239,7 @@ func GetValidatorWeight(
 	}
 	weight, b := out[0].(uint64)
 	if !b {
-		return 0, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
+		return 0, fmt.Errorf("error at getWeight call, expected , got %T", out[0])
 	}
 	return weight, nil
 }
@@ -348,6 +348,18 @@ func InitValidatorRegistration(
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
 	if initWithPos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
+		stakeAmount, err := app.Prompt.CapturePositiveBigInt(fmt.Sprintf("Enter the amount of tokens to stake (in %s)", app.GetTokenSymbol(chainSpec.BlockchainName)))
+		if err != nil {
+			return nil, ids.Empty, err
+		}
+		delegationFee, err := app.Prompt.CaptureUint16("Enter the delegation fee (in bips)")
+		if err != nil {
+			return nil, ids.Empty, err
+		}
+		stakeDuration, err := app.Prompt.CaptureUint64("Enter the stake duration (in seconds)")
+		if err != nil {
+			return nil, ids.Empty, err
+		}
 		tx, _, err := NativePoSValidatorManagerInitializeValidatorRegistration(
 			rpcURL,
 			managerAddress,
@@ -357,9 +369,9 @@ func InitValidatorRegistration(
 			expiry,
 			balanceOwners,
 			disableOwners,
-			100,            // 1% delegation fee
-			604800,         // 1 week min stake duration
-			big.NewInt(10), // 10 AVAX stake amount
+			delegationFee,
+			stakeDuration,
+			stakeAmount,
 		)
 		if err != nil {
 			if !errors.Is(err, errNodeAlreadyRegistered) {

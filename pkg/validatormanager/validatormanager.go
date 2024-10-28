@@ -142,21 +142,19 @@ func PoSValidatorManagerInitialize(
 	managerAddress common.Address,
 	privateKey string,
 	subnetID [32]byte,
+	minimumStakeAmount *big.Int,
+	maximumStakeAmount *big.Int,
+	minimumStakeDuration uint64,
+	minimumDelegationFee uint16,
+	maximumStakeMultiplier uint8,
+	weightToValueFactor *big.Int,
 ) (*types.Transaction, *types.Receipt, error) {
 	const (
 		RewardCalculatorPrecompileAddress = "0x0200000000000000000000000000000000000004"
 	)
 	var (
-		// should prompt for all these values
-		defaultChurnPeriodSeconds     = uint64(0)
-		defaultMaximumChurnPercentage = uint8(20)
-
-		defaultMinimumStakeAmount            = big.NewInt(1)
-		defaultMaximumStakeAmount            = big.NewInt(100000)
-		defaultMinimumStakeDuration   uint64 = 604800 // 1 week in seconds
-		defaultMinimumDelegationFee   uint16 = 100    // 1% in basis points
-		defaultMaximumStakeMultiplier uint8  = 2
-		defaultWeightToValueFactor           = big.NewInt(1)
+		defaultChurnPeriodSeconds     = uint64(0) // no churn period
+		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
 	)
 
 	type ValidatorManagerSettings struct {
@@ -184,12 +182,12 @@ func PoSValidatorManagerInitialize(
 
 	params := NativeTokenValidatorManagerSettings{
 		BaseSettings:             baseSettings,
-		MinimumStakeAmount:       defaultMinimumStakeAmount,
-		MaximumStakeAmount:       defaultMaximumStakeAmount,
-		MinimumStakeDuration:     defaultMinimumStakeDuration,
-		MinimumDelegationFeeBips: defaultMinimumDelegationFee,
-		MaximumStakeMultiplier:   defaultMaximumStakeMultiplier,
-		WeightToValueFactor:      defaultWeightToValueFactor,
+		MinimumStakeAmount:       minimumStakeAmount,
+		MaximumStakeAmount:       maximumStakeAmount,
+		MinimumStakeDuration:     minimumStakeDuration,
+		MinimumDelegationFeeBips: minimumDelegationFee,
+		MaximumStakeMultiplier:   maximumStakeMultiplier,
+		WeightToValueFactor:      weightToValueFactor,
 		RewardCalculator:         common.HexToAddress(RewardCalculatorPrecompileAddress),
 	}
 
@@ -419,6 +417,12 @@ func SetupPoS(
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
+	minimumStakeAmount *big.Int,
+	maximumStakeAmount *big.Int,
+	minimumStakeDuration uint64,
+	minimumDelegationFee uint16,
+	maximumStakeMultiplier uint8,
+	weightToValueFactor *big.Int,
 ) error {
 	if err := evm.SetupProposerVM(
 		rpcURL,
@@ -448,10 +452,16 @@ func SetupPoS(
 		managerAddress,
 		privateKey,
 		subnetID,
+		minimumStakeAmount,
+		maximumStakeAmount,
+		minimumStakeDuration,
+		minimumDelegationFee,
+		maximumStakeMultiplier,
+		weightToValueFactor,
 	)
 	if err != nil {
 		if !errors.Is(err, errAlreadyInitialized) {
-			return evm.TransactionError(tx, err, "failure initializing native pos validator manager")
+			return evm.TransactionError(tx, err, "failure initializing native PoS validator manager")
 		}
 		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
 	}

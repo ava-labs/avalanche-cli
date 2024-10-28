@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -902,6 +903,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 
 			if pos {
+				minimumStakeAmount,
+					maximumStakeAmount,
+					minimumStakeDuration,
+					minimumDelegationFee,
+					maximumStakeMultiplier,
+					weightToValueFactor,
+					err := CaptureNativePoSParams()
+
+				if err != nil {
+					return err
+				}
 				ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 				if err := validatormanager.SetupPoS(
 					app,
@@ -912,6 +924,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					avaGoBootstrapValidators,
 					extraAggregatorPeers,
 					aggregatorLogLevel,
+					minimumStakeAmount,
+					maximumStakeAmount,
+					minimumStakeDuration,
+					minimumDelegationFee,
+					maximumStakeMultiplier,
+					weightToValueFactor,
 				); err != nil {
 					return err
 				}
@@ -1293,4 +1311,37 @@ func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
 		}
 	}
 	return aggregatorExtraPeerEndpointsUris, nil
+}
+
+func CaptureNativePoSParams() (*big.Int, *big.Int, uint64, uint16, uint8, *big.Int, error) {
+	minimumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the minimum stake amount (1 = 1 NATIVE TOKEN)")
+	if err != nil {
+		return new(big.Int), new(big.Int), 0, 0, 0, new(big.Int), err
+	}
+
+	maximumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the maximum stake amount (1 = 1 NATIVE TOKEN)")
+	if err != nil {
+		return new(big.Int), new(big.Int), 0, 0, 0, new(big.Int), err
+	}
+
+	minimumStakeDuration, err := app.Prompt.CaptureUint64("Enter the minimum stake duration (in seconds)")
+	if err != nil {
+		return new(big.Int), new(big.Int), 0, 0, 0, new(big.Int), err
+	}
+
+	minimumDelegationFee, err := app.Prompt.CaptureUint16("Enter the minimum delegation fee (in bips)")
+	if err != nil {
+		return new(big.Int), new(big.Int), 0, 0, 0, new(big.Int), err
+	}
+
+	maximumStakeMultiplier, err := app.Prompt.CaptureUint8("Enter the maximum stake multiplier")
+	if err != nil {
+		return new(big.Int), new(big.Int), 0, 0, 0, new(big.Int), err
+	}
+
+	weightToValueFactor, err := app.Prompt.CapturePositiveBigInt("Enter the weight to value factor")
+	if err != nil {
+		return new(big.Int), new(big.Int), 0, 0, 0, new(big.Int), err
+	}
+	return minimumStakeAmount, maximumStakeAmount, minimumStakeDuration, minimumDelegationFee, maximumStakeMultiplier, weightToValueFactor, nil
 }

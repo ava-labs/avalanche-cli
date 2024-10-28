@@ -109,6 +109,8 @@ type Prompter interface {
 	CaptureValidatorBalance(promptStr string, availableBalance uint64) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string, validator func(int) error) (int, error)
+	CaptureUint8(promptStr string) (uint8, error)
+	CaptureUint16(promptStr string) (uint16, error)
 	CaptureUint32(promptStr string) (uint32, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
@@ -318,6 +320,50 @@ func (*realPrompter) CaptureInt(promptStr string, validator func(int) error) (in
 		return 0, err
 	}
 	return val, nil
+}
+
+func (*realPrompter) CaptureUint8(promptStr string) (uint8, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			_, err := strconv.ParseUint(input, 0, 8)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	input, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	val, err := strconv.ParseUint(input, 0, 8)
+	if err != nil {
+		return 0, err
+	}
+	return uint8(val), nil
+}
+
+func (*realPrompter) CaptureUint16(promptStr string) (uint16, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			_, err := strconv.ParseUint(input, 0, 16)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	input, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	val, err := strconv.ParseUint(input, 0, 16)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(val), nil
 }
 
 func (*realPrompter) CaptureUint32(promptStr string) (uint32, error) {

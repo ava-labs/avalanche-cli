@@ -127,9 +127,35 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Bootstrap Validators: %v", bootstrapValidators)
-	ux.Logger.PrintToUser("AvalancheGo Bootstrap Validators: %v", avaGoBootstrapValidators)
-	ux.Logger.PrintToUser("Extra Aggregator Peers: %v", extraAggregatorPeers)
+	minimumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the minimum stake amount")
+	if err != nil {
+		return err
+	}
+
+	maximumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the maximum stake amount")
+	if err != nil {
+		return err
+	}
+
+	minimumStakeDuration, err := app.Prompt.CaptureUint64("Enter the minimum stake duration (in seconds)")
+	if err != nil {
+		return err
+	}
+
+	minimumDelegationFee, err := app.Prompt.CaptureUint16("Enter the minimum delegation fee")
+	if err != nil {
+		return err
+	}
+
+	maximumStakeMultiplier, err := app.Prompt.CaptureUint8("Enter the maximum stake multiplier")
+	if err != nil {
+		return err
+	}
+
+	weightToValueFactor, err := app.Prompt.CapturePositiveBigInt("Enter the weight to value factor")
+	if err != nil {
+		return err
+	}
 	if err := validatormanager.SetupPoS(
 		app,
 		network,
@@ -139,6 +165,12 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		avaGoBootstrapValidators,
 		extraAggregatorPeers,
 		initPOSManagerFlags.aggregatorLogLevel,
+		minimumStakeAmount,
+		maximumStakeAmount,
+		minimumStakeDuration,
+		minimumDelegationFee,
+		maximumStakeMultiplier,
+		weightToValueFactor,
 	); err != nil {
 		return err
 	}
