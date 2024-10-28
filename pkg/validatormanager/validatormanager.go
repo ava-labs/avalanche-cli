@@ -147,8 +147,10 @@ func PoSValidatorManagerInitialize(
 		RewardCalculatorPrecompileAddress = "0x0200000000000000000000000000000000000004"
 	)
 	var (
-		defaultChurnPeriodSeconds     uint64 = 100
-		defaultMaximumChurnPercentage uint8  = 10
+		// should prompt for all these values
+		defaultChurnPeriodSeconds     = uint64(0)
+		defaultMaximumChurnPercentage = uint8(20)
+
 		defaultMinimumStakeAmount            = big.NewInt(1)
 		defaultMaximumStakeAmount            = big.NewInt(100000)
 		defaultMinimumStakeDuration   uint64 = 604800 // 1 week in seconds
@@ -163,7 +165,7 @@ func PoSValidatorManagerInitialize(
 		MaximumChurnPercentage uint8
 	}
 
-	type PoSValidatorManagerSettings struct {
+	type NativeTokenValidatorManagerSettings struct {
 		BaseSettings             ValidatorManagerSettings
 		MinimumStakeAmount       *big.Int
 		MaximumStakeAmount       *big.Int
@@ -180,7 +182,7 @@ func PoSValidatorManagerInitialize(
 		MaximumChurnPercentage: defaultMaximumChurnPercentage,
 	}
 
-	params := PoSValidatorManagerSettings{
+	params := NativeTokenValidatorManagerSettings{
 		BaseSettings:             baseSettings,
 		MinimumStakeAmount:       defaultMinimumStakeAmount,
 		MaximumStakeAmount:       defaultMaximumStakeAmount,
@@ -191,17 +193,14 @@ func PoSValidatorManagerInitialize(
 		RewardCalculator:         common.HexToAddress(RewardCalculatorPrecompileAddress),
 	}
 
-	methodSignature := "initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))"
-
-	// Call the TxToMethod function
 	return contract.TxToMethod(
 		rpcURL,
 		privateKey,
 		managerAddress,
 		nil,
-		"initialize Native PoS manager",
+		"initialize Native Token PoS manager",
 		errorSignatureToError,
-		methodSignature,
+		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))",
 		params,
 	)
 }
@@ -272,7 +271,7 @@ func GetPChainSubnetConversionWarpMessage(
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
-// calls poa manager validators set init method,
+// calls validator manager validators set init method,
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // so as to verify p-chain already proceesed the associated
 // ConvertSubnetTx
@@ -417,7 +416,6 @@ func SetupPoS(
 	rpcURL string,
 	chainSpec contract.ChainSpec,
 	privateKey string,
-	ownerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetValidator,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
@@ -453,7 +451,7 @@ func SetupPoS(
 	)
 	if err != nil {
 		if !errors.Is(err, errAlreadyInitialized) {
-			return evm.TransactionError(tx, err, "failure initializing pos validator manager")
+			return evm.TransactionError(tx, err, "failure initializing native pos validator manager")
 		}
 		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
 	}

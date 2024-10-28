@@ -208,6 +208,10 @@ func CallAddValidator(
 	publicKey string,
 	pop string,
 ) error {
+	initWithPoS, err := app.Prompt.CaptureYesNo("Is this network PoS? (y/n)")
+	if err != nil {
+		return err
+	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
@@ -236,7 +240,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if !ownerPrivateKeyFound {
+	if !ownerPrivateKeyFound && !initWithPoS {
 		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
@@ -316,6 +320,14 @@ func CallAddValidator(
 		return err
 	}
 
+	// can be whatever funded key
+	if initWithPoS {
+		_, ownerPrivateKey, err = contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
+		if err != nil {
+			return err
+		}
+	}
+
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,
@@ -330,6 +342,7 @@ func CallAddValidator(
 		weight,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
+		initWithPoS,
 	)
 	if err != nil {
 		return err
@@ -365,6 +378,7 @@ func CallAddValidator(
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
+	//weight is inaccurate in PoS since we fetched it during registration
 	ux.Logger.PrintToUser("  Weight: %d", weight)
 	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")

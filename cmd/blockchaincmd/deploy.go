@@ -42,6 +42,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -466,6 +467,42 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		flags := make(map[string]string)
 		flags[constants.MetricsNetwork] = network.Name()
 		metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
+
+		clusterInfo, err := localnet.GetClusterInfo()
+		nodeInfos := make([]*rpcpb.NodeInfo, 0, len(clusterInfo.NodeInfos))
+		for _, v := range clusterInfo.NodeInfos {
+			nodeInfos = append(nodeInfos, v)
+		}
+		bootstrapEndpoints := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
+		if len(bootstrapEndpoints) == 0 {
+			return fmt.Errorf("network has no nodes")
+		}
+
+		var changeAddr string
+		for _, endpoint := range bootstrapEndpoints {
+			infoClient := info.NewClient(endpoint)
+			ctx, cancel := utils.GetAPILargeContext()
+			defer cancel()
+			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+			if err != nil {
+				return err
+			}
+			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
+			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
+			//can use defaults here because local deployment. change below to avoid prompting.
+			changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+			if err != nil {
+				return err
+			}
+			bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
+				NodeID:               nodeID.String(),
+				Weight:               constants.BootstrapValidatorWeight,
+				Balance:              constants.BootstrapValidatorBalance,
+				BLSPublicKey:         publicKey,
+				BLSProofOfPossession: pop,
+				ChangeOwnerAddr:      changeAddr,
+			})
+		}
 		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
@@ -473,7 +510,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.ICMMessengerAddress,
 			deployInfo.ICMRegistryAddress,
-			nil,
+			bootstrapValidators,
 		); err != nil {
 			return err
 		}
@@ -865,21 +902,20 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 
 			if pos {
-				ux.Logger.PrintToUser("Initializing Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+				ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 				if err := validatormanager.SetupPoS(
 					app,
 					network,
 					rpcURL,
 					chainSpec,
 					genesisPrivateKey,
-					common.HexToAddress(sidecar.PoAValidatorManagerOwner),
 					avaGoBootstrapValidators,
 					extraAggregatorPeers,
 					aggregatorLogLevel,
 				); err != nil {
 					return err
 				}
-				ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s. Newly added validators will start receiving rewards.", blockchainName)
+				ux.Logger.GreenCheckmarkToUser("Native Token Proof of Stake Validator Manager contract successfully initialized on blockchain %s. Newly added validators will start receiving rewards.", blockchainName)
 			} else {
 				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 				if err := validatormanager.SetupPoA(

@@ -124,6 +124,8 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	ux.Logger.PrintToUser("Bootstrap Validators: %v", bootstrapValidators)
 	if err := validatormanager.SetupPoA(
 		app,
 		network,

@@ -85,7 +85,67 @@ func PoAValidatorManagerInitializeValidatorRegistration(
 	)
 }
 
-func PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
+func NativePoSValidatorManagerInitializeValidatorRegistration(
+	rpcURL string,
+	managerAddress common.Address,
+	managerOwnerPrivateKey string,
+	nodeID ids.NodeID,
+	blsPublicKey []byte,
+	expiry uint64,
+	balanceOwners warpMessage.PChainOwner,
+	disableOwners warpMessage.PChainOwner,
+	delegationFeeBips uint16,
+	minStakeDuration uint64,
+	stakeAmount *big.Int,
+) (*types.Transaction, *types.Receipt, error) {
+	type PChainOwner struct {
+		Threshold uint32
+		Addresses []common.Address
+	}
+
+	type ValidatorRegistrationInput struct {
+		NodeID                []byte
+		BlsPublicKey          []byte
+		RegistrationExpiry    uint64
+		RemainingBalanceOwner PChainOwner
+		DisableOwner          PChainOwner
+	}
+
+	balanceOwnersAux := PChainOwner{
+		Threshold: balanceOwners.Threshold,
+		Addresses: utils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
+			return common.BytesToAddress(addr[:])
+		}),
+	}
+	disableOwnersAux := PChainOwner{
+		Threshold: disableOwners.Threshold,
+		Addresses: utils.Map(disableOwners.Addresses, func(addr ids.ShortID) common.Address {
+			return common.BytesToAddress(addr[:])
+		}),
+	}
+	validatorRegistrationInput := ValidatorRegistrationInput{
+		NodeID:                nodeID[:],
+		BlsPublicKey:          blsPublicKey,
+		RegistrationExpiry:    expiry,
+		RemainingBalanceOwner: balanceOwnersAux,
+		DisableOwner:          disableOwnersAux,
+	}
+
+	return contract.TxToMethod(
+		rpcURL,
+		managerOwnerPrivateKey,
+		managerAddress,
+		stakeAmount,
+		"initialize validator registration with stake",
+		errorSignatureToError,
+		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
+		validatorRegistrationInput,
+		delegationFeeBips,
+		minStakeDuration,
+	)
+}
+
+func ValidatorManagerGetSubnetValidatorRegistrationMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -163,7 +223,28 @@ func GetRegisteredValidator(
 	return validatorID, nil
 }
 
-func PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+func GetValidatorWeight(
+	rpcURL string,
+	managerAddress common.Address,
+	validatorID ids.ID,
+) (uint64, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"getWeight(bytes32)->(uint64)",
+		validatorID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	weight, b := out[0].(uint64)
+	if !b {
+		return 0, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
+	}
+	return weight, nil
+}
+
+func ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 	network models.Network,
 	rpcURL string,
 	aggregatorLogLevel logging.Level,
@@ -213,7 +294,7 @@ func PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 }
 
 // last step of flow for adding a new validator
-func PoAValidatorManagerCompleteValidatorRegistration(
+func ValidatorManagerCompleteValidatorRegistration(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string, // not need to be owner atm
@@ -225,7 +306,7 @@ func PoAValidatorManagerCompleteValidatorRegistration(
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
-		"complete poa validator registration",
+		"complete validator registration",
 		errorSignatureToError,
 		"completeValidatorRegistration(uint32)",
 		uint32(0),
@@ -246,6 +327,7 @@ func InitValidatorRegistration(
 	weight uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
+	initWithPos bool,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -264,28 +346,66 @@ func InitValidatorRegistration(
 		return nil, ids.Empty, err
 	}
 	managerAddress := common.HexToAddress(ValidatorContractAddress)
-	tx, _, err := PoAValidatorManagerInitializeValidatorRegistration(
-		rpcURL,
-		managerAddress,
-		ownerPrivateKey,
-		nodeID,
-		blsPublicKey,
-		expiry,
-		balanceOwners,
-		disableOwners,
-		weight,
-	)
-	if err != nil {
-		if !errors.Is(err, errNodeAlreadyRegistered) {
-			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
+	if initWithPos {
+		// should take input prior to here for stake amount, delegation fee, and min stake duration
+		tx, _, err := NativePoSValidatorManagerInitializeValidatorRegistration(
+			rpcURL,
+			managerAddress,
+			ownerPrivateKey,
+			nodeID,
+			blsPublicKey,
+			expiry,
+			balanceOwners,
+			disableOwners,
+			100,            // 1% delegation fee
+			604800,         // 1 week min stake duration
+			big.NewInt(10), // 10 AVAX stake amount
+		)
+		if err != nil {
+			if !errors.Is(err, errNodeAlreadyRegistered) {
+				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
+			}
+			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
 		}
-		ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+	} else {
+		tx, _, err := PoAValidatorManagerInitializeValidatorRegistration(
+			rpcURL,
+			managerAddress,
+			ownerPrivateKey,
+			nodeID,
+			blsPublicKey,
+			expiry,
+			balanceOwners,
+			disableOwners,
+			weight,
+		)
+		if err != nil {
+			if !errors.Is(err, errNodeAlreadyRegistered) {
+				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
+			}
+			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+		}
 	}
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	return PoaValidatorManagerGetSubnetValidatorRegistrationMessage(
+	// get the weight of the validator based on stake if in PoS mode
+	if initWithPos {
+		validationID, err := GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		if err != nil {
+			ux.Logger.PrintToUser("Error getting validation ID")
+			return nil, ids.Empty, err
+		}
+		weight, err = GetValidatorWeight(rpcURL, managerAddress, validationID)
+		if err != nil {
+			ux.Logger.PrintToUser("Error getting validator weight")
+			return nil, ids.Empty, err
+		}
+	}
+
+	ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
+	return ValidatorManagerGetSubnetValidatorRegistrationMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -325,7 +445,7 @@ func FinishValidatorRegistration(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
 		aggregatorLogLevel,
@@ -344,7 +464,7 @@ func FinishValidatorRegistration(
 	); err != nil {
 		return err
 	}
-	tx, _, err := PoAValidatorManagerCompleteValidatorRegistration(
+	tx, _, err := ValidatorManagerCompleteValidatorRegistration(
 		rpcURL,
 		managerAddress,
 		privateKey,
