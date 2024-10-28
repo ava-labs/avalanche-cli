@@ -171,13 +171,12 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if !sc.Sovereign {
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
-	return removeValidatorSOV(deployer, network, kc, blockchainName, nodeID)
+	return removeValidatorSOV(deployer, network, blockchainName, nodeID)
 }
 
 func removeValidatorSOV(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
-	kc *keychain.Keychain,
 	blockchainName string,
 	nodeID ids.NodeID,
 ) error {
@@ -244,8 +243,6 @@ func removeValidatorSOV(
 	ux.Logger.PrintToUser("SetSubnetValidatorWeightTx ID: %s", txID)
 
 	if err := UpdatePChainHeight(
-		deployer,
-		kc.Addresses().List()[0],
 		"Waiting for P-Chain to update validator information ...",
 	); err != nil {
 		return err

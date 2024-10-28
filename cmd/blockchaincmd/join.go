@@ -70,7 +70,7 @@ This command currently only supports Blockchains deployed on the Fuji Testnet an
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().StringVar(&dataDir, "data-dir", "", "path of avalanchego's data dir directory")
 	cmd.Flags().BoolVar(&printManual, "print", false, "if true, print the manual config without prompting")
-	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to check")
+	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "set the NodeID of the validator to check")
 	cmd.Flags().BoolVar(&forceWrite, "force-write", false, "if true, skip to prompt to overwrite the config file")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake on validator")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "start time that validator starts validating")

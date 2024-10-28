@@ -20,6 +20,9 @@ const (
 	subnetEVMMainnetChainID  = 11
 	poaValidatorManagerOwner = "0x2e6FcBb9d4E17eC4cF67eddfa7D32eabC4cdCFc6"
 	bootstrapFilepathFlag    = "--bootstrap-filepath"
+	avalancheGoPath          = "--avalanchego-path"
+	localNodeClusterName     = "testLocalNode"
+	etnaTestSubnet           = "etnaTestSubnet"
 )
 
 /* #nosec G204 */
@@ -810,7 +813,7 @@ func SimulateFujiAddValidator(
 		"--fuji",
 		"--key",
 		key,
-		"--nodeID",
+		"--node-id",
 		nodeID,
 		"--start-time",
 		start,
@@ -858,7 +861,7 @@ func SimulateFujiRemoveValidator(
 		"--fuji",
 		"--key",
 		key,
-		"--nodeID",
+		"--node-id",
 		nodeID,
 		subnetName,
 	)
@@ -901,7 +904,7 @@ func SimulateMainnetAddValidator(
 			SubnetCmd,
 			"addValidator",
 			"--mainnet",
-			"--nodeID",
+			"--node-id",
 			nodeID,
 			"--start-time",
 			start,
@@ -943,7 +946,7 @@ func SimulateFujiJoin(
 		avalanchegoConfig,
 		"--plugin-dir",
 		pluginDir,
-		"--nodeID",
+		"--node-id",
 		nodeID,
 		"--force-write",
 		subnetName,
@@ -989,7 +992,7 @@ func SimulateMainnetJoin(
 		avalanchegoConfig,
 		"--plugin-dir",
 		pluginDir,
-		"--nodeID",
+		"--node-id",
 		nodeID,
 		"--force-write",
 		subnetName,
