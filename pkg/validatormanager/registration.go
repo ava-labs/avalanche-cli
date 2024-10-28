@@ -239,7 +239,7 @@ func GetValidatorWeight(
 	}
 	weight, b := out[0].(uint64)
 	if !b {
-		return 0, fmt.Errorf("error at getWeight call, expected , got %T", out[0])
+		return 0, fmt.Errorf("error at getWeight call, expected uint64, got %T", out[0])
 	}
 	return weight, nil
 }
