@@ -3,6 +3,8 @@
 package nodecmd
 
 import (
+	"os"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -22,6 +24,7 @@ var (
 	stakingCertKeyPath   string
 	stakingSignerKeyPath string
 	numNodes             uint32
+	nodeConfigPath       string
 )
 
 // const snapshotName = "local_snapshot"
@@ -79,6 +82,7 @@ status by running avalanche node status local
 	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
 	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to start")
+	cmd.Flags().StringVar(&nodeConfigPath, "node-config", "", "path to common avalanchego config settings for all nodes")
 	return cmd
 }
 
@@ -139,12 +143,21 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 	}
+	nodeConfig := ""
+	if nodeConfigPath != "" {
+		nodeConfigBytes, err := os.ReadFile(nodeConfigPath)
+		if err != nil {
+			return err
+		}
+		nodeConfig = string(nodeConfigBytes)
+	}
 	return node.StartLocalNode(
 		app,
 		clusterName,
 		globalNetworkFlags.UseEtnaDevnet,
 		avalanchegoBinaryPath,
 		numNodes,
+		nodeConfig,
 		anrSettings,
 		avaGoVersionSetting,
 		globalNetworkFlags,

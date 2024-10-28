@@ -532,6 +532,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					}
 				}
 				network = models.NewNetworkFromCluster(network, clusterName)
+				nodeConfig := ""
+				if app.AvagoNodeConfigExists(blockchainName) {
+					nodeConfigBytes, err := os.ReadFile(app.GetAvagoNodeConfigPath(blockchainName))
+					if err != nil {
+						return err
+					}
+					nodeConfig = string(nodeConfigBytes)
+				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
 					app,
@@ -539,6 +547,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					useEtnaDevnet,
 					avagoBinaryPath,
 					uint32(numLocalNodes),
+					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
 					globalNetworkFlags,
