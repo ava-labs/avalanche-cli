@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/sdk/validatorManager"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
@@ -374,8 +374,8 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return err
 	}
 
-	managerAddress := common.HexToAddress(validatorManager.ValidatorContractAddress)
-	tx, _, err := validatorManager.PoAValidatorManagerInitialize(
+	managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
+	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
 		c.RPC,
 		managerAddress,
 		privateKey,
@@ -383,13 +383,13 @@ func (c *Subnet) InitializeProofOfAuthority(
 		*c.OwnerAddress,
 	)
 	if err != nil {
-		if !errors.Is(err, validatorManager.ErrAlreadyInitialized) {
+		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
 			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
 		}
 		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
 	}
 
-	subnetConversionSignedMessage, err := validatorManager.PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
+	subnetConversionSignedMessage, err := validatormanager.GetPoAPChainSubnetConversionWarpMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -403,7 +403,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	tx, _, err = validatorManager.PoAValidatorManagerInitializeValidatorsSet(
+	tx, _, err = validatormanager.PoAInitializeValidatorsSet(
 		c.RPC,
 		managerAddress,
 		privateKey,

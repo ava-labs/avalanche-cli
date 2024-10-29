@@ -1,7 +1,7 @@
 // Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package validatorManager
+package validatormanager
 
 import (
 	"errors"
@@ -102,13 +102,13 @@ func PoAValidatorManagerInitialize(
 	)
 }
 
-// PoaValidatorManagerGetPChainSubnetConversionWarpMessage constructs p-chain-validated (signed) subnet conversion warp
+// GetPoAPChainSubnetConversionWarpMessage constructs p-chain-validated (signed) subnet conversion warp
 // message, to be sent to the validators manager when
 // initializing validators set
 // the message specifies [subnetID] that is being converted
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
-func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
+func GetPoAPChainSubnetConversionWarpMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -168,11 +168,11 @@ func PoaValidatorManagerGetPChainSubnetConversionWarpMessage(
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
-// PoAValidatorManagerInitializeValidatorsSet calls poa manager validators set init method,
+// PoAInitializeValidatorsSet calls poa manager validators set init method,
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // so as to verify p-chain already proceesed the associated
 // ConvertSubnetTx
-func PoAValidatorManagerInitializeValidatorsSet(
+func PoAInitializeValidatorsSet(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,
