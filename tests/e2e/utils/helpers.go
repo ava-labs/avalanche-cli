@@ -1059,3 +1059,7 @@ func GetKeyTransferFee(output string) (uint64, error) {
 	}
 	return feeNAvax, nil
 }
+
+func GetAPILargeContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+}

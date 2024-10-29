@@ -865,6 +865,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+			fmt.Printf("obtained rpcURL %s \n", rpcURL)
 			client, err := evm.GetClient(rpcURL)
 			if err != nil {
 				return err
@@ -874,6 +875,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+			fmt.Printf("obtained extraAggregatorPeers %s \n", extraAggregatorPeers)
 			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 			subnetID, err := contract.GetSubnetID(
 				app,
@@ -899,13 +901,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				RPC:                 rpcURL,
 				BootstrapValidators: avaGoBootstrapValidators,
 			}
-			if err := validatormanager.SetupPoA(
-				subnetSDK,
-				network,
-				genesisPrivateKey,
-				extraAggregatorPeers,
-				aggregatorLogLevel,
-			); err != nil {
+			logLvl, err := logging.ToLevel(aggregatorLogLevel)
+			if err != nil {
+				logLvl = logging.Off
+			}
+			if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
 				return err
 			}
 			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
