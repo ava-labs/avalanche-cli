@@ -645,7 +645,7 @@ func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
 			return err
 		}
 	}
-	ctx, cancel = utils.GetAPIContext()
+	ctx, cancel = utils.GetANRContext()
 	_, err = cli.Health(ctx)
 	cancel()
 	if err != nil {
