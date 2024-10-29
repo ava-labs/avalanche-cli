@@ -254,7 +254,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 					}
 				}
 				sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
-				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
+				ux.Logger.GreenCheckmarkToUser("Validator Manager Proxy Contract owner address %s", createFlags.poaValidatorManagerOwner)
 			}
 		}
 
@@ -326,6 +326,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				params,
 				teleporterInfo,
 				createFlags.addICMRegistryToGenesis,
+				sc.PoAValidatorManagerOwner,
 			)
 			if err != nil {
 				return err

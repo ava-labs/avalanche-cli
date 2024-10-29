@@ -186,7 +186,7 @@ func PromptSubnetEVMGenesisParams(
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
 			params.nativeMinterPrecompileAllowList.AdminAddresses,
-			common.HexToAddress(validatormanager.ValidatorContractAddress),
+			common.HexToAddress(validatormanager.ProxyContractAddress),
 		)
 		params.enableRewardManagerPrecompile = true
 	}

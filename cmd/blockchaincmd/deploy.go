@@ -787,7 +787,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		deployer.CleanCacheWallet()
-		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
+		managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,

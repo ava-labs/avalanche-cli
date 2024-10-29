@@ -345,7 +345,7 @@ func InitValidatorRegistration(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	managerAddress := common.HexToAddress(ProxyContractAddress)
 	if initWithPos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
 		stakeAmount, err := app.Prompt.CapturePositiveBigInt(fmt.Sprintf("Enter the amount of tokens to stake (in %s)", app.GetTokenSymbol(chainSpec.BlockchainName)))
@@ -380,6 +380,7 @@ func InitValidatorRegistration(
 			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
 		}
 	} else {
+		managerAddress = common.HexToAddress(ProxyContractAddress)
 		tx, _, err := PoAValidatorManagerInitializeValidatorRegistration(
 			rpcURL,
 			managerAddress,
@@ -443,8 +444,10 @@ func FinishValidatorRegistration(
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
+	initWithPos bool,
 ) error {
-	managerAddress := common.HexToAddress(ValidatorContractAddress)
+
+	managerAddress := common.HexToAddress(ProxyContractAddress)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,

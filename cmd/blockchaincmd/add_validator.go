@@ -377,6 +377,7 @@ func CallAddValidator(
 		validationID,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
+		initWithPoS,
 	); err != nil {
 		return err
 	}
