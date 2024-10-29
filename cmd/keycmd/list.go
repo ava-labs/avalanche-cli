@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -143,12 +144,13 @@ keys or for the ledger addresses associated to certain indices.`,
 }
 
 type Clients struct {
-	x       map[models.Network]avm.Client
-	p       map[models.Network]platformvm.Client
-	c       map[models.Network]ethclient.Client
-	cGeth   map[models.Network]*goethereumethclient.Client
-	evm     map[models.Network]map[string]ethclient.Client
-	evmGeth map[models.Network]map[string]*goethereumethclient.Client
+	x             map[models.Network]avm.Client
+	p             map[models.Network]platformvm.Client
+	c             map[models.Network]ethclient.Client
+	cGeth         map[models.Network]*goethereumethclient.Client
+	evm           map[models.Network]map[string]ethclient.Client
+	evmGeth       map[models.Network]map[string]*goethereumethclient.Client
+	blockchainRPC map[models.Network]map[string]string
 }
 
 func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool, subnets []string) (
@@ -162,6 +164,7 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 	cGethClients := map[models.Network]*goethereumethclient.Client{}
 	evmClients := map[models.Network]map[string]ethclient.Client{}
 	evmGethClients := map[models.Network]map[string]*goethereumethclient.Client{}
+	blockchainRPCs := map[models.Network]map[string]string{}
 	for _, network := range networks {
 		if pchain {
 			pClients[network] = platformvm.NewClient(network.Endpoint)
@@ -207,7 +210,12 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 						false,
 					)
 					if err == nil {
-						_, b := evmClients[network]
+						_, b := blockchainRPCs[network]
+						if !b {
+							blockchainRPCs[network] = map[string]string{}
+						}
+						blockchainRPCs[network][subnetName] = endpoint
+						_, b = evmClients[network]
 						if !b {
 							evmClients[network] = map[string]ethclient.Client{}
 						}
@@ -231,12 +239,13 @@ func getClients(networks []models.Network, pchain bool, cchain bool, xchain bool
 		}
 	}
 	return &Clients{
-		p:       pClients,
-		x:       xClients,
-		c:       cClients,
-		evm:     evmClients,
-		cGeth:   cGethClients,
-		evmGeth: evmGethClients,
+		p:             pClients,
+		x:             xClients,
+		c:             cClients,
+		evm:           evmClients,
+		cGeth:         cGethClients,
+		evmGeth:       evmGethClients,
+		blockchainRPC: blockchainRPCs,
 	}, nil
 }
 
@@ -376,7 +385,12 @@ func getStoredKeyInfo(
 					keyName,
 				)
 				if err != nil {
-					return nil, err
+					ux.Logger.RedXToUser(
+						"failure obtaining info for blockchain %s on url %s",
+						subnetName,
+						clients.blockchainRPC[network][subnetName],
+					)
+					continue
 				}
 				addrInfos = append(addrInfos, addrInfo...)
 			}
