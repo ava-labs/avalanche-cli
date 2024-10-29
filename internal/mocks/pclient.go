@@ -7,7 +7,7 @@ import (
 
 	api "github.com/ava-labs/avalanchego/api"
 
-	fee "github.com/ava-labs/avalanchego/vms/components/fee"
+	gas "github.com/ava-labs/avalanchego/vms/components/gas"
 
 	ids "github.com/ava-labs/avalanchego/ids"
 
@@ -386,7 +386,7 @@ func (_m *PClient) GetCurrentValidators(ctx context.Context, subnetID ids.ID, no
 }
 
 // GetFeeConfig provides a mock function with given fields: ctx, options
-func (_m *PClient) GetFeeConfig(ctx context.Context, options ...rpc.Option) (*fee.Config, error) {
+func (_m *PClient) GetFeeConfig(ctx context.Context, options ...rpc.Option) (*gas.Config, error) {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
@@ -400,16 +400,16 @@ func (_m *PClient) GetFeeConfig(ctx context.Context, options ...rpc.Option) (*fe
 		panic("no return value specified for GetFeeConfig")
 	}
 
-	var r0 *fee.Config
+	var r0 *gas.Config
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) (*fee.Config, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) (*gas.Config, error)); ok {
 		return rf(ctx, options...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) *fee.Config); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) *gas.Config); ok {
 		r0 = rf(ctx, options...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*fee.Config)
+			r0 = ret.Get(0).(*gas.Config)
 		}
 	}
 
@@ -423,7 +423,7 @@ func (_m *PClient) GetFeeConfig(ctx context.Context, options ...rpc.Option) (*fe
 }
 
 // GetFeeState provides a mock function with given fields: ctx, options
-func (_m *PClient) GetFeeState(ctx context.Context, options ...rpc.Option) (fee.State, fee.GasPrice, time.Time, error) {
+func (_m *PClient) GetFeeState(ctx context.Context, options ...rpc.Option) (gas.State, gas.Price, time.Time, error) {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
@@ -437,23 +437,23 @@ func (_m *PClient) GetFeeState(ctx context.Context, options ...rpc.Option) (fee.
 		panic("no return value specified for GetFeeState")
 	}
 
-	var r0 fee.State
-	var r1 fee.GasPrice
+	var r0 gas.State
+	var r1 gas.Price
 	var r2 time.Time
 	var r3 error
-	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) (fee.State, fee.GasPrice, time.Time, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) (gas.State, gas.Price, time.Time, error)); ok {
 		return rf(ctx, options...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) fee.State); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) gas.State); ok {
 		r0 = rf(ctx, options...)
 	} else {
-		r0 = ret.Get(0).(fee.State)
+		r0 = ret.Get(0).(gas.State)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, ...rpc.Option) fee.GasPrice); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ...rpc.Option) gas.Price); ok {
 		r1 = rf(ctx, options...)
 	} else {
-		r1 = ret.Get(1).(fee.GasPrice)
+		r1 = ret.Get(1).(gas.Price)
 	}
 
 	if rf, ok := ret.Get(2).(func(context.Context, ...rpc.Option) time.Time); ok {

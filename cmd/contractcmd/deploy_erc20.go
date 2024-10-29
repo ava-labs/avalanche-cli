@@ -46,7 +46,9 @@ func newDeployERC20Cmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
 	deployERC20Flags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
-	deployERC20Flags.chainFlags.AddToCmd(cmd, "deploy the ERC20 contract", true)
+	// enabling blockchain names, C-Chain and blockchain IDs
+	deployERC20Flags.chainFlags.SetEnabled(true, true, false, false, true)
+	deployERC20Flags.chainFlags.AddToCmd(cmd, "deploy the ERC20 contract into %s")
 	cmd.Flags().StringVar(&deployERC20Flags.symbol, "symbol", "", "set the token symbol")
 	cmd.Flags().Uint64Var(&deployERC20Flags.supply, "supply", 0, "set the token supply")
 	cmd.Flags().StringVar(&deployERC20Flags.funded, "funded", "", "set the funded address")
@@ -76,9 +78,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 			app,
 			network,
 			prompt,
-			false,
 			"",
-			true,
 			&deployERC20Flags.chainFlags,
 		); cancel || err != nil {
 			return err

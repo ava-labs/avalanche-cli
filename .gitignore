@@ -51,3 +51,5 @@ pkg/contract/contracts/remappings.txt
 pkg/contract/contracts/lib/
 pkg/contract/contracts/cache/
 pkg/contract/contracts/out/
+
+osxcross/

@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -458,6 +459,7 @@ func TokenHomeAddCollateral(
 	remoteAddress common.Address,
 	amount *big.Int,
 ) error {
+	ux.Logger.PrintToUser("Collateralizing remote contract on the home chain")
 	endpointKind, err := GetEndpointKind(
 		rpcURL,
 		homeAddress,

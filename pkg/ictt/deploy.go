@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -26,11 +27,12 @@ type TokenRemoteSettings struct {
 	TokenHomeDecimals         uint8
 }
 
-func RegisterERC20Remote(
+func RegisterRemote(
 	rpcURL string,
 	privateKey string,
 	remoteAddress common.Address,
 ) error {
+	ux.Logger.PrintToUser("Registering remote contract with home contract")
 	feeInfo := TeleporterFeeInfo{
 		Amount: big.NewInt(0),
 	}
