@@ -96,20 +96,15 @@ func createSovereignSubnet() (string, string, error) {
 		utils.PrintStdErr(err)
 	}
 	fmt.Println(string(output))
-	//subnetID, err := utils.ParsePublicDeployOutput(string(output))
-	//if err != nil {
-	//	return "", "", err
-	//}
-	//re := regexp.MustCompile(`Waiting for rpc http://.*?/bc/([A-Za-z0-9]+)/rpc`)
-	//// Find the first match
-	//match := re.FindStringSubmatch(string(output))
-	//gomega.Expect(match).ToNot(gomega.BeEmpty())
-	//blockchainID := ""
-	//if len(match) > 1 {
-	//	// The first submatch will contain the chain ID
-	//	blockchainID = match[1]
-	//}
-	return "", "", err
+	subnetID, err := utils.ParsePublicDeployOutput(string(output), utils.SubnetIDParseType)
+	if err != nil {
+		return "", "", err
+	}
+	blockchainID, err := utils.ParsePublicDeployOutput(string(output), utils.BlockchainIDParseType)
+	if err != nil {
+		return "", "", err
+	}
+	return subnetID, blockchainID, err
 }
 
 func destroyLocalNode() {
@@ -190,25 +185,14 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		keyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, fmt.Sprintf("subnet_%s_airdrop", subnetName)+constants.KeySuffix)
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 		gomega.Expect(err).Should(gomega.BeNil())
-		//rpcURL, _, err := contract.GetBlockchainEndpoints(
-		//	app,
-		//	network,
-		//	chainSpec,
-		//	true,
-		//	false,
-		//)
-		//if err != nil {
-		//	return err
-		//}
 		rpcURL := fmt.Sprintf("http://127.0.0.1:9650/ext/bc/%s/rpc", blockchainIDStr)
-		fmt.Printf("obtained rpcURL %s \n", rpcURL)
 		client, err := evm.GetClient(rpcURL)
 		gomega.Expect(err).Should(gomega.BeNil())
-
 		evm.WaitForChainID(client)
 
-		network := models.NewEtnaDevnetNetwork()
-		extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network, nil)
+		network := models.NewNetworkFromCluster(models.NewEtnaDevnetNetwork(), testLocalNodeName)
+		//extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network, nil)
+		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers([]string{"http://127.0.0.1:9650"})
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		subnetID, err := ids.FromString(subnetIDStr)

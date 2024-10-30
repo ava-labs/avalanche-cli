@@ -605,25 +605,34 @@ func DownloadCustomVMBin(subnetEVMversion string) (string, error) {
 	return subnetEVMBin, nil
 }
 
-func ParsePublicDeployOutput(output string) (string, error) {
+// ParsePublicDeployOutput can parse Subnet ID or Blockchain ID
+func ParsePublicDeployOutput(output string, parseType string) (string, error) {
 	lines := strings.Split(output, "\n")
-	var subnetID string
+	var targetID string
 	for _, line := range lines {
-		if !strings.Contains(line, "Subnet ID") && !strings.Contains(line, "RPC URL") {
+		if !strings.Contains(line, "Subnet ID") && !strings.Contains(line, "RPC URL") && !strings.Contains(line, " Blockchain ID") {
 			continue
 		}
 		words := strings.Split(line, "|")
 		if len(words) != 4 {
 			return "", errors.New("error parsing output: invalid number of words in line")
 		}
-		if strings.Contains(line, "Subnet ID") {
-			subnetID = strings.TrimSpace(words[2])
+		if parseType == SubnetIDParseType {
+			if strings.Contains(line, "Subnet ID") {
+				targetID = strings.TrimSpace(words[2])
+			}
 		}
+		if parseType == BlockchainIDParseType {
+			if strings.Contains(line, "Blockchain ID") {
+				targetID = strings.TrimSpace(words[2])
+			}
+		}
+
 	}
-	if subnetID == "" {
+	if targetID == "" {
 		return "", errors.New("information not found in output")
 	}
-	return subnetID, nil
+	return targetID, nil
 }
 
 func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {

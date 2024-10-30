@@ -486,7 +486,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		if !convertOnly && !generateNodeID {
+		if !generateNodeID {
 			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
 			if globalNetworkFlags.ClusterName != "" {
 				clusterName = globalNetworkFlags.ClusterName
@@ -865,17 +865,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("obtained rpcURL %s \n", rpcURL)
 			client, err := evm.GetClient(rpcURL)
 			if err != nil {
 				return err
 			}
 			evm.WaitForChainID(client)
+			fmt.Printf("obtained deploy network %s \n", network.Name())
 			extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+			fmt.Printf("extraAggregatorPeers %s \n")
 			if err != nil {
 				return err
 			}
-			fmt.Printf("obtained extraAggregatorPeers %s \n", extraAggregatorPeers)
 			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 			subnetID, err := contract.GetSubnetID(
 				app,
@@ -1236,17 +1236,7 @@ func UrisToPeers(uris []string) ([]info.Peer, error) {
 	return peers, nil
 }
 
-func GetAggregatorExtraPeers(
-	network models.Network,
-	extraURIs []string,
-) ([]info.Peer, error) {
-	uris, err := GetAggregatorNetworkUris(network)
-	if err != nil {
-		return nil, err
-	}
-	uris = append(uris, extraURIs...)
-	urisSet := set.Of(uris...)
-	uris = urisSet.List()
+func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 	aggregatorPeers, err := UrisToPeers(uris)
 	if err != nil {
 		return nil, err
@@ -1271,6 +1261,21 @@ func GetAggregatorExtraPeers(
 		}
 	}
 	return aggregatorPeers, nil
+}
+
+func GetAggregatorExtraPeers(
+	network models.Network,
+	extraURIs []string,
+) ([]info.Peer, error) {
+	uris, err := GetAggregatorNetworkUris(network)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("obtained uris %s \n", uris)
+	uris = append(uris, extraURIs...)
+	urisSet := set.Of(uris...)
+	uris = urisSet.List()
+	return ConvertURIToPeers(uris)
 }
 
 func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
