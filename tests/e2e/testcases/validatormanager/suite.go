@@ -6,6 +6,10 @@ package packageman
 import (
 	"encoding/hex"
 	"fmt"
+	"os"
+	"os/exec"
+	"path"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -21,9 +25,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"os"
-	"os/exec"
-	"path"
 )
 
 const (
@@ -36,9 +37,7 @@ const (
 	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
-var (
-	err error
-)
+var err error
 
 func createEtnaSubnetEvmConfig() error {
 	// Check config does not already exist
