@@ -238,7 +238,7 @@ func PromptSubnetEVMGenesisParams(
 		return SubnetEVMGenesisParams{}, "", err
 	}
 
-	if sc.PoS() {
+	if sc.PoS() || sc.PoA() { // Teleporter bytecode makes genesis too big given the current max size (we include the bytecode for ValidatorManager, a proxy, and proxy admin)
 		params.UseTeleporter = false
 	}
 

@@ -246,7 +246,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if vmType == models.SubnetEvm {
 		if sovereign {
-			if sc.PoA() {
+			if sc.PoA() || sc.PoS() {
 				if createFlags.poaValidatorManagerOwner == "" {
 					createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
 					if err != nil {

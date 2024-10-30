@@ -29,8 +29,9 @@ import (
 )
 
 const (
-	ValidatorContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
-	ProxyContractAddress     = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
+	ValidatorContractAddress  = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
+	ProxyContractAddress      = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
+	ProxyAdminContractAddress = "0xFEEDBEEF0000000000000000000000000000000A"
 )
 
 var (
@@ -102,18 +103,34 @@ func AddPoSValidatorManagerContractToAllocations(
 //go:embed deployed_transparent_proxy_bytecode.txt
 var deployedTransparentProxyBytecode []byte
 
+//go:embed deployed_proxy_admin_bytecode.txt
+var deployedProxyAdminBytecode []byte
+
 func AddTransparentProxyContractToAllocations(
 	allocs core.GenesisAlloc,
 	proxyManager string,
 ) {
+
+	// proxy admin
+	deployedProxyAdmin := common.FromHex(strings.TrimSpace(string(deployedProxyAdminBytecode)))
+	allocs[common.HexToAddress(ProxyAdminContractAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedProxyAdmin,
+		Nonce:   1,
+		Storage: map[common.Hash]common.Hash{
+			common.HexToHash("0x0"): common.HexToHash(proxyManager),
+		},
+	}
+
+	// transparent proxy
 	deployedTransparentProxy := common.FromHex(strings.TrimSpace(string(deployedTransparentProxyBytecode)))
 	allocs[common.HexToAddress(ProxyContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedTransparentProxy,
 		Nonce:   1,
 		Storage: map[common.Hash]common.Hash{
-			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(ValidatorContractAddress), // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
-			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(proxyManager),             // sslot for address of Proxy owner -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
+			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(ValidatorContractAddress),  // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(ProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
 			// we can omit 3rd sslot for _data, as we initialize ValidatorManager after chain is live
 		},
 	}
@@ -157,7 +174,7 @@ func PoAValidatorManagerInitialize(
 }
 
 // initializes contract [managerAddress] at [rpcURL], to
-// manage validators on [subnetID]
+// manage validators on [subnetID] using PoS specific settings
 func PoSValidatorManagerInitialize(
 	rpcURL string,
 	managerAddress common.Address,
@@ -230,7 +247,7 @@ func PoSValidatorManagerInitialize(
 // the message specifies [subnetID] that is being converted
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
-func GetPChainSubnetConversionWarpMessage(
+func ValidatorManagerGetPChainSubnetConversionWarpMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -398,7 +415,7 @@ func SetupPoA(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	subnetConversionSignedMessage, err := GetPChainSubnetConversionWarpMessage(
+	subnetConversionSignedMessage, err := ValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -490,7 +507,7 @@ func SetupPoS(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	subnetConversionSignedMessage, err := GetPChainSubnetConversionWarpMessage(
+	subnetConversionSignedMessage, err := ValidatorManagerGetPChainSubnetConversionWarpMessage(
 		network,
 		aggregatorLogLevel,
 		0,
