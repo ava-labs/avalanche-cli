@@ -627,7 +627,6 @@ func ParsePublicDeployOutput(output string, parseType string) (string, error) {
 				targetID = strings.TrimSpace(words[2])
 			}
 		}
-
 	}
 	if targetID == "" {
 		return "", errors.New("information not found in output")

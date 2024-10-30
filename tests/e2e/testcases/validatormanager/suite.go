@@ -37,8 +37,7 @@ const (
 )
 
 var (
-	binaryToVersion map[string]string
-	err             error
+	err error
 )
 
 func createEtnaSubnetEvmConfig() error {
@@ -73,7 +72,9 @@ func createEtnaSubnetEvmConfig() error {
 }
 
 func createSovereignSubnet() (string, string, error) {
-	createEtnaSubnetEvmConfig()
+	if err := createEtnaSubnetEvmConfig(); err != nil {
+		return "", "", err
+	}
 	// Deploy subnet on etna devnet with local machine as bootstrap validator
 	cmd := exec.Command(
 		CLIBinary,
@@ -170,13 +171,13 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		destroyLocalNode()
 	})
 
-	//ginkgo.AfterEach(func() {
-	//	destroyLocalNode()
-	//	commands.DeleteSubnetConfig(subnetName)
-	//	err := utils.DeleteKey(keyName)
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//	commands.CleanNetwork()
-	//})
+	ginkgo.AfterEach(func() {
+		destroyLocalNode()
+		commands.DeleteSubnetConfig(subnetName)
+		err := utils.DeleteKey(keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.CleanNetwork()
+	})
 	ginkgo.It("Set Up POA Validator Manager", func() {
 		subnetIDStr, blockchainIDStr, err := createSovereignSubnet()
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -191,7 +192,6 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		evm.WaitForChainID(client)
 
 		network := models.NewNetworkFromCluster(models.NewEtnaDevnetNetwork(), testLocalNodeName)
-		//extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network, nil)
 		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers([]string{"http://127.0.0.1:9650"})
 		gomega.Expect(err).Should(gomega.BeNil())
 
