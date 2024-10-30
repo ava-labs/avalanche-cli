@@ -76,7 +76,6 @@ func GetBlockchainAirdropKeyInfo(
 			return "", "", "", err
 		}
 		if found {
-			fmt.Printf("obtained GetBlockchainAirdropKeyInfo 3 %s, %s, %s \n", keyName, addressStr, privKey)
 			return keyName, addressStr, privKey, nil
 		}
 	}
