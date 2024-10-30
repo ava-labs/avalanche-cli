@@ -5,6 +5,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -78,4 +79,8 @@ func WrapContext[T any](
 		}
 		return ret, err
 	}
+}
+
+func SDKUnitTestingEnabled() bool {
+	return os.Getenv("SDK_UNIT_TESTING_ENABLED") != ""
 }
