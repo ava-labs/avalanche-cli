@@ -53,7 +53,7 @@ func promptOwners(
 			return nil, 0, fmt.Errorf("user cancelled operation")
 		}
 	}
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+	ux.Logger.PrintToUser("Your blockchain control keys: %s", controlKeys)
 	// validate and prompt for threshold
 	if threshold == 0 && subnetAuthKeys != nil {
 		threshold = uint32(len(subnetAuthKeys))
