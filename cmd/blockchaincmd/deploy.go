@@ -870,9 +870,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			evm.WaitForChainID(client)
-			fmt.Printf("obtained deploy network %s \n", network.Name())
 			extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
-			fmt.Printf("extraAggregatorPeers %s \n")
 			if err != nil {
 				return err
 			}
@@ -1271,7 +1269,6 @@ func GetAggregatorExtraPeers(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("obtained uris %s \n", uris)
 	uris = append(uris, extraURIs...)
 	urisSet := set.Of(uris...)
 	uris = urisSet.List()
