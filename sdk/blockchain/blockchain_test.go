@@ -10,13 +10,12 @@ import (
 	"testing"
 	"time"
 
-	subnetevmutils "github.com/ava-labs/subnet-evm/utils"
+	"github.com/ava-labs/subnet-evm/utils"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/avalanche-cli/sdk/keychain"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
-	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
 	"github.com/ava-labs/avalanche-cli/sdk/wallet"
 	"github.com/ava-labs/avalanchego/ids"
@@ -34,7 +33,7 @@ func getDefaultSubnetEVMGenesis() SubnetParams {
 	allocation[common.HexToAddress("INITIAL_ALLOCATION_ADDRESS")] = core.GenesisAccount{
 		Balance: defaultAmount,
 	}
-	genesisBlock0Timestamp := subnetevmutils.TimeToNewUint64(time.Now())
+	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
 	return SubnetParams{
 		SubnetEVM: &SubnetEVMParams{
 			ChainID:     big.NewInt(123456),
@@ -48,9 +47,6 @@ func getDefaultSubnetEVMGenesis() SubnetParams {
 }
 
 func TestSubnetDeploy(t *testing.T) {
-	if !utils.SDKUnitTestingEnabled() {
-		t.Skip("SDK unit testing not fully enabled")
-	}
 	require := require.New(t)
 	subnetParams := getDefaultSubnetEVMGenesis()
 	newSubnet, err := New(&subnetParams)
@@ -89,9 +85,6 @@ func TestSubnetDeploy(t *testing.T) {
 }
 
 func TestSubnetDeployMultiSig(t *testing.T) {
-	if !utils.SDKUnitTestingEnabled() {
-		t.Skip("SDK unit testing not fully enabled")
-	}
 	require := require.New(t)
 	subnetParams := getDefaultSubnetEVMGenesis()
 	newSubnet, _ := New(&subnetParams)
@@ -164,9 +157,6 @@ func TestSubnetDeployMultiSig(t *testing.T) {
 }
 
 func TestSubnetDeployLedger(t *testing.T) {
-	if !utils.SDKUnitTestingEnabled() {
-		t.Skip("SDK unit testing not fully enabled")
-	}
 	require := require.New(t)
 	subnetParams := getDefaultSubnetEVMGenesis()
 	newSubnet, err := New(&subnetParams)

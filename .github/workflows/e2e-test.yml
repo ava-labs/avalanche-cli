@@ -45,7 +45,7 @@ jobs:
           - os: macos-14
             suite: "\\[Docker\\]"
           - os: macos-14
-            suite: "\\[Public Subnet\\]"
+            suite: "\\[Public Subnet non SOV\\]"
           - os: ubuntu-latest
             suite: "\\[Etna AddRemove Validator SOV\\]"
     steps:
@@ -82,7 +82,7 @@ jobs:
           npm install -g tsx
 
       - name: Install Docker on MacOS
-        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\\[Public Subnet\\]') }}
+        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\\[Public Subnet non SOV\\]') }}
         run: |
           brew install docker
           brew install colima
