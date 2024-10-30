@@ -6,7 +6,6 @@ package blockchain
 import (
 	"context"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"math/big"
 	"testing"
 	"time"
@@ -229,68 +228,4 @@ func TestSubnetDeployLedger(t *testing.T) {
 	require.NoError(err)
 
 	fmt.Printf("blockchainID %s \n", blockchainID.String())
-}
-
-func createSovereignSubnet() error {
-	subnetParams := getDefaultSubnetEVMGenesis()
-	newSubnet, err := New(&subnetParams)
-	if err != nil {
-		return err
-	}
-	network := network.FujiNetwork()
-
-	keychain, err := keychain.NewKeychain(network, "KEY_PATH", nil)
-	if err != nil {
-		return err
-	}
-	controlKeys := keychain.Addresses().List()
-	subnetAuthKeys := keychain.Addresses().List()
-	threshold := 1
-	newSubnet.SetSubnetControlParams(controlKeys, uint32(threshold))
-	wallet, err := wallet.New(
-		context.Background(),
-		&primary.WalletConfig{
-			URI:          network.Endpoint,
-			AVAXKeychain: keychain.Keychain,
-			EthKeychain:  secp256k1fx.NewKeychain(),
-			SubnetIDs:    nil,
-		},
-	)
-	if err != nil {
-		return err
-	}
-	deploySubnetTx, err := newSubnet.CreateSubnetTx(wallet)
-	if err != nil {
-		return err
-	}
-	subnetID, err := newSubnet.Commit(*deploySubnetTx, wallet, true)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("subnetID %s \n", subnetID.String())
-	time.Sleep(2 * time.Second)
-	newSubnet.SetSubnetAuthKeys(subnetAuthKeys)
-	deployChainTx, err := newSubnet.CreateBlockchainTx(wallet)
-	if err != nil {
-		return err
-	}
-	blockchainID, err := newSubnet.Commit(*deployChainTx, wallet, true)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("blockchainID %s \n", blockchainID.String())
-}
-
-func TestSubnetInitValidatorManager(t *testing.T) {
-	require := require.New(t)
-
-	if err := validatormanager.SetupPoA(
-		subnetSDK,
-		network,
-		genesisPrivateKey,
-		extraAggregatorPeers,
-		aggregatorLogLevel,
-	); err != nil {
-		return err
-	}
 }

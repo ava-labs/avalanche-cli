@@ -57,7 +57,6 @@ func GetBlockchainAirdropKeyInfo(
 		}
 		for address := range genesis.Alloc {
 			if address.Hex() == airdropAddress {
-				fmt.Printf("obtained GetBlockchainAirdropKeyInfo %s, %s, %s \n", airdropKeyName, airdropAddress, airdropPrivKey)
 				return airdropKeyName, airdropAddress, airdropPrivKey, nil
 			}
 		}
@@ -68,7 +67,6 @@ func GetBlockchainAirdropKeyInfo(
 	}
 	for address := range genesis.Alloc {
 		if address.Hex() == ewoq.C() {
-			fmt.Printf("obtained GetBlockchainAirdropKeyInfo 2 %s, %s, %s \n", "ewoq", ewoq.C(), ewoq.PrivKeyHex())
 			return "ewoq", ewoq.C(), ewoq.PrivKeyHex(), nil
 		}
 	}
