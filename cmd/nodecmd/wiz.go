@@ -328,7 +328,12 @@ func wiz(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			if err := setAWMRelayerHost(awmRelayerHost); err != nil {
+			// get awm-relayer latest version
+			relayerVersion, err := teleporter.GetLatestRelayerReleaseVersion()
+			if err != nil {
+				return err
+			}
+			if err := setAWMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
 				return err
 			}
 			if err := setAWMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
@@ -501,7 +506,7 @@ func updateProposerVMs(
 	return teleporter.SetProposerVM(app, network, "C", "")
 }
 
-func setAWMRelayerHost(host *models.Host) error {
+func setAWMRelayerHost(host *models.Host, relayerVersion string) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
@@ -509,7 +514,7 @@ func setAWMRelayerHost(host *models.Host) error {
 	if err != nil {
 		return err
 	}
-	if err := ssh.ComposeSSHSetupAWMRelayer(host); err != nil {
+	if err := ssh.ComposeSSHSetupAWMRelayer(host, relayerVersion); err != nil {
 		return err
 	}
 	nodeConfig.IsAWMRelayer = true

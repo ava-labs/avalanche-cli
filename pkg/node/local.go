@@ -30,7 +30,12 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
-func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockchainName string) error {
+func TrackSubnetWithLocalMachine(
+	app *application.Avalanche,
+	clusterName,
+	blockchainName string,
+	avalancheGoBinPath string,
+) error {
 	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
@@ -101,7 +106,11 @@ func TrackSubnetWithLocalMachine(app *application.Avalanche, clusterName, blockc
 			}
 		}
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
-		if _, err := cli.RestartNode(ctx, nodeInfo.Name, client.WithWhitelistedSubnets(subnetID.String())); err != nil {
+		opts := []client.OpOption{
+			client.WithWhitelistedSubnets(subnetID.String()),
+			client.WithExecPath(avalancheGoBinPath),
+		}
+		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
 			return err
 		}
 		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
@@ -144,13 +153,32 @@ func StartLocalNode(
 	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
+	nodeConfig string,
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 	globalNetworkFlags networkoptions.NetworkFlags,
 	createSupportedNetworkOptions []networkoptions.NetworkOption,
 ) error {
-	network := models.UndefinedNetwork
 	var err error
+
+	// ensure data consistency
+	localClusterExists := false
+	if clusterExists, err := CheckClusterExists(app, clusterName); err != nil {
+		return fmt.Errorf("error checking clusters info: %w", err)
+	} else if clusterExists {
+		if localClusterExists, err = checkClusterIsLocal(app, clusterName); err != nil {
+			return fmt.Errorf("error verifying if cluster is local: %w", err)
+		} else if !localClusterExists {
+			return fmt.Errorf("cluster %s is not a local one", clusterName)
+		}
+	}
+	localDataExists := localClusterDataExists(app, clusterName)
+	if (localClusterExists && !localDataExists) || (!localClusterExists && localDataExists) {
+		ux.Logger.RedXToUser("Inconsistent state for cluster: Cleaning up")
+		_ = DestroyLocalNode(app, clusterName)
+		localClusterExists = false
+		localDataExists = false
+	}
 
 	// check if this is existing cluster
 	rootDir := app.GetLocalDir(clusterName)
@@ -163,9 +191,9 @@ func StartLocalNode(
 	if err := os.MkdirAll(pluginDir, 0o700); err != nil {
 		return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
 	}
+
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-
 	// starts server
 	avalancheGoVersion := "latest"
 	if avalanchegoBinaryPath == "" {
@@ -206,12 +234,14 @@ func StartLocalNode(
 		return nil
 	}
 
-	if localClusterDataExists(app, clusterName) {
+	if localClusterExists && localDataExists {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 		loadSnapshotOpts := []client.OpOption{
+			client.WithExecPath(avalancheGoBinPath),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithSnapshotPath(rootDir),
+			client.WithGlobalNodeConfig(nodeConfig),
 		}
 		// load snapshot for existing network
 		if _, err := cli.LoadSnapshot(
@@ -224,6 +254,7 @@ func StartLocalNode(
 		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
+		network := models.UndefinedNetwork
 		if useEtnaDevnet {
 			network = models.NewNetwork(
 				models.Devnet,
@@ -245,7 +276,7 @@ func StartLocalNode(
 				return err
 			}
 		}
-		if err := preLocalChecks(app, clusterName, anrSettings, avaGoVersionSetting, avalanchegoBinaryPath, useEtnaDevnet, globalNetworkFlags); err != nil {
+		if err := preLocalChecks(anrSettings, avaGoVersionSetting, avalanchegoBinaryPath, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err
 		}
 		if useEtnaDevnet {
@@ -303,6 +334,7 @@ func StartLocalNode(
 			client.WithPluginDir(pluginDir),
 			client.WithFreshStakingIds(true),
 			client.WithZeroIP(false),
+			client.WithGlobalNodeConfig(nodeConfig),
 		}
 		if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
@@ -359,14 +391,7 @@ func localClusterDataExists(app *application.Avalanche, clusterName string) bool
 }
 
 // stub for now
-func preLocalChecks(app *application.Avalanche, clusterName string, anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, avalanchegoBinaryPath string, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
-	clusterExists, err := CheckClusterExists(app, clusterName)
-	if err != nil {
-		return fmt.Errorf("error checking cluster: %w", err)
-	}
-	if clusterExists {
-		return fmt.Errorf("cluster %q already exists", clusterName)
-	}
+func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, avalanchegoBinaryPath string, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
 	// expand passed paths
 	if anrSettings.GenesisPath != "" {
 		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)

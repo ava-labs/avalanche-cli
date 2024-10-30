@@ -109,7 +109,7 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
 		rpc := rpcs[0]
-		gomega.Expect(rpc).Should(gomega.HavePrefix("http://0.0.0.0:"))
+		gomega.Expect(rpc).Should(gomega.HavePrefix("http://127.0.0.1:"))
 
 		commands.DeleteSubnetConfig(subnetName)
 	})

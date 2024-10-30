@@ -283,6 +283,8 @@ func getXChainValidationFunc(network models.Network) func(string) error {
 		return validateXChainMainAddress
 	case models.Local:
 		return validateXChainLocalAddress
+	case models.Devnet:
+		return validateXChainLocalAddress
 	default:
 		return func(string) error {
 			return errors.New("unsupported network")

@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -24,6 +25,7 @@ var (
 	stakingCertKeyPath   string
 	stakingSignerKeyPath string
 	numNodes             uint32
+	nodeConfigPath       string
 )
 
 // const snapshotName = "local_snapshot"
@@ -81,6 +83,7 @@ status by running avalanche node status local
 	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
 	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to start")
+	cmd.Flags().StringVar(&nodeConfigPath, "node-config", "", "path to common avalanchego config settings for all nodes")
 	return cmd
 }
 
@@ -95,13 +98,15 @@ func newLocalStopCmd() *cobra.Command {
 }
 
 func newLocalTrackCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "track [clusterName] [blockchainName]",
 		Short: "(ALPHA Warning) make the local node at the cluster to track given blockchain",
 		Long:  "(ALPHA Warning) make the local node at the cluster to track given blockchain",
 		Args:  cobra.ExactArgs(2),
 		RunE:  localTrack,
 	}
+	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
+	return cmd
 }
 
 func newLocalDestroyCmd() *cobra.Command {
@@ -146,12 +151,21 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 	}
+	nodeConfig := ""
+	if nodeConfigPath != "" {
+		nodeConfigBytes, err := os.ReadFile(nodeConfigPath)
+		if err != nil {
+			return err
+		}
+		nodeConfig = string(nodeConfigBytes)
+	}
 	return node.StartLocalNode(
 		app,
 		clusterName,
 		globalNetworkFlags.UseEtnaDevnet,
 		avalanchegoBinaryPath,
 		numNodes,
+		nodeConfig,
 		anrSettings,
 		avaGoVersionSetting,
 		globalNetworkFlags,
@@ -169,7 +183,7 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 }
 
 func localTrack(_ *cobra.Command, args []string) error {
-	return node.TrackSubnetWithLocalMachine(app, args[0], args[1])
+	return node.TrackSubnetWithLocalMachine(app, args[0], args[1], avalanchegoBinaryPath)
 }
 
 func localStatus(_ *cobra.Command, args []string) error {

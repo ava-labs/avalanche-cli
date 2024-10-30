@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -116,8 +115,9 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 
 	localChainID := ""
+	blockchainID := ""
 	for net, data := range sc.Networks {
-		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
 			ux.Logger.RedXToUser("%s is supposed to be deployed to network %s: %s ", blockchainName, network.Name(), err)
 			ux.Logger.PrintToUser("")
@@ -160,6 +160,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			}
 		}
 		if data.BlockchainID != ids.Empty {
+			blockchainID = data.BlockchainID.String()
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			t.AppendRow(table.Row{net, "BlockchainID (CB58)", data.BlockchainID.String()})
 			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
@@ -191,7 +192,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t.SetTitle("Teleporter")
 	hasTeleporterInfo := false
 	for net, data := range sc.Networks {
-		network, err := networkoptions.GetNetworkFromSidecarNetworkName(app, net)
+		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
 			continue
 		}
@@ -244,7 +245,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			return err
 		}
 
-		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(sc.Name)
+		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(blockchainID)
 		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
 		if err != nil {
 			return err

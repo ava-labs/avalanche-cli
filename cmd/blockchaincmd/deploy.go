@@ -77,6 +77,9 @@ var (
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool
 	avagoBinaryPath                 string
+	numBootstrapValidators          int
+	numLocalNodes                   int
+	changeOwnerAddress              string
 	subnetOnly                      bool
 	icmSpec                         subnet.ICMSpec
 	generateNodeID                  bool
@@ -143,7 +146,9 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-
+	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
+	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
+	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	return cmd
 }
 
@@ -500,7 +505,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					network = models.NewNetworkFromCluster(network, clusterName)
 				}
 			}
-			// ask user if we wants to use local machine if cluster is not provided
+			// ask user if we want to use local machine if cluster is not provided
 			if !useLocalMachine && globalNetworkFlags.ClusterName == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
@@ -527,13 +532,22 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					}
 				}
 				network = models.NewNetworkFromCluster(network, clusterName)
+				nodeConfig := ""
+				if app.AvagoNodeConfigExists(blockchainName) {
+					nodeConfigBytes, err := os.ReadFile(app.GetAvagoNodeConfigPath(blockchainName))
+					if err != nil {
+						return err
+					}
+					nodeConfig = string(nodeConfigBytes)
+				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
 					app,
 					clusterName,
 					useEtnaDevnet,
 					avagoBinaryPath,
-					5,
+					uint32(numLocalNodes),
+					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
 					globalNetworkFlags,
@@ -550,8 +564,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
-		if len(bootstrapEndpoints) > 0 {
-			var changeAddr string
+		switch {
+		case len(bootstrapEndpoints) > 0:
+			if changeOwnerAddress == "" {
+				changeOwnerAddress, err = getKeyForChangeOwner(network)
+				if err != nil {
+					return err
+				}
+			}
 			for _, endpoint := range bootstrapEndpoints {
 				infoClient := info.NewClient(endpoint)
 				ctx, cancel := utils.GetAPILargeContext()
@@ -562,21 +582,25 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
 				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
-				changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
-				if err != nil {
-					return err
-				}
+
 				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
 					NodeID:               nodeID.String(),
 					Weight:               constants.BootstrapValidatorWeight,
 					Balance:              constants.BootstrapValidatorBalance,
 					BLSPublicKey:         publicKey,
 					BLSProofOfPossession: pop,
-					ChangeOwnerAddr:      changeAddr,
+					ChangeOwnerAddr:      changeOwnerAddress,
 				})
 			}
-		} else {
-			bootstrapValidators, err = promptBootstrapValidators(network)
+		case globalNetworkFlags.ClusterName != "":
+			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
+			bootstrapValidators, err = getClusterBootstrapValidators(globalNetworkFlags.ClusterName, network)
+			if err != nil {
+				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", globalNetworkFlags.ClusterName, err)
+			}
+
+		default:
+			bootstrapValidators, err = promptBootstrapValidators(network, changeOwnerAddress, numBootstrapValidators)
 			if err != nil {
 				return err
 			}
@@ -778,30 +802,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		bar, err := ux.TimedProgressBar(
+		_, err = ux.TimedProgressBar(
 			30*time.Second,
 			"Waiting for L1 to be converted into sovereign blockchain ...",
-			2,
+			0,
 		)
 		if err != nil {
-			return err
-		}
-
-		// Issue random transaction >30s after ConverSubnetTx to evict its block from the block map
-		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
-		if err != nil {
-			return err
-		}
-		if err := ux.ExtraStepExecuted(bar); err != nil {
-			return err
-		}
-		// Issue random transaction to advance the p-chain height now that the
-		// ConvertSubnetTx block isn't in the block map
-		_, _, err = deployer.PChainTransfer(kc.Addresses().List()[0], 1)
-		if err != nil {
-			return err
-		}
-		if err := ux.ExtraStepExecuted(bar); err != nil {
 			return err
 		}
 		fmt.Println()
@@ -827,7 +833,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			} else {
-				if err := node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName); err != nil {
+				if err := node.TrackSubnetWithLocalMachine(
+					app,
+					clusterName,
+					blockchainName,
+					avagoBinaryPath,
+				); err != nil {
 					return err
 				}
 			}
@@ -894,6 +905,39 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
 	return nil
+}
+
+func getClusterBootstrapValidators(clusterName string, network models.Network) ([]models.SubnetValidator, error) {
+	clusterConf, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return nil, err
+	}
+	subnetValidators := []models.SubnetValidator{}
+	hostIDs := utils.Filter(clusterConf.GetCloudIDs(), clusterConf.IsAvalancheGoHost)
+	changeAddr := ""
+	for _, h := range hostIDs {
+		nodeID, pub, pop, err := utils.GetNodeParams(app.GetNodeInstanceDirPath(h))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse nodeID: %w", err)
+		}
+		changeAddr, err = getKeyForChangeOwner(network)
+		if err != nil {
+			return nil, err
+		}
+		if err != nil {
+			return nil, err
+		}
+		ux.Logger.Info("Bootstrap validator info for Host: %s | Node ID: %s | Public Key: %s | Proof of Possession: %s", h, nodeID, hex.EncodeToString(pub), hex.EncodeToString(pop))
+		subnetValidators = append(subnetValidators, models.SubnetValidator{
+			NodeID:               nodeID.String(),
+			Weight:               constants.BootstrapValidatorWeight,
+			Balance:              constants.BootstrapValidatorBalance,
+			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
+			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
+			ChangeOwnerAddr:      changeAddr,
+		})
+	}
+	return subnetValidators, nil
 }
 
 func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
@@ -1232,6 +1276,15 @@ func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
 			}
 			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
+			}
+		} else { // remote cluster case
+			hostIDs := utils.Filter(clusterConfig.GetCloudIDs(), clusterConfig.IsAvalancheGoHost)
+			for _, hostID := range hostIDs {
+				if nodeConfig, err := app.LoadClusterNodeConfig(hostID); err != nil {
+					return nil, err
+				} else {
+					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalanchegoAPIPort))
+				}
 			}
 		}
 	}
