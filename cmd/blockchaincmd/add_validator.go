@@ -216,6 +216,11 @@ func CallAddValidator(
 	publicKey string,
 	pop string,
 ) error {
+	// TODO: ARTUR read from the network
+	initWithPoS, err := app.Prompt.CaptureYesNo("Is this network PoS? (y/n)")
+	if err != nil {
+		return err
+	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
@@ -244,11 +249,29 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if !ownerPrivateKeyFound {
+	if !ownerPrivateKeyFound && !initWithPoS {
 		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
-
+	if ownerPrivateKeyFound && !initWithPoS {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
+	}
+	if initWithPoS {
+		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
+		if err != nil {
+			return err
+		}
+		ownerPrivateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for validator registration and receive the staking rewards?",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return err
+		}
+	}
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
@@ -338,6 +361,7 @@ func CallAddValidator(
 		weight,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
+		initWithPoS,
 	)
 	if err != nil {
 		return err
@@ -365,13 +389,17 @@ func CallAddValidator(
 		validationID,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
+		initWithPoS,
 	); err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
-	ux.Logger.PrintToUser("  Weight: %d", weight)
+	// weight is inaccurate for PoS as it's fetched during registration
+	if !initWithPoS {
+		ux.Logger.PrintToUser("  Weight: %d", weight)
+	}
 	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
 

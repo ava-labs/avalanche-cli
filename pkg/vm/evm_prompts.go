@@ -86,6 +86,7 @@ type SubnetEVMGenesisParams struct {
 	contractDeployerPrecompileAllowList AllowList
 	enableWarpPrecompile                bool
 	UsePoAValidatorManager              bool
+	UsePoSValidatorManager              bool
 }
 
 func PromptTokenSymbol(
@@ -180,10 +181,14 @@ func PromptSubnetEVMGenesisParams(
 	}
 
 	if sc.PoS() {
+		params.UsePoSValidatorManager = true
+
 		params.enableNativeMinterPrecompile = true
-		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
-			common.HexToAddress(validatormanager.ValidatorContractAddress),
-		}
+		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
+			params.nativeMinterPrecompileAllowList.AdminAddresses,
+			common.HexToAddress(validatormanager.ProxyContractAddress),
+		)
+		params.enableRewardManagerPrecompile = true
 	}
 
 	// Chain ID
@@ -231,6 +236,10 @@ func PromptSubnetEVMGenesisParams(
 	params, err = promptPermissioning(app, version, defaultsKind, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
+	}
+
+	if sc.PoS() || sc.PoA() { // Teleporter bytecode makes genesis too big given the current max size (we include the bytecode for ValidatorManager, a proxy, and proxy admin)
+		params.UseTeleporter = false
 	}
 
 	return params, tokenSymbol, nil
