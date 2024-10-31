@@ -240,23 +240,28 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if !ownerPrivateKeyFound {
-		// it will be used to pay for the gas and recieve rewards
-		if initWithPoS {
-			if err != nil {
-				return err
-			}
-			// should prompt for this key
-			_, ownerPrivateKey, err = contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
-			if err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
-		}
+	if !ownerPrivateKeyFound && !initWithPoS {
+		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
 	}
-	if ownerPrivateKeyFound {
+	if ownerPrivateKeyFound && !initWithPoS {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
+	}
+	if initWithPoS {
+		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
+		if err != nil {
+			return err
+		}
+		ownerPrivateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for validator registration and receive the staking rewards?",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return err
+		}
 	}
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
