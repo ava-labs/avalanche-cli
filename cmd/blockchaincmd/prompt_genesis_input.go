@@ -18,6 +18,19 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
+func getProxyAdminOwnerAddr() (string, error) {
+	return prompts.PromptAddress(
+		app.Prompt,
+		"enable as owner of ProxyAdmin contract",
+		app.GetKeyDir(),
+		app.GetKey,
+		"",
+		models.UndefinedNetwork,
+		prompts.EVMFormat,
+		"Enter address",
+	)
+}
+
 func getValidatorContractManagerAddr() (string, error) {
 	return prompts.PromptAddress(
 		app.Prompt,
@@ -84,8 +97,7 @@ func promptValidatorManagementType(
 		case models.ProofOfAuthority:
 			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
 		case models.ProofOfStake:
-			ux.Logger.RedXToUser("Proof of Stake is currently unavailable")
-			continue
+			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
 		case explainOption:
 			continue
 		}
@@ -120,15 +132,12 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func promptBootstrapValidators(network models.Network, changeOwnerAddress string, numBootstrapValidators int) ([]models.SubnetValidator, error) {
+func promptBootstrapValidators(network models.Network) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
-	var err error
-	if numBootstrapValidators == 0 {
-		numBootstrapValidators, err = app.Prompt.CaptureInt(
-			"How many bootstrap validators do you want to set up?",
-			prompts.ValidatePositiveInt,
-		)
-	}
+	numBootstrapValidators, err := app.Prompt.CaptureInt(
+		"How many bootstrap validators do you want to set up?",
+		prompts.ValidatePositiveInt,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -142,12 +151,7 @@ func promptBootstrapValidators(network models.Network, changeOwnerAddress string
 		}
 		generateNodeID = !setUpNodes
 	}
-	if changeOwnerAddress == "" {
-		changeOwnerAddress, err = getKeyForChangeOwner(network)
-		if err != nil {
-			return nil, err
-		}
-	}
+	previousAddr := ""
 	for len(subnetValidators) < numBootstrapValidators {
 		ux.Logger.PrintToUser("Getting info for bootstrap validator %d", len(subnetValidators)+1)
 		var nodeID ids.NodeID
@@ -171,18 +175,23 @@ func promptBootstrapValidators(network models.Network, changeOwnerAddress string
 				return nil, err
 			}
 		}
+		changeAddr, err := getKeyForChangeOwner(nodeIDStr, previousAddr, network)
+		if err != nil {
+			return nil, err
+		}
+		previousAddr = changeAddr
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
 			Balance:              constants.BootstrapValidatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
-			ChangeOwnerAddr:      changeOwnerAddress,
+			ChangeOwnerAddr:      changeAddr,
 		}
 		subnetValidators = append(subnetValidators, subnetValidator)
 		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
 		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
-		ux.Logger.PrintToUser("- Change Address: %s", changeOwnerAddress)
+		ux.Logger.PrintToUser("- Change Address: %s", changeAddr)
 	}
 	return subnetValidators, nil
 }

@@ -30,7 +30,6 @@ const (
 	Undefined AddressFormat = iota
 	PChainFormat
 	EVMFormat
-	XChainFormat
 )
 
 const (
@@ -110,6 +109,8 @@ type Prompter interface {
 	CaptureValidatorBalance(promptStr string, availableBalance uint64) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string, validator func(int) error) (int, error)
+	CaptureUint8(promptStr string) (uint8, error)
+	CaptureUint16(promptStr string) (uint16, error)
 	CaptureUint32(promptStr string) (uint32, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
@@ -319,6 +320,50 @@ func (*realPrompter) CaptureInt(promptStr string, validator func(int) error) (in
 		return 0, err
 	}
 	return val, nil
+}
+
+func (*realPrompter) CaptureUint8(promptStr string) (uint8, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			_, err := strconv.ParseUint(input, 0, 8)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	input, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	val, err := strconv.ParseUint(input, 0, 8)
+	if err != nil {
+		return 0, err
+	}
+	return uint8(val), nil
+}
+
+func (*realPrompter) CaptureUint16(promptStr string) (uint16, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			_, err := strconv.ParseUint(input, 0, 16)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	input, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	val, err := strconv.ParseUint(input, 0, 16)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(val), nil
 }
 
 func (*realPrompter) CaptureUint32(promptStr string) (uint32, error) {
@@ -917,10 +962,10 @@ func PromptChain(
 	prompter Prompter,
 	prompt string,
 	subnetNames []string,
-	includePChain bool,
-	includeXChain bool,
-	includeCChain bool,
-	avoidBlockchainName string,
+	avoidPChain bool,
+	avoidXChain bool,
+	avoidCChain bool,
+	avoidSubnet string,
 	includeCustom bool,
 ) (bool, bool, bool, bool, string, string, error) {
 	pChainOption := "P-Chain"
@@ -928,16 +973,16 @@ func PromptChain(
 	cChainOption := "C-Chain"
 	notListedOption := "My blockchain isn't listed"
 	subnetOptions := []string{}
-	if includePChain {
+	if !avoidPChain {
 		subnetOptions = append(subnetOptions, pChainOption)
 	}
-	if includeXChain {
+	if !avoidXChain {
 		subnetOptions = append(subnetOptions, xChainOption)
 	}
-	if includeCChain {
+	if !avoidCChain {
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
-	subnetNames = utils.RemoveFromSlice(subnetNames, avoidBlockchainName)
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
 	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	if includeCustom {
 		subnetOptions = append(subnetOptions, customOption)
@@ -1063,11 +1108,6 @@ func PromptAddress(
 			if err != nil {
 				return "", err
 			}
-		case XChainFormat:
-			address, err = prompter.CaptureXChainAddress(customPrompt, network)
-			if err != nil {
-				return "", err
-			}
 		case EVMFormat:
 			addr, err := prompter.CaptureAddress(customPrompt)
 			if err != nil {
@@ -1104,8 +1144,6 @@ func CaptureKeyAddress(
 	switch format {
 	case PChainFormat:
 		return k.P()[0], nil
-	case XChainFormat:
-		return k.X()[0], nil
 	case EVMFormat:
 		return k.C(), nil
 	}

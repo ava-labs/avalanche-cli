@@ -24,5 +24,7 @@ and interacting with smart contracts.`,
 	cmd.AddCommand(newDeployCmd())
 	// contract initpoamanager
 	cmd.AddCommand(newInitPOAManagerCmd())
+	// contract initposmanager
+	cmd.AddCommand(newInitPOSManagerCmd())
 	return cmd
 }
