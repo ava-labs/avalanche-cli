@@ -479,6 +479,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.ICMMessengerAddress,
 			deployInfo.ICMRegistryAddress,
 			nil,
+			globalNetworkFlags.ClusterName,
 		); err != nil {
 			return err
 		}
@@ -557,6 +558,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				); err != nil {
 					return err
 				}
+				globalNetworkFlags.ClusterName = clusterName
 				if len(bootstrapEndpoints) == 0 {
 					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 					if err != nil {
@@ -814,7 +816,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Println()
 
-		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators); err != nil {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators, globalNetworkFlags.ClusterName); err != nil {
 			return err
 		}
 
@@ -870,7 +872,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			evm.WaitForChainID(client)
-			extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+			extraAggregatorPeers, err := GetAggregatorExtraPeers(globalNetworkFlags.ClusterName, aggregatorExtraEndpoints)
 			if err != nil {
 				return err
 			}
@@ -914,7 +916,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish conversion to sovereign L1", blockchainName)
 		}
 	} else {
-		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil, globalNetworkFlags.ClusterName); err != nil {
 			return err
 		}
 	}
@@ -1262,10 +1264,10 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 }
 
 func GetAggregatorExtraPeers(
-	network models.Network,
+	clusterName string,
 	extraURIs []string,
 ) ([]info.Peer, error) {
-	uris, err := GetAggregatorNetworkUris(network)
+	uris, err := GetAggregatorNetworkUris(clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -1275,14 +1277,14 @@ func GetAggregatorExtraPeers(
 	return ConvertURIToPeers(uris)
 }
 
-func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
+func GetAggregatorNetworkUris(clusterName string) ([]string, error) {
 	aggregatorExtraPeerEndpointsUris := []string{}
-	if network.ClusterName != "" {
+	if clusterName != "" {
 		clustersConfig, err := app.LoadClustersConfig()
 		if err != nil {
 			return nil, err
 		}
-		clusterConfig := clustersConfig.Clusters[network.ClusterName]
+		clusterConfig := clustersConfig.Clusters[clusterName]
 		if clusterConfig.Local {
 			cli, err := binutils.NewGRPCClientWithEndpoint(
 				binutils.LocalClusterGRPCServerEndpoint,

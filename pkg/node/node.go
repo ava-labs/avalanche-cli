@@ -3,11 +3,31 @@
 package node
 
 import (
+	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
+
+// GetNetworkFromCluster gets the network that a cluster is on
+func GetNetworkFromCluster(clusterConfig models.ClusterConfig) (models.Network, error) {
+	network := clusterConfig.Network
+	switch {
+	case network.ID == constants.LocalNetworkID:
+		return models.NewLocalNetwork(), nil
+	case network.ID == avagoconstants.FujiID:
+		return models.NewFujiNetwork(), nil
+	case network.ID == avagoconstants.MainnetID:
+		return models.NewMainnetNetwork(), nil
+	case network.ID == constants.EtnaDevnetNetworkID:
+		return models.NewEtnaDevnetNetwork(), nil
+	default:
+		return models.UndefinedNetwork, fmt.Errorf("unable to get network from cluster %s", network.ClusterName)
+	}
+}
 
 func GetHostWithCloudID(app *application.Avalanche, clusterName string, cloudID string) (*models.Host, error) {
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))

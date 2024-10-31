@@ -319,7 +319,7 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(network.ClusterName, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}

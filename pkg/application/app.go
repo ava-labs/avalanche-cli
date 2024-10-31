@@ -5,7 +5,6 @@ package application
 import (
 	"encoding/json"
 	"fmt"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"os"
 	"path/filepath"
 	"strings"
@@ -539,6 +538,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	teleporterMessengerAddress string,
 	teleporterRegistryAddress string,
 	bootstrapValidators []models.SubnetValidator,
+	clusterName string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -550,6 +550,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		TeleporterMessengerAddress: teleporterMessengerAddress,
 		TeleporterRegistryAddress:  teleporterRegistryAddress,
 		BootstrapValidators:        bootstrapValidators,
+		ClusterName:                clusterName,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
@@ -848,30 +849,9 @@ func (app *Avalanche) GetClusterNetwork(clusterName string) (models.Network, err
 	if err != nil {
 		return models.UndefinedNetwork, err
 	}
-	network, err := GetNetworkFromCluster(clusterConfig)
-	if err != nil {
-		return models.UndefinedNetwork, err
-	}
-	//return clusterConfig.Network, nil
-	return network, nil
+	return clusterConfig.Network, nil
 }
 
-// GetNetworkFromCluster gets the network that a cluster is on
-func GetNetworkFromCluster(clusterConfig models.ClusterConfig) (models.Network, error) {
-	network := clusterConfig.Network
-	switch {
-	case network.ID == constants.LocalNetworkID:
-		return models.NewLocalNetwork(), nil
-	case network.ID == avagoconstants.FujiID:
-		return models.NewFujiNetwork(), nil
-	case network.ID == avagoconstants.MainnetID:
-		return models.NewMainnetNetwork(), nil
-	case network.ID == constants.EtnaDevnetNetworkID:
-		return models.NewEtnaDevnetNetwork(), nil
-	default:
-		return models.UndefinedNetwork, fmt.Errorf("unable to get network from cluster %s", network.ClusterName)
-	}
-}
 func (app *Avalanche) ListClusterNames() ([]string, error) {
 	if !app.ClustersConfigExists() {
 		return []string{}, nil

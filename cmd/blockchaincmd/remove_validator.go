@@ -215,8 +215,8 @@ func removeValidatorSOV(
 		}
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
-
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+	clusterName := sc.Networks[network.Name()].ClusterName
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterName, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}

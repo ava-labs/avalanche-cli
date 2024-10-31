@@ -49,7 +49,7 @@ func TrackSubnetWithLocalMachine(
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	//network := clusterConfig.Network
-	network, err := app.GetNetworkFromCluster(clusterConfig)
+	network, err := GetNetworkFromCluster(clusterConfig)
 	if err != nil {
 		return err
 	}

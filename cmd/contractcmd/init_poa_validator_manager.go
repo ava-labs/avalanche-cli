@@ -4,7 +4,6 @@ package contractcmd
 
 import (
 	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -31,6 +30,7 @@ var (
 	initPOAManagerSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
+		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	initPOAManagerFlags InitPOAManagerFlags
@@ -70,6 +70,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// TODO: put a network cluster converter to etna/ fuji / mainnet
 	if initPOAManagerFlags.rpcEndpoint == "" {
 		initPOAManagerFlags.rpcEndpoint, _, err = contract.GetBlockchainEndpoints(
 			app,
@@ -120,7 +121,9 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network, initPOAManagerFlags.aggregatorExtraEndpoints)
+	clusterName := sc.Networks[network.Name()].ClusterName
+	fmt.Printf("obtained clusterName %s \n", clusterName)
+	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterName, initPOAManagerFlags.aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
