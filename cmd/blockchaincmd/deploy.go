@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/network/peer"
 
@@ -484,7 +486,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		if !convertOnly && !generateNodeID {
+		if !generateNodeID {
 			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
 			if globalNetworkFlags.ClusterName != "" {
 				clusterName = globalNetworkFlags.ClusterName
@@ -873,17 +875,35 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-			if err := validatormanager.SetupPoA(
+			subnetID, err := contract.GetSubnetID(
 				app,
 				network,
-				rpcURL,
 				chainSpec,
-				genesisPrivateKey,
-				common.HexToAddress(sidecar.PoAValidatorManagerOwner),
-				avaGoBootstrapValidators,
-				extraAggregatorPeers,
-				aggregatorLogLevel,
-			); err != nil {
+			)
+			if err != nil {
+				return err
+			}
+			blockchainID, err := contract.GetBlockchainID(
+				app,
+				network,
+				chainSpec,
+			)
+			if err != nil {
+				return err
+			}
+			ownerAddress := common.HexToAddress(sidecar.PoAValidatorManagerOwner)
+			subnetSDK := blockchainSDK.Subnet{
+				SubnetID:            subnetID,
+				BlockchainID:        blockchainID,
+				OwnerAddress:        &ownerAddress,
+				RPC:                 rpcURL,
+				BootstrapValidators: avaGoBootstrapValidators,
+			}
+			logLvl, err := logging.ToLevel(aggregatorLogLevel)
+			if err != nil {
+				logLvl = logging.Off
+			}
+			if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
 				return err
 			}
 			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
@@ -1214,17 +1234,7 @@ func UrisToPeers(uris []string) ([]info.Peer, error) {
 	return peers, nil
 }
 
-func GetAggregatorExtraPeers(
-	network models.Network,
-	extraURIs []string,
-) ([]info.Peer, error) {
-	uris, err := GetAggregatorNetworkUris(network)
-	if err != nil {
-		return nil, err
-	}
-	uris = append(uris, extraURIs...)
-	urisSet := set.Of(uris...)
-	uris = urisSet.List()
+func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 	aggregatorPeers, err := UrisToPeers(uris)
 	if err != nil {
 		return nil, err
@@ -1249,6 +1259,20 @@ func GetAggregatorExtraPeers(
 		}
 	}
 	return aggregatorPeers, nil
+}
+
+func GetAggregatorExtraPeers(
+	network models.Network,
+	extraURIs []string,
+) ([]info.Peer, error) {
+	uris, err := GetAggregatorNetworkUris(network)
+	if err != nil {
+		return nil, err
+	}
+	uris = append(uris, extraURIs...)
+	urisSet := set.Of(uris...)
+	uris = urisSet.List()
+	return ConvertURIToPeers(uris)
 }
 
 func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
