@@ -465,7 +465,7 @@ func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
 		return err
 	}
 	conf := genesis.Config.GenesisPrecompiles
-	precompiles := make([]string, 6)
+	precompiles := make([]string, 0, 6)
 	for precompileName := range conf {
 		precompileTag := "precompile-" + precompileName
 		flags[precompileTag] = precompileName
