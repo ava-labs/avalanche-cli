@@ -5,6 +5,7 @@ package application
 import (
 	"encoding/json"
 	"fmt"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"os"
 	"path/filepath"
 	"strings"
@@ -847,9 +848,30 @@ func (app *Avalanche) GetClusterNetwork(clusterName string) (models.Network, err
 	if err != nil {
 		return models.UndefinedNetwork, err
 	}
-	return clusterConfig.Network, nil
+	network, err := GetNetworkFromCluster(clusterConfig)
+	if err != nil {
+		return models.UndefinedNetwork, err
+	}
+	//return clusterConfig.Network, nil
+	return network, nil
 }
 
+// GetNetworkFromCluster gets the network that a cluster is on
+func GetNetworkFromCluster(clusterConfig models.ClusterConfig) (models.Network, error) {
+	network := clusterConfig.Network
+	switch {
+	case network.ID == constants.LocalNetworkID:
+		return models.NewLocalNetwork(), nil
+	case network.ID == avagoconstants.FujiID:
+		return models.NewFujiNetwork(), nil
+	case network.ID == avagoconstants.MainnetID:
+		return models.NewMainnetNetwork(), nil
+	case network.ID == constants.EtnaDevnetNetworkID:
+		return models.NewEtnaDevnetNetwork(), nil
+	default:
+		return models.UndefinedNetwork, fmt.Errorf("unable to get network from cluster %s", network.ClusterName)
+	}
+}
 func (app *Avalanche) ListClusterNames() ([]string, error) {
 	if !app.ClustersConfigExists() {
 		return []string{}, nil
