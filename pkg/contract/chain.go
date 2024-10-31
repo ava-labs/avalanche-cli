@@ -93,7 +93,7 @@ func (cs *ChainSpec) Defined() bool {
 	return false
 }
 
-func (cs *ChainSpec) fillDefaults() {
+func (cs *ChainSpec) FillDefaults() {
 	if cs.blockchainNameFlagName == "" {
 		cs.blockchainIDFlagEnabled = true
 		cs.blockchainNameFlagName = defaultBlockchainNameFlagName
@@ -152,7 +152,7 @@ func (cs *ChainSpec) AddToCmd(
 	cmd *cobra.Command,
 	goalFmt string,
 ) {
-	cs.fillDefaults()
+	cs.FillDefaults()
 	if cs.blockchainNameFlagEnabled {
 		cmd.Flags().StringVar(&cs.BlockchainName, cs.blockchainNameFlagName, "", fmt.Sprintf(goalFmt, "the given CLI blockchain"))
 	}

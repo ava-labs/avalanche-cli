@@ -97,6 +97,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 	if !flags.ChainFlags.Defined() {
 		prompt := "Which Blockchain would you like to deploy Teleporter to?"
+		flags.ChainFlags.FillDefaults()
 		if cancel, err := contract.PromptChain(
 			app,
 			network,
