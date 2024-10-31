@@ -385,7 +385,9 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
 	//weight is inaccurate in PoS since we fetched it during registration
-	ux.Logger.PrintToUser("  Weight: %d", weight)
+	if !initWithPoS {
+		ux.Logger.PrintToUser("  Weight: %d", weight)
+	}
 	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
 

@@ -18,6 +18,19 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
+func getProxyAdminOwnerAddr() (string, error) {
+	return prompts.PromptAddress(
+		app.Prompt,
+		"enable as owner of ProxyAdmin contract",
+		app.GetKeyDir(),
+		app.GetKey,
+		"",
+		models.UndefinedNetwork,
+		prompts.EVMFormat,
+		"Enter address",
+	)
+}
+
 func getValidatorContractManagerAddr() (string, error) {
 	return prompts.PromptAddress(
 		app.Prompt,

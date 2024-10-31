@@ -86,7 +86,6 @@ var (
 	privateKeyFlags                 contract.PrivateKeyFlags
 	bootstrapEndpoints              []string
 	convertOnly                     bool
-	pos                             bool
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -146,7 +145,6 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-	cmd.Flags().BoolVar(&pos, "pos", false, "initialize the validator manager contract with proof of stake (first make sure genesis includes correct ValidatorManager bytecode)")
 
 	return cmd
 }
@@ -491,7 +489,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
 			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
 			//can use defaults here because local deployment. change below to avoid prompting.
-			changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
+			// changeAddr, err = getKeyForChangeOwner(nodeID.String(), changeAddr, network)
 			if err != nil {
 				return err
 			}
@@ -511,7 +509,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.BlockchainID,
 			deployInfo.ICMMessengerAddress,
 			deployInfo.ICMRegistryAddress,
-			bootstrapValidators,
+			nil,
 		); err != nil {
 			return err
 		}
@@ -902,7 +900,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			if pos {
+			if sidecar.PoAValidatorManagerOwner == "" { // no PoA key collected during blockchain create, so the network is PoS
 				minimumStakeAmount,
 					maximumStakeAmount,
 					minimumStakeDuration,

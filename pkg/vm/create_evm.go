@@ -80,7 +80,7 @@ func CreateEVMGenesis(
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
 	addICMRegistryToGenesis bool,
-	poaValidatorManagerOwner string,
+	proxyOwner string,
 ) ([]byte, error) {
 	feeConfig := getFeeConfig(params)
 
@@ -121,12 +121,12 @@ func CreateEVMGenesis(
 
 	if params.UsePoAValidatorManager {
 		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
-		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, poaValidatorManagerOwner)
+		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 	}
 
 	if params.UsePoSValidatorManager {
 		validatormanager.AddPoSValidatorManagerContractToAllocations(params.initialTokenAllocation)
-		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, poaValidatorManagerOwner)
+		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 
 		params.enableNativeMinterPrecompile = true
 		params.enableRewardManagerPrecompile = true

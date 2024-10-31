@@ -49,6 +49,7 @@ type CreateFlags struct {
 	proofOfStake                  bool
 	proofOfAuthority              bool
 	poaValidatorManagerOwner      string
+	proxyContractOwner            string
 	enableDebugging               bool
 }
 
@@ -112,6 +113,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	cmd.Flags().StringVar(&createFlags.poaValidatorManagerOwner, "poa-manager-owner", "", "EVM address that controls Validator Manager Owner (for Proof of Authority only)")
+	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
 	return cmd
@@ -246,7 +248,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if vmType == models.SubnetEvm {
 		if sovereign {
-			if sc.PoA() || sc.PoS() {
+			if sc.PoA() {
 				if createFlags.poaValidatorManagerOwner == "" {
 					createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
 					if err != nil {
@@ -254,7 +256,15 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 					}
 				}
 				sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
-				ux.Logger.GreenCheckmarkToUser("Validator Manager Proxy Contract owner address %s", createFlags.poaValidatorManagerOwner)
+				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
+			}
+			if createFlags.proxyContractOwner == "" {
+				createFlags.proxyContractOwner, err = getProxyAdminOwnerAddr()
+				if err != nil {
+					return err
+				}
+				sc.ProxyContractOwner = createFlags.proxyContractOwner
+				ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 			}
 		}
 
@@ -326,7 +336,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				params,
 				teleporterInfo,
 				createFlags.addICMRegistryToGenesis,
-				sc.PoAValidatorManagerOwner,
+				sc.ProxyContractOwner,
 			)
 			if err != nil {
 				return err

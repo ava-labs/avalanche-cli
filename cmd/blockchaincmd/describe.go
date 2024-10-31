@@ -356,10 +356,15 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 			deployer = icmgenesis.MessengerDeployerAddress
 		case address == common.HexToAddress(validatormanager.ValidatorContractAddress):
 			if sc.PoA() {
-				description = "PoA Validator Manager Proxy"
+				description = "PoA Validator Manager"
 			} else {
-				description = "PoS Validator Manager Proxy"
+				description = "PoS Validator Manager"
 			}
+		case address == common.HexToAddress(validatormanager.ProxyContractAddress):
+			description = "Validator Manager Transparent Proxy"
+		case address == common.HexToAddress(validatormanager.ProxyAdminContractAddress):
+			description = "Validator Manager ProxyAdmin"
+			deployer = sc.ProxyContractOwner
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
 	}
