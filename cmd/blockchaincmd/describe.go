@@ -360,7 +360,7 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 			if sc.PoA() {
 				description = "PoA Validator Manager"
 			} else {
-				description = "PoS Validator Manager"
+				description = "Native Token Staking Manager"
 			}
 		case address == common.HexToAddress(validatormanager.ProxyContractAddress):
 			description = "Transparent Proxy"

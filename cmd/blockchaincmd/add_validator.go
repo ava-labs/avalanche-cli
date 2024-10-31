@@ -59,6 +59,7 @@ var (
 	disableOwnerAddr          string
 	rpcURL                    string
 	aggregatorLogLevel        string
+	pos                       bool
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -104,6 +105,8 @@ Testnet or Mainnet.`,
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&pos, "pos", false, "initialize validator as PoS validator")
+
 	return cmd
 }
 
@@ -208,10 +211,6 @@ func CallAddValidator(
 	publicKey string,
 	pop string,
 ) error {
-	initWithPoS, err := app.Prompt.CaptureYesNo("Is this network PoS? (y/n)")
-	if err != nil {
-		return err
-	}
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
@@ -240,13 +239,19 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if !ownerPrivateKeyFound && !initWithPoS {
+	if !pos { // sidecar might say PoA but we can't assume they haven't upgraded proxy implementation
+		pos, err = app.Prompt.CaptureYesNo("Is this network PoS? (y/n)")
+		if err != nil {
+			return err
+		}
+	}
+	if !ownerPrivateKeyFound && !pos {
 		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
 	}
-	if ownerPrivateKeyFound && !initWithPoS {
+	if ownerPrivateKeyFound && !pos {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
 	}
-	if initWithPoS {
+	if pos {
 		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)
 		if err != nil {
 			return err
@@ -352,7 +357,7 @@ func CallAddValidator(
 		weight,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
-		initWithPoS,
+		pos,
 	)
 	if err != nil {
 		return err
@@ -382,7 +387,7 @@ func CallAddValidator(
 		validationID,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
-		initWithPoS,
+		pos,
 	); err != nil {
 		return err
 	}
@@ -390,7 +395,7 @@ func CallAddValidator(
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
 	//weight is inaccurate in PoS since we fetched it during registration
-	if !initWithPoS {
+	if !pos {
 		ux.Logger.PrintToUser("  Weight: %d", weight)
 	}
 	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)

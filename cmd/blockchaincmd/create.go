@@ -267,9 +267,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				sc.ProxyContractOwner = createFlags.proxyContractOwner
 				ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 			}
+			sc.ProxyContractOwner = createFlags.proxyContractOwner
 			if sc.PoS() {
 				if createFlags.rewardBasisPoints == 0 {
 					createFlags.rewardBasisPoints, err = app.Prompt.CaptureUint64("Enter reward basis points for PoS Reward Calculator")

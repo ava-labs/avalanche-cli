@@ -29,10 +29,10 @@ import (
 )
 
 const (
-	ValidatorContractAddress       = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
-	ProxyContractAddress           = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
-	ProxyAdminContractAddress      = "0xFEEDBEEF0000000000000000000000000000000A"
-	ExampleRewardCalculatorAddress = "0xAC1D000000000000000000000000000000000000"
+	ValidatorContractAddress       = "0xC0DEBA5E0000000000000000000000000000000"
+	ProxyContractAddress           = "0xFEEDC0DE0000000000000000000000000000000"
+	ProxyAdminContractAddress      = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
+	ExampleRewardCalculatorAddress = "0xDEADC0DE0000000000000000000000000000000"
 )
 
 var (
