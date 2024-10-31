@@ -22,6 +22,7 @@ type InitPOSManagerFlags struct {
 	Network                  networkoptions.NetworkFlags
 	PrivateKeyFlags          contract.PrivateKeyFlags
 	rpcEndpoint              string
+	rewardCalculatorAddress  string
 	aggregatorLogLevel       string
 	aggregatorExtraEndpoints []string
 }
@@ -47,6 +48,7 @@ func newInitPOSManagerCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &initPOSManagerFlags.Network, true, initPOSManagerSupportedNetworkOptions)
 	initPOSManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&initPOSManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
+	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "reward-calculator-address", "", "initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().StringSliceVar(&initPOSManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().StringVar(&initPOSManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
@@ -127,6 +129,13 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	if initPOSManagerFlags.rewardCalculatorAddress == "" {
+		addr, err := app.Prompt.CaptureAddress("Enter the address for the Reward Calculator contract")
+		if err != nil {
+			return err
+		}
+		initPOSManagerFlags.rewardCalculatorAddress = addr.String()
+	}
 	minimumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the minimum stake amount")
 	if err != nil {
 		return err
@@ -171,6 +180,7 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		minimumDelegationFee,
 		maximumStakeMultiplier,
 		weightToValueFactor,
+		initPOSManagerFlags.rewardCalculatorAddress,
 	); err != nil {
 		return err
 	}

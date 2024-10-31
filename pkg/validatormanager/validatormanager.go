@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	ValidatorContractAddress  = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
-	ProxyContractAddress      = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
-	ProxyAdminContractAddress = "0xFEEDBEEF0000000000000000000000000000000A"
+	ValidatorContractAddress       = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
+	ProxyContractAddress           = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
+	ProxyAdminContractAddress      = "0xFEEDBEEF0000000000000000000000000000000A"
+	ExampleRewardCalculatorAddress = "0xAC1D000000000000000000000000000000000000"
 )
 
 var (
@@ -136,6 +137,24 @@ func AddTransparentProxyContractToAllocations(
 	}
 }
 
+//go:embed deployed_example_reward_calculator_bytecode.txt
+var deployedRewardCalculatorBytecode []byte
+
+func AddRewardCalculatorToAllocations(
+	allocs core.GenesisAlloc,
+	rewardBasisPoints uint64,
+) {
+	deployedRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedRewardCalculatorBytecode)))
+	allocs[common.HexToAddress(ExampleRewardCalculatorAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedRewardCalculatorBytes,
+		Nonce:   1,
+		Storage: map[common.Hash]common.Hash{
+			common.HexToHash("0x0"): common.BigToHash(new(big.Int).SetUint64(rewardBasisPoints)),
+		},
+	}
+}
+
 // initializes contract [managerAddress] at [rpcURL], to
 // manage validators on [subnetID], with
 // owner given by [ownerAddress]
@@ -186,10 +205,8 @@ func PoSValidatorManagerInitialize(
 	minimumDelegationFee uint16,
 	maximumStakeMultiplier uint8,
 	weightToValueFactor *big.Int,
+	rewardCalculatorAddress string,
 ) (*types.Transaction, *types.Receipt, error) {
-	const (
-		RewardCalculatorPrecompileAddress = "0x0200000000000000000000000000000000000004"
-	)
 	var (
 		defaultChurnPeriodSeconds     = uint64(0) // no churn period
 		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
@@ -226,7 +243,7 @@ func PoSValidatorManagerInitialize(
 		MinimumDelegationFeeBips: minimumDelegationFee,
 		MaximumStakeMultiplier:   maximumStakeMultiplier,
 		WeightToValueFactor:      weightToValueFactor,
-		RewardCalculator:         common.HexToAddress(RewardCalculatorPrecompileAddress),
+		RewardCalculator:         common.HexToAddress(rewardCalculatorAddress),
 	}
 
 	return contract.TxToMethod(
@@ -461,6 +478,7 @@ func SetupPoS(
 	minimumDelegationFee uint16,
 	maximumStakeMultiplier uint8,
 	weightToValueFactor *big.Int,
+	rewardCalculatorAddress string,
 ) error {
 	if err := evm.SetupProposerVM(
 		rpcURL,
@@ -496,6 +514,7 @@ func SetupPoS(
 		minimumDelegationFee,
 		maximumStakeMultiplier,
 		weightToValueFactor,
+		rewardCalculatorAddress,
 	)
 	if err != nil {
 		if !errors.Is(err, errAlreadyInitialized) {

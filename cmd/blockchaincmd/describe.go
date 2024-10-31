@@ -367,6 +367,8 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		case address == common.HexToAddress(validatormanager.ProxyAdminContractAddress):
 			description = "Proxy Admin"
 			deployer = sc.ProxyContractOwner
+		case address == common.HexToAddress(validatormanager.ExampleRewardCalculatorAddress):
+			description = "Reward Calculator"
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
 	}

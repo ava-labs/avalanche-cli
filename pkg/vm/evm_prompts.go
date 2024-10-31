@@ -188,7 +188,6 @@ func PromptSubnetEVMGenesisParams(
 			params.nativeMinterPrecompileAllowList.AdminAddresses,
 			common.HexToAddress(validatormanager.ProxyContractAddress),
 		)
-		params.enableRewardManagerPrecompile = true
 	}
 
 	// Chain ID

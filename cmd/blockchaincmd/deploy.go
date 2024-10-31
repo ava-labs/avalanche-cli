@@ -928,6 +928,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					minimumDelegationFee,
 					maximumStakeMultiplier,
 					weightToValueFactor,
+					validatormanager.ExampleRewardCalculatorAddress, // this address should be set in a PoS genesis using blockchain create
 				); err != nil {
 					return err
 				}
