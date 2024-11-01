@@ -8,7 +8,7 @@ require (
 	github.com/ava-labs/avalanchego v1.12.0-initial-poc.6
 	github.com/ava-labs/awm-relayer v1.4.1-0.20241014222901-4b34ab86afd0
 	github.com/ava-labs/coreth v0.13.8
-	github.com/ava-labs/subnet-evm v0.6.10
+	github.com/ava-labs/subnet-evm v0.6.11
 	github.com/aws/aws-sdk-go-v2 v1.32.2
 	github.com/aws/aws-sdk-go-v2/config v1.27.26
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.182.0
@@ -109,7 +109,6 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fjl/memsize v0.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
 	github.com/gballet/go-verkle v0.1.1-0.20231031103413-a67434b50f46 // indirect
