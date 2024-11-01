@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -18,11 +19,6 @@ import (
 )
 
 const (
-	ValidatorContractAddress       = "0xC0DEBA5E0000000000000000000000000000000"
-	ProxyContractAddress           = "0xFEEDC0DE0000000000000000000000000000000"
-	ProxyAdminContractAddress      = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
-	ExampleRewardCalculatorAddress = "0xDEADC0DE0000000000000000000000000000000"
-
 	defaultAggregatorLogLevel = logging.Off
 )
 
@@ -70,7 +66,7 @@ func AddPoAValidatorManagerContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
 	deployedPoaValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoAValidatorManagerBytecode)))
-	allocs[common.HexToAddress(ValidatorContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedPoaValidatorManagerBytes,
 		Nonce:   1,
@@ -84,7 +80,7 @@ func AddPoSValidatorManagerContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
 	deployedPoSValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoSValidatorManagerBytecode)))
-	allocs[common.HexToAddress(ValidatorContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedPoSValidatorManagerBytes,
 		Nonce:   1,
@@ -103,7 +99,7 @@ func AddTransparentProxyContractToAllocations(
 ) {
 	// proxy admin
 	deployedProxyAdmin := common.FromHex(strings.TrimSpace(string(deployedProxyAdminBytecode)))
-	allocs[common.HexToAddress(ProxyAdminContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedProxyAdmin,
 		Nonce:   1,
@@ -114,19 +110,19 @@ func AddTransparentProxyContractToAllocations(
 
 	// transparent proxy
 	deployedTransparentProxy := common.FromHex(strings.TrimSpace(string(deployedTransparentProxyBytecode)))
-	allocs[common.HexToAddress(ProxyContractAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(validatorManagerSDK.ProxyContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedTransparentProxy,
 		Nonce:   1,
 		Storage: map[common.Hash]common.Hash{
-			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(ValidatorContractAddress),  // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
-			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(ProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
+			common.HexToHash("0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"): common.HexToHash(validatorManagerSDK.ValidatorContractAddress),  // sslot for address of ValidatorManager logic -> bytes32(uint256(keccak256('eip1967.proxy.implementation')) - 1)
+			common.HexToHash("0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"): common.HexToHash(validatorManagerSDK.ProxyAdminContractAddress), // sslot for address of ProxyAdmin -> bytes32(uint256(keccak256('eip1967.proxy.admin')) - 1)
 			// we can omit 3rd sslot for _data, as we initialize ValidatorManager after chain is live
 		},
 	}
 }
 
-//go:embed deployed_example_reward_calculator_bytecode.txt
+//go:embed deployed_reward_calculator_bytecode.txt
 var deployedRewardCalculatorBytecode []byte
 
 func AddRewardCalculatorToAllocations(
@@ -134,7 +130,7 @@ func AddRewardCalculatorToAllocations(
 	rewardBasisPoints uint64,
 ) {
 	deployedRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedRewardCalculatorBytecode)))
-	allocs[common.HexToAddress(ExampleRewardCalculatorAddress)] = core.GenesisAccount{
+	allocs[common.HexToAddress(validatorManagerSDK.RewardCalculatorAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedRewardCalculatorBytes,
 		Nonce:   1,

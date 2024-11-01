@@ -43,8 +43,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -789,7 +789,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		deployer.CleanCacheWallet()
-		managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+		managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
@@ -931,8 +931,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					poSMinimumDelegationFee,
 					poSMaximumStakeMultiplier,
 					big.NewInt(int64(poSWweightToValueFactor)),
-					validatormanager.ExampleRewardCalculatorAddress,
+					validatorManagerSDK.RewardCalculatorAddress,
 				); err != nil {
+					return err
 				}
 			} else {
 				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)

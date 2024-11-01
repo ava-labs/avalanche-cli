@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/proto/pb/platformvm"
@@ -411,7 +412,7 @@ func InitValidatorRegistration(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	if initWithPos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
 		stakeAmount, err := app.Prompt.CapturePositiveBigInt(fmt.Sprintf("Enter the amount of tokens to stake (in %s)", app.GetTokenSymbol(chainSpec.BlockchainName)))
@@ -446,7 +447,7 @@ func InitValidatorRegistration(
 			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
 		}
 	} else {
-		managerAddress = common.HexToAddress(ProxyContractAddress)
+		managerAddress = common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 		tx, _, err := PoAValidatorManagerInitializeValidatorRegistration(
 			rpcURL,
 			managerAddress,
@@ -522,7 +523,7 @@ func FinishValidatorRegistration(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	managerAddress := common.HexToAddress(ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	signedMessage, err := ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,

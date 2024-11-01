@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -115,7 +116,7 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	validationID, err := GetRegisteredValidator(
 		rpcURL,
 		managerAddress,
@@ -186,7 +187,7 @@ func FinishValidatorRemoval(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
 ) error {
-	managerAddress := common.HexToAddress(ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,

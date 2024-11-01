@@ -13,7 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ethereum/go-ethereum/common"
@@ -186,7 +186,7 @@ func PromptSubnetEVMGenesisParams(
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
 			params.nativeMinterPrecompileAllowList.AdminAddresses,
-			common.HexToAddress(validatormanager.ProxyContractAddress),
+			common.HexToAddress(validatorManagerSDK.ProxyContractAddress),
 		)
 		params.enableRewardManagerPrecompile = true
 	}
