@@ -73,6 +73,11 @@ func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, 
 	return kvMap, nil
 }
 
+// Context for bootstrapping a Fuji Node
+func GetFujiBoostrappingContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.FujiBootstrapTimeout)
+}
+
 // Context for ANR network operations
 func GetANRContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
@@ -588,4 +593,23 @@ func LogLevelToEmoji(logLevel string) (string, error) {
 		levelEmoji = "💀"
 	}
 	return levelEmoji, nil
+}
+
+// Set k=v in JSON string
+// e.g., "track-subnets" is the key and value is "a,b,c".
+func SetJSONKey(jsonBody string, k string, v interface{}) (string, error) {
+	var config map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonBody), &config); err != nil {
+		return "", err
+	}
+	if v == nil {
+		delete(config, k)
+	} else {
+		config[k] = v
+	}
+	updatedJSON, err := json.Marshal(config)
+	if err != nil {
+		return "", err
+	}
+	return string(updatedJSON), nil
 }

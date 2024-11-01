@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -178,6 +179,27 @@ func StartLocalNode(
 		_ = DestroyLocalNode(app, clusterName)
 		localClusterExists = false
 		localDataExists = false
+	}
+
+	// set node configs
+	if nodeConfig == "" {
+		nodeConfig = "{}"
+	}
+	nodeConfig, err = utils.SetJSONKey(
+		nodeConfig,
+		config.PartialSyncPrimaryNetworkKey,
+		true,
+	)
+	if err != nil {
+		return err
+	}
+	nodeConfig, err = utils.SetJSONKey(
+		nodeConfig,
+		config.ProposerVMUseCurrentHeightKey,
+		true,
+	)
+	if err != nil {
+		return err
 	}
 
 	// check if this is existing cluster
@@ -347,6 +369,11 @@ func StartLocalNode(
 		}
 		if anrSettings.BootstrapIPs != nil {
 			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
+		}
+
+		if network.Kind == models.Fuji {
+			ctx, cancel = utils.GetFujiBoostrappingContext()
+			defer cancel()
 		}
 
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
