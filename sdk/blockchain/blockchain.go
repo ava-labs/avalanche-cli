@@ -374,7 +374,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return err
 	}
 
-	managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
 		c.RPC,
 		managerAddress,
