@@ -101,7 +101,6 @@ func AddTransparentProxyContractToAllocations(
 	allocs core.GenesisAlloc,
 	proxyManager string,
 ) {
-
 	// proxy admin
 	deployedProxyAdmin := common.FromHex(strings.TrimSpace(string(deployedProxyAdminBytecode)))
 	allocs[common.HexToAddress(ProxyAdminContractAddress)] = core.GenesisAccount{

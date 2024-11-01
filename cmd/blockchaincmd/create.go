@@ -48,7 +48,9 @@ type CreateFlags struct {
 	addICMRegistryToGenesis       bool
 	proofOfStake                  bool
 	proofOfAuthority              bool
+	rewardBasisPoints             uint64
 	poaValidatorManagerOwner      string
+	proxyContractOwner            string
 	enableDebugging               bool
 }
 
@@ -64,7 +66,8 @@ var (
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
-	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority, --proof-of-stake, --poa-manager-owner are only applicable to Subnet Only Validator (SOV) blockchains")
+	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority, --proof-of-stake, --poa-manager-owner --proxy-contract-owner are only applicable to Subnet Only Validator (SOV) blockchains")
+	errPOSFlagsOnly                               = errors.New("flags --reward-basis-points are only applicable to Proof of Stake (PoS) blockchains")
 )
 
 // avalanche blockchain create
@@ -112,7 +115,9 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
 	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
 	cmd.Flags().StringVar(&createFlags.poaValidatorManagerOwner, "poa-manager-owner", "", "EVM address that controls Validator Manager Owner (for Proof of Authority only)")
+	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
+	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 0, "reward basis points for PoS Reward Calculator")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
 	return cmd
 }
@@ -256,6 +261,22 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
 				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
 			}
+			if createFlags.proxyContractOwner == "" {
+				createFlags.proxyContractOwner, err = getProxyAdminOwnerAddr()
+				if err != nil {
+					return err
+				}
+				ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
+			}
+			sc.ProxyContractOwner = createFlags.proxyContractOwner
+			if sc.PoS() {
+				if createFlags.rewardBasisPoints == 0 {
+					createFlags.rewardBasisPoints, err = app.Prompt.CaptureUint64("Enter reward basis points for PoS Reward Calculator")
+					if err != nil {
+						return err
+					}
+				}
+			}
 		}
 
 		if genesisPath == "" {
@@ -326,6 +347,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				params,
 				teleporterInfo,
 				createFlags.addICMRegistryToGenesis,
+				sc.ProxyContractOwner,
+				createFlags.rewardBasisPoints,
 			)
 			if err != nil {
 				return err

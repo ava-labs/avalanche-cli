@@ -30,6 +30,7 @@ const (
 	Undefined AddressFormat = iota
 	PChainFormat
 	EVMFormat
+	XChainFormat
 )
 
 const (

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,6 +91,13 @@ var (
 	bootstrapEndpoints              []string
 	convertOnly                     bool
 
+	poSMinimumStakeAmount     uint64 // big.Int
+	poSMaximumStakeAmount     uint64 // big.Int
+	poSMinimumStakeDuration   uint64
+	poSMinimumDelegationFee   uint16
+	poSMaximumStakeMultiplier uint8
+	poSWweightToValueFactor   uint64 // big.Int
+
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
@@ -151,6 +159,14 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
+
+	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 0, "minimum stake amount")
+	cmd.Flags().Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
+	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", 0, "minimum stake duration")
+	cmd.Flags().Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 0, "minimum delegation fee")
+	cmd.Flags().Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 0, "maximum stake multiplier")
+	cmd.Flags().Uint64Var(&poSWweightToValueFactor, "pos-weight-to-value-factor", 0, "weight to value factor")
+
 	return cmd
 }
 
@@ -773,7 +789,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		deployer.CleanCacheWallet()
-		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
+		managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
@@ -874,7 +890,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 			subnetID, err := contract.GetSubnetID(
 				app,
 				network,
@@ -903,9 +918,30 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				logLvl = logging.Off
 			}
-			if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
-				return err
+			if sidecar.PoAValidatorManagerOwner == "" { // no PoA key collected during blockchain create, so the network is PoS
+				ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+				if err := subnetSDK.InitializeProofOfStake(
+					network,
+					genesisPrivateKey,
+					extraAggregatorPeers,
+					logLvl,
+					big.NewInt(int64(poSMinimumStakeAmount)),
+					big.NewInt(int64(poSMaximumStakeAmount)),
+					poSMinimumStakeDuration,
+					poSMinimumDelegationFee,
+					poSMaximumStakeMultiplier,
+					big.NewInt(int64(poSWweightToValueFactor)),
+					validatormanager.ExampleRewardCalculatorAddress,
+				); err != nil {
+				}
+			} else {
+				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
+				if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
+					return err
+				}
+				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			}
+
 			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")

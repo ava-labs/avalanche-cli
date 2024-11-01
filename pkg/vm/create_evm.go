@@ -81,6 +81,7 @@ func CreateEVMGenesis(
 	teleporterInfo *teleporter.Info,
 	addICMRegistryToGenesis bool,
 	proxyOwner string,
+	rewardBasisPoints uint64,
 ) ([]byte, error) {
 	feeConfig := getFeeConfig(params)
 
@@ -127,9 +128,8 @@ func CreateEVMGenesis(
 	if params.UsePoSValidatorManager {
 		validatormanager.AddPoSValidatorManagerContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
-
+		validatormanager.AddRewardCalculatorToAllocations(params.initialTokenAllocation, rewardBasisPoints)
 		params.enableNativeMinterPrecompile = true
-		params.enableRewardManagerPrecompile = true
 	}
 
 	if params.UseExternalGasToken {
