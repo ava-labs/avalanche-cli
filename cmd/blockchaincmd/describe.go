@@ -316,6 +316,8 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 				description = logging.Orange.Wrap("Main funded account")
 			case sc.PoAValidatorManagerOwner:
 				description = logging.Orange.Wrap("PoA Validator Manager Owner")
+			case sc.ProxyContractOwner:
+				description = logging.Orange.Wrap("Proxy Admin Owner")
 			}
 			var (
 				found bool
@@ -359,8 +361,15 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 			if sc.PoA() {
 				description = "PoA Validator Manager"
 			} else {
-				description = "PoS Validator Manager"
+				description = "Native Token Staking Manager"
 			}
+		case address == common.HexToAddress(validatormanager.ProxyContractAddress):
+			description = "Transparent Proxy"
+		case address == common.HexToAddress(validatormanager.ProxyAdminContractAddress):
+			description = "Proxy Admin"
+			deployer = sc.ProxyContractOwner
+		case address == common.HexToAddress(validatormanager.ExampleRewardCalculatorAddress):
+			description = "Reward Calculator"
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
 	}

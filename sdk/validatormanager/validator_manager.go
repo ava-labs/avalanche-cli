@@ -25,7 +25,12 @@ import (
 )
 
 const (
-	ValidatorContractAddress = "0x5F584C2D56B4c356e7d82EC6129349393dc5df17"
+	ValidatorContractAddress       = "0xC0DEBA5E0000000000000000000000000000000"
+	ProxyContractAddress           = "0xFEEDC0DE0000000000000000000000000000000"
+	ProxyAdminContractAddress      = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
+	ExampleRewardCalculatorAddress = "0xDEADC0DE0000000000000000000000000000000"
+
+	defaultAggregatorLogLevel = logging.Off
 )
 
 var (
@@ -102,13 +107,79 @@ func PoAValidatorManagerInitialize(
 	)
 }
 
-// GetPoAPChainSubnetConversionWarpMessage constructs p-chain-validated (signed) subnet conversion warp
+// initializes contract [managerAddress] at [rpcURL], to
+// manage validators on [subnetID] using PoS specific settings
+func PoSValidatorManagerInitialize(
+	rpcURL string,
+	managerAddress common.Address,
+	privateKey string,
+	subnetID [32]byte,
+	minimumStakeAmount *big.Int,
+	maximumStakeAmount *big.Int,
+	minimumStakeDuration uint64,
+	minimumDelegationFee uint16,
+	maximumStakeMultiplier uint8,
+	weightToValueFactor *big.Int,
+	rewardCalculatorAddress string,
+) (*types.Transaction, *types.Receipt, error) {
+	var (
+		defaultChurnPeriodSeconds     = uint64(0) // no churn period
+		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
+	)
+
+	type ValidatorManagerSettings struct {
+		SubnetID               [32]byte
+		ChurnPeriodSeconds     uint64
+		MaximumChurnPercentage uint8
+	}
+
+	type NativeTokenValidatorManagerSettings struct {
+		BaseSettings             ValidatorManagerSettings
+		MinimumStakeAmount       *big.Int
+		MaximumStakeAmount       *big.Int
+		MinimumStakeDuration     uint64
+		MinimumDelegationFeeBips uint16
+		MaximumStakeMultiplier   uint8
+		WeightToValueFactor      *big.Int
+		RewardCalculator         common.Address
+	}
+
+	baseSettings := ValidatorManagerSettings{
+		SubnetID:               subnetID,
+		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
+		MaximumChurnPercentage: defaultMaximumChurnPercentage,
+	}
+
+	params := NativeTokenValidatorManagerSettings{
+		BaseSettings:             baseSettings,
+		MinimumStakeAmount:       minimumStakeAmount,
+		MaximumStakeAmount:       maximumStakeAmount,
+		MinimumStakeDuration:     minimumStakeDuration,
+		MinimumDelegationFeeBips: minimumDelegationFee,
+		MaximumStakeMultiplier:   maximumStakeMultiplier,
+		WeightToValueFactor:      weightToValueFactor,
+		RewardCalculator:         common.HexToAddress(rewardCalculatorAddress),
+	}
+
+	return contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		managerAddress,
+		nil,
+		"initialize Native Token PoS manager",
+		errorSignatureToError,
+		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))",
+		params,
+	)
+}
+
+// GetPChainSubnetConversionWarpMessage constructs p-chain-validated (signed) subnet conversion warp
 // message, to be sent to the validators manager when
 // initializing validators set
 // the message specifies [subnetID] that is being converted
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
-func GetPoAPChainSubnetConversionWarpMessage(
+func GetPChainSubnetConversionWarpMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -171,7 +242,7 @@ func GetPoAPChainSubnetConversionWarpMessage(
 // PoAInitializeValidatorsSet calls poa manager validators set init method,
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // to verify p-chain already processed the associated ConvertSubnetTx
-func PoAInitializeValidatorsSet(
+func InitializeValidatorsSet(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,

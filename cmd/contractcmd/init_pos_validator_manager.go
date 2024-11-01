@@ -12,8 +12,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
 )
@@ -22,6 +24,7 @@ type InitPOSManagerFlags struct {
 	Network                  networkoptions.NetworkFlags
 	PrivateKeyFlags          contract.PrivateKeyFlags
 	rpcEndpoint              string
+	rewardCalculatorAddress  string
 	aggregatorLogLevel       string
 	aggregatorExtraEndpoints []string
 }
@@ -47,6 +50,7 @@ func newInitPOSManagerCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &initPOSManagerFlags.Network, true, initPOSManagerSupportedNetworkOptions)
 	initPOSManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&initPOSManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
+	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "reward-calculator-address", "", "initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().StringSliceVar(&initPOSManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().StringVar(&initPOSManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	return cmd
@@ -127,6 +131,14 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	if initPOSManagerFlags.rewardCalculatorAddress == "" {
+		addr, err := app.Prompt.CaptureAddress("Enter the address for the Reward Calculator contract")
+		if err != nil {
+			return err
+		}
+		initPOSManagerFlags.rewardCalculatorAddress = addr.String()
+	}
+
 	minimumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the minimum stake amount")
 	if err != nil {
 		return err
@@ -156,13 +168,34 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validatormanager.SetupPoS(
+	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
-		initPOSManagerFlags.rpcEndpoint,
 		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	blockchainID, err := contract.GetBlockchainID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return err
+	}
+	ownerAddress := common.HexToAddress(sc.ProxyContractOwner)
+	subnetSDK := blockchainSDK.Subnet{
+		SubnetID:            subnetID,
+		BlockchainID:        blockchainID,
+		BootstrapValidators: avaGoBootstrapValidators,
+		OwnerAddress:        &ownerAddress,
+		RPC:                 initPOAManagerFlags.rpcEndpoint,
+	}
+	if err := validatormanager.SetupPoS(
+		subnetSDK,
+		network,
 		privateKey,
-		avaGoBootstrapValidators,
 		extraAggregatorPeers,
 		initPOSManagerFlags.aggregatorLogLevel,
 		minimumStakeAmount,
@@ -171,6 +204,7 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		minimumDelegationFee,
 		maximumStakeMultiplier,
 		weightToValueFactor,
+		initPOSManagerFlags.rewardCalculatorAddress,
 	); err != nil {
 		return err
 	}

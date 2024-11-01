@@ -389,7 +389,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
 	}
 
-	subnetConversionSignedMessage, err := validatormanager.GetPoAPChainSubnetConversionWarpMessage(
+	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -403,7 +403,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	tx, _, err = validatormanager.PoAInitializeValidatorsSet(
+	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
 		managerAddress,
 		privateKey,
@@ -416,5 +416,72 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
 	}
 
+	return nil
+}
+
+func (c *Subnet) InitializeProofOfStake(
+	network models.Network,
+	privateKey string,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevel logging.Level,
+	minimumStakeAmount *big.Int,
+	maximumStakeAmount *big.Int,
+	minimumStakeDuration uint64,
+	minimumDelegationFee uint16,
+	maximumStakeMultiplier uint8,
+	weightToValueFactor *big.Int,
+	rewardCalculatorAddress string,
+) error {
+	if err := evm.SetupProposerVM(
+		c.RPC,
+		privateKey,
+	); err != nil {
+		return err
+	}
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		minimumStakeAmount,
+		maximumStakeAmount,
+		minimumStakeDuration,
+		minimumDelegationFee,
+		maximumStakeMultiplier,
+		weightToValueFactor,
+		rewardCalculatorAddress,
+	)
+	if err != nil {
+		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+			return evm.TransactionError(tx, err, "failure initializing native PoS validator manager")
+		}
+		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
+	}
+	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		network,
+		aggregatorLogLevel,
+		0,
+		aggregatorExtraPeerEndpoints,
+		c.SubnetID,
+		c.BlockchainID,
+		managerAddress,
+		c.BootstrapValidators,
+	)
+	if err != nil {
+		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
+	}
+	tx, _, err = validatormanager.InitializeValidatorsSet(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		c.BlockchainID,
+		c.BootstrapValidators,
+		subnetConversionSignedMessage,
+	)
+	if err != nil {
+		return evm.TransactionError(tx, err, "failure initializing validators set on pos manager")
+	}
 	return nil
 }

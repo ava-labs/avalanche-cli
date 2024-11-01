@@ -23,7 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func PoAValidatorManagerInitializeValidatorRemoval(
+func ValidatorManagerInitializeValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	ownerPrivateKey string,
@@ -41,7 +41,7 @@ func PoAValidatorManagerInitializeValidatorRemoval(
 	)
 }
 
-func PoaValidatorManagerGetSubnetValidatorWeightMessage(
+func ValidatorManagerGetSubnetValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -115,7 +115,7 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	managerAddress := common.HexToAddress(ProxyContractAddress)
 	validationID, err := GetRegisteredValidator(
 		rpcURL,
 		managerAddress,
@@ -124,7 +124,7 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	tx, _, err := PoAValidatorManagerInitializeValidatorRemoval(
+	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		ownerPrivateKey,
@@ -142,7 +142,7 @@ func InitValidatorRemoval(
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
 	nonce := uint64(1)
-	signedMsg, err := PoaValidatorManagerGetSubnetValidatorWeightMessage(
+	signedMsg, err := ValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -157,7 +157,7 @@ func InitValidatorRemoval(
 	return signedMsg, validationID, err
 }
 
-func PoAValidatorManagerCompleteValidatorRemoval(
+func ValidatorManagerCompleteValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string, // not need to be owner atm
@@ -186,7 +186,7 @@ func FinishValidatorRemoval(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
 ) error {
-	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	managerAddress := common.HexToAddress(ProxyContractAddress)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -199,7 +199,7 @@ func FinishValidatorRemoval(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
 		aggregatorLogLevel,
@@ -218,7 +218,7 @@ func FinishValidatorRemoval(
 	); err != nil {
 		return err
 	}
-	tx, _, err := PoAValidatorManagerCompleteValidatorRemoval(
+	tx, _, err := ValidatorManagerCompleteValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		privateKey,
