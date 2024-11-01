@@ -25,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -282,6 +283,13 @@ func StartLocalNode(
 				models.Devnet,
 				constants.EtnaDevnetNetworkID,
 				constants.EtnaDevnetEndpoint,
+				clusterName,
+			)
+		} else if globalNetworkFlags.UseFuji {
+			network = models.NewNetwork(
+				models.Fuji,
+				avagoconstants.FujiID,
+				constants.FujiAPIEndpoint,
 				clusterName,
 			)
 		} else {
