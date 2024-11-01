@@ -83,7 +83,7 @@ func NativePoSValidatorManagerInitializeValidatorRegistration(
 		managerAddress,
 		stakeAmount,
 		"initialize validator registration with stake",
-		errorSignatureToError,
+		validatorManagerSDK.ErrorSignatureToError,
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
 		validatorRegistrationInput,
 		delegationFeeBips,
@@ -139,7 +139,7 @@ func PoAValidatorManagerInitializeValidatorRegistration(
 		managerAddress,
 		big.NewInt(0),
 		"initialize validator registration",
-		errorSignatureToError,
+		validatorManagerSDK.ErrorSignatureToError,
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
 		validatorRegistrationInput,
 		weight,
@@ -206,7 +206,7 @@ func PoSValidatorManagerInitialize(
 		managerAddress,
 		nil,
 		"initialize Native Token PoS manager",
-		errorSignatureToError,
+		validatorManagerSDK.ErrorSignatureToError,
 		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))",
 		params,
 	)
@@ -374,7 +374,7 @@ func ValidatorManagerCompleteValidatorRegistration(
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
 		"complete validator registration",
-		errorSignatureToError,
+		validatorManagerSDK.ErrorSignatureToError,
 		"completeValidatorRegistration(uint32)",
 		uint32(0),
 	)
@@ -441,7 +441,7 @@ func InitValidatorRegistration(
 			stakeAmount,
 		)
 		if err != nil {
-			if !errors.Is(err, errNodeAlreadyRegistered) {
+			if !errors.Is(err, validatorManagerSDK.ErrNodeAlreadyRegistered) {
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
 			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
@@ -460,7 +460,7 @@ func InitValidatorRegistration(
 			weight,
 		)
 		if err != nil {
-			if !errors.Is(err, errNodeAlreadyRegistered) {
+			if !errors.Is(err, validatorManagerSDK.ErrNodeAlreadyRegistered) {
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
 			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")

@@ -36,7 +36,7 @@ func ValidatorManagerInitializeValidatorRemoval(
 		managerAddress,
 		big.NewInt(0),
 		"validator removal initialization",
-		errorSignatureToError,
+		validatorManagerSDK.ErrorSignatureToError,
 		"initializeEndValidation(bytes32)",
 		validationID,
 	)
@@ -132,7 +132,7 @@ func InitValidatorRemoval(
 		validationID,
 	)
 	if err != nil {
-		if !errors.Is(err, errInvalidValidatorStatus) {
+		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 		}
 		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceeding to the next step")
@@ -171,7 +171,7 @@ func ValidatorManagerCompleteValidatorRemoval(
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
 		"complete poa validator removal",
-		errorSignatureToError,
+		validatorManagerSDK.ErrorSignatureToError,
 		"completeEndValidation(uint32)",
 		uint32(0),
 	)

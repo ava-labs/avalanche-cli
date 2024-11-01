@@ -4,7 +4,6 @@
 package validatormanager
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -32,39 +31,39 @@ const (
 )
 
 var (
-	ErrAlreadyInitialized                  = errors.New("the contract is already initialized")
-	errInvalidMaximumChurnPercentage       = fmt.Errorf("unvalid churn percentage")
-	errInvalidValidationID                 = fmt.Errorf("invalid validation id")
-	errInvalidValidatorStatus              = fmt.Errorf("invalid validator status")
-	errMaxChurnRateExceeded                = fmt.Errorf("max churn rate exceeded")
-	errInvalidInitializationStatus         = fmt.Errorf("validators set already initialized")
-	errInvalidValidatorManagerBlockchainID = fmt.Errorf("invalid validator manager blockchain ID")
-	errInvalidValidatorManagerAddress      = fmt.Errorf("invalid validator manager address")
-	errNodeAlreadyRegistered               = fmt.Errorf("node already registered")
-	errInvalidSubnetConversionID           = fmt.Errorf("invalid subnet conversion id")
-	errInvalidRegistrationExpiry           = fmt.Errorf("invalid registration expiry")
-	errInvalidBLSKeyLength                 = fmt.Errorf("invalid BLS key length")
-	errInvalidNodeID                       = fmt.Errorf("invalid node id")
-	errInvalidWarpMessage                  = fmt.Errorf("invalid warp message")
-	errInvalidWarpSourceChainID            = fmt.Errorf("invalid wapr source chain ID")
-	errInvalidWarpOriginSenderAddress      = fmt.Errorf("invalid warp origin sender address")
-	errorSignatureToError                  = map[string]error{
+	ErrAlreadyInitialized                  = fmt.Errorf("the contract is already initialized")
+	ErrInvalidMaximumChurnPercentage       = fmt.Errorf("unvalid churn percentage")
+	ErrInvalidValidationID                 = fmt.Errorf("invalid validation id")
+	ErrInvalidValidatorStatus              = fmt.Errorf("invalid validator status")
+	ErrMaxChurnRateExceeded                = fmt.Errorf("max churn rate exceeded")
+	ErrInvalidInitializationStatus         = fmt.Errorf("validators set already initialized")
+	ErrInvalidValidatorManagerBlockchainID = fmt.Errorf("invalid validator manager blockchain ID")
+	ErrInvalidValidatorManagerAddress      = fmt.Errorf("invalid validator manager address")
+	ErrNodeAlreadyRegistered               = fmt.Errorf("node already registered")
+	ErrInvalidSubnetConversionID           = fmt.Errorf("invalid subnet conversion id")
+	ErrInvalidRegistrationExpiry           = fmt.Errorf("invalid registration expiry")
+	ErrInvalidBLSKeyLength                 = fmt.Errorf("invalid BLS key length")
+	ErrInvalidNodeID                       = fmt.Errorf("invalid node id")
+	ErrInvalidWarpMessage                  = fmt.Errorf("invalid warp message")
+	ErrInvalidWarpSourceChainID            = fmt.Errorf("invalid wapr source chain ID")
+	ErrInvalidWarpOriginSenderAddress      = fmt.Errorf("invalid warp origin sender address")
+	ErrorSignatureToError                  = map[string]error{
 		"InvalidInitialization()":                      ErrAlreadyInitialized,
-		"InvalidMaximumChurnPercentage(uint8)":         errInvalidMaximumChurnPercentage,
-		"InvalidValidationID(bytes32)":                 errInvalidValidationID,
-		"InvalidValidatorStatus(uint8)":                errInvalidValidatorStatus,
-		"MaxChurnRateExceeded(uint64)":                 errMaxChurnRateExceeded,
-		"InvalidInitializationStatus()":                errInvalidInitializationStatus,
-		"InvalidValidatorManagerBlockchainID(bytes32)": errInvalidValidatorManagerBlockchainID,
-		"InvalidValidatorManagerAddress(address)":      errInvalidValidatorManagerAddress,
-		"NodeAlreadyRegistered(bytes)":                 errNodeAlreadyRegistered,
-		"InvalidSubnetConversionID(bytes32,bytes32)":   errInvalidSubnetConversionID,
-		"InvalidRegistrationExpiry(uint64)":            errInvalidRegistrationExpiry,
-		"InvalidBLSKeyLength(uint256)":                 errInvalidBLSKeyLength,
-		"InvalidNodeID(bytes)":                         errInvalidNodeID,
-		"InvalidWarpMessage()":                         errInvalidWarpMessage,
-		"InvalidWarpSourceChainID(bytes32)":            errInvalidWarpSourceChainID,
-		"InvalidWarpOriginSenderAddress(address)":      errInvalidWarpOriginSenderAddress,
+		"InvalidMaximumChurnPercentage(uint8)":         ErrInvalidMaximumChurnPercentage,
+		"InvalidValidationID(bytes32)":                 ErrInvalidValidationID,
+		"InvalidValidatorStatus(uint8)":                ErrInvalidValidatorStatus,
+		"MaxChurnRateExceeded(uint64)":                 ErrMaxChurnRateExceeded,
+		"InvalidInitializationStatus()":                ErrInvalidInitializationStatus,
+		"InvalidValidatorManagerBlockchainID(bytes32)": ErrInvalidValidatorManagerBlockchainID,
+		"InvalidValidatorManagerAddress(address)":      ErrInvalidValidatorManagerAddress,
+		"NodeAlreadyRegistered(bytes)":                 ErrNodeAlreadyRegistered,
+		"InvalidSubnetConversionID(bytes32,bytes32)":   ErrInvalidSubnetConversionID,
+		"InvalidRegistrationExpiry(uint64)":            ErrInvalidRegistrationExpiry,
+		"InvalidBLSKeyLength(uint256)":                 ErrInvalidBLSKeyLength,
+		"InvalidNodeID(bytes)":                         ErrInvalidNodeID,
+		"InvalidWarpMessage()":                         ErrInvalidWarpMessage,
+		"InvalidWarpSourceChainID(bytes32)":            ErrInvalidWarpSourceChainID,
+		"InvalidWarpOriginSenderAddress(address)":      ErrInvalidWarpOriginSenderAddress,
 	}
 )
 
@@ -98,7 +97,7 @@ func PoAValidatorManagerInitialize(
 		managerAddress,
 		nil,
 		"initialize PoA manager",
-		errorSignatureToError,
+		ErrorSignatureToError,
 		"initialize((bytes32,uint64,uint8),address)",
 		params,
 		ownerAddress,
@@ -165,7 +164,7 @@ func PoSValidatorManagerInitialize(
 		managerAddress,
 		nil,
 		"initialize Native Token PoS manager",
-		errorSignatureToError,
+		ErrorSignatureToError,
 		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))",
 		params,
 	)
@@ -281,7 +280,7 @@ func InitializeValidatorsSet(
 		subnetConversionSignedMessage,
 		big.NewInt(0),
 		"initialize validator set",
-		errorSignatureToError,
+		ErrorSignatureToError,
 		"initializeValidatorSet((bytes32,bytes32,address,[(bytes,bytes,uint64)]),uint32)",
 		subnetConversionData,
 		uint32(0),
