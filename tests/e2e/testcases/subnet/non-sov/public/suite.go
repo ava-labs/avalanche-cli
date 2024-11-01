@@ -39,7 +39,7 @@ const (
 func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
 	// deploy
 	s := commands.SimulateFujiDeployNonSOV(subnetName, keyName, controlKeys)
-	subnetID, err := utils.ParsePublicDeployOutput(s)
+	subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
 	nodeInfos, err := utils.GetNodesInfo()
@@ -111,7 +111,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
 		s := commands.SimulateMainnetDeployNonSOV(subnetName, 0, false)
 		// deploy
-		subnetID, err := utils.ParsePublicDeployOutput(s)
+		subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()

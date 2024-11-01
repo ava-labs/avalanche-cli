@@ -80,7 +80,7 @@ func TestDeployToLocal(t *testing.T) {
 
 	// fake-return true simulating the process is running
 	procChecker := &mocks.ProcessChecker{}
-	procChecker.On("IsServerProcessRunning", mock.Anything).Return(true, nil)
+	procChecker.On("IsServerProcessRunning", mock.Anything, mock.Anything).Return(true, nil)
 
 	tmpDir := os.TempDir()
 	testDir, err := os.MkdirTemp(tmpDir, "local-test")

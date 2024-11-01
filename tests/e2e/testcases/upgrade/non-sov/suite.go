@@ -389,7 +389,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 
 		// Simulate fuji deployment
 		s := commands.SimulateFujiDeployNonSOV(subnetName, keyName, controlKeys)
-		subnetID, err := utils.ParsePublicDeployOutput(s)
+		subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()

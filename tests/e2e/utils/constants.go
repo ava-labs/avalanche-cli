@@ -32,6 +32,8 @@ const (
 	EtnaAvalancheGoBinaryPath = "tests/e2e/assets/avalanchego"
 	PluginDirExt              = "plugins"
 
-	ledgerSimDir         = "./tests/e2e/ledgerSim"
-	basicLedgerSimScript = "./launchAndApproveTxs.ts"
+	ledgerSimDir          = "./tests/e2e/ledgerSim"
+	basicLedgerSimScript  = "./launchAndApproveTxs.ts"
+	SubnetIDParseType     = "SubnetID"
+	BlockchainIDParseType = "BlockchainID"
 )
