@@ -278,21 +278,22 @@ func StartLocalNode(
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		network := models.UndefinedNetwork
-		if useEtnaDevnet {
+		switch {
+		case useEtnaDevnet:
 			network = models.NewNetwork(
 				models.Devnet,
 				constants.EtnaDevnetNetworkID,
 				constants.EtnaDevnetEndpoint,
 				clusterName,
 			)
-		} else if globalNetworkFlags.UseFuji {
+		case globalNetworkFlags.UseFuji:
 			network = models.NewNetwork(
 				models.Fuji,
 				avagoconstants.FujiID,
 				constants.FujiAPIEndpoint,
 				clusterName,
 			)
-		} else {
+		default:
 			network, err = networkoptions.GetNetworkFromCmdLineFlags(
 				app,
 				"",
