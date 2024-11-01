@@ -906,7 +906,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ownerAddress := common.HexToAddress(sidecar.PoAValidatorManagerOwner)
+			ownerAddress := common.HexToAddress(sidecar.ValidatorManagerOwner)
 			subnetSDK := blockchainSDK.Subnet{
 				SubnetID:            subnetID,
 				BlockchainID:        blockchainID,
@@ -918,7 +918,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				logLvl = logging.Off
 			}
-			if sidecar.PoAValidatorManagerOwner == "" { // no PoA key collected during blockchain create, so the network is PoS
+			if sidecar.ValidatorManagerOwner == "" { // no PoA key collected during blockchain create, so the network is PoS
 				ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 				if err := subnetSDK.InitializeProofOfStake(
 					network,

@@ -314,8 +314,8 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 				description = logging.Orange.Wrap("Main funded account")
 			case vm.PrefundedEwoqAddress.Hex():
 				description = logging.Orange.Wrap("Main funded account")
-			case sc.PoAValidatorManagerOwner:
-				description = logging.Orange.Wrap("PoA Validator Manager Owner")
+			case sc.ValidatorManagerOwner:
+				description = logging.Orange.Wrap("Validator Manager Owner")
 			case sc.ProxyContractOwner:
 				description = logging.Orange.Wrap("Proxy Admin Owner")
 			}

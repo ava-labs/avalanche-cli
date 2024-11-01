@@ -175,7 +175,7 @@ func PromptSubnetEVMGenesisParams(
 
 	if sc.PoA() {
 		params.UsePoAValidatorManager = true
-		params.initialTokenAllocation[common.HexToAddress(sc.PoAValidatorManagerOwner)] = core.GenesisAccount{
+		params.initialTokenAllocation[common.HexToAddress(sc.ValidatorManagerOwner)] = core.GenesisAccount{
 			Balance: defaultPoAOwnerBalance,
 		}
 	}

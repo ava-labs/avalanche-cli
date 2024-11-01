@@ -240,7 +240,7 @@ func CallAddValidator(
 	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
-		common.HexToAddress(sc.PoAValidatorManagerOwner),
+		common.HexToAddress(sc.ValidatorManagerOwner),
 		true,
 	)
 	if err != nil {
@@ -249,10 +249,10 @@ func CallAddValidator(
 
 	pos := sc.PoS() || forcePoS
 	if !ownerPrivateKeyFound && !pos {
-		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
+		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.ValidatorManagerOwner)
 	}
 	if ownerPrivateKeyFound && !pos {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
 	}
 	if pos {
 		genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(app, network, chainSpec)

@@ -191,16 +191,16 @@ func removeValidatorSOV(
 	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
-		common.HexToAddress(sc.PoAValidatorManagerOwner),
+		common.HexToAddress(sc.ValidatorManagerOwner),
 		true,
 	)
 	if err != nil {
 		return err
 	}
 	if !ownerPrivateKeyFound {
-		return fmt.Errorf("not private key found for PoA manager owner %s", sc.PoAValidatorManagerOwner)
+		return fmt.Errorf("not private key found for PoA manager owner %s", sc.ValidatorManagerOwner)
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), sc.ValidatorManagerOwner)
 
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(

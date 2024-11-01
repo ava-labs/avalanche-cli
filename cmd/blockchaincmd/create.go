@@ -262,7 +262,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
-				sc.PoAValidatorManagerOwner = createFlags.poaValidatorManagerOwner
+				sc.ValidatorManagerOwner = createFlags.poaValidatorManagerOwner
 				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
 			}
 			if createFlags.proxyContractOwner == "" {
