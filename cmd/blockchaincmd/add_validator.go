@@ -59,7 +59,7 @@ var (
 	disableOwnerAddr          string
 	rpcURL                    string
 	aggregatorLogLevel        string
-	pos                       bool
+	forcePoS                  bool
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -113,7 +113,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non sovereign blockchain) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non sovereign blockchain) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for non sovereign blockchain) just issue the add validator tx, without waiting for its acceptance")
-	cmd.Flags().BoolVar(&pos, "pos", false, "initialize validator as PoS validator")
+	cmd.Flags().BoolVar(&forcePoS, "pos", false, "force validator initialization as PoS validator")
 	return cmd
 }
 
@@ -246,12 +246,8 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	if !pos { // sidecar might say PoA but we can't assume they haven't upgraded proxy implementation
-		pos, err = app.Prompt.CaptureYesNo("Is this network PoS? (y/n)")
-		if err != nil {
-			return err
-		}
-	}
+
+	pos := sc.PoS() || forcePoS
 	if !ownerPrivateKeyFound && !pos {
 		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
 	}
