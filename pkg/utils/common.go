@@ -73,11 +73,6 @@ func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, 
 	return kvMap, nil
 }
 
-// Context for bootstrapping a Fuji Node
-func GetFujiBootstrappingContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.FujiBootstrapTimeout)
-}
-
 // Context for ANR network operations
 func GetANRContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
