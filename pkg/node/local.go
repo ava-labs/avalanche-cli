@@ -139,6 +139,7 @@ func StartLocalNode(
 	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
+	nodeConfig string,
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 	globalNetworkFlags networkoptions.NetworkFlags,
@@ -207,6 +208,7 @@ func StartLocalNode(
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithSnapshotPath(rootDir),
+			client.WithGlobalNodeConfig(nodeConfig),
 		}
 		// load snapshot for existing network
 		if _, err := cli.LoadSnapshot(
@@ -298,6 +300,7 @@ func StartLocalNode(
 			client.WithPluginDir(pluginDir),
 			client.WithFreshStakingIds(true),
 			client.WithZeroIP(false),
+			client.WithGlobalNodeConfig(nodeConfig),
 		}
 		if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
