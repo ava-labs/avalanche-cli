@@ -3,6 +3,7 @@
 package models
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -188,4 +189,13 @@ func (n *Network) HandlePublicNetworkSimulation() {
 // Equals checks the underlying fields Kind and Endpoint
 func (n *Network) Equals(n2 Network) bool {
 	return n.Kind == n2.Kind && n.Endpoint == n2.Endpoint
+}
+
+// Context for bootstrapping a partial synced Node
+func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
+	timeout := constants.ANRRequestTimeout
+	if n.Kind == Fuji {
+		timeout = constants.FujiBootstrapTimeout
+	}
+	return context.WithTimeout(context.Background(), timeout)
 }

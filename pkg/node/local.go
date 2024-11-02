@@ -217,6 +217,7 @@ func StartLocalNode(
 
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
+
 	// starts server
 	avalancheGoVersion := "latest"
 	if avalanchegoBinaryPath == "" {
@@ -380,10 +381,8 @@ func StartLocalNode(
 			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
 		}
 
-		if network.Kind == models.Fuji {
-			ctx, cancel = utils.GetFujiBoostrappingContext()
-			defer cancel()
-		}
+		ctx, cancel = network.BootstrappingContext()
+		defer cancel()
 
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()

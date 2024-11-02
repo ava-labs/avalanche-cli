@@ -74,7 +74,7 @@ func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, 
 }
 
 // Context for bootstrapping a Fuji Node
-func GetFujiBoostrappingContext() (context.Context, context.CancelFunc) {
+func GetFujiBootstrappingContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.FujiBootstrapTimeout)
 }
 
