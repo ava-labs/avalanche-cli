@@ -505,6 +505,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 								"please create your local node again and call subnet deploy command again", err)
 						}
 					}
+					network, err = models.ConvertClusterToNetwork(network)
+					if err != nil {
+						return err
+					}
 					//network = models.NewNetworkFromCluster(network, clusterName)
 				}
 			}

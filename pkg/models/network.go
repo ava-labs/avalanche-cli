@@ -3,6 +3,7 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -73,6 +74,25 @@ func NewDevnetNetwork(endpoint string, id uint32) Network {
 		id = constants.DevnetNetworkID
 	}
 	return NewNetwork(Devnet, id, endpoint, "")
+}
+
+// ConvertClusterToNetwork converts a cluster network into a non cluster network
+func ConvertClusterToNetwork(clusterNetwork Network) (Network, error) {
+	if clusterNetwork.ClusterName == "" {
+		return UndefinedNetwork, errors.New("no cluster network is provided")
+	}
+	switch {
+	case clusterNetwork.ID == constants.LocalNetworkID:
+		return NewLocalNetwork(), nil
+	case clusterNetwork.ID == avagoconstants.FujiID:
+		return NewFujiNetwork(), nil
+	case clusterNetwork.ID == avagoconstants.MainnetID:
+		return NewMainnetNetwork(), nil
+	case clusterNetwork.ID == constants.EtnaDevnetNetworkID:
+		return NewEtnaDevnetNetwork(), nil
+	default:
+		return UndefinedNetwork, fmt.Errorf("unable to get network from cluster network %s", clusterNetwork.ClusterName)
+	}
 }
 
 func NewEtnaDevnetNetwork() Network {

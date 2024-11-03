@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -70,7 +71,12 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// TODO: put a network cluster converter to etna/ fuji / mainnet
+	if network.ClusterName != "" {
+		network, err = models.ConvertClusterToNetwork(network)
+		if err != nil {
+			return err
+		}
+	}
 	if initPOAManagerFlags.rpcEndpoint == "" {
 		initPOAManagerFlags.rpcEndpoint, _, err = contract.GetBlockchainEndpoints(
 			app,
