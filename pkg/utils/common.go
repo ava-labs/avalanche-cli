@@ -589,22 +589,3 @@ func LogLevelToEmoji(logLevel string) (string, error) {
 	}
 	return levelEmoji, nil
 }
-
-// Set k=v in JSON string
-// e.g., "track-subnets" is the key and value is "a,b,c".
-func SetJSONKey(jsonBody string, k string, v interface{}) (string, error) {
-	var config map[string]interface{}
-	if err := json.Unmarshal([]byte(jsonBody), &config); err != nil {
-		return "", err
-	}
-	if v == nil {
-		delete(config, k)
-	} else {
-		config[k] = v
-	}
-	updatedJSON, err := json.Marshal(config)
-	if err != nil {
-		return "", err
-	}
-	return string(updatedJSON), nil
-}

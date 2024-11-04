@@ -4,12 +4,13 @@ package nodecmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 )
@@ -151,14 +152,18 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 	}
-	nodeConfig := ""
+	var (
+		err        error
+		nodeConfig map[string]interface{}
+	)
 	if nodeConfigPath != "" {
-		nodeConfigBytes, err := os.ReadFile(nodeConfigPath)
+		nodeConfig, err = utils.ReadJSON(nodeConfigPath)
 		if err != nil {
 			return err
 		}
-		nodeConfig = string(nodeConfigBytes)
 	}
+	nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+
 	return node.StartLocalNode(
 		app,
 		clusterName,

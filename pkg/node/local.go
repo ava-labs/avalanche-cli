@@ -4,6 +4,7 @@ package node
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -155,7 +155,7 @@ func StartLocalNode(
 	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
-	nodeConfig string,
+	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 	globalNetworkFlags networkoptions.NetworkFlags,
@@ -180,27 +180,6 @@ func StartLocalNode(
 		_ = DestroyLocalNode(app, clusterName)
 		localClusterExists = false
 		localDataExists = false
-	}
-
-	// set node configs
-	if nodeConfig == "" {
-		nodeConfig = "{}"
-	}
-	nodeConfig, err = utils.SetJSONKey(
-		nodeConfig,
-		config.PartialSyncPrimaryNetworkKey,
-		true,
-	)
-	if err != nil {
-		return err
-	}
-	nodeConfig, err = utils.SetJSONKey(
-		nodeConfig,
-		config.ProposerVMUseCurrentHeightKey,
-		true,
-	)
-	if err != nil {
-		return err
 	}
 
 	// check if this is existing cluster
@@ -258,6 +237,11 @@ func StartLocalNode(
 		return nil
 	}
 
+	nodeConfigBytes, err := json.Marshal(nodeConfig)
+	if err != nil {
+		return err
+	}
+	nodeConfigStr := string(nodeConfigBytes)
 	if localClusterExists && localDataExists {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 		loadSnapshotOpts := []client.OpOption{
@@ -265,7 +249,7 @@ func StartLocalNode(
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithSnapshotPath(rootDir),
-			client.WithGlobalNodeConfig(nodeConfig),
+			client.WithGlobalNodeConfig(nodeConfigStr),
 		}
 		// load snapshot for existing network
 		if _, err := cli.LoadSnapshot(
@@ -366,7 +350,7 @@ func StartLocalNode(
 			client.WithPluginDir(pluginDir),
 			client.WithFreshStakingIds(true),
 			client.WithZeroIP(false),
-			client.WithGlobalNodeConfig(nodeConfig),
+			client.WithGlobalNodeConfig(nodeConfigStr),
 		}
 		if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))

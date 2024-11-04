@@ -26,6 +26,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -534,14 +535,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					}
 				}
 				network = models.NewNetworkFromCluster(network, clusterName)
-				nodeConfig := ""
+				nodeConfig := map[string]interface{}{}
 				if app.AvagoNodeConfigExists(blockchainName) {
-					nodeConfigBytes, err := os.ReadFile(app.GetAvagoNodeConfigPath(blockchainName))
+					nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
 					if err != nil {
 						return err
 					}
-					nodeConfig = string(nodeConfigBytes)
 				}
+				nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
 					app,
