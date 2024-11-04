@@ -825,7 +825,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		if !convertOnly && !generateNodeID {
-			clusterName := network.ClusterName
+			clusterName := globalNetworkFlags.ClusterName
 			if clusterName == "" {
 				clusterName, err = node.GetClusterNameFromList(app)
 				if err != nil {
