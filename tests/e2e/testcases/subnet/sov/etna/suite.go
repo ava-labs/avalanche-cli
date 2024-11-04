@@ -219,7 +219,6 @@ func initPoaManagerEtnaFlag(
 
 var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	ginkgo.BeforeEach(func() {
-		fmt.Printf("We are runnign before each \n")
 		// key
 		_ = utils.DeleteKey(keyName)
 		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
@@ -234,7 +233,6 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		fmt.Printf("We are runnign after each \n")
 		destroyLocalNode()
 		commands.DeleteSubnetConfig(subnetName)
 		err := utils.DeleteKey(keyName)
