@@ -509,7 +509,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					//network = models.NewNetworkFromCluster(network, clusterName)
 				}
 			}
 			// ask user if we want to use local machine if cluster is not provided
@@ -538,7 +537,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
-				//network = models.NewNetworkFromCluster(network, clusterName)
 				nodeConfig := ""
 				if app.AvagoNodeConfigExists(blockchainName) {
 					nodeConfigBytes, err := os.ReadFile(app.GetAvagoNodeConfigPath(blockchainName))

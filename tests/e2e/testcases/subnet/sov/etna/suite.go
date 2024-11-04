@@ -174,7 +174,7 @@ func deployEtnaSubnetClusterFlagConvertOnly(clusterName string) {
 func initPoaManagerClusterFlag(
 	subnetName string,
 	clusterName string,
-) (string, error) {
+) error {
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
@@ -192,7 +192,7 @@ func initPoaManagerClusterFlag(
 		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output), err
+	return err
 }
 
 func initPoaManagerEtnaFlag(
@@ -251,7 +251,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
 		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
+		err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -270,7 +270,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		deployEtnaSubnetEtnaFlagConvertOnly()
 		_, err := commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
+		err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })
