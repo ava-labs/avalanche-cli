@@ -96,7 +96,7 @@ var (
 	poSMinimumStakeDuration   uint64
 	poSMinimumDelegationFee   uint16
 	poSMaximumStakeMultiplier uint8
-	poSWweightToValueFactor   uint64 // big.Int
+	poSWeightToValueFactor    uint64 // big.Int
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -165,7 +165,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", 100, "minimum stake duration")
 	cmd.Flags().Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
 	cmd.Flags().Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
-	cmd.Flags().Uint64Var(&poSWweightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
+	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 
 	return cmd
 }
@@ -930,7 +930,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					poSMinimumStakeDuration,
 					poSMinimumDelegationFee,
 					poSMaximumStakeMultiplier,
-					big.NewInt(int64(poSWweightToValueFactor)),
+					big.NewInt(int64(poSWeightToValueFactor)),
 					validatorManagerSDK.RewardCalculatorAddress,
 				); err != nil {
 					return err

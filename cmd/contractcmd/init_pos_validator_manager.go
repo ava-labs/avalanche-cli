@@ -4,6 +4,7 @@ package contractcmd
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -13,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
@@ -27,6 +29,12 @@ type InitPOSManagerFlags struct {
 	rewardCalculatorAddress  string
 	aggregatorLogLevel       string
 	aggregatorExtraEndpoints []string
+	minimumStakeAmount       uint64 // big.Int
+	maximumStakeAmount       uint64 // big.Int
+	minimumStakeDuration     uint64
+	minimumDelegationFee     uint16
+	maximumStakeMultiplier   uint8
+	weightToValueFactor      uint64 // big.Int
 }
 
 var (
@@ -53,6 +61,13 @@ func newInitPOSManagerCmd() *cobra.Command {
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "reward-calculator-address", "", "initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().StringSliceVar(&initPOSManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().StringVar(&initPOSManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.maximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", 100, "minimum stake duration")
+	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
+	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 	return cmd
 }
 
@@ -132,41 +147,7 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 	}
 
 	if initPOSManagerFlags.rewardCalculatorAddress == "" {
-		addr, err := app.Prompt.CaptureAddress("Enter the address for the Reward Calculator contract")
-		if err != nil {
-			return err
-		}
-		initPOSManagerFlags.rewardCalculatorAddress = addr.String()
-	}
-
-	minimumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the minimum stake amount")
-	if err != nil {
-		return err
-	}
-
-	maximumStakeAmount, err := app.Prompt.CapturePositiveBigInt("Enter the maximum stake amount")
-	if err != nil {
-		return err
-	}
-
-	minimumStakeDuration, err := app.Prompt.CaptureUint64("Enter the minimum stake duration (in seconds)")
-	if err != nil {
-		return err
-	}
-
-	minimumDelegationFee, err := app.Prompt.CaptureUint16("Enter the minimum delegation fee")
-	if err != nil {
-		return err
-	}
-
-	maximumStakeMultiplier, err := app.Prompt.CaptureUint8("Enter the maximum stake multiplier")
-	if err != nil {
-		return err
-	}
-
-	weightToValueFactor, err := app.Prompt.CapturePositiveBigInt("Enter the weight to value factor")
-	if err != nil {
-		return err
+		initPOSManagerFlags.rewardCalculatorAddress = validatorManagerSDK.RewardCalculatorAddress
 	}
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -190,20 +171,21 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		BlockchainID:        blockchainID,
 		BootstrapValidators: avaGoBootstrapValidators,
 		OwnerAddress:        &ownerAddress,
-		RPC:                 initPOAManagerFlags.rpcEndpoint,
+		RPC:                 initPOSManagerFlags.rpcEndpoint,
 	}
+	ux.Logger.PrintToUser("Initializing native token Proof of Stake Validator Manager contract on blockchain %s", subnetSDK.RPC)
 	if err := validatormanager.SetupPoS(
 		subnetSDK,
 		network,
 		privateKey,
 		extraAggregatorPeers,
 		initPOSManagerFlags.aggregatorLogLevel,
-		minimumStakeAmount,
-		maximumStakeAmount,
-		minimumStakeDuration,
-		minimumDelegationFee,
-		maximumStakeMultiplier,
-		weightToValueFactor,
+		big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
+		big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
+		initPOSManagerFlags.minimumStakeDuration,
+		initPOSManagerFlags.minimumDelegationFee,
+		initPOSManagerFlags.maximumStakeMultiplier,
+		big.NewInt(int64(initPOSManagerFlags.weightToValueFactor)),
 		initPOSManagerFlags.rewardCalculatorAddress,
 	); err != nil {
 		return err
