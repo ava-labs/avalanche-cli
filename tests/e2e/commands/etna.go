@@ -42,7 +42,7 @@ func CreateEtnaSubnetEvmConfig(
 	subnetManagementStr := PoAString
 	if subnetManagementType == PoS {
 		rewardBasisPoints = "--reward-basis-points=100"
-		subnetManagementStr = PoSString + " " + rewardBasisPoints
+		subnetManagementStr = PoSString
 	}
 	// Create config
 	cmd := exec.Command(
@@ -61,6 +61,9 @@ func CreateEtnaSubnetEvmConfig(
 		"--evm-token=TOK",
 		"--"+constants.SkipUpdateFlag,
 	)
+	if rewardBasisPoints != "" {
+		cmd.Args = append(cmd.Args, rewardBasisPoints)
+	}
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
