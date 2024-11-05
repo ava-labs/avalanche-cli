@@ -81,6 +81,7 @@ func ConvertClusterToNetwork(clusterNetwork Network) (Network, error) {
 	if clusterNetwork.ClusterName == "" {
 		return UndefinedNetwork, errors.New("no cluster network is provided")
 	}
+	fmt.Printf("clusterNetwork.ID  %s \n", clusterNetwork.ID)
 	switch {
 	case clusterNetwork.ID == constants.LocalNetworkID:
 		return NewLocalNetwork(), nil

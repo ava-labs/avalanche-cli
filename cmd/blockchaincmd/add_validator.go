@@ -135,6 +135,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if network.ClusterName != "" {
+		globalNetworkFlags.ClusterName = network.ClusterName
 		network, err = models.ConvertClusterToNetwork(network)
 		if err != nil {
 			return err
@@ -325,11 +326,11 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(network.ClusterName, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(globalNetworkFlags.ClusterName, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
-
+	fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,
