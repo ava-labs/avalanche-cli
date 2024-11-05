@@ -198,9 +198,7 @@ func InitValidatorManager(
 	endpoint string,
 	blockchainID string,
 	subnetManagementType SubnetManagementType,
-
 ) (string, error) {
-
 	initManagerString := "initPoaManager"
 	if subnetManagementType == PoS {
 		initManagerString = "initPosManager"
