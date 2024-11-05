@@ -918,7 +918,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				logLvl = logging.Off
 			}
-			if sidecar.ValidatorManagerOwner == "" { // no PoA key collected during blockchain create, so the network is PoS
+			if sidecar.ValidatorManagement == models.ProofOfStake {
 				ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 				if err := subnetSDK.InitializeProofOfStake(
 					network,

@@ -247,7 +247,7 @@ func CallAddValidator(
 		return err
 	}
 	if !ownerPrivateKeyFound {
-		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.ValidatorManagerOwner)
+		return fmt.Errorf("private key for Validator manager owner %s is not found", sc.ValidatorManagerOwner)
 	}
 
 	pos := sc.PoS() || forcePoS
