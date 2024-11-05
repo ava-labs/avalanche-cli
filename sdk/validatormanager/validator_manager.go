@@ -31,6 +31,8 @@ const (
 )
 
 var (
+	ErrDelegatorIneligibleForRewards       = fmt.Errorf("delegator ineligible for rewards")
+	ErrInvalidBLSPublicKey                 = fmt.Errorf("invalid BLS public key")
 	ErrAlreadyInitialized                  = fmt.Errorf("the contract is already initialized")
 	ErrInvalidMaximumChurnPercentage       = fmt.Errorf("unvalid churn percentage")
 	ErrInvalidValidationID                 = fmt.Errorf("invalid validation id")
@@ -47,6 +49,28 @@ var (
 	ErrInvalidWarpMessage                  = fmt.Errorf("invalid warp message")
 	ErrInvalidWarpSourceChainID            = fmt.Errorf("invalid wapr source chain ID")
 	ErrInvalidWarpOriginSenderAddress      = fmt.Errorf("invalid warp origin sender address")
+	ErrInvalidCodecID                      = fmt.Errorf("invalid codec ID")
+	ErrInvalidConversionID                 = fmt.Errorf("invalid conversion ID")
+	ErrInvalidDelegationFee                = fmt.Errorf("invalid delegation fee")
+	ErrInvalidDelegationID                 = fmt.Errorf("invalid delegation ID")
+	ErrInvalidDelegatorStatus              = fmt.Errorf("invalid delegator status")
+	ErrInvalidMessageLength                = fmt.Errorf("invalid message length")
+	ErrInvalidMessageType                  = fmt.Errorf("invalid message type")
+	ErrInvalidMinStakeDuration             = fmt.Errorf("invalid min stake duration")
+	ErrInvalidNonce                        = fmt.Errorf("invalid nonce")
+	ErrInvalidPChainOwnerThreshold         = fmt.Errorf("invalid pchain owner threshold")
+	ErrInvalidStakeAmount                  = fmt.Errorf("invalid stake amount")
+	ErrInvalidStakeMultiplier              = fmt.Errorf("invalid stake multiplier")
+	ErrInvalidTokenAddress                 = fmt.Errorf("invalid token address")
+	ErrInvalidTotalWeight                  = fmt.Errorf("invalid total weight")
+	ErrMaxWeightExceeded                   = fmt.Errorf("max weight exceeded")
+	ErrMinStakeDurationNotPassed           = fmt.Errorf("min stake duration not passed")
+	ErrPChainOwnerAddressesNotSorted       = fmt.Errorf("pchain owner addresses not sorted")
+	ErrUnauthorizedOwner                   = fmt.Errorf("unauthorized owner")
+	ErrUnexpectedRegistrationStatus        = fmt.Errorf("unexpected registration status")
+	ErrValidatorIneligibleForRewards       = fmt.Errorf("validator ineligible for rewards")
+	ErrValidatorNotPoS                     = fmt.Errorf("validator not PoS")
+	ErrZeroWeightToValueFactor             = fmt.Errorf("zero weight to value factor")
 	ErrorSignatureToError                  = map[string]error{
 		"InvalidInitialization()":                      ErrAlreadyInitialized,
 		"InvalidMaximumChurnPercentage(uint8)":         ErrInvalidMaximumChurnPercentage,
@@ -64,6 +88,30 @@ var (
 		"InvalidWarpMessage()":                         ErrInvalidWarpMessage,
 		"InvalidWarpSourceChainID(bytes32)":            ErrInvalidWarpSourceChainID,
 		"InvalidWarpOriginSenderAddress(address)":      ErrInvalidWarpOriginSenderAddress,
+		"DelegatorIneligibleForRewards(bytes32)":       ErrDelegatorIneligibleForRewards,
+		"InvalidBLSPublicKey()":                        ErrInvalidBLSPublicKey,
+		"InvalidCodecID(uint32)":                       ErrInvalidCodecID,
+		"InvalidConversionID(bytes32,bytes32)":         ErrInvalidConversionID,
+		"InvalidDelegationFee(uint16)":                 ErrInvalidDelegationFee,
+		"InvalidDelegationID(bytes32)":                 ErrInvalidDelegationID,
+		"InvalidDelegatorStatus(DelegatorStatus)":      ErrInvalidDelegatorStatus,
+		"InvalidMessageLength(uint32,uint32)":          ErrInvalidMessageLength,
+		"InvalidMessageType()":                         ErrInvalidMessageType,
+		"InvalidMinStakeDuration(uint64)":              ErrInvalidMinStakeDuration,
+		"InvalidNonce(uint64)":                         ErrInvalidNonce,
+		"InvalidPChainOwnerThreshold(uint256,uint256)": ErrInvalidPChainOwnerThreshold,
+		"InvalidStakeAmount(uint256)":                  ErrInvalidStakeAmount,
+		"InvalidStakeMultiplier(uint8)":                ErrInvalidStakeMultiplier,
+		"InvalidTokenAddress(address)":                 ErrInvalidTokenAddress,
+		"InvalidTotalWeight(uint256)":                  ErrInvalidTotalWeight,
+		"MaxWeightExceeded(uint64)":                    ErrMaxWeightExceeded,
+		"MinStakeDurationNotPassed(uint64)":            ErrMinStakeDurationNotPassed,
+		"PChainOwnerAddressesNotSorted()":              ErrPChainOwnerAddressesNotSorted,
+		"UnauthorizedOwner(address)":                   ErrUnauthorizedOwner,
+		"UnexpectedRegistrationStatus(bool)":           ErrUnexpectedRegistrationStatus,
+		"ValidatorIneligibleForRewards(bytes32)":       ErrValidatorIneligibleForRewards,
+		"ValidatorNotPoS(bytes32)":                     ErrValidatorNotPoS,
+		"ZeroWeightToValueFactor()":                    ErrZeroWeightToValueFactor,
 	}
 )
 
