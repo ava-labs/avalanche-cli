@@ -49,7 +49,7 @@ type CreateFlags struct {
 	proofOfStake                  bool
 	proofOfAuthority              bool
 	rewardBasisPoints             uint64
-	poaValidatorManagerOwner      string
+	validatorManagerOwner         string
 	proxyContractOwner            string
 	enableDebugging               bool
 }
@@ -113,8 +113,8 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
 	cmd.Flags().BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority for validator management")
-	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "(coming soon) use proof of stake for validator management")
-	cmd.Flags().StringVar(&createFlags.poaValidatorManagerOwner, "poa-manager-owner", "", "EVM address that controls Validator Manager Owner (for Proof of Authority only)")
+	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake for validator management")
+	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 0, "reward basis points for PoS Reward Calculator")
@@ -204,7 +204,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if !sovereign {
-		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.poaValidatorManagerOwner != "" {
+		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.validatorManagerOwner != "" {
 			return errSOVFlagsOnly
 		}
 	}
@@ -248,22 +248,22 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		if err = promptValidatorManagementType(app, sc); err != nil {
 			return err
 		}
-		if !sc.PoA() && createFlags.poaValidatorManagerOwner != "" {
-			return errors.New("--poa-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
+		if !sc.PoA() && createFlags.validatorManagerOwner != "" {
+			return errors.New("--validator-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
 		}
 	}
 
 	if vmType == models.SubnetEvm {
 		if sovereign {
 			if sc.PoA() {
-				if createFlags.poaValidatorManagerOwner == "" {
-					createFlags.poaValidatorManagerOwner, err = getValidatorContractManagerAddr()
+				if createFlags.validatorManagerOwner == "" {
+					createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
 					if err != nil {
 						return err
 					}
 				}
-				sc.ValidatorManagerOwner = createFlags.poaValidatorManagerOwner
-				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.poaValidatorManagerOwner)
+				sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
+				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
 			}
 			if createFlags.proxyContractOwner == "" {
 				createFlags.proxyContractOwner, err = getProxyAdminOwnerAddr()
