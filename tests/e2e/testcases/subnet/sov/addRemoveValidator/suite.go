@@ -5,12 +5,11 @@ package subnet
 
 import (
 	"fmt"
-	"regexp"
-
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	"regexp"
 )
 
 var blockchainID = ""

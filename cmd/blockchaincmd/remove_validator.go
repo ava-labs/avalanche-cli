@@ -82,7 +82,12 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	if network.ClusterName != "" {
+		network, err = models.ConvertClusterToNetwork(network)
+		if err != nil {
+			return err
+		}
+	}
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
