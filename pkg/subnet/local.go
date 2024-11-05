@@ -42,16 +42,17 @@ import (
 )
 
 type LocalDeployer struct {
-	procChecker        binutils.ProcessChecker
-	binChecker         binutils.BinaryChecker
-	getClientFunc      getGRPCClientFunc
-	binaryDownloader   binutils.PluginBinaryDownloader
-	app                *application.Avalanche
-	backendStartedHere bool
-	setDefaultSnapshot setDefaultSnapshotFunc
-	avagoVersion       string
-	avagoBinaryPath    string
-	vmBin              string
+	procChecker            binutils.ProcessChecker
+	binChecker             binutils.BinaryChecker
+	getClientFunc          getGRPCClientFunc
+	binaryDownloader       binutils.PluginBinaryDownloader
+	app                    *application.Avalanche
+	backendStartedHere     bool
+	setDefaultSnapshot     setDefaultSnapshotFunc
+	avagoVersion           string
+	avagoBinaryPath        string
+	vmBin                  string
+	installSnapshotUpdates bool
 }
 
 // uses either avagoVersion or avagoBinaryPath
@@ -60,23 +61,25 @@ func NewLocalDeployer(
 	avagoVersion string,
 	avagoBinaryPath string,
 	vmBin string,
+	installSnapshotUpdates bool,
 ) *LocalDeployer {
 	return &LocalDeployer{
-		procChecker:        binutils.NewProcessChecker(),
-		binChecker:         binutils.NewBinaryChecker(),
-		getClientFunc:      binutils.NewGRPCClient,
-		binaryDownloader:   binutils.NewPluginBinaryDownloader(app),
-		app:                app,
-		setDefaultSnapshot: SetDefaultSnapshot,
-		avagoVersion:       avagoVersion,
-		avagoBinaryPath:    avagoBinaryPath,
-		vmBin:              vmBin,
+		procChecker:            binutils.NewProcessChecker(),
+		binChecker:             binutils.NewBinaryChecker(),
+		getClientFunc:          binutils.NewGRPCClient,
+		binaryDownloader:       binutils.NewPluginBinaryDownloader(app),
+		app:                    app,
+		setDefaultSnapshot:     SetDefaultSnapshot,
+		avagoVersion:           avagoVersion,
+		avagoBinaryPath:        avagoBinaryPath,
+		vmBin:                  vmBin,
+		installSnapshotUpdates: installSnapshotUpdates,
 	}
 }
 
 type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, error)
 
-type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
+type setDefaultSnapshotFunc func(string, bool, bool, string, bool) (bool, error)
 
 type ICMSpec struct {
 	SkipICMDeploy                bool
@@ -577,7 +580,13 @@ func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 	}
 
 	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
-	needsRestart, err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, avagoVersion, configSingleNodeEnabled)
+	needsRestart, err := d.setDefaultSnapshot(
+		d.app.GetSnapshotsDir(),
+		false,
+		d.installSnapshotUpdates,
+		avagoVersion,
+		configSingleNodeEnabled,
+	)
 	if err != nil {
 		return false, "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
@@ -757,7 +766,13 @@ func getExpectedDefaultSnapshotSHA256Sum(
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVersion string, isSingleNode bool) (bool, error) {
+func SetDefaultSnapshot(
+	snapshotsDir string,
+	resetCurrentSnapshot bool,
+	installUpdates bool,
+	avagoVersion string,
+	isSingleNode bool,
+) (bool, error) {
 	var (
 		isPreCortina17 bool
 		isPreDurango11 bool
@@ -795,9 +810,10 @@ func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVer
 		defaultSnapshotInUse = true
 	}
 	// will download either if file not exists or if sha256 sum is not the same
-	downloadSnapshot := false
+	missingArchive := false
+	checksumError := false
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
-		downloadSnapshot = true
+		missingArchive = true
 	} else {
 		gotSum, err := utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath)
 		if err != nil {
@@ -807,10 +823,10 @@ func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVer
 		if err != nil {
 			ux.Logger.PrintToUser("Warning: failure verifying that the local snapshot is the latest one: %s", err)
 		} else if gotSum != expectedSum {
-			downloadSnapshot = true
+			checksumError = true
 		}
 	}
-	if downloadSnapshot {
+	if missingArchive || (checksumError && installUpdates) {
 		resp, err := http.Get(url)
 		if err != nil {
 			return false, fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
