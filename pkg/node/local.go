@@ -58,7 +58,6 @@ func TrackSubnetWithLocalMachine(
 			return err
 		}
 	}
-	fmt.Printf("obtained network name %s \n", network.Name())
 	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
 	}

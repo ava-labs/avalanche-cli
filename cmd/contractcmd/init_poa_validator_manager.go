@@ -129,7 +129,6 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	clusterName := sc.Networks[network.Name()].ClusterName
-	fmt.Printf("obtained clusterName %s \n", clusterName)
 	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterName, initPOAManagerFlags.aggregatorExtraEndpoints)
 	if err != nil {
 		return err

@@ -330,7 +330,6 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,
