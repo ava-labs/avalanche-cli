@@ -395,6 +395,9 @@ func InitValidatorRegistration(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
 	initWithPos bool,
+	delegationFee uint16,
+	stakeDuration uint64,
+	stakeAmount *big.Int,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -414,19 +417,6 @@ func InitValidatorRegistration(
 	}
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	if initWithPos {
-		// should take input prior to here for stake amount, delegation fee, and min stake duration
-		stakeAmount, err := app.Prompt.CapturePositiveBigInt(fmt.Sprintf("Enter the amount of tokens to stake (in %s)", app.GetTokenSymbol(chainSpec.BlockchainName)))
-		if err != nil {
-			return nil, ids.Empty, err
-		}
-		delegationFee, err := app.Prompt.CaptureUint16("Enter the delegation fee (in bips)")
-		if err != nil {
-			return nil, ids.Empty, err
-		}
-		stakeDuration, err := app.Prompt.CaptureUint64("Enter the stake duration (in seconds)")
-		if err != nil {
-			return nil, ids.Empty, err
-		}
 		tx, _, err := NativePoSValidatorManagerInitializeValidatorRegistration(
 			rpcURL,
 			managerAddress,

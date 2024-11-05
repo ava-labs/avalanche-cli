@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -60,6 +61,8 @@ var (
 	rpcURL                    string
 	aggregatorLogLevel        string
 	forcePoS                  bool
+	delegationFee             uint16
+	stakeDuration             uint64
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -114,6 +117,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non sovereign blockchain) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for non sovereign blockchain) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().BoolVar(&forcePoS, "pos", false, "force validator initialization as PoS validator")
+	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
+	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 0, "delegation fee (in bips)")
+	cmd.Flags().Uint64Var(&stakeDuration, "stake-duration", 0, "stake duration in seconds")
+
 	return cmd
 }
 
@@ -251,6 +258,28 @@ func CallAddValidator(
 	}
 
 	pos := sc.PoS() || forcePoS
+
+	if pos {
+		// should take input prior to here for stake amount, delegation fee, and min stake duration
+		if stakeAmount == 0 {
+			stakeAmount, err = app.Prompt.CaptureUint64(fmt.Sprintf("Enter the amount of tokens to stake (in %s)", blockchainName))
+			if err != nil {
+				return err
+			}
+		}
+		if delegationFee == 0 {
+			delegationFee, err = app.Prompt.CaptureUint16("Enter the delegation fee (in bips)")
+			if err != nil {
+				return nil
+			}
+		}
+		if stakeDuration == 0 {
+			stakeDuration, err = app.Prompt.CaptureUint64("Enter the stake duration (in seconds)")
+			if err != nil {
+				return nil
+			}
+		}
+	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
 
 	if rpcURL == "" {
@@ -343,6 +372,9 @@ func CallAddValidator(
 		extraAggregatorPeers,
 		aggregatorLogLevel,
 		pos,
+		delegationFee,
+		stakeAmount,
+		big.NewInt(int64(stakeDuration)),
 	)
 	if err != nil {
 		return err

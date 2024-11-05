@@ -253,6 +253,12 @@ func AddEtnaSubnetValidatorToCluster(
 		ewoqPChainAddress,
 		"--disable-owner",
 		ewoqPChainAddress,
+		"--stake-amount",
+		"4",
+		"--delegation-fee",
+		"100",
+		"--stake-duration",
+		"60",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
