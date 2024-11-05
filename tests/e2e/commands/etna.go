@@ -56,7 +56,7 @@ func CreateEtnaSubnetEvmConfig(
 		ewoqEVMAddress,
 		"--proxy-contract-owner",
 		ewoqEVMAddress,
-		"--production-defaults",
+		"--test-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
 		"--"+constants.SkipUpdateFlag,
