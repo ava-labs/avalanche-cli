@@ -24,11 +24,12 @@ const (
 	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
-var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
+var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		commands.CreateEtnaSubnetEvmConfig(
 			subnetName,
 			ewoqEVMAddress,
+			commands.PoS,
 		)
 	})
 	ginkgo.It("Can create a local node connected to Etna Devnet", func() {
@@ -76,11 +77,12 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 		ginkgo.GinkgoWriter.Printf("Blockchain ID: %s\n", blockchainID)
 	})
 
-	ginkgo.It("Can initialize a PoA Manager contract", func() {
-		output, err := commands.InitPoaManager(subnetName,
+	ginkgo.It("Can initialize a PoS Manager contract", func() {
+		output, err := commands.InitValidatorManager(subnetName,
 			testLocalNodeName,
 			"http://127.0.0.1:9650",
 			blockchainID,
+			commands.PoS,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)

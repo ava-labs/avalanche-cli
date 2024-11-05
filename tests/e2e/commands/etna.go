@@ -14,19 +14,36 @@ import (
 	"github.com/onsi/gomega"
 )
 
+type SubnetManagementType uint
+
+const (
+	Unknown SubnetManagementType = iota
+	PoA
+	PoS
+)
+
 const (
 	etnaDevnetFlag = "--etna-devnet"
+	PoSString      = "proof-of-stake"
+	PoAString      = "proof-of-authority"
 )
 
 func CreateEtnaSubnetEvmConfig(
 	subnetName string,
 	ewoqEVMAddress string,
+	subnetManagementType SubnetManagementType,
 ) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
+	rewardBasisPoints := ""
+	subnetManagementStr := PoAString
+	if subnetManagementType == PoS {
+		rewardBasisPoints = "--reward-basis-points=100"
+		subnetManagementStr = PoSString + " " + rewardBasisPoints
+	}
 	// Create config
 	cmd := exec.Command(
 		CLIBinary,
@@ -34,8 +51,10 @@ func CreateEtnaSubnetEvmConfig(
 		"create",
 		subnetName,
 		"--evm",
-		"--proof-of-authority",
-		"--poa-manager-owner",
+		fmt.Sprintf("--%s", subnetManagementStr),
+		"--validator-manager-owner",
+		ewoqEVMAddress,
+		"--proxy-contract-owner",
 		ewoqEVMAddress,
 		"--production-defaults",
 		"--evm-chain-id=99999",
@@ -173,16 +192,23 @@ func TrackLocalEtnaSubnet(
 	return string(output), err
 }
 
-func InitPoaManager(
+func InitValidatorManager(
 	subnetName string,
 	clusterName string,
 	endpoint string,
 	blockchainID string,
+	subnetManagementType SubnetManagementType,
+
 ) (string, error) {
+
+	initManagerString := "initPoaManager"
+	if subnetManagementType == PoS {
+		initManagerString = "initPosManager"
+	}
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
-		"initPoaManager",
+		initManagerString,
 		subnetName,
 		"--cluster",
 		clusterName,
