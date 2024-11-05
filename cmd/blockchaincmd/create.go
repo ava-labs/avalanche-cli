@@ -252,16 +252,15 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if vmType == models.SubnetEvm {
 		if sovereign {
-			if sc.PoA() {
-				if createFlags.validatorManagerOwner == "" {
-					createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
-					if err != nil {
-						return err
-					}
+			if createFlags.validatorManagerOwner == "" {
+				createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
+				if err != nil {
+					return err
 				}
-				sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
-				ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
 			}
+			sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
+			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
+
 			if createFlags.proxyContractOwner == "" {
 				createFlags.proxyContractOwner, err = getProxyAdminOwnerAddr()
 				if err != nil {
@@ -270,6 +269,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 			}
 			sc.ProxyContractOwner = createFlags.proxyContractOwner
+			ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 			if sc.PoS() {
 				if createFlags.rewardBasisPoints == 0 {
 					createFlags.rewardBasisPoints, err = app.Prompt.CaptureUint64("Enter reward basis points for PoS Reward Calculator")

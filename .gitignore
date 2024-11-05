@@ -38,6 +38,7 @@ avalanche
 dist/
 bin/
 
+tests/e2e/assets/avalanchego
 tests/e2e/hardhat/artifacts
 tests/e2e/hardhat/cache
 tests/e2e/hardhat/node_modules/
@@ -54,3 +55,4 @@ pkg/contract/contracts/cache/
 pkg/contract/contracts/out/
 
 osxcross/
+
