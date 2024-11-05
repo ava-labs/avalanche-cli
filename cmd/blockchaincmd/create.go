@@ -248,9 +248,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		if err = promptValidatorManagementType(app, sc); err != nil {
 			return err
 		}
-		if !sc.PoA() && createFlags.validatorManagerOwner != "" {
-			return errors.New("--validator-manager-owner flag cannot be used when blockchain validator management type is not Proof of Authority")
-		}
 	}
 
 	if vmType == models.SubnetEvm {

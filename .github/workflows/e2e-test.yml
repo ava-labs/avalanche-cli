@@ -50,7 +50,7 @@ jobs:
           - os: ubuntu-latest
             suite: "\\[Etna AddRemove Validator SOV PoA\\]"
           - os: ubuntu-latest
-            suite: "\\[Etna AddRemove Validator SOV PoV\\]"
+            suite: "\\[Etna AddRemove Validator SOV PoS\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
