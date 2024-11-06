@@ -373,8 +373,8 @@ func CallAddValidator(
 		aggregatorLogLevel,
 		pos,
 		delegationFee,
-		stakeAmount,
-		big.NewInt(int64(stakeDuration)),
+		stakeDuration,
+		big.NewInt(int64(stakeAmount)),
 	)
 	if err != nil {
 		return err
