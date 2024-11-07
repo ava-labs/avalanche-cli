@@ -29,7 +29,22 @@ func ValidatorManagerInitializeValidatorRemoval(
 	managerAddress common.Address,
 	ownerPrivateKey string,
 	validationID [32]byte,
+	pos bool,
 ) (*types.Transaction, *types.Receipt, error) {
+	if pos {
+		return contract.TxToMethod(
+			rpcURL,
+			ownerPrivateKey,
+			managerAddress,
+			big.NewInt(0),
+			"validator removal initialization",
+			validatorManagerSDK.ErrorSignatureToError,
+			"initializeEndValidation(bytes32,bool,uint32)",
+			validationID,
+			false,
+			uint32(0),
+		)
+	}
 	return contract.TxToMethod(
 		rpcURL,
 		ownerPrivateKey,
@@ -99,6 +114,7 @@ func InitValidatorRemoval(
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
+	initWithPos bool,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -125,12 +141,15 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
+	ux.Logger.PrintToUser("DEBUGGING: Start initializing validator removal process... %s", validationID)
 	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		ownerPrivateKey,
 		validationID,
+		initWithPos,
 	)
+	ux.Logger.PrintToUser("DEBUGGING: %v", err)
 	if err != nil {
 		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")

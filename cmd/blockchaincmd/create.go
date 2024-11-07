@@ -266,7 +266,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
-				ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 			}
 			sc.ProxyContractOwner = createFlags.proxyContractOwner
 			ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)

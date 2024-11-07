@@ -230,6 +230,7 @@ func removeValidatorSOV(
 		nodeID,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
+		sc.PoS(),
 	)
 	if err != nil {
 		return err
