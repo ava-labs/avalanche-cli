@@ -46,10 +46,11 @@ func ValidatorManagerInitializeValidatorRemoval(
 			validatorManagerSDK.ErrorSignatureToError,
 			posEndValidation,
 			validationID,
-			false, // don't include uptime proof
+			false, // don't include uptime proof - rely on network to calculate uptime
 			uint32(0),
 		)
 	}
+	//PoA case
 	return contract.TxToMethod(
 		rpcURL,
 		ownerPrivateKey,
@@ -147,7 +148,6 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	ux.Logger.PrintToUser("DEBUGGING: Start initializing validator removal process... %s", validationID)
 	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
@@ -156,7 +156,6 @@ func InitValidatorRemoval(
 		initWithPos,
 		force,
 	)
-	ux.Logger.PrintToUser("DEBUGGING: %v", err)
 	if err != nil {
 		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
