@@ -4,11 +4,9 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"sync"
-	"time"
-
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
@@ -61,9 +59,6 @@ func provision(hosts []*models.Host, avalancheGoVersion string, network models.N
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
 
-	startTime := time.Now()
-	//hosts := []*models.Host{}
-	fmt.Printf("hosts provision %s \n", hosts)
 	for _, host := range hosts {
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
@@ -89,24 +84,8 @@ func provision(hosts []*models.Host, avalancheGoVersion string, network models.N
 				return
 			}
 			ux.SpinComplete(spinner)
-			//if addMonitoring {
-			//	cloudID := host.GetCloudID()
-			//	nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
-			//	if err != nil {
-			//		nodeResults.AddResult(host.NodeID, nil, err)
-			//		ux.SpinFailWithError(spinner, "", err)
-			//		return
-			//	}
-			//	if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
-			//		nodeResults.AddResult(host.NodeID, nil, err)
-			//		ux.SpinFailWithError(spinner, "", err)
-			//		return
-			//	}
-			//	ux.SpinComplete(spinner)
-			//}
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.IP, "Setup AvalancheGo"))
 			// check if host is a API host
-			//publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
 			if err := docker.ComposeSSHSetupNode(host,
 				network,
 				avalancheGoVersion,
@@ -124,27 +103,16 @@ func provision(hosts []*models.Host, avalancheGoVersion string, network models.N
 		}(&wgResults, host)
 	}
 	wg.Wait()
-	ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
 	spinSession.Stop()
-	//if network.Kind == models.Devnet {
-	//	if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
-	//		return err
-	//	}
-	//}
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
+			ux.Logger.RedXToUser("Node %s has ERROR: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
 		}
 	}
 
 	if wgResults.HasErrors() {
 		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
 	} else {
-		//monitoringPublicIP := ""
-		//if addMonitoring {
-		//	monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
-		//}
-		//printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
 	return nil
