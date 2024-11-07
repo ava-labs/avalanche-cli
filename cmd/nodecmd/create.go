@@ -4,6 +4,10 @@ package nodecmd
 
 import (
 	"fmt"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"math"
 	"os"
 	"os/user"
@@ -12,14 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
-
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/docker"
-
-	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -322,16 +318,16 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
-		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
-		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
-		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
-	if err != nil {
-		return err
-	}
+	//avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	//	UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
+	//	UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+	//	UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
+	//	UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
+	//}
+	//avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	//if err != nil {
+	//	return err
+	//}
 	cloudService, err := setCloudService()
 	if err != nil {
 		return err
@@ -673,7 +669,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 	}
-	ux.Logger.PrintToUser("Starting bootstrap process on the newly created Avalanche node(s)...")
+	//ux.Logger.PrintToUser("Starting bootstrap process on the newly created Avalanche node(s)...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
@@ -682,7 +678,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	startTime := time.Now()
+	//startTime := time.Now()
 	if addMonitoring {
 		if len(monitoringHosts) != 1 {
 			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
@@ -743,72 +739,108 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			}(&wgResults, monitoringHost)
 		}
 	}
-	for _, host := range hosts {
-		wg.Add(1)
-		go func(nodeResults *models.NodeResults, host *models.Host) {
-			defer wg.Done()
-			if err := host.Connect(0); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			if err := provideStakingCertAndKey(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				return
-			}
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
-			if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath()); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			if err := ssh.RunSSHSetupDockerService(host); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			ux.SpinComplete(spinner)
-			if addMonitoring {
-				cloudID := host.GetCloudID()
-				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
-				if err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
-					nodeResults.AddResult(host.NodeID, nil, err)
-					ux.SpinFailWithError(spinner, "", err)
-					return
-				}
-				ux.SpinComplete(spinner)
-			}
-			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
-			// check if host is a API host
-			publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
-			if err := docker.ComposeSSHSetupNode(host,
-				network,
-				avalancheGoVersion,
-				bootstrapIDs,
-				bootstrapIPs,
-				genesisPath,
-				upgradePath,
-				addMonitoring,
-				publicAccessToHTTPPort); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
-				ux.SpinFailWithError(spinner, "", err)
-				return
-			}
-			ux.SpinComplete(spinner)
-		}(&wgResults, host)
-	}
-	wg.Wait()
-	ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
+	//for _, host := range hosts {
+	//	wg.Add(1)
+	//	go func(nodeResults *models.NodeResults, host *models.Host) {
+	//		defer wg.Done()
+	//		if err := host.Connect(0); err != nil {
+	//			nodeResults.AddResult(host.NodeID, nil, err)
+	//			return
+	//		}
+	//		if err := provideStakingCertAndKey(host); err != nil {
+	//			nodeResults.AddResult(host.NodeID, nil, err)
+	//			return
+	//		}
+	//		spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup Node"))
+	//		if err := ssh.RunSSHSetupNode(host, app.Conf.GetConfigPath()); err != nil {
+	//			nodeResults.AddResult(host.NodeID, nil, err)
+	//			ux.SpinFailWithError(spinner, "", err)
+	//			return
+	//		}
+	//		if err := ssh.RunSSHSetupDockerService(host); err != nil {
+	//			nodeResults.AddResult(host.NodeID, nil, err)
+	//			ux.SpinFailWithError(spinner, "", err)
+	//			return
+	//		}
+	//		ux.SpinComplete(spinner)
+	//		if addMonitoring {
+	//			cloudID := host.GetCloudID()
+	//			nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+	//			if err != nil {
+	//				nodeResults.AddResult(host.NodeID, nil, err)
+	//				ux.SpinFailWithError(spinner, "", err)
+	//				return
+	//			}
+	//			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
+	//				nodeResults.AddResult(host.NodeID, nil, err)
+	//				ux.SpinFailWithError(spinner, "", err)
+	//				return
+	//			}
+	//			ux.SpinComplete(spinner)
+	//		}
+	//		spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
+	//		// check if host is a API host
+	//		publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
+	//		if err := docker.ComposeSSHSetupNode(host,
+	//			network,
+	//			avalancheGoVersion,
+	//			bootstrapIDs,
+	//			bootstrapIPs,
+	//			genesisPath,
+	//			upgradePath,
+	//			addMonitoring,
+	//			publicAccessToHTTPPort); err != nil {
+	//			nodeResults.AddResult(host.NodeID, nil, err)
+	//			ux.SpinFailWithError(spinner, "", err)
+	//			return
+	//		}
+	//		ux.SpinComplete(spinner)
+	//	}(&wgResults, host)
+	//}
+	//wg.Wait()
+	//ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
+	//spinSession.Stop()
+
+	//if err = provision(hosts, avalancheGoVersion, network); err != nil {
+	//	return err
+	//}
+	//fmt.Printf("we are here after provisioning \n")
+	////spinSession = ux.NewUserSpinner()
+	//if addMonitoring {
+	//	for _, host := range hosts {
+	//		fmt.Printf("we are here after addMonitoring %s \n", host.IP)
+	//		wg.Add(1)
+	//		go func(nodeResults *models.NodeResults, host *models.Host) {
+	//			defer wg.Done()
+	//			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Add Monitoring"))
+	//			if addMonitoring {
+	//				cloudID := host.GetCloudID()
+	//				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+	//				if err != nil {
+	//					nodeResults.AddResult(host.NodeID, nil, err)
+	//					ux.SpinFailWithError(spinner, "", err)
+	//					return
+	//				}
+	//				if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
+	//					nodeResults.AddResult(host.NodeID, nil, err)
+	//					ux.SpinFailWithError(spinner, "", err)
+	//					return
+	//				}
+	//				ux.SpinComplete(spinner)
+	//			}
+	//		}(&wgResults, host)
+	//	}
+	//	wg.Wait()
+	//}
+	//ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
 	spinSession.Stop()
 	if network.Kind == models.Devnet {
+		fmt.Printf("we are at the Devnet \n")
 		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
 			return err
 		}
 	}
+	fmt.Printf("we are after Devnet \n")
 	for _, node := range hosts {
 		if wgResults.HasNodeIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
@@ -823,9 +855,10 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
 		}
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
-		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
+		//ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
 	sendNodeCreateMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
+	fmt.Printf("we are at the end \n")
 	return nil
 }
 
@@ -1043,18 +1076,17 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 }
 
 func provideStakingCertAndKey(host *models.Host) error {
-	instanceID := host.GetCloudID()
-	keyPath := filepath.Join(app.GetNodesDir(), instanceID)
+	keyPath := filepath.Join(app.GetNodesDir(), host.IP)
 	nodeID, err := generateNodeCertAndKeys(
 		filepath.Join(keyPath, constants.StakerCertFileName),
 		filepath.Join(keyPath, constants.StakerKeyFileName),
 		filepath.Join(keyPath, constants.BLSKeyFileName),
 	)
 	if err != nil {
-		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", instanceID)
+		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", host.IP)
 		return err
 	} else {
-		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", instanceID, nodeID.String())
+		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", host.IP, nodeID.String())
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
