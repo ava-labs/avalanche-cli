@@ -77,7 +77,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           distribution: goreleaser
-          version: latest
+          version: 'v2.3.2'
           args: release --clean
         env:
           # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
