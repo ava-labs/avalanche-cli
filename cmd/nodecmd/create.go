@@ -12,6 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
@@ -318,16 +321,16 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	//avaGoVersionSetting := node.AvalancheGoVersionSettings{
-	//	UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
-	//	UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
-	//	UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-	//	UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-	//}
-	//avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
-	//if err != nil {
-	//	return err
-	//}
+	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
+		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
+		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
+	}
+	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	if err != nil {
+		return err
+	}
 	cloudService, err := setCloudService()
 	if err != nil {
 		return err
@@ -669,132 +672,132 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
 	}
-	//wg := sync.WaitGroup{}
-	//wgResults := models.NodeResults{}
-	//// setup monitoring in parallel with node setup
-	//avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
-	//if err != nil {
-	//	return err
-	//}
-	//startTime := time.Now()
-	//if addMonitoring {
-	//	spinSession := ux.NewUserSpinner()
-	//	if len(monitoringHosts) != 1 {
-	//		return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
-	//	}
-	//	monitoringHost := monitoringHosts[0]
-	//	if existingMonitoringInstance == "" {
-	//		// setup new monitoring host
-	//		wg.Add(1)
-	//		go func(nodeResults *models.NodeResults, monitoringHost *models.Host) {
-	//			defer wg.Done()
-	//			if err := monitoringHost.Connect(0); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				return
-	//			}
-	//			spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.IP, "Setup Monitoring"))
-	//			if err = app.SetupMonitoringEnv(); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				ux.SpinFailWithError(spinner, "", err)
-	//				return
-	//			}
-	//			if err = ssh.RunSSHSetupDockerService(monitoringHost); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				ux.SpinFailWithError(spinner, "", err)
-	//				return
-	//			}
-	//			ux.Logger.Info("SetupMonitoringEnv RunSSHSetupDockerService completed")
-	//			if err = ssh.RunSSHSetupMonitoringFolders(monitoringHost); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				ux.SpinFailWithError(spinner, "", err)
-	//				return
-	//			}
-	//			ux.Logger.Info("RunSSHSetupMonitoringFolders completed")
-	//			if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				ux.SpinFailWithError(spinner, "", err)
-	//				return
-	//			}
-	//			ux.Logger.Info("RunSSHCopyMonitoringDashboards completed")
-	//			if err := ssh.RunSSHSetupPrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				ux.SpinFailWithError(spinner, "", err)
-	//				return
-	//			}
-	//			ux.Logger.Info("RunSSHSetupPrometheusConfig completed")
-	//			if err := ssh.RunSSHSetupLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				ux.SpinFailWithError(spinner, "", err)
-	//				return
-	//			}
-	//			ux.Logger.Info("RunSSHSetupLokiConfig completed")
-	//			if err := docker.ComposeSSHSetupMonitoring(monitoringHost); err != nil {
-	//				nodeResults.AddResult(monitoringHost.IP, nil, err)
-	//				ux.SpinFailWithError(spinner, "", err)
-	//				return
-	//			}
-	//			ux.Logger.Info("ComposeSSHSetupMonitoring completed")
-	//			ux.SpinComplete(spinner)
-	//		}(&wgResults, monitoringHost)
-	//	}
-	//	wg.Wait()
-	//	spinSession.Stop()
-	//}
-	//for _, host := range hosts {
-	//	publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
-	//	host.APINode = publicAccessToHTTPPort
-	//}
-	//if err = provision(hosts, avalancheGoVersion, network); err != nil {
-	//	return err
-	//}
-	//if addMonitoring {
-	//	spinSession := ux.NewUserSpinner()
-	//	for _, host := range hosts {
-	//		wg.Add(1)
-	//		go func(nodeResults *models.NodeResults, host *models.Host) {
-	//			defer wg.Done()
-	//			spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Add Monitoring"))
-	//			if addMonitoring {
-	//				cloudID := host.GetCloudID()
-	//				nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
-	//				if err != nil {
-	//					nodeResults.AddResult(host.IP, nil, err)
-	//					ux.SpinFailWithError(spinner, "", err)
-	//					return
-	//				}
-	//				if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
-	//					nodeResults.AddResult(host.IP, nil, err)
-	//					ux.SpinFailWithError(spinner, "", err)
-	//					return
-	//				}
-	//				ux.SpinComplete(spinner)
-	//			}
-	//		}(&wgResults, host)
-	//	}
-	//	wg.Wait()
-	//	spinSession.Stop()
-	//}
-	//ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
-	//if network.Kind == models.Devnet {
-	//	if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
-	//		return err
-	//	}
-	//}
-	//for _, node := range hosts {
-	//	if wgResults.HasNodeIDWithError(node.IP) {
-	//		ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
-	//	}
-	//}
-	//
-	//if wgResults.HasErrors() {
-	//	return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
-	//} else {
-	//	monitoringPublicIP := ""
-	//	if addMonitoring {
-	//		monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
-	//	}
-	//	printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
-	//}
+	wg := sync.WaitGroup{}
+	wgResults := models.NodeResults{}
+	// setup monitoring in parallel with node setup
+	avalancheGoPorts, machinePorts, ltPorts, err := getPrometheusTargets(clusterName)
+	if err != nil {
+		return err
+	}
+	startTime := time.Now()
+	if addMonitoring {
+		spinSession := ux.NewUserSpinner()
+		if len(monitoringHosts) != 1 {
+			return fmt.Errorf("expected only one monitoring host, found %d", len(monitoringHosts))
+		}
+		monitoringHost := monitoringHosts[0]
+		if existingMonitoringInstance == "" {
+			// setup new monitoring host
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, monitoringHost *models.Host) {
+				defer wg.Done()
+				if err := monitoringHost.Connect(0); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					return
+				}
+				spinner := spinSession.SpinToUser(utils.ScriptLog(monitoringHost.IP, "Setup Monitoring"))
+				if err = app.SetupMonitoringEnv(); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				if err = ssh.RunSSHSetupDockerService(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("SetupMonitoringEnv RunSSHSetupDockerService completed")
+				if err = ssh.RunSSHSetupMonitoringFolders(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("RunSSHSetupMonitoringFolders completed")
+				if err := ssh.RunSSHCopyMonitoringDashboards(monitoringHost, app.GetMonitoringDashboardDir()+"/"); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("RunSSHCopyMonitoringDashboards completed")
+				if err := ssh.RunSSHSetupPrometheusConfig(monitoringHost, avalancheGoPorts, machinePorts, ltPorts); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("RunSSHSetupPrometheusConfig completed")
+				if err := ssh.RunSSHSetupLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("RunSSHSetupLokiConfig completed")
+				if err := docker.ComposeSSHSetupMonitoring(monitoringHost); err != nil {
+					nodeResults.AddResult(monitoringHost.IP, nil, err)
+					ux.SpinFailWithError(spinner, "", err)
+					return
+				}
+				ux.Logger.Info("ComposeSSHSetupMonitoring completed")
+				ux.SpinComplete(spinner)
+			}(&wgResults, monitoringHost)
+		}
+		wg.Wait()
+		spinSession.Stop()
+	}
+	for _, host := range hosts {
+		publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
+		host.APINode = publicAccessToHTTPPort
+	}
+	if err = provision(hosts, avalancheGoVersion, network); err != nil {
+		return err
+	}
+	if addMonitoring {
+		spinSession := ux.NewUserSpinner()
+		for _, host := range hosts {
+			wg.Add(1)
+			go func(nodeResults *models.NodeResults, host *models.Host) {
+				defer wg.Done()
+				spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Add Monitoring"))
+				if addMonitoring {
+					cloudID := host.GetCloudID()
+					nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID))
+					if err != nil {
+						nodeResults.AddResult(host.IP, nil, err)
+						ux.SpinFailWithError(spinner, "", err)
+						return
+					}
+					if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
+						nodeResults.AddResult(host.IP, nil, err)
+						ux.SpinFailWithError(spinner, "", err)
+						return
+					}
+					ux.SpinComplete(spinner)
+				}
+			}(&wgResults, host)
+		}
+		wg.Wait()
+		spinSession.Stop()
+	}
+	ux.Logger.Info("Create and setup nodes time took: %s", time.Since(startTime))
+	if network.Kind == models.Devnet {
+		if err := setupDevnet(clusterName, hosts, apiNodeIPMap); err != nil {
+			return err
+		}
+	}
+	for _, node := range hosts {
+		if wgResults.HasNodeIDWithError(node.IP) {
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
+		}
+	}
+
+	if wgResults.HasErrors() {
+		return fmt.Errorf("failed to deploy node(s) %s", wgResults.GetErrorHostMap())
+	} else {
+		monitoringPublicIP := ""
+		if addMonitoring {
+			monitoringPublicIP = monitoringNodeConfig.PublicIPs[0]
+		}
+		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
+	}
 	sendNodeCreateMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
 	return nil
 }

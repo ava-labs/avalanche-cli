@@ -4,10 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
