@@ -29,19 +29,24 @@ func ValidatorManagerInitializeValidatorRemoval(
 	managerAddress common.Address,
 	ownerPrivateKey string,
 	validationID [32]byte,
-	pos bool,
+	isPoS bool,
+	force bool,
 ) (*types.Transaction, *types.Receipt, error) {
-	if pos {
+	if isPoS {
+		posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
+		if force {
+			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
+		}
 		return contract.TxToMethod(
 			rpcURL,
 			ownerPrivateKey,
 			managerAddress,
 			big.NewInt(0),
-			"validator removal initialization",
+			"POS validator removal initialization",
 			validatorManagerSDK.ErrorSignatureToError,
-			"initializeEndValidation(bytes32,bool,uint32)",
+			posEndValidation,
 			validationID,
-			false,
+			false, // don't include uptime proof
 			uint32(0),
 		)
 	}
@@ -50,7 +55,7 @@ func ValidatorManagerInitializeValidatorRemoval(
 		ownerPrivateKey,
 		managerAddress,
 		big.NewInt(0),
-		"validator removal initialization",
+		"POA validator removal initialization",
 		validatorManagerSDK.ErrorSignatureToError,
 		"initializeEndValidation(bytes32)",
 		validationID,
@@ -115,6 +120,7 @@ func InitValidatorRemoval(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
 	initWithPos bool,
+	force bool,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -148,6 +154,7 @@ func InitValidatorRemoval(
 		ownerPrivateKey,
 		validationID,
 		initWithPos,
+		force,
 	)
 	ux.Logger.PrintToUser("DEBUGGING: %v", err)
 	if err != nil {

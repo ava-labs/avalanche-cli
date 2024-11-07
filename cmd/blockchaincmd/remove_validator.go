@@ -171,7 +171,15 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if !sc.Sovereign {
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
-	return removeValidatorSOV(deployer, network, blockchainName, nodeID)
+	// check if node is a bootstrap validator to force it to be removed
+	filteredBootstrapValidators := utils.Filter(sc.Networks[network.Name()].BootstrapValidators, func(b models.SubnetValidator) bool {
+		if id, err := ids.NodeIDFromString(b.NodeID); err == nil && id == nodeID {
+			return true
+		}
+		return false
+	})
+	force := len(filteredBootstrapValidators) > 0
+	return removeValidatorSOV(deployer, network, blockchainName, nodeID, force)
 }
 
 func removeValidatorSOV(
@@ -179,6 +187,7 @@ func removeValidatorSOV(
 	network models.Network,
 	blockchainName string,
 	nodeID ids.NodeID,
+	force bool,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -220,7 +229,9 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
-
+	if force && sc.PoS() {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
+	}
 	signedMessage, validationID, err := validatormanager.InitValidatorRemoval(
 		app,
 		network,
@@ -231,6 +242,7 @@ func removeValidatorSOV(
 		extraAggregatorPeers,
 		aggregatorLogLevel,
 		sc.PoS(),
+		force,
 	)
 	if err != nil {
 		return err
