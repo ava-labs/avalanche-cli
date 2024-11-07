@@ -50,7 +50,7 @@ func ValidatorManagerInitializeValidatorRemoval(
 			uint32(0),
 		)
 	}
-	//PoA case
+	// PoA case
 	return contract.TxToMethod(
 		rpcURL,
 		ownerPrivateKey,
