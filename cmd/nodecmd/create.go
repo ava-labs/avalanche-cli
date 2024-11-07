@@ -678,6 +678,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	startTime := time.Now()
 	if addMonitoring {
 		spinSession := ux.NewUserSpinner()
 		if len(monitoringHosts) != 1 {
@@ -745,7 +746,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
 		host.APINode = publicAccessToHTTPPort
 	}
-	startTime := time.Now()
 	if err = provision(hosts, avalancheGoVersion, network); err != nil {
 		return err
 	}
@@ -783,8 +783,8 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		}
 	}
 	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.NodeID) {
-			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
+		if wgResults.HasNodeIDWithError(node.IP) {
+			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
 		}
 	}
 
@@ -1195,9 +1195,9 @@ func waitForHosts(hosts []*models.Host) *models.NodeResults {
 		createdWaitGroup.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer createdWaitGroup.Done()
-			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Waiting for instance response"))
+			spinner := spinSession.SpinToUser(utils.ScriptLog(host.IP, "Waiting for instance response"))
 			if err := host.WaitForSSHShell(constants.SSHServerStartTimeout); err != nil {
-				nodeResults.AddResult(host.NodeID, nil, err)
+				nodeResults.AddResult(host.IP, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}

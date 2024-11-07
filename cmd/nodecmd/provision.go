@@ -63,7 +63,6 @@ func provision(hosts []*models.Host, avalancheGoVersion string, network models.N
 		wg.Add(1)
 		go func(nodeResults *models.NodeResults, host *models.Host) {
 			defer wg.Done()
-			fmt.Printf("%s are connecting to %s wiht ssh key %s", host.SSHUser, host.IP, host.SSHPrivateKeyPath)
 			if err := host.Connect(0); err != nil {
 				nodeResults.AddResult(host.IP, nil, err)
 				return
