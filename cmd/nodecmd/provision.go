@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
@@ -45,7 +46,6 @@ Currently, only ubuntu-based operating system is supported.`,
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&useAvalanchegoVersionFromSubnet, "avalanchego-version-from-subnet", "", "install latest avalanchego version, that is compatible with the given subnet, on node/s")
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
-	cmd.Flags().StringArrayVar(&bootstrapIDs, "bootstrap-ids", []string{}, "nodeIDs of bootstrap nodes")
 	cmd.Flags().StringArrayVar(&nodeIPs, "node-ips", []string{}, "IP addresses of nodes")
 	cmd.Flags().StringArrayVar(&sshKeyPaths, "ssh-key-paths", []string{}, "ssh key paths")
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
@@ -118,7 +118,6 @@ func provision(hosts []*models.Host, avalancheGoVersion string, network models.N
 }
 
 func provisionNode(_ *cobra.Command, _ []string) error {
-	//clusterName := args[0]
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -163,8 +162,6 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 			_ = os.Remove(upgradeTmpFile.Name())
 		}()
 	}
-	//network = models.NewNetworkFromCluster(network, clusterName)
-	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
 	avaGoVersionSetting := node.AvalancheGoVersionSettings{
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
@@ -175,14 +172,6 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-
-	//inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	//allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(inventoryPath)
-
-	//if err != nil {
-	//	return err
-	//}
-	//hosts := utils.Filter(allHosts, func(h *models.Host) bool { return slices.Contains(cloudConfigMap.GetAllInstanceIDs(), h.GetCloudID()) })
 
 	if len(nodeIPs) != len(sshKeyPaths) {
 		return fmt.Errorf("--node-ips and --ssh-key-paths should have same number of values")
@@ -195,5 +184,26 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 			SSHPrivateKeyPath: sshKeyPaths[i],
 		})
 	}
-	return provision(hosts, avalancheGoVersion, network)
+	if err = provision(hosts, avalancheGoVersion, network); err != nil {
+		return err
+	}
+	printProvisioningResults(hosts)
+	return nil
+}
+
+func printProvisioningResults(hosts []*models.Host) {
+	for _, host := range hosts {
+		nodePath := filepath.Join(app.GetNodesDir(), "staking", host.IP)
+		certBytes, err := os.ReadFile(filepath.Join(nodePath, constants.StakerCertFileName))
+		if err != nil {
+			continue
+		}
+		nodeID, err := utils.ToNodeID(certBytes)
+		if err != nil {
+			continue
+		}
+		ux.Logger.PrintToUser("%s Public IP: %s | %s ", logging.Green.Wrap(">"), host.IP, logging.Green.Wrap(nodeID.String()))
+		ux.Logger.PrintToUser("staker.crt, staker.key and signer.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", nodePath)
+		ux.Logger.PrintLineSeparator()
+	}
 }
