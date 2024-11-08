@@ -6,6 +6,7 @@ package subnet
 import (
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -98,6 +99,10 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
+	})
+
+	ginkgo.It("Can sleep for 5 seconds", func() {
+		time.Sleep(5 * time.Second)
 	})
 
 	ginkgo.It("Can add second validator", func() {
