@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanchego/ids"
 	"os"
 	"path/filepath"
 	"sync"
@@ -181,6 +180,9 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 	if len(nodeIPs) != len(sshKeyPaths) {
 		return fmt.Errorf("--node-ips and --ssh-key-paths should have same number of values")
 	}
+	if err = promptProvisionNodes(); err != nil {
+		return err
+	}
 
 	hosts := []*models.Host{}
 	for i, nodeIP := range nodeIPs {
@@ -214,7 +216,7 @@ func printProvisioningResults(hosts []*models.Host) {
 	}
 }
 
-func promptProvisionNodes(network models.Network) error {
+func promptProvisionNodes() error {
 	var err error
 	var numNodes int
 	if len(nodeIPs) == 0 && len(sshKeyPaths) == 0 {
@@ -228,21 +230,19 @@ func promptProvisionNodes(network models.Network) error {
 	}
 	for len(nodeIPs) < numNodes {
 		ux.Logger.PrintToUser("Getting info for node %d", len(nodeIPs)+1)
-		var nodeID ids.NodeID
-		var publicKey, pop string
-
-		nodeID, err = PromptNodeID("add as bootstrap validator")
+		ipAddress, err := app.Prompt.CaptureString("What is the IP address of the node to be set up?")
 		if err != nil {
-			return nil, err
+			return err
 		}
-		publicKey, pop, err = promptProofOfPossession(true, true)
+		sshKeyPath, err := app.Prompt.CaptureString("What is the key path of the private key that can be used to ssh into this node?")
 		if err != nil {
-			return nil, err
+			return err
 		}
-
-		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
-		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
-		ux.Logger.PrintToUser("- Change Address: %s", changeOwnerAddress)
+		nodeIPs = append(nodeIPs, ipAddress)
+		sshKeyPaths = append(sshKeyPaths, sshKeyPath)
+		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(nodeIPs))
+		ux.Logger.PrintToUser("- IP Address: %s", ipAddress)
+		ux.Logger.PrintToUser("- SSH Key Path: %s", sshKeyPath)
 	}
 	return nil
 }
