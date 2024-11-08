@@ -101,8 +101,8 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		fmt.Println(output)
 	})
 
-	ginkgo.It("Can sleep for 5 seconds", func() {
-		time.Sleep(5 * time.Second)
+	ginkgo.It("Can wait for min staking period to pass", func() {
+		time.Sleep(90 * time.Second)
 	})
 
 	ginkgo.It("Can add second validator", func() {
