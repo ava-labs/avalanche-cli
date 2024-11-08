@@ -101,10 +101,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		fmt.Println(output)
 	})
 
-	ginkgo.It("Can wait for min staking period to pass", func() {
-		time.Sleep(90 * time.Second)
-	})
-
 	ginkgo.It("Can add second validator", func() {
 		output, err := commands.AddEtnaSubnetValidatorToCluster(
 			testLocalNodeName,
@@ -115,6 +111,10 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
+	})
+
+	ginkgo.It("Can wait for min staking period to pass", func() {
+		time.Sleep(120 * time.Second)
 	})
 
 	ginkgo.It("Can remove bootstrap validator", func() {
