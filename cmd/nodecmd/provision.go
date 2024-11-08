@@ -4,6 +4,8 @@ package nodecmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanchego/ids"
 	"os"
 	"path/filepath"
 	"sync"
@@ -127,6 +129,9 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 		createSupportedNetworkOptions,
 		"",
 	)
+	if err != nil {
+		return err
+	}
 	if network.Kind == models.EtnaDevnet {
 		publicHTTPPortAccess = true // public http port access for etna devnet api for PoAManagerDeployment
 		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
@@ -176,10 +181,11 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 	if len(nodeIPs) != len(sshKeyPaths) {
 		return fmt.Errorf("--node-ips and --ssh-key-paths should have same number of values")
 	}
-	var hosts []*models.Host
+
+	hosts := []*models.Host{}
 	for i, nodeIP := range nodeIPs {
 		hosts = append(hosts, &models.Host{
-			SSHUser:           "ubuntu",
+			SSHUser:           constants.RemoteSSHUser,
 			IP:                nodeIP,
 			SSHPrivateKeyPath: sshKeyPaths[i],
 		})
@@ -206,4 +212,37 @@ func printProvisioningResults(hosts []*models.Host) {
 		ux.Logger.PrintToUser("staker.crt, staker.key and signer.key are stored at %s. Please keep them safe, as these files can be used to fully recreate your node.", nodePath)
 		ux.Logger.PrintLineSeparator()
 	}
+}
+
+func promptProvisionNodes(network models.Network) error {
+	var err error
+	var numNodes int
+	if len(nodeIPs) == 0 && len(sshKeyPaths) == 0 {
+		numNodes, err = app.Prompt.CaptureInt(
+			"How many Avalanche nodes do you want to provision?",
+			prompts.ValidatePositiveInt,
+		)
+	}
+	if err != nil {
+		return err
+	}
+	for len(nodeIPs) < numNodes {
+		ux.Logger.PrintToUser("Getting info for node %d", len(nodeIPs)+1)
+		var nodeID ids.NodeID
+		var publicKey, pop string
+
+		nodeID, err = PromptNodeID("add as bootstrap validator")
+		if err != nil {
+			return nil, err
+		}
+		publicKey, pop, err = promptProofOfPossession(true, true)
+		if err != nil {
+			return nil, err
+		}
+
+		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(subnetValidators))
+		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
+		ux.Logger.PrintToUser("- Change Address: %s", changeOwnerAddress)
+	}
+	return nil
 }
