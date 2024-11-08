@@ -145,7 +145,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return removeFromLocalNonSOV(blockchainName, nodeID)
 	}
 
-	subnetID := sc.Networks[network.Name()].SubnetID
+	scNetwork := sc.Networks[network.Name()]
+	subnetID := scNetwork.SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
@@ -172,14 +173,30 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
 	// check if node is a bootstrap validator to force it to be removed
-	filteredBootstrapValidators := utils.Filter(sc.Networks[network.Name()].BootstrapValidators, func(b models.SubnetValidator) bool {
+	filteredBootstrapValidators := utils.Filter(scNetwork.BootstrapValidators, func(b models.SubnetValidator) bool {
 		if id, err := ids.NodeIDFromString(b.NodeID); err == nil && id == nodeID {
 			return true
 		}
 		return false
 	})
 	force := len(filteredBootstrapValidators) > 0
-	return removeValidatorSOV(deployer, network, blockchainName, nodeID, force)
+	if err := removeValidatorSOV(deployer, network, blockchainName, nodeID, force); err != nil {
+		return err
+	}
+	// remove the validator from the list of bootstrap validators
+	newBootstrapValidators := utils.Filter(scNetwork.BootstrapValidators, func(b models.SubnetValidator) bool {
+		if id, _ := ids.NodeIDFromString(b.NodeID); id != nodeID {
+			return true
+		}
+		return false
+	})
+	// save new bootstrap validators and save sidecar
+	scNetwork.BootstrapValidators = newBootstrapValidators
+	sc.Networks[network.Name()] = scNetwork
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return err
+	}
+	return nil
 }
 
 func removeValidatorSOV(
