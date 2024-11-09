@@ -14,6 +14,7 @@ import (
 	"time"
 
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/network/peer"
@@ -44,7 +45,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -91,12 +91,12 @@ var (
 	bootstrapEndpoints              []string
 	convertOnly                     bool
 
-	poSMinimumStakeAmount     uint64 // big.Int
-	poSMaximumStakeAmount     uint64 // big.Int
+	poSMinimumStakeAmount     uint64
+	poSMaximumStakeAmount     uint64
 	poSMinimumStakeDuration   uint64
 	poSMinimumDelegationFee   uint16
 	poSMaximumStakeMultiplier uint8
-	poSWeightToValueFactor    uint64 // big.Int
+	poSWeightToValueFactor    uint64
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -925,16 +925,19 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					genesisPrivateKey,
 					extraAggregatorPeers,
 					logLvl,
-					big.NewInt(int64(poSMinimumStakeAmount)),
-					big.NewInt(int64(poSMaximumStakeAmount)),
-					poSMinimumStakeDuration,
-					poSMinimumDelegationFee,
-					poSMaximumStakeMultiplier,
-					big.NewInt(int64(poSWeightToValueFactor)),
-					validatorManagerSDK.RewardCalculatorAddress,
+					validatorManagerSDK.PoSParams{
+						MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
+						MaximumStakeAmount:      big.NewInt(int64(poSMaximumStakeAmount)),
+						MinimumStakeDuration:    poSMinimumStakeDuration,
+						MinimumDelegationFee:    poSMinimumDelegationFee,
+						MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
+						WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
+						RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
+					},
 				); err != nil {
 					return err
 				}
+				ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			} else {
 				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 				if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
@@ -943,7 +946,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			}
 
-			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")

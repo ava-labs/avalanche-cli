@@ -116,10 +116,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non sovereign blockchain) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non sovereign blockchain) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for non sovereign blockchain) just issue the add validator tx, without waiting for its acceptance")
-	cmd.Flags().BoolVar(&forcePoS, "pos", false, "force validator initialization as PoS validator")
-	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
-	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 0, "delegation fee (in bips)")
-	cmd.Flags().Uint64Var(&stakeDuration, "stake-duration", 0, "stake duration in seconds")
+	cmd.Flags().BoolVar(&forcePoS, "pos", false, "(PoS only) force validator initialization as PoS validator")
+	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
+	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 0, "(PoS only) delegation fee (in bips)")
+	cmd.Flags().Uint64Var(&stakeDuration, "stake-duration", 0, "(PoS only) stake duration in seconds")
 
 	return cmd
 }

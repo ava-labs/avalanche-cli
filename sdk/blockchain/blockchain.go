@@ -424,13 +424,7 @@ func (c *Subnet) InitializeProofOfStake(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevel logging.Level,
-	minimumStakeAmount *big.Int,
-	maximumStakeAmount *big.Int,
-	minimumStakeDuration uint64,
-	minimumDelegationFee uint16,
-	maximumStakeMultiplier uint8,
-	weightToValueFactor *big.Int,
-	rewardCalculatorAddress string,
+	posParams validatormanager.PoSParams,
 ) error {
 	if err := evm.SetupProposerVM(
 		c.RPC,
@@ -444,13 +438,7 @@ func (c *Subnet) InitializeProofOfStake(
 		managerAddress,
 		privateKey,
 		c.SubnetID,
-		minimumStakeAmount,
-		maximumStakeAmount,
-		minimumStakeDuration,
-		minimumDelegationFee,
-		maximumStakeMultiplier,
-		weightToValueFactor,
-		rewardCalculatorAddress,
+		posParams,
 	)
 	if err != nil {
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {

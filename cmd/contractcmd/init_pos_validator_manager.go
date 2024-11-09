@@ -62,12 +62,12 @@ func newInitPOSManagerCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&initPOSManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().StringVar(&initPOSManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 
-	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
-	cmd.Flags().Uint64Var(&initPOSManagerFlags.maximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
-	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", 100, "minimum stake duration")
-	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
-	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
-	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.maximumStakeAmount, "pos-maximum-stake-amount", 1000, "(PoS only) maximum stake amount")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", 100, "(PoS only) minimum stake duration")
+	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "(PoS only) minimum delegation fee")
+	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only )maximum stake multiplier")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
 	return cmd
 }
 
@@ -180,13 +180,15 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		privateKey,
 		extraAggregatorPeers,
 		initPOSManagerFlags.aggregatorLogLevel,
-		big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
-		big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
-		initPOSManagerFlags.minimumStakeDuration,
-		initPOSManagerFlags.minimumDelegationFee,
-		initPOSManagerFlags.maximumStakeMultiplier,
-		big.NewInt(int64(initPOSManagerFlags.weightToValueFactor)),
-		initPOSManagerFlags.rewardCalculatorAddress,
+		validatorManagerSDK.PoSParams{
+			MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
+			MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
+			MinimumStakeDuration:    initPOSManagerFlags.minimumStakeDuration,
+			MinimumDelegationFee:    initPOSManagerFlags.minimumDelegationFee,
+			MaximumStakeMultiplier:  initPOSManagerFlags.maximumStakeMultiplier,
+			WeightToValueFactor:     big.NewInt(int64(initPOSManagerFlags.weightToValueFactor)),
+			RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
+		},
 	); err != nil {
 		return err
 	}
