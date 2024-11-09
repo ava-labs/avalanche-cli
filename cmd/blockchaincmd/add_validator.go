@@ -118,7 +118,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for non sovereign blockchain) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().BoolVar(&forcePoS, "pos", false, "(PoS only) force validator initialization as PoS validator")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
-	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 0, "(PoS only) delegation fee (in bips)")
+	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().Uint64Var(&stakeDuration, "stake-duration", 0, "(PoS only) stake duration in seconds")
 
 	return cmd
@@ -265,12 +265,6 @@ func CallAddValidator(
 			stakeAmount, err = app.Prompt.CaptureUint64(fmt.Sprintf("Enter the amount of tokens to stake (in %s)", blockchainName))
 			if err != nil {
 				return err
-			}
-		}
-		if delegationFee == 0 {
-			delegationFee, err = app.Prompt.CaptureUint16("Enter the delegation fee (in bips)")
-			if err != nil {
-				return nil
 			}
 		}
 		if stakeDuration == 0 {
