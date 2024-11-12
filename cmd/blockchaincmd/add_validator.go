@@ -138,7 +138,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		clusterNameFlagValue = network.ClusterName
 		network = models.ConvertClusterToNetwork(network)
-		//network, err = app.GetClusterNetwork(clusterNameFlagValue)
 	}
 
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
