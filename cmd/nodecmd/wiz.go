@@ -268,13 +268,6 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("Checking subnet compatibility"))
-	ux.Logger.PrintToUser("")
-	if err := checkRPCCompatibility(clusterName, subnetName); err != nil {
-		return err
-	}
-
-	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser(logging.Green.Wrap("Creating the blockchain"))
 	ux.Logger.PrintToUser("")
 	avoidChecks = true
