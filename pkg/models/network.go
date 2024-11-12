@@ -3,7 +3,6 @@
 package models
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -77,21 +76,21 @@ func NewDevnetNetwork(endpoint string, id uint32) Network {
 }
 
 // ConvertClusterToNetwork converts a cluster network into a non cluster network
-func ConvertClusterToNetwork(clusterNetwork Network) (Network, error) {
+func ConvertClusterToNetwork(clusterNetwork Network) Network {
 	if clusterNetwork.ClusterName == "" {
-		return UndefinedNetwork, errors.New("no cluster network is provided")
+		return clusterNetwork
 	}
 	switch {
 	case clusterNetwork.ID == constants.LocalNetworkID:
-		return NewLocalNetwork(), nil
+		return NewLocalNetwork()
 	case clusterNetwork.ID == avagoconstants.FujiID:
-		return NewFujiNetwork(), nil
+		return NewFujiNetwork()
 	case clusterNetwork.ID == avagoconstants.MainnetID:
-		return NewMainnetNetwork(), nil
+		return NewMainnetNetwork()
 	case clusterNetwork.ID == constants.EtnaDevnetNetworkID:
-		return NewEtnaDevnetNetwork(), nil
+		return NewEtnaDevnetNetwork()
 	default:
-		return UndefinedNetwork, fmt.Errorf("unable to get network from cluster network %s", clusterNetwork.ClusterName)
+		return clusterNetwork
 	}
 }
 
@@ -208,4 +207,21 @@ func (n *Network) HandlePublicNetworkSimulation() {
 // Equals checks the underlying fields Kind and Endpoint
 func (n *Network) Equals(n2 Network) bool {
 	return n.Kind == n2.Kind && n.Endpoint == n2.Endpoint
+}
+
+// GetNetworkFromCluster gets the network that a cluster is on
+func GetNetworkFromCluster(clusterConfig ClusterConfig) Network {
+	network := clusterConfig.Network
+	switch {
+	case network.ID == constants.LocalNetworkID:
+		return NewLocalNetwork()
+	case network.ID == avagoconstants.FujiID:
+		return NewFujiNetwork()
+	case network.ID == avagoconstants.MainnetID:
+		return NewMainnetNetwork()
+	case network.ID == constants.EtnaDevnetNetworkID:
+		return NewEtnaDevnetNetwork()
+	default:
+		return network
+	}
 }

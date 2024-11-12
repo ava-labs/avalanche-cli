@@ -73,10 +73,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if network.ClusterName != "" {
-		network, err = models.ConvertClusterToNetwork(network)
-		if err != nil {
-			return err
-		}
+		network = models.ConvertClusterToNetwork(network)
 	}
 	if initPOAManagerFlags.rpcEndpoint == "" {
 		initPOAManagerFlags.rpcEndpoint, _, err = contract.GetBlockchainEndpoints(
