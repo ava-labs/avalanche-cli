@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -41,7 +42,7 @@ func NativePoSValidatorManagerInitializeValidatorRegistration(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	delegationFeeBips uint16,
-	minStakeDuration uint64,
+	minStakeDuration time.Duration,
 	stakeAmount *big.Int,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
@@ -87,7 +88,7 @@ func NativePoSValidatorManagerInitializeValidatorRegistration(
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
 		validatorRegistrationInput,
 		delegationFeeBips,
-		minStakeDuration,
+		minStakeDuration.Seconds(),
 	)
 }
 
@@ -330,7 +331,7 @@ func InitValidatorRegistration(
 	aggregatorLogLevelStr string,
 	initWithPos bool,
 	delegationFee uint16,
-	stakeDuration uint64,
+	stakeDuration time.Duration,
 	stakeAmount *big.Int,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
