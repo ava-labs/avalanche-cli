@@ -60,7 +60,7 @@ rest of the commands to maintain your node and make your node a Subnet Validator
 	cmd.AddCommand(newImportCmd())
 	// node local
 	cmd.AddCommand(newLocalCmd())
-	// node provision
-	cmd.AddCommand(newProvisionCmd())
+	// node setup
+	cmd.AddCommand(newSetupCmd())
 	return cmd
 }

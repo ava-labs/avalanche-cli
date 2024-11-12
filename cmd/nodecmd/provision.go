@@ -30,11 +30,11 @@ var (
 	sshKeyPaths []string
 )
 
-func newProvisionCmd() *cobra.Command {
+func newSetupCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "provision",
-		Short: "Provisions a new Avalanche Node on remote server",
-		Long: `The node provision command installs Avalanche Go on specified remote servers. 
+		Use:   "setup",
+		Short: "Sets up a new Avalanche Node on remote server",
+		Long: `The node setup command installs Avalanche Go on specified remote servers. 
 To run the command, the remote servers' IP addresses and SSH private keys are required. 
 
 Currently, only ubuntu-based operating system is supported.`,
