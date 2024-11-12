@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 )
@@ -27,6 +26,7 @@ var (
 	stakingSignerKeyPath string
 	numNodes             uint32
 	nodeConfigPath       string
+	partialSync          bool
 )
 
 // const snapshotName = "local_snapshot"
@@ -85,6 +85,7 @@ status by running avalanche node status local
 	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to start")
 	cmd.Flags().StringVar(&nodeConfigPath, "node-config", "", "path to common avalanchego config settings for all nodes")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
 	return cmd
 }
 
@@ -162,7 +163,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 
 	return node.StartLocalNode(
 		app,
@@ -170,6 +170,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		globalNetworkFlags.UseEtnaDevnet,
 		avalanchegoBinaryPath,
 		numNodes,
+		partialSync,
 		nodeConfig,
 		anrSettings,
 		avaGoVersionSetting,

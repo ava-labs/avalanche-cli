@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -155,6 +156,7 @@ func StartLocalNode(
 	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
+	partialSync bool,
 	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
@@ -235,6 +237,10 @@ func StartLocalNode(
 		ux.Logger.PrintToUser("A local cluster is already executing")
 		ux.Logger.PrintToUser("please stop it by calling 'node local stop'")
 		return nil
+	}
+
+	if partialSync {
+		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 	}
 
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
