@@ -258,7 +258,7 @@ func AddEtnaSubnetValidatorToCluster(
 		"--delegation-fee",
 		"100",
 		"--staking-period",
-		"60s",
+		"90s",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
