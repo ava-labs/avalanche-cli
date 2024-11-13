@@ -72,6 +72,11 @@ func validateFujiStakingDuration(input string) error {
 	return nil
 }
 
+func validateDuration(input string) error {
+	_, err := time.ParseDuration(input)
+	return err
+}
+
 func validateTime(input string) error {
 	t, err := time.Parse(constants.TimeParseLayout, input)
 	if err != nil {

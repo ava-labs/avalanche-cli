@@ -459,6 +459,7 @@ func (c *Subnet) InitializeProofOfStake(
 	if err != nil {
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
+
 	tx, _, err = validatormanager.InitializeValidatorsSet(
 		c.RPC,
 		managerAddress,

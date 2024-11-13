@@ -557,10 +557,13 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		var d time.Duration
 		var err error
-		if network.Kind == models.Fuji {
+		switch network.Kind {
+		case models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
-		} else {
+		case models.Mainnet:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
+		default:
+			d, err = app.Prompt.CaptureDuration(txt)
 		}
 		if err != nil {
 			return 0, err
