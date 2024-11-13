@@ -321,16 +321,16 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	//avaGoVersionSetting := node.AvalancheGoVersionSettings{
-	//	UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
-	//	UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
-	//	UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-	//	UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-	//}
-	//avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
-	//if err != nil {
-	//	return err
-	//}
+	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
+		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
+		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
+	}
+	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	if err != nil {
+		return err
+	}
 	cloudService, err := setCloudService()
 	if err != nil {
 		return err
@@ -747,9 +747,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
 		host.APINode = publicAccessToHTTPPort
 	}
-	//if err = setup(hosts, avalancheGoVersion, network); err != nil {
-	//	return err
-	//}
+	if err = setup(hosts, avalancheGoVersion, network); err != nil {
+		return err
+	}
 	if addMonitoring {
 		spinSession := ux.NewUserSpinner()
 		for _, host := range hosts {
