@@ -88,7 +88,7 @@ func NativePoSValidatorManagerInitializeValidatorRegistration(
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
 		validatorRegistrationInput,
 		delegationFeeBips,
-		minStakeDuration.Seconds(),
+		uint64(minStakeDuration.Seconds()),
 	)
 }
 
