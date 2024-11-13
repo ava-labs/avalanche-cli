@@ -321,16 +321,16 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
-		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
-		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
-		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
-	if err != nil {
-		return err
-	}
+	//avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	//	UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
+	//	UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+	//	UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
+	//	UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
+	//}
+	//avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	//if err != nil {
+	//	return err
+	//}
 	cloudService, err := setCloudService()
 	if err != nil {
 		return err
@@ -668,9 +668,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	failedHosts := waitForHosts(checkHosts)
 	if failedHosts.Len() > 0 {
 		for _, result := range failedHosts.GetResults() {
-			ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+			ux.Logger.PrintToUser("Instance %s failed to setup with error %s. Please check instance logs for more information", result.NodeID, result.Err)
 		}
-		return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+		return fmt.Errorf("failed to setup node(s) %s", failedHosts.GetNodeList())
 	}
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -747,9 +747,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
 		host.APINode = publicAccessToHTTPPort
 	}
-	if err = provision(hosts, avalancheGoVersion, network); err != nil {
-		return err
-	}
+	//if err = setup(hosts, avalancheGoVersion, network); err != nil {
+	//	return err
+	//}
 	if addMonitoring {
 		spinSession := ux.NewUserSpinner()
 		for _, host := range hosts {

@@ -302,9 +302,9 @@ func startLoadTest(_ *cobra.Command, args []string) error {
 		failedHosts := waitForHosts(currentLoadTestHost)
 		if failedHosts.Len() > 0 {
 			for _, result := range failedHosts.GetResults() {
-				ux.Logger.PrintToUser("Instance %s failed to provision with error %s. Please check instance logs for more information", result.NodeID, result.Err)
+				ux.Logger.PrintToUser("Instance %s failed to setup with error %s. Please check instance logs for more information", result.NodeID, result.Err)
 			}
-			return fmt.Errorf("failed to provision node(s) %s", failedHosts.GetNodeList())
+			return fmt.Errorf("failed to setup node(s) %s", failedHosts.GetNodeList())
 		}
 		ux.Logger.PrintToUser("Separate instance %s provisioned successfully", currentLoadTestHost[0].NodeID)
 	}

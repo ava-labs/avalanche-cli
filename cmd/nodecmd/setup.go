@@ -50,12 +50,13 @@ Currently, only ubuntu-based operating system is supported.`,
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
 	cmd.Flags().StringArrayVar(&nodeIPs, "node-ips", []string{}, "IP addresses of nodes")
 	cmd.Flags().StringArrayVar(&sshKeyPaths, "ssh-key-paths", []string{}, "ssh key paths")
+	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
 	return cmd
 }
 
-func provision(hosts []*models.Host, avalancheGoVersion string, network models.Network) error {
+func setup(hosts []*models.Host, avalancheGoVersion string, network models.Network) error {
 	ux.Logger.PrintToUser("Starting bootstrap process on the newly created Avalanche node(s)...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -178,22 +179,29 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	if len(nodeIPs) != len(sshKeyPaths) {
-		return fmt.Errorf("--node-ips and --ssh-key-paths should have same number of values")
+	if !useSSHAgent {
+		if len(nodeIPs) != len(sshKeyPaths) {
+			return fmt.Errorf("--node-ips and --ssh-key-paths should have same number of values")
+		}
 	}
+
 	if err = promptProvisionNodes(); err != nil {
 		return err
 	}
 
 	hosts := []*models.Host{}
 	for i, nodeIP := range nodeIPs {
+		sshKeyPath := ""
+		if !useSSHAgent {
+			sshKeyPath = sshKeyPaths[i]
+		}
 		hosts = append(hosts, &models.Host{
 			SSHUser:           constants.RemoteSSHUser,
 			IP:                nodeIP,
-			SSHPrivateKeyPath: sshKeyPaths[i],
+			SSHPrivateKeyPath: sshKeyPath,
 		})
 	}
-	if err = provision(hosts, avalancheGoVersion, network); err != nil {
+	if err = setup(hosts, avalancheGoVersion, network); err != nil {
 		return err
 	}
 	printProvisioningResults(hosts)
@@ -222,7 +230,7 @@ func promptProvisionNodes() error {
 	var numNodes int
 	if len(nodeIPs) == 0 && len(sshKeyPaths) == 0 {
 		numNodes, err = app.Prompt.CaptureInt(
-			"How many Avalanche nodes do you want to provision?",
+			"How many Avalanche nodes do you want to setup?",
 			prompts.ValidatePositiveInt,
 		)
 	}
