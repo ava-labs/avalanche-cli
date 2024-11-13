@@ -120,12 +120,13 @@ func CreateEVMGenesis(
 		}
 	}
 
+	if params.UsePoAValidatorManager && params.UsePoSValidatorManager {
+		return nil, fmt.Errorf("blockchain can not be both PoA and PoS")
+	}
 	if params.UsePoAValidatorManager {
 		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
-	}
-
-	if params.UsePoSValidatorManager {
+	} else {
 		validatormanager.AddPoSValidatorManagerContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		validatormanager.AddRewardCalculatorToAllocations(params.initialTokenAllocation, rewardBasisPoints)

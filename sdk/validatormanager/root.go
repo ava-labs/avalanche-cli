@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -19,8 +20,6 @@ import (
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/ava-labs/avalanchego/ids"
 )
 
 const (
@@ -115,107 +114,33 @@ var (
 	}
 )
 
-// PoAValidatorManagerInitialize initializes contract [managerAddress] at [rpcURL], to
-// manage validators on [subnetID], with
-// owner given by [ownerAddress]
-func PoAValidatorManagerInitialize(
-	rpcURL string,
-	managerAddress common.Address,
-	privateKey string,
-	subnetID ids.ID,
-	ownerAddress common.Address,
-) (*types.Transaction, *types.Receipt, error) {
-	const (
-		defaultChurnPeriodSeconds     = uint64(0)
-		defaultMaximumChurnPercentage = uint8(20)
-	)
-	type Params struct {
-		SubnetID               [32]byte
-		ChurnPeriodSeconds     uint64
-		MaximumChurnPercentage uint8
-	}
-	params := Params{
-		SubnetID:               subnetID,
-		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-		MaximumChurnPercentage: defaultMaximumChurnPercentage,
-	}
-	return contract.TxToMethod(
-		rpcURL,
-		privateKey,
-		managerAddress,
-		nil,
-		"initialize PoA manager",
-		ErrorSignatureToError,
-		"initialize((bytes32,uint64,uint8),address)",
-		params,
-		ownerAddress,
-	)
+type PoSParams struct {
+	MinimumStakeAmount      *big.Int
+	MaximumStakeAmount      *big.Int
+	MinimumStakeDuration    uint64
+	MinimumDelegationFee    uint16
+	MaximumStakeMultiplier  uint8
+	WeightToValueFactor     *big.Int
+	RewardCalculatorAddress string
 }
 
-// initializes contract [managerAddress] at [rpcURL], to
-// manage validators on [subnetID] using PoS specific settings
-func PoSValidatorManagerInitialize(
-	rpcURL string,
-	managerAddress common.Address,
-	privateKey string,
-	subnetID [32]byte,
-	minimumStakeAmount *big.Int,
-	maximumStakeAmount *big.Int,
-	minimumStakeDuration uint64,
-	minimumDelegationFee uint16,
-	maximumStakeMultiplier uint8,
-	weightToValueFactor *big.Int,
-	rewardCalculatorAddress string,
-) (*types.Transaction, *types.Receipt, error) {
-	var (
-		defaultChurnPeriodSeconds     = uint64(0) // no churn period
-		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
-	)
-
-	type ValidatorManagerSettings struct {
-		SubnetID               [32]byte
-		ChurnPeriodSeconds     uint64
-		MaximumChurnPercentage uint8
+func (p PoSParams) Verify() error {
+	if p.MinimumStakeAmount.Cmp(big.NewInt(0)) < 0 {
+		return fmt.Errorf("minimum stake amount cannot be negative")
 	}
-
-	type NativeTokenValidatorManagerSettings struct {
-		BaseSettings             ValidatorManagerSettings
-		MinimumStakeAmount       *big.Int
-		MaximumStakeAmount       *big.Int
-		MinimumStakeDuration     uint64
-		MinimumDelegationFeeBips uint16
-		MaximumStakeMultiplier   uint8
-		WeightToValueFactor      *big.Int
-		RewardCalculator         common.Address
+	if p.MaximumStakeAmount.Cmp(big.NewInt(0)) < 0 {
+		return fmt.Errorf("maximum stake amount cannot be negative")
 	}
-
-	baseSettings := ValidatorManagerSettings{
-		SubnetID:               subnetID,
-		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-		MaximumChurnPercentage: defaultMaximumChurnPercentage,
+	if p.MaximumStakeAmount.Cmp(p.MinimumStakeAmount) < 0 {
+		return fmt.Errorf("maximum stake amount cannot be less than minimum stake amount")
 	}
-
-	params := NativeTokenValidatorManagerSettings{
-		BaseSettings:             baseSettings,
-		MinimumStakeAmount:       minimumStakeAmount,
-		MaximumStakeAmount:       maximumStakeAmount,
-		MinimumStakeDuration:     minimumStakeDuration,
-		MinimumDelegationFeeBips: minimumDelegationFee,
-		MaximumStakeMultiplier:   maximumStakeMultiplier,
-		WeightToValueFactor:      weightToValueFactor,
-		RewardCalculator:         common.HexToAddress(rewardCalculatorAddress),
+	if p.WeightToValueFactor.Cmp(big.NewInt(0)) < 0 {
+		return fmt.Errorf("weight to value factor cannot be negative")
 	}
-
-	return contract.TxToMethod(
-		rpcURL,
-		privateKey,
-		managerAddress,
-		nil,
-		"initialize Native Token PoS manager",
-		ErrorSignatureToError,
-		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))",
-		params,
-	)
+	if p.RewardCalculatorAddress == "" {
+		return fmt.Errorf("reward calculator address cannot be empty")
+	}
+	return nil
 }
 
 // GetPChainSubnetConversionWarpMessage constructs p-chain-validated (signed) subnet conversion warp
@@ -284,7 +209,7 @@ func GetPChainSubnetConversionWarpMessage(
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
-// PoAInitializeValidatorsSet calls poa manager validators set init method,
+// InitializeValidatorsSet calls poa manager validators set init method,
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // to verify p-chain already processed the associated ConvertSubnetTx
 func InitializeValidatorsSet(

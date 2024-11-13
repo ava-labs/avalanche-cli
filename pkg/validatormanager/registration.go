@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -41,7 +42,7 @@ func NativePoSValidatorManagerInitializeValidatorRegistration(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	delegationFeeBips uint16,
-	minStakeDuration uint64,
+	minStakeDuration time.Duration,
 	stakeAmount *big.Int,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
@@ -87,7 +88,7 @@ func NativePoSValidatorManagerInitializeValidatorRegistration(
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
 		validatorRegistrationInput,
 		delegationFeeBips,
-		minStakeDuration,
+		uint64(minStakeDuration.Seconds()),
 	)
 }
 
@@ -143,72 +144,6 @@ func PoAValidatorManagerInitializeValidatorRegistration(
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
 		validatorRegistrationInput,
 		weight,
-	)
-}
-
-// initializes contract [managerAddress] at [rpcURL], to
-// manage validators on [subnetID] using PoS specific settings
-func PoSValidatorManagerInitialize(
-	rpcURL string,
-	managerAddress common.Address,
-	privateKey string,
-	subnetID [32]byte,
-	minimumStakeAmount *big.Int,
-	maximumStakeAmount *big.Int,
-	minimumStakeDuration uint64,
-	minimumDelegationFee uint16,
-	maximumStakeMultiplier uint8,
-	weightToValueFactor *big.Int,
-	rewardCalculatorAddress string,
-) (*types.Transaction, *types.Receipt, error) {
-	var (
-		defaultChurnPeriodSeconds     = uint64(0) // no churn period
-		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
-	)
-
-	type ValidatorManagerSettings struct {
-		SubnetID               [32]byte
-		ChurnPeriodSeconds     uint64
-		MaximumChurnPercentage uint8
-	}
-
-	type NativeTokenValidatorManagerSettings struct {
-		BaseSettings             ValidatorManagerSettings
-		MinimumStakeAmount       *big.Int
-		MaximumStakeAmount       *big.Int
-		MinimumStakeDuration     uint64
-		MinimumDelegationFeeBips uint16
-		MaximumStakeMultiplier   uint8
-		WeightToValueFactor      *big.Int
-		RewardCalculator         common.Address
-	}
-
-	baseSettings := ValidatorManagerSettings{
-		SubnetID:               subnetID,
-		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-		MaximumChurnPercentage: defaultMaximumChurnPercentage,
-	}
-
-	params := NativeTokenValidatorManagerSettings{
-		BaseSettings:             baseSettings,
-		MinimumStakeAmount:       minimumStakeAmount,
-		MaximumStakeAmount:       maximumStakeAmount,
-		MinimumStakeDuration:     minimumStakeDuration,
-		MinimumDelegationFeeBips: minimumDelegationFee,
-		MaximumStakeMultiplier:   maximumStakeMultiplier,
-		WeightToValueFactor:      weightToValueFactor,
-		RewardCalculator:         common.HexToAddress(rewardCalculatorAddress),
-	}
-
-	return contract.TxToMethod(
-		rpcURL,
-		privateKey,
-		managerAddress,
-		nil,
-		"initialize Native Token PoS manager",
-		validatorManagerSDK.ErrorSignatureToError,
-		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))",
-		params,
 	)
 }
 
@@ -396,7 +331,7 @@ func InitValidatorRegistration(
 	aggregatorLogLevelStr string,
 	initWithPos bool,
 	delegationFee uint16,
-	stakeDuration uint64,
+	stakeDuration time.Duration,
 	stakeAmount *big.Int,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(

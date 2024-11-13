@@ -131,13 +131,7 @@ func SetupPoS(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
-	minimumStakeAmount *big.Int,
-	maximumStakeAmount *big.Int,
-	minimumStakeDuration uint64,
-	minimumDelegationFee uint16,
-	maximumStakeMultiplier uint8,
-	weightToValueFactor *big.Int,
-	rewardCalculatorAddress string,
+	posParams validatorManagerSDK.PoSParams,
 ) error {
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
 	if err != nil {
@@ -147,12 +141,6 @@ func SetupPoS(
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorLogLevel,
-		minimumStakeAmount,
-		maximumStakeAmount,
-		minimumStakeDuration,
-		minimumDelegationFee,
-		maximumStakeMultiplier,
-		weightToValueFactor,
-		rewardCalculatorAddress,
+		posParams,
 	)
 }
