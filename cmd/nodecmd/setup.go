@@ -39,7 +39,7 @@ To run the command, the remote servers' IP addresses and SSH private keys are re
 
 Currently, only ubuntu-based operating system is supported.`,
 		Args:              cobrautils.ExactArgs(0),
-		RunE:              provisionNode,
+		RunE:              setupNode,
 		PersistentPostRun: handlePostRun,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
@@ -120,7 +120,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 	return nil
 }
 
-func provisionNode(_ *cobra.Command, _ []string) error {
+func setupNode(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -185,7 +185,7 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	if err = promptProvisionNodes(); err != nil {
+	if err = promptSetupNodes(); err != nil {
 		return err
 	}
 
@@ -204,11 +204,11 @@ func provisionNode(_ *cobra.Command, _ []string) error {
 	if err = setup(hosts, avalancheGoVersion, network); err != nil {
 		return err
 	}
-	printProvisioningResults(hosts)
+	printSetupResults(hosts)
 	return nil
 }
 
-func printProvisioningResults(hosts []*models.Host) {
+func printSetupResults(hosts []*models.Host) {
 	for _, host := range hosts {
 		nodePath := filepath.Join(app.GetNodesDir(), "staking", host.IP)
 		certBytes, err := os.ReadFile(filepath.Join(nodePath, constants.StakerCertFileName))
@@ -225,7 +225,7 @@ func printProvisioningResults(hosts []*models.Host) {
 	}
 }
 
-func promptProvisionNodes() error {
+func promptSetupNodes() error {
 	var err error
 	var numNodes int
 	if len(nodeIPs) == 0 && len(sshKeyPaths) == 0 {
