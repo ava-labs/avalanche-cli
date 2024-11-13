@@ -4,6 +4,8 @@ package models
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanchego/api/info"
 	"os"
 	"strings"
 
@@ -90,6 +92,18 @@ func ConvertClusterToNetwork(clusterNetwork Network) Network {
 	case clusterNetwork.ID == constants.EtnaDevnetNetworkID:
 		return NewEtnaDevnetNetwork()
 	default:
+		networkID := uint32(0)
+		if clusterNetwork.Endpoint != "" {
+			infoClient := info.NewClient(clusterNetwork.Endpoint)
+			ctx, cancel := utils.GetAPIContext()
+			defer cancel()
+			var err error
+			networkID, err = infoClient.GetNetworkID(ctx)
+			if err != nil {
+				return clusterNetwork
+			}
+			return NewDevnetNetwork(clusterNetwork.Endpoint, networkID)
+		}
 		return clusterNetwork
 	}
 }
