@@ -151,6 +151,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return errNoSubnetID
 	}
 
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	// check that this guy actually is a validator on the subnet
 	if !sc.Sovereign {
 		isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
@@ -161,15 +162,9 @@ func removeValidator(_ *cobra.Command, args []string) error {
 			// this is actually an error
 			return fmt.Errorf("node %s is not a validator on subnet %s", nodeID, subnetID)
 		}
-	}
-
-	if !sc.Sovereign {
 		if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
 			return err
 		}
-	}
-	deployer := subnet.NewPublicDeployer(app, kc, network)
-	if !sc.Sovereign {
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
 	// check if node is a bootstrap validator to force it to be removed
