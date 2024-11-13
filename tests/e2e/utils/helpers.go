@@ -1074,7 +1074,7 @@ func GetAPILargeContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
 }
 
-func GetE2EHostInstanceId() (string, error) {
+func GetE2EHostInstanceID() (string, error) {
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(path.Join(GetBaseDir(), constants.NodesDir, constants.AnsibleInventoryDir, constants.E2EClusterName))
 	if err != nil {
 		return "", err

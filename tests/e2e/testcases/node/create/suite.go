@@ -48,7 +48,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		match := re.FindStringSubmatch(output)
 		if len(match) >= 3 {
 			var err error
-			hostName, err = e2eUtils.GetE2EHostInstanceId()
+			hostName, err = e2eUtils.GetE2EHostInstanceID()
 			gomega.Expect(err).Should(gomega.BeNil())
 			NodeID = fmt.Sprintf("NodeID-%s", match[2])
 		} else {
