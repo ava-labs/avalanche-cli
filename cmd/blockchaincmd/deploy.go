@@ -81,6 +81,7 @@ var (
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
 	numLocalNodes                   int
+	partialSync                     bool
 	changeOwnerAddress              string
 	subnetOnly                      bool
 	icmSpec                         subnet.ICMSpec
@@ -151,6 +152,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	return cmd
 }
 
@@ -534,13 +536,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
-				nodeConfig := ""
+				nodeConfig := map[string]interface{}{}
 				if app.AvagoNodeConfigExists(blockchainName) {
-					nodeConfigBytes, err := os.ReadFile(app.GetAvagoNodeConfigPath(blockchainName))
+					nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
 					if err != nil {
 						return err
 					}
-					nodeConfig = string(nodeConfigBytes)
 				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
@@ -549,6 +550,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					useEtnaDevnet,
 					avagoBinaryPath,
 					uint32(numLocalNodes),
+					partialSync,
 					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,

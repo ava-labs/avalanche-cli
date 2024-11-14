@@ -4,6 +4,7 @@ package node
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,7 +24,9 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -156,7 +159,8 @@ func StartLocalNode(
 	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
-	nodeConfig string,
+	partialSync bool,
+	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 	globalNetworkFlags networkoptions.NetworkFlags,
@@ -197,6 +201,7 @@ func StartLocalNode(
 
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
+
 	// starts server
 	avalancheGoVersion := "latest"
 	if avalanchegoBinaryPath == "" {
@@ -237,6 +242,18 @@ func StartLocalNode(
 		return nil
 	}
 
+	if nodeConfig == nil {
+		nodeConfig = map[string]interface{}{}
+	}
+	if partialSync {
+		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+	}
+
+	nodeConfigBytes, err := json.Marshal(nodeConfig)
+	if err != nil {
+		return err
+	}
+	nodeConfigStr := string(nodeConfigBytes)
 	if localClusterExists && localDataExists {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 		loadSnapshotOpts := []client.OpOption{
@@ -244,7 +261,7 @@ func StartLocalNode(
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithSnapshotPath(rootDir),
-			client.WithGlobalNodeConfig(nodeConfig),
+			client.WithGlobalNodeConfig(nodeConfigStr),
 		}
 		// load snapshot for existing network
 		if _, err := cli.LoadSnapshot(
@@ -258,14 +275,22 @@ func StartLocalNode(
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		network := models.UndefinedNetwork
-		if useEtnaDevnet {
+		switch {
+		case useEtnaDevnet:
 			network = models.NewNetwork(
 				models.Devnet,
 				constants.EtnaDevnetNetworkID,
 				constants.EtnaDevnetEndpoint,
 				clusterName,
 			)
-		} else {
+		case globalNetworkFlags.UseFuji:
+			network = models.NewNetwork(
+				models.Fuji,
+				avagoconstants.FujiID,
+				constants.FujiAPIEndpoint,
+				clusterName,
+			)
+		default:
 			network, err = networkoptions.GetNetworkFromCmdLineFlags(
 				app,
 				"",
@@ -337,7 +362,7 @@ func StartLocalNode(
 			client.WithPluginDir(pluginDir),
 			client.WithFreshStakingIds(true),
 			client.WithZeroIP(false),
-			client.WithGlobalNodeConfig(nodeConfig),
+			client.WithGlobalNodeConfig(nodeConfigStr),
 		}
 		if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
 			anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
@@ -351,6 +376,9 @@ func StartLocalNode(
 		if anrSettings.BootstrapIPs != nil {
 			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
 		}
+
+		ctx, cancel = network.BootstrappingContext()
+		defer cancel()
 
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()

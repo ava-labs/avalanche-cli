@@ -17,6 +17,7 @@ import (
 type AvalancheGoConfigOptions struct {
 	BootstrapIPs      []string
 	BootstrapIDs      []string
+	PartialSync       bool
 	GenesisPath       string
 	UpgradePath       string
 	AllowPublicAccess bool
@@ -31,6 +32,7 @@ func prepareAvalanchegoConfig(
 	if avalancheGoConfig.AllowPublicAccess || utils.IsE2E() {
 		avagoConf.HTTPHost = "0.0.0.0"
 	}
+	avagoConf.PartialSync = avalancheGoConfig.PartialSync
 	avagoConf.BootstrapIPs = strings.Join(avalancheGoConfig.BootstrapIPs, ",")
 	avagoConf.BootstrapIDs = strings.Join(avalancheGoConfig.BootstrapIDs, ",")
 	if avalancheGoConfig.GenesisPath != "" {
