@@ -66,6 +66,7 @@ var (
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 	aggregatorExtraEndpoints            []string
+	clusterNameFlagValue                string
 )
 
 // avalanche blockchain addValidator
@@ -133,6 +134,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 	)
 	if err != nil {
 		return err
+	}
+	if network.ClusterName != "" {
+		clusterNameFlagValue = network.ClusterName
+		network = models.ConvertClusterToNetwork(network)
 	}
 
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
@@ -319,11 +324,10 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterNameFlagValue, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
-
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,

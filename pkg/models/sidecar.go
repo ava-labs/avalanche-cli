@@ -16,6 +16,7 @@ type NetworkData struct {
 	RPCEndpoints               []string
 	WSEndpoints                []string
 	BootstrapValidators        []SubnetValidator
+	ClusterName                string
 }
 
 type Sidecar struct {

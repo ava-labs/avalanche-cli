@@ -51,7 +51,10 @@ func TrackSubnetWithLocalMachine(
 		return err
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
-	network := clusterConfig.Network
+	network := models.GetNetworkFromCluster(clusterConfig)
+	if network.ClusterName != "" {
+		network = models.ConvertClusterToNetwork(network)
+	}
 	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
 	}
@@ -133,7 +136,7 @@ func TrackSubnetWithLocalMachine(
 			return err
 		}
 	}
-	sc.Networks[clusterConfig.Network.Name()] = networkInfo
+	sc.Networks[network.Name()] = networkInfo
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err
 	}
@@ -210,7 +213,7 @@ func StartLocalNode(
 		}
 	}
 	serverLogPath := filepath.Join(rootDir, "server.log")
-	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "")
+	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "", true)
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalClusterPrefix,
 		binutils.LocalClusterGRPCServerPort,

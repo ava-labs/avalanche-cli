@@ -387,7 +387,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	clusterNameFlagValue = globalNetworkFlags.ClusterName
 	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
@@ -450,7 +450,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			userProvidedAvagoVersion = avagoVersion
 		}
 
-		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin, true)
 		deployInfo, err := deployer.DeployToLocalNetwork(
 			chain,
 			genesisPath,
@@ -481,6 +481,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployInfo.ICMMessengerAddress,
 			deployInfo.ICMRegistryAddress,
 			nil,
+			clusterNameFlagValue,
 		); err != nil {
 			return err
 		}
@@ -490,8 +491,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if sidecar.Sovereign {
 		if !generateNodeID {
 			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
-			if globalNetworkFlags.ClusterName != "" {
-				clusterName = globalNetworkFlags.ClusterName
+			if clusterNameFlagValue != "" {
+				clusterName = clusterNameFlagValue
 				clusterConfig, err := app.GetClusterConfig(clusterName)
 				if err != nil {
 					return err
@@ -506,11 +507,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 								"please create your local node again and call subnet deploy command again", err)
 						}
 					}
-					network = models.NewNetworkFromCluster(network, clusterName)
+					network = models.ConvertClusterToNetwork(network)
 				}
 			}
 			// ask user if we want to use local machine if cluster is not provided
-			if !useLocalMachine && globalNetworkFlags.ClusterName == "" {
+			if !useLocalMachine && clusterNameFlagValue == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
@@ -520,7 +521,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
-			if useLocalMachine && globalNetworkFlags.ClusterName == "" {
+			if useLocalMachine && clusterNameFlagValue == "" {
 				// stop local avalanchego process so that we can generate new local cluster
 				_ = node.StopLocalNode(app)
 				anrSettings := node.ANRSettings{}
@@ -559,6 +560,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				); err != nil {
 					return err
 				}
+				clusterNameFlagValue = clusterName
 				if len(bootstrapEndpoints) == 0 {
 					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 					if err != nil {
@@ -596,11 +598,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					ChangeOwnerAddr:      changeOwnerAddress,
 				})
 			}
-		case globalNetworkFlags.ClusterName != "":
+		case clusterNameFlagValue != "":
 			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-			bootstrapValidators, err = getClusterBootstrapValidators(globalNetworkFlags.ClusterName, network)
+			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network)
 			if err != nil {
-				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", globalNetworkFlags.ClusterName, err)
+				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
 			}
 
 		default:
@@ -816,12 +818,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Println()
 
-		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators); err != nil {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators, clusterNameFlagValue); err != nil {
 			return err
 		}
 
 		if !convertOnly && !generateNodeID {
-			clusterName := network.ClusterName
+			clusterName := clusterNameFlagValue
 			if clusterName == "" {
 				clusterName, err = node.GetClusterNameFromList(app)
 				if err != nil {
@@ -872,7 +874,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			evm.WaitForChainID(client)
-			extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+			extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterName, aggregatorExtraEndpoints)
 			if err != nil {
 				return err
 			}
@@ -916,7 +918,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish conversion to sovereign L1", blockchainName)
 		}
 	} else {
-		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil); err != nil {
+		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil, clusterNameFlagValue); err != nil {
 			return err
 		}
 	}
@@ -1264,10 +1266,10 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 }
 
 func GetAggregatorExtraPeers(
-	network models.Network,
+	clusterName string,
 	extraURIs []string,
 ) ([]info.Peer, error) {
-	uris, err := GetAggregatorNetworkUris(network)
+	uris, err := GetAggregatorNetworkUris(clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -1277,14 +1279,14 @@ func GetAggregatorExtraPeers(
 	return ConvertURIToPeers(uris)
 }
 
-func GetAggregatorNetworkUris(network models.Network) ([]string, error) {
+func GetAggregatorNetworkUris(clusterName string) ([]string, error) {
 	aggregatorExtraPeerEndpointsUris := []string{}
-	if network.ClusterName != "" {
+	if clusterName != "" {
 		clustersConfig, err := app.LoadClustersConfig()
 		if err != nil {
 			return nil, err
 		}
-		clusterConfig := clustersConfig.Clusters[network.ClusterName]
+		clusterConfig := clustersConfig.Clusters[clusterName]
 		if clusterConfig.Local {
 			cli, err := binutils.NewGRPCClientWithEndpoint(
 				binutils.LocalClusterGRPCServerEndpoint,
