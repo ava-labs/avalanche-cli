@@ -5,7 +5,7 @@ go 1.22.8
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241023180457-5189aac811fb
-	github.com/ava-labs/avalanchego v1.12.0-initial-poc.6
+	github.com/ava-labs/avalanchego v1.12.0-initial-poc.9
 	github.com/ava-labs/awm-relayer v1.4.1-0.20241101130521-c20945eebe03
 	github.com/ava-labs/coreth v0.13.8
 	github.com/ava-labs/subnet-evm v0.6.11
@@ -193,7 +193,7 @@ require (
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/supranational/blst v0.3.11 // indirect
+	github.com/supranational/blst v0.3.13 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
