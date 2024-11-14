@@ -128,6 +128,7 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().StringArrayVar(&bootstrapIPs, "bootstrap-ips", []string{}, "IP:port pairs of bootstrap nodes")
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
 	return cmd
 }
 
@@ -229,6 +230,10 @@ func preCreateChecks(clusterName string) error {
 		if ok := utils.IsValidIPPort(ipPortPair); !ok {
 			return fmt.Errorf("invalid ip:port pair %s", ipPortPair)
 		}
+	}
+	if globalNetworkFlags.UseDevnet {
+		partialSync = false
+		ux.Logger.PrintToUser("disabling partial sync default for devnet")
 	}
 
 	return nil

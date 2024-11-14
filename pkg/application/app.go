@@ -538,6 +538,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	teleporterMessengerAddress string,
 	teleporterRegistryAddress string,
 	bootstrapValidators []models.SubnetValidator,
+	clusterName string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -549,6 +550,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		TeleporterMessengerAddress: teleporterMessengerAddress,
 		TeleporterRegistryAddress:  teleporterRegistryAddress,
 		BootstrapValidators:        bootstrapValidators,
+		ClusterName:                clusterName,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)

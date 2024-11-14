@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
@@ -35,6 +37,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
+	ansi "github.com/k0kubun/go-ansi"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -354,8 +357,18 @@ func initConfig() {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	go handleInterrupt()
 	app = application.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	cobrautils.HandleErrors(err)
+}
+
+func handleInterrupt() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-sigChan
+	fmt.Println()
+	fmt.Println("received signal:", sig.String())
+	ansi.CursorShow()
 }
