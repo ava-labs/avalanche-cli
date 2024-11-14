@@ -31,6 +31,7 @@ func ComposeSSHSetupNode(
 	avalancheGoVersion string,
 	avalanchegoBootstrapIDs []string,
 	avalanchegoBootstrapIPs []string,
+	partialSync bool,
 	avalanchegoGenesisFilePath string,
 	avalanchegoUpgradeFilePath string,
 	withMonitoring bool,
@@ -57,6 +58,7 @@ func ComposeSSHSetupNode(
 		AvalancheGoConfigOptions{
 			BootstrapIDs:      avalanchegoBootstrapIDs,
 			BootstrapIPs:      avalanchegoBootstrapIPs,
+			PartialSync:       partialSync,
 			GenesisPath:       avalanchegoGenesisFilePath,
 			UpgradePath:       avalanchegoUpgradeFilePath,
 			AllowPublicAccess: publicAccessToHTTPPort,

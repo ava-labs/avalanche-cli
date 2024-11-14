@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -587,6 +588,13 @@ func RunSSHRenderAvalancheNodeConfig(
 		bootstrapIPs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ips")
 		avagoConf.BootstrapIDs = bootstrapIDs
 		avagoConf.BootstrapIPs = bootstrapIPs
+		partialSyncI, ok := remoteAvagoConf[config.PartialSyncPrimaryNetworkKey]
+		if ok {
+			partialSync, ok := partialSyncI.(bool)
+			if ok {
+				avagoConf.PartialSync = partialSync
+			}
+		}
 	}
 	// ready to render node config
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
