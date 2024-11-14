@@ -231,10 +231,6 @@ func preCreateChecks(clusterName string) error {
 			return fmt.Errorf("invalid ip:port pair %s", ipPortPair)
 		}
 	}
-	if globalNetworkFlags.UseDevnet {
-		partialSync = false
-		ux.Logger.PrintToUser("disabling partial sync default for devnet")
-	}
 
 	return nil
 }

@@ -53,10 +53,15 @@ Currently, only ubuntu-based operating system is supported.`,
 	cmd.Flags().BoolVar(&useSSHAgent, "use-ssh-agent", false, "use ssh agent(ex: Yubikey) for ssh auth")
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
 	return cmd
 }
 
 func setup(hosts []*models.Host, avalancheGoVersion string, network models.Network) error {
+	if globalNetworkFlags.UseDevnet {
+		partialSync = false
+		ux.Logger.PrintToUser("disabling partial sync default for devnet")
+	}
 	ux.Logger.PrintToUser("Starting bootstrap process on the newly created Avalanche node(s)...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
@@ -93,6 +98,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 				avalancheGoVersion,
 				bootstrapIDs,
 				bootstrapIPs,
+				partialSync,
 				genesisPath,
 				upgradePath,
 				addMonitoring,
