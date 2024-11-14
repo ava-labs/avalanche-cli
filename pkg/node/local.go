@@ -242,6 +242,9 @@ func StartLocalNode(
 		return nil
 	}
 
+	if nodeConfig == nil {
+		nodeConfig = map[string]interface{}{}
+	}
 	if partialSync {
 		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 	}
