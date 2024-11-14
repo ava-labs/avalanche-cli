@@ -536,7 +536,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
-				network = models.NewNetworkFromCluster(network, clusterName)
 				nodeConfig := map[string]interface{}{}
 				if app.AvagoNodeConfigExists(blockchainName) {
 					nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
