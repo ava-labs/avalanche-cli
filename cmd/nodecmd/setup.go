@@ -107,7 +107,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 	wg.Wait()
 	spinSession.Stop()
 	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.NodeID) {
+		if wgResults.HasIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s has ERROR: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
 		}
 	}
@@ -228,6 +228,7 @@ func printSetupResults(hosts []*models.Host) {
 func promptSetupNodes() error {
 	var err error
 	var numNodes int
+	ux.Logger.PrintToUser("Note that currently we only support Ubuntu operating system")
 	if len(nodeIPs) == 0 && len(sshKeyPaths) == 0 {
 		numNodes, err = app.Prompt.CaptureInt(
 			"How many Avalanche nodes do you want to setup?",
@@ -243,15 +244,17 @@ func promptSetupNodes() error {
 		if err != nil {
 			return err
 		}
-		sshKeyPath, err := app.Prompt.CaptureString("What is the key path of the private key that can be used to ssh into this node?")
-		if err != nil {
-			return err
-		}
 		nodeIPs = append(nodeIPs, ipAddress)
-		sshKeyPaths = append(sshKeyPaths, sshKeyPath)
-		ux.Logger.GreenCheckmarkToUser("Bootstrap Validator %d:", len(nodeIPs))
+		ux.Logger.GreenCheckmarkToUser("Node %d:", len(nodeIPs))
 		ux.Logger.PrintToUser("- IP Address: %s", ipAddress)
-		ux.Logger.PrintToUser("- SSH Key Path: %s", sshKeyPath)
+		if !useSSHAgent {
+			sshKeyPath, err := app.Prompt.CaptureString("What is the key path of the private key that can be used to ssh into this node?")
+			if err != nil {
+				return err
+			}
+			sshKeyPaths = append(sshKeyPaths, sshKeyPath)
+			ux.Logger.PrintToUser("- SSH Key Path: %s", sshKeyPath)
+		}
 	}
 	return nil
 }
