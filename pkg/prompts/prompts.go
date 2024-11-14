@@ -102,7 +102,7 @@ type Prompter interface {
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
-	CaptureLocalDuration(promptStr string) (time.Duration, error)
+	CaptureEtnaDuration(promptStr string) (time.Duration, error)
 	CaptureFujiDuration(promptStr string) (time.Duration, error)
 	CaptureMainnetDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
@@ -205,7 +205,7 @@ func CaptureListDecision[T comparable](
 	}
 }
 
-func (*realPrompter) CaptureLocalDuration(promptStr string) (time.Duration, error) {
+func (*realPrompter) CaptureEtnaDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateLocalDuration,

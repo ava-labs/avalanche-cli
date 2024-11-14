@@ -452,7 +452,7 @@ func (_m *Prompter) CaptureMainnetDuration(promptStr string) (time.Duration, err
 	return r0, r1
 }
 
-func (_m *Prompter) CaptureLocalDuration(promptStr string) (time.Duration, error) {
+func (_m *Prompter) CaptureEtnaDuration(promptStr string) (time.Duration, error) {
 	return _m.CaptureMainnetDuration(promptStr)
 }
 
