@@ -72,7 +72,7 @@ func validateFujiStakingDuration(input string) error {
 	return nil
 }
 
-func validateLocalDuration(input string) error {
+func validateEtnaDuration(input string) error {
 	d, err := time.ParseDuration(input)
 	if err != nil {
 		return err

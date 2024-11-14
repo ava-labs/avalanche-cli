@@ -208,7 +208,7 @@ func CaptureListDecision[T comparable](
 func (*realPrompter) CaptureEtnaDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateLocalDuration,
+		Validate: validateEtnaDuration,
 	}
 
 	durationStr, err := prompt.Run()
