@@ -448,7 +448,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			userProvidedAvagoVersion = avagoVersion
 		}
 
-		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin, true)
 		deployInfo, err := deployer.DeployToLocalNetwork(
 			chain,
 			genesisPath,
