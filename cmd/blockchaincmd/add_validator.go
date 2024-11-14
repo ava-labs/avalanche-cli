@@ -562,6 +562,8 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 			d, err = app.Prompt.CaptureFujiDuration(txt)
 		case models.Mainnet:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
+		case models.Local:
+			d, err = app.Prompt.CaptureLocalDuration(txt)
 		default:
 			d, err = app.Prompt.CaptureDuration(txt)
 		}
