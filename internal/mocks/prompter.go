@@ -452,6 +452,14 @@ func (_m *Prompter) CaptureMainnetDuration(promptStr string) (time.Duration, err
 	return r0, r1
 }
 
+func (_m *Prompter) CaptureEtnaDuration(promptStr string) (time.Duration, error) {
+	return _m.CaptureMainnetDuration(promptStr)
+}
+
+func (_m *Prompter) CaptureDuration(promptStr string) (time.Duration, error) {
+	return _m.CaptureMainnetDuration(promptStr)
+}
+
 // CaptureNewFilepath provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureNewFilepath(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)

@@ -72,6 +72,22 @@ func validateFujiStakingDuration(input string) error {
 	return nil
 }
 
+func validateEtnaDuration(input string) error {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d < constants.StakingEtnaMinimumDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.StakingEtnaMinimumDuration))
+	}
+	return nil
+}
+
+func validateDuration(input string) error {
+	_, err := time.ParseDuration(input)
+	return err
+}
+
 func validateTime(input string) error {
 	t, err := time.Parse(constants.TimeParseLayout, input)
 	if err != nil {

@@ -326,6 +326,7 @@ func TxToMethod(
 	txOpts.Value = payment
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
+		ux.Logger.PrintToUser("error on \"%s\": %s", description, err)
 		trace, traceCallErr := DebugTraceCall(
 			rpcURL,
 			privateKey,
