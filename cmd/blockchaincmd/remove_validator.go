@@ -245,12 +245,6 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
 
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
-	}
-
 	signedMessage, validationID, err := validatormanager.InitValidatorRemoval(
 		app,
 		network,
@@ -273,12 +267,6 @@ func removeValidatorSOV(
 		return err
 	}
 	ux.Logger.PrintToUser("SetSubnetValidatorWeightTx ID: %s", txID)
-
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
-	}
 
 	if err := validatormanager.FinishValidatorRemoval(
 		app,
