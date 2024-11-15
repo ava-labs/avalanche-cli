@@ -228,7 +228,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		// wizSubnet is used to get more metrics sent from node create command on whether if vm is custom or subnetEVM
 		wizSubnet = subnetName
-		if err := createNodes(cmd, []string{clusterName}); err != nil {
+		if err := provisionNodes(cmd, []string{clusterName}); err != nil {
 			return err
 		}
 	} else {
