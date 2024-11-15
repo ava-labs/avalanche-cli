@@ -703,6 +703,48 @@ func (_m *PClient) GetSubnet(ctx context.Context, subnetID ids.ID, options ...rp
 	return r0, r1
 }
 
+// GetSubnetOnlyValidator provides a mock function with given fields: ctx, validationID, options
+func (_m *PClient) GetSubnetOnlyValidator(ctx context.Context, validationID ids.ID, options ...rpc.Option) (platformvm.SubnetOnlyValidator, uint64, error) {
+	_va := make([]interface{}, len(options))
+	for _i := range options {
+		_va[_i] = options[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, validationID)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSubnetOnlyValidator")
+	}
+
+	var r0 platformvm.SubnetOnlyValidator
+	var r1 uint64
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, ...rpc.Option) (platformvm.SubnetOnlyValidator, uint64, error)); ok {
+		return rf(ctx, validationID, options...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, ...rpc.Option) platformvm.SubnetOnlyValidator); ok {
+		r0 = rf(ctx, validationID, options...)
+	} else {
+		r0 = ret.Get(0).(platformvm.SubnetOnlyValidator)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ids.ID, ...rpc.Option) uint64); ok {
+		r1 = rf(ctx, validationID, options...)
+	} else {
+		r1 = ret.Get(1).(uint64)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, ids.ID, ...rpc.Option) error); ok {
+		r2 = rf(ctx, validationID, options...)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // GetSubnets provides a mock function with given fields: ctx, subnetIDs, options
 func (_m *PClient) GetSubnets(ctx context.Context, subnetIDs []ids.ID, options ...rpc.Option) ([]platformvm.ClientSubnet, error) {
 	_va := make([]interface{}, len(options))

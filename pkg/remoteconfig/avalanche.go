@@ -27,6 +27,7 @@ type AvalancheConfigInputs struct {
 	TrackSubnets               string
 	BootstrapIDs               string
 	BootstrapIPs               string
+	PartialSync                bool
 	GenesisPath                string
 	UpgradePath                string
 	ProposerVMUseCurrentHeight bool

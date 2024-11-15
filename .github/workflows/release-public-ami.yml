@@ -44,7 +44,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Clean up old AMIs
-        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 1 --exclude-days 2 --region="*" --force
+        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 1 --region="*" --force
         env:
           AWS_REGION: us-east-1
 
