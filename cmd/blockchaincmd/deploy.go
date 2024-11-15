@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/network/peer"
 
+	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -50,7 +51,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"golang.org/x/mod/semver"
 )
 
@@ -90,6 +90,7 @@ var (
 	privateKeyFlags                 contract.PrivateKeyFlags
 	bootstrapEndpoints              []string
 	convertOnly                     bool
+	numNodes                        uint32
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -153,6 +154,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to be created on local network deploy")
 	return cmd
 }
 
@@ -424,22 +426,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
 
-		genesisPath := app.GetGenesisPath(chain)
-
-		// copy vm binary to the expected location, first downloading it if necessary
-		var vmBin string
-		switch sidecar.VM {
-		case models.SubnetEvm:
-			_, vmBin, err = binutils.SetupSubnetEVM(app, sidecar.VMVersion)
-			if err != nil {
-				return fmt.Errorf("failed to install subnet-evm: %w", err)
-			}
-		case models.CustomVM:
-			vmBin = binutils.SetupCustomBin(app, chain)
-		default:
-			return fmt.Errorf("unknown vm: %s", sidecar.VM)
-		}
-
 		// check if selected version matches what is currently running
 		nc := localnet.NewStatusChecker()
 		avagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
@@ -450,42 +436,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			userProvidedAvagoVersion = avagoVersion
 		}
 
-		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin, true)
-		deployInfo, err := deployer.DeployToLocalNetwork(
-			chain,
-			genesisPath,
-			icmSpec,
-			subnetIDStr,
-			constants.ServerRunFileLocalNetworkPrefix,
-		)
-		if err != nil {
-			if deployer.BackendStartedHere() {
-				if innerErr := binutils.KillgRPCServerProcess(
-					app,
-					binutils.LocalNetworkGRPCServerEndpoint,
-					constants.ServerRunFileLocalNetworkPrefix,
-				); innerErr != nil {
-					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
-				}
-			}
-			return err
-		}
-		flags := make(map[string]string)
-		flags[constants.MetricsNetwork] = network.Name()
-		metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
-		if err := app.UpdateSidecarNetworks(
-			&sidecar,
-			network,
-			deployInfo.SubnetID,
-			deployInfo.BlockchainID,
-			deployInfo.ICMMessengerAddress,
-			deployInfo.ICMRegistryAddress,
-			nil,
-			clusterNameFlagValue,
+		ux.Logger.PrintToUser("")
+		if err := networkcmd.Start(
+			networkcmd.StartFlags{
+				UserProvidedAvagoVersion: userProvidedAvagoVersion,
+				AvagoBinaryPath:          avagoBinaryPath,
+				NumNodes:                 numNodes,
+			},
+			false,
 		); err != nil {
 			return err
 		}
-		return PrintSubnetInfo(blockchainName, true)
 	}
 
 	if sidecar.Sovereign {
@@ -921,12 +882,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
-	// update sidecar
-	// TODO: need to do something for backwards compatibility?
+	if network.Kind == models.Local {
+		return PrintSubnetInfo(blockchainName, true)
+	}
+
 	return nil
 }
 

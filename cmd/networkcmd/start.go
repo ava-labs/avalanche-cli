@@ -27,10 +27,10 @@ const (
 )
 
 type StartFlags struct {
-	userProvidedAvagoVersion string
-	snapshotName             string
-	avagoBinaryPath          string
-	numNodes                 uint32
+	UserProvidedAvagoVersion string
+	SnapshotName             string
+	AvagoBinaryPath          string
+	NumNodes                 uint32
 }
 
 var startFlags StartFlags
@@ -49,32 +49,32 @@ already running.`,
 		Args: cobrautils.ExactArgs(0),
 	}
 
-	cmd.Flags().StringVar(&startFlags.userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().StringVar(&startFlags.avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().StringVar(&startFlags.snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
-	cmd.Flags().Uint32Var(&startFlags.numNodes, "num-nodes", 1, "number of nodes to be created on local network")
+	cmd.Flags().StringVar(&startFlags.UserProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(&startFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
+	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
+	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", 1, "number of nodes to be created on local network")
 
 	return cmd
 }
 
 func start(*cobra.Command, []string) error {
-	return Start(startFlags)
+	return Start(startFlags, true)
 }
 
-func Start(flags StartFlags) error {
+func Start(flags StartFlags, printEndpoints bool) error {
 	var (
 		err          error
 		avagoVersion string
 	)
 
-	if flags.avagoBinaryPath == "" {
-		avagoVersion, err = determineAvagoVersion(flags.userProvidedAvagoVersion)
+	if flags.AvagoBinaryPath == "" {
+		avagoVersion, err = determineAvagoVersion(flags.UserProvidedAvagoVersion)
 		if err != nil {
 			return err
 		}
 	}
 
-	sd := subnet.NewLocalDeployer(app, avagoVersion, flags.avagoBinaryPath, "", false)
+	sd := subnet.NewLocalDeployer(app, avagoVersion, flags.AvagoBinaryPath, "", false)
 
 	// this takes about 2 secs
 	if err := sd.StartServer(
@@ -136,13 +136,13 @@ func Start(flags StartFlags) error {
 		nodeConfig = "{}"
 	}
 
-	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+flags.snapshotName)
+	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+flags.SnapshotName)
 	if utils.DirectoryExists(snapshotPath) {
 		var startMsg string
-		if flags.snapshotName == constants.DefaultSnapshotName {
+		if flags.SnapshotName == constants.DefaultSnapshotName {
 			startMsg = "Starting previously deployed and stopped snapshot"
 		} else {
-			startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", flags.snapshotName)
+			startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", flags.SnapshotName)
 		}
 		ux.Logger.PrintToUser(startMsg)
 
@@ -155,7 +155,7 @@ func Start(flags StartFlags) error {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.LoadSnapshot(
 			ctx,
-			flags.snapshotName,
+			flags.SnapshotName,
 			autoSave,
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),
@@ -193,8 +193,8 @@ func Start(flags StartFlags) error {
 		}
 	} else {
 		// starting a new network from scratch
-		if flags.snapshotName != constants.DefaultSnapshotName {
-			return fmt.Errorf("snapshot %s does not exists", flags.snapshotName)
+		if flags.SnapshotName != constants.DefaultSnapshotName && flags.SnapshotName != "" {
+			return fmt.Errorf("snapshot %s does not exists", flags.SnapshotName)
 		}
 		if autoSave {
 			rootDir = snapshotPath
@@ -204,7 +204,7 @@ func Start(flags StartFlags) error {
 		if _, err := cli.Start(
 			ctx,
 			avalancheGoBinPath,
-			client.WithNumNodes(flags.numNodes),
+			client.WithNumNodes(flags.NumNodes),
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),
 			client.WithLogRootDir(logDir),
@@ -236,8 +236,10 @@ func Start(flags StartFlags) error {
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
 
-	if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
-		return err
+	if printEndpoints {
+		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
+			return err
+		}
 	}
 
 	return nil
