@@ -141,7 +141,7 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network, initPOSManagerFlags.aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network.ClusterName, initPOSManagerFlags.aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}

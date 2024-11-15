@@ -4,8 +4,6 @@
 package validatormanager
 
 import (
-	"math/big"
-
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -27,23 +25,6 @@ func PoSValidatorManagerInitialize(
 		defaultChurnPeriodSeconds     = uint64(0) // no churn period
 		defaultMaximumChurnPercentage = uint8(20) // 20% of the validator set can be churned per churn period
 	)
-
-	type ValidatorManagerSettings struct {
-		SubnetID               [32]byte
-		ChurnPeriodSeconds     uint64
-		MaximumChurnPercentage uint8
-	}
-
-	type NativeTokenValidatorManagerSettings struct {
-		BaseSettings             ValidatorManagerSettings
-		MinimumStakeAmount       *big.Int
-		MaximumStakeAmount       *big.Int
-		MinimumStakeDuration     uint64
-		MinimumDelegationFeeBips uint16
-		MaximumStakeMultiplier   uint8
-		WeightToValueFactor      *big.Int
-		RewardCalculator         common.Address
-	}
 
 	baseSettings := ValidatorManagerSettings{
 		SubnetID:               subnetID,
