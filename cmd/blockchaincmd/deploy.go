@@ -795,33 +795,52 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Println()
 
-		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", bootstrapValidators, clusterNameFlagValue); err != nil {
+		if err := app.UpdateSidecarNetworks(
+			&sidecar,
+			network,
+			subnetID,
+			blockchainID,
+			"",
+			"",
+			bootstrapValidators,
+			clusterNameFlagValue,
+		); err != nil {
 			return err
 		}
 
 		if !convertOnly && !generateNodeID {
 			clusterName := clusterNameFlagValue
-			if clusterName == "" {
-				clusterName, err = node.GetClusterNameFromList(app)
-				if err != nil {
-					return err
+			if network.Kind != models.Local {
+				if clusterName == "" {
+					clusterName, err = node.GetClusterNameFromList(app)
+					if err != nil {
+						return err
+					}
 				}
 			}
-			if !useLocalMachine {
-				if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+			switch {
+			case network.Kind == models.Local:
+				if err := networkcmd.TrackSubnet(
+					blockchainName,
+					avagoBinaryPath,
+				); err != nil {
 					return err
 				}
-
-				if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
-					return err
-				}
-			} else {
+			case useLocalMachine:
 				if err := node.TrackSubnetWithLocalMachine(
 					app,
 					clusterName,
 					blockchainName,
 					avagoBinaryPath,
 				); err != nil {
+					return err
+				}
+			default:
+				if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+					return err
+				}
+
+				if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
 					return err
 				}
 			}

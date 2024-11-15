@@ -250,3 +250,11 @@ func GetNetworkFromCluster(clusterConfig ClusterConfig) Network {
 		return network
 	}
 }
+
+func GetWSEndpoint(endpoint string, blockchainID string) string {
+	return NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
+}
+
+func GetRPCEndpoint(endpoint string, blockchainID string) string {
+	return NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
+}

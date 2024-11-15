@@ -4,12 +4,25 @@ package networkcmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-network-runner/client"
+	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/api/admin"
+	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/set"
 )
 
 func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
@@ -69,4 +82,159 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 		currentRPCVersion,
 		constants.AvalancheGoCompatibilityURL,
 	)
+}
+
+func TrackSubnet(
+	blockchainName string,
+	avalancheGoBinPath string,
+) error {
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	network := models.NewLocalNetwork()
+	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
+	}
+	subnetID := sc.Networks[network.Name()].SubnetID
+	blockchainID := sc.Networks[network.Name()].BlockchainID
+	vmID, err := anrutils.VMID(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+	}
+	var vmBin string
+	switch sc.VM {
+	case models.SubnetEvm:
+		_, vmBin, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+		if err != nil {
+			return fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+	case models.CustomVM:
+		vmBin = binutils.SetupCustomBin(app, blockchainName)
+	default:
+		return fmt.Errorf("unknown vm: %s", sc.VM)
+	}
+
+	pluginPath := filepath.Join(app.GetPluginsDir(), vmID.String())
+	if err := utils.FileCopy(vmBin, pluginPath); err != nil {
+		return err
+	}
+	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
+		return err
+	}
+
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalNetworkGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	publicEndpoints := []string{}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		if app.ChainConfigExists(blockchainName) {
+			inputChainConfigPath := app.GetChainConfigPath(blockchainName)
+			outputChainConfigPath := filepath.Join(
+				status.ClusterInfo.RootDataDir,
+				nodeInfo.Name,
+				"configs",
+				"chains",
+				blockchainID.String(),
+				"config.json",
+			)
+			if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
+				return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
+			}
+			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
+				return err
+			}
+		}
+		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
+		opts := []client.OpOption{
+			client.WithWhitelistedSubnets(subnetID.String()),
+			client.WithExecPath(avalancheGoBinPath),
+		}
+		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
+			return err
+		}
+		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
+	}
+	networkInfo := sc.Networks[network.Name()]
+	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
+	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
+	for _, publicEndpoint := range publicEndpoints {
+		rpcEndpoints.Add(models.GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+		wsEndpoints.Add(models.GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+	}
+	networkInfo.RPCEndpoints = rpcEndpoints.List()
+	networkInfo.WSEndpoints = wsEndpoints.List()
+	for _, rpcURL := range networkInfo.RPCEndpoints {
+		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
+		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
+			return err
+		}
+	}
+	if err := IsBootstrapped(cli, blockchainID.String()); err != nil {
+		return err
+	}
+	if err := SetAlias(cli, blockchainID.String(), blockchainName); err != nil {
+		return err
+	}
+	sc.Networks[network.Name()] = networkInfo
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", network.Name(), blockchainName)
+	return nil
+}
+
+func IsBootstrapped(cli client.Client, blockchainID string) error {
+	blockchainBootstrapCheckFrequency := time.Second
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		for {
+			infoClient := info.NewClient(nodeInfo.GetUri())
+			boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
+			if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
+				return err
+			}
+			if boostrapped {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(blockchainBootstrapCheckFrequency):
+			}
+		}
+	}
+	return nil
+}
+
+func SetAlias(cli client.Client, blockchainID string, alias string) error {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		adminClient := admin.NewClient(nodeInfo.GetUri())
+		if err := adminClient.AliasChain(ctx, blockchainID, alias); err != nil {
+			return err
+		}
+	}
+	return nil
 }

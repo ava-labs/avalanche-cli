@@ -172,10 +172,6 @@ func DisconnectHosts(hosts []*models.Host) {
 	}
 }
 
-func GetWSEndpoint(endpoint string, blockchainID string) string {
-	return models.NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
-}
-
 func getPublicEndpoints(
 	app *application.Avalanche,
 	clusterName string,
@@ -196,10 +192,6 @@ func getPublicEndpoints(
 		return GetAvalancheGoEndpoint(tracker.IP)
 	})
 	return endpoints, nil
-}
-
-func GetRPCEndpoint(endpoint string, blockchainID string) string {
-	return models.NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
 }
 
 func GetAvalancheGoEndpoint(ip string) string {
