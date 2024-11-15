@@ -18,19 +18,22 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
-)
-
-var (
-	userProvidedAvagoVersion string
-	snapshotName             string
-	avagoBinaryPath          string
-	numNodes                 uint32
+	"go.uber.org/zap"
 )
 
 const (
 	latest  = "latest"
 	jsonExt = ".json"
 )
+
+type StartFlags struct {
+	userProvidedAvagoVersion string
+	snapshotName             string
+	avagoBinaryPath          string
+	numNodes                 uint32
+}
+
+var startFlags StartFlags
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -42,32 +45,36 @@ By default, the command loads the default snapshot. If you provide the --snapsho
 flag, the network loads that snapshot instead. The command fails if the local network is
 already running.`,
 
-		RunE: StartNetwork,
+		RunE: start,
 		Args: cobrautils.ExactArgs(0),
 	}
 
-	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
-	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to be created on local network")
+	cmd.Flags().StringVar(&startFlags.userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(&startFlags.avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
+	cmd.Flags().StringVar(&startFlags.snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
+	cmd.Flags().Uint32Var(&startFlags.numNodes, "num-nodes", 1, "number of nodes to be created on local network")
 
 	return cmd
 }
 
-func StartNetwork(*cobra.Command, []string) error {
+func start(*cobra.Command, []string) error {
+	return Start(startFlags)
+}
+
+func Start(flags StartFlags) error {
 	var (
 		err          error
 		avagoVersion string
 	)
 
-	if avagoBinaryPath == "" {
-		avagoVersion, err = determineAvagoVersion(userProvidedAvagoVersion)
+	if flags.avagoBinaryPath == "" {
+		avagoVersion, err = determineAvagoVersion(flags.userProvidedAvagoVersion)
 		if err != nil {
 			return err
 		}
 	}
 
-	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "", false)
+	sd := subnet.NewLocalDeployer(app, avagoVersion, flags.avagoBinaryPath, "", false)
 
 	// this takes about 2 secs
 	if err := sd.StartServer(
@@ -129,13 +136,13 @@ func StartNetwork(*cobra.Command, []string) error {
 		nodeConfig = "{}"
 	}
 
-	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+snapshotName)
+	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+flags.snapshotName)
 	if utils.DirectoryExists(snapshotPath) {
 		var startMsg string
-		if snapshotName == constants.DefaultSnapshotName {
+		if flags.snapshotName == constants.DefaultSnapshotName {
 			startMsg = "Starting previously deployed and stopped snapshot"
 		} else {
-			startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
+			startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", flags.snapshotName)
 		}
 		ux.Logger.PrintToUser(startMsg)
 
@@ -148,7 +155,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.LoadSnapshot(
 			ctx,
-			snapshotName,
+			flags.snapshotName,
 			autoSave,
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),
@@ -157,6 +164,15 @@ func StartNetwork(*cobra.Command, []string) error {
 			client.WithPluginDir(pluginDir),
 			client.WithGlobalNodeConfig(nodeConfig),
 		); err != nil {
+			if sd.BackendStartedHere() {
+				if innerErr := binutils.KillgRPCServerProcess(
+					app,
+					binutils.LocalNetworkGRPCServerEndpoint,
+					constants.ServerRunFileLocalNetworkPrefix,
+				); innerErr != nil {
+					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
+				}
+			}
 			return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
 		}
 
@@ -177,8 +193,8 @@ func StartNetwork(*cobra.Command, []string) error {
 		}
 	} else {
 		// starting a new network from scratch
-		if snapshotName != constants.DefaultSnapshotName {
-			return fmt.Errorf("snapshot %s does not exists", snapshotName)
+		if flags.snapshotName != constants.DefaultSnapshotName {
+			return fmt.Errorf("snapshot %s does not exists", flags.snapshotName)
 		}
 		if autoSave {
 			rootDir = snapshotPath
@@ -188,7 +204,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		if _, err := cli.Start(
 			ctx,
 			avalancheGoBinPath,
-			client.WithNumNodes(numNodes),
+			client.WithNumNodes(flags.numNodes),
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),
 			client.WithLogRootDir(logDir),
@@ -196,7 +212,16 @@ func StartNetwork(*cobra.Command, []string) error {
 			client.WithPluginDir(pluginDir),
 			client.WithGlobalNodeConfig(nodeConfig),
 		); err != nil {
-			return err
+			if sd.BackendStartedHere() {
+				if innerErr := binutils.KillgRPCServerProcess(
+					app,
+					binutils.LocalNetworkGRPCServerEndpoint,
+					constants.ServerRunFileLocalNetworkPrefix,
+				); innerErr != nil {
+					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
+				}
+			}
+			return fmt.Errorf("failed to start network: %w", err)
 		}
 	}
 
