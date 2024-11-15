@@ -447,10 +447,27 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
+
+		useEwoq = true
 	}
 
 	if sidecar.Sovereign {
 		if !generateNodeID {
+			if network.Kind == models.Local {
+				if len(bootstrapEndpoints) == 0 {
+					bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
+					if err != nil {
+						return fmt.Errorf("error getting local host bootstrap endpoints: %w", err)
+					}
+				}
+				if changeOwnerAddress == "" {
+					k, err := app.GetKey("ewoq", network, false)
+					if err != nil {
+						return err
+					}
+					changeOwnerAddress = k.P()[0]
+				}
+			}
 			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
 			if clusterNameFlagValue != "" {
 				clusterName = clusterNameFlagValue
@@ -462,7 +479,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if clusterConfig.Local {
 					useLocalMachine = true
 					if len(bootstrapEndpoints) == 0 {
-						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+						bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
 						if err != nil {
 							return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 								"please create your local node again and call subnet deploy command again", err)
@@ -472,7 +489,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			// ask user if we want to use local machine if cluster is not provided
-			if !useLocalMachine && clusterNameFlagValue == "" {
+			if network.Kind != models.Local && !useLocalMachine && clusterNameFlagValue == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
@@ -522,7 +539,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 				clusterNameFlagValue = clusterName
 				if len(bootstrapEndpoints) == 0 {
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+					bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
 					if err != nil {
 						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 							"please create your local node again and call subnet deploy command again", err)

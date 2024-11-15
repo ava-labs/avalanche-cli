@@ -3,7 +3,9 @@
 package networkcmd
 
 import (
+	_ "embed"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -25,6 +27,9 @@ const (
 	latest  = "latest"
 	jsonExt = ".json"
 )
+
+//go:embed upgrade.json
+var upgradeData []byte
 
 type StartFlags struct {
 	UserProvidedAvagoVersion string
@@ -136,6 +141,10 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		nodeConfig = "{}"
 	}
 
+	if flags.SnapshotName == "" {
+		flags.SnapshotName = constants.DefaultSnapshotName
+	}
+
 	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+flags.SnapshotName)
 	if utils.DirectoryExists(snapshotPath) {
 		var startMsg string
@@ -193,13 +202,27 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		}
 	} else {
 		// starting a new network from scratch
-		if flags.SnapshotName != constants.DefaultSnapshotName && flags.SnapshotName != "" {
+		if flags.SnapshotName != constants.DefaultSnapshotName {
 			return fmt.Errorf("snapshot %s does not exists", flags.SnapshotName)
 		}
 		if autoSave {
 			rootDir = snapshotPath
 			logDir = tmpDir
 		}
+
+		upgradeFile, err := os.CreateTemp("", "upgrade")
+		if err != nil {
+			return fmt.Errorf("could not create upgrade file: %w", err)
+		}
+		if _, err := upgradeFile.Write(upgradeData); err != nil {
+			return fmt.Errorf("could not write upgrade data: %w", err)
+		}
+		upgradePath := upgradeFile.Name()
+		if err := upgradeFile.Close(); err != nil {
+			return fmt.Errorf("could not close upgrade file: %w", err)
+		}
+		defer os.Remove(upgradePath)
+
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(
 			ctx,
@@ -211,6 +234,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithGlobalNodeConfig(nodeConfig),
+			client.WithUpgradePath(upgradePath),
 		); err != nil {
 			if sd.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(
