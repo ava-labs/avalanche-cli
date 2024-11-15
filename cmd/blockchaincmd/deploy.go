@@ -1250,7 +1250,7 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 		infoClient := info.NewClient(uri)
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		peers, err := infoClient.Peers(ctx)
+		peers, err := infoClient.Peers(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
