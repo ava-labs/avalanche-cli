@@ -244,6 +244,13 @@ func removeValidatorSOV(
 	if force && sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
+
+	if err := UpdatePChainHeight(
+		"Waiting for P-Chain to update validator information ...",
+	); err != nil {
+		return err
+	}
+
 	signedMessage, validationID, err := validatormanager.InitValidatorRemoval(
 		app,
 		network,

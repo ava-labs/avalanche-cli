@@ -225,6 +225,60 @@ func GetRegisteredValidator(
 	return validatorID, nil
 }
 
+func GetValidatorPeriods(
+	rpcURL string,
+	managerAddress common.Address,
+	validatorID ids.ID,
+) (
+	uint8, // ValidatorStatus
+	[20]byte, // NodeID
+	uint64, // startingWeight
+	uint64, // messageNonce
+	uint64, // weight
+	uint64, // startedAt
+	uint64, // endedAt
+	error,
+) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"getValidator(bytes32)->(uint8,bytes20,uint64,uint64,uint64,uint64,uint64)",
+		validatorID,
+	)
+	if err != nil {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, err
+	}
+	validatorStatus, b := out[0].(uint8)
+	if !b {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, fmt.Errorf("error at getValidator call, expected uint8, got %T", out[0])
+	}
+	nodeID, b := out[1].([20]byte)
+	if !b {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, fmt.Errorf("error at getValidator call, expected [48]byte, got %T", out[1])
+	}
+	startingWeight, b := out[2].(uint64)
+	if !b {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, fmt.Errorf("error at getValidator call, expected uint64, got %T", out[2])
+	}
+	messageNonce, b := out[3].(uint64)
+	if !b {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, fmt.Errorf("error at getValidator call, expected uint64, got %T", out[3])
+	}
+	weight, b := out[4].(uint64)
+	if !b {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, fmt.Errorf("error at getValidator call, expected uint64, got %T", out[4])
+	}
+	startedAt, b := out[5].(uint64)
+	if !b {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, fmt.Errorf("error at getValidator call, expected uint64, got %T", out[5])
+	}
+	endedAt, b := out[6].(uint64)
+	if !b {
+		return 0, [20]byte{}, 0, 0, 0, 0, 0, fmt.Errorf("error at getValidator call, expected uint64, got %T", out[6])
+	}
+	return validatorStatus, nodeID, startingWeight, messageNonce, weight, startedAt, endedAt, nil
+}
+
 func GetValidatorWeight(
 	rpcURL string,
 	managerAddress common.Address,
@@ -355,7 +409,7 @@ func InitValidatorRegistration(
 		ux.Logger.PrintLineSeparator()
 		ux.Logger.PrintToUser("Initializing a validator registration with PoS validator manager")
 		ux.Logger.PrintToUser("Using rpcURL: %s", rpcURL)
-		ux.Logger.PrintToUser("NodeID: %s staking %s for %s", nodeID.String(), stakeAmount, stakeDuration)
+		ux.Logger.PrintToUser("NodeID: %s staking %s for %ds", nodeID.String(), stakeAmount, uint64(stakeDuration.Seconds()))
 		ux.Logger.PrintLineSeparator()
 		tx, _, err := NativePoSValidatorManagerInitializeValidatorRegistration(
 			rpcURL,
@@ -482,6 +536,12 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return evm.TransactionError(tx, err, "failure completing validator registration")
 	}
+	validatorStatus, nodeID, _, _, weight, startedAt, endedAt, err := GetValidatorPeriods(rpcURL, managerAddress, validationID)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("nodeId: %s, ValidationID: %s, validatorStatus: %d", string(nodeID[:]), string(validationID[:]), validatorStatus)
+	ux.Logger.PrintToUser("GetValidatorPeriods() weight = %d, startedAt = %d, endedAt = %d", weight, startedAt, endedAt)
 	return nil
 }
 

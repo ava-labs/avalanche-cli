@@ -37,6 +37,14 @@ func ValidatorManagerInitializeValidatorRemoval(
 		if force {
 			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
 		}
+		// display debug validationPeriod info to user\
+		validatorStatus, nodeID, _, _, weight, startedAt, endedAt, err := GetValidatorPeriods(rpcURL, managerAddress, validationID)
+		if err != nil {
+			return nil, nil, err
+		}
+		ux.Logger.PrintToUser("nodeId: %s, ValidationID: %s, validatorStatus: %d", string(nodeID[:]), string(validationID[:]), validatorStatus)
+		ux.Logger.PrintToUser("GetValidatorPeriods() weight = %d, startedAt = %d, endedAt = %d", weight, startedAt, endedAt)
+
 		return contract.TxToMethod(
 			rpcURL,
 			ownerPrivateKey,
@@ -148,6 +156,7 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
+	ux.Logger.PrintToUser("Using validationID: %s for nodeID: %s", validationID, nodeID)
 	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
