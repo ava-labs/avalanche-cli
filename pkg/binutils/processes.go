@@ -262,6 +262,7 @@ func StartServerProcess(
 	}
 
 	ux.Logger.PrintToUser("Backend controller started, pid: %d, output at: %s", cmd.Process.Pid, outputFile.Name())
+	ux.Logger.PrintToUser("")
 
 	rf := runFile{
 		Pid:                cmd.Process.Pid,

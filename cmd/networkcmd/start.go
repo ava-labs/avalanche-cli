@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
@@ -25,6 +24,7 @@ var (
 	userProvidedAvagoVersion string
 	snapshotName             string
 	avagoBinaryPath          string
+	numNodes                 uint32
 )
 
 const (
@@ -49,6 +49,7 @@ already running.`,
 	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to be created on local network")
 
 	return cmd
 }
@@ -58,14 +59,17 @@ func StartNetwork(*cobra.Command, []string) error {
 		err          error
 		avagoVersion string
 	)
+
 	if avagoBinaryPath == "" {
 		avagoVersion, err = determineAvagoVersion(userProvidedAvagoVersion)
 		if err != nil {
 			return err
 		}
 	}
+
 	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "", false)
 
+	// this takes about 2 secs
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalNetworkPrefix,
 		binutils.LocalNetworkGRPCServerPort,
@@ -76,6 +80,7 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
+	// this takes about 1 secs
 	needsRestart, avalancheGoBinPath, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
@@ -107,59 +112,100 @@ func StartNetwork(*cobra.Command, []string) error {
 		}
 	}
 
-	var startMsg string
-	if snapshotName == constants.DefaultSnapshotName {
-		startMsg = "Starting previously deployed and stopped snapshot"
-	} else {
-		startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
-	}
-	ux.Logger.PrintToUser(startMsg)
-
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
 
 	tmpDir, err := anrutils.MkDirWithTimestamp(filepath.Join(app.GetRunDir(), "network"))
 	if err != nil {
 		return err
 	}
-
 	rootDir := ""
 	logDir := ""
-	if !autoSave {
-		rootDir = tmpDir
-	} else {
-		logDir = tmpDir
-	}
-
 	pluginDir := app.GetPluginsDir()
-
-	loadSnapshotOpts := []client.OpOption{
-		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(rootDir),
-		client.WithLogRootDir(logDir),
-		client.WithReassignPortsIfUsed(true),
-		client.WithPluginDir(pluginDir),
-	}
-
-	// load global node configs if they exist
-	configStr, err := app.Conf.LoadNodeConfig()
+	nodeConfig, err := app.Conf.LoadNodeConfig()
 	if err != nil {
 		return err
 	}
-	if configStr != "" {
-		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
+	if nodeConfig == "" {
+		nodeConfig = "{}"
 	}
 
-	ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-	resp, err := cli.LoadSnapshot(
-		ctx,
-		snapshotName,
-		app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey),
-		loadSnapshotOpts...,
-	)
+	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+snapshotName)
+	if utils.DirectoryExists(snapshotPath) {
+		var startMsg string
+		if snapshotName == constants.DefaultSnapshotName {
+			startMsg = "Starting previously deployed and stopped snapshot"
+		} else {
+			startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
+		}
+		ux.Logger.PrintToUser(startMsg)
+
+		if !autoSave {
+			rootDir = tmpDir
+		} else {
+			logDir = tmpDir
+		}
+
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		if _, err := cli.LoadSnapshot(
+			ctx,
+			snapshotName,
+			autoSave,
+			client.WithExecPath(avalancheGoBinPath),
+			client.WithRootDataDir(rootDir),
+			client.WithLogRootDir(logDir),
+			client.WithReassignPortsIfUsed(true),
+			client.WithPluginDir(pluginDir),
+			client.WithGlobalNodeConfig(nodeConfig),
+		); err != nil {
+			return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
+		}
+
+		if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
+			return err
+		} else if b {
+			ux.Logger.PrintToUser("")
+			if err := teleporter.DeployRelayer(
+				"latest",
+				app.GetAWMRelayerBinDir(),
+				relayerConfigPath,
+				app.GetLocalRelayerLogPath(models.Local),
+				app.GetLocalRelayerRunPath(models.Local),
+				app.GetLocalRelayerStorageDir(models.Local),
+			); err != nil {
+				return err
+			}
+		}
+	} else {
+		// starting a new network from scratch
+		if snapshotName != constants.DefaultSnapshotName {
+			return fmt.Errorf("snapshot %s does not exists", snapshotName)
+		}
+		if autoSave {
+			rootDir = snapshotPath
+			logDir = tmpDir
+		}
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		if _, err := cli.Start(
+			ctx,
+			avalancheGoBinPath,
+			client.WithNumNodes(numNodes),
+			client.WithExecPath(avalancheGoBinPath),
+			client.WithRootDataDir(rootDir),
+			client.WithLogRootDir(logDir),
+			client.WithReassignPortsIfUsed(true),
+			client.WithPluginDir(pluginDir),
+			client.WithGlobalNodeConfig(nodeConfig),
+		); err != nil {
+			return err
+		}
+	}
+
+	resp, err := cli.Status(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
+		return err
 	}
 
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.LogRootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
@@ -169,80 +215,5 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
-		return err
-	} else if b {
-		ux.Logger.PrintToUser("")
-		if err := teleporter.DeployRelayer(
-			"latest",
-			app.GetAWMRelayerBinDir(),
-			relayerConfigPath,
-			app.GetLocalRelayerLogPath(models.Local),
-			app.GetLocalRelayerRunPath(models.Local),
-			app.GetLocalRelayerStorageDir(models.Local),
-		); err != nil {
-			return err
-		}
-	}
-
 	return nil
-}
-
-func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
-	// a specific user provided version should override this calculation, so just return
-	if userProvidedAvagoVersion != latest {
-		return userProvidedAvagoVersion, nil
-	}
-
-	// Need to determine which subnets have been deployed
-	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
-	if err != nil {
-		return "", err
-	}
-
-	// if no subnets have been deployed, use latest
-	if len(locallyDeployedSubnets) == 0 {
-		return latest, nil
-	}
-
-	currentRPCVersion := -1
-
-	// For each deployed subnet, check RPC versions
-	for _, deployedSubnet := range locallyDeployedSubnets {
-		sc, err := app.LoadSidecar(deployedSubnet)
-		if err != nil {
-			return "", err
-		}
-
-		// if you have a custom vm, you must provide the version explicitly
-		// if you upgrade from subnet-evm to a custom vm, the RPC version will be 0
-		if sc.VM == models.CustomVM || sc.Networks[models.Local.String()].RPCVersion == 0 {
-			continue
-		}
-
-		if currentRPCVersion == -1 {
-			currentRPCVersion = sc.Networks[models.Local.String()].RPCVersion
-		}
-
-		if sc.Networks[models.Local.String()].RPCVersion != currentRPCVersion {
-			return "", fmt.Errorf(
-				"RPC version mismatch. Expected %d, got %d for Subnet %s. Upgrade all subnets to the same RPC version to launch the network",
-				currentRPCVersion,
-				sc.RPCVersion,
-				sc.Name,
-			)
-		}
-	}
-
-	// If currentRPCVersion == -1, then only custom subnets have been deployed, the user must provide the version explicitly if not latest
-	if currentRPCVersion == -1 {
-		ux.Logger.PrintToUser("No Subnet RPC version found. Using latest AvalancheGo version")
-		return latest, nil
-	}
-
-	return vm.GetLatestAvalancheGoByProtocolVersion(
-		app,
-		currentRPCVersion,
-		constants.AvalancheGoCompatibilityURL,
-	)
 }

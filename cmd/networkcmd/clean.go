@@ -82,6 +82,12 @@ func clean(*cobra.Command, []string) error {
 	if err := removeLocalDeployInfoFromSidecars(); err != nil {
 		return err
 	}
+
+	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+constants.DefaultSnapshotName)
+	if err := os.RemoveAll(snapshotPath); err != nil {
+		return err
+	}
+
 	return nil
 }
 
