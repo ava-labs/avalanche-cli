@@ -20,7 +20,7 @@ func GetSSHConnectionString(publicIP, certFilePath string) string {
 	if certFilePath != "" {
 		certFilePath = fmt.Sprintf("-i %s", certFilePath)
 	}
-	return fmt.Sprintf("ssh %s %s@%s %s", constants.AnsibleSSHShellParams, constants.AnsibleSSHUser, publicIP, certFilePath)
+	return fmt.Sprintf("ssh %s %s@%s %s", constants.AnsibleSSHShellParams, constants.RemoteSSHUser, publicIP, certFilePath)
 }
 
 // GetSCPTargetPath returns the target path for the given source path and target directory.
@@ -28,7 +28,7 @@ func GetSCPTargetPath(ip, path string) string {
 	if ip == "" {
 		return path
 	}
-	return fmt.Sprintf("%s@%s:%s", constants.AnsibleSSHUser, ip, path)
+	return fmt.Sprintf("%s@%s:%s", constants.RemoteSSHUser, ip, path)
 }
 
 // GetSCPCommandString returns the SCP command string for the given source and destination paths.

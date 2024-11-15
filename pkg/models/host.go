@@ -35,6 +35,7 @@ type Host struct {
 	SSHPrivateKeyPath string
 	SSHCommonArgs     string
 	Connection        *goph.Client
+	APINode           bool
 }
 
 func NewHostConnection(h *Host, port uint) (*goph.Client, error) {

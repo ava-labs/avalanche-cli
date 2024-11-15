@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
+	e2eUtils "github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -46,7 +47,9 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		re := regexp.MustCompile(`Generated staking keys for host (\S+)\[NodeID-(\S+)\]`)
 		match := re.FindStringSubmatch(output)
 		if len(match) >= 3 {
-			hostName = match[1]
+			var err error
+			hostName, err = e2eUtils.GetE2EHostInstanceID()
+			gomega.Expect(err).Should(gomega.BeNil())
 			NodeID = fmt.Sprintf("NodeID-%s", match[2])
 		} else {
 			ginkgo.Fail("failed to parse hostName and NodeID")

@@ -148,14 +148,14 @@ func hostRunTest(t *testing.T) {
 		NodeID:            constants.E2EDocker + "_unittest",
 		IP:                localhost,
 		SSHPrivateKeyPath: privKey.Name(),
-		SSHUser:           constants.AnsibleSSHUser,
+		SSHUser:           constants.RemoteSSHUser,
 		SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
 	}
 	brokenHost := &Host{
 		NodeID:            constants.E2EDocker + "_broken",
 		IP:                localhost,
 		SSHPrivateKeyPath: brokenKey.Name(),
-		SSHUser:           constants.AnsibleSSHUser,
+		SSHUser:           constants.RemoteSSHUser,
 		SSHCommonArgs:     constants.AnsibleSSHUseAgentParams,
 	}
 	// good connection
