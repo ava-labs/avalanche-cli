@@ -260,14 +260,12 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
 			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
 
-			if createFlags.proxyContractOwner == "" {
-				createFlags.proxyContractOwner, err = getProxyAdminOwnerAddr()
-				if err != nil {
-					return err
-				}
-				ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
+			// use the validator manager owner as the transparent proxy contract owner unless specified via cmd flag
+			if createFlags.proxyContractOwner != "" {
+				sc.ProxyContractOwner = createFlags.proxyContractOwner
+			} else {
+				sc.ProxyContractOwner = sc.ValidatorManagerOwner
 			}
-			sc.ProxyContractOwner = createFlags.proxyContractOwner
 			ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 		}
 

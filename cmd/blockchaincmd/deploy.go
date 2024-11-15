@@ -163,7 +163,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 
 	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
 	cmd.Flags().Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
-	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", 30, "minimum stake duration")
+	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", 100, "minimum stake duration")
 	cmd.Flags().Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
 	cmd.Flags().Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
 	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")

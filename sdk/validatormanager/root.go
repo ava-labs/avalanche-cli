@@ -44,6 +44,13 @@ const (
 	ProxyContractAddress      = "0xFEEDC0DE0000000000000000000000000000000"
 	ProxyAdminContractAddress = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
 	RewardCalculatorAddress   = "0xDEADC0DE0000000000000000000000000000000"
+
+	DefaultPoSMinimumStakeAmount     = 1
+	DefaultPoSMaximumStakeAmount     = 1000
+	DefaultPoSMinimumStakeDuration   = 100
+	DefaultPoSDMinimumDelegationFee  = 1
+	DefaultPoSMaximumStakeMultiplier = 1
+	DefaultPoSWeightToValueFactor    = 1
 )
 
 var (

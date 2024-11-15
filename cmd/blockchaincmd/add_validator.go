@@ -219,17 +219,6 @@ func promptValidatorBalance(availableBalance uint64) (uint64, error) {
 	return app.Prompt.CaptureValidatorBalance(txt, availableBalance)
 }
 
-func GetNetworkBalanceForKey(kc *keychain.Keychain, network models.Network) (uint64, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	pClient := platformvm.NewClient(network.Endpoint)
-	bal, err := pClient.GetBalance(ctx, kc.Addresses().List())
-	if err != nil {
-		return 0, err
-	}
-	return uint64(bal.Balance) / units.Avax, nil
-}
-
 func CallAddValidator(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
@@ -276,7 +265,7 @@ func CallAddValidator(
 	if pos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
 		if stakeAmount == 0 {
-			avaliableTokens, err := GetNetworkBalanceForKey(kc, network)
+			avaliableTokens, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 			if err != nil {
 				return err
 			}
@@ -308,7 +297,7 @@ func CallAddValidator(
 	}
 
 	if balance == 0 {
-		availableBalance, err := GetNetworkBalanceForKey(kc, network)
+		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
 		}
