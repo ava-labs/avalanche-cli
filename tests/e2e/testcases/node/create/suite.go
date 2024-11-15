@@ -38,9 +38,9 @@ var (
 	ElasticIP string
 )
 
-var _ = ginkgo.Describe("[Node create]", func() {
-	ginkgo.It("can create a node", func() {
-		output := commands.NodeCreate(network, avalanchegoVersion, numNodes, false, 0, commands.ExpectSuccess)
+var _ = ginkgo.Describe("[Node provision]", func() {
+	ginkgo.It("can provision and set up a node", func() {
+		output := commands.NodeProvision(network, avalanchegoVersion, numNodes, false, 0, commands.ExpectSuccess)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 		// parse hostName

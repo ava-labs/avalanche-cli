@@ -20,11 +20,10 @@ import (
 
 const (
 	e2eKeyPairName = "runner-avalanche-cli-keypair"
-	ExpectFail     = false
 	ExpectSuccess  = true
 )
 
-func NodeCreate(network, version string, numNodes int, separateMonitoring bool, numAPINodes int, expectSuccess bool) string {
+func NodeProvision(network, version string, numNodes int, separateMonitoring bool, numAPINodes int, expectSuccess bool) string {
 	home, err := os.UserHomeDir()
 	gomega.Expect(err).Should(gomega.BeNil())
 	_, err = os.Open(filepath.Join(home, ".ssh", e2eKeyPairName))
@@ -43,7 +42,7 @@ func NodeCreate(network, version string, numNodes int, separateMonitoring bool, 
 	cmd := exec.Command(
 		CLIBinary,
 		"node",
-		"create",
+		"provision",
 		constants.E2EClusterName,
 		"--use-static-ip=false",
 		cmdVersion,
@@ -81,7 +80,7 @@ func NodeDevnet(version string, numNodes int, numAPINodes int) string {
 	cmd := exec.Command(
 		CLIBinary,
 		"node",
-		"create",
+		"provision",
 		constants.E2EClusterName,
 		"--use-static-ip=false",
 		"--enable-monitoring=false",
