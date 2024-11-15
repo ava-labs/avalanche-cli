@@ -126,7 +126,7 @@ func CreateEVMGenesis(
 	if params.UsePoAValidatorManager {
 		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
-	} else {
+	} else if params.UsePoSValidatorManager {
 		validatormanager.AddPoSValidatorManagerContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		validatormanager.AddRewardCalculatorToAllocations(params.initialTokenAllocation, rewardBasisPoints)
