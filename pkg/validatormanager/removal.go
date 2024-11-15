@@ -33,17 +33,12 @@ func ValidatorManagerInitializeValidatorRemoval(
 	force bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
-		posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
+		// PoS only supports forcefull removal //TODO: implement uptime proof to remove this restriction
+		// posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
+		posEndValidation := "forceInitializeEndValidation(bytes32,bool,uint32)"
 		if force {
 			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
 		}
-		// display debug validationPeriod info to user\
-		validatorStatus, nodeID, _, _, weight, startedAt, endedAt, err := GetValidatorPeriods(rpcURL, managerAddress, validationID)
-		if err != nil {
-			return nil, nil, err
-		}
-		ux.Logger.PrintToUser("nodeId: %s, ValidationID: %s, validatorStatus: %d", string(nodeID[:]), string(validationID[:]), validatorStatus)
-		ux.Logger.PrintToUser("GetValidatorPeriods() weight = %d, startedAt = %d, endedAt = %d", weight, startedAt, endedAt)
 
 		return contract.TxToMethod(
 			rpcURL,
