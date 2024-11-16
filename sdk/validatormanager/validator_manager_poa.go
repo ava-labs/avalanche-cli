@@ -25,12 +25,7 @@ func PoAValidatorManagerInitialize(
 		defaultChurnPeriodSeconds     = uint64(0)
 		defaultMaximumChurnPercentage = uint8(20)
 	)
-	type Params struct {
-		SubnetID               [32]byte
-		ChurnPeriodSeconds     uint64
-		MaximumChurnPercentage uint8
-	}
-	params := Params{
+	params := ValidatorManagerSettings{
 		SubnetID:               subnetID,
 		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
 		MaximumChurnPercentage: defaultMaximumChurnPercentage,

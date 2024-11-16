@@ -22,11 +22,35 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type ValidatorManagerSettings struct {
+	SubnetID               [32]byte
+	ChurnPeriodSeconds     uint64
+	MaximumChurnPercentage uint8
+}
+
+type NativeTokenValidatorManagerSettings struct {
+	BaseSettings             ValidatorManagerSettings
+	MinimumStakeAmount       *big.Int
+	MaximumStakeAmount       *big.Int
+	MinimumStakeDuration     uint64
+	MinimumDelegationFeeBips uint16
+	MaximumStakeMultiplier   uint8
+	WeightToValueFactor      *big.Int
+	RewardCalculator         common.Address
+}
+
 const (
 	ValidatorContractAddress  = "0xC0DEBA5E0000000000000000000000000000000"
 	ProxyContractAddress      = "0xFEEDC0DE0000000000000000000000000000000"
 	ProxyAdminContractAddress = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
 	RewardCalculatorAddress   = "0xDEADC0DE0000000000000000000000000000000"
+
+	DefaultPoSMinimumStakeAmount     = 1
+	DefaultPoSMaximumStakeAmount     = 1000
+	DefaultPoSMinimumStakeDuration   = 100
+	DefaultPoSDMinimumDelegationFee  = 1
+	DefaultPoSMaximumStakeMultiplier = 1
+	DefaultPoSWeightToValueFactor    = 1
 )
 
 var (

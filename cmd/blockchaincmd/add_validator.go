@@ -69,6 +69,7 @@ var (
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 	aggregatorExtraEndpoints            []string
+	clusterNameFlagValue                string
 )
 
 // avalanche blockchain addValidator
@@ -140,6 +141,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 	)
 	if err != nil {
 		return err
+	}
+	if network.ClusterName != "" {
+		clusterNameFlagValue = network.ClusterName
+		network = models.ConvertClusterToNetwork(network)
 	}
 
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
@@ -214,17 +219,6 @@ func promptValidatorBalance(availableBalance uint64) (uint64, error) {
 	return app.Prompt.CaptureValidatorBalance(txt, availableBalance)
 }
 
-func GetNetworkBalanceForKey(kc *keychain.Keychain, network models.Network) (uint64, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	pClient := platformvm.NewClient(network.Endpoint)
-	bal, err := pClient.GetBalance(ctx, kc.Addresses().List())
-	if err != nil {
-		return 0, err
-	}
-	return uint64(bal.Balance) / units.Avax, nil
-}
-
 func CallAddValidator(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
@@ -271,11 +265,20 @@ func CallAddValidator(
 	if pos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
 		if stakeAmount == 0 {
-			avaliableTokens, err := GetNetworkBalanceForKey(kc, network)
+			availableTokens, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 			if err != nil {
 				return err
 			}
-			stakeAmount, err = app.Prompt.CaptureUint64(fmt.Sprintf("Enter the amount of tokens to stake. Available: %d[%s]", avaliableTokens, sc.TokenName))
+			stakeAmount, err = app.Prompt.CaptureUint64Compare(
+				fmt.Sprintf("Enter the amount of tokens to stake. Available: %d[%s]", availableTokens, sc.TokenName),
+				[]prompts.Comparator{
+					{
+						Label: "Available",
+						Type:  prompts.LessThanEq,
+						Value: availableTokens,
+					},
+				},
+			)
 			if err != nil {
 				return err
 			}
@@ -303,7 +306,7 @@ func CallAddValidator(
 	}
 
 	if balance == 0 {
-		availableBalance, err := GetNetworkBalanceForKey(kc, network)
+		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
 		}
@@ -354,11 +357,10 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterNameFlagValue, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
-
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,

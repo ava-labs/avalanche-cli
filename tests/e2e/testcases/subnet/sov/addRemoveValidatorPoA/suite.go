@@ -16,7 +16,6 @@ import (
 var blockchainID = ""
 
 const (
-	CLIBinary         = "./bin/avalanche"
 	subnetName        = "e2eSubnetTest"
 	keyName           = "ewoq"
 	ewoqEVMAddress    = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"

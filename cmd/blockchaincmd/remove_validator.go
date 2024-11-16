@@ -82,7 +82,9 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	if network.ClusterName != "" {
+		network = models.ConvertClusterToNetwork(network)
+	}
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -236,8 +238,8 @@ func removeValidatorSOV(
 		}
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
-
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(network, aggregatorExtraEndpoints)
+	clusterName := sc.Networks[network.Name()].ClusterName
+	extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterName, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}

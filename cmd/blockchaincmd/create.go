@@ -116,7 +116,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
-	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only)reward basis points for PoS Reward Calculator")
+	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
 	return cmd
 }
@@ -203,7 +203,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if !sovereign {
-		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.validatorManagerOwner != "" {
+		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.validatorManagerOwner != "" || createFlags.proxyContractOwner != "" {
 			return errSOVFlagsOnly
 		}
 	}
@@ -260,13 +260,12 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
 			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
 
-			if createFlags.proxyContractOwner == "" {
-				createFlags.proxyContractOwner, err = getProxyAdminOwnerAddr()
-				if err != nil {
-					return err
-				}
+			// use the validator manager owner as the transparent proxy contract owner unless specified via cmd flag
+			if createFlags.proxyContractOwner != "" {
+				sc.ProxyContractOwner = createFlags.proxyContractOwner
+			} else {
+				sc.ProxyContractOwner = sc.ValidatorManagerOwner
 			}
-			sc.ProxyContractOwner = createFlags.proxyContractOwner
 			ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 		}
 

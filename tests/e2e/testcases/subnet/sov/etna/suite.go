@@ -84,7 +84,7 @@ func destroyLocalNode() {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
-func deployEtnaSubnet() {
+func deployEtnaSubnetEtnaFlag() {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -114,6 +114,111 @@ func deployEtnaSubnet() {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
+func deployEtnaSubnetEtnaFlagConvertOnly() {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet on etna devnet with local machine as bootstrap validator
+	cmd := exec.Command(
+		CLIBinary,
+		"blockchain",
+		"deploy",
+		subnetName,
+		"--etna-devnet",
+		"--use-local-machine",
+		avalancheGoPath+"="+utils.EtnaAvalancheGoBinaryPath,
+		"--num-local-nodes=1",
+		"--convert-only",
+		"--ewoq",
+		"--change-owner-address",
+		ewoqPChainAddress,
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+}
+
+func deployEtnaSubnetClusterFlagConvertOnly(clusterName string) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet on etna devnet with local machine as bootstrap validator
+	cmd := exec.Command(
+		CLIBinary,
+		"blockchain",
+		"deploy",
+		subnetName,
+		fmt.Sprintf("--cluster=%s", clusterName),
+		"--convert-only",
+		"--ewoq",
+		"--change-owner-address",
+		ewoqPChainAddress,
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+}
+
+func initPoaManagerClusterFlag(
+	subnetName string,
+	clusterName string,
+) error {
+	cmd := exec.Command(
+		CLIBinary,
+		"contract",
+		"initPoaManager",
+		subnetName,
+		"--cluster",
+		clusterName,
+		"--genesis-key",
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return err
+}
+
+func initPoaManagerEtnaFlag(
+	subnetName string,
+) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		"contract",
+		"initPoaManager",
+		subnetName,
+		"--etna-devnet",
+		"--genesis-key",
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
+}
+
 var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	ginkgo.BeforeEach(func() {
 		// key
@@ -138,6 +243,36 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 	ginkgo.It("Create Etna Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
 		createEtnaSubnetEvmConfig()
-		deployEtnaSubnet()
+		deployEtnaSubnetEtnaFlag()
+	})
+
+	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Public Etna using cluster flag", func() {
+		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1, utils.EtnaAvalancheGoBinaryPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+		createEtnaSubnetEvmConfig()
+		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
+		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+
+	ginkgo.It("Mix and match network and cluster flags test 1", func() {
+		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1, utils.EtnaAvalancheGoBinaryPath)
+		gomega.Expect(err).Should(gomega.BeNil())
+		createEtnaSubnetEvmConfig()
+		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
+		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		_, err = initPoaManagerEtnaFlag(subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+	})
+	ginkgo.It("Mix and match network and cluster flags test 2", func() {
+		createEtnaSubnetEvmConfig()
+		deployEtnaSubnetEtnaFlagConvertOnly()
+		_, err := commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })
