@@ -217,7 +217,7 @@ func preCreateChecks(clusterName string) error {
 	if globalNetworkFlags.UseEtnaDevnet && (len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "") {
 		return fmt.Errorf("etna devnet uses predefined bootsrap configuration")
 	}
-	if len((bootstrapIDs)) != len(bootstrapIPs) {
+	if len(bootstrapIDs) != len(bootstrapIPs) {
 		return fmt.Errorf("number of bootstrap ids and ip:port pairs must be equal")
 	}
 	if genesisPath != "" && !utils.FileExists(genesisPath) {
