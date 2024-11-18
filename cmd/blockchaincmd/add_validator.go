@@ -265,17 +265,13 @@ func CallAddValidator(
 	if pos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
 		if stakeAmount == 0 {
-			availableTokens, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
-			if err != nil {
-				return err
-			}
 			stakeAmount, err = app.Prompt.CaptureUint64Compare(
-				fmt.Sprintf("Enter the amount of tokens to stake. Available: %d %s", availableTokens, sc.TokenName),
+				fmt.Sprintf("Enter the amount of %s to stake ", sc.TokenName),
 				[]prompts.Comparator{
 					{
-						Label: "Available",
-						Type:  prompts.LessThanEq,
-						Value: availableTokens,
+						Label: "Possitive",
+						Type:  prompts.MoreThan,
+						Value: 0,
 					},
 				},
 			)
