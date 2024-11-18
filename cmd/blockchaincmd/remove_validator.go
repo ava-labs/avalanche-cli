@@ -147,11 +147,13 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return removeFromLocalNonSOV(blockchainName, nodeID)
 	}
 
-	subnetID := sc.Networks[network.Name()].SubnetID
+	scNetwork := sc.Networks[network.Name()]
+	subnetID := scNetwork.SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
 
+	deployer := subnet.NewPublicDeployer(app, kc, network)
 	// check that this guy actually is a validator on the subnet
 	if !sc.Sovereign {
 		isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
@@ -162,18 +164,36 @@ func removeValidator(_ *cobra.Command, args []string) error {
 			// this is actually an error
 			return fmt.Errorf("node %s is not a validator on subnet %s", nodeID, subnetID)
 		}
-	}
-
-	if !sc.Sovereign {
 		if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
 			return err
 		}
-	}
-	deployer := subnet.NewPublicDeployer(app, kc, network)
-	if !sc.Sovereign {
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
-	return removeValidatorSOV(deployer, network, blockchainName, nodeID)
+	// check if node is a bootstrap validator to force it to be removed
+	filteredBootstrapValidators := utils.Filter(scNetwork.BootstrapValidators, func(b models.SubnetValidator) bool {
+		if id, err := ids.NodeIDFromString(b.NodeID); err == nil && id == nodeID {
+			return true
+		}
+		return false
+	})
+	force := len(filteredBootstrapValidators) > 0
+	if err := removeValidatorSOV(deployer, network, blockchainName, nodeID, force); err != nil {
+		return err
+	}
+	// remove the validator from the list of bootstrap validators
+	newBootstrapValidators := utils.Filter(scNetwork.BootstrapValidators, func(b models.SubnetValidator) bool {
+		if id, _ := ids.NodeIDFromString(b.NodeID); id != nodeID {
+			return true
+		}
+		return false
+	})
+	// save new bootstrap validators and save sidecar
+	scNetwork.BootstrapValidators = newBootstrapValidators
+	sc.Networks[network.Name()] = scNetwork
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return err
+	}
+	return nil
 }
 
 func removeValidatorSOV(
@@ -181,6 +201,7 @@ func removeValidatorSOV(
 	network models.Network,
 	blockchainName string,
 	nodeID ids.NodeID,
+	force bool,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -222,6 +243,9 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
+	if force && sc.PoS() {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
+	}
 
 	signedMessage, validationID, err := validatormanager.InitValidatorRemoval(
 		app,
@@ -232,6 +256,8 @@ func removeValidatorSOV(
 		nodeID,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
+		sc.PoS(),
+		force,
 	)
 	if err != nil {
 		return err
@@ -243,12 +269,6 @@ func removeValidatorSOV(
 		return err
 	}
 	ux.Logger.PrintToUser("SetSubnetValidatorWeightTx ID: %s", txID)
-
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
-	}
 
 	if err := validatormanager.FinishValidatorRemoval(
 		app,

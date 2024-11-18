@@ -29,13 +29,37 @@ func ValidatorManagerInitializeValidatorRemoval(
 	managerAddress common.Address,
 	ownerPrivateKey string,
 	validationID [32]byte,
+	isPoS bool,
+	force bool,
 ) (*types.Transaction, *types.Receipt, error) {
+	if isPoS {
+		// PoS only supports forcefull removal //TODO: implement uptime proof to remove this restriction
+		// posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
+		posEndValidation := "forceInitializeEndValidation(bytes32,bool,uint32)"
+		if force {
+			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
+		}
+
+		return contract.TxToMethod(
+			rpcURL,
+			ownerPrivateKey,
+			managerAddress,
+			big.NewInt(0),
+			"POS validator removal initialization",
+			validatorManagerSDK.ErrorSignatureToError,
+			posEndValidation,
+			validationID,
+			false, // don't include uptime proof - rely on network to calculate uptime
+			uint32(0),
+		)
+	}
+	// PoA case
 	return contract.TxToMethod(
 		rpcURL,
 		ownerPrivateKey,
 		managerAddress,
 		big.NewInt(0),
-		"validator removal initialization",
+		"POA validator removal initialization",
 		validatorManagerSDK.ErrorSignatureToError,
 		"initializeEndValidation(bytes32)",
 		validationID,
@@ -99,6 +123,8 @@ func InitValidatorRemoval(
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
+	initWithPos bool,
+	force bool,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -125,11 +151,14 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
+	ux.Logger.PrintToUser("Using validationID: %s for nodeID: %s", validationID, nodeID)
 	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		ownerPrivateKey,
 		validationID,
+		initWithPos,
+		force,
 	)
 	if err != nil {
 		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
