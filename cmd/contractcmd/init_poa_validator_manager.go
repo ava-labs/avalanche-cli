@@ -127,6 +127,9 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	}
 	clusterName := sc.Networks[network.Name()].ClusterName
 	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterName, initPOAManagerFlags.aggregatorExtraEndpoints)
+	if err != nil {
+		return err
+	}
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
