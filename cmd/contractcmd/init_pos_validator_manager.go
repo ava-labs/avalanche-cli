@@ -152,9 +152,6 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for peer := range extraAggregatorPeers {
-		ux.Logger.PrintToUser(logging.Yellow.Wrap("Aggregator peer %s"), peer)
-	}
 	if initPOSManagerFlags.rewardCalculatorAddress == "" {
 		initPOSManagerFlags.rewardCalculatorAddress = validatorManagerSDK.RewardCalculatorAddress
 	}
