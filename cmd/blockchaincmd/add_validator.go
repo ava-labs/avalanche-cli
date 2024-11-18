@@ -215,7 +215,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 func promptValidatorBalance(availableBalance uint64) (uint64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
-	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
+	txt := "What balance would you like to assign to the validator (in AVAX)?"
 	return app.Prompt.CaptureValidatorBalance(txt, availableBalance)
 }
 

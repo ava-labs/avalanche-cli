@@ -91,6 +91,7 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if network.ClusterName != "" {
+		clusterNameFlagValue = network.ClusterName
 		network = models.ConvertClusterToNetwork(network)
 	}
 
@@ -147,11 +148,13 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(network.ClusterName, initPOSManagerFlags.aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterNameFlagValue, initPOSManagerFlags.aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
-
+	for peer := range extraAggregatorPeers {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Aggregator peer %s"), peer)
+	}
 	if initPOSManagerFlags.rewardCalculatorAddress == "" {
 		initPOSManagerFlags.rewardCalculatorAddress = validatorManagerSDK.RewardCalculatorAddress
 	}
