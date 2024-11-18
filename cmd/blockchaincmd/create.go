@@ -266,7 +266,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			} else {
 				sc.ProxyContractOwner = sc.ValidatorManagerOwner
 			}
-			ux.Logger.GreenCheckmarkToUser("Proxy Admin Contract owner address %s", createFlags.proxyContractOwner)
 		}
 
 		if genesisPath == "" {

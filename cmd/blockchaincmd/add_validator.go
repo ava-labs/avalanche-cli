@@ -270,7 +270,7 @@ func CallAddValidator(
 				return err
 			}
 			stakeAmount, err = app.Prompt.CaptureUint64Compare(
-				fmt.Sprintf("Enter the amount of tokens to stake. Available: %d[%s]", availableTokens, sc.TokenName),
+				fmt.Sprintf("Enter the amount of tokens to stake. Available: %d %s", availableTokens, sc.TokenName),
 				[]prompts.Comparator{
 					{
 						Label: "Available",
