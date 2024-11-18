@@ -73,7 +73,6 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if network.ClusterName != "" {
-		clusterNameFlagValue = network.ClusterName
 		network = models.ConvertClusterToNetwork(network)
 	}
 	if initPOAManagerFlags.rpcEndpoint == "" {
@@ -126,10 +125,8 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterNameFlagValue, initPOAManagerFlags.aggregatorExtraEndpoints)
-	if err != nil {
-		return err
-	}
+	clusterName := sc.Networks[network.Name()].ClusterName
+	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterName, initPOAManagerFlags.aggregatorExtraEndpoints)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
