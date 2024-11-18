@@ -269,7 +269,7 @@ func CallAddValidator(
 				fmt.Sprintf("Enter the amount of %s to stake ", sc.TokenName),
 				[]prompts.Comparator{
 					{
-						Label: "Possitive",
+						Label: "Positive",
 						Type:  prompts.MoreThan,
 						Value: 0,
 					},
