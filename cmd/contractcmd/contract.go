@@ -8,10 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	app                  *application.Avalanche
-	clusterNameFlagValue string
-)
+var app *application.Avalanche
 
 // avalanche contract
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
