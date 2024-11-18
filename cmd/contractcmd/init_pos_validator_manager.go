@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -41,6 +42,7 @@ var (
 	initPOSManagerSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
+		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	initPOSManagerFlags InitPOSManagerFlags
@@ -88,6 +90,10 @@ func initPOSManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if network.ClusterName != "" {
+		network = models.ConvertClusterToNetwork(network)
+	}
+
 	if initPOSManagerFlags.rpcEndpoint == "" {
 		initPOSManagerFlags.rpcEndpoint, _, err = contract.GetBlockchainEndpoints(
 			app,
