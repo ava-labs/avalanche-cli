@@ -52,6 +52,8 @@ func createEtnaSubnetEvmConfig() error {
 		"blockchain",
 		"create",
 		subnetName,
+		"--vm-version",
+		"v0.6.11",
 		"--evm",
 		"--proof-of-authority",
 		"--poa-manager-owner",
