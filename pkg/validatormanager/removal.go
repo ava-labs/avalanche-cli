@@ -53,7 +53,7 @@ func PoaValidatorManagerGetSubnetValidatorWeightMessage(
 	nonce uint64,
 	weight uint64,
 ) (*warp.Message, error) {
-	addressedCallPayload, err := warpMessage.NewSubnetValidatorWeight(
+	addressedCallPayload, err := warpMessage.NewL1ValidatorWeight(
 		validationID,
 		nonce,
 		weight,
