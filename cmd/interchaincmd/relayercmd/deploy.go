@@ -42,7 +42,7 @@ var (
 
 const disableDeployToRemotePrompt = true
 
-// avalanche teleporter relayer deploy
+// avalanche interchain relayer deploy
 func newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",

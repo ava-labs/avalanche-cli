@@ -33,7 +33,7 @@ var (
 	first uint
 )
 
-// avalanche teleporter relayer logs
+// avalanche interchain relayer logs
 func newLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logs",

@@ -18,7 +18,7 @@ import (
 
 var stopNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji}
 
-// avalanche teleporter relayer stop
+// avalanche interchain relayer stop
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "stop",

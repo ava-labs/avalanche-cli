@@ -23,7 +23,7 @@ var (
 	globalNetworkFlags  networkoptions.NetworkFlags
 )
 
-// avalanche teleporter relayer start
+// avalanche interchain relayer start
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",

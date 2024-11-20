@@ -10,7 +10,7 @@ import (
 
 var app *application.Avalanche
 
-// avalanche teleporter relayer
+// avalanche interchain relayer
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "relayer",
