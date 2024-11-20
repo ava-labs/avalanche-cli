@@ -423,53 +423,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	createSubnet := true
-	var subnetID ids.ID
-	if subnetIDStr != "" {
-		subnetID, err = ids.FromString(subnetIDStr)
-		if err != nil {
-			return err
-		}
-		createSubnet = false
-	} else if !subnetOnly && sidecar.Networks != nil {
-		model, ok := sidecar.Networks[network.Name()]
-		if ok {
-			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
-				subnetID = model.SubnetID
-				createSubnet = false
-			}
-		}
-	}
-	fee := uint64(0)
-	if !subnetOnly {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
-	}
-	if createSubnet {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
-	}
-
-	kc, err := keychain.GetKeychainFromCmdLineFlags(
-		app,
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		useLedger,
-		ledgerAddresses,
-		fee,
-	)
-	if err != nil {
-		return err
-	}
-
-	if changeOwnerAddress == "" {
-		// use provided key as change owner unless already set
-		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-			changeOwnerAddress = pAddr[0]
-			ux.Logger.PrintToUser("Using %s to be set as a change owner for leftover AVAX", changeOwnerAddress)
-		}
-	}
-
 	if isEVMGenesis {
 		// is is a subnet evm or a custom vm based on subnet evm
 		if network.Kind == models.Mainnet {
@@ -555,6 +508,58 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		return PrintSubnetInfo(blockchainName, true)
+	}
+	// end of local deploy
+
+	createSubnet := true
+	var subnetID ids.ID
+	if subnetIDStr != "" {
+		subnetID, err = ids.FromString(subnetIDStr)
+		if err != nil {
+			return err
+		}
+		createSubnet = false
+	} else if !subnetOnly && sidecar.Networks != nil {
+		model, ok := sidecar.Networks[network.Name()]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+				subnetID = model.SubnetID
+				createSubnet = false
+			}
+		}
+	}
+
+	fee := uint64(0)
+	if !subnetOnly {
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
+	}
+	if createSubnet {
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
+	}
+
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		fee,
+	)
+	if err != nil {
+		return err
+	}
+
+	if changeOwnerAddress == "" {
+		// use provided key as change owner unless already set
+		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
+			changeOwnerAddress = pAddr[0]
+			ux.Logger.PrintToUser("Using %s to be set as a change owner for leftover AVAX", changeOwnerAddress)
+		} else {
+			ux.Logger.RedXToUser("Failed to get change owner address from keychain")
+			return err
+		}
 	}
 
 	if sidecar.Sovereign {
