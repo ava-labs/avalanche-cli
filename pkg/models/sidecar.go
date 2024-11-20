@@ -20,22 +20,24 @@ type NetworkData struct {
 }
 
 type Sidecar struct {
-	Name                string
-	VM                  VMType
-	VMVersion           string
-	RPCVersion          int
-	Subnet              string
-	ExternalToken       bool
-	TokenName           string
-	TokenSymbol         string
-	ChainID             string
-	Version             string
-	Networks            map[string]NetworkData
-	ImportedFromAPM     bool
-	ImportedVMID        string
-	CustomVMRepoURL     string
-	CustomVMBranch      string
-	CustomVMBuildScript string
+	Name                    string
+	VM                      VMType
+	VMVersion               string
+	RPCVersion              int
+	Subnet                  string
+	ExternalToken           bool
+	TokenName               string
+	TokenSymbol             string
+	ChainID                 string
+	Version                 string
+	Networks                map[string]NetworkData
+	ImportedFromAPM         bool
+	ImportedVMID            string
+	CustomVMBinaryPath      string
+	CustomVMRepoURL         string
+	CustomVMBranch          string
+	CustomVMBuildScript     string
+	CreateGenesisFromBinary bool
 	// Teleporter related
 	TeleporterReady   bool
 	TeleporterKey     string

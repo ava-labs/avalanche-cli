@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/hypersdk/codec"
 )
 
 func CreateCustomSidecar(
@@ -61,6 +62,7 @@ func CreateCustomSidecar(
 			if err != nil {
 				return nil, err
 			}
+			sc.CustomVMBinaryPath = vmPath
 		}
 	}
 	if useRepo {
@@ -203,4 +205,44 @@ func BuildCustomVM(
 		return fmt.Errorf("custom VM binary %s not executable. Expected build script to create an executable file", vmPath)
 	}
 	return nil
+}
+
+func CreateDefaultHyperSDKGenesis(app *application.Avalanche) ([]byte, error) {
+	defaultOption := "I want to use defaults for a test environment"
+	customOption := "I don't want to use default values"
+	options := []string{defaultOption, customOption}
+	option, err := app.Prompt.CaptureList("What values do you want to use for your genesis?", options)
+	if err != nil {
+		return []byte{}, err
+	}
+	var accounts []codec.Address
+	switch option {
+	case defaultOption:
+		return CreateHyperSDKGenesis(nil)
+	case customOption:
+	loop:
+		for {
+			addAddressOption := "Add an address to the initial token allocation"
+			confirmOption := "Confirm and create genesis"
+			action, err := app.Prompt.CaptureList("How do you want to proceed?", []string{addAddressOption, confirmOption})
+			if err != nil {
+				return []byte{}, err
+			}
+			switch action {
+			case addAddressOption:
+				addrStr, err := app.Prompt.CaptureString("Enter checksummed address to add to the initial token allocation")
+				if err != nil {
+					return []byte{}, err
+				}
+				addr, err := codec.StringToAddress(addrStr)
+				if err != nil {
+					return []byte{}, err
+				}
+				accounts = append(accounts, addr)
+			case confirmOption:
+				break loop
+			}
+		}
+	}
+	return CreateHyperSDKGenesis(accounts)
 }

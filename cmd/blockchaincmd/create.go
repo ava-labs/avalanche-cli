@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -356,14 +357,36 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		if genesisPath == "" {
-			genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
+			providePath := "I'll provide the genesis path"
+			binaryGen := "The VM binary will generate the genesis"
+			hyperSDKOption := "HyperSDK VM Only: Use the DefaultGenesis"
+			options := []string{providePath, binaryGen, hyperSDKOption}
+			opt, err := app.Prompt.CaptureList(
+				"How would you like to provide the genesis file?",
+				options,
+			)
 			if err != nil {
 				return err
 			}
-		}
-		genesisBytes, err = os.ReadFile(genesisPath)
-		if err != nil {
-			return err
+			switch opt {
+			case providePath:
+				genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
+				if err != nil {
+					return err
+				}
+				genesisBytes, err = os.ReadFile(genesisPath)
+				if err != nil {
+					return err
+				}
+			case binaryGen:
+				createGenesisFromBinary = true
+			case hyperSDKOption:
+				gb, err := vm.CreateDefaultHyperSDKGenesis(app)
+				if err != nil {
+					return err
+				}
+				genesisBytes = gb
+			}
 		}
 		var tokenSymbol string
 		if evmCompatibleGenesis := utils.ByteSliceIsSubnetEvmGenesis(genesisBytes); evmCompatibleGenesis {
@@ -413,6 +436,14 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
+	}
+
+	if createGenesisFromBinary {
+		output, err := exec.Command(sc.CustomVMBinaryPath, "genesis").Output()
+		if err != nil {
+			return err
+		}
+		genesisBytes = output
 	}
 
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
