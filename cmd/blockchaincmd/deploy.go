@@ -588,6 +588,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
+	} else {
+		if network.Kind == models.Local {
+			sameControlKey = true
+		}
 	}
 
 	// from here on we are assuming a public deploy
@@ -914,8 +918,25 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish conversion to sovereign L1", blockchainName)
 		}
 	} else {
-		if err := app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "", nil, clusterNameFlagValue); err != nil {
+		if err := app.UpdateSidecarNetworks(
+			&sidecar,
+			network,
+			subnetID,
+			blockchainID,
+			"",
+			"",
+			nil,
+			clusterNameFlagValue,
+		); err != nil {
 			return err
+		}
+		if network.Kind == models.Local {
+			if err := networkcmd.TrackSubnet(
+				blockchainName,
+				avagoBinaryPath,
+			); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -924,6 +945,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
 	if network.Kind == models.Local {
+		ux.Logger.PrintToUser("")
 		return PrintSubnetInfo(blockchainName, true)
 	}
 
