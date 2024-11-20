@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -35,7 +36,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -423,6 +423,53 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	createSubnet := true
+	var subnetID ids.ID
+	if subnetIDStr != "" {
+		subnetID, err = ids.FromString(subnetIDStr)
+		if err != nil {
+			return err
+		}
+		createSubnet = false
+	} else if !subnetOnly && sidecar.Networks != nil {
+		model, ok := sidecar.Networks[network.Name()]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+				subnetID = model.SubnetID
+				createSubnet = false
+			}
+		}
+	}
+	fee := uint64(0)
+	if !subnetOnly {
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
+	}
+	if createSubnet {
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
+	}
+
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		fee,
+	)
+	if err != nil {
+		return err
+	}
+
+	if changeOwnerAddress == "" {
+		// use provided key as change owner unless already set
+		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
+			changeOwnerAddress = pAddr[0]
+			ux.Logger.PrintToUser("Using %s to be set as a change owner for leftover AVAX", changeOwnerAddress)
+		}
+	}
+
 	if isEVMGenesis {
 		// is is a subnet evm or a custom vm based on subnet evm
 		if network.Kind == models.Mainnet {
@@ -637,46 +684,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 	if subnetOnly && subnetIDStr != "" {
 		return errMutuallyExlusiveSubnetFlags
-	}
-
-	createSubnet := true
-	var subnetID ids.ID
-	if subnetIDStr != "" {
-		subnetID, err = ids.FromString(subnetIDStr)
-		if err != nil {
-			return err
-		}
-		createSubnet = false
-	} else if !subnetOnly && sidecar.Networks != nil {
-		model, ok := sidecar.Networks[network.Name()]
-		if ok {
-			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
-				subnetID = model.SubnetID
-				createSubnet = false
-			}
-		}
-	}
-
-	fee := uint64(0)
-	if !subnetOnly {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
-	}
-	if createSubnet {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
-	}
-
-	kc, err := keychain.GetKeychainFromCmdLineFlags(
-		app,
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		useLedger,
-		ledgerAddresses,
-		fee,
-	)
-	if err != nil {
-		return err
 	}
 
 	network.HandlePublicNetworkSimulation()
