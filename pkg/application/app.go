@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/apm/apm"
 	"github.com/ava-labs/avalanche-cli/pkg/config"
@@ -115,16 +116,28 @@ func (app *Avalanche) GetAWMRelayerBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AWMRelayerInstallDir)
 }
 
-func (app *Avalanche) GetAWMRelayerStorageDir() string {
-	return filepath.Join(app.GetRunDir(), constants.AWMRelayerStorageDir)
+func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string {
+	networkDirName := strings.ReplaceAll(networkKind.String(), " ", "")
+	return filepath.Join(app.GetRunDir(), networkDirName, constants.LocalRelayerDir)
 }
 
-func (app *Avalanche) GetAWMRelayerLogPath() string {
-	return filepath.Join(app.GetRunDir(), constants.AWMRelayerLogFilename)
+func (app *Avalanche) GetLocalRelayerStorageDir(networkKind models.NetworkKind) string {
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerStorageDir)
 }
 
-func (app *Avalanche) GetAWMRelayerRunPath() string {
-	return filepath.Join(app.GetRunDir(), constants.AWMRelayerRunFilename)
+func (app *Avalanche) GetLocalRelayerConfigPath(networkKind models.NetworkKind, localNetworkRootDir string) string {
+	if localNetworkRootDir != "" {
+		return filepath.Join(localNetworkRootDir, constants.AWMRelayerConfigFilename)
+	}
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerConfigFilename)
+}
+
+func (app *Avalanche) GetLocalRelayerLogPath(networkKind models.NetworkKind) string {
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerLogFilename)
+}
+
+func (app *Avalanche) GetLocalRelayerRunPath(networkKind models.NetworkKind) string {
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerRunFilename)
 }
 
 func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
@@ -517,7 +530,6 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	sc *models.Sidecar,
 	network models.Network,
 	subnetID ids.ID,
-	transferSubnetOwnershipTxID ids.ID,
 	blockchainID ids.ID,
 	teleporterMessengerAddress string,
 	teleporterRegistryAddress string,
@@ -526,12 +538,11 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		sc.Networks = make(map[string]models.NetworkData)
 	}
 	sc.Networks[network.Name()] = models.NetworkData{
-		SubnetID:                    subnetID,
-		TransferSubnetOwnershipTxID: transferSubnetOwnershipTxID,
-		BlockchainID:                blockchainID,
-		RPCVersion:                  sc.RPCVersion,
-		TeleporterMessengerAddress:  teleporterMessengerAddress,
-		TeleporterRegistryAddress:   teleporterRegistryAddress,
+		SubnetID:                   subnetID,
+		BlockchainID:               blockchainID,
+		RPCVersion:                 sc.RPCVersion,
+		TeleporterMessengerAddress: teleporterMessengerAddress,
+		TeleporterRegistryAddress:  teleporterRegistryAddress,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
@@ -555,7 +566,7 @@ func (app *Avalanche) GetTokenSymbol(blockchainName string) string {
 	return sidecar.TokenSymbol
 }
 
-func (app *Avalanche) GetSubnetNames() ([]string, error) {
+func (app *Avalanche) GetBlockchainNames() ([]string, error) {
 	matches, err := os.ReadDir(app.GetSubnetDir())
 	if err != nil {
 		return nil, err
@@ -574,8 +585,8 @@ func (app *Avalanche) GetSubnetNames() ([]string, error) {
 	return names, nil
 }
 
-func (app *Avalanche) GetSubnetNamesOnNetwork(network models.Network) ([]string, error) {
-	blockchainNames, err := app.GetSubnetNames()
+func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]string, error) {
+	blockchainNames, err := app.GetBlockchainNames()
 	if err != nil {
 		return nil, err
 	}
@@ -585,7 +596,18 @@ func (app *Avalanche) GetSubnetNamesOnNetwork(network models.Network) ([]string,
 		if err != nil {
 			return nil, err
 		}
-		if sc.Networks[network.Name()].BlockchainID != ids.Empty {
+		networkName := network.Name()
+		if sc.Networks[networkName].BlockchainID == ids.Empty {
+			for k := range sc.Networks {
+				sidecarNetwork, err := app.GetNetworkFromSidecarNetworkName(k)
+				if err == nil {
+					if sidecarNetwork.Kind == network.Kind && sidecarNetwork.Endpoint == network.Endpoint {
+						networkName = sidecarNetwork.Name()
+					}
+				}
+			}
+		}
+		if sc.Networks[networkName].BlockchainID != ids.Empty {
 			filtered = append(filtered, blockchainName)
 		}
 	}
@@ -825,4 +847,27 @@ func (app *Avalanche) ListClusterNames() ([]string, error) {
 		return []string{}, err
 	}
 	return maps.Keys(clustersConfig.Clusters), nil
+}
+
+func (app *Avalanche) GetNetworkFromSidecarNetworkName(
+	networkName string,
+) (models.Network, error) {
+	switch {
+	case networkName == models.Local.String():
+		return models.NewLocalNetwork(), nil
+	case strings.HasPrefix(networkName, "Cluster"):
+		// network names on sidecar can refer to a cluster in the form "Cluster <clusterName>"
+		// we use clusterName to find out the underlying network for the cluster
+		// (one of local, devnet, fuji, mainnet)
+		parts := strings.Split(networkName, " ")
+		if len(parts) != 2 {
+			return models.UndefinedNetwork, fmt.Errorf("expected 'Cluster clusterName' on network name %s", networkName)
+		}
+		return app.GetClusterNetwork(parts[1])
+	case networkName == models.Fuji.String():
+		return models.NewFujiNetwork(), nil
+	case networkName == models.Mainnet.String():
+		return models.NewMainnetNetwork(), nil
+	}
+	return models.UndefinedNetwork, fmt.Errorf("unsupported network name")
 }

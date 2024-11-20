@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	avalancheSDK "github.com/ava-labs/avalanche-cli/sdk/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/coreth/ethclient"
@@ -33,14 +34,9 @@ import (
 )
 
 const (
-	blockTimestampKey   = "blockTimestamp"
-	feeConfigKey        = "initialFeeConfig"
-	initialMintKey      = "initialMint"
-	adminAddressesKey   = "adminAddresses"
-	managerAddressesKey = "managerAddresses"
-	enabledAddressesKey = "enabledAddresses"
+	feeConfigKey   = "initialFeeConfig"
+	initialMintKey = "initialMint"
 
-	enabledLabel = "enabled"
 	managerLabel = "manager"
 	adminLabel   = "admin"
 
@@ -393,7 +389,7 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 		setGasStep                  = "Set block gas cost step"
 	)
 
-	config.FeeConfig = vm.StarterFeeConfig
+	config.FeeConfig = avalancheSDK.StarterFeeConfig
 
 	if useDefault {
 		config.FeeConfig.GasLimit = vm.LowGasLimit
@@ -421,13 +417,13 @@ func GetFeeConfig(config params.ChainConfig, useDefault bool) (
 
 	switch feeDefault {
 	case lowOption:
-		vm.SetStandardGas(&config, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
+		vm.SetStandardGas(&config.FeeConfig, vm.LowGasLimit, vm.LowTargetGas, useDynamicFees)
 		return config, nil
 	case mediumOption:
-		vm.SetStandardGas(&config, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
+		vm.SetStandardGas(&config.FeeConfig, vm.MediumGasLimit, vm.MediumTargetGas, useDynamicFees)
 		return config, err
 	case highOption:
-		vm.SetStandardGas(&config, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
+		vm.SetStandardGas(&config.FeeConfig, vm.HighGasLimit, vm.HighTargetGas, useDynamicFees)
 		return config, err
 	default:
 		ux.Logger.PrintToUser("Customizing fee config")

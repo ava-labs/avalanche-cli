@@ -9,32 +9,40 @@ import (
 	"time"
 
 	cmdflags "github.com/ava-labs/avalanche-cli/cmd/flags"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/spf13/cobra"
 )
 
 type HomeFlags struct {
-	chainFlags   contract.ChainFlags
-	homeAddress  string
-	native       bool
-	erc20Address string
+	chainFlags      contract.ChainSpec
+	homeAddress     string
+	native          bool
+	erc20Address    string
+	privateKeyFlags contract.PrivateKeyFlags
+	RPCEndpoint     string
 }
 
 type RemoteFlags struct {
-	chainFlags        contract.ChainFlags
+	chainFlags        contract.ChainSpec
 	native            bool
 	removeMinterAdmin bool
+	privateKeyFlags   contract.PrivateKeyFlags
+	RPCEndpoint       string
+	Decimals          uint8
 }
 
 type DeployFlags struct {
@@ -63,31 +71,77 @@ func NewDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
-	contract.AddChainFlagsToCmd(
-		cmd,
-		&deployFlags.homeFlags.chainFlags,
-		"set the Transferrer's Home Chain",
-		"home-subnet",
+	deployFlags.homeFlags.chainFlags.SetFlagNames(
+		"home-blockchain",
 		"c-chain-home",
+		"",
+		"",
+		"",
 	)
-	contract.AddChainFlagsToCmd(
-		cmd,
-		&deployFlags.remoteFlags.chainFlags,
-		"set the Transferrer's Remote Chain",
-		"remote-subnet",
+	deployFlags.homeFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Home Chain into %s")
+	deployFlags.remoteFlags.chainFlags.SetFlagNames(
+		"remote-blockchain",
 		"c-chain-remote",
+		"",
+		"",
+		"",
 	)
+	deployFlags.remoteFlags.chainFlags.AddToCmd(cmd, "set the Transferrer's Remote Chain into %s")
 	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
-	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche InterChain Token Transfer to be used (defaults to main branch)")
+	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche Interchain Token Transfer (ICTT) to be used (defaults to main branch)")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
-	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", true, "remove the native minter precompile admin found on remote blockchain genesis")
+	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", false, "remove the native minter precompile admin found on remote blockchain genesis")
+	deployFlags.homeFlags.privateKeyFlags.SetFlagNames("home-private-key", "home-key", "home-genesis-key")
+	deployFlags.homeFlags.privateKeyFlags.AddToCmd(cmd, "to deploy Transferrer Home")
+	deployFlags.remoteFlags.privateKeyFlags.SetFlagNames("remote-private-key", "remote-key", "remote-genesis-key")
+	deployFlags.remoteFlags.privateKeyFlags.AddToCmd(cmd, "to deploy Transferrer Remote")
+	cmd.Flags().StringVar(&deployFlags.homeFlags.RPCEndpoint, "home-rpc", "", "use the given RPC URL to connect to the home blockchain")
+	cmd.Flags().StringVar(&deployFlags.remoteFlags.RPCEndpoint, "remote-rpc", "", "use the given RPC URL to connect to the remote blockchain")
+	cmd.Flags().Uint8Var(&deployFlags.remoteFlags.Decimals, "remote-token-decimals", 0, "use the given number of token decimals for the Transferrer Remote [defaults to token home's decimals (18 for a new wrapped native home token)]")
 	return cmd
 }
 
 func deploy(_ *cobra.Command, args []string) error {
 	return CallDeploy(args, deployFlags)
+}
+
+func getHomeKeyAndAddress(app *application.Avalanche, network models.Network, homeFlags HomeFlags) (string, string, error) {
+	// First check if there is a genesis key able to be used.
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		homeFlags.chainFlags,
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Propmt for the key to be used.
+	// Note that this key must have enough funds to cover gas cost on the
+	// home chain, and also enough of the token on the home chain to collateralize
+	// the remote chain if it is a native token remote.
+	homeKey, err := prompts.PromptPrivateKey(
+		app.Prompt,
+		"pay for home deployment fees, and collateralization (if necessary)",
+		app.GetKeyDir(),
+		app.GetKey,
+		genesisAddress,
+		genesisPrivateKey,
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Calculate the address for the key.
+	pk, err := crypto.HexToECDSA(homeKey)
+	if err != nil {
+		return "", "", err
+	}
+	homeKeyAddress := crypto.PubkeyToAddress(pk.PublicKey).Hex()
+
+	return homeKey, homeKeyAddress, nil
 }
 
 func CallDeploy(_ []string, flags DeployFlags) error {
@@ -110,8 +164,8 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// flags exclusiveness
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.homeFlags.chainFlags.SubnetName != "", flags.homeFlags.chainFlags.CChain}) {
-		return fmt.Errorf("--home-subnet and --c-chain-home are mutually exclusive flags")
+	if err := flags.homeFlags.chainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
 	}
 	if !cmdflags.EnsureMutuallyExclusive([]bool{
 		flags.homeFlags.homeAddress != "",
@@ -120,23 +174,31 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}) {
 		return fmt.Errorf("--deploy-native-home, --deploy-erc20-home, and --use-home are mutually exclusive flags")
 	}
-	if !cmdflags.EnsureMutuallyExclusive([]bool{flags.remoteFlags.chainFlags.SubnetName != "", flags.remoteFlags.chainFlags.CChain}) {
-		return fmt.Errorf("--remote-subnet and --c-chain-remote are mutually exclusive flags")
+	if err := flags.remoteFlags.chainFlags.CheckMutuallyExclusiveFields(); err != nil {
+		return err
 	}
 
 	// Home Chain Prompts
-	if flags.homeFlags.chainFlags.SubnetName == "" && !flags.homeFlags.chainFlags.CChain {
+	if !flags.homeFlags.chainFlags.Defined() {
 		prompt := "Where is the Token origin?"
-		if cancel, err := promptChain(prompt, network, false, "", &flags.homeFlags.chainFlags); err != nil {
+		if cancel, err := contract.PromptChain(app, network, prompt, "", &flags.homeFlags.chainFlags); err != nil {
 			return err
 		} else if cancel {
 			return nil
 		}
 	}
+	homeRPCEndpoint := flags.homeFlags.RPCEndpoint
+	if homeRPCEndpoint == "" {
+		homeRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, flags.homeFlags.chainFlags, true, false)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Home RPC Endpoint: %s"), homeRPCEndpoint)
+	}
 
 	// Home Chain Validations
-	if flags.homeFlags.chainFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.homeFlags.chainFlags.SubnetName); err != nil {
+	if flags.homeFlags.chainFlags.BlockchainName != "" {
+		if err := validateSubnet(network, flags.homeFlags.chainFlags.BlockchainName); err != nil {
 			return err
 		}
 	}
@@ -144,21 +206,21 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	// Home Contract Prompts
 	if flags.homeFlags.homeAddress == "" && flags.homeFlags.erc20Address == "" && !flags.homeFlags.native {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.homeFlags.chainFlags.SubnetName,
+			flags.homeFlags.chainFlags.BlockchainName,
 			flags.homeFlags.chainFlags.CChain,
 		)
 		if err != nil {
 			return err
 		}
 		prompt := "What kind of token do you want to be able to transfer?"
-		popularOption := "A popular token (e.g. AVAX, USDC, WAVAX, ...) (recommended)"
+		popularOption := "A popular token (e.g. WAVAX, USDC, ...) (recommended)"
 		homeDeployedOption := "A token that already has a Home deployed (recommended)"
 		deployNewHomeOption := "Deploy a new Home for the token"
 		explainOption := "Explain the difference"
 		goBackOption := "Go Back"
 		homeChain := "C-Chain"
 		if !flags.homeFlags.chainFlags.CChain {
-			homeChain = flags.homeFlags.chainFlags.SubnetName
+			homeChain = flags.homeFlags.chainFlags.BlockchainName
 		}
 		popularTokensInfo, err := GetPopularTokensInfo(network, homeChain)
 		if err != nil {
@@ -196,6 +258,11 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 				if option == goBackOption {
 					continue
 				}
+				p := utils.Find(popularTokensInfo, func(p PopularTokenInfo) bool { return p.Desc() == option })
+				if p == nil {
+					return fmt.Errorf("expected to have found a popular token from option")
+				}
+				flags.homeFlags.homeAddress = p.TransferrerHomeAddress
 			case homeDeployedOption:
 				addr, err := app.Prompt.CaptureAddress(
 					"Enter the address of the Home",
@@ -230,9 +297,9 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 						ux.Logger.PrintToUser("There already is a Token Home for %s deployed on %s.", p.TokenName, homeChain)
 						ux.Logger.PrintToUser("")
 						ux.Logger.PrintToUser("Home Address: %s", p.TransferrerHomeAddress)
-						deployANewHupOption := "Yes, use the existing Home (recommended)"
-						useTheExistingHomeOption := "No, deploy my own Home"
-						options := []string{deployANewHupOption, useTheExistingHomeOption, explainOption}
+						useTheExistingHomeOption := "Yes, use the existing Home (recommended)"
+						deployANewHupOption := "No, deploy my own Home"
+						options := []string{useTheExistingHomeOption, deployANewHupOption, explainOption}
 						option, err := app.Prompt.CaptureList(
 							"Do you want to use the existing Home?",
 							options,
@@ -259,7 +326,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 					}
 				}
 			case explainOption:
-				ux.Logger.PrintToUser("An Avalanche InterChain Token Transferrer consists of one Home and at least one but possibly many Remotes.")
+				ux.Logger.PrintToUser("An Avalanche Interchain Token Transferrer consists of one Home and at least one but possibly many Remotes.")
 				ux.Logger.PrintToUser("The Home manages the asset to be shared to Remote instances. It lives on the Subnet")
 				ux.Logger.PrintToUser("where the asset exists")
 				ux.Logger.PrintToUser("The Remotes live on the other Subnets that want to import the asset managed by the Home.")
@@ -280,6 +347,13 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 	}
 
+	// Get the key to be used to deploy the token home contract and collateralize the remote
+	// in the case that it is a native token remote.
+	homeKey, homeKeyAddress, err := getHomeKeyAndAddress(app, network, flags.homeFlags)
+	if err != nil {
+		return err
+	}
+
 	// Home Contract Validations
 	if flags.homeFlags.homeAddress != "" {
 		if err := prompts.ValidateAddress(flags.homeFlags.homeAddress); err != nil {
@@ -293,24 +367,76 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	}
 
 	// Remote Chain Prompts
-	if !flags.remoteFlags.chainFlags.CChain && flags.remoteFlags.chainFlags.SubnetName == "" {
+	if !flags.remoteFlags.chainFlags.Defined() {
 		prompt := "Where should the token be available as an ERC-20?"
 		if flags.remoteFlags.native {
 			prompt = "Where should the token be available as a Native Token?"
 		}
-		if cancel, err := promptChain(prompt, network, flags.homeFlags.chainFlags.CChain, flags.homeFlags.chainFlags.SubnetName, &flags.remoteFlags.chainFlags); err != nil {
+		flags.remoteFlags.chainFlags.SetEnabled(
+			true,
+			!flags.homeFlags.chainFlags.CChain,
+			false,
+			false,
+			false,
+		)
+		if cancel, err := contract.PromptChain(
+			app,
+			network,
+			prompt,
+			flags.homeFlags.chainFlags.BlockchainName,
+			&flags.remoteFlags.chainFlags,
+		); err != nil {
 			return err
 		} else if cancel {
 			return nil
 		}
 	}
-
-	// Remote Chain Validations
-	if flags.remoteFlags.chainFlags.SubnetName != "" {
-		if err := validateSubnet(network, flags.remoteFlags.chainFlags.SubnetName); err != nil {
+	remoteRPCEndpoint := flags.remoteFlags.RPCEndpoint
+	if remoteRPCEndpoint == "" {
+		remoteRPCEndpoint, _, err = contract.GetBlockchainEndpoints(app, network, flags.remoteFlags.chainFlags, true, false)
+		if err != nil {
 			return err
 		}
-		if flags.remoteFlags.chainFlags.SubnetName == flags.homeFlags.chainFlags.SubnetName {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Remote RPC Endpoint: %s"), remoteRPCEndpoint)
+	}
+
+	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		flags.remoteFlags.chainFlags,
+	)
+	if err != nil {
+		return err
+	}
+	remoteKey, err := flags.remoteFlags.privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+	if err != nil {
+		return err
+	}
+	if remoteKey == "" {
+		remoteKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for home deploy fees",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	pk, err := crypto.HexToECDSA(remoteKey)
+	if err != nil {
+		return err
+	}
+	remoteKeyAddress := crypto.PubkeyToAddress(pk.PublicKey).Hex()
+
+	// Remote Chain Validations
+	if flags.remoteFlags.chainFlags.BlockchainName != "" {
+		if err := validateSubnet(network, flags.remoteFlags.chainFlags.BlockchainName); err != nil {
+			return err
+		}
+		if flags.remoteFlags.chainFlags.BlockchainName == flags.homeFlags.chainFlags.BlockchainName {
 			return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 		}
 	}
@@ -318,8 +444,52 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		return fmt.Errorf("trying to make an Transferrer were home and remote are on the same subnet")
 	}
 
+	// Checkout minter availability for native remote before doing something else
+	remoteBlockchainDesc, err := contract.GetBlockchainDesc(flags.remoteFlags.chainFlags)
+	if err != nil {
+		return err
+	}
+	var (
+		remoteMinterManagerPrivKey, remoteMinterManagerAddress string
+		remoteMinterManagerIsAdmin                             bool
+	)
+	if flags.remoteFlags.native {
+		var remoteMinterAdminFound, remoteManagedMinterAdmin bool
+		remoteMinterAdminFound, remoteManagedMinterAdmin, _, remoteMinterManagerAddress, remoteMinterManagerPrivKey, err = contract.GetEVMSubnetGenesisNativeMinterAdmin(
+			app,
+			network,
+			flags.remoteFlags.chainFlags,
+		)
+		if err != nil {
+			return err
+		}
+		if !remoteManagedMinterAdmin {
+			remoteMinterAdminAddress := remoteMinterManagerAddress
+			var remoteMinterManagerFound, remoteManagedMinterManager bool
+			remoteMinterManagerFound, remoteManagedMinterManager, _, remoteMinterManagerAddress, remoteMinterManagerPrivKey, err = contract.GetEVMSubnetGenesisNativeMinterManager(
+				app,
+				network,
+				flags.remoteFlags.chainFlags,
+			)
+			if err != nil {
+				return err
+			}
+			if !remoteMinterManagerFound {
+				return fmt.Errorf("there is no native minter precompile admin or manager on %s", remoteBlockchainDesc)
+			}
+			if !remoteManagedMinterManager {
+				if remoteMinterAdminFound {
+					ux.Logger.PrintToUser("no managed key found for native minter admin %s on %s. add a CLI key for it using 'avalanche key create --file'", remoteMinterAdminAddress, remoteBlockchainDesc)
+				}
+				return fmt.Errorf("no managed key found for native minter manager %s on %s. add a CLI key for it using 'avalanche key create --file'", remoteMinterManagerAddress, remoteBlockchainDesc)
+			}
+		} else {
+			remoteMinterManagerIsAdmin = true
+		}
+	}
+
 	// Setup Contracts
-	ux.Logger.PrintToUser("Downloading Avalanche InterChain Token Transfer Contracts")
+	ux.Logger.PrintToUser("Downloading Avalanche ICTT Contracts")
 	version := constants.ICTTVersion
 	if flags.version != "" {
 		version = flags.version
@@ -327,90 +497,57 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err := ictt.DownloadRepo(app, version); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Compiling Avalanche InterChain Token Transfer")
+	ux.Logger.PrintToUser("Compiling Avalanche ICTT Contracts")
 	if err := ictt.BuildContracts(app); err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("")
 
 	// Home Deploy
 	icttSrcDir, err := ictt.RepoDir(app)
 	if err != nil {
 		return err
 	}
-	var (
-		homeAddress   common.Address
-		tokenSymbol   string
-		tokenName     string
-		tokenDecimals uint8
-		tokenAddress  common.Address
-	)
+	var homeAddress common.Address
 	// TODO: need registry address, manager address, private key for the home chain (academy for fuji)
-	homeEndpoint, _, _, homeBlockchainID, _, homeRegistryAddress, homeKey, err := teleporter.GetSubnetParams(
-		app,
-		network,
-		flags.homeFlags.chainFlags.SubnetName,
-		flags.homeFlags.chainFlags.CChain,
-	)
+	homeBlockchainID, err := contract.GetBlockchainID(app, network, flags.homeFlags.chainFlags)
+	if err != nil {
+		return err
+	}
+	homeRegistryAddress, _, err := contract.GetICMInfo(app, network, flags.homeFlags.chainFlags, true, false, true)
 	if err != nil {
 		return err
 	}
 	if flags.homeFlags.homeAddress != "" {
 		homeAddress = common.HexToAddress(flags.homeFlags.homeAddress)
-		endpointKind, err := ictt.GetEndpointKind(homeEndpoint, homeAddress)
-		if err != nil {
-			return err
-		}
-		switch endpointKind {
-		case ictt.ERC20TokenHome:
-			tokenAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeEndpoint, homeAddress)
-			if err != nil {
-				return err
-			}
-		case ictt.NativeTokenHome:
-			tokenAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeEndpoint, homeAddress)
-			if err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
-		}
-		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
-			homeEndpoint,
-			tokenAddress.Hex(),
-		)
-		if err != nil {
-			return err
-		}
 	}
 	if flags.homeFlags.erc20Address != "" {
-		tokenAddress = common.HexToAddress(flags.homeFlags.erc20Address)
-		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
-			homeEndpoint,
-			tokenAddress.Hex(),
+		tokenHomeAddress := common.HexToAddress(flags.homeFlags.erc20Address)
+		tokenHomeDecimals, err := ictt.GetTokenDecimals(
+			homeRPCEndpoint,
+			tokenHomeAddress,
 		)
 		if err != nil {
 			return err
 		}
 		homeAddress, err = ictt.DeployERC20Home(
 			icttSrcDir,
-			homeEndpoint,
-			homeKey.PrivKeyHex(),
+			homeRPCEndpoint,
+			homeKey,
 			common.HexToAddress(homeRegistryAddress),
-			common.HexToAddress(homeKey.C()),
-			tokenAddress,
-			tokenDecimals,
+			common.HexToAddress(homeKeyAddress),
+			tokenHomeAddress,
+			tokenHomeDecimals,
 		)
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Home Deployed to %s", homeEndpoint)
+		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
 		ux.Logger.PrintToUser("")
 	}
 	if flags.homeFlags.native {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.homeFlags.chainFlags.SubnetName,
+			flags.homeFlags.chainFlags.BlockchainName,
 			flags.homeFlags.chainFlags.CChain,
 		)
 		if err != nil {
@@ -418,46 +555,38 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		wrappedNativeTokenAddress, err := ictt.DeployWrappedNativeToken(
 			icttSrcDir,
-			homeEndpoint,
-			homeKey.PrivKeyHex(),
+			homeRPCEndpoint,
+			homeKey,
 			nativeTokenSymbol,
 		)
 		if err != nil {
 			return err
 		}
-		tokenSymbol, tokenName, tokenDecimals, err = ictt.GetTokenParams(
-			homeEndpoint,
-			wrappedNativeTokenAddress.Hex(),
-		)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeEndpoint)
-		ux.Logger.PrintToUser("%s Address: %s", tokenSymbol, wrappedNativeTokenAddress)
+		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeRPCEndpoint)
+		ux.Logger.PrintToUser("%s Address: %s", nativeTokenSymbol, wrappedNativeTokenAddress)
 		ux.Logger.PrintToUser("")
 		homeAddress, err = ictt.DeployNativeHome(
 			icttSrcDir,
-			homeEndpoint,
-			homeKey.PrivKeyHex(),
+			homeRPCEndpoint,
+			homeKey,
 			common.HexToAddress(homeRegistryAddress),
-			common.HexToAddress(homeKey.C()),
+			common.HexToAddress(homeKeyAddress),
 			wrappedNativeTokenAddress,
 		)
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("Home Deployed to %s", homeEndpoint)
+		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
 		ux.Logger.PrintToUser("")
 	}
 
 	// Remote Deploy
-	remoteEndpoint, remoteBlockchainName, _, remoteBlockchainID, _, remoteRegistryAddress, remoteKey, err := teleporter.GetSubnetParams(
-		app,
-		network,
-		flags.remoteFlags.chainFlags.SubnetName,
-		flags.remoteFlags.chainFlags.CChain,
-	)
+	remoteBlockchainID, err := contract.GetBlockchainID(app, network, flags.remoteFlags.chainFlags)
+	if err != nil {
+		return err
+	}
+	remoteRegistryAddress, _, err := contract.GetICMInfo(app, network, flags.remoteFlags.chainFlags, true, false, true)
 	if err != nil {
 		return err
 	}
@@ -467,25 +596,64 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteSupply  *big.Int
 	)
 
+	// get token home symbol, name, decimals
+	endpointKind, err := ictt.GetEndpointKind(homeRPCEndpoint, homeAddress)
+	if err != nil {
+		return err
+	}
+	var tokenHomeAddress common.Address
+	switch endpointKind {
+	case ictt.ERC20TokenHome:
+		tokenHomeAddress, err = ictt.ERC20TokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
+		if err != nil {
+			return err
+		}
+	case ictt.NativeTokenHome:
+		tokenHomeAddress, err = ictt.NativeTokenHomeGetTokenAddress(homeRPCEndpoint, homeAddress)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported ictt endpoint kind %d", endpointKind)
+	}
+	tokenHomeSymbol, tokenHomeName, _, err := ictt.GetTokenParams(
+		homeRPCEndpoint,
+		tokenHomeAddress,
+	)
+	if err != nil {
+		return err
+	}
+	homeDecimals, err := ictt.TokenHomeGetDecimals(homeRPCEndpoint, homeAddress)
+	if err != nil {
+		return err
+	}
+
 	if !flags.remoteFlags.native {
+		// we default token remote decimals to be the same as token home decimals,
+		// but allow to be overridden by a user's provided flag
+		remoteDecimals := homeDecimals
+		if flags.remoteFlags.Decimals != 0 {
+			remoteDecimals = flags.remoteFlags.Decimals
+		}
 		remoteAddress, err = ictt.DeployERC20Remote(
 			icttSrcDir,
-			remoteEndpoint,
-			remoteKey.PrivKeyHex(),
+			remoteRPCEndpoint,
+			remoteKey,
 			common.HexToAddress(remoteRegistryAddress),
-			common.HexToAddress(remoteKey.C()),
+			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
-			tokenName,
-			tokenSymbol,
-			tokenDecimals,
+			homeDecimals,
+			tokenHomeName,
+			tokenHomeSymbol,
+			remoteDecimals,
 		)
 		if err != nil {
 			return err
 		}
 	} else {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
-			flags.remoteFlags.chainFlags.SubnetName,
+			flags.remoteFlags.chainFlags.BlockchainName,
 			flags.remoteFlags.chainFlags.CChain,
 		)
 		if err != nil {
@@ -494,22 +662,20 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		remoteSupply, err = contract.GetEVMSubnetGenesisSupply(
 			app,
 			network,
-			flags.remoteFlags.chainFlags.SubnetName,
-			flags.remoteFlags.chainFlags.CChain,
-			"",
+			flags.remoteFlags.chainFlags,
 		)
 		if err != nil {
 			return err
 		}
 		remoteAddress, err = ictt.DeployNativeRemote(
 			icttSrcDir,
-			remoteEndpoint,
-			remoteKey.PrivKeyHex(),
+			remoteRPCEndpoint,
+			remoteKey,
 			common.HexToAddress(remoteRegistryAddress),
-			common.HexToAddress(remoteKey.C()),
+			common.HexToAddress(remoteKeyAddress),
 			homeBlockchainID,
 			homeAddress,
-			tokenDecimals,
+			homeDecimals,
 			nativeTokenSymbol,
 			remoteSupply,
 			big.NewInt(0),
@@ -518,10 +684,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
+	ux.Logger.PrintToUser("Remote Deployed to %s", remoteRPCEndpoint)
+	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
-	if err := ictt.RegisterERC20Remote(
-		remoteEndpoint,
-		remoteKey.PrivKeyHex(),
+	if err := ictt.RegisterRemote(
+		remoteRPCEndpoint,
+		remoteKey,
 		remoteAddress,
 	); err != nil {
 		return err
@@ -530,9 +698,10 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	checkInterval := 100 * time.Millisecond
 	checkTimeout := 10 * time.Second
 	t0 := time.Now()
+	var collateralNeeded *big.Int
 	for {
 		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
 			remoteBlockchainID,
 			remoteAddress,
@@ -541,6 +710,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 		if registeredRemote.Registered {
+			collateralNeeded = registeredRemote.CollateralNeeded
 			break
 		}
 		elapsed := time.Since(t0)
@@ -550,21 +720,23 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		time.Sleep(checkInterval)
 	}
 
-	if flags.remoteFlags.native {
+	// Collateralize the remote contract on the home contract if necessary
+	if collateralNeeded.Cmp(big.NewInt(0)) != 0 {
 		err = ictt.TokenHomeAddCollateral(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
-			homeKey.PrivKeyHex(),
+			homeKey,
 			remoteBlockchainID,
 			remoteAddress,
-			remoteSupply,
+			collateralNeeded,
 		)
 		if err != nil {
 			return err
 		}
 
+		// Check that the remote is collateralized on the home contract now.
 		registeredRemote, err := ictt.TokenHomeGetRegisteredRemote(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
 			remoteBlockchainID,
 			remoteAddress,
@@ -575,40 +747,27 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if registeredRemote.CollateralNeeded.Cmp(big.NewInt(0)) != 0 {
 			return fmt.Errorf("failure setting collateral in home endpoint: remaining collateral=%d", registeredRemote.CollateralNeeded)
 		}
+	}
 
-		minterAdminFound, managedMinterAdmin, _, minterAdminAddress, minterAdminPrivKey, err := contract.GetEVMSubnetGenesisNativeMinterAdmin(
-			app,
-			network,
-			flags.remoteFlags.chainFlags.SubnetName,
-			flags.remoteFlags.chainFlags.CChain,
-			"",
-		)
-		if err != nil {
-			return err
-		}
-		if !minterAdminFound {
-			return fmt.Errorf("there is no native minter precompile admin on subnet %s", remoteBlockchainName)
-		}
-		if !managedMinterAdmin {
-			return fmt.Errorf("no managed key found for native minter admin %s subnet %s", minterAdminAddress, remoteBlockchainName)
-		}
-
+	if flags.remoteFlags.native {
+		ux.Logger.PrintToUser("Enabling native token remote contract to mint native tokens")
 		if err := precompiles.SetEnabled(
-			remoteEndpoint,
+			remoteRPCEndpoint,
 			precompiles.NativeMinterPrecompile,
-			minterAdminPrivKey,
+			remoteMinterManagerPrivKey,
 			remoteAddress,
 		); err != nil {
 			return err
 		}
 
+		// Send a single token unit to report that the remote is collateralized.
 		err = ictt.Send(
-			homeEndpoint,
+			homeRPCEndpoint,
 			homeAddress,
-			homeKey.PrivKeyHex(),
+			homeKey,
 			remoteBlockchainID,
 			remoteAddress,
-			common.HexToAddress(homeKey.C()),
+			common.HexToAddress(homeKeyAddress),
 			big.NewInt(1),
 		)
 		if err != nil {
@@ -618,7 +777,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		t0 := time.Now()
 		for {
 			isCollateralized, err := ictt.TokenRemoteIsCollateralized(
-				remoteEndpoint,
+				remoteRPCEndpoint,
 				remoteAddress,
 			)
 			if err != nil {
@@ -634,20 +793,24 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			time.Sleep(checkInterval)
 		}
 
-		if flags.remoteFlags.removeMinterAdmin {
+		if flags.remoteFlags.removeMinterAdmin && remoteMinterManagerIsAdmin {
+			ux.Logger.PrintToUser("Removing minter admin %s", remoteMinterManagerAddress)
 			if err := precompiles.SetNone(
-				remoteEndpoint,
+				remoteRPCEndpoint,
 				precompiles.NativeMinterPrecompile,
-				minterAdminPrivKey,
-				common.HexToAddress(minterAdminAddress),
+				remoteMinterManagerPrivKey,
+				common.HexToAddress(remoteMinterManagerAddress),
 			); err != nil {
 				return err
 			}
+		} else {
+			minterRole := "admin"
+			if !remoteMinterManagerIsAdmin {
+				minterRole = "manager"
+			}
+			ux.Logger.PrintToUser("Original minter %s %s is left in place", minterRole, remoteMinterManagerAddress)
 		}
 	}
-
-	ux.Logger.PrintToUser("Remote Deployed to %s", remoteEndpoint)
-	ux.Logger.PrintToUser("Remote Address: %s", remoteAddress)
 
 	return nil
 }

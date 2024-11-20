@@ -235,6 +235,7 @@ func (h *Host) Command(script string, env []string, timeout time.Duration) ([]by
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+	// ux.Logger.Info("DEBUG Command on host %s: %s", h.IP, script)
 	cmd, err := h.Connection.CommandContext(ctx, "", script)
 	if err != nil {
 		return nil, err

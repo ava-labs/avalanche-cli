@@ -7,10 +7,10 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -23,6 +23,7 @@ type dockerComposeInputs struct {
 	WithMonitoring     bool
 	WithAvalanchego    bool
 	AvalanchegoVersion string
+	AWMRelayerVersion  string
 	E2E                bool
 	E2EIP              string
 	E2ESuffix          string

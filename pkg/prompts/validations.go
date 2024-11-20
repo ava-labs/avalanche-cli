@@ -203,6 +203,8 @@ func getPChainValidationFunc(network models.Network) func(string) error {
 		return validatePChainMainAddress
 	case models.Local:
 		return validatePChainLocalAddress
+	case models.Devnet:
+		return validatePChainLocalAddress
 	default:
 		return func(string) error {
 			return errors.New("unsupported network")
@@ -264,6 +266,8 @@ func getXChainValidationFunc(network models.Network) func(string) error {
 	case models.Mainnet:
 		return validateXChainMainAddress
 	case models.Local:
+		return validateXChainLocalAddress
+	case models.Devnet:
 		return validateXChainLocalAddress
 	default:
 		return func(string) error {

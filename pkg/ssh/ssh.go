@@ -159,8 +159,8 @@ func RunSSHRestartNode(host *models.Host) error {
 }
 
 // ComposeSSHSetupAWMRelayer used docker compose to setup AWM Relayer
-func ComposeSSHSetupAWMRelayer(host *models.Host) error {
-	if err := docker.ComposeSSHSetupAWMRelayer(host); err != nil {
+func ComposeSSHSetupAWMRelayer(host *models.Host, relayerVersion string) error {
+	if err := docker.ComposeSSHSetupAWMRelayer(host, relayerVersion); err != nil {
 		return err
 	}
 	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
@@ -483,8 +483,58 @@ func RunSSHUploadStakingFiles(host *models.Host, nodeInstanceDirPath string) err
 	)
 }
 
+// RunSSHRenderAvagoAliasConfigFile renders avalanche alias config to a remote host via SSH.
+func RunSSHRenderAvagoAliasConfigFile(
+	host *models.Host,
+	blockchainID string,
+	subnetAliases []string,
+) error {
+	aliasToBlockchain := map[string]string{}
+	if aliasConfigFileExists(host) {
+		// load remote aliases
+		remoteAliases, err := getAvalancheGoAliasData(host)
+		if err != nil {
+			return err
+		}
+		for chainID, aliases := range remoteAliases {
+			for _, alias := range aliases {
+				aliasToBlockchain[alias] = chainID
+			}
+		}
+	}
+	for _, alias := range subnetAliases {
+		aliasToBlockchain[alias] = blockchainID
+	}
+	newAliases := map[string][]string{}
+	for alias, chainID := range aliasToBlockchain {
+		newAliases[chainID] = append(newAliases[chainID], alias)
+	}
+	aliasConf, err := json.MarshalIndent(newAliases, "", "  ")
+	if err != nil {
+		return err
+	}
+	aliasConfFile, err := os.CreateTemp("", "avalanchecli-alias-*.yml")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(aliasConfFile.Name())
+	if err := os.WriteFile(aliasConfFile.Name(), aliasConf, constants.DefaultPerms755); err != nil {
+		return err
+	}
+	if err := host.Upload(aliasConfFile.Name(), remoteconfig.GetRemoteAvalancheAliasesConfig(), constants.SSHFileOpsTimeout); err != nil {
+		return err
+	}
+	return nil
+}
+
 // RunSSHRenderAvalancheNodeConfig renders avalanche node config to a remote host via SSH.
-func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Host, network models.Network, trackSubnets []string) error {
+func RunSSHRenderAvalancheNodeConfig(
+	app *application.Avalanche,
+	host *models.Host,
+	network models.Network,
+	trackSubnets []string,
+	isAPIHost bool,
+) error {
 	// get subnet ids
 	subnetIDs, err := utils.MapWithError(trackSubnets, func(subnetName string) (string, error) {
 		sc, err := app.LoadSidecar(subnetName)
@@ -505,8 +555,7 @@ func RunSSHRenderAvalancheNodeConfig(app *application.Avalanche, host *models.Ho
 		if genesisFileExists(host) {
 			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 		}
-		// make sure that wiz works. TODO switch to RPC over SSH client to access 127.0.0.1 instead
-		if network.Kind == models.Local || network.Kind == models.Devnet {
+		if network.Kind == models.Local || network.Kind == models.Devnet || isAPIHost {
 			avagoConf.HTTPHost = "0.0.0.0"
 		}
 		remoteAvagoConf, err := getAvalancheGoConfigData(host)
@@ -557,6 +606,7 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 				CustomVMBranch:      sc.CustomVMBranch,
 				CustomVMBuildScript: sc.CustomVMBuildScript,
 				VMBinaryPath:        subnetVMBinaryPath,
+				GoVersion:           constants.BuildEnvGolangVersion,
 			},
 		); err != nil {
 			return err
@@ -634,8 +684,10 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	// genesis config
 	genesisFilename := filepath.Join(app.GetNodesDir(), host.GetCloudID(), constants.GenesisFileName)
-	if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
-		return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
+	if utils.FileExists(genesisFilename) {
+		if err := host.Upload(genesisFilename, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
+			return fmt.Errorf("error uploading genesis config to %s: %w", remoteconfig.GetRemoteAvalancheGenesis(), err)
+		}
 	}
 	// end genesis config
 	// subnet node config
@@ -851,9 +903,14 @@ func nodeConfigFileExists(host *models.Host) bool {
 	return nodeConfigFileExists
 }
 
+func aliasConfigFileExists(host *models.Host) bool {
+	aliasConfigFileExists, _ := host.FileExists(remoteconfig.GetRemoteAvalancheAliasesConfig())
+	return aliasConfigFileExists
+}
+
 func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error) {
 	// get remote node.json file
-	nodeJSONPath := filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName)
+	nodeJSONPath := filepath.Join(constants.CloudNodeConfigPath, constants.NodeConfigJSONFile)
 	// parse node.json file
 	nodeJSON, err := host.ReadFileBytes(nodeJSONPath, constants.SSHFileOpsTimeout)
 	if err != nil {
@@ -864,4 +921,17 @@ func getAvalancheGoConfigData(host *models.Host) (map[string]interface{}, error)
 		return nil, err
 	}
 	return avagoConfig, nil
+}
+
+func getAvalancheGoAliasData(host *models.Host) (map[string][]string, error) {
+	// parse aliases.json file
+	aliasesJSON, err := host.ReadFileBytes(remoteconfig.GetRemoteAvalancheAliasesConfig(), constants.SSHFileOpsTimeout)
+	if err != nil {
+		return nil, err
+	}
+	var aliases map[string][]string
+	if err := json.Unmarshal(aliasesJSON, &aliases); err != nil {
+		return nil, err
+	}
+	return aliases, nil
 }

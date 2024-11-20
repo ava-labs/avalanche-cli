@@ -22,6 +22,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
+	avago_upgrade "github.com/ava-labs/avalanchego/upgrade"
+	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -41,7 +43,7 @@ const (
 
 func generateCustomCchainGenesis() ([]byte, error) {
 	cChainGenesisMap := map[string]interface{}{}
-	cChainGenesisMap["config"] = coreth_params.AvalancheLocalChainConfig
+	cChainGenesisMap["config"] = coreth_params.GetChainConfig(avago_upgrade.GetConfig(avago_constants.LocalID), coreth_params.AvalancheLocalChainID)
 	cChainGenesisMap["nonce"] = hexa0Str
 	cChainGenesisMap["timestamp"] = hexa0Str
 	cChainGenesisMap["extraData"] = "0x00"
@@ -172,7 +174,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	} else {
 		endpointIP = ansibleHosts[ansibleHostIDs[0]].IP
 	}
-	endpoint := fmt.Sprintf("http://%s:%d", endpointIP, constants.AvalanchegoAPIPort)
+	endpoint := getAvalancheGoEndpoint(endpointIP)
 	network := models.NewDevnetNetwork(endpoint, 0)
 	network = models.NewNetworkFromCluster(network, clusterName)
 
@@ -205,7 +207,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 		return err
 	}
 	// make sure that custom genesis is saved to the subnet dir
-	if err := os.WriteFile(app.GetGenesisPath(subnetName), genesisBytes, constants.WriteReadReadPerms); err != nil {
+	if err := os.WriteFile(app.GetGenesisPath(blockchainName), genesisBytes, constants.WriteReadReadPerms); err != nil {
 		return err
 	}
 

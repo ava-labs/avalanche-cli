@@ -123,7 +123,14 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	trimmedURI := n.Endpoint
 	trimmedURI = strings.TrimPrefix(trimmedURI, "http://")
 	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
-	return fmt.Sprintf("ws://%s/ext/bc/%s/ws", trimmedURI, blockchainID)
+	scheme := "ws"
+	switch n.Kind {
+	case Fuji:
+		scheme = "wss"
+	case Mainnet:
+		scheme = "wss"
+	}
+	return fmt.Sprintf("%s://%s/ext/bc/%s/ws", scheme, trimmedURI, blockchainID)
 }
 
 func (n Network) NetworkIDFlagValue() string {
@@ -161,4 +168,9 @@ func (n *Network) HandlePublicNetworkSimulation() {
 		n.ID = constants.LocalNetworkID
 		n.Endpoint = constants.LocalAPIEndpoint
 	}
+}
+
+// Equals checks the underlying fields Kind and Endpoint
+func (n *Network) Equals(n2 Network) bool {
+	return n.Kind == n2.Kind && n.Endpoint == n2.Endpoint
 }

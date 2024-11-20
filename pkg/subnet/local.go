@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
@@ -33,7 +34,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/utils/storage"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -42,16 +42,17 @@ import (
 )
 
 type LocalDeployer struct {
-	procChecker        binutils.ProcessChecker
-	binChecker         binutils.BinaryChecker
-	getClientFunc      getGRPCClientFunc
-	binaryDownloader   binutils.PluginBinaryDownloader
-	app                *application.Avalanche
-	backendStartedHere bool
-	setDefaultSnapshot setDefaultSnapshotFunc
-	avagoVersion       string
-	avagoBinaryPath    string
-	vmBin              string
+	procChecker            binutils.ProcessChecker
+	binChecker             binutils.BinaryChecker
+	getClientFunc          getGRPCClientFunc
+	binaryDownloader       binutils.PluginBinaryDownloader
+	app                    *application.Avalanche
+	backendStartedHere     bool
+	setDefaultSnapshot     setDefaultSnapshotFunc
+	avagoVersion           string
+	avagoBinaryPath        string
+	vmBin                  string
+	installSnapshotUpdates bool
 }
 
 // uses either avagoVersion or avagoBinaryPath
@@ -60,26 +61,29 @@ func NewLocalDeployer(
 	avagoVersion string,
 	avagoBinaryPath string,
 	vmBin string,
+	installSnapshotUpdates bool,
 ) *LocalDeployer {
 	return &LocalDeployer{
-		procChecker:        binutils.NewProcessChecker(),
-		binChecker:         binutils.NewBinaryChecker(),
-		getClientFunc:      binutils.NewGRPCClient,
-		binaryDownloader:   binutils.NewPluginBinaryDownloader(app),
-		app:                app,
-		setDefaultSnapshot: SetDefaultSnapshot,
-		avagoVersion:       avagoVersion,
-		avagoBinaryPath:    avagoBinaryPath,
-		vmBin:              vmBin,
+		procChecker:            binutils.NewProcessChecker(),
+		binChecker:             binutils.NewBinaryChecker(),
+		getClientFunc:          binutils.NewGRPCClient,
+		binaryDownloader:       binutils.NewPluginBinaryDownloader(app),
+		app:                    app,
+		setDefaultSnapshot:     SetDefaultSnapshot,
+		avagoVersion:           avagoVersion,
+		avagoBinaryPath:        avagoBinaryPath,
+		vmBin:                  vmBin,
+		installSnapshotUpdates: installSnapshotUpdates,
 	}
 }
 
 type getGRPCClientFunc func(...binutils.GRPCClientOpOption) (client.Client, error)
 
-type setDefaultSnapshotFunc func(string, bool, string, bool) (bool, error)
+type setDefaultSnapshotFunc func(string, bool, bool, string, bool) (bool, error)
 
-type TeleporterEsp struct {
-	SkipDeploy                   bool
+type ICMSpec struct {
+	SkipICMDeploy                bool
+	SkipRelayerDeploy            bool
 	Version                      string
 	MessengerContractAddressPath string
 	MessengerDeployerAddressPath string
@@ -88,20 +92,25 @@ type TeleporterEsp struct {
 }
 
 type DeployInfo struct {
-	SubnetID                   ids.ID
-	BlockchainID               ids.ID
-	TeleporterMessengerAddress string
-	TeleporterRegistryAddress  string
+	SubnetID            ids.ID
+	BlockchainID        ids.ID
+	ICMMessengerAddress string
+	ICMRegistryAddress  string
 }
 
 // DeployToLocalNetwork does the heavy lifting:
 // * it checks the gRPC is running, if not, it starts it
 // * kicks off the actual deployment
-func (d *LocalDeployer) DeployToLocalNetwork(chain string, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) DeployToLocalNetwork(
+	chain string,
+	genesisPath string,
+	icmSpec ICMSpec,
+	subnetIDStr string,
+) (*DeployInfo, error) {
 	if err := d.StartServer(); err != nil {
 		return nil, err
 	}
-	return d.doDeploy(chain, genesisPath, teleporterEsp, subnetIDStr)
+	return d.doDeploy(chain, genesisPath, icmSpec, subnetIDStr)
 }
 
 func (d *LocalDeployer) StartServer() error {
@@ -145,7 +154,7 @@ func (d *LocalDeployer) BackendStartedHere() bool {
 //   - deploy a new blockchain for the given VM ID, genesis, and available subnet ID
 //   - waits completion of operation
 //   - show status
-func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp TeleporterEsp, subnetIDStr string) (*DeployInfo, error) {
+func (d *LocalDeployer) doDeploy(chain string, genesisPath string, icmSpec ICMSpec, subnetIDStr string) (*DeployInfo, error) {
 	needsRestart, avalancheGoBinPath, err := d.SetupLocalEnv()
 	if err != nil {
 		return nil, err
@@ -192,12 +201,15 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 	}
 	d.app.Log.Debug("this VM will get ID", zap.String("vm-id", chainVMID.String()))
 
-	// cleanup if neeeded in the case relayer is registered to current blockchains
-	if err := teleporter.RelayerCleanup(
-		d.app.GetAWMRelayerRunPath(),
-		d.app.GetAWMRelayerStorageDir(),
-	); err != nil {
-		return nil, err
+	if sc.RunRelayer && !icmSpec.SkipRelayerDeploy {
+		// relayer stop/cleanup is neeeded in the case it is registered to blockchains
+		// if not, network restart fails
+		if err := teleporter.RelayerCleanup(
+			d.app.GetLocalRelayerRunPath(models.Local),
+			d.app.GetLocalRelayerStorageDir(models.Local),
+		); err != nil {
+			return nil, err
+		}
 	}
 
 	if networkBooted && needsRestart {
@@ -336,10 +348,10 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 	}
 
 	var (
-		teleporterMessengerAddress string
-		teleporterRegistryAddress  string
+		icmMessengerAddress string
+		icmRegistryAddress  string
 	)
-	if sc.TeleporterReady && !teleporterEsp.SkipDeploy {
+	if sc.TeleporterReady && !icmSpec.SkipICMDeploy {
 		network := models.NewLocalNetwork()
 		// get relayer address
 		relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(d.app.GetKeyPath(constants.AWMRelayerKeyName))
@@ -347,73 +359,68 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 			return nil, err
 		}
 		// relayer config file
-		_, relayerConfigPath, err := GetAWMRelayerConfigPath()
+		_, relayerConfigPath, err := GetLocalNetworkRelayerConfigPath(d.app)
 		if err != nil {
+			return nil, err
+		}
+		if err = teleporter.CreateBaseRelayerConfigIfMissing(
+			relayerConfigPath,
+			logging.Info.LowerString(),
+			d.app.GetLocalRelayerStorageDir(models.Local),
+			constants.LocalNetworkLocalAWMRelayerMetricsPort,
+			network,
+		); err != nil {
 			return nil, err
 		}
 		// deploy C-Chain
 		ux.Logger.PrintToUser("")
-		td := teleporter.Deployer{}
-		if teleporterEsp.MessengerContractAddressPath != "" {
-			if err := td.SetAssetsFromPaths(
-				teleporterEsp.MessengerContractAddressPath,
-				teleporterEsp.MessengerDeployerAddressPath,
-				teleporterEsp.MessengerDeployerTxPath,
-				teleporterEsp.RegistryBydecodePath,
+		icmd := teleporter.Deployer{}
+		if icmSpec.MessengerContractAddressPath != "" {
+			if err := icmd.SetAssetsFromPaths(
+				icmSpec.MessengerContractAddressPath,
+				icmSpec.MessengerDeployerAddressPath,
+				icmSpec.MessengerDeployerTxPath,
+				icmSpec.RegistryBydecodePath,
 			); err != nil {
 				return nil, err
 			}
 		} else {
-			teleporterVersion := ""
+			icmVersion := ""
 			switch {
-			case teleporterEsp.Version != "" && teleporterEsp.Version != "latest":
-				teleporterVersion = teleporterEsp.Version
+			case icmSpec.Version != "" && icmSpec.Version != "latest":
+				icmVersion = icmSpec.Version
 			case sc.TeleporterVersion != "":
-				teleporterVersion = sc.TeleporterVersion
+				icmVersion = sc.TeleporterVersion
 			default:
-				teleporterInfo, err := teleporter.GetInfo(d.app)
+				icmInfo, err := teleporter.GetInfo(d.app)
 				if err != nil {
 					return nil, err
 				}
-				teleporterVersion = teleporterInfo.Version
+				icmVersion = icmInfo.Version
 			}
-			if err := td.DownloadAssets(
+			if err := icmd.DownloadAssets(
 				d.app.GetTeleporterBinDir(),
-				teleporterVersion,
+				icmVersion,
 			); err != nil {
 				return nil, err
 			}
 		}
-		alreadyDeployed, cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress, err := teleporter.DeployAndFundRelayer(
-			d.app,
-			&td,
-			network,
+		cChainKey, err := key.LoadEwoq(network.ID)
+		if err != nil {
+			return nil, err
+		}
+		cchainAlreadyDeployed, cchainIcmMessengerAddress, cchainIcmRegistryAddress, err := icmd.Deploy(
 			"c-chain",
-			"C",
-			"",
+			network.BlockchainEndpoint("C"),
+			cChainKey.PrivKeyHex(),
+			true,
+			true,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if !alreadyDeployed {
-			subnetID, blockchainID, err := utils.GetChainIDs(network.Endpoint, "C-Chain")
-			if err != nil {
-				return nil, err
-			}
-			if err = teleporter.UpdateRelayerConfig(
-				relayerConfigPath,
-				d.app.GetAWMRelayerStorageDir(),
-				relayerAddress,
-				relayerPrivateKey,
-				network,
-				subnetID,
-				blockchainID,
-				cchainTeleporterMessengerAddress,
-				cchainTeleporterRegistryAddress,
-			); err != nil {
-				return nil, err
-			}
-			if err := localnet.WriteExtraLocalNetworkData(cchainTeleporterMessengerAddress, cchainTeleporterRegistryAddress); err != nil {
+		if !cchainAlreadyDeployed {
+			if err := localnet.WriteExtraLocalNetworkData(cchainIcmMessengerAddress, cchainIcmRegistryAddress); err != nil {
 				return nil, err
 			}
 		}
@@ -434,40 +441,81 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 				return nil, err
 			}
 		}
-		_, teleporterMessengerAddress, teleporterRegistryAddress, err = teleporter.DeployAndFundRelayer(
-			d.app,
-			&td,
-			network,
+		blockchainKey, err := key.LoadSoft(network.ID, d.app.GetKeyPath(teleporterKeyName))
+		if err != nil {
+			return nil, err
+		}
+		_, icmMessengerAddress, icmRegistryAddress, err = icmd.Deploy(
 			chain,
-			blockchainID,
-			teleporterKeyName,
+			network.BlockchainEndpoint(blockchainID),
+			blockchainKey.PrivKeyHex(),
+			true,
+			true,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if err = teleporter.UpdateRelayerConfig(
-			relayerConfigPath,
-			d.app.GetAWMRelayerStorageDir(),
-			relayerAddress,
-			relayerPrivateKey,
-			network,
-			subnetID,
-			blockchainID,
-			teleporterMessengerAddress,
-			teleporterRegistryAddress,
-		); err != nil {
-			return nil, err
-		}
-		if sc.RunRelayer {
+		if sc.RunRelayer && !icmSpec.SkipRelayerDeploy {
+			if !cchainAlreadyDeployed {
+				if err := teleporter.FundRelayer(
+					network.BlockchainEndpoint("C"),
+					cChainKey.PrivKeyHex(),
+					relayerAddress,
+				); err != nil {
+					return nil, err
+				}
+				cchainSubnetID, cchainBlockchainID, err := utils.GetChainIDs(network.Endpoint, "C-Chain")
+				if err != nil {
+					return nil, err
+				}
+				if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+					relayerConfigPath,
+					network.BlockchainEndpoint(cchainBlockchainID),
+					network.BlockchainWSEndpoint(cchainBlockchainID),
+					cchainSubnetID,
+					cchainBlockchainID,
+					cchainIcmRegistryAddress,
+					cchainIcmMessengerAddress,
+					relayerAddress,
+					relayerPrivateKey,
+				); err != nil {
+					return nil, err
+				}
+			}
+			if err := teleporter.FundRelayer(
+				network.BlockchainEndpoint(blockchainID),
+				blockchainKey.PrivKeyHex(),
+				relayerAddress,
+			); err != nil {
+				return nil, err
+			}
+			if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+				relayerConfigPath,
+				network.BlockchainEndpoint(blockchainID),
+				network.BlockchainWSEndpoint(blockchainID),
+				subnetID,
+				blockchainID,
+				icmRegistryAddress,
+				icmMessengerAddress,
+				relayerAddress,
+				relayerPrivateKey,
+			); err != nil {
+				return nil, err
+			}
 			ux.Logger.PrintToUser("")
 			// start relayer
 			if err := teleporter.DeployRelayer(
+				"latest",
 				d.app.GetAWMRelayerBinDir(),
 				relayerConfigPath,
-				d.app.GetAWMRelayerLogPath(),
-				d.app.GetAWMRelayerRunPath(),
-				d.app.GetAWMRelayerStorageDir(),
+				d.app.GetLocalRelayerLogPath(models.Local),
+				d.app.GetLocalRelayerRunPath(models.Local),
+				d.app.GetLocalRelayerStorageDir(models.Local),
 			); err != nil {
+				logPath := d.app.GetLocalRelayerLogPath(models.Local)
+				if bs, err := os.ReadFile(logPath); err == nil {
+					ux.Logger.PrintToUser(string(bs))
+				}
 				return nil, err
 			}
 		}
@@ -486,10 +534,10 @@ func (d *LocalDeployer) doDeploy(chain string, genesisPath string, teleporterEsp
 		}
 	}
 	return &DeployInfo{
-		SubnetID:                   subnetID,
-		BlockchainID:               blockchainID,
-		TeleporterMessengerAddress: teleporterMessengerAddress,
-		TeleporterRegistryAddress:  teleporterRegistryAddress,
+		SubnetID:            subnetID,
+		BlockchainID:        blockchainID,
+		ICMMessengerAddress: icmMessengerAddress,
+		ICMRegistryAddress:  icmRegistryAddress,
 	}, nil
 }
 
@@ -532,7 +580,13 @@ func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 	}
 
 	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
-	needsRestart, err := d.setDefaultSnapshot(d.app.GetSnapshotsDir(), false, avagoVersion, configSingleNodeEnabled)
+	needsRestart, err := d.setDefaultSnapshot(
+		d.app.GetSnapshotsDir(),
+		false,
+		d.installSnapshotUpdates,
+		avagoVersion,
+		configSingleNodeEnabled,
+	)
 	if err != nil {
 		return false, "", fmt.Errorf("failed setting up snapshots: %w", err)
 	}
@@ -624,30 +678,57 @@ func (d *LocalDeployer) removeInstalledPlugin(
 	return d.binaryDownloader.RemoveVM(vmID.String())
 }
 
-func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool) (string, string, string, string) {
+func getSnapshotLocs(
+	isSingleNode bool,
+	isPreCortina17 bool,
+	isPreDurango11 bool,
+	isPreDurango12 bool,
+) (string, string, string, string) {
 	bootstrapSnapshotArchiveName := ""
 	url := ""
 	shaSumURL := ""
 	pathInShaSum := ""
 	if isSingleNode {
-		if isPreCortina17 {
+		switch {
+		case isPreCortina17:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodePreCortina17ArchiveName
 			url = constants.BootstrapSnapshotSingleNodePreCortina17URL
 			shaSumURL = constants.BootstrapSnapshotSingleNodePreCortina17SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotSingleNodePreCortina17LocalPath
-		} else {
+		case isPreDurango11:
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodePreDurango11ArchiveName
+			url = constants.BootstrapSnapshotSingleNodePreDurango11URL
+			shaSumURL = constants.BootstrapSnapshotSingleNodePreDurango11SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotSingleNodePreDurango11LocalPath
+		case isPreDurango12:
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodePreDurango12ArchiveName
+			url = constants.BootstrapSnapshotSingleNodePreDurango12URL
+			shaSumURL = constants.BootstrapSnapshotSingleNodePreDurango12SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotSingleNodePreDurango12LocalPath
+		default:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotSingleNodeArchiveName
 			url = constants.BootstrapSnapshotSingleNodeURL
 			shaSumURL = constants.BootstrapSnapshotSingleNodeSHA256URL
 			pathInShaSum = constants.BootstrapSnapshotSingleNodeLocalPath
 		}
 	} else {
-		if isPreCortina17 {
+		switch {
+		case isPreCortina17:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotPreCortina17ArchiveName
 			url = constants.BootstrapSnapshotPreCortina17URL
 			shaSumURL = constants.BootstrapSnapshotPreCortina17SHA256URL
 			pathInShaSum = constants.BootstrapSnapshotPreCortina17LocalPath
-		} else {
+		case isPreDurango11:
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotPreDurango11ArchiveName
+			url = constants.BootstrapSnapshotPreDurango11URL
+			shaSumURL = constants.BootstrapSnapshotPreDurango11SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotPreDurango11LocalPath
+		case isPreDurango12:
+			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotPreDurango12ArchiveName
+			url = constants.BootstrapSnapshotPreDurango12URL
+			shaSumURL = constants.BootstrapSnapshotPreDurango12SHA256URL
+			pathInShaSum = constants.BootstrapSnapshotPreDurango12LocalPath
+		default:
 			bootstrapSnapshotArchiveName = constants.BootstrapSnapshotArchiveName
 			url = constants.BootstrapSnapshotURL
 			shaSumURL = constants.BootstrapSnapshotSHA256URL
@@ -657,8 +738,13 @@ func getSnapshotLocs(isSingleNode bool, isPreCortina17 bool) (string, string, st
 	return bootstrapSnapshotArchiveName, url, shaSumURL, pathInShaSum
 }
 
-func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool, isPreCortina17 bool) (string, error) {
-	_, _, url, path := getSnapshotLocs(isSingleNode, isPreCortina17)
+func getExpectedDefaultSnapshotSHA256Sum(
+	isSingleNode bool,
+	isPreCortina17 bool,
+	isPreDurango11 bool,
+	isPreDurango12 bool,
+) (string, error) {
+	_, _, url, path := getSnapshotLocs(isSingleNode, isPreCortina17, isPreDurango11, isPreDurango12)
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("failed downloading sha256 sums: %w", err)
@@ -680,12 +766,24 @@ func getExpectedDefaultSnapshotSHA256Sum(isSingleNode bool, isPreCortina17 bool)
 
 // Initialize default snapshot with bootstrap snapshot archive
 // If force flag is set to true, overwrite the default snapshot if it exists
-func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVersion string, isSingleNode bool) (bool, error) {
-	var isPreCortina17 bool
+func SetDefaultSnapshot(
+	snapshotsDir string,
+	resetCurrentSnapshot bool,
+	installUpdates bool,
+	avagoVersion string,
+	isSingleNode bool,
+) (bool, error) {
+	var (
+		isPreCortina17 bool
+		isPreDurango11 bool
+		isPreDurango12 bool
+	)
 	if avagoVersion != "" {
 		isPreCortina17 = semver.Compare(avagoVersion, constants.Cortina17Version) < 0
+		isPreDurango11 = semver.Compare(avagoVersion, constants.Durango11Version) < 0
+		isPreDurango12 = semver.Compare(avagoVersion, constants.Durango12Version) < 0
 	}
-	bootstrapSnapshotArchiveName, url, _, _ := getSnapshotLocs(isSingleNode, isPreCortina17)
+	bootstrapSnapshotArchiveName, url, _, _ := getSnapshotLocs(isSingleNode, isPreCortina17, isPreDurango11, isPreDurango12)
 	currentBootstrapNamePath := filepath.Join(snapshotsDir, constants.CurrentBootstrapNamePath)
 	exists, err := storage.FileExists(currentBootstrapNamePath)
 	if err != nil {
@@ -712,22 +810,23 @@ func SetDefaultSnapshot(snapshotsDir string, resetCurrentSnapshot bool, avagoVer
 		defaultSnapshotInUse = true
 	}
 	// will download either if file not exists or if sha256 sum is not the same
-	downloadSnapshot := false
+	missingArchive := false
+	checksumError := false
 	if _, err := os.Stat(bootstrapSnapshotArchivePath); os.IsNotExist(err) {
-		downloadSnapshot = true
+		missingArchive = true
 	} else {
 		gotSum, err := utils.GetSHA256FromDisk(bootstrapSnapshotArchivePath)
 		if err != nil {
 			return false, err
 		}
-		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode, isPreCortina17)
+		expectedSum, err := getExpectedDefaultSnapshotSHA256Sum(isSingleNode, isPreCortina17, isPreDurango11, isPreDurango12)
 		if err != nil {
 			ux.Logger.PrintToUser("Warning: failure verifying that the local snapshot is the latest one: %s", err)
 		} else if gotSum != expectedSum {
-			downloadSnapshot = true
+			checksumError = true
 		}
 	}
-	if downloadSnapshot {
+	if missingArchive || (checksumError && installUpdates) {
 		resp, err := http.Get(url)
 		if err != nil {
 			return false, fmt.Errorf("failed downloading bootstrap snapshot: %w", err)
@@ -850,10 +949,10 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 	wallet, err := primary.MakeWallet(
 		ctx,
 		&primary.WalletConfig{
-			URI:              api,
-			AVAXKeychain:     kc,
-			EthKeychain:      secp256k1fx.NewKeychain(),
-			PChainTxsToFetch: set.Of(subnetID),
+			URI:          api,
+			AVAXKeychain: kc,
+			EthKeychain:  secp256k1fx.NewKeychain(),
+			SubnetIDs:    []ids.ID{subnetID},
 		},
 	)
 	if err != nil {
@@ -891,11 +990,11 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 	return false, nil
 }
 
-func GetAWMRelayerConfigPath() (bool, string, error) {
+func GetLocalNetworkRelayerConfigPath(app *application.Avalanche) (bool, string, error) {
 	clusterInfo, err := localnet.GetClusterInfo()
 	if err != nil {
 		return false, "", err
 	}
-	relayerConfigPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.AWMRelayerConfigFilename)
+	relayerConfigPath := app.GetLocalRelayerConfigPath(models.Local, clusterInfo.GetRootDataDir())
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }

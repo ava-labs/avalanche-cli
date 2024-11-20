@@ -140,10 +140,10 @@ func TestDeployToLocal(t *testing.T) {
 	err = os.WriteFile(testSidecar.Name(), []byte(sidecar), constants.DefaultPerms755)
 	require.NoError(err)
 	// test actual deploy
-	teleporterEsp := TeleporterEsp{
-		SkipDeploy: true,
+	icmSpec := ICMSpec{
+		SkipICMDeploy: true,
 	}
-	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, testGenesis.Name(), teleporterEsp, "")
+	deployInfo, err := testDeployer.DeployToLocalNetwork(testChainName, testGenesis.Name(), icmSpec, "")
 	require.NoError(err)
 	require.Equal(testSubnetID2, deployInfo.SubnetID.String())
 	require.Equal(testBlockChainID2, deployInfo.BlockchainID.String())
@@ -194,6 +194,6 @@ func getTestClientFunc(...binutils.GRPCClientOpOption) (client.Client, error) {
 	return c, nil
 }
 
-func fakeSetDefaultSnapshot(string, bool, string, bool) (bool, error) {
+func fakeSetDefaultSnapshot(string, bool, bool, string, bool) (bool, error) {
 	return false, nil
 }

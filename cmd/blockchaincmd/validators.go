@@ -19,7 +19,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var validatorsSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Mainnet, networkoptions.Cluster, networkoptions.Devnet}
+var validatorsSupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 // avalanche blockchain validators
 func newValidatorsCmd() *cobra.Command {
@@ -27,7 +32,7 @@ func newValidatorsCmd() *cobra.Command {
 		Use:   "validators [blockchainName]",
 		Short: "List subnets validators of a blockchain",
 		Long: `The blockchain validators command lists the validators of a blockchain's subnet and provides
-severarl statistics about them.`,
+several statistics about them.`,
 		RunE: printValidators,
 		Args: cobrautils.ExactArgs(1),
 	}
@@ -42,7 +47,7 @@ func printValidators(_ *cobra.Command, args []string) error {
 		app,
 		"",
 		globalNetworkFlags,
-		false,
+		true,
 		false,
 		validatorsSupportedNetworkOptions,
 		blockchainName,

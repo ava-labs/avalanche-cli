@@ -45,12 +45,13 @@ type CreateFlags struct {
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
 	useExternalGasToken           bool
+	enableDebugging               bool
 }
 
 var (
 	createFlags CreateFlags
 	forceCreate bool
-	genesisFile string
+	genesisPath string
 	vmFile      string
 	useRepo     bool
 
@@ -80,7 +81,7 @@ configuration, pass the -f flag.`,
 		RunE:              createBlockchainConfig,
 		PersistentPostRun: handlePostRun,
 	}
-	cmd.Flags().StringVar(&genesisFile, "genesis", "", "file path of genesis to use")
+	cmd.Flags().StringVar(&genesisPath, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
 	cmd.Flags().BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM template")
 	cmd.Flags().StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
@@ -101,6 +102,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
+	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", false, "enable blockchain debugging")
 	return cmd
 }
 
@@ -108,7 +110,7 @@ func CallCreate(
 	cmd *cobra.Command,
 	blockchainName string,
 	forceCreateParam bool,
-	genesisFileParam string,
+	genesisPathParam string,
 	useSubnetEvmParam bool,
 	useCustomParam bool,
 	vmVersionParam string,
@@ -123,7 +125,7 @@ func CallCreate(
 	customVMBuildScriptParam string,
 ) error {
 	forceCreate = forceCreateParam
-	genesisFile = genesisFileParam
+	genesisPath = genesisPathParam
 	createFlags.useSubnetEvm = useSubnetEvmParam
 	createFlags.vmVersion = vmVersionParam
 	createFlags.chainID = evmChainIDParam
@@ -171,7 +173,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// genesis flags exclusiveness
-	if genesisFile != "" && (createFlags.chainID != 0 || defaultsKind != vm.NoDefaults) {
+	if genesisPath != "" && (createFlags.chainID != 0 || defaultsKind != vm.NoDefaults) {
 		return errMutuallyExclusiveVMConfigOptions
 	}
 
@@ -212,7 +214,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if vmType == models.SubnetEvm {
-		if genesisFile == "" {
+		if genesisPath == "" {
 			// Default
 			defaultsKind, err = vm.PromptDefaults(app, defaultsKind)
 			if err != nil {
@@ -238,8 +240,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 		var tokenSymbol string
 
-		if genesisFile != "" {
-			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
+		if genesisPath != "" {
+			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisPath); err != nil {
 				return err
 			} else if !evmCompatibleGenesis {
 				return fmt.Errorf("the provided genesis file has no proper Subnet-EVM format")
@@ -248,12 +250,12 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, defaultsKind, false)
+			deployTeleporter, err = vm.PromptInterop(app, useTeleporterFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
 			ux.Logger.PrintToUser("importing genesis for blockchain %s", blockchainName)
-			genesisBytes, err = os.ReadFile(genesisFile)
+			genesisBytes, err = os.ReadFile(genesisPath)
 			if err != nil {
 				return err
 			}
@@ -264,6 +266,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				vmVersion,
 				createFlags.chainID,
 				createFlags.tokenSymbol,
+				blockchainName,
 				useTeleporterFlag,
 				defaultsKind,
 				createFlags.useWarp,
@@ -274,8 +277,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			}
 			deployTeleporter = params.UseTeleporter
 			useExternalGasToken = params.UseExternalGasToken
-			genesisBytes, err = vm.CreateEvmGenesis(
-				app,
+			genesisBytes, err = vm.CreateEVMGenesis(
 				blockchainName,
 				params,
 				teleporterInfo,
@@ -295,7 +297,13 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		genesisBytes, err = vm.LoadCustomGenesis(app, genesisFile)
+		if genesisPath == "" {
+			genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
+			if err != nil {
+				return err
+			}
+		}
+		genesisBytes, err = os.ReadFile(genesisPath)
 		if err != nil {
 			return err
 		}
@@ -305,7 +313,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInteropt(app, useTeleporterFlag, defaultsKind, false)
+			deployTeleporter, err = vm.PromptInterop(app, useTeleporterFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
@@ -329,14 +337,18 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		sc.TeleporterReady = true
 		sc.RunRelayer = true // TODO: remove this once deploy asks if deploying relayer
 		sc.ExternalToken = useExternalGasToken
-		sc.TeleporterKey = constants.TeleporterKeyName
+		sc.TeleporterKey = constants.ICMKeyName
 		sc.TeleporterVersion = teleporterInfo.Version
-		if genesisFile != "" {
-			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisFile); err != nil {
+		if genesisPath != "" {
+			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisPath); err != nil {
 				return err
-			} else if !evmCompatibleGenesis {
+			} else if evmCompatibleGenesis {
 				// evm genesis file was given. make appropriate checks and customizations for teleporter
-				genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(genesisBytes, teleporterInfo.FundedAddress, teleporterInfo.FundedBalance.String())
+				genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(
+					genesisBytes,
+					teleporterInfo.FundedAddress,
+					teleporterInfo.FundedBalance.String(),
+				)
 				if err != nil {
 					return err
 				}
@@ -348,9 +360,24 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// subnet-evm check based on genesis
+	// covers both subnet-evm vms and custom vms
+	if hasSubnetEVMGenesis, _, err := app.HasSubnetEVMGenesis(blockchainName); err != nil {
+		return err
+	} else if hasSubnetEVMGenesis && createFlags.enableDebugging {
+		if err := SetBlockchainConf(
+			blockchainName,
+			vm.EvmDebugConfig,
+			constants.ChainConfigFileName,
+		); err != nil {
+			return err
+		}
+	}
+
 	if err = app.CreateSidecar(sc); err != nil {
 		return err
 	}
+
 	if vmType == models.SubnetEvm {
 		err = sendMetrics(cmd, vmType.RepoName(), blockchainName)
 		if err != nil {
@@ -390,7 +417,7 @@ func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
 		return err
 	}
 	conf := genesis.Config.GenesisPrecompiles
-	precompiles := make([]string, 6)
+	precompiles := make([]string, 0, 6)
 	for precompileName := range conf {
 		precompileTag := "precompile-" + precompileName
 		flags[precompileTag] = precompileName

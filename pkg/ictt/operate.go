@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -97,6 +98,25 @@ func TokenRemoteIsCollateralized(
 		return false, fmt.Errorf("error at isCollateralized call, expected bool, got %T", out[0])
 	}
 	return isCollateralized, nil
+}
+
+func TokenHomeGetDecimals(
+	rpcURL string,
+	address common.Address,
+) (uint8, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		address,
+		"tokenDecimals()->(uint8)",
+	)
+	if err != nil {
+		return 0, err
+	}
+	decimals, b := out[0].(uint8)
+	if !b {
+		return 0, fmt.Errorf("error at tokenDecimals, expected uint8, got %T", out[0])
+	}
+	return decimals, nil
 }
 
 type RegisteredRemote struct {
@@ -439,6 +459,7 @@ func TokenHomeAddCollateral(
 	remoteAddress common.Address,
 	amount *big.Int,
 ) error {
+	ux.Logger.PrintToUser("Collateralizing remote contract on the home chain")
 	endpointKind, err := GetEndpointKind(
 		rpcURL,
 		homeAddress,

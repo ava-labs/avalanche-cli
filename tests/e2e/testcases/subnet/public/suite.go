@@ -105,7 +105,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		}
 		// fund ledger address
 		genesisParams := genesis.MainnetParams
-		err := utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
+		err := utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
@@ -263,7 +263,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 		// let's fund the ledger
 		genesisParams := genesis.MainnetParams
-		err = utils.FundLedgerAddress(genesisParams.CreateSubnetTxFee + genesisParams.CreateBlockchainTxFee + genesisParams.TxFee)
+		err = utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,

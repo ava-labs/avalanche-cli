@@ -228,7 +228,8 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 			return err
 		}
 
-		return writeLockFile(precmpUpgrades, blockchainName)
+		writeLockFile(precmpUpgrades, blockchainName)
+		return nil
 	}
 
 	return errors.New("unexpected network size of zero nodes")
@@ -253,7 +254,6 @@ func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sid
 	if print {
 		blockchainIDstr := "<your-blockchain-id>"
 		if sc.Networks != nil &&
-			sc.Networks[networkKey] != (models.NetworkData{}) &&
 			sc.Networks[networkKey].BlockchainID != ids.Empty {
 			blockchainIDstr = sc.Networks[networkKey].BlockchainID.String()
 		}
@@ -318,9 +318,6 @@ func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sid
 
 func validateUpgrade(blockchainName, networkKey string, sc *models.Sidecar, skipPrompting bool) ([]params.PrecompileUpgrade, string, error) {
 	// if there's no entry in the Sidecar, we assume there hasn't been a deploy yet
-	if sc.Networks[networkKey] == (models.NetworkData{}) {
-		return nil, "", subnetNotYetDeployed()
-	}
 	chainID := sc.Networks[networkKey].BlockchainID
 	if chainID == ids.Empty {
 		return nil, "", errors.New(ErrSubnetNotDeployedOutput)
@@ -375,7 +372,7 @@ func subnetNotYetDeployed() error {
 	return errSubnetNotYetDeployed
 }
 
-func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, blockchainName string) error {
+func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, blockchainName string) {
 	// it seems all went well this far, now we try to write/update the lock file
 	// if this fails, we probably don't want to cause an error to the user?
 	// so we are silently failing, just write a log entry
@@ -389,8 +386,6 @@ func writeLockFile(precmpUpgrades []params.PrecompileUpgrade, blockchainName str
 	if err := app.WriteLockUpgradeFile(blockchainName, jsonBytes); err != nil {
 		app.Log.Debug("failed to write upgrades lock file", zap.Error(err))
 	}
-
-	return nil
 }
 
 func validateUpgradeBytes(file, lockFile []byte, skipPrompting bool) ([]params.PrecompileUpgrade, error) {

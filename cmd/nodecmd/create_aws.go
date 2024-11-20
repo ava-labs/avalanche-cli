@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -103,9 +102,9 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 	switch {
 	case len(numValidatorsNodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of nodes and regions should be the same")
-	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != 0 && len(numAPINodes) != len(utils.Unique(cmdLineRegion)):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and regions should be the same")
-	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != len(numValidatorsNodes):
+	case (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) && len(numAPINodes) != 0 && len(numAPINodes) != len(numValidatorsNodes):
 		return nil, nil, nil, fmt.Errorf("number of api nodes and validator nodes should be the same")
 	case len(cmdLineRegion) == 0 && len(numValidatorsNodes) == 0 && len(numAPINodes) == 0:
 		var err error
@@ -128,8 +127,12 @@ func getAWSCloudConfig(awsProfile string, singleNode bool, clusterSgRegions []st
 		}
 	default:
 		for i, region := range cmdLineRegion {
+			numAPINodesInRegion := 0
+			if len(numAPINodes) > 0 {
+				numAPINodesInRegion = numAPINodes[i]
+			}
 			if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
-				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodes[i]}
+				finalRegions[region] = NumNodes{numValidatorsNodes[i], numAPINodesInRegion}
 			} else {
 				finalRegions[region] = NumNodes{numValidatorsNodes[i], 0}
 			}
@@ -402,11 +405,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 	ux.Logger.GreenCheckmarkToUser("New EC2 instance(s) successfully created in AWS!")
 	for _, region := range regions {
 		if useSSHAgent {
-			// takes the cert file downloaded from AWS and moves it to .ssh directory
-			err = addCertToSSH(regionConf[region].CertName)
-			if err != nil {
-				return instanceIDs, elasticIPs, sshCertPath, keyPairName, err
-			}
 			sshCertPath[region] = ""
 		} else {
 			// don't overwrite existing sshCertPath for a particular region
@@ -559,17 +557,6 @@ func createAWSInstances(
 		}
 	}
 	return awsCloudConfig, nil
-}
-
-// addCertToSSH takes the cert file downloaded from AWS and moves it to .ssh directory
-func addCertToSSH(certName string) error {
-	certFilePath, err := app.GetSSHCertFilePath(certName)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("ssh-add", certFilePath)
-	utils.SetupRealtimeCLIOutput(cmd, true, true)
-	return cmd.Run()
 }
 
 // checkRegions checks if the given regions are available in AWS.

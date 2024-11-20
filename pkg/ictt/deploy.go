@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -26,11 +27,12 @@ type TokenRemoteSettings struct {
 	TokenHomeDecimals         uint8
 }
 
-func RegisterERC20Remote(
+func RegisterRemote(
 	rpcURL string,
 	privateKey string,
 	remoteAddress common.Address,
 ) error {
+	ux.Logger.PrintToUser("Registering remote contract with home contract")
 	feeInfo := TeleporterFeeInfo{
 		Amount: big.NewInt(0),
 	}
@@ -53,9 +55,10 @@ func DeployERC20Remote(
 	teleporterManagerAddress common.Address,
 	tokenHomeBlockchainID [32]byte,
 	tokenHomeAddress common.Address,
-	tokenName string,
-	tokenSymbol string,
-	tokenDecimals uint8,
+	tokenHomeDecimals uint8,
+	tokenRemoteName string,
+	tokenRemoteSymbol string,
+	tokenRemoteDecimals uint8,
 ) (common.Address, error) {
 	binPath := filepath.Join(srcDir, "contracts/out/ERC20TokenRemote.sol/ERC20TokenRemote.bin")
 	binBytes, err := os.ReadFile(binPath)
@@ -67,8 +70,7 @@ func DeployERC20Remote(
 		TeleporterManager:         teleporterManagerAddress,
 		TokenHomeBlockchainID:     tokenHomeBlockchainID,
 		TokenHomeAddress:          tokenHomeAddress,
-		// TODO: user case for home having diff decimals
-		TokenHomeDecimals: tokenDecimals,
+		TokenHomeDecimals:         tokenHomeDecimals,
 	}
 	return contract.DeployContract(
 		rpcURL,
@@ -76,9 +78,9 @@ func DeployERC20Remote(
 		binBytes,
 		"((address, address, bytes32, address, uint8), string, string, uint8)",
 		tokenRemoteSettings,
-		tokenName,
-		tokenSymbol,
-		tokenDecimals,
+		tokenRemoteName,
+		tokenRemoteSymbol,
+		tokenRemoteDecimals,
 	)
 }
 
@@ -90,7 +92,7 @@ func DeployNativeRemote(
 	teleporterManagerAddress common.Address,
 	tokenHomeBlockchainID [32]byte,
 	tokenHomeAddress common.Address,
-	tokenDecimals uint8,
+	tokenHomeDecimals uint8,
 	nativeAssetSymbol string,
 	initialReserveImbalance *big.Int,
 	burnedFeesReportingRewardPercentage *big.Int,
@@ -105,8 +107,7 @@ func DeployNativeRemote(
 		TeleporterManager:         teleporterManagerAddress,
 		TokenHomeBlockchainID:     tokenHomeBlockchainID,
 		TokenHomeAddress:          tokenHomeAddress,
-		// TODO: user case for home having diff decimals
-		TokenHomeDecimals: tokenDecimals,
+		TokenHomeDecimals:         tokenHomeDecimals,
 	}
 	return contract.DeployContract(
 		rpcURL,

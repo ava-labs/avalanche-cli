@@ -10,7 +10,7 @@ import (
 )
 
 func GetDefaultSubnetAirdropKeyInfo(app *application.Avalanche, subnetName string) (string, string, string, error) {
-	keyName := utils.GetDefaultSubnetAirdropKeyName(subnetName)
+	keyName := utils.GetDefaultBlockchainAirdropKeyName(subnetName)
 	keyPath := app.GetKeyPath(keyName)
 	if utils.FileExists(keyPath) {
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)

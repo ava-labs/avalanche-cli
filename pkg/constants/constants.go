@@ -26,6 +26,7 @@ const (
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
 	GenesisFileName              = "genesis.json"
+	AliasesFileName              = "aliases.json"
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
 	NodeFileName                 = "node.json"
@@ -96,6 +97,8 @@ const (
 	DefaultSnapshotName = "default-1654102509"
 
 	Cortina17Version = "v1.10.17"
+	Durango11Version = "v1.11.11"
+	Durango12Version = "v1.11.12"
 
 	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
@@ -122,6 +125,26 @@ const (
 	BootstrapSnapshotSingleNodePreCortina17LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreCortina17ArchiveName
 	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
 	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
+
+	BootstrapSnapshotPreDurango11ArchiveName = "bootstrapSnapshot.PreDurango11.tar.gz"
+	BootstrapSnapshotPreDurango11LocalPath   = AssetsDir + BootstrapSnapshotPreDurango11ArchiveName
+	BootstrapSnapshotPreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango11LocalPath
+	BootstrapSnapshotPreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango11.txt"
+
+	BootstrapSnapshotSingleNodePreDurango11ArchiveName = "bootstrapSnapshotSingleNode.PreDurango11.tar.gz"
+	BootstrapSnapshotSingleNodePreDurango11LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango11ArchiveName
+	BootstrapSnapshotSingleNodePreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango11LocalPath
+	BootstrapSnapshotSingleNodePreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango11.txt"
+
+	BootstrapSnapshotPreDurango12ArchiveName = "bootstrapSnapshot.PreDurango12.tar.gz"
+	BootstrapSnapshotPreDurango12LocalPath   = AssetsDir + BootstrapSnapshotPreDurango12ArchiveName
+	BootstrapSnapshotPreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango12LocalPath
+	BootstrapSnapshotPreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango12.txt"
+
+	BootstrapSnapshotSingleNodePreDurango12ArchiveName = "bootstrapSnapshotSingleNode.PreDurango12.tar.gz"
+	BootstrapSnapshotSingleNodePreDurango12LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango12ArchiveName
+	BootstrapSnapshotSingleNodePreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango12LocalPath
+	BootstrapSnapshotSingleNodePreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango12.txt"
 
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
@@ -237,6 +260,7 @@ const (
 	AWMRelayerInstallDir          = "awm-relayer"
 	TeleporterInstallDir          = "teleporter"
 	AWMRelayerBin                 = "awm-relayer"
+	LocalRelayerDir               = "local-relayer"
 	AWMRelayerConfigFilename      = "awm-relayer-config.json"
 	AWMRelayerStorageDir          = "awm-relayer-storage"
 	AWMRelayerLogFilename         = "awm-relayer.log"
@@ -245,10 +269,16 @@ const (
 
 	AWMRelayerSnapshotConfsDir = "relayer-confs"
 
-	TeleporterKeyName = "cli-teleporter-deployer"
+	ICMKeyName        = "cli-teleporter-deployer"
 	AWMRelayerKeyName = "cli-awm-relayer"
 
-	AWMRelayerMetricsPort = 9091
+	// to not interfere with other node services
+	RemoteAWMRelayerMetricsPort = 9091
+
+	// enables having many local relayers
+	LocalNetworkLocalAWMRelayerMetricsPort = 9091
+	DevnetLocalAWMRelayerMetricsPort       = 9092
+	FujiLocalAWMRelayerMetricsPort         = 9093
 
 	SubnetEVMBin = "subnet-evm"
 
@@ -356,4 +386,9 @@ const (
 	ICTTURL     = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
 	ICTTBranch  = "main"
 	ICTTVersion = "v1.0.0"
+
+	// ICM
+	DefaultTeleporterMessengerAddress      = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	MainnetCChainTeleporterRegistryAddress = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
+	FujiCChainTeleporterRegistryAddress    = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
 )

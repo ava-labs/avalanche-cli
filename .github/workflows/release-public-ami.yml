@@ -12,40 +12,39 @@ permissions:
   contents: read # This is required for actions/checkout
 
 env:
-  PACKER_VERSION: "1.10.2"
+  PACKER_VERSION: "1.11.2"
 
 jobs:
   build-public-ami-and-upload:
     name: Build Public AMIs for AWS and GCP
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '~1.21.9'
-          check-latest: true
-      - run: go version
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      - name: install nodejs
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Install NodeJS
         uses: actions/setup-node@v3
         with:
           node-version: '16'
 
-      - name: install npx aws-amicleaner
+      - name: Install npx aws-amicleaner
         run: npm install -g aws-amicleaner
       
-
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: us-east-1
 
-      - name: clean up old AMIs
-        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 1 --exclude-days 2 --region="*" --force
+      - name: Clean up old AMIs
+        run: npx aws-amicleaner --include-name 'public-avalanchecli-ubuntu-*' --exclude-newest 1 --region="*" --force
         env:
           AWS_REGION: us-east-1
 

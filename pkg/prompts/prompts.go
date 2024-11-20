@@ -30,6 +30,7 @@ const (
 	Undefined AddressFormat = iota
 	PChainFormat
 	EVMFormat
+	XChainFormat
 )
 
 const (
@@ -46,6 +47,8 @@ const (
 	MoreThanEq = "More Than Or Eq"
 	MoreThan   = "More Than"
 	NotEq      = "Not Eq"
+
+	customOption = "Custom"
 )
 
 var errNoKeys = errors.New("no keys")
@@ -756,7 +759,7 @@ func (prompter *realPrompter) ChooseKeyOrLedger(goal string) (bool, error) {
 		ledgerOption = "Use ledger"
 	)
 	option, err := prompter.CaptureList(
-		fmt.Sprintf("Which key source should be used to %s?", goal),
+		fmt.Sprintf("Which key should be used %s?", goal),
 		[]string{keyOption, ledgerOption},
 	)
 	if err != nil {
@@ -869,7 +872,7 @@ func CaptureKeyName(prompt Prompter, goal string, keyDir string, includeEwoq boo
 	if size > 10 {
 		size = 10
 	}
-	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used to %s?", goal), keyNames, size)
+	keyName, err := prompt.CaptureListWithSize(fmt.Sprintf("Which stored key should be used %s?", goal), keyNames, size)
 	if err != nil {
 		return "", err
 	}
@@ -897,49 +900,61 @@ func PromptChain(
 	prompter Prompter,
 	prompt string,
 	subnetNames []string,
-	avoidPChain bool,
-	avoidXChain bool,
-	avoidCChain bool,
-	avoidSubnet string,
-) (bool, bool, bool, bool, string, error) {
+	includePChain bool,
+	includeXChain bool,
+	includeCChain bool,
+	avoidBlockchainName string,
+	includeCustom bool,
+) (bool, bool, bool, bool, string, string, error) {
 	pChainOption := "P-Chain"
 	xChainOption := "X-Chain"
 	cChainOption := "C-Chain"
 	notListedOption := "My blockchain isn't listed"
 	subnetOptions := []string{}
-	if !avoidPChain {
+	if includePChain {
 		subnetOptions = append(subnetOptions, pChainOption)
 	}
-	if !avoidXChain {
+	if includeXChain {
 		subnetOptions = append(subnetOptions, xChainOption)
 	}
-	if !avoidCChain {
+	if includeCChain {
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
-	subnetNames = utils.RemoveFromSlice(subnetNames, avoidSubnet)
+	subnetNames = utils.RemoveFromSlice(subnetNames, avoidBlockchainName)
 	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
-	subnetOptions = append(subnetOptions, notListedOption)
+	if includeCustom {
+		subnetOptions = append(subnetOptions, customOption)
+	} else {
+		subnetOptions = append(subnetOptions, notListedOption)
+	}
 	subnetOption, err := prompter.CaptureListWithSize(
 		prompt,
 		subnetOptions,
 		11,
 	)
 	if err != nil {
-		return false, false, false, false, "", err
+		return false, false, false, false, "", "", err
+	}
+	if subnetOption == customOption {
+		blockchainID, err := prompter.CaptureString("Blockchain ID/Alias")
+		if err != nil {
+			return false, false, false, false, "", "", err
+		}
+		return false, false, false, false, "", blockchainID, nil
 	}
 	if subnetOption == notListedOption {
 		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
-		return true, false, false, false, "", nil
+		return true, false, false, false, "", "", nil
 	}
 	switch subnetOption {
 	case pChainOption:
-		return false, true, false, false, "", nil
+		return false, true, false, false, "", "", nil
 	case xChainOption:
-		return false, false, true, false, "", nil
+		return false, false, true, false, "", "", nil
 	case cChainOption:
-		return false, false, false, true, "", nil
+		return false, false, false, true, "", "", nil
 	default:
-		return false, false, false, false, strings.TrimPrefix(subnetOption, "Blockchain "), nil
+		return false, false, false, false, strings.TrimPrefix(subnetOption, "Blockchain "), "", nil
 	}
 }
 
@@ -953,11 +968,10 @@ func PromptPrivateKey(
 ) (string, error) {
 	privateKey := ""
 	cliKeyOpt := "Get private key from an existing stored key (created from avalanche key create or avalanche key import)"
-	customKeyOpt := "Custom"
 	genesisKeyOpt := fmt.Sprintf("Use the private key of the Genesis Allocated address %s", genesisAddress)
-	keyOptions := []string{cliKeyOpt, customKeyOpt}
+	keyOptions := []string{cliKeyOpt, customOption}
 	if genesisPrivateKey != "" {
-		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}
 	}
 	keyOption, err := prompter.CaptureList(
 		fmt.Sprintf("Which private key do you want to use to %s?", goal),
@@ -977,7 +991,7 @@ func PromptPrivateKey(
 			return "", err
 		}
 		privateKey = k.PrivKeyHex()
-	case customKeyOpt:
+	case customOption:
 		privateKey, err = prompter.CaptureString("Private Key")
 		if err != nil {
 			return "", err
@@ -1000,11 +1014,10 @@ func PromptAddress(
 ) (string, error) {
 	address := ""
 	cliKeyOpt := "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
-	customKeyOpt := "Custom"
 	genesisKeyOpt := fmt.Sprintf("Use the Genesis Allocated address %s", genesisAddress)
-	keyOptions := []string{cliKeyOpt, customKeyOpt}
+	keyOptions := []string{cliKeyOpt, customOption}
 	if genesisAddress != "" {
-		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customKeyOpt}
+		keyOptions = []string{genesisKeyOpt, cliKeyOpt, customOption}
 	}
 	keyOption, err := prompter.CaptureList(
 		fmt.Sprintf("Which address do you want to %s?", goal),
@@ -1026,10 +1039,15 @@ func PromptAddress(
 		if err != nil {
 			return "", err
 		}
-	case customKeyOpt:
+	case customOption:
 		switch format {
 		case PChainFormat:
 			address, err = prompter.CapturePChainAddress(customPrompt, network)
+			if err != nil {
+				return "", err
+			}
+		case XChainFormat:
+			address, err = prompter.CaptureXChainAddress(customPrompt, network)
 			if err != nil {
 				return "", err
 			}
@@ -1069,6 +1087,8 @@ func CaptureKeyAddress(
 	switch format {
 	case PChainFormat:
 		return k.P()[0], nil
+	case XChainFormat:
+		return k.X()[0], nil
 	case EVMFormat:
 		return k.C(), nil
 	}

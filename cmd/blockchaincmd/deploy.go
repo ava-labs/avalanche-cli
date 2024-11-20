@@ -21,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
@@ -34,7 +33,12 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-var deploySupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Devnet, networkoptions.Fuji, networkoptions.Mainnet}
+var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 var (
 	sameControlKey           bool
@@ -52,7 +56,7 @@ var (
 	skipCreatePrompt         bool
 	avagoBinaryPath          string
 	subnetOnly               bool
-	teleporterEsp            subnet.TeleporterEsp
+	icmSpec                  subnet.ICMSpec
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -94,13 +98,14 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
-	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
-	cmd.Flags().BoolVar(&teleporterEsp.SkipDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
-	cmd.Flags().StringVar(&teleporterEsp.Version, "teleporter-version", "latest", "teleporter version to deploy")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
-	cmd.Flags().StringVar(&teleporterEsp.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
-	cmd.Flags().StringVar(&teleporterEsp.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, "skip-relayer", false, "skip relayer deploy")
+	cmd.Flags().StringVar(&icmSpec.Version, "teleporter-version", "latest", "teleporter version to deploy")
+	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
+	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
+	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an interchain messenger deployer tx file")
+	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an interchain messenger registry bytecode file")
 	return cmd
 }
 
@@ -269,8 +274,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if teleporterEsp.MessengerContractAddressPath != "" || teleporterEsp.MessengerDeployerAddressPath != "" || teleporterEsp.MessengerDeployerTxPath != "" || teleporterEsp.RegistryBydecodePath != "" {
-		if teleporterEsp.MessengerContractAddressPath == "" || teleporterEsp.MessengerDeployerAddressPath == "" || teleporterEsp.MessengerDeployerTxPath == "" || teleporterEsp.RegistryBydecodePath == "" {
+	if icmSpec.MessengerContractAddressPath != "" || icmSpec.MessengerDeployerAddressPath != "" || icmSpec.MessengerDeployerTxPath != "" || icmSpec.RegistryBydecodePath != "" {
+		if icmSpec.MessengerContractAddressPath == "" || icmSpec.MessengerDeployerAddressPath == "" || icmSpec.MessengerDeployerTxPath == "" || icmSpec.RegistryBydecodePath == "" {
 			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
 		}
 	}
@@ -367,8 +372,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			userProvidedAvagoVersion = avagoVersion
 		}
 
-		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin)
-		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, teleporterEsp, subnetIDStr)
+		deployer := subnet.NewLocalDeployer(app, userProvidedAvagoVersion, avagoBinaryPath, vmBin, true)
+		deployInfo, err := deployer.DeployToLocalNetwork(chain, genesisPath, icmSpec, subnetIDStr)
 		if err != nil {
 			if deployer.BackendStartedHere() {
 				if innerErr := binutils.KillgRPCServerProcess(app); innerErr != nil {
@@ -384,10 +389,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			&sidecar,
 			network,
 			deployInfo.SubnetID,
-			ids.Empty,
 			deployInfo.BlockchainID,
-			deployInfo.TeleporterMessengerAddress,
-			deployInfo.TeleporterRegistryAddress,
+			deployInfo.ICMMessengerAddress,
+			deployInfo.ICMRegistryAddress,
 		); err != nil {
 			return err
 		}
@@ -400,7 +404,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	createSubnet := true
-	var subnetID, transferSubnetOwnershipTxID ids.ID
+	var subnetID ids.ID
 	if subnetIDStr != "" {
 		subnetID, err = ids.FromString(subnetIDStr)
 		if err != nil {
@@ -412,7 +416,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if ok {
 			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
 				subnetID = model.SubnetID
-				transferSubnetOwnershipTxID = model.TransferSubnetOwnershipTxID
 				createSubnet = false
 			}
 		}
@@ -420,10 +423,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	fee := uint64(0)
 	if !subnetOnly {
-		fee += network.GenesisParams().CreateBlockchainTxFee
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
 	}
 	if createSubnet {
-		fee += network.GenesisParams().CreateSubnetTxFee
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
 	}
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
@@ -519,7 +522,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
-			transferSubnetOwnershipTxID,
 			chain,
 			chainGenesis,
 		)
@@ -550,28 +552,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if isFullySigned {
-		if network.ClusterName != "" {
-			clusterConfig, err := app.GetClusterConfig(network.ClusterName)
-			if err != nil {
-				return err
-			}
-			if _, err := utils.GetIndexInSlice(clusterConfig.Subnets, blockchainName); err != nil {
-				clusterConfig.Subnets = append(clusterConfig.Subnets, blockchainName)
-			}
-			if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
-				return err
-			}
-		}
-	}
-
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
 	// update sidecar
 	// TODO: need to do something for backwards compatibility?
-	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, transferSubnetOwnershipTxID, blockchainID, "", "")
+	return app.UpdateSidecarNetworks(&sidecar, network, subnetID, blockchainID, "", "")
 }
 
 func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {

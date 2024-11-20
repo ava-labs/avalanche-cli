@@ -8,12 +8,13 @@ import (
 )
 
 type NetworkData struct {
-	SubnetID                    ids.ID
-	TransferSubnetOwnershipTxID ids.ID
-	BlockchainID                ids.ID
-	RPCVersion                  int
-	TeleporterMessengerAddress  string
-	TeleporterRegistryAddress   string
+	SubnetID                   ids.ID
+	BlockchainID               ids.ID
+	RPCVersion                 int
+	TeleporterMessengerAddress string
+	TeleporterRegistryAddress  string
+	RPCEndpoints               []string
+	WSEndpoints                []string
 }
 
 type Sidecar struct {

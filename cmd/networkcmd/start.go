@@ -66,7 +66,7 @@ func StartNetwork(*cobra.Command, []string) error {
 			return err
 		}
 	}
-	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "")
+	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "", false)
 
 	if err := sd.StartServer(); err != nil {
 		return err
@@ -165,16 +165,17 @@ func StartNetwork(*cobra.Command, []string) error {
 		return err
 	}
 
-	if b, relayerConfigPath, err := subnet.GetAWMRelayerConfigPath(); err != nil {
+	if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
 		return err
 	} else if b {
 		ux.Logger.PrintToUser("")
 		if err := teleporter.DeployRelayer(
+			"latest",
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
-			app.GetAWMRelayerLogPath(),
-			app.GetAWMRelayerRunPath(),
-			app.GetAWMRelayerStorageDir(),
+			app.GetLocalRelayerLogPath(models.Local),
+			app.GetLocalRelayerRunPath(models.Local),
+			app.GetLocalRelayerStorageDir(models.Local),
 		); err != nil {
 			return err
 		}

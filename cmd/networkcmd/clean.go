@@ -47,7 +47,7 @@ func clean(*cobra.Command, []string) error {
 
 	configSingleNodeEnabled := app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
 
-	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, "", configSingleNodeEnabled); err != nil {
+	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, true, "", configSingleNodeEnabled); err != nil {
 		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
 	}
 
@@ -58,8 +58,8 @@ func clean(*cobra.Command, []string) error {
 	}
 
 	if err := teleporter.RelayerCleanup(
-		app.GetAWMRelayerRunPath(),
-		app.GetAWMRelayerStorageDir(),
+		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
 	}
