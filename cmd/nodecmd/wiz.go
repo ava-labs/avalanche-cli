@@ -407,7 +407,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			MessengerDeployerTxPath:      teleporterMessengerDeployerTxPath,
 			RegistryBydecodePath:         teleporterRegistryBydecodePath,
 		}
-		if err := teleportercmd.CallDeploy([]string{}, flags); err != nil {
+		if err := teleportercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("")

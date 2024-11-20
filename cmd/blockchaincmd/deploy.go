@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -752,6 +753,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	tracked := false
+
 	if sidecar.Sovereign {
 		avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 		if err != nil {
@@ -848,6 +851,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					return err
 				}
 			}
+			tracked = true
 			chainSpec := contract.ChainSpec{
 				BlockchainName: blockchainName,
 			}
@@ -937,6 +941,32 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			); err != nil {
 				return err
 			}
+			tracked = true
+		}
+	}
+
+	if sidecar.TeleporterReady && tracked {
+		chainSpec := contract.ChainSpec{
+			BlockchainName: blockchainName,
+		}
+		chainSpec.SetEnabled(true, false, false, false, false)
+		flags := teleportercmd.DeployFlags{
+			ChainFlags: chainSpec,
+			PrivateKeyFlags: contract.PrivateKeyFlags{
+				KeyName: constants.ICMKeyName,
+			},
+			DeployMessenger:              !icmSpec.SkipICMDeploy,
+			DeployRegistry:               !icmSpec.SkipICMDeploy,
+			ForceRegistryDeploy:          true,
+			Version:                      icmSpec.ICMVersion,
+			MessengerContractAddressPath: icmSpec.MessengerContractAddressPath,
+			MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
+			MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
+			RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
+		}
+		ux.Logger.PrintToUser("")
+		if err := teleportercmd.CallDeploy([]string{}, flags, network); err != nil {
+			return err
 		}
 	}
 

@@ -75,21 +75,24 @@ func newDeployCmd() *cobra.Command {
 }
 
 func deploy(_ *cobra.Command, args []string) error {
-	return CallDeploy(args, deployFlags)
+	return CallDeploy(args, deployFlags, models.UndefinedNetwork)
 }
 
-func CallDeploy(_ []string, flags DeployFlags) error {
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"On what Network do you want to deploy the Teleporter Messenger?",
-		flags.Network,
-		true,
-		false,
-		deploySupportedNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
+func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
+	var err error
+	if network == models.UndefinedNetwork {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"On what Network do you want to deploy the Teleporter Messenger?",
+			flags.Network,
+			true,
+			false,
+			deploySupportedNetworkOptions,
+			"",
+		)
+		if err != nil {
+			return err
+		}
 	}
 	if err := flags.ChainFlags.CheckMutuallyExclusiveFields(); err != nil {
 		return err
