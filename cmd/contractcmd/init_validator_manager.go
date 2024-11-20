@@ -176,8 +176,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		OwnerAddress:        &ownerAddress,
 		RPC:                 validatorManagerFlags.rpcEndpoint,
 	}
-
-	if sc.PoA() { // PoA
+	switch {
+	case sc.PoA(): // PoA
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
 		if err := validatormanager.SetupPoA(
 			subnetSDK,
@@ -189,7 +189,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	} else if sc.PoS() { // PoS
+	case sc.PoS(): // PoS
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Stake Validator Manager contract on blockchain %s"), blockchainName)
 		if initPOSManagerFlags.rewardCalculatorAddress == "" {
 			initPOSManagerFlags.rewardCalculatorAddress = validatorManagerSDK.RewardCalculatorAddress
@@ -213,7 +213,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Native Token Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	} else { // unsupported
+	default: // unsupported
 		return fmt.Errorf("only PoA and PoS supported")
 	}
 	return nil
