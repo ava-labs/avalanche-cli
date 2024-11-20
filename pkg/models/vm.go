@@ -7,10 +7,10 @@ import "github.com/ava-labs/avalanche-cli/pkg/constants"
 type VMType string
 
 const (
-	SubnetEvm   = "Subnet-EVM"
-	BlobVM      = "Blob VM"
-	TimestampVM = "Timestamp VM"
-	CustomVM    = "Custom"
+	SubnetEvm = "Subnet-EVM"
+	BlobVM    = "Blob VM"
+	HyperVM   = "HyperVM"
+	CustomVM  = "Custom"
 )
 
 func VMTypeFromString(s string) VMType {
@@ -19,8 +19,8 @@ func VMTypeFromString(s string) VMType {
 		return SubnetEvm
 	case BlobVM:
 		return BlobVM
-	case TimestampVM:
-		return TimestampVM
+	case HyperVM:
+		return HyperVM
 	default:
 		return CustomVM
 	}

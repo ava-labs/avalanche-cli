@@ -102,6 +102,7 @@ func PromptTokenSymbol(
 func PromptVMType(
 	app *application.Avalanche,
 	useSubnetEvm bool,
+	useHyperVM bool,
 	useCustom bool,
 ) (models.VMType, error) {
 	if useSubnetEvm {
@@ -111,8 +112,9 @@ func PromptVMType(
 		return models.CustomVM, nil
 	}
 	subnetEvmOption := "Subnet-EVM"
+	hyperVMOption := "HyperVM"
 	customVMOption := "Custom VM"
-	options := []string{subnetEvmOption, customVMOption, explainOption}
+	options := []string{subnetEvmOption, hyperVMOption, customVMOption, explainOption}
 	var subnetTypeStr string
 	for {
 		option, err := app.Prompt.CaptureList(
@@ -125,9 +127,12 @@ func PromptVMType(
 		switch option {
 		case subnetEvmOption:
 			subnetTypeStr = models.SubnetEvm
+		case hyperVMOption:
+			subnetTypeStr = models.HyperVM
 		case customVMOption:
 			subnetTypeStr = models.CustomVM
 		case explainOption:
+			// TODO: add explanation for HyperVM
 			ux.Logger.PrintToUser("Virtual machines are the blueprint the defines the application-level logic of a blockchain. It determines the language and rules for writing and executing smart contracts, as well as other blockchain logic.")
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("Subnet-EVM is an EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-the-box solution for Blockchain deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. For more information, please visit: https://github.com/ava-labs/subnet-evm")

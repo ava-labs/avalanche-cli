@@ -34,7 +34,9 @@ const (
 )
 
 type CreateFlags struct {
-	useSubnetEvm                  bool
+	useSubnetEvm bool
+	// TODO: implement all dependencies related to useHyperVM
+	useHyperVM                    bool
 	useCustomVM                   bool
 	chainID                       uint64
 	tokenSymbol                   string
@@ -92,6 +94,7 @@ configuration, pass the -f flag.`,
 	}
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
+	cmd.Flags().BoolVar(&createFlags.useHyperVM, "hypervm", false, "use a HyperVM as the template")
 	cmd.Flags().BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM template")
 	cmd.Flags().StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
 	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedVMVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
@@ -199,7 +202,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// vm type exclusiveness
-	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVM}) {
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useHyperVM, createFlags.useCustomVM}) {
 		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
@@ -218,7 +221,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// get vm kind
-	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useCustomVM)
+	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useHyperVM, createFlags.useCustomVM)
 	if err != nil {
 		return err
 	}
@@ -355,20 +358,19 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-	} else {
+	} else if vmType == models.HyperVM {
 		if genesisPath == "" {
 			providePath := "I'll provide the genesis path"
 			binaryGen := "The VM binary will generate the genesis"
-			hyperSDKOption := "HyperSDK VM Only: Use the DefaultGenesis"
-			options := []string{providePath, binaryGen, hyperSDKOption}
-			opt, err := app.Prompt.CaptureList(
+			defaultGen := "Use the DefaultGenesis for my VM"
+			option, err := app.Prompt.CaptureList(
 				"How would you like to provide the genesis file?",
-				options,
+				[]string{providePath, binaryGen, defaultGen},
 			)
 			if err != nil {
 				return err
 			}
-			switch opt {
+			switch option {
 			case providePath:
 				genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
 				if err != nil {
@@ -380,13 +382,38 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				}
 			case binaryGen:
 				createGenesisFromBinary = true
-			case hyperSDKOption:
+			case defaultGen:
 				gb, err := vm.CreateDefaultHyperSDKGenesis(app)
 				if err != nil {
 					return err
 				}
 				genesisBytes = gb
 			}
+		}
+		var tokenSymbol string
+		sc, err = vm.CreateCustomSidecar(
+			app,
+			blockchainName,
+			useRepo,
+			customVMRepoURL,
+			customVMBranch,
+			customVMBuildScript,
+			vmFile,
+			tokenSymbol,
+		)
+		if err != nil {
+			return err
+		}
+	} else {
+		if genesisPath == "" {
+			genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
+			if err != nil {
+				return err
+			}
+		}
+		genesisBytes, err = os.ReadFile(genesisPath)
+		if err != nil {
+			return err
 		}
 		var tokenSymbol string
 		if evmCompatibleGenesis := utils.ByteSliceIsSubnetEvmGenesis(genesisBytes); evmCompatibleGenesis {
