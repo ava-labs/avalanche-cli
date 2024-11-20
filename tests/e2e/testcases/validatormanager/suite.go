@@ -128,7 +128,7 @@ func destroyLocalNode() {
 	}
 }
 
-func getBootstrapValidator() ([]*txs.ConvertSubnetValidator, error) {
+func getBootstrapValidator() ([]*txs.ConvertSubnetToL1Validator, error) {
 	infoClient := info.NewClient("http://127.0.0.1:9650")
 	ctx, cancel := utils.GetAPILargeContext()
 	defer cancel()

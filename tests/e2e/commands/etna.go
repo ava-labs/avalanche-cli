@@ -74,6 +74,7 @@ func CreateLocalEtnaDevnetNode(
 		avalanchegoPath,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -140,6 +141,7 @@ func DeployEtnaSubnetToCluster(
 		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
@@ -163,6 +165,7 @@ func TrackLocalEtnaSubnet(
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -193,6 +196,7 @@ func InitPoaManager(
 		"--genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -228,6 +232,7 @@ func AddEtnaSubnetValidatorToCluster(
 		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
