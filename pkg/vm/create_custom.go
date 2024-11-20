@@ -208,10 +208,9 @@ func BuildCustomVM(
 }
 
 func CreateDefaultHyperSDKGenesis(app *application.Avalanche) ([]byte, error) {
-	defaultOption := "I want to use defaults for a test environment"
-	customOption := "I don't want to use default values"
-	options := []string{defaultOption, customOption}
-	option, err := app.Prompt.CaptureList("What values do you want to use for your genesis?", options)
+	defaultOption := "I want to use the default preallocation list in my genesis"
+	customOption := "I want to define my own preallocation list"
+	option, err := app.Prompt.CaptureList("How would you like to define the preallocation list in your genesis?", []string{defaultOption, customOption})
 	if err != nil {
 		return []byte{}, err
 	}
@@ -220,7 +219,6 @@ func CreateDefaultHyperSDKGenesis(app *application.Avalanche) ([]byte, error) {
 	case defaultOption:
 		return CreateHyperSDKGenesis(nil)
 	case customOption:
-	loop:
 		for {
 			addAddressOption := "Add an address to the initial token allocation"
 			confirmOption := "Confirm and create genesis"
@@ -240,9 +238,9 @@ func CreateDefaultHyperSDKGenesis(app *application.Avalanche) ([]byte, error) {
 				}
 				accounts = append(accounts, addr)
 			case confirmOption:
-				break loop
+				return CreateHyperSDKGenesis(accounts)
 			}
 		}
 	}
-	return CreateHyperSDKGenesis(accounts)
+	return []byte{}, nil
 }
