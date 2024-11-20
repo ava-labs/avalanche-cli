@@ -81,7 +81,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			testLocalNodeName,
 			"http://127.0.0.1:9650",
 			blockchainID,
-			commands.PoA,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
