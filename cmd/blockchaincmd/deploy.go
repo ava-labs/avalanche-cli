@@ -103,6 +103,7 @@ var (
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
+	errNotSupportedOnMainnet       = errors.New("deploying sovereign blockchain is currently not supported on Mainnet")
 )
 
 // avalanche blockchain deploy
@@ -404,6 +405,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
+
+	if network.Kind == models.Mainnet && sidecar.Sovereign {
+		return errNotSupportedOnMainnet
+	}
+
 	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
