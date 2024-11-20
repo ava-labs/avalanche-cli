@@ -555,7 +555,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		// use provided key as change owner unless already set
 		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
 			changeOwnerAddress = pAddr[0]
-			ux.Logger.PrintToUser("Using %s to be set as a change owner for leftover AVAX", changeOwnerAddress)
+			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
 		} else {
 			ux.Logger.RedXToUser("Failed to get change owner address from keychain")
 			return err
