@@ -162,7 +162,7 @@ func ValidatorManagerGetSubnetValidatorRegistrationMessage(
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
 ) (*warp.Message, ids.ID, error) {
-	addressedCallPayload, err := warpMessage.NewRegisterSubnetValidator(
+	addressedCallPayload, err := warpMessage.NewRegisterL1Validator(
 		subnetID,
 		nodeID,
 		blsPublicKey,
@@ -256,7 +256,7 @@ func ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 	validationID ids.ID,
 	registered bool,
 ) (*warp.Message, error) {
-	addressedCallPayload, err := warpMessage.NewSubnetValidatorRegistration(validationID, registered)
+	addressedCallPayload, err := warpMessage.NewL1ValidatorRegistration(validationID, registered)
 	if err != nil {
 		return nil, err
 	}
@@ -494,9 +494,9 @@ func GetRegistrationMessage(
 	for validationIndex := uint32(0); validationIndex < numBootstrapValidatorsToSearch; validationIndex++ {
 		bootstrapValidationID := subnetID.Append(validationIndex)
 		if bootstrapValidationID == validationID {
-			justification := platformvm.SubnetValidatorRegistrationJustification{
-				Preimage: &platformvm.SubnetValidatorRegistrationJustification_ConvertSubnetTxData{
-					ConvertSubnetTxData: &platformvm.SubnetIDIndex{
+			justification := platformvm.L1ValidatorRegistrationJustification{
+				Preimage: &platformvm.L1ValidatorRegistrationJustification_ConvertSubnetToL1TxData{
+					ConvertSubnetToL1TxData: &platformvm.SubnetIDIndex{
 						SubnetId: subnetID[:],
 						Index:    validationIndex,
 					},
@@ -536,12 +536,12 @@ func GetRegistrationMessage(
 				payload := msg.Payload
 				addressedCall, err := warpPayload.ParseAddressedCall(payload)
 				if err == nil {
-					reg, err := warpMessage.ParseRegisterSubnetValidator(addressedCall.Payload)
+					reg, err := warpMessage.ParseRegisterL1Validator(addressedCall.Payload)
 					if err == nil {
 						if reg.ValidationID() == validationID {
-							justification := platformvm.SubnetValidatorRegistrationJustification{
-								Preimage: &platformvm.SubnetValidatorRegistrationJustification_RegisterSubnetValidatorMessage{
-									RegisterSubnetValidatorMessage: addressedCall.Payload,
+							justification := platformvm.L1ValidatorRegistrationJustification{
+								Preimage: &platformvm.L1ValidatorRegistrationJustification_RegisterL1ValidatorMessage{
+									RegisterL1ValidatorMessage: addressedCall.Payload,
 								},
 							}
 							return proto.Marshal(&justification)

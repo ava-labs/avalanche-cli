@@ -134,7 +134,7 @@ type Subnet struct {
 
 	// BootstrapValidators are bootstrap validators that are included in the ConvertL1Tx call
 	// that made Subnet a sovereign blockchain
-	BootstrapValidators []*txs.ConvertSubnetValidator
+	BootstrapValidators []*txs.ConvertSubnetToL1Validator
 }
 
 func (c *Subnet) SetParams(controlKeys []ids.ShortID, subnetAuthKeys []ids.ShortID, threshold uint32) {

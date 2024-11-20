@@ -1023,8 +1023,8 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, e
 }
 
 // TODO: add deactivation owner?
-func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
-	bootstrapValidators := []*txs.ConvertSubnetValidator{}
+func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetToL1Validator, error) {
+	bootstrapValidators := []*txs.ConvertSubnetToL1Validator{}
 	for _, validator := range subnetValidators {
 		nodeID, err := ids.NodeIDFromString(validator.NodeID)
 		if err != nil {
@@ -1038,7 +1038,7 @@ func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		if err != nil {
 			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
 		}
-		bootstrapValidator := &txs.ConvertSubnetValidator{
+		bootstrapValidator := &txs.ConvertSubnetToL1Validator{
 			NodeID:  nodeID[:],
 			Weight:  validator.Weight,
 			Balance: validator.Balance,

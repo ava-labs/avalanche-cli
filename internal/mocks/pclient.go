@@ -15,6 +15,8 @@ import (
 
 	platformvm "github.com/ava-labs/avalanchego/vms/platformvm"
 
+	platformvmapi "github.com/ava-labs/avalanchego/vms/platformvm/api"
+
 	rpc "github.com/ava-labs/avalanchego/utils/rpc"
 
 	secp256k1 "github.com/ava-labs/avalanchego/utils/crypto/secp256k1"
@@ -506,6 +508,48 @@ func (_m *PClient) GetHeight(ctx context.Context, options ...rpc.Option) (uint64
 	return r0, r1
 }
 
+// GetL1Validator provides a mock function with given fields: ctx, validationID, options
+func (_m *PClient) GetL1Validator(ctx context.Context, validationID ids.ID, options ...rpc.Option) (platformvm.L1Validator, uint64, error) {
+	_va := make([]interface{}, len(options))
+	for _i := range options {
+		_va[_i] = options[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, validationID)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetL1Validator")
+	}
+
+	var r0 platformvm.L1Validator
+	var r1 uint64
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, ...rpc.Option) (platformvm.L1Validator, uint64, error)); ok {
+		return rf(ctx, validationID, options...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, ...rpc.Option) platformvm.L1Validator); ok {
+		r0 = rf(ctx, validationID, options...)
+	} else {
+		r0 = ret.Get(0).(platformvm.L1Validator)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ids.ID, ...rpc.Option) uint64); ok {
+		r1 = rf(ctx, validationID, options...)
+	} else {
+		r1 = ret.Get(1).(uint64)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, ids.ID, ...rpc.Option) error); ok {
+		r2 = rf(ctx, validationID, options...)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // GetMinStake provides a mock function with given fields: ctx, subnetID, options
 func (_m *PClient) GetMinStake(ctx context.Context, subnetID ids.ID, options ...rpc.Option) (uint64, uint64, error) {
 	_va := make([]interface{}, len(options))
@@ -546,6 +590,41 @@ func (_m *PClient) GetMinStake(ctx context.Context, subnetID ids.ID, options ...
 	}
 
 	return r0, r1, r2
+}
+
+// GetProposedHeight provides a mock function with given fields: ctx, options
+func (_m *PClient) GetProposedHeight(ctx context.Context, options ...rpc.Option) (uint64, error) {
+	_va := make([]interface{}, len(options))
+	for _i := range options {
+		_va[_i] = options[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetProposedHeight")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) (uint64, error)); ok {
+		return rf(ctx, options...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) uint64); ok {
+		r0 = rf(ctx, options...)
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, ...rpc.Option) error); ok {
+		r1 = rf(ctx, options...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetRewardUTXOs provides a mock function with given fields: _a0, _a1, _a2
@@ -701,48 +780,6 @@ func (_m *PClient) GetSubnet(ctx context.Context, subnetID ids.ID, options ...rp
 	}
 
 	return r0, r1
-}
-
-// GetSubnetOnlyValidator provides a mock function with given fields: ctx, validationID, options
-func (_m *PClient) GetSubnetOnlyValidator(ctx context.Context, validationID ids.ID, options ...rpc.Option) (platformvm.SubnetOnlyValidator, uint64, error) {
-	_va := make([]interface{}, len(options))
-	for _i := range options {
-		_va[_i] = options[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, validationID)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetSubnetOnlyValidator")
-	}
-
-	var r0 platformvm.SubnetOnlyValidator
-	var r1 uint64
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, ...rpc.Option) (platformvm.SubnetOnlyValidator, uint64, error)); ok {
-		return rf(ctx, validationID, options...)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, ...rpc.Option) platformvm.SubnetOnlyValidator); ok {
-		r0 = rf(ctx, validationID, options...)
-	} else {
-		r0 = ret.Get(0).(platformvm.SubnetOnlyValidator)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, ids.ID, ...rpc.Option) uint64); ok {
-		r1 = rf(ctx, validationID, options...)
-	} else {
-		r1 = ret.Get(1).(uint64)
-	}
-
-	if rf, ok := ret.Get(2).(func(context.Context, ids.ID, ...rpc.Option) error); ok {
-		r2 = rf(ctx, validationID, options...)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
 }
 
 // GetSubnets provides a mock function with given fields: ctx, subnetIDs, options
@@ -982,7 +1019,7 @@ func (_m *PClient) GetUTXOs(ctx context.Context, addrs []ids.ShortID, limit uint
 }
 
 // GetValidatorsAt provides a mock function with given fields: ctx, subnetID, height, options
-func (_m *PClient) GetValidatorsAt(ctx context.Context, subnetID ids.ID, height uint64, options ...rpc.Option) (map[ids.NodeID]*validators.GetValidatorOutput, error) {
+func (_m *PClient) GetValidatorsAt(ctx context.Context, subnetID ids.ID, height platformvmapi.Height, options ...rpc.Option) (map[ids.NodeID]*validators.GetValidatorOutput, error) {
 	_va := make([]interface{}, len(options))
 	for _i := range options {
 		_va[_i] = options[_i]
@@ -998,10 +1035,10 @@ func (_m *PClient) GetValidatorsAt(ctx context.Context, subnetID ids.ID, height 
 
 	var r0 map[ids.NodeID]*validators.GetValidatorOutput
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, uint64, ...rpc.Option) (map[ids.NodeID]*validators.GetValidatorOutput, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, platformvmapi.Height, ...rpc.Option) (map[ids.NodeID]*validators.GetValidatorOutput, error)); ok {
 		return rf(ctx, subnetID, height, options...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, uint64, ...rpc.Option) map[ids.NodeID]*validators.GetValidatorOutput); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ids.ID, platformvmapi.Height, ...rpc.Option) map[ids.NodeID]*validators.GetValidatorOutput); ok {
 		r0 = rf(ctx, subnetID, height, options...)
 	} else {
 		if ret.Get(0) != nil {
@@ -1009,7 +1046,7 @@ func (_m *PClient) GetValidatorsAt(ctx context.Context, subnetID ids.ID, height 
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, ids.ID, uint64, ...rpc.Option) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ids.ID, platformvmapi.Height, ...rpc.Option) error); ok {
 		r1 = rf(ctx, subnetID, height, options...)
 	} else {
 		r1 = ret.Error(1)

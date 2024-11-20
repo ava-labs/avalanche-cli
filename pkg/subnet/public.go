@@ -140,7 +140,7 @@ func (*PublicDeployer) createSetSubnetValidatorWeightTx(
 	message *warp.Message,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	unsignedTx, err := wallet.P().Builder().NewSetSubnetValidatorWeightTx(
+	unsignedTx, err := wallet.P().Builder().NewSetL1ValidatorWeightTx(
 		message.Bytes(),
 	)
 	if err != nil {
@@ -186,7 +186,7 @@ func (*PublicDeployer) createRegisterSubnetValidatorTx(
 	message *warp.Message,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
-	unsignedTx, err := wallet.P().Builder().NewRegisterSubnetValidatorTx(
+	unsignedTx, err := wallet.P().Builder().NewRegisterL1ValidatorTx(
 		balance,
 		pop.ProofOfPossession,
 		message.Bytes(),
@@ -461,7 +461,7 @@ func (d *PublicDeployer) ConvertL1(
 	subnetID ids.ID,
 	chainID ids.ID,
 	validatorManagerAddress goethereumcommon.Address,
-	validators []*txs.ConvertSubnetValidator,
+	validators []*txs.ConvertSubnetToL1Validator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
 	ux.Logger.PrintToUser("Now calling ConvertL1 Tx...")
 
@@ -693,11 +693,11 @@ func (d *PublicDeployer) createConvertL1Tx(
 	subnetID ids.ID,
 	chainID ids.ID,
 	address []byte,
-	validators []*txs.ConvertSubnetValidator,
+	validators []*txs.ConvertSubnetToL1Validator,
 	wallet primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)
-	unsignedTx, err := wallet.P().Builder().NewConvertSubnetTx(
+	unsignedTx, err := wallet.P().Builder().NewConvertSubnetToL1Tx(
 		subnetID,
 		chainID,
 		address,
