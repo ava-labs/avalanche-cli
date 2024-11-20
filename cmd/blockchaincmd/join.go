@@ -98,6 +98,10 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	if sc.Sovereign {
+		return errors.New("avalanche blockchain join command cannot be used on sovereign blockchains")
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
