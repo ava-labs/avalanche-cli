@@ -28,8 +28,6 @@ manage your Blockchain configurations and live deployments.`,
 	app = injectedApp
 	// blockchain create
 	cmd.AddCommand(newCreateCmd())
-	// blockchain delete
-	cmd.AddCommand(newDeleteCmd())
 	// blockchain deploy
 	cmd.AddCommand(newDeployCmd())
 	// blockchain describe
@@ -44,20 +42,14 @@ manage your Blockchain configurations and live deployments.`,
 	cmd.AddCommand(newExportCmd())
 	// blockchain import
 	cmd.AddCommand(newImportCmd())
-	// blockchain publish
-	cmd.AddCommand(newPublishCmd())
 	// blockchain upgrade
 	cmd.AddCommand(upgradecmd.NewCmd(app))
-	// blockchain stats
-	cmd.AddCommand(newStatsCmd())
 	// blockchain configure
 	cmd.AddCommand(newConfigureCmd())
 	// blockchain VMID
 	cmd.AddCommand(vmidCmd())
 	// blockchain removeValidator
 	cmd.AddCommand(newRemoveValidatorCmd())
-	// subnet validators
-	cmd.AddCommand(newValidatorsCmd())
 	// subnet changeOwner
 	cmd.AddCommand(newChangeOwnerCmd())
 	// subnet changeWeight
