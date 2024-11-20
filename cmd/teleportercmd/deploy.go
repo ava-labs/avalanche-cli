@@ -94,6 +94,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return err
 		}
 	}
+	fmt.Println(network)
 	if err := flags.ChainFlags.CheckMutuallyExclusiveFields(); err != nil {
 		return err
 	}
@@ -197,7 +198,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	if err != nil {
 		return err
 	}
-	if flags.ChainFlags.BlockchainName != "" && !alreadyDeployed {
+	if flags.ChainFlags.BlockchainName != "" && (!alreadyDeployed || flags.ForceRegistryDeploy) {
 		// update sidecar
 		sc, err := app.LoadSidecar(flags.ChainFlags.BlockchainName)
 		if err != nil {
