@@ -181,27 +181,27 @@ func GetPChainSubnetConversionWarpMessage(
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
 	managerAddress common.Address,
-	convertSubnetValidators []*txs.ConvertSubnetValidator,
+	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
 ) (*warp.Message, error) {
-	validators := []warpMessage.SubnetConversionValidatorData{}
+	validators := []warpMessage.SubnetToL1ConverstionValidatorData{}
 	for _, convertSubnetValidator := range convertSubnetValidators {
-		validators = append(validators, warpMessage.SubnetConversionValidatorData{
+		validators = append(validators, warpMessage.SubnetToL1ConverstionValidatorData{
 			NodeID:       convertSubnetValidator.NodeID[:],
 			BLSPublicKey: convertSubnetValidator.Signer.PublicKey,
 			Weight:       convertSubnetValidator.Weight,
 		})
 	}
-	subnetConversionData := warpMessage.SubnetConversionData{
+	subnetConversionData := warpMessage.SubnetToL1ConversionData{
 		SubnetID:       subnetID,
 		ManagerChainID: managerBlockchainID,
 		ManagerAddress: managerAddress.Bytes(),
 		Validators:     validators,
 	}
-	subnetConversionID, err := warpMessage.SubnetConversionID(subnetConversionData)
+	subnetConversionID, err := warpMessage.SubnetToL1ConversionID(subnetConversionData)
 	if err != nil {
 		return nil, err
 	}
-	addressedCallPayload, err := warpMessage.NewSubnetConversion(subnetConversionID)
+	addressedCallPayload, err := warpMessage.NewSubnetToL1Conversion(subnetConversionID)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func InitializeValidatorsSet(
 	privateKey string,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
-	convertSubnetValidators []*txs.ConvertSubnetValidator,
+	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
 	subnetConversionSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
 	type InitialValidator struct {
