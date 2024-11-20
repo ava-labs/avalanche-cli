@@ -146,7 +146,7 @@ func initPOAManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ownerAddress := common.HexToAddress(sc.PoAValidatorManagerOwner)
+	ownerAddress := common.HexToAddress(sc.ProxyContractOwner)
 	subnetSDK := blockchainSDK.Subnet{
 		SubnetID:            subnetID,
 		BlockchainID:        blockchainID,

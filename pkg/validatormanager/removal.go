@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -23,25 +24,49 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func PoAValidatorManagerInitializeValidatorRemoval(
+func ValidatorManagerInitializeValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	ownerPrivateKey string,
 	validationID [32]byte,
+	isPoS bool,
+	force bool,
 ) (*types.Transaction, *types.Receipt, error) {
+	if isPoS {
+		// PoS only supports forcefull removal //TODO: implement uptime proof to remove this restriction
+		// posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
+		posEndValidation := "forceInitializeEndValidation(bytes32,bool,uint32)"
+		if force {
+			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
+		}
+
+		return contract.TxToMethod(
+			rpcURL,
+			ownerPrivateKey,
+			managerAddress,
+			big.NewInt(0),
+			"POS validator removal initialization",
+			validatorManagerSDK.ErrorSignatureToError,
+			posEndValidation,
+			validationID,
+			false, // don't include uptime proof - rely on network to calculate uptime
+			uint32(0),
+		)
+	}
+	// PoA case
 	return contract.TxToMethod(
 		rpcURL,
 		ownerPrivateKey,
 		managerAddress,
 		big.NewInt(0),
-		"validator removal initialization",
-		errorSignatureToError,
+		"POA validator removal initialization",
+		validatorManagerSDK.ErrorSignatureToError,
 		"initializeEndValidation(bytes32)",
 		validationID,
 	)
 }
 
-func PoaValidatorManagerGetSubnetValidatorWeightMessage(
+func ValidatorManagerGetSubnetValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -98,6 +123,8 @@ func InitValidatorRemoval(
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
+	initWithPos bool,
+	force bool,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -115,7 +142,7 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	validationID, err := GetRegisteredValidator(
 		rpcURL,
 		managerAddress,
@@ -124,14 +151,17 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	tx, _, err := PoAValidatorManagerInitializeValidatorRemoval(
+	ux.Logger.PrintToUser("Using validationID: %s for nodeID: %s", validationID, nodeID)
+	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		ownerPrivateKey,
 		validationID,
+		initWithPos,
+		force,
 	)
 	if err != nil {
-		if !errors.Is(err, errInvalidValidatorStatus) {
+		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 		}
 		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceeding to the next step")
@@ -142,7 +172,7 @@ func InitValidatorRemoval(
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
 	nonce := uint64(1)
-	signedMsg, err := PoaValidatorManagerGetSubnetValidatorWeightMessage(
+	signedMsg, err := ValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -157,7 +187,7 @@ func InitValidatorRemoval(
 	return signedMsg, validationID, err
 }
 
-func PoAValidatorManagerCompleteValidatorRemoval(
+func ValidatorManagerCompleteValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string, // not need to be owner atm
@@ -170,7 +200,7 @@ func PoAValidatorManagerCompleteValidatorRemoval(
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
 		"complete poa validator removal",
-		errorSignatureToError,
+		validatorManagerSDK.ErrorSignatureToError,
 		"completeEndValidation(uint32)",
 		uint32(0),
 	)
@@ -186,7 +216,7 @@ func FinishValidatorRemoval(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
 ) error {
-	managerAddress := common.HexToAddress(ValidatorContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -199,7 +229,7 @@ func FinishValidatorRemoval(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	signedMessage, err := PoaValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
 		aggregatorLogLevel,
@@ -218,7 +248,7 @@ func FinishValidatorRemoval(
 	); err != nil {
 		return err
 	}
-	tx, _, err := PoAValidatorManagerCompleteValidatorRemoval(
+	tx, _, err := ValidatorManagerCompleteValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		privateKey,

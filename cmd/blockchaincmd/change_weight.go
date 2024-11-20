@@ -143,7 +143,12 @@ func setWeight(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	// first remove the validator from subnet
-	err = removeValidatorSOV(deployer, network, blockchainName, nodeID)
+	err = removeValidatorSOV(deployer,
+		network,
+		blockchainName,
+		nodeID,
+		false, // don't force
+	)
 	if err != nil {
 		return err
 	}

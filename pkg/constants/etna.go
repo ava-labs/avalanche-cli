@@ -4,6 +4,7 @@ package constants
 
 import (
 	_ "embed"
+	"time"
 )
 
 //go:embed etnaDevnet/genesis.json
@@ -33,3 +34,5 @@ var (
 		"98.82.41.186:9651",
 	}
 )
+
+const StakingEtnaMinimumDuration = 100 * time.Second

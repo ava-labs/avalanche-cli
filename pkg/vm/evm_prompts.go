@@ -13,7 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ethereum/go-ethereum/common"
@@ -86,6 +86,7 @@ type SubnetEVMGenesisParams struct {
 	contractDeployerPrecompileAllowList AllowList
 	enableWarpPrecompile                bool
 	UsePoAValidatorManager              bool
+	UsePoSValidatorManager              bool
 }
 
 func PromptTokenSymbol(
@@ -174,16 +175,20 @@ func PromptSubnetEVMGenesisParams(
 
 	if sc.PoA() {
 		params.UsePoAValidatorManager = true
-		params.initialTokenAllocation[common.HexToAddress(sc.PoAValidatorManagerOwner)] = core.GenesisAccount{
+		params.initialTokenAllocation[common.HexToAddress(sc.ValidatorManagerOwner)] = core.GenesisAccount{
 			Balance: defaultPoAOwnerBalance,
 		}
 	}
 
 	if sc.PoS() {
+		params.UsePoSValidatorManager = true
+
 		params.enableNativeMinterPrecompile = true
-		params.nativeMinterPrecompileAllowList.EnabledAddresses = []common.Address{
-			common.HexToAddress(validatormanager.ValidatorContractAddress),
-		}
+		params.nativeMinterPrecompileAllowList.EnabledAddresses = append(
+			params.nativeMinterPrecompileAllowList.EnabledAddresses,
+			common.HexToAddress(validatorManagerSDK.ProxyContractAddress),
+		)
+		params.enableRewardManagerPrecompile = true
 	}
 
 	// Chain ID
@@ -231,6 +236,10 @@ func PromptSubnetEVMGenesisParams(
 	params, err = promptPermissioning(app, version, defaultsKind, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
+	}
+
+	if sc.PoS() || sc.PoA() { // Teleporter bytecode makes genesis too big given the current max size (we include the bytecode for ValidatorManager, a proxy, and proxy admin)
+		params.UseTeleporter = false
 	}
 
 	return params, tokenSymbol, nil

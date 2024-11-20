@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -59,6 +60,8 @@ var (
 	disableOwnerAddr          string
 	rpcURL                    string
 	aggregatorLogLevel        string
+	forcePoS                  bool
+	delegationFee             uint16
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
@@ -105,7 +108,7 @@ Testnet or Mainnet.`,
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
-	cmd.Flags().DurationVar(&duration, "staking-period", 0, "(for non sovereign blockchain) how long this validator will be staking")
+	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for non sovereign blockchain) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for non sovereign blockchain) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "(for non sovereign blockchain) set duration so as to validate until primary validator ends its period")
@@ -113,6 +116,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non sovereign blockchain) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non sovereign blockchain) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for non sovereign blockchain) just issue the add validator tx, without waiting for its acceptance")
+	cmd.Flags().BoolVar(&forcePoS, "pos", false, "(PoS only) force validator initialization as PoS validator")
+	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
+	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
+
 	return cmd
 }
 
@@ -208,7 +215,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 func promptValidatorBalance(availableBalance uint64) (uint64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
-	txt := "What balance would you like to assign to the bootstrap validator (in AVAX)?"
+	txt := "What balance would you like to assign to the validator (in AVAX)?"
 	return app.Prompt.CaptureValidatorBalance(txt, availableBalance)
 }
 
@@ -243,16 +250,43 @@ func CallAddValidator(
 	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
-		common.HexToAddress(sc.PoAValidatorManagerOwner),
+		common.HexToAddress(sc.ValidatorManagerOwner),
 		true,
 	)
 	if err != nil {
 		return err
 	}
 	if !ownerPrivateKeyFound {
-		return fmt.Errorf("private key for PoA manager owner %s is not found", sc.PoAValidatorManagerOwner)
+		return fmt.Errorf("private key for Validator manager owner %s is not found", sc.ValidatorManagerOwner)
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("PoA manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.PoAValidatorManagerOwner)
+
+	pos := sc.PoS() || forcePoS
+
+	if pos {
+		// should take input prior to here for stake amount, delegation fee, and min stake duration
+		if stakeAmount == 0 {
+			stakeAmount, err = app.Prompt.CaptureUint64Compare(
+				fmt.Sprintf("Enter the amount of %s to stake ", sc.TokenName),
+				[]prompts.Comparator{
+					{
+						Label: "Positive",
+						Type:  prompts.MoreThan,
+						Value: 0,
+					},
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
+		if duration == 0 {
+			duration, err = PromptDuration(time.Now(), network)
+			if err != nil {
+				return nil
+			}
+		}
+	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
 
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
@@ -267,16 +301,11 @@ func CallAddValidator(
 		}
 	}
 
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	pClient := platformvm.NewClient(network.Endpoint)
-	bal, err := pClient.GetBalance(ctx, kc.Addresses().List())
-	if err != nil {
-		return err
-	}
-	availableBalance := uint64(bal.Balance) / units.Avax
-
 	if balance == 0 {
+		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
+		if err != nil {
+			return err
+		}
 		balanceAVAX, err := promptValidatorBalance(availableBalance)
 		if err != nil {
 			return err
@@ -342,6 +371,10 @@ func CallAddValidator(
 		weight,
 		extraAggregatorPeers,
 		aggregatorLogLevel,
+		pos,
+		delegationFee,
+		duration,
+		big.NewInt(int64(stakeAmount)),
 	)
 	if err != nil {
 		return err
@@ -375,7 +408,10 @@ func CallAddValidator(
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
-	ux.Logger.PrintToUser("  Weight: %d", weight)
+	// weight is inaccurate for PoS as it's fetched during registration
+	if !pos {
+		ux.Logger.PrintToUser("  Weight: %d", weight)
+	}
 	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
 
@@ -519,10 +555,15 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		var d time.Duration
 		var err error
-		if network.Kind == models.Fuji {
+		switch network.Kind {
+		case models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
-		} else {
+		case models.Mainnet:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
+		case models.EtnaDevnet:
+			d, err = app.Prompt.CaptureEtnaDuration(txt)
+		default:
+			d, err = app.Prompt.CaptureDuration(txt)
 		}
 		if err != nil {
 			return 0, err

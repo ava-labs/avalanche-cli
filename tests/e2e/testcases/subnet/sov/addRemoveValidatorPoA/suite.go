@@ -23,11 +23,12 @@ const (
 	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
-var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
+var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		commands.CreateEtnaSubnetEvmConfig(
 			subnetName,
 			ewoqEVMAddress,
+			commands.PoA,
 		)
 	})
 	ginkgo.It("Can create a local node connected to Etna Devnet", func() {
@@ -76,10 +77,11 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 	})
 
 	ginkgo.It("Can initialize a PoA Manager contract", func() {
-		output, err := commands.InitPoaManager(subnetName,
+		output, err := commands.InitValidatorManager(subnetName,
 			testLocalNodeName,
 			"http://127.0.0.1:9650",
 			blockchainID,
+			commands.PoA,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -108,7 +110,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 	})
-
 	ginkgo.It("Can remove bootstrap validator", func() {
 		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
 			testLocalNodeName,
@@ -130,7 +131,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 	})
-
 	ginkgo.It("Can destroy local node", func() {
 		output, err := commands.DestroyLocalNode(testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
