@@ -149,6 +149,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		StakingCertKeyPath:   stakingCertKeyPath,
 		StakingTLSKeyPath:    stakingTLSKeyPath,
 	}
+	if useCustomAvalanchegoVersion != "" {
+		useLatestAvalanchegoReleaseVersion = false
+		useLatestAvalanchegoPreReleaseVersion = false
+	}
 	avaGoVersionSetting := node.AvalancheGoVersionSettings{
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,

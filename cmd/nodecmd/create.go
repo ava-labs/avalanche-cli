@@ -141,8 +141,11 @@ func preCreateChecks(clusterName string) error {
 		useLatestAvalanchegoReleaseVersion = false
 		useLatestAvalanchegoPreReleaseVersion = false
 	}
-	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
-		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
+	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion}) {
+		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version are mutually exclusive options")
+	}
+	if !flags.EnsureMutuallyExclusive([]bool{useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
+		return fmt.Errorf("custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
 	}
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
