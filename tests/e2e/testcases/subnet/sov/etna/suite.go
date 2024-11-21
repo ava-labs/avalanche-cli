@@ -39,7 +39,9 @@ func createEtnaSubnetEvmConfig() {
 		subnetName,
 		"--evm",
 		"--proof-of-authority",
-		"--poa-manager-owner",
+		"--validator-manager-owner",
+		ewoqEVMAddress,
+		"--proxy-contract-owner",
 		ewoqEVMAddress,
 		"--production-defaults",
 		"--evm-chain-id=99999",
@@ -171,14 +173,14 @@ func deployEtnaSubnetClusterFlagConvertOnly(clusterName string) {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
-func initPoaManagerClusterFlag(
+func initValidatorManagerClusterFlag(
 	subnetName string,
 	clusterName string,
 ) error {
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
-		"initPoaManager",
+		"initValidatorManager",
 		subnetName,
 		"--cluster",
 		clusterName,
@@ -195,13 +197,13 @@ func initPoaManagerClusterFlag(
 	return err
 }
 
-func initPoaManagerEtnaFlag(
+func initValidatorManagerEtnaFlag(
 	subnetName string,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
-		"initPoaManager",
+		"initValidatorManager",
 		subnetName,
 		"--etna-devnet",
 		"--genesis-key",
@@ -251,7 +253,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
 		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
+		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -262,7 +264,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
 		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = initPoaManagerEtnaFlag(subnetName)
+		_, err = initValidatorManagerEtnaFlag(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.It("Mix and match network and cluster flags test 2", func() {
@@ -270,7 +272,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		deployEtnaSubnetEtnaFlagConvertOnly()
 		_, err := commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		err = initPoaManagerClusterFlag(subnetName, testLocalNodeName)
+		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })

@@ -84,8 +84,7 @@ func promptValidatorManagementType(
 		case models.ProofOfAuthority:
 			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
 		case models.ProofOfStake:
-			ux.Logger.RedXToUser("Proof of Stake is currently unavailable")
-			continue
+			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
 		case explainOption:
 			continue
 		}

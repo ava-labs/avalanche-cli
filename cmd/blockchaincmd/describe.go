@@ -20,8 +20,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -314,8 +314,10 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 				description = logging.Orange.Wrap("Main funded account")
 			case vm.PrefundedEwoqAddress.Hex():
 				description = logging.Orange.Wrap("Main funded account")
-			case sc.PoAValidatorManagerOwner:
-				description = logging.Orange.Wrap("PoA Validator Manager Owner")
+			case sc.ValidatorManagerOwner:
+				description = logging.Orange.Wrap("Validator Manager Owner")
+			case sc.ProxyContractOwner:
+				description = logging.Orange.Wrap("Proxy Admin Owner")
 			}
 			var (
 				found bool
@@ -355,12 +357,19 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		case address == common.HexToAddress(icmgenesis.MessengerContractAddress):
 			description = "ICM Messenger"
 			deployer = icmgenesis.MessengerDeployerAddress
-		case address == common.HexToAddress(validatormanager.ValidatorContractAddress):
+		case address == common.HexToAddress(validatorManagerSDK.ValidatorContractAddress):
 			if sc.PoA() {
 				description = "PoA Validator Manager"
 			} else {
-				description = "PoS Validator Manager"
+				description = "Native Token Staking Manager"
 			}
+		case address == common.HexToAddress(validatorManagerSDK.ProxyContractAddress):
+			description = "Transparent Proxy"
+		case address == common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress):
+			description = "Proxy Admin"
+			deployer = sc.ProxyContractOwner
+		case address == common.HexToAddress(validatorManagerSDK.RewardCalculatorAddress):
+			description = "Reward Calculator"
 		}
 		t.AppendRow(table.Row{description, address.Hex(), deployer})
 	}

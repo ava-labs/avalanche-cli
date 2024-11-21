@@ -80,6 +80,8 @@ func CreateEVMGenesis(
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
 	addICMRegistryToGenesis bool,
+	proxyOwner string,
+	rewardBasisPoints uint64,
 ) ([]byte, error) {
 	feeConfig := getFeeConfig(params)
 
@@ -118,8 +120,17 @@ func CreateEVMGenesis(
 		}
 	}
 
+	if params.UsePoAValidatorManager && params.UsePoSValidatorManager {
+		return nil, fmt.Errorf("blockchain can not be both PoA and PoS")
+	}
 	if params.UsePoAValidatorManager {
 		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+	} else if params.UsePoSValidatorManager {
+		validatormanager.AddPoSValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+		validatormanager.AddRewardCalculatorToAllocations(params.initialTokenAllocation, rewardBasisPoints)
+		params.enableNativeMinterPrecompile = true
 	}
 
 	if params.UseExternalGasToken {

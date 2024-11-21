@@ -14,19 +14,36 @@ import (
 	"github.com/onsi/gomega"
 )
 
+type SubnetManagementType uint
+
+const (
+	Unknown SubnetManagementType = iota
+	PoA
+	PoS
+)
+
 const (
 	etnaDevnetFlag = "--etna-devnet"
+	PoSString      = "proof-of-stake"
+	PoAString      = "proof-of-authority"
 )
 
 func CreateEtnaSubnetEvmConfig(
 	subnetName string,
 	ewoqEVMAddress string,
+	subnetManagementType SubnetManagementType,
 ) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
+	rewardBasisPoints := ""
+	subnetManagementStr := PoAString
+	if subnetManagementType == PoS {
+		rewardBasisPoints = "--reward-basis-points=100"
+		subnetManagementStr = PoSString
+	}
 	// Create config
 	cmd := exec.Command(
 		CLIBinary,
@@ -34,14 +51,19 @@ func CreateEtnaSubnetEvmConfig(
 		"create",
 		subnetName,
 		"--evm",
-		"--proof-of-authority",
-		"--poa-manager-owner",
+		fmt.Sprintf("--%s", subnetManagementStr),
+		"--validator-manager-owner",
 		ewoqEVMAddress,
-		"--production-defaults",
+		"--proxy-contract-owner",
+		ewoqEVMAddress,
+		"--test-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
 		"--"+constants.SkipUpdateFlag,
 	)
+	if rewardBasisPoints != "" {
+		cmd.Args = append(cmd.Args, rewardBasisPoints)
+	}
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
@@ -74,6 +96,7 @@ func CreateLocalEtnaDevnetNode(
 		avalanchegoPath,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -140,6 +163,7 @@ func DeployEtnaSubnetToCluster(
 		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
@@ -163,6 +187,7 @@ func TrackLocalEtnaSubnet(
 		subnetName,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -173,7 +198,7 @@ func TrackLocalEtnaSubnet(
 	return string(output), err
 }
 
-func InitPoaManager(
+func InitValidatorManager(
 	subnetName string,
 	clusterName string,
 	endpoint string,
@@ -182,7 +207,7 @@ func InitPoaManager(
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
-		"initPoaManager",
+		"initValidatorManager",
 		subnetName,
 		"--cluster",
 		clusterName,
@@ -193,6 +218,7 @@ func InitPoaManager(
 		"--genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
@@ -226,8 +252,15 @@ func AddEtnaSubnetValidatorToCluster(
 		ewoqPChainAddress,
 		"--disable-owner",
 		ewoqPChainAddress,
+		"--stake-amount",
+		"2",
+		"--delegation-fee",
+		"100",
+		"--staking-period",
+		"100s",
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())

@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/network/peer"
@@ -21,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -36,7 +39,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -45,7 +47,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
@@ -97,10 +98,18 @@ var (
 	relayerPrivateKey               string
 	relayCChain                     bool
 
+	poSMinimumStakeAmount     uint64
+	poSMaximumStakeAmount     uint64
+	poSMinimumStakeDuration   uint64
+	poSMinimumDelegationFee   uint16
+	poSMaximumStakeMultiplier uint8
+	poSWeightToValueFactor    uint64
+
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
+	errNotSupportedOnMainnet       = errors.New("deploying sovereign blockchain is currently not supported on Mainnet")
 )
 
 // avalanche blockchain deploy
@@ -162,6 +171,14 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
+
+	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
+	cmd.Flags().Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
+	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", 100, "minimum stake duration")
+	cmd.Flags().Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
+	cmd.Flags().Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
+	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
+
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 2, "number of nodes to be created on local network deploy")
 	return cmd
@@ -399,6 +416,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
+
+	if network.Kind == models.Mainnet && sidecar.Sovereign {
+		return errNotSupportedOnMainnet
+	}
+
 	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
@@ -458,6 +480,55 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		useEwoq = true
+	}
+	// end of local deploy
+
+	createSubnet := true
+	var subnetID ids.ID
+	if subnetIDStr != "" {
+		subnetID, err = ids.FromString(subnetIDStr)
+		if err != nil {
+			return err
+		}
+		createSubnet = false
+	} else if !subnetOnly && sidecar.Networks != nil {
+		model, ok := sidecar.Networks[network.Name()]
+		if ok {
+			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
+				subnetID = model.SubnetID
+				createSubnet = false
+			}
+		}
+	}
+
+	fee := uint64(0)
+	if !subnetOnly {
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
+	}
+	if createSubnet {
+		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
+	}
+
+	kc, err := keychain.GetKeychainFromCmdLineFlags(
+		app,
+		constants.PayTxsFeesMsg,
+		network,
+		keyName,
+		useEwoq,
+		useLedger,
+		ledgerAddresses,
+		fee,
+	)
+	if err != nil {
+		return err
+	}
+
+	if changeOwnerAddress == "" {
+		// use provided key as change owner unless already set
+		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
+			changeOwnerAddress = pAddr[0]
+			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
+		}
 	}
 
 	if sidecar.Sovereign {
@@ -606,46 +677,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return errMutuallyExlusiveSubnetFlags
 	}
 
-	createSubnet := true
-	var subnetID ids.ID
-	if subnetIDStr != "" {
-		subnetID, err = ids.FromString(subnetIDStr)
-		if err != nil {
-			return err
-		}
-		createSubnet = false
-	} else if !subnetOnly && sidecar.Networks != nil {
-		model, ok := sidecar.Networks[network.Name()]
-		if ok {
-			if model.SubnetID != ids.Empty && model.BlockchainID == ids.Empty {
-				subnetID = model.SubnetID
-				createSubnet = false
-			}
-		}
-	}
-
-	fee := uint64(0)
-	if !subnetOnly {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
-	}
-	if createSubnet {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
-	}
-
-	kc, err := keychain.GetKeychainFromCmdLineFlags(
-		app,
-		constants.PayTxsFeesMsg,
-		network,
-		keyName,
-		useEwoq,
-		useLedger,
-		ledgerAddresses,
-		fee,
-	)
-	if err != nil {
-		return err
-	}
-
 	network.HandlePublicNetworkSimulation()
 
 	if createSubnet {
@@ -767,7 +798,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		deployer.CleanCacheWallet()
-		managerAddress := common.HexToAddress(validatormanager.ValidatorContractAddress)
+		managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
@@ -889,7 +920,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 			subnetID, err := contract.GetSubnetID(
 				app,
 				network,
@@ -906,7 +936,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			ownerAddress := common.HexToAddress(sidecar.PoAValidatorManagerOwner)
+			ownerAddress := common.HexToAddress(sidecar.ValidatorManagerOwner)
 			subnetSDK := blockchainSDK.Subnet{
 				SubnetID:            subnetID,
 				BlockchainID:        blockchainID,
@@ -918,15 +948,38 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				logLvl = logging.Off
 			}
-			if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
-				return err
+			if sidecar.ValidatorManagement == models.ProofOfStake {
+				ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+				if err := subnetSDK.InitializeProofOfStake(
+					network,
+					genesisPrivateKey,
+					extraAggregatorPeers,
+					logLvl,
+					validatorManagerSDK.PoSParams{
+						MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
+						MaximumStakeAmount:      big.NewInt(int64(poSMaximumStakeAmount)),
+						MinimumStakeDuration:    poSMinimumStakeDuration,
+						MinimumDelegationFee:    poSMinimumDelegationFee,
+						MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
+						WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
+						RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
+					},
+				); err != nil {
+					return err
+				}
+				ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
+			} else {
+				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
+				if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
+					return err
+				}
+				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			}
-			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
-			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initPoaManager %s` to finish conversion to sovereign L1", blockchainName)
+			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
 		}
 	} else {
 		if err := app.UpdateSidecarNetworks(
@@ -1063,8 +1116,8 @@ func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, e
 }
 
 // TODO: add deactivation owner?
-func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetValidator, error) {
-	bootstrapValidators := []*txs.ConvertSubnetValidator{}
+func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetToL1Validator, error) {
+	bootstrapValidators := []*txs.ConvertSubnetToL1Validator{}
 	for _, validator := range subnetValidators {
 		nodeID, err := ids.NodeIDFromString(validator.NodeID)
 		if err != nil {
@@ -1078,7 +1131,7 @@ func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		if err != nil {
 			return nil, fmt.Errorf("failure parsing change owner address: %w", err)
 		}
-		bootstrapValidator := &txs.ConvertSubnetValidator{
+		bootstrapValidator := &txs.ConvertSubnetToL1Validator{
 			NodeID:  nodeID[:],
 			Weight:  validator.Weight,
 			Balance: validator.Balance,
@@ -1328,7 +1381,7 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 		infoClient := info.NewClient(uri)
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		peers, err := infoClient.Peers(ctx)
+		peers, err := infoClient.Peers(ctx, nil)
 		if err != nil {
 			return nil, err
 		}

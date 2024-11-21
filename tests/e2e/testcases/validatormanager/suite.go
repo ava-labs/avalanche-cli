@@ -54,7 +54,9 @@ func createEtnaSubnetEvmConfig() error {
 		subnetName,
 		"--evm",
 		"--proof-of-authority",
-		"--poa-manager-owner",
+		"--validator-manager-owner",
+		ewoqEVMAddress,
+		"--proxy-contract-owner",
 		ewoqEVMAddress,
 		"--production-defaults",
 		"--evm-chain-id=99999",
@@ -128,7 +130,7 @@ func destroyLocalNode() {
 	}
 }
 
-func getBootstrapValidator() ([]*txs.ConvertSubnetValidator, error) {
+func getBootstrapValidator() ([]*txs.ConvertSubnetToL1Validator, error) {
 	infoClient := info.NewClient("http://127.0.0.1:9650")
 	ctx, cancel := utils.GetAPILargeContext()
 	defer cancel()

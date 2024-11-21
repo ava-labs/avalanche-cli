@@ -61,6 +61,15 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+
+	if network.Kind == models.Mainnet && sc.Sovereign {
+		return errNotSupportedOnMainnet
+	}
+
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
@@ -108,11 +117,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	network.HandlePublicNetworkSimulation()
 
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
-
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
@@ -143,7 +147,12 @@ func setWeight(_ *cobra.Command, args []string) error {
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	// first remove the validator from subnet
-	err = removeValidatorSOV(deployer, network, blockchainName, nodeID)
+	err = removeValidatorSOV(deployer,
+		network,
+		blockchainName,
+		nodeID,
+		false, // don't force
+	)
 	if err != nil {
 		return err
 	}
