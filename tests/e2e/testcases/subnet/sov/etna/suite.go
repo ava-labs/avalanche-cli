@@ -98,7 +98,6 @@ func deployEtnaSubnetEtnaFlag() {
 		subnetName,
 		"--etna-devnet",
 		"--use-local-machine",
-		avalancheGoPath+"="+utils.EtnaAvalancheGoBinaryPath,
 		"--num-local-nodes=1",
 		"--ewoq",
 		"--change-owner-address",
@@ -128,7 +127,6 @@ func deployEtnaSubnetEtnaFlagConvertOnly() {
 		subnetName,
 		"--etna-devnet",
 		"--use-local-machine",
-		avalancheGoPath+"="+utils.EtnaAvalancheGoBinaryPath,
 		"--num-local-nodes=1",
 		"--convert-only",
 		"--ewoq",
@@ -247,7 +245,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 
 	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Public Etna using cluster flag", func() {
-		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1, utils.EtnaAvalancheGoBinaryPath)
+		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
 		createEtnaSubnetEvmConfig()
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
@@ -258,7 +256,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 
 	ginkgo.It("Mix and match network and cluster flags test 1", func() {
-		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1, utils.EtnaAvalancheGoBinaryPath)
+		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
 		createEtnaSubnetEvmConfig()
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)

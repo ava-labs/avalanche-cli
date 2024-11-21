@@ -81,7 +81,6 @@ func CreateEtnaSubnetEvmConfig(
 func CreateLocalEtnaDevnetNode(
 	clusterName string,
 	numNodes int,
-	avalanchegoPath string,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -92,8 +91,6 @@ func CreateLocalEtnaDevnetNode(
 		etnaDevnetFlag,
 		"--num-nodes",
 		fmt.Sprintf("%d", numNodes),
-		"--avalanchego-path",
-		avalanchegoPath,
 		"--"+constants.SkipUpdateFlag,
 	)
 	fmt.Println(cmd)

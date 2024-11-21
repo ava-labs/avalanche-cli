@@ -84,7 +84,6 @@ func createSovereignSubnet() (string, string, error) {
 		subnetName,
 		"--etna-devnet",
 		"--use-local-machine",
-		avalancheGoPath+"="+utils.EtnaAvalancheGoBinaryPath,
 		"--num-local-nodes=1",
 		"--ewoq",
 		"--convert-only",
