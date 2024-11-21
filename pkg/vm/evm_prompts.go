@@ -108,6 +108,9 @@ func PromptVMType(
 	if useSubnetEvm {
 		return models.SubnetEvm, nil
 	}
+	if useHyperVM {
+		return models.HyperVM, nil
+	}
 	if useCustom {
 		return models.CustomVM, nil
 	}
