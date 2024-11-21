@@ -283,8 +283,9 @@ const (
 
 	AWMRelayerSnapshotConfsDir = "relayer-confs"
 
-	ICMKeyName        = "cli-teleporter-deployer"
-	AWMRelayerKeyName = "cli-awm-relayer"
+	ICMKeyName           = "cli-teleporter-deployer"
+	AWMRelayerKeyName    = "cli-awm-relayer"
+	DefaultRelayerAmount = float64(10)
 
 	// to not interfere with other node services
 	RemoteAWMRelayerMetricsPort = 9091
