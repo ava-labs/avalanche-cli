@@ -60,7 +60,6 @@ var (
 	disableOwnerAddr          string
 	rpcURL                    string
 	aggregatorLogLevel        string
-	forcePoS                  bool
 	delegationFee             uint16
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
@@ -116,7 +115,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non sovereign blockchain) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non sovereign blockchain) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for non sovereign blockchain) just issue the add validator tx, without waiting for its acceptance")
-	cmd.Flags().BoolVar(&forcePoS, "pos", false, "(PoS only) force validator initialization as PoS validator")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 
@@ -264,7 +262,7 @@ func CallAddValidator(
 		return fmt.Errorf("private key for Validator manager owner %s is not found", sc.ValidatorManagerOwner)
 	}
 
-	pos := sc.PoS() || forcePoS
+	pos := sc.PoS()
 
 	if pos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
