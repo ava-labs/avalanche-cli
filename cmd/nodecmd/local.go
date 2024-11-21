@@ -4,6 +4,8 @@ package nodecmd
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -12,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
-	"path/filepath"
 )
 
 var (
