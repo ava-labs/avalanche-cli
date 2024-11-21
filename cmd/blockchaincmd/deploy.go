@@ -600,7 +600,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				useEtnaDevnet := network.Kind == models.EtnaDevnet
 				if avagoBinaryPath == "" {
 					avaGoVersionSetting := node.AvalancheGoVersionSettings{
-						UseLatestAvalanchegoPreReleaseVersion: true,
+						UseLatestAvalanchegoReleaseVersion: true,
 					}
 					avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
 					if err != nil {
