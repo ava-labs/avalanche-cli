@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
@@ -82,6 +84,9 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
+
+	// add hidden backend command
+	rootCmd.AddCommand(backendcmd.NewCmd(app))
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
