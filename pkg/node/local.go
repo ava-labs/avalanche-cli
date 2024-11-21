@@ -438,9 +438,6 @@ func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVer
 	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
 		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
 	}
-	if avalanchegoBinaryPath != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion || avaGoVersionSettings.UseCustomAvalanchegoVersion != "") {
-		return fmt.Errorf("specify either --avalanchego-path or --latest-avalanchego-version or --custom-avalanchego-version")
-	}
 	if useEtnaDevnet && (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
 		return fmt.Errorf("etna devnet can only be used with devnet")
 	}
@@ -655,10 +652,10 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 }
 
 func GetInfo(uri string, blockchainID string) (
-	ids.NodeID, // nodeID
+	ids.NodeID,                // nodeID
 	*signer.ProofOfPossession, // nodePOP
-	bool, // isBootstrapped
-	error, // error
+	bool,                      // isBootstrapped
+	error,                     // error
 ) {
 	client := info.NewClient(uri)
 	ctx, cancel := utils.GetAPILargeContext()
@@ -676,7 +673,7 @@ func GetInfo(uri string, blockchainID string) (
 
 func GetBlockchainStatus(uri string, blockchainID string) (
 	string, // status
-	error, // error
+	error,  // error
 ) {
 	client := platformvm.NewClient(uri)
 	ctx, cancel := utils.GetAPILargeContext()
