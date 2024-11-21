@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -140,7 +141,10 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	if nodeConfig == "" {
 		nodeConfig = "{}"
 	}
-
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.ProposerVMUseCurrentHeightKey, true)
+	if err != nil {
+		return err
+	}
 	if flags.SnapshotName == "" {
 		flags.SnapshotName = constants.DefaultSnapshotName
 	}

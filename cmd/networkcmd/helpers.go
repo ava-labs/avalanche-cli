@@ -22,7 +22,13 @@ import (
 	"github.com/ava-labs/avalanchego/api/admin"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/set"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
+	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
 func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
@@ -87,7 +93,9 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 func TrackSubnet(
 	blockchainName string,
 	avalancheGoBinPath string,
+	sovereign bool,
 ) error {
+	ux.Logger.PrintToUser("")
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
@@ -187,6 +195,17 @@ func TrackSubnet(
 	if err := SetAlias(cli, blockchainID.String(), blockchainName); err != nil {
 		return err
 	}
+	if _, err := cli.WaitForHealthy(ctx); err != nil {
+		return err
+	}
+	if !sovereign {
+		if err := AddNoSovereignValidators(cli, subnetID); err != nil {
+			return err
+		}
+		if err := WaitNoSovereignValidators(cli, subnetID); err != nil {
+			return err
+		}
+	}
 	sc.Networks[network.Name()] = networkInfo
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err
@@ -220,8 +239,6 @@ func IsBootstrapped(cli client.Client, blockchainID string) error {
 			}
 		}
 	}
-	//time.Sleep(10 * time.Second)
-	//_, err = cli.WaitForHealthy(ctx)
 	return err
 }
 
@@ -239,4 +256,116 @@ func SetAlias(cli client.Client, blockchainID string, alias string) error {
 		}
 	}
 	return nil
+}
+
+func AddNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	nodeInfo, ok := status.ClusterInfo.NodeInfos["node1"]
+	if !ok {
+		return fmt.Errorf("node1 not found on local network")
+	}
+	pClient := platformvm.NewClient(nodeInfo.GetUri())
+	vs, err := pClient.GetCurrentValidators(ctx, avagoConstants.PrimaryNetworkID, nil)
+	if err != nil {
+		return err
+	}
+	primaryValidatorsEndtime := make(map[ids.NodeID]time.Time)
+	for _, v := range vs {
+		primaryValidatorsEndtime[v.NodeID] = time.Unix(int64(v.EndTime), 0)
+	}
+	vs, err = pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return err
+	}
+	subnetValidators := set.Set[ids.NodeID]{}
+	for _, v := range vs {
+		subnetValidators.Add(v.NodeID)
+	}
+	k, err := app.GetKey("ewoq", models.NewLocalNetwork(), false)
+	if err != nil {
+		return err
+	}
+	wallet, err := primary.MakeWallet(
+		ctx,
+		&primary.WalletConfig{
+			URI:          constants.LocalAPIEndpoint,
+			AVAXKeychain: k.KeyChain(),
+			EthKeychain:  secp256k1fx.NewKeychain(),
+			SubnetIDs:    []ids.ID{subnetID},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		nodeIDStr := nodeInfo.GetId()
+		nodeID, err := ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			return err
+		}
+		if isValidator := subnetValidators.Contains(nodeID); isValidator {
+			continue
+		}
+		if _, err := wallet.P().IssueAddSubnetValidatorTx(
+			&txs.SubnetValidator{
+				Validator: txs.Validator{
+					NodeID: nodeID,
+					End:    uint64(primaryValidatorsEndtime[nodeID].Unix()),
+					Wght:   1000,
+				},
+				Subnet: subnetID,
+			},
+			common.WithContext(ctx),
+			common.WithPollFrequency(100*time.Millisecond),
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func WaitNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
+	checkFrequency := time.Second
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	nodeInfo, ok := status.ClusterInfo.NodeInfos["node1"]
+	if !ok {
+		return fmt.Errorf("node1 not found on local network")
+	}
+	pClient := platformvm.NewClient(nodeInfo.GetUri())
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		for {
+			vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+			if err != nil {
+				return err
+			}
+			subnetValidators := set.Set[ids.NodeID]{}
+			for _, v := range vs {
+				subnetValidators.Add(v.NodeID)
+			}
+			nodeIDStr := nodeInfo.GetId()
+			nodeID, err := ids.NodeIDFromString(nodeIDStr)
+			if err != nil {
+				return err
+			}
+			if subnetValidators.Contains(nodeID) {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(checkFrequency):
+			}
+		}
+	}
+	return err
 }

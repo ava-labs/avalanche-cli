@@ -838,6 +838,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if err := networkcmd.TrackSubnet(
 					blockchainName,
 					avagoBinaryPath,
+					sidecar.Sovereign,
 				); err != nil {
 					return err
 				}
@@ -946,6 +947,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if err := networkcmd.TrackSubnet(
 				blockchainName,
 				avagoBinaryPath,
+				sidecar.Sovereign,
 			); err != nil {
 				return err
 			}
