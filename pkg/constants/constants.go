@@ -108,50 +108,6 @@ const (
 
 	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
 
-	CurrentBootstrapNamePath = "currentBootstrapName.txt"
-
-	AssetsDir = "assets/"
-
-	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
-	BootstrapSnapshotLocalPath   = AssetsDir + BootstrapSnapshotArchiveName
-	BootstrapSnapshotURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotLocalPath
-	BootstrapSnapshotSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.txt"
-
-	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
-	BootstrapSnapshotSingleNodeLocalPath   = AssetsDir + BootstrapSnapshotSingleNodeArchiveName
-	BootstrapSnapshotSingleNodeURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodeLocalPath
-	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.txt"
-
-	BootstrapSnapshotPreCortina17ArchiveName = "bootstrapSnapshot.PreCortina17.tar.gz"
-	BootstrapSnapshotPreCortina17LocalPath   = AssetsDir + BootstrapSnapshotPreCortina17ArchiveName
-	BootstrapSnapshotPreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreCortina17LocalPath
-	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreCortina17.txt"
-
-	BootstrapSnapshotSingleNodePreCortina17ArchiveName = "bootstrapSnapshotSingleNode.PreCortina17.tar.gz"
-	BootstrapSnapshotSingleNodePreCortina17LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreCortina17ArchiveName
-	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
-	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
-
-	BootstrapSnapshotPreDurango11ArchiveName = "bootstrapSnapshot.PreDurango11.tar.gz"
-	BootstrapSnapshotPreDurango11LocalPath   = AssetsDir + BootstrapSnapshotPreDurango11ArchiveName
-	BootstrapSnapshotPreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango11LocalPath
-	BootstrapSnapshotPreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango11.txt"
-
-	BootstrapSnapshotSingleNodePreDurango11ArchiveName = "bootstrapSnapshotSingleNode.PreDurango11.tar.gz"
-	BootstrapSnapshotSingleNodePreDurango11LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango11ArchiveName
-	BootstrapSnapshotSingleNodePreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango11LocalPath
-	BootstrapSnapshotSingleNodePreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango11.txt"
-
-	BootstrapSnapshotPreDurango12ArchiveName = "bootstrapSnapshot.PreDurango12.tar.gz"
-	BootstrapSnapshotPreDurango12LocalPath   = AssetsDir + BootstrapSnapshotPreDurango12ArchiveName
-	BootstrapSnapshotPreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango12LocalPath
-	BootstrapSnapshotPreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango12.txt"
-
-	BootstrapSnapshotSingleNodePreDurango12ArchiveName = "bootstrapSnapshotSingleNode.PreDurango12.tar.gz"
-	BootstrapSnapshotSingleNodePreDurango12LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango12ArchiveName
-	BootstrapSnapshotSingleNodePreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango12LocalPath
-	BootstrapSnapshotSingleNodePreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango12.txt"
-
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
 	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
@@ -230,7 +186,6 @@ const (
 	ConfigNodeConfigKey           = "node-config"
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
 	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
-	ConfigSingleNodeEnabledKey    = "SingleNodeEnabled"
 	ConfigSnapshotsAutoSaveKey    = "SnapshotsAutoSaveEnabled"
 	OldConfigFileName             = ".avalanche-cli.json"
 	OldMetricsConfigFileName      = ".avalanche-cli/config"
