@@ -308,7 +308,7 @@ func StartLocalNode(
 				return err
 			}
 		}
-		if err := preLocalChecks(anrSettings, avaGoVersionSetting, avalanchegoBinaryPath, useEtnaDevnet, globalNetworkFlags); err != nil {
+		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err
 		}
 		if useEtnaDevnet {
@@ -426,7 +426,7 @@ func localClusterDataExists(app *application.Avalanche, clusterName string) bool
 }
 
 // stub for now
-func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, avalanchegoBinaryPath string, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
+func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
 	// expand passed paths
 	if anrSettings.GenesisPath != "" {
 		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)

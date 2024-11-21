@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -153,9 +152,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	if useCustomAvalanchegoVersion != "" {
 		useLatestAvalanchegoReleaseVersion = false
 		useLatestAvalanchegoPreReleaseVersion = false
-	}
-	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion}) {
-		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version are mutually exclusive options")
 	}
 	avaGoVersionSetting := node.AvalancheGoVersionSettings{
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
