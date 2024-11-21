@@ -163,7 +163,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
-	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to be created on local network deploy")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 2, "number of nodes to be created on local network deploy")
 	return cmd
 }
 

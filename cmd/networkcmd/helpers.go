@@ -189,13 +189,16 @@ func TrackSubnet(
 			return err
 		}
 	}
+	if _, err := cli.WaitForHealthy(ctx); err != nil {
+		return err
+	}
 	if err := IsBootstrapped(cli, blockchainID.String()); err != nil {
 		return err
 	}
-	if err := SetAlias(cli, blockchainID.String(), blockchainName); err != nil {
+	if err := IsBootstrapped(cli, "P"); err != nil {
 		return err
 	}
-	if _, err := cli.WaitForHealthy(ctx); err != nil {
+	if err := SetAlias(cli, blockchainID.String(), blockchainName); err != nil {
 		return err
 	}
 	if !sovereign {
