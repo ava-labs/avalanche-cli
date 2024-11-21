@@ -25,7 +25,7 @@ const (
 	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
-func createEtnaSubnetEvmConfig() {
+func createEtnaSubnetEvmConfigPOA() {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -39,6 +39,43 @@ func createEtnaSubnetEvmConfig() {
 		subnetName,
 		"--evm",
 		"--proof-of-authority",
+		"--validator-manager-owner",
+		ewoqEVMAddress,
+		"--proxy-contract-owner",
+		ewoqEVMAddress,
+		"--production-defaults",
+		"--evm-chain-id=99999",
+		"--evm-token=TOK",
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Config should now exist
+	exists, err = utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+func createEtnaSubnetEvmConfigPOS() {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	// Create config
+	cmd := exec.Command(
+		CLIBinary,
+		"blockchain",
+		"create",
+		subnetName,
+		"--evm",
+		"--proof-of-stake",
 		"--validator-manager-owner",
 		ewoqEVMAddress,
 		"--proxy-contract-owner",
@@ -239,15 +276,20 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CleanNetwork()
 	})
-	ginkgo.It("Create Etna Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
-		createEtnaSubnetEvmConfig()
+	ginkgo.It("Create Etna POA Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
+		createEtnaSubnetEvmConfigPOA()
+		deployEtnaSubnetEtnaFlag()
+	})
+
+	ginkgo.It("Create Etna POS Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
+		createEtnaSubnetEvmConfigPOS()
 		deployEtnaSubnetEtnaFlag()
 	})
 
 	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Public Etna using cluster flag", func() {
 		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
-		createEtnaSubnetEvmConfig()
+		createEtnaSubnetEvmConfigPOA()
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
 		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -258,7 +300,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	ginkgo.It("Mix and match network and cluster flags test 1", func() {
 		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
-		createEtnaSubnetEvmConfig()
+		createEtnaSubnetEvmConfigPOA()
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
 		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -266,7 +308,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.It("Mix and match network and cluster flags test 2", func() {
-		createEtnaSubnetEvmConfig()
+		createEtnaSubnetEvmConfigPOA()
 		deployEtnaSubnetEtnaFlagConvertOnly()
 		_, err := commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
