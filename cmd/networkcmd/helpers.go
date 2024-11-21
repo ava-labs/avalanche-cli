@@ -220,7 +220,9 @@ func IsBootstrapped(cli client.Client, blockchainID string) error {
 			}
 		}
 	}
-	return nil
+	//time.Sleep(10 * time.Second)
+	//_, err = cli.WaitForHealthy(ctx)
+	return err
 }
 
 func SetAlias(cli client.Client, blockchainID string, alias string) error {

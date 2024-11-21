@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/network/peer"
 
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -140,6 +141,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, "skip-relayer", false, "skip relayer deploy")
 	cmd.Flags().StringVar(&icmSpec.ICMVersion, "teleporter-version", "latest", "teleporter version to deploy")
 	cmd.Flags().StringVar(&icmSpec.RelayerVersion, "relayer-version", "latest", "relayer version to deploy")
+	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
 	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an interchain messenger deployer tx file")
@@ -950,7 +952,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			BlockchainName: blockchainName,
 		}
 		chainSpec.SetEnabled(true, false, false, false, false)
-		flags := teleportercmd.DeployFlags{
+		deployICMFlags := teleportercmd.DeployFlags{
 			ChainFlags: chainSpec,
 			PrivateKeyFlags: contract.PrivateKeyFlags{
 				KeyName: constants.ICMKeyName,
@@ -965,8 +967,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
 		}
 		ux.Logger.PrintToUser("")
-		if err := teleportercmd.CallDeploy([]string{}, flags, network); err != nil {
+		if err := teleportercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
 			return err
+		}
+		deployRelayerFlags := relayercmd.DeployFlags{
+			Version:  icmSpec.RelayerVersion,
+			LogLevel: icmSpec.RelayerLogLevel,
+		}
+		if icmSpec.SkipRelayerDeploy {
+			if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
+				return err
+			}
 		}
 	}
 

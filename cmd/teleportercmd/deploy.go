@@ -94,7 +94,6 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return err
 		}
 	}
-	fmt.Println(network)
 	if err := flags.ChainFlags.CheckMutuallyExclusiveFields(); err != nil {
 		return err
 	}

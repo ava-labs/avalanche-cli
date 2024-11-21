@@ -62,22 +62,24 @@ func preview(configSpec ConfigSpec) {
 	fmt.Println()
 }
 
-func addBoth(network models.Network, configSpec ConfigSpec) (ConfigSpec, error) {
+func addBoth(network models.Network, configSpec ConfigSpec, chainSpec contract.ChainSpec, defaultKey string) (ConfigSpec, error) {
 	prompt := "Which blockchain do you want to set both as source and destination?"
 	var err error
-	chainSpec, err := getBlockchain(network, prompt)
-	if err != nil {
-		return ConfigSpec{}, err
+	if !chainSpec.Defined() {
+		chainSpec, err = getBlockchain(network, prompt)
+		if err != nil {
+			return ConfigSpec{}, err
+		}
 	}
 	rpcEndpoint, wsEndpoint, err := contract.GetBlockchainEndpoints(app, network, chainSpec, true, true)
 	if err != nil {
 		return ConfigSpec{}, err
 	}
-	configSpec, err = addSource(network, configSpec, chainSpec, rpcEndpoint, wsEndpoint)
+	configSpec, err = addSource(network, configSpec, chainSpec, rpcEndpoint, wsEndpoint, defaultKey)
 	if err != nil {
 		return ConfigSpec{}, err
 	}
-	configSpec, err = addDestination(network, configSpec, chainSpec, rpcEndpoint)
+	configSpec, err = addDestination(network, configSpec, chainSpec, rpcEndpoint, defaultKey)
 	if err != nil {
 		return ConfigSpec{}, err
 	}
@@ -107,6 +109,7 @@ func addSource(
 	chainSpec contract.ChainSpec,
 	rpcEndpoint string,
 	wsEndpoint string,
+	defaultKey string,
 ) (ConfigSpec, error) {
 	if !chainSpec.Defined() {
 		prompt := "Which blockchain do you want to set as source?"
@@ -140,24 +143,33 @@ func addSource(
 	if err != nil {
 		return ConfigSpec{}, err
 	}
-	genesisAddress, _, err := contract.GetEVMSubnetPrefundedKey(
-		app,
-		network,
-		chainSpec,
-	)
-	if err != nil {
-		return ConfigSpec{}, err
+	rewardAddress := ""
+	if defaultKey != "" {
+		k, err := app.GetKey(defaultKey, network, false)
+		if err != nil {
+			return ConfigSpec{}, err
+		}
+		rewardAddress = k.C()
+	} else {
+		genesisAddress, _, err := contract.GetEVMSubnetPrefundedKey(
+			app,
+			network,
+			chainSpec,
+		)
+		if err != nil {
+			return ConfigSpec{}, err
+		}
+		rewardAddress, err = prompts.PromptAddress(
+			app.Prompt,
+			fmt.Sprintf("receive relayer rewards on %s", blockchainDesc),
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			network,
+			prompts.EVMFormat,
+			"Address",
+		)
 	}
-	rewardAddress, err := prompts.PromptAddress(
-		app.Prompt,
-		fmt.Sprintf("receive relayer rewards on %s", blockchainDesc),
-		app.GetKeyDir(),
-		app.GetKey,
-		genesisAddress,
-		network,
-		prompts.EVMFormat,
-		"Address",
-	)
 	if err != nil {
 		return ConfigSpec{}, err
 	}
@@ -179,6 +191,7 @@ func addDestination(
 	configSpec ConfigSpec,
 	chainSpec contract.ChainSpec,
 	rpcEndpoint string,
+	defaultKey string,
 ) (ConfigSpec, error) {
 	if !chainSpec.Defined() {
 		prompt := "Which blockchain do you want to set as destination?"
@@ -208,17 +221,26 @@ func addDestination(
 	if err != nil {
 		return ConfigSpec{}, err
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Please provide a key that is not going to be used for any other purpose on destination"))
-	privateKey, err := prompts.PromptPrivateKey(
-		app.Prompt,
-		fmt.Sprintf("pay relayer fees on %s", blockchainDesc),
-		app.GetKeyDir(),
-		app.GetKey,
-		"",
-		"",
-	)
-	if err != nil {
-		return ConfigSpec{}, err
+	privateKey := ""
+	if defaultKey != "" {
+		k, err := app.GetKey(defaultKey, network, false)
+		if err != nil {
+			return ConfigSpec{}, err
+		}
+		privateKey = k.PrivKeyHex()
+	} else {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Please provide a key that is not going to be used for any other purpose on destination"))
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			fmt.Sprintf("pay relayer fees on %s", blockchainDesc),
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			"",
+		)
+		if err != nil {
+			return ConfigSpec{}, err
+		}
 	}
 	configSpec.destinations = append(configSpec.destinations, DestinationSpec{
 		blockchainDesc: blockchainDesc,
@@ -274,8 +296,41 @@ func removeDestination(
 	return configSpec, true, nil
 }
 
-func GenerateConfigSpec(network models.Network) (ConfigSpec, bool, error) {
+func GenerateConfigSpec(
+	network models.Network,
+	relayCChain bool,
+	blockchainsToRelay []string,
+	defaultKey string,
+) (ConfigSpec, bool, error) {
 	configSpec := ConfigSpec{}
+	var err error
+
+	noPrompts := false
+	if relayCChain {
+		chainSpec := contract.ChainSpec{
+			CChain: true,
+		}
+		chainSpec.SetEnabled(true, true, false, false, false)
+		configSpec, err = addBoth(network, configSpec, chainSpec, defaultKey)
+		if err != nil {
+			return ConfigSpec{}, false, err
+		}
+		noPrompts = true
+	}
+	for _, blockchainName := range blockchainsToRelay {
+		chainSpec := contract.ChainSpec{
+			BlockchainName: blockchainName,
+		}
+		chainSpec.SetEnabled(true, true, false, false, false)
+		configSpec, err = addBoth(network, configSpec, chainSpec, defaultKey)
+		if err != nil {
+			return ConfigSpec{}, false, err
+		}
+		noPrompts = true
+	}
+	if noPrompts {
+		return configSpec, false, nil
+	}
 
 	prompt := "Configure the blockchains that will be interconnected by the relayer"
 
@@ -315,17 +370,17 @@ func GenerateConfigSpec(network models.Network) (ConfigSpec, bool, error) {
 				}
 				switch roleOption {
 				case addBothOption:
-					configSpec, err = addBoth(network, configSpec)
+					configSpec, err = addBoth(network, configSpec, contract.ChainSpec{}, "")
 					if err != nil {
 						return ConfigSpec{}, false, err
 					}
 				case addSourceOption:
-					configSpec, err = addSource(network, configSpec, contract.ChainSpec{}, "", "")
+					configSpec, err = addSource(network, configSpec, contract.ChainSpec{}, "", "", "")
 					if err != nil {
 						return ConfigSpec{}, false, err
 					}
 				case addDestinationOption:
-					configSpec, err = addDestination(network, configSpec, contract.ChainSpec{}, "")
+					configSpec, err = addDestination(network, configSpec, contract.ChainSpec{}, "", "")
 					if err != nil {
 						return ConfigSpec{}, false, err
 					}
