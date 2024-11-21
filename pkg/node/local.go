@@ -208,9 +208,13 @@ func StartLocalNode(
 		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
 		if err != nil {
 			return err
-		} else {
-			ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 		}
+		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
+		if err != nil {
+			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
+		}
+		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+		ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 	}
 	serverLogPath := filepath.Join(rootDir, "server.log")
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "", true)

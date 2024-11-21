@@ -4,7 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
-
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
+	"path/filepath"
 )
 
 var (
@@ -73,7 +74,7 @@ status by running avalanche node status local
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
-	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
+	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", true, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringArrayVar(&bootstrapIDs, "bootstrap-id", []string{}, "nodeIDs of bootstrap nodes")
@@ -189,6 +190,20 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 }
 
 func localTrack(_ *cobra.Command, args []string) error {
+	if avalanchegoBinaryPath == "" {
+		avaGoVersionSetting := node.AvalancheGoVersionSettings{
+			UseLatestAvalanchegoPreReleaseVersion: true,
+		}
+		avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+		if err != nil {
+			return err
+		}
+		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
+		if err != nil {
+			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
+		}
+		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+	}
 	return node.TrackSubnetWithLocalMachine(app, args[0], args[1], avalanchegoBinaryPath)
 }
 
