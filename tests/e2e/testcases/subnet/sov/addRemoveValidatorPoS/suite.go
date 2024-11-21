@@ -112,6 +112,10 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		fmt.Println(output)
 	})
 
+	ginkgo.It("Can wait for 10s", func() {
+		time.Sleep(10 * time.Second)
+	})
+
 	ginkgo.It("Can get status of cluster and check new validators", func() {
 		output, err := commands.GetLocalClusterStatus(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
