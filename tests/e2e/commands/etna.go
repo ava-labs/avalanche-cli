@@ -203,16 +203,11 @@ func InitValidatorManager(
 	clusterName string,
 	endpoint string,
 	blockchainID string,
-	subnetManagementType SubnetManagementType,
 ) (string, error) {
-	initManagerString := "initPoaManager"
-	if subnetManagementType == PoS {
-		initManagerString = "initPosManager"
-	}
 	cmd := exec.Command(
 		CLIBinary,
 		"contract",
-		initManagerString,
+		"initValidatorManager",
 		subnetName,
 		"--cluster",
 		clusterName,
