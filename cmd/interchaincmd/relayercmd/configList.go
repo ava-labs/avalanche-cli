@@ -169,9 +169,9 @@ func addSource(
 			prompts.EVMFormat,
 			"Address",
 		)
-	}
-	if err != nil {
-		return ConfigSpec{}, err
+		if err != nil {
+			return ConfigSpec{}, err
+		}
 	}
 	configSpec.sources = append(configSpec.sources, SourceSpec{
 		blockchainDesc:      blockchainDesc,

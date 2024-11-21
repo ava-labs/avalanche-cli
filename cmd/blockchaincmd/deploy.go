@@ -597,10 +597,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-	} else {
-		if network.Kind == models.Local {
-			sameControlKey = true
-		}
+	} else if network.Kind == models.Local {
+		sameControlKey = true
 	}
 
 	// from here on we are assuming a public deploy
@@ -808,7 +806,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println()
+		ux.Logger.PrintToUser("")
 
 		if err := app.UpdateSidecarNetworks(
 			&sidecar,
@@ -944,6 +942,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if network.Kind == models.Local {
+			ux.Logger.PrintToUser("")
 			if err := networkcmd.TrackSubnet(
 				blockchainName,
 				avagoBinaryPath,

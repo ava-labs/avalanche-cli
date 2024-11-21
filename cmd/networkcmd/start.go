@@ -94,7 +94,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	}
 
 	// this takes about 1 secs
-	needsRestart, avalancheGoBinPath, err := sd.SetupLocalEnv()
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
@@ -113,16 +113,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	}
 
 	if bootstrapped {
-		if !needsRestart {
-			ux.Logger.PrintToUser("Network has already been booted.")
-			return nil
-		}
-		if _, err := cli.Stop(ctx); err != nil {
-			return err
-		}
-		if err := app.ResetPluginsDir(); err != nil {
-			return err
-		}
+		ux.Logger.PrintToUser("Network has already been booted.")
+		return nil
 	}
 
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
@@ -210,6 +202,9 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			return fmt.Errorf("snapshot %s does not exists", flags.SnapshotName)
 		}
 		if autoSave {
+			if err := os.MkdirAll(snapshotPath, constants.DefaultPerms755); err != nil {
+				return err
+			}
 			rootDir = snapshotPath
 			logDir = tmpDir
 		} else {

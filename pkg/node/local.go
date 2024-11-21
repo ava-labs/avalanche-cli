@@ -223,7 +223,7 @@ func StartLocalNode(
 	); err != nil {
 		return err
 	}
-	_, avalancheGoBinPath, err := sd.SetupLocalEnv()
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}

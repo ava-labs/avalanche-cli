@@ -45,12 +45,6 @@ configuration.`,
 func clean(*cobra.Command, []string) error {
 	app.Log.Info("killing gRPC server process...")
 
-	configSingleNodeEnabled := app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
-
-	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, true, "", configSingleNodeEnabled); err != nil {
-		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
-	}
-
 	if err := binutils.KillgRPCServerProcess(
 		app,
 		binutils.LocalNetworkGRPCServerEndpoint,

@@ -95,7 +95,6 @@ func TrackSubnet(
 	avalancheGoBinPath string,
 	sovereign bool,
 ) error {
-	ux.Logger.PrintToUser("")
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
