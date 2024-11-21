@@ -26,8 +26,9 @@ import (
 )
 
 var (
-	nodeIPs     []string
-	sshKeyPaths []string
+	nodeIPs         []string
+	sshKeyPaths     []string
+	useLocalMachine bool
 )
 
 func newCreateCmd() *cobra.Command {
@@ -54,6 +55,7 @@ Currently, only ubuntu-based operating system is supported.`,
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
+	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", true, "use local machine as an Avalanche Node")
 	return cmd
 }
 
@@ -183,6 +185,56 @@ func setupNode(_ *cobra.Command, _ []string) error {
 	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
 	if err != nil {
 		return err
+	}
+
+	if useLocalMachine {
+		if useLocalMachine && clusterNameFlagValue == "" {
+			// stop local avalanchego process so that we can generate new local cluster
+			_ = node.StopLocalNode(app)
+			anrSettings := node.ANRSettings{}
+			avagoVersionSettings := node.AvalancheGoVersionSettings{}
+			useEtnaDevnet := network.Kind == models.EtnaDevnet
+			if avagoBinaryPath == "" {
+				ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
+				ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
+				ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
+				avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
+				if err != nil {
+					return err
+				}
+			}
+			nodeConfig := map[string]interface{}{}
+			if app.AvagoNodeConfigExists(blockchainName) {
+				nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
+				if err != nil {
+					return err
+				}
+			}
+			// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+			if err = node.StartLocalNode(
+				app,
+				clusterName,
+				useEtnaDevnet,
+				avagoBinaryPath,
+				uint32(numLocalNodes),
+				partialSync,
+				nodeConfig,
+				anrSettings,
+				avagoVersionSettings,
+				globalNetworkFlags,
+				nil,
+			); err != nil {
+				return err
+			}
+			clusterNameFlagValue = clusterName
+			if len(bootstrapEndpoints) == 0 {
+				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+				if err != nil {
+					return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+						"please create your local node again and call subnet deploy command again", err)
+				}
+			}
+		}
 	}
 
 	if !useSSHAgent {
