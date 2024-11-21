@@ -208,6 +208,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if autoSave {
 			rootDir = snapshotPath
 			logDir = tmpDir
+		} else {
+			rootDir = tmpDir
 		}
 
 		upgradeFile, err := os.CreateTemp("", "upgrade")
