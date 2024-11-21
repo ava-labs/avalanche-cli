@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/olekukonko/tablewriter"
 )
 
 func CreateCustomSidecar(
@@ -214,20 +215,21 @@ func CreateDefaultHyperSDKGenesis(app *application.Avalanche) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-	var accounts []codec.Address
+	var (
+		accounts []codec.Address
+	)
 	switch option {
 	case defaultOption:
 		return CreateHyperSDKGenesis(nil)
 	case customOption:
+		balances := make(map[codec.Address]uint64)
 		for {
-			addAddressOption := "Add an address to the initial token allocation"
-			confirmOption := "Confirm and create genesis"
-			action, err := app.Prompt.CaptureList("How do you want to proceed?", []string{addAddressOption, confirmOption})
+			action, err := app.Prompt.CaptureList("How do you want to proceed?", []string{addAddressAllocationOption, changeAddressAllocationOption, removeAddressAllocationOption, previewAddressAllocationOption, confirmAddressAllocationOption})
 			if err != nil {
 				return []byte{}, err
 			}
 			switch action {
-			case addAddressOption:
+			case addAddressAllocationOption:
 				addrStr, err := app.Prompt.CaptureString("Enter checksummed address to add to the initial token allocation")
 				if err != nil {
 					return []byte{}, err
@@ -236,11 +238,69 @@ func CreateDefaultHyperSDKGenesis(app *application.Avalanche) ([]byte, error) {
 				if err != nil {
 					return []byte{}, err
 				}
-				accounts = append(accounts, addr)
-			case confirmOption:
+				if _, ok := balances[addr]; ok {
+					ux.Logger.PrintToUser("Address already has an allocation entry. Use edit or remove to modify.")
+					continue
+				}
+				balance, err := app.Prompt.CaptureUint64("Enter the initial token balance for this address")
+				if err != nil {
+					return []byte{}, err
+				}
+				balances[addr] = balance
+			case changeAddressAllocationOption:
+				addrStr, err := app.Prompt.CaptureString("Enter checksummed address to edit the initial token allocation of")
+				if err != nil {
+					return []byte{}, err
+				}
+				addr, err := codec.StringToAddress(addrStr)
+				if err != nil {
+					return []byte{}, err
+				}
+				if _, ok := balances[addr]; !ok {
+					ux.Logger.PrintToUser("Address not found in the allocation list")
+					continue
+				}
+				balance, err := app.Prompt.CaptureUint64("Enter the new initial token balance for this address")
+				if err != nil {
+					return []byte{}, err
+				}
+				balances[addr] = balance
+			case removeAddressAllocationOption:
+				addrStr, err := app.Prompt.CaptureString("Enter checksummed address to remove from the initial token allocation")
+				if err != nil {
+					return []byte{}, err
+				}
+				addr, err := codec.StringToAddress(addrStr)
+				if err != nil {
+					return []byte{}, err
+				}
+				if _, ok := balances[addr]; !ok {
+					ux.Logger.PrintToUser("Address not found in the allocation list")
+					continue
+				}
+				delete(balances, addr)
+			case previewAddressAllocationOption:
+				displayHyperSDKDAllocation(balances)
+			case confirmAddressAllocationOption:
+				for addr := range balances {
+					accounts = append(accounts, addr)
+				}
 				return CreateHyperSDKGenesis(accounts)
 			}
 		}
 	}
 	return []byte{}, nil
+}
+
+func displayHyperSDKDAllocation(allocs map[codec.Address]uint64) {
+	header := []string{"Address", "Balance"}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(header)
+	table.SetAutoMergeCellsByColumnIndex([]int{0})
+	table.SetAutoMergeCells(true)
+	table.SetRowLine(true)
+	for addr, balance := range allocs {
+		table.Append([]string{addr.String(), fmt.Sprintf("%d", balance)})
+	}
+	table.Render()
 }
