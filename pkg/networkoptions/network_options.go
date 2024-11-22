@@ -51,27 +51,22 @@ func (n NetworkOption) String() string {
 }
 
 func NetworkOptionFromString(s string) NetworkOption {
-	switch s {
-	case "Mainnet":
+	switch {
+	case s == "Mainnet":
 		return Mainnet
-	case "Fuji Testnet":
+	case s == "Fuji Testnet":
 		return Fuji
-	case "Local Network":
+	case s == "Local Network":
 		return Local
-	case "Etna Devnet":
+	case s == "Etna Devnet":
 		return EtnaDevnet
-	case "Devnet":
+	case s == "Devnet" || strings.Contains(s, "Devnet"):
 		return Devnet
-	case "Cluster":
+	case s == "Cluster" || strings.Contains(s, "Cluster"):
 		return Cluster
 	default:
-		if strings.Contains(s, "Devnet") {
-			return Devnet
-		} else if strings.Contains(s, "Cluster") {
-			return Cluster
-		}
+		return Undefined
 	}
-	return Undefined
 }
 
 type NetworkFlags struct {
