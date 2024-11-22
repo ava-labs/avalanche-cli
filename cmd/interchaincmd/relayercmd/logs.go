@@ -26,6 +26,7 @@ import (
 var (
 	logsNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
+		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	raw   bool
@@ -63,18 +64,13 @@ func logs(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	var logLines []string
-	switch {
-	case network.Kind == models.Local || network.Kind == models.Fuji:
-		logsPath := app.GetLocalRelayerLogPath(network.Kind)
-		bs, err := os.ReadFile(logsPath)
-		if err != nil {
-			return err
-		}
-		logs := string(bs)
-		logLines = strings.Split(logs, "\n")
-	default:
-		return fmt.Errorf("unsupported network")
+	logsPath := app.GetLocalRelayerLogPath(network.Kind)
+	bs, err := os.ReadFile(logsPath)
+	if err != nil {
+		return err
 	}
+	logs := string(bs)
+	logLines = strings.Split(logs, "\n")
 	if first != 0 {
 		if len(logLines) > int(first) {
 			logLines = logLines[:first]

@@ -171,6 +171,8 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
 	scheme := "ws"
 	switch n.Kind {
+	case EtnaDevnet:
+		scheme = "wss"
 	case Fuji:
 		scheme = "wss"
 	case Mainnet:

@@ -43,6 +43,7 @@ var (
 	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
+		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	deployFlags DeployFlags

@@ -33,6 +33,7 @@ var (
 	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
+		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	msgFlags MsgFlags

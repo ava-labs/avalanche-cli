@@ -19,9 +19,14 @@ import (
 )
 
 var (
-	startNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji}
-	globalNetworkFlags  networkoptions.NetworkFlags
-	binPath             string
+	startNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Cluster,
+		networkoptions.EtnaDevnet,
+		networkoptions.Fuji,
+	}
+	globalNetworkFlags networkoptions.NetworkFlags
+	binPath            string
 )
 
 // avalanche interchain relayer start
@@ -52,7 +57,16 @@ func start(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	switch {
-	case network.Kind == models.Local || network.Kind == models.Fuji:
+	case network.ClusterName != "":
+		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
+		if err != nil {
+			return err
+		}
+		if err := ssh.RunSSHStartAWMRelayerService(host); err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
+	default:
 		if relayerIsUp, _, _, err := teleporter.RelayerIsUp(
 			app.GetLocalRelayerRunPath(network.Kind),
 		); err != nil {
@@ -84,15 +98,6 @@ func start(_ *cobra.Command, _ []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started for %s", network.Kind)
 		ux.Logger.PrintToUser("Logs can be found at %s", app.GetLocalRelayerLogPath(network.Kind))
-	case network.ClusterName != "":
-		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
-		if err != nil {
-			return err
-		}
-		if err := ssh.RunSSHStartAWMRelayerService(host); err != nil {
-			return err
-		}
-		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
 	}
 	return nil
 }

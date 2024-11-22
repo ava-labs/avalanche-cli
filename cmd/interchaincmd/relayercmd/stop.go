@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -16,7 +15,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var stopNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji}
+var stopNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Cluster,
+	networkoptions.EtnaDevnet,
+	networkoptions.Fuji,
+}
 
 // avalanche interchain relayer stop
 func newStopCmd() *cobra.Command {
@@ -45,7 +49,16 @@ func stop(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	switch {
-	case network.Kind == models.Local || network.Kind == models.Fuji:
+	case network.ClusterName != "":
+		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
+		if err != nil {
+			return err
+		}
+		if err := ssh.RunSSHStopAWMRelayerService(host); err != nil {
+			return err
+		}
+		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())
+	default:
 		b, _, _, err := teleporter.RelayerIsUp(
 			app.GetLocalRelayerRunPath(network.Kind),
 		)
@@ -62,15 +75,6 @@ func stop(_ *cobra.Command, _ []string) error {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully stopped for %s", network.Kind)
-	case network.ClusterName != "":
-		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
-		if err != nil {
-			return err
-		}
-		if err := ssh.RunSSHStopAWMRelayerService(host); err != nil {
-			return err
-		}
-		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())
 	}
 	return nil
 }

@@ -99,6 +99,8 @@ var (
 	relayerAmount                   float64
 	relayerKeyName                  string
 	relayCChain                     bool
+	icmKeyName                      string
+	cchainIcmKeyName                string
 
 	poSMinimumStakeAmount     uint64
 	poSMaximumStakeAmount     uint64
@@ -159,6 +161,8 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
 	cmd.Flags().Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
 	cmd.Flags().StringVar(&relayerKeyName, "relayer-key", "", "key to be used by default both for rewards and to pay fees")
+	cmd.Flags().StringVar(&icmKeyName, "icm-key", constants.ICMKeyName, "key to be used to pay for ICM deploys")
+	cmd.Flags().StringVar(&cchainIcmKeyName, "cchain-icm-key", "", "key to be used to pay for ICM deploys on C-Chain")
 	cmd.Flags().BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
 	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
@@ -1019,7 +1023,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			deployICMFlags := teleportercmd.DeployFlags{
 				ChainFlags: chainSpec,
 				PrivateKeyFlags: contract.PrivateKeyFlags{
-					KeyName: constants.ICMKeyName,
+					KeyName: icmKeyName,
 				},
 				DeployMessenger:              true,
 				DeployRegistry:               true,
@@ -1029,6 +1033,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
 				MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
 				RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
+				CChainKeyName:                cchainIcmKeyName,
 			}
 			ux.Logger.PrintToUser("")
 			if err := teleportercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
