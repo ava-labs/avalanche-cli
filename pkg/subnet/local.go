@@ -628,12 +628,14 @@ func (d *LocalDeployer) SetupLocalEnv() (bool, string, error) {
 		avagoVersion = "v" + splittedVersion[1]
 	} else {
 		var (
-			err error
+			avagoDir string
+			err      error
 		)
-		avagoVersion, avalancheGoBinPath, err = d.setupLocalEnv()
+		avagoVersion, avagoDir, err = d.setupLocalEnv()
 		if err != nil {
 			return false, "", fmt.Errorf("failed setting up local environment: %w", err)
 		}
+		avalancheGoBinPath = filepath.Join(avagoDir, "avalanchego")
 	}
 
 	configSingleNodeEnabled := d.app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)

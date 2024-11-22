@@ -4,6 +4,8 @@ package nodecmd
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -209,10 +211,11 @@ func localTrack(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		_, avalanchegoBinaryPath, err = binutils.SetupAvalanchego(app, avalancheGoVersion)
+		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
 		if err != nil {
 			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
 		}
+		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
 	}
 	return node.TrackSubnetWithLocalMachine(app, args[0], args[1], avalanchegoBinaryPath)
 }

@@ -96,5 +96,5 @@ func InstallBinary(
 
 	binDir, err := installBinaryWithVersion(app, version, installDir, binPrefix, downloader, installer)
 
-	return version, filepath.Join(binDir, "avalanchego"), err
+	return version, binDir, err
 }
