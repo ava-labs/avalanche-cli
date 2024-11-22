@@ -178,6 +178,21 @@ func GetSupportedNetworkOptionsForSubnet(
 	return filteredSupportedNetworkOptions, clusterNames, devnetEndpoints, nil
 }
 
+func GetNetworkFromSidecar(sc models.Sidecar, defaultOption []NetworkOption) []NetworkOption {
+	networkOptionsList := []NetworkOption{}
+	for scNetwork := range sc.Networks {
+		if NetworkOptionFromString(scNetwork) != Undefined {
+			networkOptionsList = append(networkOptionsList, NetworkOptionFromString(scNetwork))
+		}
+	}
+
+	// default network options to add validator options
+	if len(networkOptionsList) == 0 {
+		networkOptionsList = defaultOption
+	}
+	return networkOptionsList
+}
+
 func GetNetworkFromCmdLineFlags(
 	app *application.Avalanche,
 	promptStr string,

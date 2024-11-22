@@ -76,18 +76,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	networkOptionsList := []networkoptions.NetworkOption{}
-	for scNetwork := range sc.Networks {
-		if networkoptions.NetworkOptionFromString(scNetwork) != networkoptions.Undefined {
-			networkOptionsList = append(networkOptionsList, networkoptions.NetworkOptionFromString(scNetwork))
-		}
-	}
-
-	// default network options to remove validator options
-	if len(networkOptionsList) == 0 {
-		networkOptionsList = removeValidatorSupportedNetworkOptions
-	}
-
+	networkOptionsList := networkoptions.GetNetworkFromSidecar(sc, removeValidatorSupportedNetworkOptions)
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
