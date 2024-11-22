@@ -604,7 +604,8 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 			if err != nil {
 				return err
 			}
-			blockchainID = sc.Networks[clusterConf.Network.Name()].BlockchainID
+			network := models.ConvertClusterToNetwork(clusterConf.Network)
+			blockchainID = sc.Networks[network.Name()].BlockchainID
 		}
 		if rootDir == currentlyRunningRootDir {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Blue.Wrap("Running"))

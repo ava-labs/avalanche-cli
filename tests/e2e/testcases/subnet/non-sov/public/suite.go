@@ -411,7 +411,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 			txPath,
 			true,
 		)
-		toMatch = "(?s).*Error: error issuing tx with ID(?s).+: failed to decode client response: couldn't issue tx: failed to read consumed(?s).+"
+		toMatch = "(?s).*Error: error issuing tx with ID(?s).+: failed to decode client response: couldn't issue tx: (?s).+failed to read consumed(?s).+"
 		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
