@@ -48,20 +48,32 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+
+	networkOptionsList := []networkoptions.NetworkOption{}
+	for scNetwork := range sc.Networks {
+		if networkoptions.NetworkOptionFromString(scNetwork) != networkoptions.Undefined {
+			networkOptionsList = append(networkOptionsList, networkoptions.NetworkOptionFromString(scNetwork))
+		}
+	}
+
+	// default network options to remove validator options
+	if len(networkOptionsList) == 0 {
+		networkOptionsList = removeValidatorSupportedNetworkOptions
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		true,
 		false,
-		removeValidatorSupportedNetworkOptions,
+		networkOptionsList,
 		"",
 	)
-	if err != nil {
-		return err
-	}
-
-	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
