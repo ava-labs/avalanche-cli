@@ -96,6 +96,7 @@ type relayerRunFile struct {
 
 func DeployRelayer(
 	version string,
+	binPath string,
 	binDir string,
 	configPath string,
 	logFilePath string,
@@ -105,9 +106,12 @@ func DeployRelayer(
 	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
 		return err
 	}
-	binPath, err := InstallRelayer(binDir, version)
-	if err != nil {
-		return err
+	if binPath == "" {
+		var err error
+		binPath, err = InstallRelayer(binDir, version)
+		if err != nil {
+			return err
+		}
 	}
 	pid, err := executeRelayer(binPath, configPath, logFilePath)
 	if err != nil {

@@ -27,13 +27,16 @@ import (
 )
 
 type DeployFlags struct {
-	Network            networkoptions.NetworkFlags
-	Version            string
-	LogLevel           string
-	RelayCChain        bool
-	BlockchainsToRelay []string
-	PrivateKey         string
-	Amount             float64
+	Network              networkoptions.NetworkFlags
+	Version              string
+	LogLevel             string
+	RelayCChain          bool
+	BlockchainsToRelay   []string
+	Key                  string
+	Amount               float64
+	BlockchainFundingKey string
+	CChainFundingKey     string
+	BinPath              string
 }
 
 var (
@@ -57,12 +60,15 @@ func newDeployCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	cmd.Flags().StringVar(&deployFlags.BinPath, "bin-path", "", "use the given relayer binary")
 	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
 	cmd.Flags().StringVar(&deployFlags.LogLevel, "log-level", "", "log level to use for relayer logs")
 	cmd.Flags().StringSliceVar(&deployFlags.BlockchainsToRelay, "blockchains", nil, "blockchains to relay as source and destination")
 	cmd.Flags().BoolVar(&deployFlags.RelayCChain, "cchain", false, "relay C-Chain as source and destination")
-	cmd.Flags().StringVar(&deployFlags.PrivateKey, "private-key", "", "key to be used by default both for rewards and to pay fees")
+	cmd.Flags().StringVar(&deployFlags.Key, "key", "", "key to be used by default both for rewards and to pay fees")
 	cmd.Flags().Float64Var(&deployFlags.Amount, "amount", 0, "automatically fund fee payments with the given amount")
+	cmd.Flags().StringVar(&deployFlags.BlockchainFundingKey, "blockchain-funding-key", "", "key to be used to fund relayer account on all l1s")
+	cmd.Flags().StringVar(&deployFlags.CChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
 	return cmd
 }
 
@@ -198,7 +204,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			network,
 			flags.RelayCChain,
 			flags.BlockchainsToRelay,
-			flags.PrivateKey,
+			flags.Key,
 		)
 		if cancel {
 			return nil
@@ -315,7 +321,37 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				privateKey := ""
 				if flags.Amount != 0 {
 					privateKey = genesisPrivateKey
-				} else {
+				}
+				if flags.BlockchainFundingKey != "" || flags.CChainFundingKey != "" {
+					cchainBlockchainID, err := contract.GetBlockchainID(
+						app,
+						network,
+						contract.ChainSpec{
+							CChain: true,
+						},
+					)
+					if err != nil {
+						return err
+					}
+					if cchainBlockchainID.String() == destination.blockchainID {
+						if flags.CChainFundingKey != "" {
+							k, err := app.GetKey(flags.CChainFundingKey, network, false)
+							if err != nil {
+								return err
+							}
+							privateKey = string(k.PrivKeyHex())
+						}
+					} else {
+						if flags.BlockchainFundingKey != "" {
+							k, err := app.GetKey(flags.BlockchainFundingKey, network, false)
+							if err != nil {
+								return err
+							}
+							privateKey = string(k.PrivKeyHex())
+						}
+					}
+				}
+				if privateKey == "" {
 					privateKey, err = prompts.PromptPrivateKey(
 						app.Prompt,
 						fmt.Sprintf("fund the relayer destination %s", destination.blockchainDesc),
@@ -426,6 +462,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		// relayer fails for empty configs
 		err := teleporter.DeployRelayer(
 			flags.Version,
+			flags.BinPath,
 			app.GetAWMRelayerBinDir(),
 			configPath,
 			logPath,

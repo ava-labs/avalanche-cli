@@ -21,6 +21,7 @@ import (
 var (
 	startNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster, networkoptions.Fuji}
 	globalNetworkFlags  networkoptions.NetworkFlags
+	binPath             string
 )
 
 // avalanche interchain relayer start
@@ -33,6 +34,7 @@ func newStartCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startNetworkOptions)
+	cmd.Flags().StringVar(&binPath, "bin-path", "", "use the given relayer binary")
 	return cmd
 }
 
@@ -71,6 +73,7 @@ func start(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("there is no relayer configuration available")
 		} else if err := teleporter.DeployRelayer(
 			"latest",
+			binPath,
 			app.GetAWMRelayerBinDir(),
 			relayerConfigPath,
 			app.GetLocalRelayerLogPath(network.Kind),

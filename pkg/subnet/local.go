@@ -70,6 +70,7 @@ type ICMSpec struct {
 	MessengerDeployerTxPath      string
 	RegistryBydecodePath         string
 	RelayerVersion               string
+	RelayerBinPath               string
 	RelayerLogLevel              string
 }
 

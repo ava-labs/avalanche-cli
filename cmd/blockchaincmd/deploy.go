@@ -95,7 +95,7 @@ var (
 	convertOnly                     bool
 	numNodes                        uint32
 	relayerAmount                   float64
-	relayerPrivateKey               string
+	relayerKeyName                  string
 	relayCChain                     bool
 
 	poSMinimumStakeAmount     uint64
@@ -153,9 +153,10 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, "skip-relayer", false, "skip relayer deploy")
 	cmd.Flags().StringVar(&icmSpec.ICMVersion, "teleporter-version", "latest", "teleporter version to deploy")
 	cmd.Flags().StringVar(&icmSpec.RelayerVersion, "relayer-version", "latest", "relayer version to deploy")
+	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-bin-path", "", "relayer binary to use")
 	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
 	cmd.Flags().Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
-	cmd.Flags().StringVar(&relayerPrivateKey, "relayer-private-key", "", "key to be used by default both for rewards and to pay fees")
+	cmd.Flags().StringVar(&relayerKeyName, "relayer-key", "", "key to be used by default both for rewards and to pay fees")
 	cmd.Flags().BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
 	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
@@ -1035,15 +1036,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if !icmSpec.SkipRelayerDeploy {
 			deployRelayerFlags := relayercmd.DeployFlags{
 				Version:            icmSpec.RelayerVersion,
+				BinPath:            icmSpec.RelayerBinPath,
 				LogLevel:           icmSpec.RelayerLogLevel,
 				RelayCChain:        relayCChain,
 				BlockchainsToRelay: []string{blockchainName},
-				PrivateKey:         relayerPrivateKey,
+				Key:                relayerKeyName,
 				Amount:             relayerAmount,
 			}
 			if network.Kind == models.Local {
-				deployRelayerFlags.PrivateKey = constants.AWMRelayerKeyName
+				deployRelayerFlags.Key = constants.AWMRelayerKeyName
 				deployRelayerFlags.Amount = constants.DefaultRelayerAmount
+				deployRelayerFlags.CChainFundingKey = "ewoq"
+				deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
 			}
 			if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
 				return err
