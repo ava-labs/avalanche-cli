@@ -183,7 +183,7 @@ func TrackSubnet(
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()
 	for _, rpcURL := range networkInfo.RPCEndpoints {
-		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
+		ux.Logger.PrintToUser("Waiting for %s to be available", rpcURL)
 		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
 			return err
 		}

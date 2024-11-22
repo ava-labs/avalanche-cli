@@ -409,6 +409,7 @@ func DeploySubnetLocallyWithArgsSOV(subnetName string, version string, confPath 
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
+	cmdArgs = append(cmdArgs, "--avalanchego-path", utils.EtnaAvalancheGoBinaryPath)
 	cmd := exec.Command(CLIBinary, cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
