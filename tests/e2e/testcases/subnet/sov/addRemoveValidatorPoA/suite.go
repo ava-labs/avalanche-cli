@@ -109,6 +109,17 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 	})
+
+	ginkgo.It("Can get status of the cluster", func() {
+		output, err := commands.GetLocalClusterStatus(testLocalNodeName, subnetName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+		// make sure we can find string with "http://127.0.0.1:9660" and "L1:Validating" string in the output
+		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9652.*Validating`), "expect to have L1 validating")
+		// make sure we can do the same for "http://127.0.0.1:9662"
+		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9654.*Validating`), "expect to have L1 validating")
+	})
+
 	ginkgo.It("Can remove bootstrap validator", func() {
 		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
 			testLocalNodeName,

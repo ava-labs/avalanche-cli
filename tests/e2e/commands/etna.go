@@ -302,3 +302,29 @@ func RemoveEtnaSubnetValidatorFromCluster(
 	gomega.Expect(err).Should(gomega.BeNil())
 	return string(output), err
 }
+
+func GetLocalClusterStatus(
+	clusterName string,
+	blockchainName string,
+) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"local",
+		"status",
+		clusterName,
+		"--"+constants.SkipUpdateFlag,
+	)
+	if blockchainName != "" {
+		cmd.Args = append(cmd.Args, "--blockchain", blockchainName)
+	}
+	fmt.Println(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
+}
