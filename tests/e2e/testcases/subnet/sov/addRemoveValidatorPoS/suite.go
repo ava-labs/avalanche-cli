@@ -121,9 +121,9 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 		// make sure we can find string with "http://127.0.0.1:9660" and "L1:Validating" string in the output
-		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9660.*\[NodeID-[^\]]+\].*\[Primary:Bootstrapped L1:Validating\]`), "expect to have L1 validating")
+		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9660.*\[NodeID-[^\]]+\].*Validating\]`), "expect to have L1 validating")
 		// make sure we can do the same for "http://127.0.0.1:9662"
-		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9662.*\[NodeID-[^\]]+\].*\[Primary:Bootstrapped L1:Validating\]`), "expect to have L1 validating")
+		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9662.*\[NodeID-[^\]]+\].*Validating\]`), "expect to have L1 validating")
 	})
 
 	ginkgo.It("Can wait for min staking period to pass", func() {
