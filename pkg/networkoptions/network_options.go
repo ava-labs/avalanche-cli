@@ -51,21 +51,22 @@ func (n NetworkOption) String() string {
 }
 
 func NetworkOptionFromString(s string) NetworkOption {
-	switch s {
-	case "Mainnet":
+	switch {
+	case s == "Mainnet":
 		return Mainnet
-	case "Fuji Testnet":
+	case s == "Fuji Testnet":
 		return Fuji
-	case "Local Network":
+	case s == "Local Network":
 		return Local
-	case "Etna Devnet":
+	case s == "Etna Devnet":
 		return EtnaDevnet
-	case "Devnet":
+	case s == "Devnet" || strings.Contains(s, "Devnet"):
 		return Devnet
-	case "Cluster":
+	case s == "Cluster" || strings.Contains(s, "Cluster"):
 		return Cluster
+	default:
+		return Undefined
 	}
-	return Undefined
 }
 
 type NetworkFlags struct {
@@ -172,6 +173,21 @@ func GetSupportedNetworkOptionsForSubnet(
 	return filteredSupportedNetworkOptions, clusterNames, devnetEndpoints, nil
 }
 
+func GetNetworkFromSidecar(sc models.Sidecar, defaultOption []NetworkOption) []NetworkOption {
+	networkOptionsList := []NetworkOption{}
+	for scNetwork := range sc.Networks {
+		if NetworkOptionFromString(scNetwork) != Undefined {
+			networkOptionsList = append(networkOptionsList, NetworkOptionFromString(scNetwork))
+		}
+	}
+
+	// default network options to add validator options
+	if len(networkOptionsList) == 0 {
+		networkOptionsList = defaultOption
+	}
+	return networkOptionsList
+}
+
 func GetNetworkFromCmdLineFlags(
 	app *application.Avalanche,
 	promptStr string,
@@ -241,7 +257,8 @@ func GetNetworkFromCmdLineFlags(
 		}
 	}
 	// unsupported option
-	if networkOption != Undefined && !slices.Contains(supportedNetworkOptions, networkOption) {
+	// allow cluster because we can extract underlying network from cluster
+	if networkOption != Undefined && !slices.Contains(supportedNetworkOptions, networkOption) && networkOption != Cluster {
 		errMsg := fmt.Errorf("network flag %s is not supported. use one of %s", networkFlagsMap[networkOption], supportedNetworksFlags)
 		if subnetName != "" {
 			clustersMsg := ""
