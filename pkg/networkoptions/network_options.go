@@ -64,6 +64,12 @@ func NetworkOptionFromString(s string) NetworkOption {
 		return Devnet
 	case "Cluster":
 		return Cluster
+	default:
+		if strings.Contains(s, "Devnet") {
+			return Devnet
+		} else if strings.Contains(s, "Cluster") {
+			return Cluster
+		}
 	}
 	return Undefined
 }
