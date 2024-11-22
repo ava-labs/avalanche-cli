@@ -375,7 +375,11 @@ func GetNetworkFromCmdLineFlags(
 				return models.UndefinedNetwork, err
 			}
 		}
-		network = models.NewDevnetNetwork(networkFlags.Endpoint, networkID)
+		if networkFlags.Endpoint == constants.EtnaDevnetEndpoint {
+			network = models.NewEtnaDevnetNetwork()
+		} else {
+			network = models.NewDevnetNetwork(networkFlags.Endpoint, networkID)
+		}
 	case Fuji:
 		network = models.NewFujiNetwork()
 	case Mainnet:

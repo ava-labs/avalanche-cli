@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
-	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -37,7 +36,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		output, err := commands.CreateLocalEtnaDevnetNode(
 			testLocalNodeName,
 			7,
-			utils.EtnaAvalancheGoBinaryPath,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)

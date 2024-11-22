@@ -208,9 +208,13 @@ func StartLocalNode(
 		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
 		if err != nil {
 			return err
-		} else {
-			ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 		}
+		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
+		if err != nil {
+			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
+		}
+		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+		ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 	}
 	serverLogPath := filepath.Join(rootDir, "server.log")
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "", true)
@@ -304,7 +308,7 @@ func StartLocalNode(
 				return err
 			}
 		}
-		if err := preLocalChecks(anrSettings, avaGoVersionSetting, avalanchegoBinaryPath, useEtnaDevnet, globalNetworkFlags); err != nil {
+		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err
 		}
 		if useEtnaDevnet {
@@ -422,7 +426,7 @@ func localClusterDataExists(app *application.Avalanche, clusterName string) bool
 }
 
 // stub for now
-func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, avalanchegoBinaryPath string, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
+func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
 	// expand passed paths
 	if anrSettings.GenesisPath != "" {
 		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)
@@ -433,9 +437,6 @@ func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVer
 	// checks
 	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
 		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
-	}
-	if avalanchegoBinaryPath != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion || avaGoVersionSettings.UseCustomAvalanchegoVersion != "") {
-		return fmt.Errorf("specify either --avalanchego-path or --latest-avalanchego-version or --custom-avalanchego-version")
 	}
 	if useEtnaDevnet && (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
 		return fmt.Errorf("etna devnet can only be used with devnet")
