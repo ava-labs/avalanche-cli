@@ -257,6 +257,7 @@ func GetNetworkFromCmdLineFlags(
 		}
 	}
 	// unsupported option
+	// allow cluster because we can extract underlying network from cluster
 	if networkOption != Undefined && !slices.Contains(supportedNetworkOptions, networkOption) && networkOption != Cluster {
 		errMsg := fmt.Errorf("network flag %s is not supported. use one of %s", networkFlagsMap[networkOption], supportedNetworksFlags)
 		if subnetName != "" {
