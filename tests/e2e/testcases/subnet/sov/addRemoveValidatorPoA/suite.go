@@ -6,7 +6,6 @@ package subnet
 import (
 	"fmt"
 	"regexp"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -111,18 +110,14 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 		fmt.Println(output)
 	})
 
-	ginkgo.It("Can wait for 10s", func() {
-		time.Sleep(10 * time.Second)
-	})
-
-	ginkgo.It("Can get status of cluster and check new validators", func() {
+	ginkgo.It("Can get status of the cluster", func() {
 		output, err := commands.GetLocalClusterStatus(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 		// make sure we can find string with "http://127.0.0.1:9660" and "L1:Validating" string in the output
-		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9660.*\[NodeID-[^\]]+\].*Validating\]`), "expect to have L1 validating")
+		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9652.*\[NodeID-[^\]]+\].*Validating\]`), "expect to have L1 validating")
 		// make sure we can do the same for "http://127.0.0.1:9662"
-		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9662.*\[NodeID-[^\]]+\].*Validating\]`), "expect to have L1 validating")
+		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9654.*\[NodeID-[^\]]+\].*Validating\]`), "expect to have L1 validating")
 	})
 
 	ginkgo.It("Can remove bootstrap validator", func() {
