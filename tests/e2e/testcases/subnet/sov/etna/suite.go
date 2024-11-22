@@ -31,7 +31,8 @@ func createEtnaSubnetEvmConfig(poa, pos bool) {
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
-	cmdArgs := []string{"blockchain",
+	cmdArgs := []string{
+		"blockchain",
 		"create",
 		subnetName,
 		"--evm",
