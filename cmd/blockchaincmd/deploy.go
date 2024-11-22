@@ -1008,27 +1008,29 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.TeleporterReady && tracked {
-		chainSpec := contract.ChainSpec{
-			BlockchainName: blockchainName,
-		}
-		chainSpec.SetEnabled(true, false, false, false, false)
-		deployICMFlags := teleportercmd.DeployFlags{
-			ChainFlags: chainSpec,
-			PrivateKeyFlags: contract.PrivateKeyFlags{
-				KeyName: constants.ICMKeyName,
-			},
-			DeployMessenger:              !icmSpec.SkipICMDeploy,
-			DeployRegistry:               !icmSpec.SkipICMDeploy,
-			ForceRegistryDeploy:          true,
-			Version:                      icmSpec.ICMVersion,
-			MessengerContractAddressPath: icmSpec.MessengerContractAddressPath,
-			MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
-			MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
-			RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
-		}
-		ux.Logger.PrintToUser("")
-		if err := teleportercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
-			return err
+		if !icmSpec.SkipICMDeploy {
+			chainSpec := contract.ChainSpec{
+				BlockchainName: blockchainName,
+			}
+			chainSpec.SetEnabled(true, false, false, false, false)
+			deployICMFlags := teleportercmd.DeployFlags{
+				ChainFlags: chainSpec,
+				PrivateKeyFlags: contract.PrivateKeyFlags{
+					KeyName: constants.ICMKeyName,
+				},
+				DeployMessenger:              true,
+				DeployRegistry:               true,
+				ForceRegistryDeploy:          true,
+				Version:                      icmSpec.ICMVersion,
+				MessengerContractAddressPath: icmSpec.MessengerContractAddressPath,
+				MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
+				MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
+				RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
+			}
+			ux.Logger.PrintToUser("")
+			if err := teleportercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
+				return err
+			}
 		}
 		if !icmSpec.SkipRelayerDeploy {
 			deployRelayerFlags := relayercmd.DeployFlags{
