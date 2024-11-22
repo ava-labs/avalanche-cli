@@ -27,6 +27,8 @@ const (
 	EtnaDevnet
 )
 
+const wssScheme = "wss"
+
 func (nk NetworkKind) String() string {
 	switch nk {
 	case Mainnet:
@@ -172,11 +174,11 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	scheme := "ws"
 	switch n.Kind {
 	case EtnaDevnet:
-		scheme = "wss"
+		scheme = wssScheme
 	case Fuji:
-		scheme = "wss"
+		scheme = wssScheme
 	case Mainnet:
-		scheme = "wss"
+		scheme = wssScheme
 	}
 	return fmt.Sprintf("%s://%s/ext/bc/%s/ws", scheme, trimmedURI, blockchainID)
 }

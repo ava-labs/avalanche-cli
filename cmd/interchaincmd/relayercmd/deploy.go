@@ -340,7 +340,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 							if err != nil {
 								return err
 							}
-							privateKey = string(k.PrivKeyHex())
+							privateKey = k.PrivKeyHex()
 						}
 					} else {
 						if flags.BlockchainFundingKey != "" {
@@ -348,7 +348,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 							if err != nil {
 								return err
 							}
-							privateKey = string(k.PrivKeyHex())
+							privateKey = k.PrivKeyHex()
 						}
 					}
 				}
