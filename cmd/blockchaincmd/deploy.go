@@ -57,6 +57,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
+const skipRelayerFlagName = "skip-relayer"
+
 var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Devnet,
@@ -150,7 +152,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
-	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, "skip-relayer", false, "skip relayer deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
 	cmd.Flags().StringVar(&icmSpec.ICMVersion, "teleporter-version", "latest", "teleporter version to deploy")
 	cmd.Flags().StringVar(&icmSpec.RelayerVersion, "relayer-version", "latest", "relayer version to deploy")
 	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-bin-path", "", "relayer binary to use")
@@ -1031,6 +1033,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("")
 			if err := teleportercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
 				return err
+			}
+		}
+		if network.Kind != models.Local {
+			if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
+				ux.Logger.PrintToUser("")
+				yes, err := app.Prompt.CaptureYesNo("Do you want to use set up a local interchain relayer?")
+				if err != nil {
+					return err
+				}
+				icmSpec.SkipRelayerDeploy = !yes
 			}
 		}
 		if !icmSpec.SkipRelayerDeploy {
