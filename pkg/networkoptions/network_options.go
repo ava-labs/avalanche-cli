@@ -258,7 +258,8 @@ func GetNetworkFromCmdLineFlags(
 	}
 	// unsupported option
 	// allow cluster because we can extract underlying network from cluster
-	if networkOption != Undefined && !slices.Contains(supportedNetworkOptions, networkOption) && networkOption != Cluster {
+	// don't check for unsupported network on e2e run
+	if networkOption != Undefined && !slices.Contains(supportedNetworkOptions, networkOption) && networkOption != Cluster && os.Getenv(constants.SimulatePublicNetwork) == "" {
 		errMsg := fmt.Errorf("network flag %s is not supported. use one of %s", networkFlagsMap[networkOption], supportedNetworksFlags)
 		if subnetName != "" {
 			clustersMsg := ""
