@@ -102,22 +102,22 @@ func DeployRelayer(
 	logFilePath string,
 	runFilePath string,
 	storageDir string,
-) error {
+) (string, error) {
 	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
-		return err
+		return "", err
 	}
 	if binPath == "" {
 		var err error
 		binPath, err = InstallRelayer(binDir, version)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	pid, err := executeRelayer(binPath, configPath, logFilePath)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return saveRelayerRunFile(runFilePath, pid)
+	return binPath, saveRelayerRunFile(runFilePath, pid)
 }
 
 func RelayerIsUp(runFilePath string) (bool, int, *os.Process, error) {

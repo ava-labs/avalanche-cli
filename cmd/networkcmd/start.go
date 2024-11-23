@@ -57,6 +57,7 @@ already running.`,
 	}
 
 	cmd.Flags().StringVar(&startFlags.UserProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(&startFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringVar(&startFlags.RelayerBinaryPath, "relayer-path", "", "use this relayer binary path")
 	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
 	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", 1, "number of nodes to be created on local network")
@@ -158,6 +159,14 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			logDir = tmpDir
 		}
 
+		_, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(snapshotPath)
+		if err != nil {
+			return err
+		}
+		if flags.AvagoBinaryPath == "" && flags.UserProvidedAvagoVersion == latest && extraLocalNetworkData.AvalancheGoPath != "" {
+			avalancheGoBinPath = extraLocalNetworkData.AvalancheGoPath
+		}
+
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.LoadSnapshot(
 			ctx,
@@ -186,15 +195,21 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			return err
 		} else if b {
 			ux.Logger.PrintToUser("")
-			if err := teleporter.DeployRelayer(
+			relayerBinPath := flags.RelayerBinaryPath
+			if relayerBinPath == "" {
+				relayerBinPath = extraLocalNetworkData.RelayerPath
+			}
+			if relayerBinPath, err := teleporter.DeployRelayer(
 				"latest",
-				flags.RelayerBinaryPath,
+				relayerBinPath,
 				app.GetAWMRelayerBinDir(),
 				relayerConfigPath,
 				app.GetLocalRelayerLogPath(models.Local),
 				app.GetLocalRelayerRunPath(models.Local),
 				app.GetLocalRelayerStorageDir(models.Local),
 			); err != nil {
+				return err
+			} else if err := localnet.WriteExtraLocalNetworkData("", relayerBinPath, "", ""); err != nil {
 				return err
 			}
 		}
@@ -254,6 +269,10 @@ func Start(flags StartFlags, printEndpoints bool) error {
 
 	resp, err := cli.Status(ctx)
 	if err != nil {
+		return err
+	}
+
+	if err := localnet.WriteExtraLocalNetworkData(avalancheGoBinPath, "", "", ""); err != nil {
 		return err
 	}
 

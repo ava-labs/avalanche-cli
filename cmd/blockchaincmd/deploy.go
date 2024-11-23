@@ -157,7 +157,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
 	cmd.Flags().StringVar(&icmSpec.ICMVersion, "teleporter-version", "latest", "teleporter version to deploy")
 	cmd.Flags().StringVar(&icmSpec.RelayerVersion, "relayer-version", "latest", "relayer version to deploy")
-	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-bin-path", "", "relayer binary to use")
+	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
 	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
 	cmd.Flags().Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
 	cmd.Flags().StringVar(&relayerKeyName, "relayer-key", "", "key to be used by default both for rewards and to pay fees")

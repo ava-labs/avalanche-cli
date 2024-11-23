@@ -441,7 +441,7 @@ func GetCChainICMInfo(
 	registryAddress := ""
 	switch {
 	case network.Kind == models.Local:
-		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData()
+		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData("")
 		if err != nil {
 			return "", "", err
 		}

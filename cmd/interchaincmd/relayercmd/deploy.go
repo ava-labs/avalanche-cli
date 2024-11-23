@@ -461,7 +461,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	if len(configSpec.sources) > 0 && len(configSpec.destinations) > 0 {
 		// relayer fails for empty configs
-		err := teleporter.DeployRelayer(
+		binPath, err := teleporter.DeployRelayer(
 			flags.Version,
 			flags.BinPath,
 			app.GetAWMRelayerBinDir(),
@@ -474,6 +474,11 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			if bs, err := os.ReadFile(logPath); err == nil {
 				ux.Logger.PrintToUser("")
 				ux.Logger.PrintToUser(string(bs))
+			}
+		}
+		if network.Kind == models.Local {
+			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
+				return err
 			}
 		}
 		return err

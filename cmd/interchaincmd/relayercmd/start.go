@@ -83,9 +83,16 @@ func start(_ *cobra.Command, _ []string) error {
 			localNetworkRootDir = clusterInfo.GetRootDataDir()
 		}
 		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
+		if network.Kind == models.Local && binPath == "" {
+			if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(""); err != nil {
+				return err
+			} else if b {
+				binPath = extraLocalNetworkData.RelayerPath
+			}
+		}
 		if !utils.FileExists(relayerConfigPath) {
 			return fmt.Errorf("there is no relayer configuration available")
-		} else if err := teleporter.DeployRelayer(
+		} else if binPath, err := teleporter.DeployRelayer(
 			"latest",
 			binPath,
 			app.GetAWMRelayerBinDir(),
@@ -95,6 +102,10 @@ func start(_ *cobra.Command, _ []string) error {
 			app.GetLocalRelayerStorageDir(network.Kind),
 		); err != nil {
 			return err
+		} else if network.Kind == models.Local {
+			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
+				return err
+			}
 		}
 		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started for %s", network.Kind)
 		ux.Logger.PrintToUser("Logs can be found at %s", app.GetLocalRelayerLogPath(network.Kind))

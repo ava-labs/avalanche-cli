@@ -68,6 +68,7 @@ func ExpandHome(path string) string {
 		home, _ := os.UserHomeDir()
 		path = filepath.Join(home, path[1:])
 	}
+	path, _ = filepath.Abs(path)
 	return path
 }
 
