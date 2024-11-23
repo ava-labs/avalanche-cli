@@ -1221,7 +1221,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 	}
 
 	if networkRunning {
-		if userProvidedAvagoVersion == "latest" {
+		if userProvidedAvagoVersion == constants.LatestAvalancheGoVersion {
 			if runningRPCVersion != configuredRPCVersion && !skipRPCCheck {
 				return "", fmt.Errorf(
 					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
