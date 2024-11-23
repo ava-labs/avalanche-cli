@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
