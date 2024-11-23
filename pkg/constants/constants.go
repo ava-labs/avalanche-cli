@@ -75,8 +75,8 @@ const (
 	AWSGP3DefaultIOPS           = 3000
 	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
-
-	OperateOfflineEnvVarName = "CLIOFFLINE"
+	LatestAvalancheGoVersion    = "latest"
+	OperateOfflineEnvVarName    = "CLIOFFLINE"
 
 	PublicAccess       HTTPAccess = true
 	PrivateAccess      HTTPAccess = false

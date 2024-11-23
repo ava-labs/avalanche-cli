@@ -595,13 +595,28 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
 				useEtnaDevnet := network.Kind == models.EtnaDevnet
 				if avagoBinaryPath == "" {
-					ux.Logger.PrintToUser("Local build of Avalanche Go is required to create an Avalanche node using local machine")
-					ux.Logger.PrintToUser("Please download Avalanche Go repo at https://github.com/ava-labs/avalanchego and build from source through ./scripts/build.sh")
-					ux.Logger.PrintToUser("Please provide the full path to Avalanche Go binary in the build directory (e.g, xxx/build/avalanchego)")
-					avagoBinaryPath, err = app.Prompt.CaptureString("Path to Avalanche Go build")
+					useLatestAvalanchegoPreReleaseVersion := true
+					useLatestAvalanchegoReleaseVersion := false
+					if userProvidedAvagoVersion != "latest" {
+						useLatestAvalanchegoReleaseVersion = false
+						useLatestAvalanchegoPreReleaseVersion = false
+					} else {
+						userProvidedAvagoVersion = ""
+					}
+					avaGoVersionSetting := node.AvalancheGoVersionSettings{
+						UseCustomAvalanchegoVersion:           userProvidedAvagoVersion,
+						UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
+						UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+					}
+					avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
 					if err != nil {
 						return err
 					}
+					_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
+					if err != nil {
+						return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
+					}
+					avagoBinaryPath = filepath.Join(avagoDir, "avalanchego")
 				}
 				nodeConfig := map[string]interface{}{}
 				if app.AvagoNodeConfigExists(blockchainName) {
@@ -1309,7 +1324,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 	}
 
 	if networkRunning {
-		if userProvidedAvagoVersion == "latest" {
+		if userProvidedAvagoVersion == constants.LatestAvalancheGoVersion {
 			if runningRPCVersion != configuredRPCVersion && !skipRPCCheck {
 				return "", fmt.Errorf(
 					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
