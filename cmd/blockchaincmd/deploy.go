@@ -603,7 +603,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if avagoBinaryPath == "" {
 					useLatestAvalanchegoPreReleaseVersion := true
 					useLatestAvalanchegoReleaseVersion := false
-					if userProvidedAvagoVersion != "" {
+					if userProvidedAvagoVersion != "latest" {
 						useLatestAvalanchegoReleaseVersion = false
 						useLatestAvalanchegoPreReleaseVersion = false
 					}
