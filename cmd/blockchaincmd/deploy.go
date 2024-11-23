@@ -606,6 +606,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					if userProvidedAvagoVersion != "latest" {
 						useLatestAvalanchegoReleaseVersion = false
 						useLatestAvalanchegoPreReleaseVersion = false
+					} else {
+						userProvidedAvagoVersion = ""
 					}
 					avaGoVersionSetting := node.AvalancheGoVersionSettings{
 						UseCustomAvalanchegoVersion:           userProvidedAvagoVersion,
