@@ -164,8 +164,13 @@ func TrackSubnet(
 			}
 		}
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
+		subnets := strings.TrimSpace(nodeInfo.WhitelistedSubnets)
+		if subnets != "" {
+			subnets += ","
+		}
+		subnets += subnetID.String()
 		opts := []client.OpOption{
-			client.WithWhitelistedSubnets(subnetID.String()),
+			client.WithWhitelistedSubnets(subnets),
 			client.WithExecPath(avalancheGoBinPath),
 		}
 		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
@@ -188,13 +193,13 @@ func TrackSubnet(
 			return err
 		}
 	}
-	if _, err := cli.WaitForHealthy(ctx); err != nil {
-		return err
-	}
 	if err := IsBootstrapped(cli, blockchainID.String()); err != nil {
 		return err
 	}
 	if err := IsBootstrapped(cli, "P"); err != nil {
+		return err
+	}
+	if _, err := cli.WaitForHealthy(ctx); err != nil {
 		return err
 	}
 	if err := SetAlias(cli, blockchainID.String(), blockchainName); err != nil {
