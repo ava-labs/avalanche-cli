@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
