@@ -95,12 +95,6 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		return err
 	}
 
-	// this takes about 1 secs
-	avalancheGoBinPath, err := sd.SetupLocalEnv()
-	if err != nil {
-		return err
-	}
-
 	cli, err := binutils.NewGRPCClient()
 	if err != nil {
 		return err
@@ -117,6 +111,12 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	if bootstrapped {
 		ux.Logger.PrintToUser("Network has already been booted.")
 		return nil
+	}
+
+	// this takes about 1 secs
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
+	if err != nil {
+		return err
 	}
 
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)

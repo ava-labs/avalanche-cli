@@ -2,7 +2,7 @@
     "config": {
         "berlinBlock": 0,
         "byzantiumBlock": 0,
-        "chainId": 1,
+        "chainId": 99999,
         "constantinopleBlock": 0,
         "eip150Block": 0,
         "eip155Block": 0,
