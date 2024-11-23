@@ -21,9 +21,12 @@ jobs:
             "\\[Network\\]",
             "\\[Package Management\\]",
             "\\[Root\\]",
-            "\\[Local Subnet\\]",
+            "\\[Local Subnet non SOV\\]",
             "\\[Subnet Compatibility\\]",
-            "\\[Public Subnet\\]",
+            "\\[Public Subnet non SOV\\]",
+            "\\[Etna Subnet SOV\\]",
+            "\\[Etna AddRemove Validator SOV PoA\\]",
+            "\\[Etna AddRemove Validator SOV PoS\\]",
             "\\[Subnet\\]",
             "\\[Upgrade expect network failure\\]",
             "\\[Upgrade public network\\]",
@@ -34,6 +37,8 @@ jobs:
           ]
         os: [ubuntu-latest, macos-14]
         exclude:
+          - os: ubuntu-latest
+            suite: "\\[Etna Subnet SOV\\]"
           - os: macos-14
             suite: "\\[Node create\\]"
           - os: macos-14
@@ -41,7 +46,11 @@ jobs:
           - os: macos-14
             suite: "\\[Docker\\]"
           - os: macos-14
-            suite: "\\[Public Subnet\\]"
+            suite: "\\[Public Subnet non SOV\\]"
+          - os: ubuntu-latest
+            suite: "\\[Etna AddRemove Validator SOV PoA\\]"
+          - os: ubuntu-latest
+            suite: "\\[Etna AddRemove Validator SOV PoS\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -76,7 +85,7 @@ jobs:
           npm install -g tsx
 
       - name: Install Docker on MacOS
-        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\\[Public Subnet\\]') }}
+        if: ${{ (matrix.os == 'macos-14') && (matrix.suite == '\\[Public Subnet non SOV\\]') }}
         run: |
           brew install docker
           brew install colima

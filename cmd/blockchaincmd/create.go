@@ -45,6 +45,12 @@ type CreateFlags struct {
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
 	useExternalGasToken           bool
+	addICMRegistryToGenesis       bool
+	proofOfStake                  bool
+	proofOfAuthority              bool
+	rewardBasisPoints             uint64
+	validatorManagerOwner         string
+	proxyContractOwner            string
 	enableDebugging               bool
 }
 
@@ -57,8 +63,10 @@ var (
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
-	errMutuallyExlusiveVersionOptions   = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
-	errMutuallyExclusiveVMConfigOptions = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
+	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
+	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
+	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
+	errSOVFlagsOnly                               = errors.New("flags --proof-of-authority, --proof-of-stake, --poa-manager-owner --proxy-contract-owner are only applicable to Subnet Only Validator (SOV) blockchains")
 )
 
 // avalanche blockchain create
@@ -102,7 +110,14 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
 	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
-	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", false, "enable blockchain debugging")
+	cmd.Flags().BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
+	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
+	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
+	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
+	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
+	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
+	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
+	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
 	return cmd
 }
 
@@ -187,6 +202,20 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
+	if !sovereign {
+		if createFlags.proofOfAuthority || createFlags.proofOfStake || createFlags.validatorManagerOwner != "" || createFlags.proxyContractOwner != "" {
+			return errSOVFlagsOnly
+		}
+	}
+	// validator management type exclusiveness
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.proofOfAuthority, createFlags.proofOfStake}) {
+		return errMutuallyExlusiveValidatorManagementOptions
+	}
+
+	if createFlags.rewardBasisPoints == 0 && createFlags.proofOfStake {
+		return fmt.Errorf("reward basis points cannot be zero")
+	}
+
 	// get vm kind
 	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useCustomVM)
 	if err != nil {
@@ -195,7 +224,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	var (
 		genesisBytes        []byte
-		sc                  *models.Sidecar
 		useTeleporterFlag   *bool
 		deployTeleporter    bool
 		useExternalGasToken bool
@@ -213,7 +241,33 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	sc := &models.Sidecar{}
+
+	if sovereign {
+		if err = promptValidatorManagementType(app, sc); err != nil {
+			return err
+		}
+	}
+
 	if vmType == models.SubnetEvm {
+		if sovereign {
+			if createFlags.validatorManagerOwner == "" {
+				createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
+				if err != nil {
+					return err
+				}
+			}
+			sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
+			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
+
+			// use the validator manager owner as the transparent proxy contract owner unless specified via cmd flag
+			if createFlags.proxyContractOwner != "" {
+				sc.ProxyContractOwner = createFlags.proxyContractOwner
+			} else {
+				sc.ProxyContractOwner = sc.ValidatorManagerOwner
+			}
+		}
+
 		if genesisPath == "" {
 			// Default
 			defaultsKind, err = vm.PromptDefaults(app, defaultsKind)
@@ -263,6 +317,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			var params vm.SubnetEVMGenesisParams
 			params, tokenSymbol, err = vm.PromptSubnetEVMGenesisParams(
 				app,
+				sc,
 				vmVersion,
 				createFlags.chainID,
 				createFlags.tokenSymbol,
@@ -278,22 +333,25 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			deployTeleporter = params.UseTeleporter
 			useExternalGasToken = params.UseExternalGasToken
 			genesisBytes, err = vm.CreateEVMGenesis(
-				blockchainName,
 				params,
 				teleporterInfo,
+				createFlags.addICMRegistryToGenesis,
+				sc.ProxyContractOwner,
+				createFlags.rewardBasisPoints,
 			)
 			if err != nil {
 				return err
 			}
 		}
-		sc, err = vm.CreateEvmSidecar(
+		if sc, err = vm.CreateEvmSidecar(
+			sc,
 			app,
 			blockchainName,
 			vmVersion,
 			tokenSymbol,
 			true,
-		)
-		if err != nil {
+			sovereign,
+		); err != nil {
 			return err
 		}
 	} else {
@@ -318,7 +376,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		sc, err = vm.CreateCustomSidecar(
+		if sc, err = vm.CreateCustomSidecar(
+			sc,
 			app,
 			blockchainName,
 			useRepo,
@@ -327,8 +386,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			customVMBuildScript,
 			vmFile,
 			tokenSymbol,
-		)
-		if err != nil {
+			sovereign,
+		); err != nil {
 			return err
 		}
 	}
@@ -385,6 +444,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 	ux.Logger.GreenCheckmarkToUser("Successfully created blockchain configuration")
+	ux.Logger.PrintToUser("Run 'avalanche blockchain describe' to view all created addresses and what their roles are")
 	return nil
 }
 

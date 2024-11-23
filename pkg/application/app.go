@@ -46,8 +46,8 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Downloader = downloader
 }
 
-func (app *Avalanche) GetRunFile() string {
-	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
+func (app *Avalanche) GetRunFile(prefix string) string {
+	return filepath.Join(app.GetRunDir(), prefix+constants.ServerRunFile)
 }
 
 func (app *Avalanche) GetSnapshotsDir() string {
@@ -87,6 +87,10 @@ func (app *Avalanche) GetCustomVMDir() string {
 
 func (app *Avalanche) GetPluginsDir() string {
 	return filepath.Join(app.baseDir, constants.PluginDir)
+}
+
+func (app *Avalanche) GetLocalDir(clusterName string) string {
+	return filepath.Join(app.baseDir, constants.LocalDir, clusterName)
 }
 
 // Remove all plugins from plugin dir
@@ -160,7 +164,7 @@ func (app *Avalanche) GetSubnetEVMBinDir() string {
 }
 
 func (app *Avalanche) GetUpgradeBytesFilepath(blockchainName string) string {
-	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeFileName)
 }
 
 func (app *Avalanche) GetCustomVMPath(blockchainName string) string {
@@ -286,7 +290,7 @@ func (app *Avalanche) GetKey(keyName string, network models.Network, createIfMis
 }
 
 func (app *Avalanche) GetUpgradeBytesFilePath(blockchainName string) string {
-	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeFileName)
 }
 
 func (app *Avalanche) GetDownloader() Downloader {
@@ -533,6 +537,8 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	blockchainID ids.ID,
 	teleporterMessengerAddress string,
 	teleporterRegistryAddress string,
+	bootstrapValidators []models.SubnetValidator,
+	clusterName string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -543,6 +549,8 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		RPCVersion:                 sc.RPCVersion,
 		TeleporterMessengerAddress: teleporterMessengerAddress,
 		TeleporterRegistryAddress:  teleporterRegistryAddress,
+		BootstrapValidators:        bootstrapValidators,
+		ClusterName:                clusterName,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
@@ -657,6 +665,11 @@ func (app *Avalanche) LoadClusterNodeConfig(nodeName string) (models.NodeConfig,
 
 func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 	clustersConfigPath := app.GetClustersConfigPath()
+	if !utils.FileExists(clustersConfigPath) {
+		return models.ClustersConfig{
+			Clusters: map[string]models.ClusterConfig{},
+		}, nil
+	}
 	jsonBytes, err := os.ReadFile(clustersConfigPath)
 	if err != nil {
 		return models.ClustersConfig{}, err
@@ -692,6 +705,13 @@ func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 		return clustersConfig, err
 	}
 	return models.ClustersConfig{}, fmt.Errorf("unsupported clusters config version %s", v)
+}
+
+func (app *Avalanche) GetClustersConfig() (models.ClustersConfig, error) {
+	if app.ClustersConfigExists() {
+		return app.LoadClustersConfig()
+	}
+	return models.ClustersConfig{}, nil
 }
 
 func (app *Avalanche) WriteClustersConfigFile(clustersConfig *models.ClustersConfig) error {
@@ -792,25 +812,19 @@ func (app *Avalanche) SetupMonitoringEnv() error {
 }
 
 func (app *Avalanche) ClusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return false, err
 	}
 	_, ok := clustersConfig.Clusters[clusterName]
 	return ok, nil
 }
 
 func (app *Avalanche) GetClusterConfig(clusterName string) (models.ClusterConfig, error) {
-	exists, err := app.ClusterExists(clusterName)
-	if err != nil {
+	if exists, err := app.ClusterExists(clusterName); err != nil {
 		return models.ClusterConfig{}, err
-	}
-	if !exists {
-		return models.ClusterConfig{}, fmt.Errorf("cluster %q does not exists", clusterName)
+	} else if !exists {
+		return models.ClusterConfig{}, fmt.Errorf("cluster does not exists")
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {

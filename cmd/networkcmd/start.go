@@ -3,7 +3,6 @@
 package networkcmd
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/client"
-	"github.com/ava-labs/avalanche-network-runner/server"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
@@ -68,7 +66,13 @@ func StartNetwork(*cobra.Command, []string) error {
 	}
 	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "", false)
 
-	if err := sd.StartServer(); err != nil {
+	if err := sd.StartServer(
+		constants.ServerRunFileLocalNetworkPrefix,
+		binutils.LocalNetworkGRPCServerPort,
+		binutils.LocalNetworkGRPCGatewayPort,
+		app.GetSnapshotsDir(),
+		"",
+	); err != nil {
 		return err
 	}
 
@@ -85,7 +89,7 @@ func StartNetwork(*cobra.Command, []string) error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	bootstrapped, err := checkNetworkIsAlreadyBootstrapped(ctx, cli)
+	bootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
@@ -241,15 +245,4 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 		currentRPCVersion,
 		constants.AvalancheGoCompatibilityURL,
 	)
-}
-
-func checkNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
-	_, err := cli.Status(ctx)
-	if err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			return false, nil
-		}
-		return false, fmt.Errorf("failed trying to get network status: %w", err)
-	}
-	return true, nil
 }

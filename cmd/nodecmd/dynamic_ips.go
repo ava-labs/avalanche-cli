@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
 
@@ -51,7 +53,7 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 		}
 		var publicIP map[string]string
 		if node.CloudService == constants.GCPCloudService {
-			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+			if !(authorizeAccess || nodePkg.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 				return nil, fmt.Errorf("cloud access is required")
 			}
 			if gcpCloud == nil {
@@ -87,7 +89,7 @@ func getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP []models.NodeConfig) (
 // - in ansible inventory file
 // - in host config file
 func updatePublicIPs(clusterName string) error {
-	clusterNodes, err := getClusterNodes(clusterName)
+	clusterNodes, err := nodePkg.GetClusterNodes(app, clusterName)
 	if err != nil {
 		return err
 	}

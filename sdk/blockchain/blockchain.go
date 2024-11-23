@@ -12,6 +12,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
@@ -25,6 +33,14 @@ import (
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+)
+
+var (
+	errMissingSubnetID            = fmt.Errorf("missing Subnet ID")
+	errMissingBlockchainID        = fmt.Errorf("missing Blockchain ID")
+	errMissingRPC                 = fmt.Errorf("missing RPC URL")
+	errMissingBootstrapValidators = fmt.Errorf("missing bootstrap validators")
+	errMissingOwnerAddress        = fmt.Errorf("missing Owner Address")
 )
 
 type SubnetParams struct {
@@ -101,11 +117,24 @@ type Subnet struct {
 	// the target Subnet for CreateChainTx and AddValidatorTx
 	SubnetID ids.ID
 
+	// BlockchainID is the transaction ID from an issued CreateChainTx
+	BlockchainID ids.ID
+
 	// VMID specifies the vm that the new chain will run when CreateChainTx is called
 	VMID ids.ID
 
 	// DeployInfo contains all the necessary information for createSubnetTx
 	DeployInfo DeployParams
+
+	// RPC URL that Subnet can be reached at
+	RPC string
+
+	// OwnerAddress is address of the owner of the Validator Manager Contract
+	OwnerAddress *common.Address
+
+	// BootstrapValidators are bootstrap validators that are included in the ConvertL1Tx call
+	// that made Subnet a sovereign blockchain
+	BootstrapValidators []*txs.ConvertSubnetToL1Validator
 }
 
 func (c *Subnet) SetParams(controlKeys []ids.ShortID, subnetAuthKeys []ids.ShortID, threshold uint32) {
@@ -305,4 +334,143 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 		c.SubnetID = tx.ID()
 	}
 	return tx.ID(), issueTxErr
+}
+
+// InitializeProofOfAuthority setups PoA manager after a successful execution of
+// ConvertSubnetTx on P-Chain
+// needs the list of validators for that tx,
+// [convertSubnetValidators], together with an evm [ownerAddress]
+// to set as the owner of the PoA manager
+func (c *Subnet) InitializeProofOfAuthority(
+	network models.Network,
+	privateKey string,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevel logging.Level,
+) error {
+	if c.SubnetID == ids.Empty {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
+	}
+
+	if c.BlockchainID == ids.Empty {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBlockchainID)
+	}
+
+	if c.RPC == "" {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingRPC)
+	}
+
+	if c.OwnerAddress == nil {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingOwnerAddress)
+	}
+
+	if len(c.BootstrapValidators) == 0 {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBootstrapValidators)
+	}
+
+	if err := evm.SetupProposerVM(
+		c.RPC,
+		privateKey,
+	); err != nil {
+		return err
+	}
+
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		*c.OwnerAddress,
+	)
+	if err != nil {
+		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
+		}
+		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
+	}
+
+	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		network,
+		aggregatorLogLevel,
+		0,
+		aggregatorExtraPeerEndpoints,
+		c.SubnetID,
+		c.BlockchainID,
+		managerAddress,
+		c.BootstrapValidators,
+	)
+	if err != nil {
+		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
+	}
+
+	tx, _, err = validatormanager.InitializeValidatorsSet(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		c.BlockchainID,
+		c.BootstrapValidators,
+		subnetConversionSignedMessage,
+	)
+	if err != nil {
+		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
+	}
+
+	return nil
+}
+
+func (c *Subnet) InitializeProofOfStake(
+	network models.Network,
+	privateKey string,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorLogLevel logging.Level,
+	posParams validatormanager.PoSParams,
+) error {
+	if err := evm.SetupProposerVM(
+		c.RPC,
+		privateKey,
+	); err != nil {
+		return err
+	}
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		posParams,
+	)
+	if err != nil {
+		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+			return evm.TransactionError(tx, err, "failure initializing native PoS validator manager")
+		}
+		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
+	}
+	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		network,
+		aggregatorLogLevel,
+		0,
+		aggregatorExtraPeerEndpoints,
+		c.SubnetID,
+		c.BlockchainID,
+		managerAddress,
+		c.BootstrapValidators,
+	)
+	if err != nil {
+		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
+	}
+
+	tx, _, err = validatormanager.InitializeValidatorsSet(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		c.BlockchainID,
+		c.BootstrapValidators,
+		subnetConversionSignedMessage,
+	)
+	if err != nil {
+		return evm.TransactionError(tx, err, "failure initializing validators set on pos manager")
+	}
+	return nil
 }

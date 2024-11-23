@@ -18,7 +18,10 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
-	ServerRunFile      = "gRPCserver.run"
+	ServerRunFile                   = "gRPCserver.run"
+	ServerRunFileLocalNetworkPrefix = ""
+	ServerRunFileLocalClusterPrefix = "localcluster_"
+
 	AvalancheCliBinDir = "bin"
 	RunDir             = "runs"
 	ServicesDir        = "services"
@@ -26,6 +29,7 @@ const (
 	SuffixSeparator              = "_"
 	SidecarFileName              = "sidecar.json"
 	GenesisFileName              = "genesis.json"
+	UpgradeFileName              = "upgrade.json"
 	AliasesFileName              = "aliases.json"
 	SidecarSuffix                = SuffixSeparator + SidecarFileName
 	GenesisSuffix                = SuffixSeparator + GenesisFileName
@@ -51,9 +55,11 @@ const (
 	CloudOperationTimeout = 2 * time.Minute
 
 	ANRRequestTimeout      = 3 * time.Minute
-	APIRequestTimeout      = 30 * time.Second
-	APIRequestLargeTimeout = 2 * time.Minute
+	APIRequestTimeout      = 5 * time.Second
+	APIRequestLargeTimeout = 5 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
+
+	FujiBootstrapTimeout = 5 * time.Minute
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute
@@ -69,8 +75,8 @@ const (
 	AWSGP3DefaultIOPS           = 3000
 	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
-
-	OperateOfflineEnvVarName = "CLIOFFLINE"
+	LatestAvalancheGoVersion    = "latest"
+	OperateOfflineEnvVarName    = "CLIOFFLINE"
 
 	PublicAccess       HTTPAccess = true
 	PrivateAccess      HTTPAccess = false
@@ -162,12 +168,20 @@ const (
 
 	Disable = "disable"
 
-	TimeParseLayout             = "2006-01-02 15:04:05"
-	MinStakeWeight              = 1
-	DefaultStakeWeight          = 20
-	AVAXSymbol                  = "AVAX"
-	DefaultFujiStakeDuration    = "48h"
-	DefaultMainnetStakeDuration = "336h"
+	TimeParseLayout = "2006-01-02 15:04:05"
+	MinStakeWeight  = 1
+	// Default balance when we prompt users for bootstrap validators
+	// nAVAX
+	BootstrapValidatorBalance = 1000000000
+	// Default weight when we prompt users for bootstrap validators
+	BootstrapValidatorWeight = 100
+	// Default weight when we prompt users for non bootstrap validators
+	NonBootstrapValidatorWeight       = BootstrapValidatorWeight / 5
+	DefaultStakeWeight                = 20
+	AVAXSymbol                        = "AVAX"
+	DefaultFujiStakeDuration          = "48h"
+	DefaultMainnetStakeDuration       = "336h"
+	DefaultValidationIDExpiryDuration = 24 * time.Hour
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	DevnetStakingStartLeadTime                   = 30 * time.Second
@@ -280,6 +294,8 @@ const (
 	DevnetLocalAWMRelayerMetricsPort       = 9092
 	FujiLocalAWMRelayerMetricsPort         = 9093
 
+	DevnetFlagsProposerVMUseCurrentHeight = true
+
 	SubnetEVMBin = "subnet-evm"
 
 	DefaultNodeRunURL = "http://127.0.0.1:9650"
@@ -334,7 +350,6 @@ const (
 	AvalancheGoDockerImage = "avaplatform/avalanchego"
 	AvalancheGoGitRepo     = "https://github.com/ava-labs/avalanchego"
 
-	UpgradeBytesFileName      = "upgrade.json"
 	UpgradeBytesLockExtension = ".lock"
 	NotAvailableLabel         = "Not available"
 	BackendCmd                = "avalanche-cli-backend"
@@ -351,6 +366,7 @@ const (
 	BlockchainIDLabel = "BlockchainID: "
 
 	PluginDir = "plugins"
+	LocalDir  = "local"
 
 	MetricsNetwork               = "network"
 	MultiSig                     = "multi-sig"

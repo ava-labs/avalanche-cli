@@ -181,8 +181,7 @@ func GetBlockchainEndpoints(
 		rpcEndpoint string
 		wsEndpoint  string
 	)
-	switch {
-	case chainSpec.BlockchainName != "":
+	if chainSpec.BlockchainName != "" {
 		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to load sidecar: %w", err)
@@ -205,16 +204,20 @@ func GetBlockchainEndpoints(
 		if len(sc.Networks[networkName].WSEndpoints) > 0 {
 			wsEndpoint = sc.Networks[networkName].WSEndpoints[0]
 		}
-	case chainSpec.CChain:
-		rpcEndpoint = network.CChainEndpoint()
-		wsEndpoint = network.CChainWSEndpoint()
-	case network.Kind == models.Local:
-		blockchainID, err := GetBlockchainID(app, network, chainSpec)
-		if err != nil {
-			return "", "", err
+	}
+	if rpcEndpoint == "" {
+		switch {
+		case chainSpec.CChain:
+			rpcEndpoint = network.CChainEndpoint()
+			wsEndpoint = network.CChainWSEndpoint()
+		case network.Kind == models.Local:
+			blockchainID, err := GetBlockchainID(app, network, chainSpec)
+			if err != nil {
+				return "", "", err
+			}
+			rpcEndpoint = network.BlockchainEndpoint(blockchainID.String())
+			wsEndpoint = network.BlockchainWSEndpoint(blockchainID.String())
 		}
-		rpcEndpoint = network.BlockchainEndpoint(blockchainID.String())
-		wsEndpoint = network.BlockchainWSEndpoint(blockchainID.String())
 	}
 	blockchainDesc, err := GetBlockchainDesc(chainSpec)
 	if err != nil {

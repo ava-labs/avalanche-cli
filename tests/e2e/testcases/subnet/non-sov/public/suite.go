@@ -36,10 +36,10 @@ const (
 	mainnetChainID = 123456
 )
 
-func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
+func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
 	// deploy
-	s := commands.SimulateFujiDeploy(subnetName, keyName, controlKeys)
-	subnetID, err := utils.ParsePublicDeployOutput(s)
+	s := commands.SimulateFujiDeployNonSOV(subnetName, keyName, controlKeys)
+	subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
 	nodeInfos, err := utils.GetNodesInfo()
@@ -69,7 +69,7 @@ func deploySubnetToFuji() (string, map[string]utils.NodeInfo) {
 	return subnetID, nodeInfos
 }
 
-var _ = ginkgo.Describe("[Public Subnet]", func() {
+var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 	ginkgo.BeforeEach(func() {
 		// key
 		_ = utils.DeleteKey(keyName)
@@ -81,7 +81,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
 		_ = utils.DeleteConfigs(subnetName)
-		_, avagoVersion := commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
+		_, avagoVersion := commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
 
 		// local network
 		commands.StartNetworkWithVersion(avagoVersion)
@@ -95,7 +95,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 	})
 
 	ginkgo.It("deploy subnet to fuji", func() {
-		deploySubnetToFuji()
+		deploySubnetToFujiNonSOV()
 	})
 
 	ginkgo.It("deploy subnet to mainnet", func() {
@@ -109,9 +109,9 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
-		s := commands.SimulateMainnetDeploy(subnetName, 0, false)
+		s := commands.SimulateMainnetDeployNonSOV(subnetName, 0, false)
 		// deploy
-		subnetID, err := utils.ParsePublicDeployOutput(s)
+		subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 		gomega.Expect(err).Should(gomega.BeNil())
 		// add validators to subnet
 		nodeInfos, err := utils.GetNodesInfo()
@@ -162,14 +162,14 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		subnetMainnetChainID, err := utils.GetSubnetEVMMainneChainID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(0)))
-		_ = commands.SimulateMainnetDeploy(subnetName, mainnetChainID, true)
+		_ = commands.SimulateMainnetDeployNonSOV(subnetName, mainnetChainID, true)
 		subnetMainnetChainID, err = utils.GetSubnetEVMMainneChainID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(mainnetChainID)))
 	})
 
 	ginkgo.It("remove validator fuji", func() {
-		subnetIDStr, nodeInfos := deploySubnetToFuji()
+		subnetIDStr, nodeInfos := deploySubnetToFujiNonSOV()
 
 		// pick a validator to remove
 		var validatorToRemove string
@@ -249,7 +249,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 
 		// multisig deploy from unfunded ledger1 should not create any subnet/blockchain
 		gomega.Expect(err).Should(gomega.BeNil())
-		s := commands.SimulateMultisigMainnetDeploy(
+		s := commands.SimulateMultisigMainnetDeployNonSOV(
 			subnetName,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,
 		// instead signing only its tx fee as it is not a subnet auth key,
 		// and creating the tx file to wait for subnet auths from ledger2 and ledger3
-		s = commands.SimulateMultisigMainnetDeploy(
+		s = commands.SimulateMultisigMainnetDeployNonSOV(
 			subnetName,
 			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
 			[]string{ledger2Addr, ledger3Addr},
@@ -411,7 +411,7 @@ var _ = ginkgo.Describe("[Public Subnet]", func() {
 			txPath,
 			true,
 		)
-		toMatch = "(?s).*Error: error issuing tx with ID(?s).+: failed to decode client response: couldn't issue tx: failed to read consumed(?s).+"
+		toMatch = "(?s).*Error: error issuing tx with ID(?s).+: failed to decode client response: couldn't issue tx: (?s).+failed to read consumed(?s).+"
 		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)

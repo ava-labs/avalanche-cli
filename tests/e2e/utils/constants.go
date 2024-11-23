@@ -28,9 +28,11 @@ const (
 	EwoqKeyPath               = "tests/e2e/assets/ewoq_key.pk"
 	SubnetEvmAllowFeeRecpPath = "tests/e2e/assets/test_subnet_evm_allowFeeRecps_genesis.json"
 	SubnetEvmGenesisBadPath   = "tests/e2e/assets/test_subnet_evm_genesis_bad.json"
+	BootstrapValidatorPath    = "tests/e2e/assets/test_bootstrap_validator.json"
+	PluginDirExt              = "plugins"
 
-	PluginDirExt = "plugins"
-
-	ledgerSimDir         = "./tests/e2e/ledgerSim"
-	basicLedgerSimScript = "./launchAndApproveTxs.ts"
+	ledgerSimDir          = "./tests/e2e/ledgerSim"
+	basicLedgerSimScript  = "./launchAndApproveTxs.ts"
+	SubnetIDParseType     = "SubnetID"
+	BlockchainIDParseType = "BlockchainID"
 )

@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -177,13 +178,23 @@ func RunSSHStopAWMRelayerService(host *models.Host) error {
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string, publicAccessToHTTPPort bool) error {
+func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err
 	}
-
-	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring, publicAccessToHTTPPort); err != nil {
+	if err := docker.ComposeOverSSH("Compose Node",
+		host,
+		constants.SSHScriptTimeout,
+		"templates/avalanchego.docker-compose.yml",
+		docker.DockerComposeInputs{
+			AvalanchegoVersion: avalancheGoVersion,
+			WithMonitoring:     withMonitoring,
+			WithAvalanchego:    true,
+			E2E:                utils.IsE2E(),
+			E2EIP:              utils.E2EConvertIP(host.IP),
+			E2ESuffix:          utils.E2ESuffix(host.IP),
+		}); err != nil {
 		return err
 	}
 	return docker.RestartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
@@ -424,14 +435,21 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	}
 	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.GenesisFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName),
+		remoteconfig.GetRemoteAvalancheGenesis(),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.UpgradeFileName),
+		remoteconfig.GetRemoteAvalancheUpgrade(),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
 	}
 	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		remoteconfig.GetRemoteAvalancheNodeConfig(),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
@@ -555,7 +573,10 @@ func RunSSHRenderAvalancheNodeConfig(
 		if genesisFileExists(host) {
 			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 		}
-		if network.Kind == models.Local || network.Kind == models.Devnet || isAPIHost {
+		if upgradeFileExists(host) {
+			avagoConf.UpgradePath = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
+		}
+		if network.Kind == models.Local || network.Kind == models.Devnet || network.Kind == models.EtnaDevnet || isAPIHost {
 			avagoConf.HTTPHost = "0.0.0.0"
 		}
 		remoteAvagoConf, err := getAvalancheGoConfigData(host)
@@ -567,6 +588,13 @@ func RunSSHRenderAvalancheNodeConfig(
 		bootstrapIPs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ips")
 		avagoConf.BootstrapIDs = bootstrapIDs
 		avagoConf.BootstrapIPs = bootstrapIPs
+		partialSyncI, ok := remoteAvagoConf[config.PartialSyncPrimaryNetworkKey]
+		if ok {
+			partialSync, ok := partialSyncI.(bool)
+			if ok {
+				avagoConf.PartialSync = partialSync
+			}
+		}
 	}
 	// ready to render node config
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
@@ -896,6 +924,11 @@ func composeFileExists(host *models.Host) bool {
 func genesisFileExists(host *models.Host) bool {
 	genesisFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName))
 	return genesisFileExists
+}
+
+func upgradeFileExists(host *models.Host) bool {
+	upgradeFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.UpgradeFileName))
+	return upgradeFileExists
 }
 
 func nodeConfigFileExists(host *models.Host) bool {
