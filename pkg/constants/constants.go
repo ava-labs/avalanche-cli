@@ -55,11 +55,11 @@ const (
 	CloudOperationTimeout = 2 * time.Minute
 
 	ANRRequestTimeout      = 3 * time.Minute
-	APIRequestTimeout      = 5 * time.Second
-	APIRequestLargeTimeout = 5 * time.Second
+	APIRequestTimeout      = 10 * time.Second
+	APIRequestLargeTimeout = 10 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
-	FujiBootstrapTimeout = 5 * time.Minute
+	FujiBootstrapTimeout = 15 * time.Minute
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute

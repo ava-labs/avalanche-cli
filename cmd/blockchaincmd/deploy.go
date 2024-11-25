@@ -631,6 +631,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
+				if network.Kind == models.Fuji {
+					globalNetworkFlags.UseFuji = true
+				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
 					app,

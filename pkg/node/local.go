@@ -93,7 +93,7 @@ func TrackSubnetWithLocalMachine(
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := network.BootstrappingContext()
 	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
@@ -307,6 +307,9 @@ func StartLocalNode(
 			if err != nil {
 				return err
 			}
+		}
+		if network.Kind == models.Fuji {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		}
 		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err
