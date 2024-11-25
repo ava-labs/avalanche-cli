@@ -5,6 +5,8 @@ package constants
 import (
 	_ "embed"
 	"time"
+
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
 //go:embed etnaDevnet/genesis.json
@@ -36,3 +38,8 @@ var (
 )
 
 const StakingEtnaMinimumDuration = 100 * time.Second
+
+var EtnaActivationTime = map[uint32]time.Time{
+	avagoconstants.FujiID: time.Date(2024, time.November, 25, 16, 0, 0, 0, time.UTC),
+	EtnaDevnetNetworkID:   time.Date(2024, time.October, 9, 20, 0, 0, 0, time.UTC),
+}

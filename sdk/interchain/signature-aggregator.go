@@ -8,11 +8,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
-	"github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	apiConfig "github.com/ava-labs/awm-relayer/config"
@@ -29,8 +30,6 @@ const (
 	DefaultQuorumPercentage   = uint64(67)
 	DefaultSignatureCacheSize = uint64(1024 * 1024)
 )
-
-var etnaTime = time.Unix(0, 0)
 
 type SignatureAggregator struct {
 	subnetID         ids.ID
@@ -87,6 +86,7 @@ func initSignatureAggregator(
 	registerer prometheus.Registerer,
 	subnetID ids.ID,
 	quorumPercentage uint64,
+	etnaTime time.Time,
 ) (*SignatureAggregator, error) {
 	sa := &SignatureAggregator{}
 	// set quorum percentage
@@ -101,8 +101,8 @@ func initSignatureAggregator(
 	messageCreator, err := message.NewCreator(
 		logger,
 		registerer,
-		constants.DefaultNetworkCompressionType,
-		constants.DefaultNetworkMaximumInboundTimeout,
+		avagoconstants.DefaultNetworkCompressionType,
+		avagoconstants.DefaultNetworkMaximumInboundTimeout,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create message creator: %w", err)
@@ -153,7 +153,8 @@ func NewSignatureAggregator(
 			logging.JSON.ConsoleEncoder(),
 		),
 	)
-	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
+	etnaTime := constants.EtnaActivationTime[network.ID]
+	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage, etnaTime)
 }
 
 // AggregateSignatures aggregates signatures for a given message and justification.

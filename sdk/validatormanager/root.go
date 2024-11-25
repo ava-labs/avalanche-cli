@@ -235,7 +235,7 @@ func GetPChainSubnetConversionWarpMessage(
 
 // InitializeValidatorsSet calls poa manager validators set init method,
 // passing to it the p-chain signed [subnetConversionSignedMessage]
-// to verify p-chain already processed the associated ConvertSubnetTx
+// to verify p-chain already processed the associated ConvertSubnetToL1Tx
 func InitializeValidatorsSet(
 	rpcURL string,
 	managerAddress common.Address,

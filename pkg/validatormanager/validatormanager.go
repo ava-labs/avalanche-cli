@@ -102,7 +102,7 @@ func AddRewardCalculatorToAllocations(
 }
 
 // setups PoA manager after a successful execution of
-// ConvertSubnetTx on P-Chain
+// ConvertSubnetToL1Tx on P-Chain
 // needs the list of validators for that tx,
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
@@ -121,7 +121,7 @@ func SetupPoA(
 }
 
 // setups PoA manager after a successful execution of
-// ConvertSubnetTx on P-Chain
+// ConvertSubnetToL1Tx on P-Chain
 // needs the list of validators for that tx,
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
