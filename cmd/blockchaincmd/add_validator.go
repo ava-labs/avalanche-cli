@@ -389,7 +389,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("RegisterSubnetValidatorTx ID: %s", txID)
+	ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
 
 	if err := UpdatePChainHeight(
 		"Waiting for P-Chain to update validator information ...",

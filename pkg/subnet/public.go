@@ -195,7 +195,7 @@ func (*PublicDeployer) createRegisterSubnetValidatorTx(
 		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	if unsignedTx != nil {
-		if err := printFee("RegisterSubnetValidatorTX", wallet, unsignedTx); err != nil {
+		if err := printFee("RegisterL1ValidatorTx", wallet, unsignedTx); err != nil {
 			return nil, err
 		}
 	}
