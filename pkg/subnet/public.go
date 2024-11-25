@@ -147,7 +147,7 @@ func (*PublicDeployer) createSetSubnetValidatorWeightTx(
 		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	if unsignedTx != nil {
-		if err := printFee("SetSubnetValidatorWeightTX", wallet, unsignedTx); err != nil {
+		if err := printFee("SetL1ValidatorWeightTx", wallet, unsignedTx); err != nil {
 			return nil, err
 		}
 	}
@@ -195,7 +195,7 @@ func (*PublicDeployer) createRegisterSubnetValidatorTx(
 		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	if unsignedTx != nil {
-		if err := printFee("RegisterSubnetValidatorTX", wallet, unsignedTx); err != nil {
+		if err := printFee("RegisterL1ValidatorTx", wallet, unsignedTx); err != nil {
 			return nil, err
 		}
 	}
@@ -463,7 +463,7 @@ func (d *PublicDeployer) ConvertL1(
 	validatorManagerAddress goethereumcommon.Address,
 	validators []*txs.ConvertSubnetToL1Validator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
-	ux.Logger.PrintToUser("Now calling ConvertL1 Tx...")
+	ux.Logger.PrintToUser("Now calling ConvertSubnetToL1Tx...")
 
 	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
@@ -475,7 +475,7 @@ func (d *PublicDeployer) ConvertL1(
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertL1 transaction")
+	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertSubnetToL1Tx")
 
 	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress.Bytes(), validators, wallet)
 	if err != nil {
@@ -708,7 +708,7 @@ func (d *PublicDeployer) createConvertL1Tx(
 		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	if unsignedTx != nil {
-		if err := printFee("ConvertSubnetTX", wallet, unsignedTx); err != nil {
+		if err := printFee("ConvertSubnetToL1Tx", wallet, unsignedTx); err != nil {
 			return nil, err
 		}
 	}
