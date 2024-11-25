@@ -274,7 +274,7 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("SetSubnetValidatorWeightTx ID: %s", txID)
+	ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 
 	if err := validatormanager.FinishValidatorRemoval(
 		app,
