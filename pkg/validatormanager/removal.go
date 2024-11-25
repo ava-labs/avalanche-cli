@@ -22,7 +22,6 @@ import (
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/warp/messages"
-	"github.com/ava-labs/teleporter/tests/interfaces"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -72,9 +71,9 @@ func GetUptimeProofMessage(
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
+	blockchainID ids.ID,
 	validationID ids.ID,
 	uptime uint64,
-	subnet interfaces.SubnetTestInfo,
 ) (*warp.Message, error) {
 	uptimePayload, err := messages.NewValidatorUptime(validationID, uptime)
 	if err != nil {
@@ -86,7 +85,7 @@ func GetUptimeProofMessage(
 	}
 	uptimeProofUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		subnet.BlockchainID,
+		blockchainID,
 		addressedCall.Bytes(),
 	)
 	if err != nil {
@@ -200,8 +199,9 @@ func InitValidatorRemoval(
 
 	var uptimeProof *warp.Message
 	if initWithPos {
-		if up
-		uptimeSec, err := GetUptimeData()
+		if uptimeSec == 0 {
+			uptimeSec, err = GetUptimeData()
+		}
 		if err != nil {
 			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data")
 		}
@@ -215,7 +215,7 @@ func InitValidatorRemoval(
 			subnetID,
 			blockchainID,
 			validationID,
-			0,
+			uptimeSec,
 		)
 		if err != nil {
 			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime proof")
@@ -323,4 +323,8 @@ func FinishValidatorRemoval(
 		return evm.TransactionError(tx, err, "failure completing validator removal")
 	}
 	return nil
+}
+
+func GetUptimeData() (uint64, error) {
+	return 0, nil
 }

@@ -152,6 +152,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		network,
 		blockchainName,
 		nodeID,
+		0,     // automatic uptime
 		false, // don't force
 	)
 	if err != nil {
