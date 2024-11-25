@@ -147,7 +147,7 @@ func (*PublicDeployer) createSetSubnetValidatorWeightTx(
 		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	if unsignedTx != nil {
-		if err := printFee("SetSubnetValidatorWeightTX", wallet, unsignedTx); err != nil {
+		if err := printFee("SetL1ValidatorWeightTx", wallet, unsignedTx); err != nil {
 			return nil, err
 		}
 	}
