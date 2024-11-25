@@ -30,7 +30,7 @@ func instantiateAggregator(t *testing.T) (
 		prometheus.DefaultRegisterer,
 		subnetID,
 		DefaultQuorumPercentage,
-		time.Unix(0, 0),
+		time.Time{},
 	)
 	require.Equal(t, err, nil)
 	return aggregator, mockNetwork, err
