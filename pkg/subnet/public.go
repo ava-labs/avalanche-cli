@@ -708,7 +708,7 @@ func (d *PublicDeployer) createConvertL1Tx(
 		return nil, fmt.Errorf("error building tx: %w", err)
 	}
 	if unsignedTx != nil {
-		if err := printFee("ConvertSubnetTX", wallet, unsignedTx); err != nil {
+		if err := printFee("ConvertSubnetToL1Tx", wallet, unsignedTx); err != nil {
 			return nil, err
 		}
 	}
