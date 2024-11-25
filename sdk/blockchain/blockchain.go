@@ -132,8 +132,8 @@ type Subnet struct {
 	// OwnerAddress is address of the owner of the Validator Manager Contract
 	OwnerAddress *common.Address
 
-	// BootstrapValidators are bootstrap validators that are included in the ConvertL1Tx call
-	// that made Subnet a sovereign blockchain
+	// BootstrapValidators are bootstrap validators that are included in the ConvertSubnetToL1Tx call
+	// that made Subnet a sovereign L1
 	BootstrapValidators []*txs.ConvertSubnetToL1Validator
 }
 

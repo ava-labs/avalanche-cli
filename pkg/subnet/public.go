@@ -463,7 +463,7 @@ func (d *PublicDeployer) ConvertL1(
 	validatorManagerAddress goethereumcommon.Address,
 	validators []*txs.ConvertSubnetToL1Validator,
 ) (bool, ids.ID, *txs.Tx, []string, error) {
-	ux.Logger.PrintToUser("Now calling ConvertL1 Tx...")
+	ux.Logger.PrintToUser("Now calling ConvertSubnetToL1Tx...")
 
 	wallet, err := d.loadCacheWallet(subnetID)
 	if err != nil {
@@ -475,7 +475,7 @@ func (d *PublicDeployer) ConvertL1(
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
 	}
 
-	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertL1 transaction")
+	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertSubnetToL1Tx")
 
 	tx, err := d.createConvertL1Tx(subnetAuthKeys, subnetID, chainID, validatorManagerAddress.Bytes(), validators, wallet)
 	if err != nil {
