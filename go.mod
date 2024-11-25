@@ -5,8 +5,8 @@ go 1.22.8
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241120013844-71784ad023cc
-	github.com/ava-labs/avalanchego v1.12.0-fuji
-	github.com/ava-labs/awm-relayer v1.4.1-0.20241119163059-6abfe81abee0
+	github.com/ava-labs/avalanchego v1.12.0-initial-poc.9.0.20241125192703-8c538e65af03
+	github.com/ava-labs/awm-relayer v1.4.1-0.20241125193122-fbee7816141f
 	github.com/ava-labs/coreth v0.13.9-rc.1
 	github.com/ava-labs/subnet-evm v0.6.12
 	github.com/aws/aws-sdk-go-v2 v1.32.5
@@ -26,7 +26,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.21.0
+	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.35.1
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
@@ -40,13 +40,13 @@ require (
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.5.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.28.0
+	golang.org/x/crypto v0.29.0
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
-	golang.org/x/mod v0.21.0
-	golang.org/x/net v0.30.0
+	golang.org/x/mod v0.22.0
+	golang.org/x/net v0.31.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.9.0
-	golang.org/x/text v0.19.0
+	golang.org/x/text v0.20.0
 	google.golang.org/api v0.184.0
 	google.golang.org/protobuf v1.35.2
 	gopkg.in/yaml.v2 v2.4.0
@@ -67,7 +67,7 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.12.1 // indirect
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/ava-labs/ledger-avalanche/go v0.0.0-20241009183145-e6f90a8a1a60 // indirect
-	github.com/ava-labs/teleporter v1.0.7 // indirect
+	github.com/ava-labs/teleporter v1.0.8-0.20241121223552-226937a967e8 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.46 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.20 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.24 // indirect
@@ -216,10 +216,10 @@ require (
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/term v0.25.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/term v0.26.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.26.0 // indirect
+	golang.org/x/tools v0.27.0 // indirect
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
