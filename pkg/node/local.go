@@ -308,6 +308,9 @@ func StartLocalNode(
 				return err
 			}
 		}
+		if network.Kind == models.Fuji {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
+		}
 		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err
 		}
