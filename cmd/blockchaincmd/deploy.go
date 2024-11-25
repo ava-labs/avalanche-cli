@@ -176,7 +176,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
-	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 5, "number of nodes to be created on local machine")
+	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 1, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 
 	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
@@ -625,6 +625,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
+				if network.Kind == models.Fuji {
+					globalNetworkFlags.UseFuji = true
+				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
 					app,
@@ -832,16 +835,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			avaGoBootstrapValidators,
 		)
 		if err != nil {
-			ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
+			ux.Logger.RedXToUser("error converting subnet: %s. fix the issue and try again with a new convert cmd", err)
 			return err
 		}
 
 		savePartialTx = !isFullySigned && err == nil
-		ux.Logger.PrintToUser("ConvertL1Tx ID: %s", convertL1TxID)
+		ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
 
 		if savePartialTx {
 			if err := SaveNotFullySignedTx(
-				"ConvertL1Tx",
+				"ConvertSubnetToL1Tx",
 				tx,
 				chain,
 				subnetAuthKeys,
@@ -1446,7 +1449,7 @@ func GetAggregatorExtraPeers(
 	uris = append(uris, extraURIs...)
 	urisSet := set.Of(uris...)
 	uris = urisSet.List()
-	return ConvertURIToPeers(uris)
+	return UrisToPeers(uris)
 }
 
 func GetAggregatorNetworkUris(clusterName string) ([]string, error) {

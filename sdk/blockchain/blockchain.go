@@ -132,8 +132,8 @@ type Subnet struct {
 	// OwnerAddress is address of the owner of the Validator Manager Contract
 	OwnerAddress *common.Address
 
-	// BootstrapValidators are bootstrap validators that are included in the ConvertL1Tx call
-	// that made Subnet a sovereign blockchain
+	// BootstrapValidators are bootstrap validators that are included in the ConvertSubnetToL1Tx call
+	// that made Subnet a sovereign L1
 	BootstrapValidators []*txs.ConvertSubnetToL1Validator
 }
 
@@ -337,7 +337,7 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 }
 
 // InitializeProofOfAuthority setups PoA manager after a successful execution of
-// ConvertSubnetTx on P-Chain
+// ConvertSubnetToL1Tx on P-Chain
 // needs the list of validators for that tx,
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
