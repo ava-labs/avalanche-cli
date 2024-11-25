@@ -21,6 +21,7 @@ import (
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
+	"github.com/ava-labs/subnet-evm/warp/messages"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -66,7 +67,46 @@ func ValidatorManagerInitializeValidatorRemoval(
 	)
 }
 
-func ValidatorManagerGetSubnetValidatorWeightMessage(
+func GetUptimeProofMessage(
+	network models.Network,
+	aggregatorLogLevel logging.Level,
+	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	subnetID ids.ID,
+	blockchainID ids.ID,
+	validationID ids.ID,
+	uptime uint64,
+) (*warp.Message, error) {
+	uptimePayload, err := messages.NewValidatorUptime(validationID, uptime)
+	if err != nil {
+		return nil, err
+	}
+	addressedCall, err := warpPayload.NewAddressedCall(nil, uptimePayload.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	uptimeProofUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		blockchainID,
+		addressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		network,
+		aggregatorLogLevel,
+		subnetID,
+		aggregatorQuorumPercentage,
+		aggregatorExtraPeerEndpoints,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return signatureAggregator.Sign(uptimeProofUnsignedMessage, nil)
+}
+
+func GetSubnetValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -124,6 +164,7 @@ func InitValidatorRemoval(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogLevelStr string,
 	initWithPos bool,
+	uptimeSec uint64,
 	force bool,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
@@ -152,7 +193,36 @@ func InitValidatorRemoval(
 		return nil, ids.Empty, err
 	}
 	ux.Logger.PrintToUser("Using validationID: %s for nodeID: %s", validationID, nodeID)
-	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
+
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
+	}
+
+	var uptimeProof *warp.Message
+	if initWithPos {
+		if up
+		uptimeSec, err := GetUptimeData()
+		if err != nil {
+			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data")
+		}
+		ux.Logger.PrintToUser("Using uptime: %d", uptimeSec)
+
+		uptimeProof, err = GetUptimeProofMessage(
+			network,
+			aggregatorLogLevel,
+			0,
+			aggregatorExtraPeerEndpoints,
+			subnetID,
+			blockchainID,
+			validationID,
+			0,
+		)
+		if err != nil {
+			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime proof")
+		}
+	}
+	tx, _, err := InitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		ownerPrivateKey,
@@ -167,10 +237,6 @@ func InitValidatorRemoval(
 		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceeding to the next step")
 	}
 
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	nonce := uint64(1)
 	signedMsg, err := ValidatorManagerGetSubnetValidatorWeightMessage(
 		network,
