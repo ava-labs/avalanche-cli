@@ -22,10 +22,11 @@ import (
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/warp/messages"
+	"github.com/ava-labs/teleporter/tests/interfaces"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func ValidatorManagerInitializeValidatorRemoval(
+func InitializeValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	ownerPrivateKey string,
@@ -34,9 +35,7 @@ func ValidatorManagerInitializeValidatorRemoval(
 	force bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
-		// PoS only supports forcefull removal //TODO: implement uptime proof to remove this restriction
-		// posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
-		posEndValidation := "forceInitializeEndValidation(bytes32,bool,uint32)"
+		posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
 		if force {
 			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
 		}
@@ -73,9 +72,9 @@ func GetUptimeProofMessage(
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
-	blockchainID ids.ID,
 	validationID ids.ID,
 	uptime uint64,
+	subnet interfaces.SubnetTestInfo,
 ) (*warp.Message, error) {
 	uptimePayload, err := messages.NewValidatorUptime(validationID, uptime)
 	if err != nil {
@@ -87,7 +86,7 @@ func GetUptimeProofMessage(
 	}
 	uptimeProofUnsignedMessage, err := warp.NewUnsignedMessage(
 		network.ID,
-		blockchainID,
+		subnet.BlockchainID,
 		addressedCall.Bytes(),
 	)
 	if err != nil {
@@ -238,7 +237,7 @@ func InitValidatorRemoval(
 	}
 
 	nonce := uint64(1)
-	signedMsg, err := ValidatorManagerGetSubnetValidatorWeightMessage(
+	signedMsg, err := GetSubnetValidatorWeightMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -253,7 +252,7 @@ func InitValidatorRemoval(
 	return signedMsg, validationID, err
 }
 
-func ValidatorManagerCompleteValidatorRemoval(
+func CompleteValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string, // not need to be owner atm
@@ -295,7 +294,7 @@ func FinishValidatorRemoval(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	signedMessage, err := ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
 		aggregatorLogLevel,
@@ -314,7 +313,7 @@ func FinishValidatorRemoval(
 	); err != nil {
 		return err
 	}
-	tx, _, err := ValidatorManagerCompleteValidatorRemoval(
+	tx, _, err := CompleteValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		privateKey,

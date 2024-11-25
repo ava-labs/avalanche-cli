@@ -32,7 +32,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func NativePoSValidatorManagerInitializeValidatorRegistration(
+func InitializeValidatorRegistrationPoSNative(
 	rpcURL string,
 	managerAddress common.Address,
 	managerOwnerPrivateKey string,
@@ -93,7 +93,7 @@ func NativePoSValidatorManagerInitializeValidatorRegistration(
 }
 
 // step 1 of flow for adding a new validator
-func PoAValidatorManagerInitializeValidatorRegistration(
+func InitializeValidatorRegistrationPoA(
 	rpcURL string,
 	managerAddress common.Address,
 	managerOwnerPrivateKey string,
@@ -147,7 +147,7 @@ func PoAValidatorManagerInitializeValidatorRegistration(
 	)
 }
 
-func ValidatorManagerGetSubnetValidatorRegistrationMessage(
+func GetSubnetValidatorRegistrationMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -246,7 +246,7 @@ func GetValidatorWeight(
 	return weight, nil
 }
 
-func ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+func GetPChainSubnetValidatorRegistrationWarpMessage(
 	network models.Network,
 	rpcURL string,
 	aggregatorLogLevel logging.Level,
@@ -296,7 +296,7 @@ func ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
 }
 
 // last step of flow for adding a new validator
-func ValidatorManagerCompleteValidatorRegistration(
+func CompleteValidatorRegistration(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string, // not need to be owner atm
@@ -357,7 +357,7 @@ func InitValidatorRegistration(
 		ux.Logger.PrintToUser("Using rpcURL: %s", rpcURL)
 		ux.Logger.PrintToUser("NodeID: %s staking %s for %ds", nodeID.String(), stakeAmount, uint64(stakeDuration.Seconds()))
 		ux.Logger.PrintLineSeparator()
-		tx, _, err := NativePoSValidatorManagerInitializeValidatorRegistration(
+		tx, _, err := InitializeValidatorRegistrationPoSNative(
 			rpcURL,
 			managerAddress,
 			ownerPrivateKey,
@@ -378,7 +378,7 @@ func InitValidatorRegistration(
 		}
 	} else {
 		managerAddress = common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-		tx, _, err := PoAValidatorManagerInitializeValidatorRegistration(
+		tx, _, err := InitializeValidatorRegistrationPoA(
 			rpcURL,
 			managerAddress,
 			ownerPrivateKey,
@@ -414,7 +414,7 @@ func InitValidatorRegistration(
 	}
 
 	ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
-	return ValidatorManagerGetSubnetValidatorRegistrationMessage(
+	return GetSubnetValidatorRegistrationMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -454,7 +454,7 @@ func FinishValidatorRegistration(
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-	signedMessage, err := ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
 		aggregatorLogLevel,
@@ -473,7 +473,7 @@ func FinishValidatorRegistration(
 	); err != nil {
 		return err
 	}
-	tx, _, err := ValidatorManagerCompleteValidatorRegistration(
+	tx, _, err := CompleteValidatorRegistration(
 		rpcURL,
 		managerAddress,
 		privateKey,
