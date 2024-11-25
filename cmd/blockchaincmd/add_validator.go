@@ -76,14 +76,12 @@ var (
 func newAddValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "addValidator [blockchainName]",
-		Short: "Allow a validator to validate your blockchain's subnet",
-		Long: `The blockchain addValidator command whitelists a primary network validator to
-validate the subnet of the provided deployed Blockchain.
-
-To add the validator to the Subnet's allow list, you first need to provide
-the blockchainName and the validator's unique NodeID. The command then prompts
-for the validation start time, duration, and stake weight. You can bypass
-these prompts by providing the values with flags.
+		Short: "Add a validator to an L1",
+		Long: `The blockchain addValidator command adds a node as a validator to
+an L1 of the user provided deployed network. If the network is proof of 
+authority, the owner of the validator manager contract must sign the 
+transaction. If the network is proof of stake, the node must stake the L1's
+staking token. Both processes will issue a RegisterL1ValidatorTx on the P-Chain.
 
 This command currently only works on Blockchains deployed to either the Fuji
 Testnet or Mainnet.`,
@@ -109,13 +107,13 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
-	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for non sovereign blockchain) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
-	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for non sovereign blockchain) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
-	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "(for non sovereign blockchain) set duration so as to validate until primary validator ends its period")
-	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "(for non sovereign blockchain) use default weight/start/duration params for subnet validator")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non sovereign blockchain) control keys that will be used to authenticate add validator tx")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non sovereign blockchain) file path of the add validator tx")
-	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for non sovereign blockchain) just issue the add validator tx, without waiting for its acceptance")
+	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for Subnets, not L1s) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
+	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
+	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "(for Subnets, not L1s) set duration so as to validate until primary validator ends its period")
+	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "(for Subnets, not L1s) use default weight/start/duration params for subnet validator")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for Subnets, not L1s) control keys that will be used to authenticate add validator tx")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
+	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 
@@ -391,7 +389,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("RegisterSubnetValidatorTx ID: %s", txID)
+	ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
 
 	if err := UpdatePChainHeight(
 		"Waiting for P-Chain to update validator information ...",
