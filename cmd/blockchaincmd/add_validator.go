@@ -76,14 +76,12 @@ var (
 func newAddValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "addValidator [blockchainName]",
-		Short: "Allow a validator to validate your blockchain's subnet",
-		Long: `The blockchain addValidator command whitelists a primary network validator to
-validate the subnet of the provided deployed Blockchain.
-
-To add the validator to the Subnet's allow list, you first need to provide
-the blockchainName and the validator's unique NodeID. The command then prompts
-for the validation start time, duration, and stake weight. You can bypass
-these prompts by providing the values with flags.
+		Short: "Add a validator to an L1",
+		Long: `The blockchain addValidator command adds a node as a validator to
+an L1 of the user provided deployed network. If the network is proof of 
+authority, the owner of the validator manager contract must sign the 
+transaction. If the network is proof of stake, the node must stake the L1's
+staking token. Both processes will issue a RegisterL1ValidatorTx on the P-Chain.
 
 This command currently only works on Blockchains deployed to either the Fuji
 Testnet or Mainnet.`,
