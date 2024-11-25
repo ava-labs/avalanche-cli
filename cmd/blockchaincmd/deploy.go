@@ -601,8 +601,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
 				useEtnaDevnet := network.Kind == models.EtnaDevnet
 				if avagoBinaryPath == "" {
-					useLatestAvalanchegoPreReleaseVersion := false
-					useLatestAvalanchegoReleaseVersion := true
+					useLatestAvalanchegoPreReleaseVersion := true
+					useLatestAvalanchegoReleaseVersion := false
 					if userProvidedAvagoVersion != "latest" {
 						useLatestAvalanchegoReleaseVersion = false
 						useLatestAvalanchegoPreReleaseVersion = false
@@ -618,6 +618,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
+					fmt.Printf("using avalancheGoVersion %s \n", avalancheGoVersion)
 					_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
 					if err != nil {
 						return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
