@@ -153,7 +153,7 @@ func NewSignatureAggregator(
 			logging.JSON.ConsoleEncoder(),
 		),
 	)
-	etnaTime := time.Unix(0, 0)
+	etnaTime := time.Time{}
 	if t, ok := constants.EtnaActivationTime[network.ID]; ok {
 		etnaTime = t
 	}
