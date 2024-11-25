@@ -35,6 +35,10 @@ var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Mainnet,
 }
 
+var (
+	uptimeSec uint64
+)
+
 // avalanche blockchain removeValidator
 func newRemoveValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -60,6 +64,7 @@ these prompts by providing the values with flags.`,
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's removal (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	return cmd
 }
 
@@ -181,7 +186,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return false
 	})
 	force := len(filteredBootstrapValidators) > 0
-	if err := removeValidatorSOV(deployer, network, blockchainName, nodeID, force); err != nil {
+	if err := removeValidatorSOV(deployer, network, blockchainName, nodeID, uptimeSec, force); err != nil {
 		return err
 	}
 	// remove the validator from the list of bootstrap validators
@@ -205,6 +210,7 @@ func removeValidatorSOV(
 	network models.Network,
 	blockchainName string,
 	nodeID ids.NodeID,
+	uptimeSec uint64,
 	force bool,
 ) error {
 	chainSpec := contract.ChainSpec{
