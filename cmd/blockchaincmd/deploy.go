@@ -1348,7 +1348,7 @@ func GetAggregatorExtraPeers(
 	uris = append(uris, extraURIs...)
 	urisSet := set.Of(uris...)
 	uris = urisSet.List()
-	return ConvertURIToPeers(uris)
+	return UrisToPeers(uris)
 }
 
 func GetAggregatorNetworkUris(clusterName string) ([]string, error) {
