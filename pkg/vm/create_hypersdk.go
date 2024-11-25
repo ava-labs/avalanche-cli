@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package vm
 
 import (
@@ -171,7 +174,7 @@ func getChainID(app *application.Avalanche) (ids.ID, error) {
 	defaultChainID := "I don't want to define my own chain ID"
 	chainIDOption, err := app.Prompt.CaptureList(
 		"How would you like to define the chain ID?",
-		[]string{customChainID, defaultChainID},
+		[]string{defaultChainID, customChainID},
 	)
 	if err != nil {
 		return ids.Empty, err

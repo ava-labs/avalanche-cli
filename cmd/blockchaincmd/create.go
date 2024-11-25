@@ -34,8 +34,7 @@ const (
 )
 
 type CreateFlags struct {
-	useSubnetEvm bool
-	// TODO: implement all dependencies related to useHyperVM
+	useSubnetEvm                  bool
 	useHyperVM                    bool
 	useCustomVM                   bool
 	chainID                       uint64
@@ -58,11 +57,12 @@ type CreateFlags struct {
 }
 
 var (
-	createFlags CreateFlags
-	forceCreate bool
-	genesisPath string
-	vmFile      string
-	useRepo     bool
+	createFlags             CreateFlags
+	createGenesisFromBinary bool
+	forceCreate             bool
+	genesisPath             string
+	vmFile                  string
+	useRepo                 bool
 
 	errIllegalNameCharacter = errors.New(
 		"illegal name character: only letters, no special characters allowed")
@@ -392,6 +392,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 		var tokenSymbol string
 		sc, err = vm.CreateCustomSidecar(
+			sc,
 			app,
 			blockchainName,
 			useRepo,
@@ -400,6 +401,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			customVMBuildScript,
 			vmFile,
 			tokenSymbol,
+			sovereign,
 		)
 		if err != nil {
 			return err

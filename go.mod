@@ -8,6 +8,7 @@ require (
 	github.com/ava-labs/avalanchego v1.12.0-fuji
 	github.com/ava-labs/awm-relayer v1.4.1-0.20241119163059-6abfe81abee0
 	github.com/ava-labs/coreth v0.13.9-rc.1
+	github.com/ava-labs/hypersdk v0.0.18-0.20241122232249-bb043da89f7a
 	github.com/ava-labs/subnet-evm v0.6.12
 	github.com/aws/aws-sdk-go-v2 v1.32.5
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
@@ -219,6 +220,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
