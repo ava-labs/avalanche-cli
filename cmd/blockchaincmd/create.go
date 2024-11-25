@@ -253,7 +253,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if vmType == models.SubnetEvm {
+	switch vmType {
+	case models.SubnetEvm:
 		if sovereign {
 			if createFlags.validatorManagerOwner == "" {
 				createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
@@ -358,7 +359,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-	} else if vmType == models.HyperVM {
+	case models.HyperVM:
 		if genesisPath == "" {
 			providePath := "I'll provide the genesis path"
 			binaryGen := "The VM binary will generate the genesis"
@@ -406,7 +407,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-	} else {
+	default:
 		if genesisPath == "" {
 			genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
 			if err != nil {
