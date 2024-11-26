@@ -280,9 +280,6 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 
 	ginkgo.It("can list a subnet's validators SOV", func() {
 		nodeIDs := []string{
-			"NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
-			"NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu",
-			"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN",
 			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
 			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
 		}
@@ -321,10 +318,12 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can deploy a subnet-evm with old version", func() {
-		subnetEVMVersion := "v0.6.9"
-
+		// TODO: use a previous subnet evm release once available
+		// TODO: also remove hardocding
+		subnetEVMVersion := utils.EtnaSubnetEvmVersion
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion)
-		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
+		// TODO: use commands.DeploySubnetLocallySOV once having etna release
+		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -344,13 +343,14 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 
 	ginkgo.It("can't deploy conflicting vm versions", func() {
 		// TODO: These shouldn't be hardcoded either
-		subnetEVMVersion1 := "v0.6.9"
+		subnetEVMVersion1 := utils.EtnaSubnetEvmVersion
 		subnetEVMVersion2 := "v0.6.8"
 
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
-		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
+		// TODO: use commands.DeploySubnetLocallySOV once having etna release
+		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
