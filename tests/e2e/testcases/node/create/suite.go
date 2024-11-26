@@ -166,7 +166,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		output := commands.NodeExport(exportFileName, false)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("exported cluster [%s] configuration", constants.E2EClusterName)))
-		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("to %s", exportFileName)))
+		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("to /home/runner/work/avalanche-cli/avalanche-cli/%s", exportFileName)))
 		exportFile, err := utils.ReadFile(exportFileName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(exportFile)
