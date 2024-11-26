@@ -3,6 +3,7 @@
 package networkcmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,6 +162,49 @@ func TrackSubnet(
 			}
 			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
 				return err
+			}
+		}
+		if app.AvagoSubnetConfigExists(blockchainName) {
+			inputSubnetConfigPath := app.GetAvagoSubnetConfigPath(blockchainName)
+			outputSubnetConfigPath := filepath.Join(
+				status.ClusterInfo.RootDataDir,
+				nodeInfo.Name,
+				"configs",
+				"subnets",
+				subnetID.String()+".json",
+			)
+			if err := os.MkdirAll(filepath.Dir(outputSubnetConfigPath), 0o700); err != nil {
+				return fmt.Errorf("could not create subnet conf directory %s: %w", filepath.Dir(outputSubnetConfigPath), err)
+			}
+			if err := utils.FileCopy(inputSubnetConfigPath, outputSubnetConfigPath); err != nil {
+				return err
+			}
+		}
+		perNodeChainConfigPath := filepath.Join(app.GetSubnetDir(), blockchainName, constants.PerNodeChainConfigFileName)
+		if utils.FileExists(perNodeChainConfigPath) {
+			perNodeChainConfig, err := utils.ReadJSON(perNodeChainConfigPath)
+			if err != nil {
+				return err
+			}
+			for nodeName, cfg := range perNodeChainConfig {
+				cfgBytes, err := json.Marshal(cfg)
+				if err != nil {
+					return err
+				}
+				outputChainConfigPath := filepath.Join(
+					status.ClusterInfo.RootDataDir,
+					nodeName,
+					"configs",
+					"chains",
+					blockchainID.String(),
+					"config.json",
+				)
+				if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
+					return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
+				}
+				if err := os.WriteFile(outputChainConfigPath, cfgBytes, constants.WriteReadReadPerms); err != nil {
+					return err
+				}
 			}
 		}
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
