@@ -43,6 +43,7 @@ func createEtnaSubnetEvmConfig(poa, pos bool) {
 		"--production-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
+		"--teleporter=false",
 		"--" + constants.SkipUpdateFlag,
 	}
 	if poa {
