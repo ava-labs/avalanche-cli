@@ -70,6 +70,7 @@ func ValidatorManagerGetSubnetValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
+	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	blockchainID ids.ID,
@@ -106,6 +107,7 @@ func ValidatorManagerGetSubnetValidatorWeightMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -176,6 +178,7 @@ func InitValidatorRemoval(
 		network,
 		aggregatorLogLevel,
 		0,
+		network.Kind == models.Local,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
@@ -234,6 +237,7 @@ func FinishValidatorRemoval(
 		rpcURL,
 		aggregatorLogLevel,
 		0,
+		network.Kind == models.Local,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,
