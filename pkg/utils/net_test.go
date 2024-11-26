@@ -33,42 +33,42 @@ func TestIsValidIPPort(t *testing.T) {
 func TestSplitRPCtURI(t *testing.T) {
 	tests := []struct {
 		name          string
-		requestUri    string
+		requestURI    string
 		expectedURI   string
 		expectedChain string
 		expectError   bool
 	}{
 		{
 			name:          "Valid URI without trailing slash",
-			requestUri:    "http://127.0.0.1:9650/ext/bc/mychain",
+			requestURI:    "http://127.0.0.1:9650/ext/bc/mychain",
 			expectedURI:   "http://127.0.0.1:9650",
 			expectedChain: "mychain",
 			expectError:   false,
 		},
 		{
 			name:          "Valid URI with trailing slash",
-			requestUri:    "http://127.0.0.1:9650/ext/bc/mychain/",
+			requestURI:    "http://127.0.0.1:9650/ext/bc/mychain/",
 			expectedURI:   "http://127.0.0.1:9650",
 			expectedChain: "mychain",
 			expectError:   false,
 		},
 		{
 			name:          "Invalid URI - missing /ext/bc/",
-			requestUri:    "http://127.0.0.1:9650/mychain",
+			requestURI:    "http://127.0.0.1:9650/mychain",
 			expectedURI:   "",
 			expectedChain: "",
 			expectError:   true,
 		},
 		{
 			name:          "Valid URI with no chain",
-			requestUri:    "http://127.0.0.1:9650/ext/bc/",
+			requestURI:    "http://127.0.0.1:9650/ext/bc/",
 			expectedURI:   "http://127.0.0.1:9650",
 			expectedChain: "",
 			expectError:   false,
 		},
 		{
 			name:          "Valid URI with complex chain",
-			requestUri:    "http://127.0.0.1:9650/ext/bc/mychain/extra",
+			requestURI:    "http://127.0.0.1:9650/ext/bc/mychain/extra",
 			expectedURI:   "http://127.0.0.1:9650",
 			expectedChain: "mychain/extra",
 			expectError:   false,
@@ -77,7 +77,7 @@ func TestSplitRPCtURI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uri, chain, err := SplitRPCURI(tt.requestUri)
+			uri, chain, err := SplitRPCURI(tt.requestURI)
 
 			if tt.expectError {
 				if err == nil {

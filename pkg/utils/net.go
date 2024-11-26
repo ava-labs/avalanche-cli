@@ -71,15 +71,15 @@ func IsValidIPPort(ipPortPair string) bool {
 // SplitRPCURI splits the RPC URI into `endpoint` and `chain`.
 // Reverse operation of `fmt.Sprintf("%s/ext/bc/%s", endpoint, chain)`.
 // returns the `uri` and `chain` as strings, or an error if the request URI is invalid.
-func SplitRPCURI(requestUri string) (string, string, error) {
+func SplitRPCURI(requestURI string) (string, string, error) {
 	// Check if the request URI contains "/ext/bc/"
 	splitPoint := "/ext/bc/"
-	index := strings.Index(requestUri, splitPoint)
+	index := strings.Index(requestURI, splitPoint)
 	if index == -1 {
 		return "", "", fmt.Errorf("invalid request URI format")
 	}
 	// Extract `uri` and `chain`
-	uri := requestUri[:index]
-	chain := requestUri[index+len(splitPoint):]
+	uri := requestURI[:index]
+	chain := requestURI[index+len(splitPoint):]
 	return uri, strings.TrimSuffix(chain, "/"), nil
 }
