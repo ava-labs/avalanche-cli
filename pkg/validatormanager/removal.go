@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -29,7 +30,7 @@ func InitializeValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string,
-	validationID [32]byte,
+	validationID ids.ID,
 	isPoS bool,
 	uptimeProofSignedMessage *warp.Message,
 	force bool,
@@ -49,28 +50,6 @@ func InitializeValidatorRemoval(
 				uint32(0),
 			)
 		}
-		// provide uptime proof first via submit
-		if tx, receipt, err := contract.TxToMethodWithWarpMessage(
-			rpcURL,
-			privateKey,
-			managerAddress,
-			uptimeProofSignedMessage,
-			big.NewInt(0),
-			"POS validator removal with uptime proof",
-			validatorManagerSDK.ErrorSignatureToError,
-			"submitUptimeProof(bytes32,uint32)",
-			validationID,
-			uint32(0),
-		); err != nil {
-			return nil, nil, evm.TransactionError(tx, err, "failure submitting uptime proof")
-		} else {
-			ux.Logger.PrintToUser("Uptime proof submitted with tx hash %s. status: %d Log: %d", tx.Hash().String(), receipt.Status, len(receipt.Logs))
-			for _, log := range receipt.Logs {
-				ux.Logger.PrintToUser("Log: %s", log.Address)
-				ux.Logger.PrintToUser("Log: %s", log.Topics)
-			}
-		}
-
 		// remove PoS validator with uptime proof
 		return contract.TxToMethodWithWarpMessage(
 			rpcURL,
@@ -82,7 +61,7 @@ func InitializeValidatorRemoval(
 			validatorManagerSDK.ErrorSignatureToError,
 			"initializeEndValidation(bytes32,bool,uint32)",
 			validationID,
-			false, // uptime proof sibmited in previous step
+			true, // submit uptime proof
 			uint32(0),
 		)
 	}
@@ -234,6 +213,12 @@ func InitValidatorRemoval(
 	if initWithPos {
 		if err != nil {
 			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data")
+		}
+		if uptimeSec == 0 {
+			uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
+			if err != nil {
+				return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data for nodeID: %s via %s ", nodeID, rpcURL)
+			}
 		}
 		ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
 		signedUptimeProof, err = GetUptimeProofMessage(

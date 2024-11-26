@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -90,6 +91,7 @@ func AddRewardCalculatorToAllocations(
 	allocs core.GenesisAlloc,
 	rewardBasisPoints uint64,
 ) {
+	ux.Logger.PrintToUser("Adding reward calculator contract to allocations %d", rewardBasisPoints)
 	deployedRewardCalculatorBytes := common.FromHex(strings.TrimSpace(string(deployedRewardCalculatorBytecode)))
 	allocs[common.HexToAddress(validatorManagerSDK.RewardCalculatorAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),

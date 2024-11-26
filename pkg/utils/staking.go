@@ -16,6 +16,8 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+
+	subnetEvmPlugin "github.com/ava-labs/subnet-evm/plugin/evm"
 )
 
 func NewBlsSecretKeyBytes() ([]byte, error) {
@@ -91,5 +93,25 @@ func GetValidationTime(networkEndpoint string, nodeID ids.NodeID, subnetID ids.I
 			return time.Unix(int64(v.EndTime), 0).Sub(startTime), nil
 		}
 	}
+	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
+}
+
+// GetL1ValidatorUptimeSeconds returns the uptime of the L1 validator
+func GetL1ValidatorUptimeSeconds(rpcURL string, nodeID ids.NodeID) (uint64, error) {
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	networkEndpoint, blockchainID, err := SplitRPCURI(rpcURL)
+	if err != nil {
+		return 0, err
+	}
+	evmCli := subnetEvmPlugin.NewClient(networkEndpoint, blockchainID)
+	validators, err := evmCli.GetCurrentValidators(ctx, []ids.NodeID{nodeID})
+	if err != nil {
+		return 0, err
+	}
+	if len(validators) > 0 {
+		return validators[0].UptimeSeconds, nil
+	}
+
 	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
 }
