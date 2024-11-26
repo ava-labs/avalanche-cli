@@ -36,9 +36,7 @@ var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.EtnaDevnet,
 }
 
-var (
-	uptimeSec uint64
-)
+var uptimeSec uint64
 
 // avalanche blockchain removeValidator
 func newRemoveValidatorCmd() *cobra.Command {

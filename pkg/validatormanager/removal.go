@@ -28,34 +28,68 @@ import (
 func InitializeValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
-	ownerPrivateKey string,
+	privateKey string,
 	validationID [32]byte,
 	isPoS bool,
+	uptimeProofSignedMessage *warp.Message,
 	force bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
-		posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
 		if force {
-			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
+			return contract.TxToMethod(
+				rpcURL,
+				privateKey,
+				managerAddress,
+				big.NewInt(0),
+				"force POS validator removal",
+				validatorManagerSDK.ErrorSignatureToError,
+				"forceInitializeEndValidation(bytes32,bool,uint32)",
+				validationID,
+				false, // no uptime proof if force
+				uint32(0),
+			)
+		}
+		// provide uptime proof first via submit
+		if tx, receipt, err := contract.TxToMethodWithWarpMessage(
+			rpcURL,
+			privateKey,
+			managerAddress,
+			uptimeProofSignedMessage,
+			big.NewInt(0),
+			"POS validator removal with uptime proof",
+			validatorManagerSDK.ErrorSignatureToError,
+			"submitUptimeProof(bytes32,uint32)",
+			validationID,
+			uint32(0),
+		); err != nil {
+			return nil, nil, evm.TransactionError(tx, err, "failure submitting uptime proof")
+		} else {
+			ux.Logger.PrintToUser("Uptime proof submitted with tx hash %s. status: %d Log: %d", tx.Hash().String(), receipt.Status, len(receipt.Logs))
+			for _, log := range receipt.Logs {
+				ux.Logger.PrintToUser("Log: %s", log.Address)
+				ux.Logger.PrintToUser("Log: %s", log.Topics)
+			}
 		}
 
-		return contract.TxToMethod(
+		// remove PoS validator with uptime proof
+		return contract.TxToMethodWithWarpMessage(
 			rpcURL,
-			ownerPrivateKey,
+			privateKey,
 			managerAddress,
+			uptimeProofSignedMessage,
 			big.NewInt(0),
-			"POS validator removal initialization",
+			"POS validator removal with uptime proof",
 			validatorManagerSDK.ErrorSignatureToError,
-			posEndValidation,
+			"initializeEndValidation(bytes32,bool,uint32)",
 			validationID,
-			false, // don't include uptime proof - rely on network to calculate uptime
+			false, // uptime proof sibmited in previous step
 			uint32(0),
 		)
 	}
 	// PoA case
 	return contract.TxToMethod(
 		rpcURL,
-		ownerPrivateKey,
+		privateKey,
 		managerAddress,
 		big.NewInt(0),
 		"POA validator removal initialization",
@@ -196,18 +230,13 @@ func InitValidatorRemoval(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-
-	var uptimeProof *warp.Message
+	signedUptimeProof := &warp.Message{}
 	if initWithPos {
-		if uptimeSec == 0 {
-			uptimeSec, err = GetUptimeData()
-		}
 		if err != nil {
 			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data")
 		}
-		ux.Logger.PrintToUser("Using uptime: %d", uptimeSec)
-
-		uptimeProof, err = GetUptimeProofMessage(
+		ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
+		signedUptimeProof, err = GetUptimeProofMessage(
 			network,
 			aggregatorLogLevel,
 			0,
@@ -227,6 +256,7 @@ func InitValidatorRemoval(
 		ownerPrivateKey,
 		validationID,
 		initWithPos,
+		signedUptimeProof, // is empty for non-PoS
 		force,
 	)
 	if err != nil {
@@ -323,8 +353,4 @@ func FinishValidatorRemoval(
 		return evm.TransactionError(tx, err, "failure completing validator removal")
 	}
 	return nil
-}
-
-func GetUptimeData() (uint64, error) {
-	return 0, nil
 }

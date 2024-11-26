@@ -4,14 +4,17 @@ package utils
 
 import (
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
 
@@ -72,4 +75,21 @@ func GetNodeParams(nodeDir string) (
 		return ids.EmptyNodeID, nil, nil, err
 	}
 	return nodeID, blsPub, blsPoP, nil
+}
+
+func GetValidationTime(networkEndpoint string, nodeID ids.NodeID, subnetID ids.ID, startTime time.Time) (time.Duration, error) {
+	ctx, cancel := GetAPIContext()
+	defer cancel()
+	platformCli := platformvm.NewClient(networkEndpoint)
+	vs, err := platformCli.GetCurrentValidators(ctx, subnetID, nil)
+	cancel()
+	if err != nil {
+		return 0, err
+	}
+	for _, v := range vs {
+		if v.NodeID == nodeID {
+			return time.Unix(int64(v.EndTime), 0).Sub(startTime), nil
+		}
+	}
+	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
 }

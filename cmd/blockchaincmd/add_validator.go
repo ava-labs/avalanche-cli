@@ -30,7 +30,6 @@ import (
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/spf13/cobra"
 )
@@ -584,23 +583,6 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 	}
 }
 
-func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	platformCli := platformvm.NewClient(network.Endpoint)
-	vs, err := platformCli.GetCurrentValidators(ctx, avagoconstants.PrimaryNetworkID, nil)
-	cancel()
-	if err != nil {
-		return 0, err
-	}
-	for _, v := range vs {
-		if v.NodeID == nodeID {
-			return time.Unix(int64(v.EndTime), 0).Sub(startTime), nil
-		}
-	}
-	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
-}
-
 func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
 	defaultStakingStartLeadTime := constants.StakingStartLeadTime
 	if network.Kind == models.Devnet {
@@ -679,7 +661,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 	var selectedDuration time.Duration
 	if useDefaultDuration {
 		// avoid setting both globals useDefaultDuration and duration
-		selectedDuration, err = getMaxValidationTime(network, nodeID, start)
+		selectedDuration, err = utils.GetValidationTime(network.Endpoint, nodeID, avagoconstants.PrimaryNetworkID, start)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
