@@ -93,7 +93,7 @@ func TrackSubnetWithLocalMachine(
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := network.BootstrappingContext()
 	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
