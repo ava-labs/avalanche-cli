@@ -489,6 +489,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		useEwoq = true
+
+		if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {
+			return err
+		} else if b {
+			return fmt.Errorf("blockchain %s has already been deployed", blockchainName)
+		}
 	}
 	// end of local deploy
 

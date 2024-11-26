@@ -199,7 +199,7 @@ func TrackSubnet(
 	if err := IsBootstrapped(cli, "P"); err != nil {
 		return err
 	}
-	if _, err := cli.WaitForHealthy(ctx); err != nil {
+	if _, err := cli.UpdateStatus(ctx); err != nil {
 		return err
 	}
 	if err := SetAlias(cli, blockchainID.String(), blockchainName); err != nil {
@@ -375,4 +375,33 @@ func WaitNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
 		}
 	}
 	return err
+}
+
+func AlreadyDeployed(blockchainName string) (bool, error) {
+	chainVMID, err := anrutils.VMID(blockchainName)
+	if err != nil {
+		return false, fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+	}
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalNetworkGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if err != nil {
+		return false, err
+	}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return false, err
+	}
+	if status.ClusterInfo != nil {
+		for _, chainInfo := range status.ClusterInfo.CustomChains {
+			if chainInfo.VmId == chainVMID.String() {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
