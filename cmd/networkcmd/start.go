@@ -60,7 +60,7 @@ already running.`,
 	cmd.Flags().StringVar(&startFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringVar(&startFlags.RelayerBinaryPath, "relayer-path", "", "use this relayer binary path")
 	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
-	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", 1, "number of nodes to be created on local network")
+	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", constants.NumDefaultLocalNetworkNodes, "number of nodes to be created on local network")
 
 	return cmd
 }

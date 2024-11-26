@@ -187,7 +187,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
-	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 2, "number of nodes to be created on local network deploy")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.NumDefaultLocalNetworkNodes, "number of nodes to be created on local network deploy")
 	return cmd
 }
 
@@ -263,7 +263,9 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 }
 
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
-	if network.Kind != models.Local && network.Kind != models.Devnet && network.Kind != models.EtnaDevnet && os.Getenv(constants.SimulatePublicNetwork) == "" {
+	if network.Kind != models.Local &&
+		network.Kind != models.Devnet &&
+		network.Kind != models.EtnaDevnet && !simulatedPublicNetwork() {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
 			return err
@@ -424,7 +426,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
 
-	if os.Getenv(constants.SimulatePublicNetwork) == "" {
+	if !simulatedPublicNetwork() {
 		if network.Kind == models.Mainnet && sidecar.Sovereign {
 			return errNotSupportedOnMainnet
 		}
@@ -1027,7 +1029,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-		if network.Kind == models.Local {
+		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
 			if err := networkcmd.TrackSubnet(
 				blockchainName,
@@ -1102,7 +1104,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
-	if network.Kind == models.Local {
+	if network.Kind == models.Local && !simulatedPublicNetwork() {
 		ux.Logger.PrintToUser("")
 		return PrintSubnetInfo(blockchainName, true)
 	}
@@ -1496,4 +1498,8 @@ func GetAggregatorNetworkUris(clusterName string) ([]string, error) {
 		}
 	}
 	return aggregatorExtraPeerEndpointsUris, nil
+}
+
+func simulatedPublicNetwork() bool {
+	return os.Getenv(constants.SimulatePublicNetwork) != ""
 }
