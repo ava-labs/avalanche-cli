@@ -110,7 +110,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		fmt.Println(output)
 	})
 
-	ginkgo.It("Can get status of thecluster", func() {
+	ginkgo.It("Can get status of the cluster", func() {
 		output, err := commands.GetLocalClusterStatus(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
