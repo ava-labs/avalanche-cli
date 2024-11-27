@@ -98,6 +98,7 @@ func GetValidationTime(networkEndpoint string, nodeID ids.NodeID, subnetID ids.I
 
 // GetL1ValidatorUptimeSeconds returns the uptime of the L1 validator
 func GetL1ValidatorUptimeSeconds(rpcURL string, nodeID ids.NodeID) (uint64, error) {
+	const uptimeDeductible = uint64(10) // seconds to make sure all L1 validators would agree on uptime
 	ctx, cancel := GetAPIContext()
 	defer cancel()
 	networkEndpoint, blockchainID, err := SplitRPCURI(rpcURL)
@@ -110,7 +111,7 @@ func GetL1ValidatorUptimeSeconds(rpcURL string, nodeID ids.NodeID) (uint64, erro
 		return 0, err
 	}
 	if len(validators) > 0 {
-		return validators[0].UptimeSeconds, nil
+		return validators[0].UptimeSeconds - uptimeDeductible, nil
 	}
 
 	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
