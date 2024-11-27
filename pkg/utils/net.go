@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
-	"strings"
+	"regexp"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
@@ -71,15 +71,22 @@ func IsValidIPPort(ipPortPair string) bool {
 // SplitRPCURI splits the RPC URI into `endpoint` and `chain`.
 // Reverse operation of `fmt.Sprintf("%s/ext/bc/%s", endpoint, chain)`.
 // returns the `uri` and `chain` as strings, or an error if the request URI is invalid.
+// SplitRPCURI splits the RPC URL into `endpoint` and `chain`.
+// It matches the pattern `http://<endpoint>/ext/bc/<chain>/rpc` using a regex.
 func SplitRPCURI(requestURI string) (string, string, error) {
-	// Check if the request URI contains "/ext/bc/"
-	splitPoint := "/ext/bc/"
-	index := strings.Index(requestURI, splitPoint)
-	if index == -1 {
+	// Define the regex pattern
+	pattern := `^(https?://[^/]+)/ext/bc/([^/]+)/rpc$`
+	regex := regexp.MustCompile(pattern)
+
+	// Match the pattern
+	matches := regex.FindStringSubmatch(requestURI)
+	if matches == nil || len(matches) != 3 {
 		return "", "", fmt.Errorf("invalid request URI format")
 	}
-	// Extract `uri` and `chain`
-	uri := requestURI[:index]
-	chain := requestURI[index+len(splitPoint):]
-	return uri, strings.TrimSuffix(chain, "/"), nil
+
+	// Extract `endpoint` and `chain`
+	endpoint := matches[1]
+	chain := matches[2]
+
+	return endpoint, chain, nil
 }

@@ -203,7 +203,6 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Using validationID: %s for nodeID: %s", validationID, nodeID)
 
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
 	if err != nil {

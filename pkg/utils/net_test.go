@@ -30,54 +30,54 @@ func TestIsValidIPPort(t *testing.T) {
 	}
 }
 
-func TestSplitRPCtURI(t *testing.T) {
+func TestSplitRPCURI(t *testing.T) {
 	tests := []struct {
-		name          string
-		requestURI    string
-		expectedURI   string
-		expectedChain string
-		expectError   bool
+		name             string
+		requestURI       string
+		expectedEndpoint string
+		expectedChain    string
+		expectError      bool
 	}{
 		{
-			name:          "Valid URI without trailing slash",
-			requestURI:    "http://127.0.0.1:9650/ext/bc/mychain",
-			expectedURI:   "http://127.0.0.1:9650",
-			expectedChain: "mychain",
-			expectError:   false,
+			name:             "Valid URI",
+			requestURI:       "http://127.0.0.1:9660/ext/bc/nL95ujcHLPFhuQdHYkvS3CSUvDr9EfZduzyJ5Ty6VXXMgyEEF/rpc",
+			expectedEndpoint: "http://127.0.0.1:9660",
+			expectedChain:    "nL95ujcHLPFhuQdHYkvS3CSUvDr9EfZduzyJ5Ty6VXXMgyEEF",
+			expectError:      false,
 		},
 		{
-			name:          "Valid URI with trailing slash",
-			requestURI:    "http://127.0.0.1:9650/ext/bc/mychain/",
-			expectedURI:   "http://127.0.0.1:9650",
-			expectedChain: "mychain",
-			expectError:   false,
+			name:             "Valid URI with https",
+			requestURI:       "https://example.com:8080/ext/bc/testChain/rpc",
+			expectedEndpoint: "https://example.com:8080",
+			expectedChain:    "testChain",
+			expectError:      false,
 		},
 		{
-			name:          "Invalid URI - missing /ext/bc/",
-			requestURI:    "http://127.0.0.1:9650/mychain",
-			expectedURI:   "",
-			expectedChain: "",
-			expectError:   true,
+			name:             "Invalid URI - missing /rpc",
+			requestURI:       "http://127.0.0.1:9660/ext/bc/nL95ujcHLPFhuQdHYkvS3CSUvDr9EfZduzyJ5Ty6VXXMgyEEF",
+			expectedEndpoint: "",
+			expectedChain:    "",
+			expectError:      true,
 		},
 		{
-			name:          "Valid URI with no chain",
-			requestURI:    "http://127.0.0.1:9650/ext/bc/",
-			expectedURI:   "http://127.0.0.1:9650",
-			expectedChain: "",
-			expectError:   false,
+			name:             "Invalid URI - missing /ext/bc/",
+			requestURI:       "http://127.0.0.1:9660/some/other/path/rpc",
+			expectedEndpoint: "",
+			expectedChain:    "",
+			expectError:      true,
 		},
 		{
-			name:          "Valid URI with complex chain",
-			requestURI:    "http://127.0.0.1:9650/ext/bc/mychain/extra",
-			expectedURI:   "http://127.0.0.1:9650",
-			expectedChain: "mychain/extra",
-			expectError:   false,
+			name:             "Invalid URI - malformed URL",
+			requestURI:       "127.0.0.1:9660/ext/bc/chainId/rpc",
+			expectedEndpoint: "",
+			expectedChain:    "",
+			expectError:      true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			uri, chain, err := SplitRPCURI(tt.requestURI)
+			endpoint, chain, err := SplitRPCURI(tt.requestURI)
 
 			if tt.expectError {
 				if err == nil {
@@ -87,8 +87,8 @@ func TestSplitRPCtURI(t *testing.T) {
 				if err != nil {
 					t.Errorf("did not expect an error but got: %v", err)
 				}
-				if uri != tt.expectedURI {
-					t.Errorf("expected URI: %s, got: %s", tt.expectedURI, uri)
+				if endpoint != tt.expectedEndpoint {
+					t.Errorf("expected Endpoint: %s, got: %s", tt.expectedEndpoint, endpoint)
 				}
 				if chain != tt.expectedChain {
 					t.Errorf("expected Chain: %s, got: %s", tt.expectedChain, chain)
