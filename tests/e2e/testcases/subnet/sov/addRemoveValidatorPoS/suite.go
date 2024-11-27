@@ -121,7 +121,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Can wait for min staking period to pass", func() {
-		time.Sleep(300 * time.Second)
+		time.Sleep(600 * time.Second)
 	})
 
 	ginkgo.It("Can remove non-bootstrap validator", func() {
