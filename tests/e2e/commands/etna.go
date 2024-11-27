@@ -251,7 +251,7 @@ func AddEtnaSubnetValidatorToCluster(
 		"--disable-owner",
 		ewoqPChainAddress,
 		"--stake-amount",
-		"2",
+		"200",
 		"--delegation-fee",
 		"100",
 		"--staking-period",
