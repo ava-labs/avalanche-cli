@@ -41,7 +41,7 @@ func CreateEtnaSubnetEvmConfig(
 	rewardBasisPoints := ""
 	subnetManagementStr := PoAString
 	if subnetManagementType == PoS {
-		rewardBasisPoints = "--reward-basis-points=10000000"
+		rewardBasisPoints = "--reward-basis-points=100000000"
 		subnetManagementStr = PoSString
 	}
 	// Create config
