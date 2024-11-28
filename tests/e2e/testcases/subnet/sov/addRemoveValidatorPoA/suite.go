@@ -124,6 +124,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			subnetName,
 			"http://127.0.0.1:9654",
 			keyName,
+			0,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
@@ -135,6 +136,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			subnetName,
 			"http://127.0.0.1:9660",
 			keyName,
+			0,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
