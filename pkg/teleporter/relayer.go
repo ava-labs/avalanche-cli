@@ -103,7 +103,7 @@ func DeployRelayer(
 	runFilePath string,
 	storageDir string,
 ) (string, error) {
-	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
+	if err := RelayerCleanup(runFilePath, logFilePath, storageDir); err != nil {
 		return "", err
 	}
 	if binPath == "" {
@@ -152,7 +152,12 @@ func GetProcess(pid int) (*os.Process, error) {
 	return proc, nil
 }
 
-func RelayerCleanup(runFilePath string, storageDir string) error {
+func RelayerCleanup(
+	runFilePath string,
+	logFilePath string,
+	storageDir string,
+) error {
+	_ = os.Remove(logFilePath)
 	if err := os.RemoveAll(storageDir); err != nil {
 		return err
 	}
@@ -296,9 +301,14 @@ func getRelayerURL(version string) (string, error) {
 	if goos != "linux" && goos != "darwin" {
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
+	splittedVersion := strings.Split(version, "/")
+	if len(splittedVersion) != 2 {
+		return "", fmt.Errorf("invalid relayer version %s", version)
+	}
+	version = splittedVersion[1]
 	trimmedVersion := strings.TrimPrefix(version, "v")
 	return fmt.Sprintf(
-		"https://github.com/%s/%s/releases/download/%s/awm-relayer_%s_%s_%s.tar.gz",
+		"https://github.com/%s/%s/releases/download/awm-relayer%%2F%s/awm-relayer_%s_%s_%s.tar.gz",
 		constants.AvaLabsOrg,
 		constants.AWMRelayerRepoName,
 		version,

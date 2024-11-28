@@ -475,13 +475,13 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				ux.Logger.PrintToUser("")
 				ux.Logger.PrintToUser(string(bs))
 			}
+			return err
 		}
 		if network.Kind == models.Local {
 			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
 				return err
 			}
 		}
-		return err
 	}
 
 	return nil

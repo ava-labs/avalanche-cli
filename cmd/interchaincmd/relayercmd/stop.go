@@ -70,6 +70,7 @@ func stop(_ *cobra.Command, _ []string) error {
 		}
 		if err := teleporter.RelayerCleanup(
 			app.GetLocalRelayerRunPath(network.Kind),
+			app.GetLocalRelayerLogPath(network.Kind),
 			app.GetLocalRelayerStorageDir(network.Kind),
 		); err != nil {
 			return err

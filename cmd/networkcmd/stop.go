@@ -73,6 +73,7 @@ func Stop(flags StopFlags) error {
 
 	if err := teleporter.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
