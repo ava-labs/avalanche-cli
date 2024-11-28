@@ -139,6 +139,14 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	if err != nil {
 		return err
 	}
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxSizeKey, constants.LocalNetworkAvagoMaxLogSize)
+	if err != nil {
+		return err
+	}
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxFilesKey, constants.LocalNetworkAvagoMaxLogFiles)
+	if err != nil {
+		return err
+	}
 	if flags.SnapshotName == "" {
 		flags.SnapshotName = constants.DefaultSnapshotName
 	}
