@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -28,6 +29,12 @@ func deleteBlockchain(_ *cobra.Command, args []string) error {
 }
 
 func CallDeleteBlockchain(blockchainName string) error {
+	if err := checkInvalidSubnetNames(blockchainName); err != nil {
+		return fmt.Errorf("invalid blockchain name '%s': %w", blockchainName, err)
+	}
+
+	dataFound := false
+
 	// rm airdrop key if exists
 	airdropKeyName, _, _, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, blockchainName)
 	if err != nil {
@@ -36,6 +43,7 @@ func CallDeleteBlockchain(blockchainName string) error {
 	if airdropKeyName != "" {
 		airdropKeyPath := app.GetKeyPath(airdropKeyName)
 		if utils.FileExists(airdropKeyPath) {
+			dataFound = true
 			if err := os.Remove(airdropKeyPath); err != nil {
 				return err
 			}
@@ -45,6 +53,7 @@ func CallDeleteBlockchain(blockchainName string) error {
 	// remove custom vm if exists
 	customVMPath := app.GetCustomVMPath(blockchainName)
 	if utils.FileExists(customVMPath) {
+		dataFound = true
 		if err := os.Remove(customVMPath); err != nil {
 			return err
 		}
@@ -59,7 +68,12 @@ func CallDeleteBlockchain(blockchainName string) error {
 	// rm blockchain conf dir
 	subnetDir := filepath.Join(app.GetSubnetDir(), blockchainName)
 	if utils.DirExists(subnetDir) {
+		dataFound = true
 		return os.RemoveAll(subnetDir)
+	}
+
+	if !dataFound {
+		return fmt.Errorf("blockchain %s does not exists", blockchainName)
 	}
 
 	return nil
