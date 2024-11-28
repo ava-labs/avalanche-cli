@@ -68,7 +68,6 @@ func CallDeleteBlockchain(blockchainName string) error {
 	// rm blockchain conf dir
 	subnetDir := filepath.Join(app.GetSubnetDir(), blockchainName)
 	if utils.DirExists(subnetDir) {
-		dataFound = true
 		return os.RemoveAll(subnetDir)
 	}
 
