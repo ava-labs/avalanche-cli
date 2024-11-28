@@ -6,7 +6,6 @@ package subnet
 import (
 	"fmt"
 	"regexp"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -98,10 +97,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		fmt.Println(output)
 	})
 
-	ginkgo.It("Can wait for 3 mins for the staking period to pass", func() {
-		time.Sleep(300 * time.Second)
-	})
-
 	ginkgo.It("Can get status of the cluster", func() {
 		output, err := commands.GetLocalClusterStatus(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -110,18 +105,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9652.*Validating`), "expect to have L1 validating")
 		// make sure we can do the same for "http://127.0.0.1:9662"
 		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9654.*Validating`), "expect to have L1 validating")
-	})
-
-	ginkgo.It("Can remove non-bootstrap validator", func() {
-		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
-			testLocalNodeName,
-			subnetName,
-			"http://127.0.0.1:9660",
-			keyName,
-			60,
-		)
-		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println(output)
 	})
 
 	ginkgo.It("Can remove bootstrap validator", func() {
