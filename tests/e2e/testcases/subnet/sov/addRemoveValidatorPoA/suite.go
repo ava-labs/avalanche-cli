@@ -89,7 +89,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA flow]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 
-		//"Can add second validator"
+		// "Can add second validator"
 		output, err = commands.AddEtnaSubnetValidatorToCluster(
 			testLocalNodeName,
 			subnetName,
