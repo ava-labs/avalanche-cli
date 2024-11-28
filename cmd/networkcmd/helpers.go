@@ -160,7 +160,6 @@ func TrackSubnet(
 			if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
 				return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
 			}
-			fmt.Println(inputChainConfigPath, outputChainConfigPath)
 			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
 				return err
 			}
