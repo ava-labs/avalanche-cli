@@ -274,6 +274,7 @@ func RemoveEtnaSubnetValidatorFromCluster(
 	subnetName string,
 	nodeEndpoint string,
 	keyName string,
+	uptimeSec uint64,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -289,6 +290,8 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		keyName,
 		"--key",
 		keyName,
+		"--uptime",
+		strconv.Itoa(int(uptimeSec)),
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
