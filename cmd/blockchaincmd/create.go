@@ -423,13 +423,23 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	// covers both subnet-evm vms and custom vms
 	if hasSubnetEVMGenesis, _, err := app.HasSubnetEVMGenesis(blockchainName); err != nil {
 		return err
-	} else if hasSubnetEVMGenesis && createFlags.enableDebugging {
-		if err := SetBlockchainConf(
-			blockchainName,
-			vm.EvmDebugConfig,
-			constants.ChainConfigFileName,
-		); err != nil {
-			return err
+	} else if hasSubnetEVMGenesis {
+		if createFlags.enableDebugging {
+			if err := SetBlockchainConf(
+				blockchainName,
+				vm.EvmDebugConfig,
+				constants.ChainConfigFileName,
+			); err != nil {
+				return err
+			}
+		} else {
+			if err := SetBlockchainConf(
+				blockchainName,
+				vm.EvmNonDebugConfig,
+				constants.ChainConfigFileName,
+			); err != nil {
+				return err
+			}
 		}
 	}
 
