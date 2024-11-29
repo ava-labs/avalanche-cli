@@ -9,14 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	testAvagoVersion1      = "v1.9.2"
-	testAvagoVersion2      = "v1.9.1"
-	testLatestAvagoVersion = "latest"
-)
-
-var testAvagoCompat = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
-
 func TestMutuallyExclusive(t *testing.T) {
 	require := require.New(t)
 	type test struct {

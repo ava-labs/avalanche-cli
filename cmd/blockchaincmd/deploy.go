@@ -483,11 +483,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				constants.AvalancheGoCompatibilityURL,
 			)
 			if err != nil {
-				if err == vm.ErrNoAvagoVersion {
-					avagoVersion = constants.LatestPreReleaseVersionTag
-				} else {
+				if err != vm.ErrNoAvagoVersion {
 					return err
 				}
+				avagoVersion = constants.LatestPreReleaseVersionTag
 			}
 			// TODO: remove after etna release is available
 			if sidecar.RPCVersion == constants.FirstEtnaRPCVersion {
