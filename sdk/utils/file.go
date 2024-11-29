@@ -16,6 +16,15 @@ func FileExists(filename string) bool {
 	return !info.IsDir()
 }
 
+// DirExists checks if a directory exists.
+func DirExists(dirName string) bool {
+	info, err := os.Stat(dirName)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
+}
+
 // ExpandHome expands ~ symbol to home directory
 func ExpandHome(path string) string {
 	if path == "" {
