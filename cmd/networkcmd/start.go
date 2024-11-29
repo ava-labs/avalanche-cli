@@ -17,9 +17,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/config"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -152,7 +154,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	}
 
 	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+flags.SnapshotName)
-	if utils.DirectoryExists(snapshotPath) {
+	if sdkutils.DirExists(snapshotPath) {
 		var startMsg string
 		if flags.SnapshotName == constants.DefaultSnapshotName {
 			startMsg = "Starting previously deployed and stopped snapshot"
