@@ -161,6 +161,13 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err != nil {
 			return err
 		}
+		if extraLocalNetworkData.AvalancheGoPath == "" {
+			if flags.SnapshotName == constants.DefaultSnapshotName {
+				return fmt.Errorf("incompatible snapshot version. please cleanup with 'avalanche network clean'")
+			} else {
+				return fmt.Errorf("incompatible snapshot version. please cleanup dir under '%s'", snapshotPath)
+			}
+		}
 		if flags.AvagoBinaryPath == "" &&
 			flags.UserProvidedAvagoVersion == constants.DefaultAvalancheGoVersion &&
 			extraLocalNetworkData.AvalancheGoPath != "" {
