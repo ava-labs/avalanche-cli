@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
@@ -54,7 +53,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
-	"golang.org/x/mod/semver"
 )
 
 const skipRelayerFlagName = "skip-relayer"
@@ -1348,60 +1346,6 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) erro
 	}
 	table.Render()
 	return nil
-}
-
-// Determines the appropriate version of avalanchego to run with. Returns an error if
-// that version conflicts with the current deployment.
-func CheckForInvalidDeployAndGetAvagoVersion(
-	configuredRPCVersion int,
-) (string, error) {
-	var err error
-	// get current network
-	desiredAvagoVersion := userProvidedAvagoVersion
-	runningAvagoVersion := ""
-	networkRunning := false
-	runningRPCVersion := 0
-
-	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,
-	// we will need to skip this check.
-	skipRPCCheck := false
-	if semver.Compare(runningAvagoVersion, constants.AvalancheGoCompatibilityVersionAdded) == -1 {
-		skipRPCCheck = true
-	}
-
-	if networkRunning {
-		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion {
-			if runningRPCVersion != configuredRPCVersion && !skipRPCCheck {
-				return "", fmt.Errorf(
-					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
-					runningRPCVersion,
-					configuredRPCVersion,
-				)
-			}
-			desiredAvagoVersion = runningAvagoVersion
-		} else if runningAvagoVersion != strings.Split(userProvidedAvagoVersion, "-")[0] {
-			// user wants a specific version
-			return "", errors.New("incompatible avalanchego version selected")
-		}
-	} else if userProvidedAvagoVersion == "latest" {
-		// find latest avago version for this rpc version
-		desiredAvagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
-			app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
-		if err == vm.ErrNoAvagoVersion {
-			latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
-				constants.AvaLabsOrg,
-				constants.AvalancheGoRepoName,
-			)
-			if err != nil {
-				return "", err
-			}
-			return latestPreReleaseVersion, nil
-		}
-		if err != nil {
-			return "", err
-		}
-	}
-	return desiredAvagoVersion, nil
 }
 
 func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
