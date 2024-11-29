@@ -416,6 +416,8 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			metricsPort = constants.LocalNetworkLocalAWMRelayerMetricsPort
 		case models.Devnet:
 			metricsPort = constants.DevnetLocalAWMRelayerMetricsPort
+		case models.EtnaDevnet:
+			metricsPort = constants.EtnaDevnetLocalAWMRelayerMetricsPort
 		case models.Fuji:
 			metricsPort = constants.FujiLocalAWMRelayerMetricsPort
 		}

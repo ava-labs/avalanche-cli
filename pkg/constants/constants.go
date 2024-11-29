@@ -255,9 +255,10 @@ const (
 	RemoteAWMRelayerMetricsPort = 9091
 
 	// enables having many local relayers
-	LocalNetworkLocalAWMRelayerMetricsPort = 9091
-	DevnetLocalAWMRelayerMetricsPort       = 9092
-	FujiLocalAWMRelayerMetricsPort         = 9093
+	LocalNetworkLocalAWMRelayerMetricsPort = 9092
+	DevnetLocalAWMRelayerMetricsPort       = 9093
+	EtnaDevnetLocalAWMRelayerMetricsPort   = 9094
+	FujiLocalAWMRelayerMetricsPort         = 9095
 
 	DevnetFlagsProposerVMUseCurrentHeight = true
 
