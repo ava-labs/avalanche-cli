@@ -10,15 +10,16 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/spf13/cobra"
 )
 
@@ -207,7 +208,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 		return err
 	}
 	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-	if utils.DirectoryExists(monitoringInventoryPath) {
+	if sdkutils.DirExists(monitoringInventoryPath) {
 		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 		if err != nil {
 			return err
@@ -231,7 +232,7 @@ func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
 		return nil, err
 	}
 	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-	if includeMonitor && utils.DirectoryExists(monitoringInventoryPath) {
+	if includeMonitor && sdkutils.DirExists(monitoringInventoryPath) {
 		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 		if err != nil {
 			return nil, err
@@ -239,7 +240,7 @@ func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
 		clusterHosts = append(clusterHosts, monitoringHosts...)
 	}
 	loadTestInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
-	if includeLoadTest && utils.DirectoryExists(loadTestInventoryPath) {
+	if includeLoadTest && sdkutils.DirExists(loadTestInventoryPath) {
 		loadTestHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryPath)
 		if err != nil {
 			return nil, err

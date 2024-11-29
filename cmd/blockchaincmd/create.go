@@ -61,8 +61,8 @@ var (
 	vmFile      string
 	useRepo     bool
 
-	errIllegalNameCharacter = errors.New(
-		"illegal name character: only letters, no special characters allowed")
+	errEmptyBlockchainName                        = errors.New("invalid empty name")
+	errIllegalNameCharacter                       = errors.New("illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
@@ -511,6 +511,9 @@ func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
 }
 
 func checkInvalidSubnetNames(name string) error {
+	if name == "" {
+		return errEmptyBlockchainName
+	}
 	// this is currently exactly the same code as in avalanchego/vms/platformvm/create_chain_tx.go
 	for _, r := range name {
 		if r > unicode.MaxASCII || !(unicode.IsLetter(r) || unicode.IsNumber(r) || r == ' ') {

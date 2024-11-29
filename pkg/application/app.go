@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -754,7 +755,7 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 
 func (app *Avalanche) CreateMonitoringDir() error {
 	monitoringDir := app.GetMonitoringDir()
-	if !utils.DirectoryExists(monitoringDir) {
+	if !sdkutils.DirExists(monitoringDir) {
 		err := os.MkdirAll(monitoringDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
@@ -765,7 +766,7 @@ func (app *Avalanche) CreateMonitoringDir() error {
 
 func (app *Avalanche) CreateMonitoringDashboardDir() error {
 	monitoringDashboardDir := app.GetMonitoringDashboardDir()
-	if !utils.DirectoryExists(monitoringDashboardDir) {
+	if !sdkutils.DirExists(monitoringDashboardDir) {
 		err := os.MkdirAll(monitoringDashboardDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
