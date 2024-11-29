@@ -9,14 +9,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -63,7 +63,7 @@ func importFile(_ *cobra.Command, args []string) error {
 	}
 	for _, node := range nodestoCheck {
 		keyPath := filepath.Join(app.GetNodesDir(), node.NodeConfig.NodeID)
-		if utils.DirectoryExists(keyPath) {
+		if sdkutils.DirExists(keyPath) {
 			ux.Logger.RedXToUser("node %s already exists and belongs to the existing cluster, can't import", node.NodeConfig.NodeID)
 			ux.Logger.RedXToUser("you can use destroy command to remove the cluster it belongs to and then retry import")
 			return nil

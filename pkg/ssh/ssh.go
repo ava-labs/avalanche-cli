@@ -19,16 +19,16 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 )
 
 type scriptInputs struct {
@@ -253,7 +253,7 @@ func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID str
 
 func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
 	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
-	if !utils.DirectoryExists(monitoringDashboardPath) {
+	if !sdkutils.DirExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
 	if customGrafanaDashboardPath != "" && utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
@@ -289,7 +289,7 @@ func RunSSHSetupMonitoringFolders(host *models.Host) error {
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
 	// TODO: download dashboards from github instead
 	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
-	if !utils.DirectoryExists(monitoringDashboardPath) {
+	if !sdkutils.DirExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
 	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {

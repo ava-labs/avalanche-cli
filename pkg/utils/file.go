@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"golang.org/x/mod/modfile"
 )
 
 func NonEmptyDirectory(dirName string) (bool, error) {
-	if !DirectoryExists(dirName) {
+	if !sdkutils.DirExists(dirName) {
 		return false, fmt.Errorf("%s is not a directory", dirName)
 	}
 	files, err := os.ReadDir(dirName)
@@ -20,14 +21,6 @@ func NonEmptyDirectory(dirName string) (bool, error) {
 		return false, err
 	}
 	return len(files) != 0, nil
-}
-
-func DirectoryExists(dirName string) bool {
-	info, err := os.Stat(dirName)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return info.IsDir()
 }
 
 // FileExists checks if a file exists.
