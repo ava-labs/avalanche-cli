@@ -77,7 +77,12 @@ const (
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
 	OperateOfflineEnvVarName    = "CLIOFFLINE"
 
-	DefaultAvalancheGoVersion = "latest-prerelease"
+	LatestPreReleaseVersionTag = "latest-prerelease"
+	LatestReleaseVersionTag    = "latest"
+	DefaultAvalancheGoVersion  = LatestPreReleaseVersionTag
+
+	// TODO: remove after etna release is available
+	FirstEtnaRPCVersion = 38
 
 	PublicAccess       HTTPAccess = true
 	PrivateAccess      HTTPAccess = false

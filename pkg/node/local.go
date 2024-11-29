@@ -235,7 +235,7 @@ func StartLocalNode(
 	if err != nil {
 		return err
 	}
-	alreadyBootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	alreadyBootstrapped, err := localnet.IsBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
@@ -515,7 +515,7 @@ func StopLocalNode(app *application.Avalanche) error {
 	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-	bootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	bootstrapped, err := localnet.IsBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}

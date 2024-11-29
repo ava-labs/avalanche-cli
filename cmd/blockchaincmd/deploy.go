@@ -475,26 +475,52 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
 
-		// check if selected version matches what is currently running
-		nc := localnet.NewStatusChecker()
-		avagoVersion, err := CheckForInvalidDeployAndGetAvagoVersion(nc, sidecar.RPCVersion)
-		if err != nil {
-			return err
-		}
-		if avagoBinaryPath == "" {
-			userProvidedAvagoVersion = avagoVersion
+		avagoVersion := userProvidedAvagoVersion
+
+		if avagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
+			// nothing given: get avago version from RPC compat
+			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
+				app,
+				sidecar.RPCVersion,
+				constants.AvalancheGoCompatibilityURL,
+			)
+			if err != nil {
+				if err == vm.ErrNoAvagoVersion {
+					avagoVersion = constants.LatestPreReleaseVersionTag
+				} else {
+					return err
+				}
+			}
+			// TODO: remove after etna release is available
+			if sidecar.RPCVersion == constants.FirstEtnaRPCVersion {
+				avagoVersion = constants.LatestPreReleaseVersionTag
+			}
 		}
 
 		ux.Logger.PrintToUser("")
 		if err := networkcmd.Start(
 			networkcmd.StartFlags{
-				UserProvidedAvagoVersion: userProvidedAvagoVersion,
+				UserProvidedAvagoVersion: avagoVersion,
 				AvagoBinaryPath:          avagoBinaryPath,
 				NumNodes:                 numNodes,
 			},
 			false,
 		); err != nil {
 			return err
+		}
+
+		// check if blockchain rpc version matches what is currently running
+		// for the case version or binary was provided
+		_, _, networkRPCVersion, err := localnet.GetVersion()
+		if err != nil {
+			return err
+		}
+		if networkRPCVersion != sidecar.RPCVersion {
+			return fmt.Errorf(
+				"the current local network uses rpc version %d but your blockchain has version %d and is not compatible",
+				networkRPCVersion,
+				sidecar.RPCVersion,
+			)
 		}
 
 		useEwoq = true
@@ -612,7 +638,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if avagoBinaryPath == "" {
 					useLatestAvalanchegoPreReleaseVersion := true
 					useLatestAvalanchegoReleaseVersion := false
-					if userProvidedAvagoVersion != "latest" {
+					if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
 						useLatestAvalanchegoReleaseVersion = false
 						useLatestAvalanchegoPreReleaseVersion = false
 					} else {
@@ -1327,15 +1353,14 @@ func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) erro
 // Determines the appropriate version of avalanchego to run with. Returns an error if
 // that version conflicts with the current deployment.
 func CheckForInvalidDeployAndGetAvagoVersion(
-	statusChecker localnet.StatusChecker,
 	configuredRPCVersion int,
 ) (string, error) {
+	var err error
 	// get current network
-	runningAvagoVersion, runningRPCVersion, networkRunning, err := statusChecker.GetCurrentNetworkVersion()
-	if err != nil {
-		return "", err
-	}
 	desiredAvagoVersion := userProvidedAvagoVersion
+	runningAvagoVersion := ""
+	networkRunning := false
+	runningRPCVersion := 0
 
 	// RPC Version was made available in the info API in avalanchego version v1.9.2. For prior versions,
 	// we will need to skip this check.

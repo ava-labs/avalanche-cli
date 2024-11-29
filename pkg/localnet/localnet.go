@@ -17,7 +17,20 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanchego/api/info"
 )
+
+func GetEndpoint() (string, error) {
+	clusterInfo, err := GetClusterInfo()
+	if err != nil {
+		return "", err
+	}
+	node1, ok := clusterInfo.NodeInfos["node1"]
+	if !ok {
+		return "", fmt.Errorf("node1 not found on local network")
+	}
+	return node1.Uri, nil
+}
 
 func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
 	cli, err := binutils.NewGRPCClient(
@@ -113,7 +126,8 @@ func Deployed(subnetName string) (bool, error) {
 	return true, nil
 }
 
-func CheckNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
+// assumes server is up
+func IsBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
 	_, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -122,4 +136,31 @@ func CheckNetworkIsAlreadyBootstrapped(ctx context.Context, cli client.Client) (
 		return false, fmt.Errorf("failed trying to get network status: %w", err)
 	}
 	return true, nil
+}
+
+// server can be up or down
+func GetVersion() (bool, string, int, error) {
+	// not actually an error, network just not running
+	_, err := GetClusterInfo()
+	if err != nil {
+		return false, "", 0, nil
+	}
+	endpoint, err := GetEndpoint()
+	if err != nil {
+		return true, "", 0, err
+	}
+	ctx := context.Background()
+	infoClient := info.NewClient(endpoint)
+	versionResponse, err := infoClient.GetNodeVersion(ctx)
+	if err != nil {
+		return true, "", 0, err
+	}
+	// version is in format avalanche/x.y.z, need to turn to semantic
+	splitVersion := strings.Split(versionResponse.Version, "/")
+	if len(splitVersion) != 2 {
+		return true, "", 0, fmt.Errorf("unable to parse avalanchego version " + versionResponse.Version)
+	}
+	// index 0 should be avalanche, index 1 will be version
+	parsedVersion := "v" + splitVersion[1]
+	return true, parsedVersion, int(versionResponse.RPCProtocolVersion), nil
 }

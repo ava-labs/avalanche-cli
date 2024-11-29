@@ -72,19 +72,7 @@ func start(*cobra.Command, []string) error {
 }
 
 func Start(flags StartFlags, printEndpoints bool) error {
-	var (
-		err          error
-		avagoVersion string
-	)
-
-	if flags.AvagoBinaryPath == "" {
-		avagoVersion, err = determineAvagoVersion(flags.UserProvidedAvagoVersion)
-		if err != nil {
-			return err
-		}
-	}
-
-	sd := subnet.NewLocalDeployer(app, avagoVersion, flags.AvagoBinaryPath, "", false)
+	sd := subnet.NewLocalDeployer(app, flags.UserProvidedAvagoVersion, flags.AvagoBinaryPath, "", false)
 
 	// this takes about 2 secs
 	if err := sd.StartServer(
@@ -105,7 +93,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	bootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	bootstrapped, err := localnet.IsBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
@@ -187,7 +175,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),
 			client.WithLogRootDir(logDir),
-			client.WithReassignPortsIfUsed(true),
+			client.WithReassignPortsIfUsed(false),
 			client.WithPluginDir(pluginDir),
 			client.WithGlobalNodeConfig(nodeConfig),
 		); err != nil {
@@ -261,7 +249,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithRootDataDir(rootDir),
 			client.WithLogRootDir(logDir),
-			client.WithReassignPortsIfUsed(true),
+			client.WithReassignPortsIfUsed(false),
 			client.WithPluginDir(pluginDir),
 			client.WithGlobalNodeConfig(nodeConfig),
 			client.WithUpgradePath(upgradePath),
