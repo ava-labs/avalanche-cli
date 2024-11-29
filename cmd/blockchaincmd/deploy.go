@@ -99,6 +99,7 @@ var (
 	relayerAmount                   float64
 	relayerKeyName                  string
 	relayCChain                     bool
+	cChainFundingKey                string
 	icmKeyName                      string
 	cchainIcmKeyName                string
 
@@ -169,6 +170,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&icmKeyName, "icm-key", constants.ICMKeyName, "key to be used to pay for ICM deploys")
 	cmd.Flags().StringVar(&cchainIcmKeyName, "cchain-icm-key", "", "key to be used to pay for ICM deploys on C-Chain")
 	cmd.Flags().BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
+	cmd.Flags().StringVar(&cChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
 	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
 	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an interchain messenger deployer tx file")
@@ -1073,7 +1075,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-		if network.Kind != models.Local {
+		if network.Kind != models.Local && !useLocalMachine {
 			if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
 				ux.Logger.PrintToUser("")
 				yes, err := app.Prompt.CaptureYesNo("Do you want to use set up a local interchain relayer?")
@@ -1089,15 +1091,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				BinPath:            icmSpec.RelayerBinPath,
 				LogLevel:           icmSpec.RelayerLogLevel,
 				RelayCChain:        relayCChain,
+				CChainFundingKey:   cChainFundingKey,
 				BlockchainsToRelay: []string{blockchainName},
 				Key:                relayerKeyName,
 				Amount:             relayerAmount,
 			}
-			if network.Kind == models.Local {
+			if network.Kind == models.Local || useLocalMachine {
 				deployRelayerFlags.Key = constants.AWMRelayerKeyName
 				deployRelayerFlags.Amount = constants.DefaultRelayerAmount
-				deployRelayerFlags.CChainFundingKey = "ewoq"
 				deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
+			}
+			if network.Kind == models.Local {
+				deployRelayerFlags.CChainFundingKey = "ewoq"
 			}
 			if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
 				return err
