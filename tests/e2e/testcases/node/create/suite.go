@@ -88,7 +88,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 	})
 	ginkgo.It("can wait up 30 seconds for avago to startup", func() {
 		timeout := 30 * time.Second
-		address := fmt.Sprintf("%s:%d", utils.E2EConvertIP(ElasticIP), constants.AvalanchegoP2PPort)
+		address := fmt.Sprintf("%s:%d", utils.E2EConvertIP(ElasticIP), constants.AvalancheGoP2PPort)
 		deadline := time.Now().Add(timeout)
 		var err error
 

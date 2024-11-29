@@ -26,11 +26,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	latest  = "latest"
-	jsonExt = ".json"
-)
-
 //go:embed upgrade.json
 var upgradeData []byte
 
@@ -58,7 +53,12 @@ already running.`,
 		Args: cobrautils.ExactArgs(0),
 	}
 
-	cmd.Flags().StringVar(&startFlags.UserProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(
+		&startFlags.UserProvidedAvagoVersion,
+		"avalanchego-version",
+		constants.DefaultAvalancheGoVersion,
+		"use this version of avalanchego (ex: v1.17.12)",
+	)
 	cmd.Flags().StringVar(&startFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringVar(&startFlags.RelayerBinaryPath, "relayer-path", "", "use this relayer binary path")
 	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
@@ -141,11 +141,11 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	if err != nil {
 		return err
 	}
-	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxSizeKey, constants.LocalNetworkAvagoMaxLogSize)
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxSizeKey, constants.LocalNetworkAvalancheGoMaxLogSize)
 	if err != nil {
 		return err
 	}
-	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxFilesKey, constants.LocalNetworkAvagoMaxLogFiles)
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxFilesKey, constants.LocalNetworkAvalancheGoMaxLogFiles)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,9 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err != nil {
 			return err
 		}
-		if flags.AvagoBinaryPath == "" && flags.UserProvidedAvagoVersion == latest && extraLocalNetworkData.AvalancheGoPath != "" {
+		if flags.AvagoBinaryPath == "" &&
+			flags.UserProvidedAvagoVersion == constants.DefaultAvalancheGoVersion &&
+			extraLocalNetworkData.AvalancheGoPath != "" {
 			avalancheGoBinPath = extraLocalNetworkData.AvalancheGoPath
 		}
 

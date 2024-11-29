@@ -195,7 +195,7 @@ func getPublicEndpoints(
 }
 
 func GetAvalancheGoEndpoint(ip string) string {
-	return fmt.Sprintf("http://%s:%d", ip, constants.AvalanchegoAPIPort)
+	return fmt.Sprintf("http://%s:%d", ip, constants.AvalancheGoAPIPort)
 }
 
 func GetUnhealthyNodes(hosts []*models.Host) ([]string, error) {

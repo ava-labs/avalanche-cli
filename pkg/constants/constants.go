@@ -75,8 +75,9 @@ const (
 	AWSGP3DefaultIOPS           = 3000
 	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
-	LatestAvalancheGoVersion    = "latest"
 	OperateOfflineEnvVarName    = "CLIOFFLINE"
+
+	DefaultAvalancheGoVersion = "latest-prerelease"
 
 	PublicAccess       HTTPAccess = true
 	PrivateAccess      HTTPAccess = false
@@ -84,11 +85,11 @@ const (
 	MainnetAPIEndpoint            = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
-	LocalAPIEndpoint             = "http://127.0.0.1:9650"
-	LocalNetworkID               = 1337
-	NumDefaultLocalNetworkNodes  = 2
-	LocalNetworkAvagoMaxLogSize  = 1
-	LocalNetworkAvagoMaxLogFiles = 2
+	LocalAPIEndpoint                   = "http://127.0.0.1:9650"
+	LocalNetworkID                     = 1337
+	NumDefaultLocalNetworkNodes        = 2
+	LocalNetworkAvalancheGoMaxLogSize  = 1
+	LocalNetworkAvalancheGoMaxLogFiles = 2
 
 	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
@@ -159,10 +160,10 @@ const (
 	AWSSecurityGroupSuffix                       = "-sg"
 	ExportSubnetSuffix                           = "-export.dat"
 	SSHTCPPort                                   = 22
-	AvalanchegoAPIPort                           = 9650
-	AvalanchegoP2PPort                           = 9651
-	AvalanchegoGrafanaPort                       = 3000
-	AvalanchegoLokiPort                          = 23101
+	AvalancheGoAPIPort                           = 9650
+	AvalancheGoP2PPort                           = 9651
+	AvalancheGoGrafanaPort                       = 3000
+	AvalancheGoLokiPort                          = 23101
 	CloudServerStorageSize                       = 1000
 	MonitoringCloudServerStorageSize             = 50
 	OutboundPort                                 = 0
@@ -220,8 +221,8 @@ const (
 	DockerNodeConfigPath          = "/.avalanchego/configs/"
 	CloudNodePrometheusConfigPath = "/etc/prometheus/prometheus.yml"
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
-	AvalanchegoMonitoringPort     = 9090
-	AvalanchegoMachineMetricsPort = 9100
+	AvalancheGoMonitoringPort     = 9090
+	AvalancheGoMachineMetricsPort = 9100
 	MonitoringDir                 = "monitoring"
 	LoadTestDir                   = "loadtest"
 	DashboardsDir                 = "dashboards"
@@ -350,7 +351,7 @@ const (
 	E2EClusterName          = "e2e"
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
-	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
+	E2EDebugAvalancheGoPath = "E2E_AVALANCHEGO_PATH"
 	GitExtension            = ".git"
 
 	// Docker

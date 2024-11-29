@@ -34,7 +34,7 @@ import (
 
 func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 	// a specific user provided version should override this calculation, so just return
-	if userProvidedAvagoVersion != latest {
+	if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
 		return userProvidedAvagoVersion, nil
 	}
 
@@ -44,9 +44,9 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 		return "", err
 	}
 
-	// if no subnets have been deployed, use latest
+	// if no subnets have been deployed, use default
 	if len(locallyDeployedSubnets) == 0 {
-		return latest, nil
+		return constants.DefaultAvalancheGoVersion, nil
 	}
 
 	currentRPCVersion := -1
@@ -80,8 +80,8 @@ func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
 
 	// If currentRPCVersion == -1, then only custom subnets have been deployed, the user must provide the version explicitly if not latest
 	if currentRPCVersion == -1 {
-		ux.Logger.PrintToUser("No Subnet RPC version found. Using latest AvalancheGo version")
-		return latest, nil
+		ux.Logger.PrintToUser("No Subnet RPC version found. Using default AvalancheGo version")
+		return constants.DefaultAvalancheGoVersion, nil
 	}
 
 	return vm.GetLatestAvalancheGoByProtocolVersion(

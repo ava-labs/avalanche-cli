@@ -138,7 +138,12 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
 	privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
 	privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
-	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", "latest-prerelease", "use this version of avalanchego (ex: v1.17.12)")
+	cmd.Flags().StringVar(
+		&userProvidedAvagoVersion,
+		"avalanchego-version",
+		constants.DefaultAvalancheGoVersion,
+		"use this version of avalanchego (ex: v1.17.12)",
+	)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
 	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
@@ -1335,7 +1340,7 @@ func CheckForInvalidDeployAndGetAvagoVersion(
 	}
 
 	if networkRunning {
-		if userProvidedAvagoVersion == constants.LatestAvalancheGoVersion {
+		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion {
 			if runningRPCVersion != configuredRPCVersion && !skipRPCCheck {
 				return "", fmt.Errorf(
 					"the current avalanchego deployment uses rpc version %d but your subnet has version %d and is not compatible",
@@ -1492,7 +1497,7 @@ func GetAggregatorNetworkUris(clusterName string) ([]string, error) {
 				if nodeConfig, err := app.LoadClusterNodeConfig(hostID); err != nil {
 					return nil, err
 				} else {
-					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalanchegoAPIPort))
+					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalancheGoAPIPort))
 				}
 			}
 		}
