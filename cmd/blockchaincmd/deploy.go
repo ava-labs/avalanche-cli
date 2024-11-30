@@ -192,7 +192,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
-	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.NumDefaultLocalNetworkNodes, "number of nodes to be created on local network deploy")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
 	return cmd
 }
 

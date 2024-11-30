@@ -62,7 +62,7 @@ already running.`,
 	cmd.Flags().StringVar(&startFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringVar(&startFlags.RelayerBinaryPath, "relayer-path", "", "use this relayer binary path")
 	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
-	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", constants.NumDefaultLocalNetworkNodes, "number of nodes to be created on local network")
+	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network")
 
 	return cmd
 }
@@ -122,9 +122,6 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	if err != nil {
 		return err
 	}
-	if nodeConfig == "" {
-		nodeConfig = "{}"
-	}
 	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.ProposerVMUseCurrentHeightKey, true)
 	if err != nil {
 		return err
@@ -141,15 +138,9 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		flags.SnapshotName = constants.DefaultSnapshotName
 	}
 
-	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+flags.SnapshotName)
+	snapshotPath := app.GetSnapshotPath(flags.SnapshotName)
 	if sdkutils.DirExists(snapshotPath) {
-		var startMsg string
-		if flags.SnapshotName == constants.DefaultSnapshotName {
-			startMsg = "Starting previously deployed and stopped snapshot"
-		} else {
-			startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", flags.SnapshotName)
-		}
-		ux.Logger.PrintToUser(startMsg)
+		ux.Logger.PrintToUser("Starting previously deployed and stopped snapshot")
 
 		if !autoSave {
 			rootDir = tmpDir

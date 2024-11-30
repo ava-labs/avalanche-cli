@@ -92,7 +92,7 @@ const (
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint                   = "http://127.0.0.1:9650"
 	LocalNetworkID                     = 1337
-	NumDefaultLocalNetworkNodes        = 2
+	LocalNetworkNumNodes               = 2
 	LocalNetworkAvalancheGoMaxLogSize  = 1
 	LocalNetworkAvalancheGoMaxLogFiles = 2
 

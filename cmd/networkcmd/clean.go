@@ -78,7 +78,7 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	snapshotPath := filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+constants.DefaultSnapshotName)
+	snapshotPath := app.GetSnapshotPath(constants.DefaultSnapshotName)
 	if err := os.RemoveAll(snapshotPath); err != nil {
 		return err
 	}
