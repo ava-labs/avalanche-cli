@@ -21,7 +21,6 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	// set user metrics collection preferences cmd
 	cmd.AddCommand(newMetricsCmd())
 	cmd.AddCommand(newMigrateCmd())
-	cmd.AddCommand(newSingleNodeCmd())
 	cmd.AddCommand(newAuthorizeCloudAccessCmd())
 	cmd.AddCommand(newSnapshotsAutoSaveCmd())
 	return cmd

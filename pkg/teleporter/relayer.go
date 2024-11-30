@@ -96,24 +96,28 @@ type relayerRunFile struct {
 
 func DeployRelayer(
 	version string,
+	binPath string,
 	binDir string,
 	configPath string,
 	logFilePath string,
 	runFilePath string,
 	storageDir string,
-) error {
-	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
-		return err
+) (string, error) {
+	if err := RelayerCleanup(runFilePath, logFilePath, storageDir); err != nil {
+		return "", err
 	}
-	binPath, err := InstallRelayer(binDir, version)
-	if err != nil {
-		return err
+	if binPath == "" {
+		var err error
+		binPath, err = InstallRelayer(binDir, version)
+		if err != nil {
+			return "", err
+		}
 	}
 	pid, err := executeRelayer(binPath, configPath, logFilePath)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return saveRelayerRunFile(runFilePath, pid)
+	return binPath, saveRelayerRunFile(runFilePath, pid)
 }
 
 func RelayerIsUp(runFilePath string) (bool, int, *os.Process, error) {
@@ -148,7 +152,12 @@ func GetProcess(pid int) (*os.Process, error) {
 	return proc, nil
 }
 
-func RelayerCleanup(runFilePath string, storageDir string) error {
+func RelayerCleanup(
+	runFilePath string,
+	logFilePath string,
+	storageDir string,
+) error {
+	_ = os.Remove(logFilePath)
 	if err := os.RemoveAll(storageDir); err != nil {
 		return err
 	}
@@ -292,9 +301,14 @@ func getRelayerURL(version string) (string, error) {
 	if goos != "linux" && goos != "darwin" {
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
+	splittedVersion := strings.Split(version, "/")
+	if len(splittedVersion) != 2 {
+		return "", fmt.Errorf("invalid relayer version %s", version)
+	}
+	version = splittedVersion[1]
 	trimmedVersion := strings.TrimPrefix(version, "v")
 	return fmt.Sprintf(
-		"https://github.com/%s/%s/releases/download/%s/awm-relayer_%s_%s_%s.tar.gz",
+		"https://github.com/%s/%s/releases/download/awm-relayer%%2F%s/awm-relayer_%s_%s_%s.tar.gz",
 		constants.AvaLabsOrg,
 		constants.AWMRelayerRepoName,
 		version,

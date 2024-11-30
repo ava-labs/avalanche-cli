@@ -13,6 +13,9 @@ import (
 //go:embed evm_debug_config.json
 var EvmDebugConfig []byte
 
+//go:embed evm_non_debug_config.json
+var EvmNonDebugConfig []byte
+
 var (
 	// current avacloud settings
 	LowGasLimit     = big.NewInt(12_000_000)

@@ -33,6 +33,7 @@ var (
 	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
+		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	msgFlags MsgFlags
@@ -74,9 +75,11 @@ func msg(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	sourceChainSpec := contract.ChainSpec{
-		BlockchainName: sourceBlockchainName,
-		CChain:         isCChain(sourceBlockchainName),
+	sourceChainSpec := contract.ChainSpec{}
+	if isCChain(sourceBlockchainName) {
+		sourceChainSpec.CChain = true
+	} else {
+		sourceChainSpec.BlockchainName = sourceBlockchainName
 	}
 	sourceRPCEndpoint := msgFlags.SourceRPCEndpoint
 	if sourceRPCEndpoint == "" {
@@ -86,9 +89,11 @@ func msg(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	destChainSpec := contract.ChainSpec{
-		BlockchainName: destBlockchainName,
-		CChain:         isCChain(destBlockchainName),
+	destChainSpec := contract.ChainSpec{}
+	if isCChain(destBlockchainName) {
+		destChainSpec.CChain = true
+	} else {
+		destChainSpec.BlockchainName = destBlockchainName
 	}
 	destRPCEndpoint := msgFlags.DestRPCEndpoint
 	if destRPCEndpoint == "" {

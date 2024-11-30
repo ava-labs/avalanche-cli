@@ -18,7 +18,12 @@ import (
 	"go.uber.org/zap"
 )
 
-var dontSave bool
+type StopFlags struct {
+	snapshotName string
+	dontSave     bool
+}
+
+var stopFlags StopFlags
 
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -32,16 +37,20 @@ reload this snapshot with network start --snapshot-name <snapshotName>. Otherwis
 network saves to the default snapshot, overwriting any existing state. You can reload the
 default snapshot with network start.`,
 
-		RunE: StopNetwork,
+		RunE: stop,
 		Args: cobrautils.ExactArgs(0),
 	}
-	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
-	cmd.Flags().BoolVar(&dontSave, "dont-save", false, "do not save snapshot, just stop the network")
+	cmd.Flags().StringVar(&stopFlags.snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
+	cmd.Flags().BoolVar(&stopFlags.dontSave, "dont-save", false, "do not save snapshot, just stop the network")
 	return cmd
 }
 
-func StopNetwork(*cobra.Command, []string) error {
-	if err := stopAndSaveNetwork(dontSave); err != nil {
+func stop(*cobra.Command, []string) error {
+	return Stop(stopFlags)
+}
+
+func Stop(flags StopFlags) error {
+	if err := stopAndSaveNetwork(flags); err != nil {
 		if errors.Is(err, binutils.ErrGRPCTimeout) {
 			// no server to kill
 			return nil
@@ -64,6 +73,7 @@ func StopNetwork(*cobra.Command, []string) error {
 
 	if err := teleporter.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
@@ -72,7 +82,7 @@ func StopNetwork(*cobra.Command, []string) error {
 	return nil
 }
 
-func stopAndSaveNetwork(dontSave bool) error {
+func stopAndSaveNetwork(flags StopFlags) error {
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
@@ -94,13 +104,13 @@ func stopAndSaveNetwork(dontSave bool) error {
 
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
 
-	if dontSave || autoSave {
+	if flags.dontSave || autoSave {
 		if _, err := cli.Stop(ctx); err != nil {
 			return fmt.Errorf("failed to stop network: %w", err)
 		}
 		return nil
 	} else {
-		if _, err = cli.SaveSnapshot(ctx, snapshotName, true); err != nil {
+		if _, err = cli.SaveSnapshot(ctx, flags.snapshotName, true); err != nil {
 			return fmt.Errorf("failed to stop network: %w", err)
 		}
 	}

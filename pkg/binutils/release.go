@@ -66,7 +66,8 @@ func InstallBinary(
 	downloader GithubDownloader,
 	installer Installer,
 ) (string, string, error) {
-	if version == "latest" {
+	switch {
+	case version == "latest":
 		// get latest version
 		var err error
 		version, err = app.Downloader.GetLatestReleaseVersion(GetGithubLatestReleaseURL(
@@ -76,7 +77,17 @@ func InstallBinary(
 		if err != nil {
 			return "", "", err
 		}
-	} else if !semver.IsValid(version) {
+	case version == "latest-prerelease":
+		// get latest pre release version
+		var err error
+		version, err = app.Downloader.GetLatestPreReleaseVersion(
+			org,
+			repo,
+		)
+		if err != nil {
+			return "", "", err
+		}
+	case !semver.IsValid(version):
 		return "", "", fmt.Errorf(
 			"invalid version string. Must be semantic version ex: v1.7.14: %s", version)
 	}

@@ -39,6 +39,7 @@ const (
 func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
 	// deploy
 	s := commands.SimulateFujiDeployNonSOV(subnetName, keyName, controlKeys)
+	fmt.Println(s)
 	subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// add validators to subnet
@@ -101,7 +102,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 	ginkgo.It("deploy subnet to mainnet", func() {
 		var interactionEndCh, ledgerSimEndCh chan struct{}
 		if os.Getenv("LEDGER_SIM") != "" {
-			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(7, ledger1Seed, true)
+			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(4, ledger1Seed, true)
 		}
 		// fund ledger address
 		genesisParams := genesis.MainnetParams
@@ -183,7 +184,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		validators, err := subnet.GetSubnetValidators(subnetID)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(validators)).Should(gomega.Equal(5))
+		gomega.Expect(len(validators)).Should(gomega.Equal(2))
 
 		// Check that the validatorToRemove is in the subnet validator set
 		var found bool
@@ -201,7 +202,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		// confirm current validator set
 		validators, err = subnet.GetSubnetValidators(subnetID)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(validators)).Should(gomega.Equal(4))
+		gomega.Expect(len(validators)).Should(gomega.Equal(1))
 
 		// Check that the validatorToRemove is NOT in the subnet validator set
 		found = false

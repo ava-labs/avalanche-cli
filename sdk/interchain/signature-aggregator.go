@@ -50,12 +50,14 @@ func createAppRequestNetwork(
 	network models.Network,
 	logLevel logging.Level,
 	registerer prometheus.Registerer,
+	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 ) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
 		registerer,
 		nil,
+		allowPrivatePeers,
 		extraPeerEndpoints,
 		&config.Config{
 			PChainAPI: &apiConfig.APIConfig{
@@ -138,10 +140,11 @@ func NewSignatureAggregator(
 	logLevel logging.Level,
 	subnetID ids.ID,
 	quorumPercentage uint64,
+	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
 	registerer := prometheus.NewRegistry()
-	peerNetwork, err := createAppRequestNetwork(network, logLevel, registerer, extraPeerEndpoints)
+	peerNetwork, err := createAppRequestNetwork(network, logLevel, registerer, allowPrivatePeers, extraPeerEndpoints)
 	if err != nil {
 		return nil, err
 	}

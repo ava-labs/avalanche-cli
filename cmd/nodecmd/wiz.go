@@ -406,8 +406,9 @@ func wiz(cmd *cobra.Command, args []string) error {
 			MessengerDeployerAddressPath: teleporterMessengerDeployerAddressPath,
 			MessengerDeployerTxPath:      teleporterMessengerDeployerTxPath,
 			RegistryBydecodePath:         teleporterRegistryBydecodePath,
+			IncludeCChain:                true,
 		}
-		if err := teleportercmd.CallDeploy([]string{}, flags); err != nil {
+		if err := teleportercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("")
@@ -855,13 +856,13 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 			if !securityGroupExists {
 				return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
 			}
-			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort); !inSG {
+			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalancheGoAPIPort); !inSG {
 				if err = ec2Svc.AddSecurityGroupRule(
 					*sg.GroupId,
 					"ingress",
 					"tcp",
 					awmRelayerHost.IP+constants.IPAddressSuffix,
-					constants.AvalanchegoAPIPort,
+					constants.AvalancheGoAPIPort,
 				); err != nil {
 					return err
 				}
@@ -935,7 +936,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
-			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalancheGoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
 				wgResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
