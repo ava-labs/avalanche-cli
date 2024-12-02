@@ -292,9 +292,7 @@ func removeValidatorSOV(
 		uptimeSec,
 		isBootstrapValidator || force,
 	)
-	if err != nil && err != validatormanagerSDK.ErrValidatorIneligibleForRewards {
-		return err
-	} else if err == validatormanagerSDK.ErrValidatorIneligibleForRewards {
+	if err != nil && err == validatormanagerSDK.ErrValidatorIneligibleForRewards {
 		ux.Logger.PrintToUser("Validator %s is not eligible for rewards", nodeID)
 		force, err = app.Prompt.CaptureNoYes("Are you sure you want to still remove the validator?")
 		if err != nil {
@@ -319,7 +317,10 @@ func removeValidatorSOV(
 		if err != nil {
 			return err
 		}
+	} else if err != nil {
+		return err
 	}
+
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 	txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
 	if err != nil {
