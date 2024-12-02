@@ -631,7 +631,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			// default number of local machine nodes to be 1
 			// we set it here instead of at flag level so that we don't prompt if user wants to use local machine when they set numLocalNodes flag value
 			if useLocalMachine && numLocalNodes == 0 {
-				numLocalNodes = 1
+				numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
 			}
 			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
 			if useLocalMachine && clusterNameFlagValue == "" {

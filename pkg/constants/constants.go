@@ -334,16 +334,17 @@ const (
 	PluginDir = "plugins"
 	LocalDir  = "local"
 
-	MetricsNetwork               = "network"
-	MultiSig                     = "multi-sig"
-	SkipUpdateFlag               = "skip-update-check"
-	LastFileName                 = ".last_actions.json"
-	APIRole                      = "API"
-	ValidatorRole                = "Validator"
-	MonitorRole                  = "Monitor"
-	AWMRelayerRole               = "Relayer"
-	LoadTestRole                 = "LoadTest"
-	DefaultWalletCreationTimeout = 5 * time.Second
+	DefaultNumberOfLocalMachineNodes = 1
+	MetricsNetwork                   = "network"
+	MultiSig                         = "multi-sig"
+	SkipUpdateFlag                   = "skip-update-check"
+	LastFileName                     = ".last_actions.json"
+	APIRole                          = "API"
+	ValidatorRole                    = "Validator"
+	MonitorRole                      = "Monitor"
+	AWMRelayerRole                   = "Relayer"
+	LoadTestRole                     = "LoadTest"
+	DefaultWalletCreationTimeout     = 5 * time.Second
 
 	DefaultConfirmTxTimeout = 20 * time.Second
 
