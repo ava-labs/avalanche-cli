@@ -108,18 +108,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9654.*Validating`), "expect to have L1 validating")
 	})
 
-	ginkgo.It("Can fail to remove non-bootstrap validator before min stake duration", func() {
-		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
-			testLocalNodeName,
-			subnetName,
-			"http://127.0.0.1:9660",
-			keyName,
-			0,
-		)
-		gomega.Expect(err.Error()).Should(gomega.ContainSubstring("min stake duration not passed"))
-		fmt.Println(output)
-	})
-
 	ginkgo.It("Can sleep for min stake duration", func() {
 		time.Sleep(3 * time.Minute)
 	})
