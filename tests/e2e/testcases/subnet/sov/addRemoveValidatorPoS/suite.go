@@ -6,6 +6,7 @@ package subnet
 import (
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -107,7 +108,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9654.*Validating`), "expect to have L1 validating")
 	})
 
-	ginkgo.It("Can remove non-bootstrap validator", func() {
+	ginkgo.It("Can fail to remove non-bootstrap validator before min stake duration", func() {
 		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
 			testLocalNodeName,
 			subnetName,
@@ -115,8 +116,12 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 			keyName,
 			0,
 		)
-		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(err.Error()).Should(gomega.ContainSubstring("min stake duration not passed"))
 		fmt.Println(output)
+	})
+
+	ginkgo.It("Can sleep for min stake duration", func() {
+		time.Sleep(3 * time.Minute)
 	})
 
 	ginkgo.It("Can remove bootstrap validator", func() {
