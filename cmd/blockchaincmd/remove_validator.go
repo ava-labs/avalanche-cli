@@ -22,8 +22,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +38,10 @@ var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.EtnaDevnet,
 }
 
-var uptimeSec uint64
+var (
+	uptimeSec uint64
+	force     bool
+)
 
 // avalanche blockchain removeValidator
 func newRemoveValidatorCmd() *cobra.Command {
@@ -64,6 +69,7 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
+	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
 	return cmd
 }
 
@@ -178,15 +184,15 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
 	}
-	// check if node is a bootstrap validator to force it to be removed
-	filteredBootstrapValidators := utils.Filter(scNetwork.BootstrapValidators, func(b models.SubnetValidator) bool {
-		if id, err := ids.NodeIDFromString(b.NodeID); err == nil && id == nodeID {
-			return true
-		}
-		return false
-	})
-	force := len(filteredBootstrapValidators) > 0
-	if err := removeValidatorSOV(deployer, network, blockchainName, nodeID, uptimeSec, force); err != nil {
+	if err := removeValidatorSOV(
+		deployer,
+		network,
+		blockchainName,
+		nodeID,
+		uptimeSec,
+		isBootstrapValidatorForNetwork(nodeID, scNetwork),
+		force,
+	); err != nil {
 		return err
 	}
 	// remove the validator from the list of bootstrap validators
@@ -205,12 +211,23 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	return nil
 }
 
+func isBootstrapValidatorForNetwork(nodeID ids.NodeID, scNetwork models.NetworkData) bool {
+	filteredBootstrapValidators := utils.Filter(scNetwork.BootstrapValidators, func(b models.SubnetValidator) bool {
+		if id, err := ids.NodeIDFromString(b.NodeID); err == nil && id == nodeID {
+			return true
+		}
+		return false
+	})
+	return len(filteredBootstrapValidators) > 0
+}
+
 func removeValidatorSOV(
 	deployer *subnet.PublicDeployer,
 	network models.Network,
 	blockchainName string,
 	nodeID ids.NodeID,
 	uptimeSec uint64,
+	isBootstrapValidator bool,
 	force bool,
 ) error {
 	chainSpec := contract.ChainSpec{
@@ -257,7 +274,12 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
 
-	signedMessage, validationID, err := validatormanager.InitValidatorRemoval(
+	var (
+		signedMessage *warp.Message
+		validationID  ids.ID
+	)
+	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
+	signedMessage, validationID, err = validatormanager.InitValidatorRemoval(
 		app,
 		network,
 		rpcURL,
@@ -268,13 +290,37 @@ func removeValidatorSOV(
 		aggregatorLogLevel,
 		sc.PoS(),
 		uptimeSec,
-		force,
+		isBootstrapValidator || force,
 	)
-	if err != nil {
+	if err != nil && err != validatormanagerSDK.ErrValidatorIneligibleForRewards {
 		return err
+	} else if err == validatormanagerSDK.ErrValidatorIneligibleForRewards {
+		ux.Logger.PrintToUser("Validator %s is not eligible for rewards", nodeID)
+		force, err = app.Prompt.CaptureNoYes("Are you sure you want to still remove the validator?")
+		if err != nil {
+			return err
+		}
+		if !force {
+			return fmt.Errorf("validator %s is not eligible for rewards. Use --force flag to force removal", nodeID)
+		}
+		signedMessage, validationID, err = validatormanager.InitValidatorRemoval(
+			app,
+			network,
+			rpcURL,
+			chainSpec,
+			ownerPrivateKey,
+			nodeID,
+			extraAggregatorPeers,
+			aggregatorLogLevel,
+			sc.PoS(),
+			uptimeSec,
+			true, // force
+		)
+		if err != nil {
+			return err
+		}
 	}
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
-
 	txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
 	if err != nil {
 		return err
@@ -293,7 +339,6 @@ func removeValidatorSOV(
 	); err != nil {
 		return err
 	}
-
 	ux.Logger.GreenCheckmarkToUser("Validator successfully removed from the Subnet")
 
 	return nil

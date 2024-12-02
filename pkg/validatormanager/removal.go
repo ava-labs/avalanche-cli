@@ -109,6 +109,7 @@ func GetUptimeProofMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		true, // allow private peers
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {

@@ -152,7 +152,8 @@ func setWeight(_ *cobra.Command, args []string) error {
 		network,
 		blockchainName,
 		nodeID,
-		0,     // automatic uptime
+		0, // automatic uptime
+		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
 	)
 	if err != nil {

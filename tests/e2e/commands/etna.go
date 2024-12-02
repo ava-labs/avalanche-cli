@@ -292,6 +292,7 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		keyName,
 		"--uptime",
 		strconv.Itoa(int(uptimeSec)),
+		"--force",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
