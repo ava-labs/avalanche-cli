@@ -155,7 +155,7 @@ func validateValidatorBalanceFunc(availableBalance uint64) func(string) error {
 			return fmt.Errorf("subnet validator balance must be at least 1 AVAX")
 		}
 		if val > availableBalance {
-			return fmt.Errorf("balance should be less than %d AVAX", availableBalance)
+			return fmt.Errorf("current balance of %d is not sufficient to enable subnet validator balance of %d AVAX", availableBalance, val)
 		}
 		return nil
 	}
