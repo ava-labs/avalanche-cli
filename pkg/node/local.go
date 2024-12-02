@@ -125,8 +125,8 @@ func TrackSubnetWithLocalMachine(
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
 	for _, publicEndpoint := range publicEndpoints {
-		rpcEndpoints.Add(GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+		rpcEndpoints.Add(models.GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+		wsEndpoints.Add(models.GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
 	}
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()
@@ -227,7 +227,7 @@ func StartLocalNode(
 	); err != nil {
 		return err
 	}
-	_, avalancheGoBinPath, err := sd.SetupLocalEnv()
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func StartLocalNode(
 	if err != nil {
 		return err
 	}
-	alreadyBootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	alreadyBootstrapped, err := localnet.IsBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
@@ -515,7 +515,7 @@ func StopLocalNode(app *application.Avalanche) error {
 	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-	bootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	bootstrapped, err := localnet.IsBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}

@@ -151,6 +151,7 @@ func GetSubnetValidatorRegistrationMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
+	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	blockchainID ids.ID,
@@ -195,6 +196,7 @@ func GetSubnetValidatorRegistrationMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -251,6 +253,7 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 	rpcURL string,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
+	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	validationID ids.ID,
@@ -280,6 +283,7 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -418,6 +422,7 @@ func InitValidatorRegistration(
 		network,
 		aggregatorLogLevel,
 		0,
+		network.Kind == models.Local,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
@@ -459,6 +464,7 @@ func FinishValidatorRegistration(
 		rpcURL,
 		aggregatorLogLevel,
 		0,
+		network.Kind == models.Local,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,

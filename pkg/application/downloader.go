@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"golang.org/x/mod/semver"
@@ -130,6 +131,11 @@ func (d downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
 
 	version := jsonStr[githubVersionTagName].(string)
 	if !semver.IsValid(version) {
+		// remove "app" part, just in case (eg icm-relayer/v1.5.1)
+		versionParts := strings.Split(version, "/")
+		if len(versionParts) == 2 && semver.IsValid(versionParts[1]) {
+			return version, nil
+		}
 		return "", fmt.Errorf("invalid version string: %s", version)
 	}
 

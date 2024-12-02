@@ -172,10 +172,6 @@ func DisconnectHosts(hosts []*models.Host) {
 	}
 }
 
-func GetWSEndpoint(endpoint string, blockchainID string) string {
-	return models.NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
-}
-
 func getPublicEndpoints(
 	app *application.Avalanche,
 	clusterName string,
@@ -198,12 +194,8 @@ func getPublicEndpoints(
 	return endpoints, nil
 }
 
-func GetRPCEndpoint(endpoint string, blockchainID string) string {
-	return models.NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
-}
-
 func GetAvalancheGoEndpoint(ip string) string {
-	return fmt.Sprintf("http://%s:%d", ip, constants.AvalanchegoAPIPort)
+	return fmt.Sprintf("http://%s:%d", ip, constants.AvalancheGoAPIPort)
 }
 
 func GetUnhealthyNodes(hosts []*models.Host) ([]string, error) {

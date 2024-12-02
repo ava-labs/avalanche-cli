@@ -177,6 +177,7 @@ func GetPChainSubnetConversionWarpMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
+	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
@@ -225,6 +226,7 @@ func GetPChainSubnetConversionWarpMessage(
 		aggregatorLogLevel,
 		subnetID,
 		aggregatorQuorumPercentage,
+		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {

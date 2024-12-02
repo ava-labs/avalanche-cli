@@ -111,11 +111,13 @@ func CreateEVMGenesis(
 		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
-		icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
-		if addICMRegistryToGenesis {
-			// experimental
-			if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
-				return nil, err
+		if !params.DisableTeleporterOnGenesis {
+			icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
+			if addICMRegistryToGenesis {
+				// experimental
+				if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}

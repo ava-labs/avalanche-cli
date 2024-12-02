@@ -27,6 +27,8 @@ const (
 	EtnaDevnet
 )
 
+const wssScheme = "wss"
+
 func (nk NetworkKind) String() string {
 	switch nk {
 	case Mainnet:
@@ -171,10 +173,12 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
 	scheme := "ws"
 	switch n.Kind {
+	case EtnaDevnet:
+		scheme = wssScheme
 	case Fuji:
-		scheme = "wss"
+		scheme = wssScheme
 	case Mainnet:
-		scheme = "wss"
+		scheme = wssScheme
 	}
 	return fmt.Sprintf("%s://%s/ext/bc/%s/ws", scheme, trimmedURI, blockchainID)
 }
@@ -249,4 +253,12 @@ func GetNetworkFromCluster(clusterConfig ClusterConfig) Network {
 	default:
 		return network
 	}
+}
+
+func GetWSEndpoint(endpoint string, blockchainID string) string {
+	return NewDevnetNetwork(endpoint, 0).BlockchainWSEndpoint(blockchainID)
+}
+
+func GetRPCEndpoint(endpoint string, blockchainID string) string {
+	return NewDevnetNetwork(endpoint, 0).BlockchainEndpoint(blockchainID)
 }

@@ -75,8 +75,14 @@ const (
 	AWSGP3DefaultIOPS           = 3000
 	AWSGP3DefaultThroughput     = 125
 	SimulatePublicNetwork       = "SIMULATE_PUBLIC_NETWORK"
-	LatestAvalancheGoVersion    = "latest"
 	OperateOfflineEnvVarName    = "CLIOFFLINE"
+
+	LatestPreReleaseVersionTag = "latest-prerelease"
+	LatestReleaseVersionTag    = "latest"
+	DefaultAvalancheGoVersion  = LatestPreReleaseVersionTag
+
+	// TODO: remove after etna release is available
+	FirstEtnaRPCVersion = 38
 
 	PublicAccess       HTTPAccess = true
 	PrivateAccess      HTTPAccess = false
@@ -84,8 +90,11 @@ const (
 	MainnetAPIEndpoint            = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
-	LocalAPIEndpoint = "http://127.0.0.1:9650"
-	LocalNetworkID   = 1337
+	LocalAPIEndpoint                   = "http://127.0.0.1:9650"
+	LocalNetworkID                     = 1337
+	LocalNetworkNumNodes               = 2
+	LocalNetworkAvalancheGoMaxLogSize  = 1
+	LocalNetworkAvalancheGoMaxLogFiles = 2
 
 	DevnetAPIEndpoint = ""
 	DevnetNetworkID   = 1338
@@ -107,50 +116,6 @@ const (
 	Durango12Version = "v1.11.12"
 
 	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
-
-	CurrentBootstrapNamePath = "currentBootstrapName.txt"
-
-	AssetsDir = "assets/"
-
-	BootstrapSnapshotArchiveName = "bootstrapSnapshot.tar.gz"
-	BootstrapSnapshotLocalPath   = AssetsDir + BootstrapSnapshotArchiveName
-	BootstrapSnapshotURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotLocalPath
-	BootstrapSnapshotSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.txt"
-
-	BootstrapSnapshotSingleNodeArchiveName = "bootstrapSnapshotSingleNode.tar.gz"
-	BootstrapSnapshotSingleNodeLocalPath   = AssetsDir + BootstrapSnapshotSingleNodeArchiveName
-	BootstrapSnapshotSingleNodeURL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodeLocalPath
-	BootstrapSnapshotSingleNodeSHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.txt"
-
-	BootstrapSnapshotPreCortina17ArchiveName = "bootstrapSnapshot.PreCortina17.tar.gz"
-	BootstrapSnapshotPreCortina17LocalPath   = AssetsDir + BootstrapSnapshotPreCortina17ArchiveName
-	BootstrapSnapshotPreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreCortina17LocalPath
-	BootstrapSnapshotPreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreCortina17.txt"
-
-	BootstrapSnapshotSingleNodePreCortina17ArchiveName = "bootstrapSnapshotSingleNode.PreCortina17.tar.gz"
-	BootstrapSnapshotSingleNodePreCortina17LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreCortina17ArchiveName
-	BootstrapSnapshotSingleNodePreCortina17URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreCortina17LocalPath
-	BootstrapSnapshotSingleNodePreCortina17SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreCortina17.txt"
-
-	BootstrapSnapshotPreDurango11ArchiveName = "bootstrapSnapshot.PreDurango11.tar.gz"
-	BootstrapSnapshotPreDurango11LocalPath   = AssetsDir + BootstrapSnapshotPreDurango11ArchiveName
-	BootstrapSnapshotPreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango11LocalPath
-	BootstrapSnapshotPreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango11.txt"
-
-	BootstrapSnapshotSingleNodePreDurango11ArchiveName = "bootstrapSnapshotSingleNode.PreDurango11.tar.gz"
-	BootstrapSnapshotSingleNodePreDurango11LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango11ArchiveName
-	BootstrapSnapshotSingleNodePreDurango11URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango11LocalPath
-	BootstrapSnapshotSingleNodePreDurango11SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango11.txt"
-
-	BootstrapSnapshotPreDurango12ArchiveName = "bootstrapSnapshot.PreDurango12.tar.gz"
-	BootstrapSnapshotPreDurango12LocalPath   = AssetsDir + BootstrapSnapshotPreDurango12ArchiveName
-	BootstrapSnapshotPreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotPreDurango12LocalPath
-	BootstrapSnapshotPreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sum.PreDurango12.txt"
-
-	BootstrapSnapshotSingleNodePreDurango12ArchiveName = "bootstrapSnapshotSingleNode.PreDurango12.tar.gz"
-	BootstrapSnapshotSingleNodePreDurango12LocalPath   = AssetsDir + BootstrapSnapshotSingleNodePreDurango12ArchiveName
-	BootstrapSnapshotSingleNodePreDurango12URL         = BootstrapSnapshotRawBranch + BootstrapSnapshotSingleNodePreDurango12LocalPath
-	BootstrapSnapshotSingleNodePreDurango12SHA256URL   = BootstrapSnapshotRawBranch + AssetsDir + "sha256sumSingleNode.PreDurango12.txt"
 
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
@@ -200,10 +165,10 @@ const (
 	AWSSecurityGroupSuffix                       = "-sg"
 	ExportSubnetSuffix                           = "-export.dat"
 	SSHTCPPort                                   = 22
-	AvalanchegoAPIPort                           = 9650
-	AvalanchegoP2PPort                           = 9651
-	AvalanchegoGrafanaPort                       = 3000
-	AvalanchegoLokiPort                          = 23101
+	AvalancheGoAPIPort                           = 9650
+	AvalancheGoP2PPort                           = 9651
+	AvalancheGoGrafanaPort                       = 3000
+	AvalancheGoLokiPort                          = 23101
 	CloudServerStorageSize                       = 1000
 	MonitoringCloudServerStorageSize             = 50
 	OutboundPort                                 = 0
@@ -230,7 +195,6 @@ const (
 	ConfigNodeConfigKey           = "node-config"
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
 	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
-	ConfigSingleNodeEnabledKey    = "SingleNodeEnabled"
 	ConfigSnapshotsAutoSaveKey    = "SnapshotsAutoSaveEnabled"
 	OldConfigFileName             = ".avalanche-cli.json"
 	OldMetricsConfigFileName      = ".avalanche-cli/config"
@@ -262,8 +226,8 @@ const (
 	DockerNodeConfigPath          = "/.avalanchego/configs/"
 	CloudNodePrometheusConfigPath = "/etc/prometheus/prometheus.yml"
 	CloudNodeCLIConfigBasePath    = "/home/ubuntu/.avalanche-cli/"
-	AvalanchegoMonitoringPort     = 9090
-	AvalanchegoMachineMetricsPort = 9100
+	AvalancheGoMonitoringPort     = 9090
+	AvalancheGoMachineMetricsPort = 9100
 	MonitoringDir                 = "monitoring"
 	LoadTestDir                   = "loadtest"
 	DashboardsDir                 = "dashboards"
@@ -283,16 +247,18 @@ const (
 
 	AWMRelayerSnapshotConfsDir = "relayer-confs"
 
-	ICMKeyName        = "cli-teleporter-deployer"
-	AWMRelayerKeyName = "cli-awm-relayer"
+	ICMKeyName           = "cli-teleporter-deployer"
+	AWMRelayerKeyName    = "cli-awm-relayer"
+	DefaultRelayerAmount = float64(10)
 
 	// to not interfere with other node services
 	RemoteAWMRelayerMetricsPort = 9091
 
 	// enables having many local relayers
-	LocalNetworkLocalAWMRelayerMetricsPort = 9091
-	DevnetLocalAWMRelayerMetricsPort       = 9092
-	FujiLocalAWMRelayerMetricsPort         = 9093
+	LocalNetworkLocalAWMRelayerMetricsPort = 9092
+	DevnetLocalAWMRelayerMetricsPort       = 9093
+	EtnaDevnetLocalAWMRelayerMetricsPort   = 9094
+	FujiLocalAWMRelayerMetricsPort         = 9095
 
 	DevnetFlagsProposerVMUseCurrentHeight = true
 
@@ -391,7 +357,7 @@ const (
 	E2EClusterName          = "e2e"
 	E2EDocker               = "docker"
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
-	E2EDebugAvalanchegoPath = "E2E_AVALANCHEGO_PATH"
+	E2EDebugAvalancheGoPath = "E2E_AVALANCHEGO_PATH"
 	GitExtension            = ".git"
 
 	// Docker
@@ -404,7 +370,8 @@ const (
 	ICTTVersion = "v1.0.0"
 
 	// ICM
-	DefaultTeleporterMessengerAddress      = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
-	MainnetCChainTeleporterRegistryAddress = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
-	FujiCChainTeleporterRegistryAddress    = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
+	DefaultTeleporterMessengerAddress         = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	MainnetCChainTeleporterRegistryAddress    = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
+	FujiCChainTeleporterRegistryAddress       = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
+	EtnaDevnetCChainTeleporterRegistryAddress = "0xEe40DFF876204A99eCCB783FDc01eE0a2678Ae93"
 )

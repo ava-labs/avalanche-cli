@@ -45,12 +45,6 @@ configuration.`,
 func clean(*cobra.Command, []string) error {
 	app.Log.Info("killing gRPC server process...")
 
-	configSingleNodeEnabled := app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
-
-	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, true, "", configSingleNodeEnabled); err != nil {
-		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
-	}
-
 	if err := binutils.KillgRPCServerProcess(
 		app,
 		binutils.LocalNetworkGRPCServerEndpoint,
@@ -63,6 +57,7 @@ func clean(*cobra.Command, []string) error {
 
 	if err := teleporter.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
@@ -82,6 +77,12 @@ func clean(*cobra.Command, []string) error {
 	if err := removeLocalDeployInfoFromSidecars(); err != nil {
 		return err
 	}
+
+	snapshotPath := app.GetSnapshotPath(constants.DefaultSnapshotName)
+	if err := os.RemoveAll(snapshotPath); err != nil {
+		return err
+	}
+
 	return nil
 }
 
