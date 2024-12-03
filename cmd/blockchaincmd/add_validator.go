@@ -3,15 +3,14 @@
 package blockchaincmd
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/units"
 
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -20,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -104,6 +104,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().BoolVar(&createLocalValidator, "create-local-validator", false, "create additional local validator and add it to existing running local node")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
@@ -190,16 +191,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 	sovereign := sc.Sovereign
 
 	if nodeEndpoint != "" {
-		infoClient := info.NewClient(nodeEndpoint)
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
 		if err != nil {
 			return err
 		}
-		nodeIDStr = nodeID.String()
-		publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-		pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
 	}
 
 	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add a aditional local node
@@ -207,6 +202,44 @@ func addValidator(_ *cobra.Command, args []string) error {
 		createLocalValidator, err = prompts.NewPrompter().CaptureNoYes(
 			"Would you like to add a local validator to this Blockchain?",
 		)
+		if err != nil {
+			return err
+		}
+	}
+
+	// if user chose to upsize a local node to add another local validator
+	if createLocalValidator {
+		anrSettings := node.ANRSettings{}
+		nodeConfig := map[string]interface{}{}
+		if app.AvagoNodeConfigExists(blockchainName) {
+			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
+			if err != nil {
+				return err
+			}
+		}
+		if partialSync {
+			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+		}
+		avalancheGoBinPath, err := node.GetLocalNodeAvalancheGoBinPath()
+		if err != nil {
+			return fmt.Errorf("failed to get local node avalanche go bin path: %w", err)
+		}
+		nodeName := ""
+		if nodeName, err = node.UpsizeLocalNode(
+			app,
+			network,
+			avalancheGoBinPath,
+			nodeConfig,
+			anrSettings,
+		); err != nil {
+			return err
+		}
+		// get node data
+		nodeEndpoint, err := node.NodeNameToURI(nodeName)
+		if err != nil {
+			return err
+		}
+		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
 		if err != nil {
 			return err
 		}

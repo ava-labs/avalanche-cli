@@ -3,6 +3,7 @@
 package node
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,8 +12,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/ava-labs/avalanche-network-runner/client"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -428,8 +427,30 @@ func GetLatestAvagoVersionForRPC(app *application.Avalanche, configuredRPCVersio
 	return desiredAvagoVersion, nil
 }
 
+func GetLocalNodeAvalancheGoBinPath() (string, error) {
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return "", err
+	}
+	if len(status.ClusterInfo.NodeInfos) == 0 {
+		return "", fmt.Errorf("no nodes found")
+	} else {
+		return status.ClusterInfo.NodeInfos["node0"].ExecPath, nil
+	}
+}
+
 // connect to running ANR and list local node names
-func ListLocalNodeNames(cli client.Client) ([]string, error) {
+func ListLocalNodeNames() ([]string, error) {
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return nil, err
+	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	status, err := cli.Status(ctx)
@@ -444,17 +465,55 @@ func ListLocalNodeNames(cli client.Client) ([]string, error) {
 	return localNodeNames, nil
 }
 
-func GetNextNodeName(cli client.Client) (string, error) {
-	currentNodeNames, _ := ListLocalNodeNames(cli)
+func GetNextNodeName() (string, error) {
+	currentNodeNames, _ := ListLocalNodeNames()
 	if len(currentNodeNames) == 0 {
 		return "", fmt.Errorf("no nodes found")
 	} else {
 		lastNodeName := currentNodeNames[len(currentNodeNames)-1]
-		extractedNumber := strings.Split(lastNodeName, "node")[1]
+		splitStr := strings.Split(lastNodeName, "node")
+		if len(splitStr) != 2 {
+			return "", fmt.Errorf("invalid node name format: %s", lastNodeName)
+		}
+		extractedNumber := splitStr[1]
 		nodeNumber, err := strconv.Atoi(extractedNumber)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("node%d", nodeNumber+1), nil
 	}
+}
+
+func NodeNameToURI(nodeName string) (string, error) {
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return "", err
+	}
+	nodeInfo := status.ClusterInfo.NodeInfos[nodeName]
+	return nodeInfo.Uri, nil
+}
+
+func GetNodeData(endpoint string) (
+	string, // nodeID
+	string, // public key
+	string, // PoP
+	error,
+) {
+	infoClient := info.NewClient(endpoint)
+	ctx, cancel := utils.GetAPILargeContext()
+	defer cancel()
+	nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+	if err != nil {
+		return "", "", "", err
+	}
+	return nodeID.String(),
+		"0x" + hex.EncodeToString(proofOfPossession.PublicKey[:]),
+		"0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:]),
+		nil
 }
