@@ -245,7 +245,11 @@ func CallAddValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
-	expiry := uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix())
+	blockchainTimestamp, err := getBlockchainTimestamp(network)
+	if err != nil {
+		return fmt.Errorf("failed to get blockchain timestamp: %w", err)
+	}
+	expiry := uint64(blockchainTimestamp.Add(constants.DefaultValidationIDExpiryDuration).Unix())
 
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -593,7 +597,6 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	defer cancel()
 	platformCli := platformvm.NewClient(network.Endpoint)
 	vs, err := platformCli.GetCurrentValidators(ctx, avagoconstants.PrimaryNetworkID, nil)
-	cancel()
 	if err != nil {
 		return 0, err
 	}
@@ -603,6 +606,13 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 		}
 	}
 	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
+}
+
+func getBlockchainTimestamp(network models.Network) (time.Time, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	platformCli := platformvm.NewClient(network.Endpoint)
+	return platformCli.GetTimestamp(ctx)
 }
 
 func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
