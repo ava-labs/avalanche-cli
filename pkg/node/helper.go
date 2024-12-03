@@ -6,21 +6,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-network-runner/client"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/api/info"
 )
 
@@ -423,4 +426,35 @@ func GetLatestAvagoVersionForRPC(app *application.Avalanche, configuredRPCVersio
 		return "", err
 	}
 	return desiredAvagoVersion, nil
+}
+
+// connect to running ANR and list local node names
+func ListLocalNodeNames(cli client.Client) ([]string, error) {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	localNodeNames := []string{}
+	for localNodeName := range status.ClusterInfo.NodeInfos {
+		localNodeNames = append(localNodeNames, localNodeName)
+	}
+	sort.Strings(localNodeNames)
+	return localNodeNames, nil
+}
+
+func GetNextNodeName(cli client.Client) (string, error) {
+	currentNodeNames, _ := ListLocalNodeNames(cli)
+	if len(currentNodeNames) == 0 {
+		return "", fmt.Errorf("no nodes found")
+	} else {
+		lastNodeName := currentNodeNames[len(currentNodeNames)-1]
+		extractedNumber := strings.Split(lastNodeName, "node")[1]
+		nodeNumber, err := strconv.Atoi(extractedNumber)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("node%d", nodeNumber+1), nil
+	}
 }

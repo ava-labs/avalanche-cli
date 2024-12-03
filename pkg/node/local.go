@@ -159,7 +159,6 @@ func StartLocalNode(
 	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
-	partialSync bool,
 	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
@@ -248,9 +247,6 @@ func StartLocalNode(
 
 	if nodeConfig == nil {
 		nodeConfig = map[string]interface{}{}
-	}
-	if partialSync {
-		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
 
@@ -421,6 +417,141 @@ func StartLocalNode(
 		ux.Logger.PrintToUser("")
 	}
 
+	return nil
+}
+
+// add additional validator to local node
+func UpsizeLocalNode(
+	app *application.Avalanche,
+	clusterName string,
+	network models.Network,
+	avalanchegoBinaryPath string,
+	nodeConfig map[string]interface{},
+	anrSettings ANRSettings,
+	avaGoVersionSetting AvalancheGoVersionSettings,
+) error {
+	var err error
+	rootDir := app.GetLocalDir(clusterName)
+	pluginDir := filepath.Join(rootDir, "node1", "plugins")
+
+	avalancheGoVersion := "latest"
+	if avalanchegoBinaryPath == "" {
+		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
+		if err != nil {
+			return err
+		}
+		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
+		if err != nil {
+			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
+		}
+		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+		ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
+	}
+	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "", true)
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
+	if err != nil {
+		return err
+	}
+	if nodeConfig == nil {
+		nodeConfig = map[string]interface{}{}
+	}
+	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
+	nodeConfigBytes, err := json.Marshal(nodeConfig)
+	if err != nil {
+		return err
+	}
+	nodeConfigStr := string(nodeConfigBytes)
+
+	// we will remove this code soon, so it can be not DRY
+	if network.Kind == models.EtnaDevnet {
+		anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
+		anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
+		// prepare genesis and upgrade files for anr
+		genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
+		if err != nil {
+			return fmt.Errorf("could not create save Etna Devnet genesis file: %w", err)
+		}
+		if _, err := genesisFile.Write(constants.EtnaDevnetGenesisData); err != nil {
+			return fmt.Errorf("could not write Etna Devnet genesis data: %w", err)
+		}
+		if err := genesisFile.Close(); err != nil {
+			return fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
+		}
+		anrSettings.GenesisPath = genesisFile.Name()
+		defer os.Remove(anrSettings.GenesisPath)
+
+		upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
+		if err != nil {
+			return fmt.Errorf("could not create save Etna Devnet upgrade file: %w", err)
+		}
+		if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
+			return fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
+		}
+		anrSettings.UpgradePath = upgradeFile.Name()
+		if err := upgradeFile.Close(); err != nil {
+			return fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
+		}
+		defer os.Remove(anrSettings.UpgradePath)
+	}
+	// end of code to be removed
+	anrOpts := []client.OpOption{
+		client.WithNetworkID(network.ID),
+		client.WithExecPath(avalancheGoBinPath),
+		client.WithRootDataDir(rootDir),
+		client.WithReassignPortsIfUsed(true),
+		client.WithPluginDir(pluginDir),
+		client.WithFreshStakingIds(true),
+		client.WithZeroIP(false),
+		client.WithGlobalNodeConfig(nodeConfigStr),
+	}
+	if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
+		anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
+	}
+	if anrSettings.UpgradePath != "" && utils.FileExists(anrSettings.UpgradePath) {
+		anrOpts = append(anrOpts, client.WithUpgradePath(anrSettings.UpgradePath))
+	}
+	if anrSettings.BootstrapIDs != nil {
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(anrSettings.BootstrapIDs))
+	}
+	if anrSettings.BootstrapIPs != nil {
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
+	}
+
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := network.BootstrappingContext()
+	defer cancel()
+
+	newNodeName, err := GetNextNodeName(cli)
+	if err != nil {
+		return fmt.Errorf("failed to generate a new node name: %w", err)
+	}
+
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Adding validator. Wait until healthy...")
+	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		_ = DestroyLocalNode(app, clusterName)
+		return fmt.Errorf("failed to start local avalanchego: %w", err)
+	}
+	ux.SpinComplete(spinner)
+	spinSession.Stop()
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Node logs directory: %s/%s/logs", rootDir, newNodeName)
+	ux.Logger.PrintToUser("")
+
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	nodeInfo := status.ClusterInfo.NodeInfos[newNodeName]
+	ux.Logger.PrintToUser("URI: %s", nodeInfo.Uri)
+	ux.Logger.PrintToUser("NodeID: %s", nodeInfo.Id)
+	ux.Logger.PrintToUser("")
 	return nil
 }
 
