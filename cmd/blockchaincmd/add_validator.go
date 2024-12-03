@@ -70,6 +70,8 @@ var (
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 	aggregatorExtraEndpoints            []string
 	clusterNameFlagValue                string
+
+	createLocalValidator bool
 )
 
 // avalanche blockchain addValidator
@@ -101,6 +103,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
+	cmd.Flags().BoolVar(&createLocalValidator, "create-local-validator", false, "create additional local validator and add it to existing running local node")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
@@ -118,6 +121,20 @@ Testnet or Mainnet.`,
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 
 	return cmd
+}
+
+func preAddChecks(network models.Network, sovereign bool) error {
+	if sovereign && network.Kind == models.Mainnet {
+		return errNotSupportedOnMainnet
+	}
+	if nodeEndpoint != "" && createLocalValidator {
+		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
+	}
+	if createLocalValidator && (nodeIDStr != "" || publicKey != "" || pop != "") {
+		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used")
+	}
+
+	return nil
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
@@ -151,6 +168,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
+	if err := preAddChecks(network, sc.Sovereign); err != nil {
+		return err
+	}
+
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -166,6 +187,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	sovereign := sc.Sovereign
+
 	if nodeEndpoint != "" {
 		infoClient := info.NewClient(nodeEndpoint)
 		ctx, cancel := utils.GetAPILargeContext()
@@ -178,6 +201,17 @@ func addValidator(_ *cobra.Command, args []string) error {
 		publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
 		pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
 	}
+
+	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add a aditional local node
+	if (!sovereign && nodeIDStr == "") || (sovereign && !createLocalValidator && nodeIDStr == "" && publicKey == "" && pop == "") {
+		createLocalValidator, err = prompts.NewPrompter().CaptureNoYes(
+			"Would you like to add a local validator to this Blockchain?",
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	if nodeIDStr == "" {
 		nodeID, err := PromptNodeID("add as a blockchain validator")
 		if err != nil {
@@ -188,13 +222,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err := prompts.ValidateNodeID(nodeIDStr); err != nil {
 		return err
 	}
-
-	sovereign := sc.Sovereign
-
-	if sovereign && network.Kind == models.Mainnet {
-		return errNotSupportedOnMainnet
-	}
-
 	if sovereign && publicKey == "" && pop == "" {
 		publicKey, pop, err = promptProofOfPossession(true, true)
 		if err != nil {
