@@ -1,18 +1,20 @@
 ---
-name: Feature specification
+name: Feature 
 about: Discussion on design and implementation of new features for the Avalanche CLI.
 title: ''
-labels: enhancement
 assignees: ''
-
 ---
 
-**Context and scope**
-Include a short description of the context and scope of the suggested feature.
-Include goals the change will accomplish if relevant.
+## Goal
 
-**Discussion and alternatives**
-Include a description of the changes to be made to the code along with alternatives that were considered.
+### Assumptions and Scope
 
-**Open questions**
-Questions that are still being discussed.
+## Example Usage
+
+### Requirements:
+
+### Current Limitations
+
+### Nice to Have, but Not Required 
+
+## Open Questions
