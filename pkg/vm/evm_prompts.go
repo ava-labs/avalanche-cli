@@ -893,6 +893,7 @@ func PromptVMVersion(
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
+			"",
 		)
 	case "":
 		return promptUserForVMVersion(app, repoName)
@@ -922,6 +923,7 @@ func promptUserForVMVersion(
 		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
+			"",
 		)
 		if err != nil {
 			return "", err

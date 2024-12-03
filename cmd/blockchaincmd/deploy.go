@@ -159,8 +159,18 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
-	cmd.Flags().StringVar(&icmSpec.ICMVersion, "teleporter-version", "latest", "teleporter version to deploy")
-	cmd.Flags().StringVar(&icmSpec.RelayerVersion, "relayer-version", "latest", "relayer version to deploy")
+	cmd.Flags().StringVar(
+		&icmSpec.ICMVersion,
+		"teleporter-version",
+		constants.LatestReleaseVersionTag,
+		"teleporter version to deploy",
+	)
+	cmd.Flags().StringVar(
+		&icmSpec.RelayerVersion,
+		"relayer-version",
+		constants.LatestPreReleaseVersionTag,
+		"relayer version to deploy",
+	)
 	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
 	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
 	cmd.Flags().Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
@@ -1128,7 +1138,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				Amount:             relayerAmount,
 			}
 			if network.Kind == models.Local || useLocalMachine {
-				deployRelayerFlags.Key = constants.AWMRelayerKeyName
+				deployRelayerFlags.Key = constants.ICMRelayerKeyName
 				deployRelayerFlags.Amount = constants.DefaultRelayerAmount
 				deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
 			}
