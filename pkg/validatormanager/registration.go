@@ -182,7 +182,6 @@ func ValidatorManagerGetSubnetValidatorRegistrationMessage(
 		unsignedMessageBytes, err := GetRegistrationMessage(
 			rpcURL,
 			validationID,
-			subnetID,
 		)
 		if err != nil {
 			return nil, ids.Empty, err
@@ -529,7 +528,6 @@ func FinishValidatorRegistration(
 func GetRegistrationMessage(
 	rpcURL string,
 	validationID ids.ID,
-	subnetID ids.ID,
 ) ([]byte, error) {
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
@@ -598,7 +596,6 @@ func GetRegistrationJustification(
 	msg, err := GetRegistrationMessage(
 		rpcURL,
 		validationID,
-		subnetID,
 	)
 	if err != nil {
 		return nil, err
