@@ -58,11 +58,11 @@ func start(_ *cobra.Command, _ []string) error {
 	}
 	switch {
 	case network.ClusterName != "":
-		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
+		host, err := node.GetICMRelayerHost(app, network.ClusterName)
 		if err != nil {
 			return err
 		}
-		if err := ssh.RunSSHStartAWMRelayerService(host); err != nil {
+		if err := ssh.RunSSHStartICMRelayerService(host); err != nil {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
@@ -95,7 +95,7 @@ func start(_ *cobra.Command, _ []string) error {
 		} else if binPath, err := teleporter.DeployRelayer(
 			"latest",
 			binPath,
-			app.GetAWMRelayerBinDir(),
+			app.GetICMRelayerBinDir(),
 			relayerConfigPath,
 			app.GetLocalRelayerLogPath(network.Kind),
 			app.GetLocalRelayerRunPath(network.Kind),

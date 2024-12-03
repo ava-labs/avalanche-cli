@@ -200,7 +200,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			if relayerBinPath, err := teleporter.DeployRelayer(
 				"latest",
 				relayerBinPath,
-				app.GetAWMRelayerBinDir(),
+				app.GetICMRelayerBinDir(),
 				relayerConfigPath,
 				app.GetLocalRelayerLogPath(models.Local),
 				app.GetLocalRelayerRunPath(models.Local),

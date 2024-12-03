@@ -409,17 +409,17 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	configPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
 	logPath := app.GetLocalRelayerLogPath(network.Kind)
 
-	metricsPort := constants.RemoteAWMRelayerMetricsPort
+	metricsPort := constants.RemoteICMRelayerMetricsPort
 	if !deployToRemote {
 		switch network.Kind {
 		case models.Local:
-			metricsPort = constants.LocalNetworkLocalAWMRelayerMetricsPort
+			metricsPort = constants.LocalNetworkLocalICMRelayerMetricsPort
 		case models.Devnet:
-			metricsPort = constants.DevnetLocalAWMRelayerMetricsPort
+			metricsPort = constants.DevnetLocalICMRelayerMetricsPort
 		case models.EtnaDevnet:
-			metricsPort = constants.EtnaDevnetLocalAWMRelayerMetricsPort
+			metricsPort = constants.EtnaDevnetLocalICMRelayerMetricsPort
 		case models.Fuji:
-			metricsPort = constants.FujiLocalAWMRelayerMetricsPort
+			metricsPort = constants.FujiLocalICMRelayerMetricsPort
 		}
 	}
 
@@ -466,7 +466,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		binPath, err := teleporter.DeployRelayer(
 			flags.Version,
 			flags.BinPath,
-			app.GetAWMRelayerBinDir(),
+			app.GetICMRelayerBinDir(),
 			configPath,
 			logPath,
 			runFilePath,
