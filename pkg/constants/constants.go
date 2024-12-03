@@ -215,7 +215,8 @@ const (
 	SubnetEVMRepoName             = "subnet-evm"
 	CliRepoName                   = "avalanche-cli"
 	TeleporterRepoName            = "teleporter"
-	AWMRelayerRepoName            = "awm-relayer"
+	ICMServicesRepoName           = "icm-services"
+	ICMRelayerKind                = "icm-relayer"
 	SubnetEVMReleaseURL           = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
 	SubnetEVMArchive              = "subnet-evm_%s_linux_amd64.tar.gz"
 	CloudNodeConfigBasePath       = "/home/ubuntu/.avalanchego/"
@@ -235,30 +236,30 @@ const (
 	IPAddressSuffix               = "/32"
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
-	AWMRelayerInstallDir          = "awm-relayer"
+	ICMRelayerInstallDir          = "icm-relayer"
 	TeleporterInstallDir          = "teleporter"
-	AWMRelayerBin                 = "awm-relayer"
+	ICMRelayerBin                 = "icm-relayer"
 	LocalRelayerDir               = "local-relayer"
-	AWMRelayerConfigFilename      = "awm-relayer-config.json"
-	AWMRelayerStorageDir          = "awm-relayer-storage"
-	AWMRelayerLogFilename         = "awm-relayer.log"
-	AWMRelayerRunFilename         = "awm-relayer-process.json"
-	AWMRelayerDockerDir           = "/.awm-relayer"
+	ICMRelayerConfigFilename      = "icm-relayer-config.json"
+	ICMRelayerStorageDir          = "icm-relayer-storage"
+	ICMRelayerLogFilename         = "icm-relayer.log"
+	ICMRelayerRunFilename         = "icm-relayer-process.json"
+	ICMRelayerDockerDir           = "/.icm-relayer"
 
-	AWMRelayerSnapshotConfsDir = "relayer-confs"
+	ICMRelayerSnapshotConfsDir = "relayer-confs"
 
 	ICMKeyName           = "cli-teleporter-deployer"
-	AWMRelayerKeyName    = "cli-awm-relayer"
+	ICMRelayerKeyName    = "cli-awm-relayer"
 	DefaultRelayerAmount = float64(10)
 
 	// to not interfere with other node services
-	RemoteAWMRelayerMetricsPort = 9091
+	RemoteICMRelayerMetricsPort = 9091
 
 	// enables having many local relayers
-	LocalNetworkLocalAWMRelayerMetricsPort = 9092
-	DevnetLocalAWMRelayerMetricsPort       = 9093
-	EtnaDevnetLocalAWMRelayerMetricsPort   = 9094
-	FujiLocalAWMRelayerMetricsPort         = 9095
+	LocalNetworkLocalICMRelayerMetricsPort = 9092
+	DevnetLocalICMRelayerMetricsPort       = 9093
+	EtnaDevnetLocalICMRelayerMetricsPort   = 9094
+	FujiLocalICMRelayerMetricsPort         = 9095
 
 	DevnetFlagsProposerVMUseCurrentHeight = true
 
@@ -341,7 +342,7 @@ const (
 	APIRole                      = "API"
 	ValidatorRole                = "Validator"
 	MonitorRole                  = "Monitor"
-	AWMRelayerRole               = "Relayer"
+	ICMRelayerRole               = "Relayer"
 	LoadTestRole                 = "LoadTest"
 	DefaultWalletCreationTimeout = 5 * time.Second
 

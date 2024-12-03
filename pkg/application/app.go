@@ -121,8 +121,8 @@ func (app *Avalanche) GetTeleporterBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.TeleporterInstallDir)
 }
 
-func (app *Avalanche) GetAWMRelayerBinDir() string {
-	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AWMRelayerInstallDir)
+func (app *Avalanche) GetICMRelayerBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.ICMRelayerInstallDir)
 }
 
 func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string {
@@ -131,37 +131,37 @@ func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string 
 }
 
 func (app *Avalanche) GetLocalRelayerStorageDir(networkKind models.NetworkKind) string {
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerStorageDir)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetLocalRelayerConfigPath(networkKind models.NetworkKind, localNetworkRootDir string) string {
 	if localNetworkRootDir != "" {
-		return filepath.Join(localNetworkRootDir, constants.AWMRelayerConfigFilename)
+		return filepath.Join(localNetworkRootDir, constants.ICMRelayerConfigFilename)
 	}
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerConfigFilename)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerConfigFilename)
 }
 
 func (app *Avalanche) GetLocalRelayerLogPath(networkKind models.NetworkKind) string {
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerLogFilename)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerLogFilename)
 }
 
 func (app *Avalanche) GetLocalRelayerRunPath(networkKind models.NetworkKind) string {
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerRunFilename)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerRunFilename)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
-	return filepath.Join(app.GetServicesDir(baseDir), constants.AWMRelayerInstallDir)
+func (app *Avalanche) GetICMRelayerServiceDir(baseDir string) string {
+	return filepath.Join(app.GetServicesDir(baseDir), constants.ICMRelayerInstallDir)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceConfigPath(baseDir string) string {
-	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerConfigFilename)
+func (app *Avalanche) GetICMRelayerServiceConfigPath(baseDir string) string {
+	return filepath.Join(app.GetICMRelayerServiceDir(baseDir), constants.ICMRelayerConfigFilename)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
+func (app *Avalanche) GetICMRelayerServiceStorageDir(baseDir string) string {
 	if baseDir != "" {
-		return filepath.Join(baseDir, constants.AWMRelayerStorageDir)
+		return filepath.Join(baseDir, constants.ICMRelayerStorageDir)
 	}
-	return filepath.Join(app.GetAWMRelayerServiceDir(""), constants.AWMRelayerStorageDir)
+	return filepath.Join(app.GetICMRelayerServiceDir(""), constants.ICMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetSubnetEVMBinDir() string {
