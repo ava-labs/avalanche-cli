@@ -318,13 +318,13 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
-		balanceAVAX, err := promptValidatorBalance(availableBalance)
+		balance, err = promptValidatorBalance(availableBalance)
 		if err != nil {
 			return err
 		}
-		// convert to nanoAVAX
-		balance = balanceAVAX * units.Avax
 	}
+	// convert to nanoAVAX
+	balance = balance * units.Avax
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
