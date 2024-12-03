@@ -23,7 +23,7 @@ type DockerComposeInputs struct {
 	WithMonitoring     bool
 	WithAvalanchego    bool
 	AvalanchegoVersion string
-	AWMRelayerVersion  string
+	ICMRelayerVersion  string
 	E2E                bool
 	E2EIP              string
 	E2ESuffix          string

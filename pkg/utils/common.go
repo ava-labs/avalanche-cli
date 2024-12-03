@@ -30,8 +30,10 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
+
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
+	"golang.org/x/mod/semver"
 )
 
 func SetupRealtimeCLIOutput(
@@ -557,4 +559,16 @@ func LogLevelToEmoji(logLevel string) (string, error) {
 		levelEmoji = "💀"
 	}
 	return levelEmoji, nil
+}
+
+func IsValidSemanticVersion(version string) bool {
+	if !semver.IsValid(version) {
+		// remove tool part, just in case (eg icm-relayer/v1.5.1)
+		versionParts := strings.Split(version, "/")
+		if len(versionParts) == 2 && semver.IsValid(versionParts[1]) {
+			return true
+		}
+		return false
+	}
+	return true
 }

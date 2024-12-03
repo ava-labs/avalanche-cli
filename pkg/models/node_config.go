@@ -13,6 +13,6 @@ type NodeConfig struct {
 	CloudService  string // which cloud service node is hosted on (AWS / GCP)
 	UseStaticIP   bool   // node has a static IP association
 	IsMonitor     bool   // node has a monitoring dashboard
-	IsAWMRelayer  bool   // node has an AWM relayer service
+	IsICMRelayer  bool   // node has an ICM relayer service
 	IsLoadTest    bool   // node is used to host load test
 }
