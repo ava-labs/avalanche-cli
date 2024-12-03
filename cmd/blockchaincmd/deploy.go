@@ -441,12 +441,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 	clusterNameFlagValue = globalNetworkFlags.ClusterName
 
-	if !simulatedPublicNetwork() {
-		if network.Kind == models.Mainnet && sidecar.Sovereign {
-			return errNotSupportedOnMainnet
-		}
-	}
-
 	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
 	if err != nil {
 		return err
