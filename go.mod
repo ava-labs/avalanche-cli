@@ -1,4 +1,4 @@
-module github.com/ava-labs/avalanche-cli
+module github.com/ava-labs/avalanche-cli/v2
 
 go 1.22.8
 
