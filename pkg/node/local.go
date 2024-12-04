@@ -156,7 +156,6 @@ func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 func StartLocalNode(
 	app *application.Avalanche,
 	clusterName string,
-	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
 	partialSync bool,
@@ -281,13 +280,6 @@ func StartLocalNode(
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		network := models.UndefinedNetwork
 		switch {
-		case useEtnaDevnet:
-			network = models.NewNetwork(
-				models.Devnet,
-				constants.EtnaDevnetNetworkID,
-				constants.EtnaDevnetEndpoint,
-				clusterName,
-			)
 		case globalNetworkFlags.UseFuji:
 			network = models.NewNetwork(
 				models.Fuji,
@@ -312,38 +304,8 @@ func StartLocalNode(
 		if network.Kind == models.Fuji {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		}
-		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
+		if err := preLocalChecks(anrSettings, avaGoVersionSetting, globalNetworkFlags); err != nil {
 			return err
-		}
-		if useEtnaDevnet {
-			anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
-			anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
-			// prepare genesis and upgrade files for anr
-			genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
-			if err != nil {
-				return fmt.Errorf("could not create save Etna Devnet genesis file: %w", err)
-			}
-			if _, err := genesisFile.Write(constants.EtnaDevnetGenesisData); err != nil {
-				return fmt.Errorf("could not write Etna Devnet genesis data: %w", err)
-			}
-			if err := genesisFile.Close(); err != nil {
-				return fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
-			}
-			anrSettings.GenesisPath = genesisFile.Name()
-			defer os.Remove(anrSettings.GenesisPath)
-
-			upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
-			if err != nil {
-				return fmt.Errorf("could not create save Etna Devnet upgrade file: %w", err)
-			}
-			if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
-				return fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
-			}
-			anrSettings.UpgradePath = upgradeFile.Name()
-			if err := upgradeFile.Close(); err != nil {
-				return fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
-			}
-			defer os.Remove(anrSettings.UpgradePath)
 		}
 
 		if anrSettings.StakingTLSKeyPath != "" && anrSettings.StakingCertKeyPath != "" && anrSettings.StakingSignerKeyPath != "" {
@@ -430,7 +392,7 @@ func localClusterDataExists(app *application.Avalanche, clusterName string) bool
 }
 
 // stub for now
-func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
+func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, globalNetworkFlags networkoptions.NetworkFlags) error {
 	// expand passed paths
 	if anrSettings.GenesisPath != "" {
 		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)
@@ -441,18 +403,6 @@ func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVer
 	// checks
 	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
 		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
-	}
-	if useEtnaDevnet && (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
-		return fmt.Errorf("etna devnet can only be used with devnet")
-	}
-	if useEtnaDevnet && anrSettings.GenesisPath != "" {
-		return fmt.Errorf("etna devnet uses predefined genesis file")
-	}
-	if useEtnaDevnet && anrSettings.UpgradePath != "" {
-		return fmt.Errorf("etna devnet uses predefined upgrade file")
-	}
-	if useEtnaDevnet && (len(anrSettings.BootstrapIDs) != 0 || len(anrSettings.BootstrapIPs) != 0) {
-		return fmt.Errorf("etna devnet uses predefined bootstrap configuration")
 	}
 	if len(anrSettings.BootstrapIDs) != len(anrSettings.BootstrapIPs) {
 		return fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")

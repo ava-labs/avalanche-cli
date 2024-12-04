@@ -43,7 +43,6 @@ var (
 	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	deployFlags DeployFlags
@@ -416,8 +415,6 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			metricsPort = constants.LocalNetworkLocalICMRelayerMetricsPort
 		case models.Devnet:
 			metricsPort = constants.DevnetLocalICMRelayerMetricsPort
-		case models.EtnaDevnet:
-			metricsPort = constants.EtnaDevnetLocalICMRelayerMetricsPort
 		case models.Fuji:
 			metricsPort = constants.FujiLocalICMRelayerMetricsPort
 		}
