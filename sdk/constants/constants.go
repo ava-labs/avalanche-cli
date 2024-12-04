@@ -9,9 +9,6 @@ const (
 	APIRequestTimeout      = 30 * time.Second
 	APIRequestLargeTimeout = 2 * time.Minute
 
-	RemoteHostUser = "ubuntu"
-
 	// node
-	CloudNodeCLIConfigBasePath = "/home/ubuntu/.avalanche-cli/"
-	WriteReadUserOnlyPerms     = 0o600
+	WriteReadUserOnlyPerms = 0o600
 )
