@@ -30,6 +30,7 @@ import (
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/spf13/cobra"
 )
@@ -589,6 +590,13 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 			return d, nil
 		}
 	}
+}
+
+func getBlockchainTimestamp(network models.Network) (time.Time, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	platformCli := platformvm.NewClient(network.Endpoint)
+	return platformCli.GetTimestamp(ctx)
 }
 
 func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
