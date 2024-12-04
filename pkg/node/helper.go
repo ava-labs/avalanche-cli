@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -441,8 +442,29 @@ func GetLocalNodeAvalancheGoBinPath() (string, error) {
 	if len(status.ClusterInfo.NodeInfos) == 0 {
 		return "", fmt.Errorf("no nodes found")
 	} else {
-		return status.ClusterInfo.NodeInfos["node0"].ExecPath, nil
+		return status.ClusterInfo.NodeInfos["node1"].ExecPath, nil
 	}
+}
+
+func GetRunnningLocalNodeClusterName(app *application.Avalanche) (string, error) {
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	pattern := fmt.Sprintf("%s/%s/([^/]+)", app.GetBaseDir(), constants.LocalDir)
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringSubmatch(status.ClusterInfo.GetRootDataDir())
+	if len(matches) < 2 {
+		return "", fmt.Errorf("clusterName not found in input: %s", status.ClusterInfo.GetRootDataDir())
+	}
+	return matches[1], nil
 }
 
 // connect to running ANR and list local node names

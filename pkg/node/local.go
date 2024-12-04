@@ -431,8 +431,11 @@ func UpsizeLocalNode(
 	string, // added nodeName
 	error,
 ) {
-	var err error
-	rootDir := app.GetLocalDir(network.ClusterName)
+	clusterName, err := GetRunnningLocalNodeClusterName(app)
+	if err != nil {
+		return "", err
+	}
+	rootDir := app.GetLocalDir(clusterName)
 	pluginDir := filepath.Join(rootDir, "node1", "plugins")
 
 	if nodeConfig == nil {

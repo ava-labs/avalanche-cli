@@ -211,6 +211,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if createLocalValidator {
 		anrSettings := node.ANRSettings{}
 		nodeConfig := map[string]interface{}{}
+		ux.Logger.PrintToUser("Adding a local validator to blockchain %s", blockchainName)
 		if app.AvagoNodeConfigExists(blockchainName) {
 			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
 			if err != nil {
@@ -224,6 +225,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get local node avalanche go bin path: %w", err)
 		}
+		ux.Logger.PrintToUser("Using Avalanche Go binary path: %s", avalancheGoBinPath)
+
 		nodeName := ""
 		if nodeName, err = node.UpsizeLocalNode(
 			app,
