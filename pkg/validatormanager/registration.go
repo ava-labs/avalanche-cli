@@ -148,6 +148,7 @@ func InitializeValidatorRegistrationPoA(
 }
 
 func GetSubnetValidatorRegistrationMessage(
+	rpcURL string,
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -162,34 +163,62 @@ func GetSubnetValidatorRegistrationMessage(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
+	alreadyInitialized bool,
 ) (*warp.Message, ids.ID, error) {
-	addressedCallPayload, err := warpMessage.NewRegisterL1Validator(
-		subnetID,
-		nodeID,
-		blsPublicKey,
-		expiry,
-		balanceOwners,
-		disableOwners,
-		weight,
+	var (
+		registerSubnetValidatorUnsignedMessage *warp.UnsignedMessage
+		validationID                           ids.ID
+		err                                    error
 	)
-	if err != nil {
-		return nil, ids.Empty, err
-	}
-	validationID := addressedCallPayload.ValidationID()
-	registerSubnetValidatorAddressedCall, err := warpPayload.NewAddressedCall(
-		managerAddress.Bytes(),
-		addressedCallPayload.Bytes(),
-	)
-	if err != nil {
-		return nil, ids.Empty, err
-	}
-	registerSubnetValidatorUnsignedMessage, err := warp.NewUnsignedMessage(
-		network.ID,
-		blockchainID,
-		registerSubnetValidatorAddressedCall.Bytes(),
-	)
-	if err != nil {
-		return nil, ids.Empty, err
+	if alreadyInitialized {
+		validationID, err = GetRegisteredValidator(
+			rpcURL,
+			managerAddress,
+			nodeID,
+		)
+		if err != nil {
+			return nil, ids.Empty, err
+		}
+		unsignedMessageBytes, err := GetRegistrationMessage(
+			rpcURL,
+			validationID,
+		)
+		if err != nil {
+			return nil, ids.Empty, err
+		}
+		registerSubnetValidatorUnsignedMessage, err = warp.ParseUnsignedMessage(unsignedMessageBytes)
+		if err != nil {
+			return nil, ids.Empty, err
+		}
+	} else {
+		addressedCallPayload, err := warpMessage.NewRegisterL1Validator(
+			subnetID,
+			nodeID,
+			blsPublicKey,
+			expiry,
+			balanceOwners,
+			disableOwners,
+			weight,
+		)
+		if err != nil {
+			return nil, ids.Empty, err
+		}
+		validationID = addressedCallPayload.ValidationID()
+		registerSubnetValidatorAddressedCall, err := warpPayload.NewAddressedCall(
+			managerAddress.Bytes(),
+			addressedCallPayload.Bytes(),
+		)
+		if err != nil {
+			return nil, ids.Empty, err
+		}
+		registerSubnetValidatorUnsignedMessage, err = warp.NewUnsignedMessage(
+			network.ID,
+			blockchainID,
+			registerSubnetValidatorAddressedCall.Bytes(),
+		)
+		if err != nil {
+			return nil, ids.Empty, err
+		}
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
@@ -291,7 +320,7 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 	}
 	var justificationBytes []byte
 	if !registered {
-		justificationBytes, err = GetRegistrationMessage(rpcURL, validationID, subnetID)
+		justificationBytes, err = GetRegistrationJustification(rpcURL, validationID, subnetID)
 		if err != nil {
 			return nil, err
 		}
@@ -355,6 +384,7 @@ func InitValidatorRegistration(
 		return nil, ids.Empty, err
 	}
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	alreadyInitialized := false
 	if initWithPos {
 		ux.Logger.PrintLineSeparator()
 		ux.Logger.PrintToUser("Initializing a validator registration with PoS validator manager")
@@ -379,6 +409,7 @@ func InitValidatorRegistration(
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
 			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+			alreadyInitialized = true
 		}
 	} else {
 		managerAddress = common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
@@ -398,6 +429,7 @@ func InitValidatorRegistration(
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
 			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+			alreadyInitialized = true
 		}
 	}
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
@@ -419,6 +451,7 @@ func InitValidatorRegistration(
 
 	ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
 	return GetSubnetValidatorRegistrationMessage(
+		rpcURL,
 		network,
 		aggregatorLogLevel,
 		0,
@@ -433,6 +466,7 @@ func InitValidatorRegistration(
 		balanceOwners,
 		disableOwners,
 		weight,
+		alreadyInitialized,
 	)
 }
 
@@ -494,23 +528,7 @@ func FinishValidatorRegistration(
 func GetRegistrationMessage(
 	rpcURL string,
 	validationID ids.ID,
-	subnetID ids.ID,
 ) ([]byte, error) {
-	const numBootstrapValidatorsToSearch = 100
-	for validationIndex := uint32(0); validationIndex < numBootstrapValidatorsToSearch; validationIndex++ {
-		bootstrapValidationID := subnetID.Append(validationIndex)
-		if bootstrapValidationID == validationID {
-			justification := platformvm.L1ValidatorRegistrationJustification{
-				Preimage: &platformvm.L1ValidatorRegistrationJustification_ConvertSubnetToL1TxData{
-					ConvertSubnetToL1TxData: &platformvm.SubnetIDIndex{
-						SubnetId: subnetID[:],
-						Index:    validationIndex,
-					},
-				},
-			}
-			return proto.Marshal(&justification)
-		}
-	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return nil, err
@@ -545,12 +563,7 @@ func GetRegistrationMessage(
 					reg, err := warpMessage.ParseRegisterL1Validator(addressedCall.Payload)
 					if err == nil {
 						if reg.ValidationID() == validationID {
-							justification := platformvm.L1ValidatorRegistrationJustification{
-								Preimage: &platformvm.L1ValidatorRegistrationJustification_RegisterL1ValidatorMessage{
-									RegisterL1ValidatorMessage: addressedCall.Payload,
-								},
-							}
-							return proto.Marshal(&justification)
+							return msg.Bytes(), nil
 						}
 					}
 				}
@@ -558,4 +571,48 @@ func GetRegistrationMessage(
 		}
 	}
 	return nil, fmt.Errorf("validation id %s not found on warp events", validationID)
+}
+
+func GetRegistrationJustification(
+	rpcURL string,
+	validationID ids.ID,
+	subnetID ids.ID,
+) ([]byte, error) {
+	const numBootstrapValidatorsToSearch = 100
+	for validationIndex := uint32(0); validationIndex < numBootstrapValidatorsToSearch; validationIndex++ {
+		bootstrapValidationID := subnetID.Append(validationIndex)
+		if bootstrapValidationID == validationID {
+			justification := platformvm.L1ValidatorRegistrationJustification{
+				Preimage: &platformvm.L1ValidatorRegistrationJustification_ConvertSubnetToL1TxData{
+					ConvertSubnetToL1TxData: &platformvm.SubnetIDIndex{
+						SubnetId: subnetID[:],
+						Index:    validationIndex,
+					},
+				},
+			}
+			return proto.Marshal(&justification)
+		}
+	}
+	msg, err := GetRegistrationMessage(
+		rpcURL,
+		validationID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	parsed, err := warp.ParseUnsignedMessage(msg)
+	if err != nil {
+		return nil, err
+	}
+	payload := parsed.Payload
+	addressedCall, err := warpPayload.ParseAddressedCall(payload)
+	if err != nil {
+		return nil, err
+	}
+	justification := platformvm.L1ValidatorRegistrationJustification{
+		Preimage: &platformvm.L1ValidatorRegistrationJustification_RegisterL1ValidatorMessage{
+			RegisterL1ValidatorMessage: addressedCall.Payload,
+		},
+	}
+	return proto.Marshal(&justification)
 }

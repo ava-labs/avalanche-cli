@@ -84,8 +84,8 @@ func (cc *ClusterConfig) GetHostRoles(nodeConf NodeConfig) []string {
 	if nodeConf.IsMonitor {
 		roles = append(roles, constants.MonitorRole)
 	}
-	if nodeConf.IsAWMRelayer {
-		roles = append(roles, constants.AWMRelayerRole)
+	if nodeConf.IsICMRelayer {
+		roles = append(roles, constants.ICMRelayerRole)
 	}
 	return roles
 }

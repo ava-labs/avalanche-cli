@@ -150,6 +150,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
+	if sc.Networks[network.Name()].ClusterName != "" {
+		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
+	}
+
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -240,7 +244,11 @@ func CallAddValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
-	expiry := uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix())
+	blockchainTimestamp, err := getBlockchainTimestamp(network)
+	if err != nil {
+		return fmt.Errorf("failed to get blockchain timestamp: %w", err)
+	}
+	expiry := uint64(blockchainTimestamp.Add(constants.DefaultValidationIDExpiryDuration).Unix())
 
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -309,13 +317,13 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
-		balanceAVAX, err := promptValidatorBalance(availableBalance)
+		balance, err = promptValidatorBalance(availableBalance)
 		if err != nil {
 			return err
 		}
-		// convert to nanoAVAX
-		balance = balanceAVAX * units.Avax
 	}
+	// convert to nanoAVAX
+	balance *= units.Avax
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
