@@ -24,7 +24,7 @@ const (
 	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
-func createEtnaSubnetEvmConfig(poa, pos bool) {
+func createSubnetEvmConfig(poa, pos bool) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -66,7 +66,7 @@ func createEtnaSubnetEvmConfig(poa, pos bool) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
+func createSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -106,7 +106,7 @@ func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
+func createSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -148,7 +148,7 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func createEtnaSubnetEvmConfigValidatorManagerFlagPChain(poa, pos bool) {
+func createSubnetEvmConfigValidatorManagerFlagPChain(poa, pos bool) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -207,7 +207,7 @@ func destroyLocalNode() {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
-func deployEtnaSubnetEtnaFlag() {
+func deploySubnetFujiFlag() {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -217,7 +217,7 @@ func deployEtnaSubnetEtnaFlag() {
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	// Deploy subnet on etna devnet with local machine as bootstrap validator
+	// Deploy subnet on fuji with local machine as bootstrap validator
 	cmd := exec.Command(
 		CLIBinary,
 		"blockchain",
@@ -245,7 +245,7 @@ func deployEtnaSubnetEtnaFlag() {
 
 }
 
-func deployEtnaSubnetEtnaFlagConvertOnly() {
+func deploySubnetFujiFlagConvertOnly() {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -274,7 +274,7 @@ func deployEtnaSubnetEtnaFlagConvertOnly() {
 	gomega.Expect(err).Should(gomega.BeNil())
 }
 
-func deployEtnaSubnetClusterFlagConvertOnly(clusterName string) {
+func deployFujiSubnetClusterFlagConvertOnly(clusterName string) {
 	// Check config exists
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -284,7 +284,7 @@ func deployEtnaSubnetClusterFlagConvertOnly(clusterName string) {
 	err = os.Setenv(constants.SimulatePublicNetwork, "true")
 	gomega.Expect(err).Should(gomega.BeNil())
 
-	// Deploy subnet on etna devnet with local machine as bootstrap validator
+	// Deploy subnet on fuji with local machine as bootstrap validator
 	cmd := exec.Command(
 		CLIBinary,
 		"blockchain",
@@ -335,7 +335,7 @@ func initValidatorManagerClusterFlag(
 	return err
 }
 
-func initValidatorManagerEtnaFlag(
+func initValidatorManagerFujiFlag(
 	subnetName string,
 ) (string, error) {
 	cmd := exec.Command(
@@ -357,7 +357,7 @@ func initValidatorManagerEtnaFlag(
 	return string(output), err
 }
 
-var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
+var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 	ginkgo.BeforeEach(func() {
 		// key
 		_ = utils.DeleteKey(keyName)
@@ -380,53 +380,53 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		commands.CleanNetwork()
 	})
 
-	ginkgo.It("Test Create Etna POA Subnet Config With Key Name for Validator Manager Flag", func() {
-		createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(true, false)
+	ginkgo.It("Test Create POA Subnet Config With Key Name for Validator Manager Flag", func() {
+		createSubnetEvmConfigValidatorManagerFlagKeyname(true, false)
 	})
 
-	ginkgo.It("Test Create Etna POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
-		createEtnaSubnetEvmConfigValidatorManagerFlagPChain(true, false)
+	ginkgo.It("Test Create POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
+		createSubnetEvmConfigValidatorManagerFlagPChain(true, false)
 	})
 
-	ginkgo.It("Test Create Etna POA Subnet Config Without Proxy Owner Flag", func() {
-		createEtnaSubnetEvmConfigWithoutProxyOwner(true, false)
+	ginkgo.It("Test Create POA Subnet Config Without Proxy Owner Flag", func() {
+		createSubnetEvmConfigWithoutProxyOwner(true, false)
 	})
 
-	ginkgo.It("Create Etna POA Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
-		createEtnaSubnetEvmConfig(true, false)
-		deployEtnaSubnetEtnaFlag()
+	ginkgo.It("Create POA Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
+		createSubnetEvmConfig(true, false)
+		deploySubnetFujiFlag()
 	})
 
-	ginkgo.It("Create Etna POS Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
-		createEtnaSubnetEvmConfig(false, true)
-		deployEtnaSubnetEtnaFlag()
+	ginkgo.It("Create POS Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
+		createSubnetEvmConfig(false, true)
+		deploySubnetFujiFlag()
 	})
 
-	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Public Etna using cluster flag", func() {
-		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
+	ginkgo.It("Start Local Node on Fuji & Deploy the Subnet To Fuji using cluster flag", func() {
+		_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
-		createEtnaSubnetEvmConfig(true, false)
-		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
-		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		createSubnetEvmConfig(true, false)
+		deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
+		_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("Mix and match network and cluster flags test 1", func() {
-		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
+		_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
-		createEtnaSubnetEvmConfig(true, false)
-		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
-		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		createSubnetEvmConfig(true, false)
+		deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
+		_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = initValidatorManagerEtnaFlag(subnetName)
+		_, err = initValidatorManagerFujiFlag(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 	ginkgo.It("Mix and match network and cluster flags test 2", func() {
-		createEtnaSubnetEvmConfig(true, false)
-		deployEtnaSubnetEtnaFlagConvertOnly()
-		_, err := commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		createSubnetEvmConfig(true, false)
+		deploySubnetFujiFlagConvertOnly()
+		_, err := commands.TrackLocalSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())

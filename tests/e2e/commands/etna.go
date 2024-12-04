@@ -24,6 +24,7 @@ const (
 
 const (
 	etnaDevnetFlag = "--etna-devnet"
+	fujiFlag       = "--fuji"
 	PoSString      = "proof-of-stake"
 	PoAString      = "proof-of-authority"
 )
@@ -89,6 +90,32 @@ func CreateLocalEtnaDevnetNode(
 		"start",
 		clusterName,
 		etnaDevnetFlag,
+		"--num-nodes",
+		fmt.Sprintf("%d", numNodes),
+		"--"+constants.SkipUpdateFlag,
+	)
+	fmt.Println(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
+}
+
+func CreateLocalFujiNode(
+	clusterName string,
+	numNodes int,
+) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"local",
+		"start",
+		clusterName,
+		fujiFlag,
 		"--num-nodes",
 		fmt.Sprintf("%d", numNodes),
 		"--"+constants.SkipUpdateFlag,
@@ -171,7 +198,7 @@ func DeployEtnaSubnetToCluster(
 	return string(output), err
 }
 
-func TrackLocalEtnaSubnet(
+func TrackLocalSubnet(
 	clusterName string,
 	subnetName string,
 ) (string, error) {
