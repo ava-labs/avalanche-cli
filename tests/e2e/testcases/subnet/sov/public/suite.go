@@ -52,6 +52,7 @@ func createSubnetEvmConfig(poa, pos bool) {
 	}
 
 	cmd := exec.Command(CLIBinary, cmdArgs...)
+	fmt.Printf("full command %s \n", cmd.String())
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
@@ -230,6 +231,7 @@ func deploySubnetFujiFlag() {
 		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
 	)
+	fmt.Printf("full command %s \n", cmd.String())
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
