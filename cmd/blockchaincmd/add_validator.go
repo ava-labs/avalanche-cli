@@ -225,12 +225,19 @@ func addValidator(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("failed to get local node avalanche go bin path: %w", err)
 		}
-		ux.Logger.PrintToUser("Using Avalanche Go binary path: %s", avalancheGoBinPath)
 
 		nodeName := ""
+		blockchainID := sc.Networks[network.Name()].BlockchainID
+		subnetID := sc.Networks[network.Name()].SubnetID
+
+		ux.Logger.PrintToUser("Using AvalancheGo binary: %s", avalancheGoBinPath)
+		ux.Logger.PrintToUser("Subnet ID: %s", subnetID.String())
 		if nodeName, err = node.UpsizeLocalNode(
 			app,
 			network,
+			blockchainName,
+			blockchainID,
+			subnetID,
 			avalancheGoBinPath,
 			nodeConfig,
 			anrSettings,

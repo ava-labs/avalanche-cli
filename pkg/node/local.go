@@ -3,6 +3,7 @@
 package node
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -101,22 +102,18 @@ func TrackSubnetWithLocalMachine(
 	}
 	publicEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		if app.ChainConfigExists(blockchainName) {
-			inputChainConfigPath := app.GetChainConfigPath(blockchainName)
-			outputChainConfigPath := filepath.Join(rootDir, nodeInfo.Name, "configs", "chains", blockchainID.String(), "config.json")
-			if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-				return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-			}
-			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
-				return err
-			}
-		}
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
-		opts := []client.OpOption{
-			client.WithWhitelistedSubnets(subnetID.String()),
-			client.WithExecPath(avalancheGoBinPath),
-		}
-		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
+		if err := LocalNodeTrackSubnet(
+			ctx,
+			cli,
+			app,
+			rootDir,
+			avalancheGoBinPath,
+			blockchainName,
+			blockchainID,
+			subnetID,
+			nodeInfo.Name,
+		); err != nil {
 			return err
 		}
 		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
@@ -141,6 +138,43 @@ func TrackSubnetWithLocalMachine(
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", clusterName, blockchainName)
+	return nil
+}
+
+func LocalNodeTrackSubnet(
+	ctx context.Context,
+	cli client.Client,
+	app *application.Avalanche,
+	rootDir string,
+	avalancheGoBinPath string,
+	blockchainName string,
+	blockchainID ids.ID,
+	subnetID ids.ID,
+	nodeName string,
+) error {
+	if app.ChainConfigExists(blockchainName) {
+		inputChainConfigPath := app.GetChainConfigPath(blockchainName)
+		outputChainConfigPath := filepath.Join(rootDir, nodeName, "configs", "chains", blockchainID.String(), "config.json")
+		ux.Logger.Info("Creating chain conf directory %s", filepath.Dir(outputChainConfigPath))
+		if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
+			return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
+		}
+		ux.Logger.Info("Copying %s to %s", inputChainConfigPath, outputChainConfigPath)
+		if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
+			return err
+		}
+	}
+
+	opts := []client.OpOption{
+		client.WithWhitelistedSubnets(subnetID.String()),
+		client.WithExecPath(avalancheGoBinPath),
+	}
+	ux.Logger.Info("Using client options: %v", opts)
+	ux.Logger.Info("Restarting node %s", nodeName)
+	if _, err := cli.RestartNode(ctx, nodeName, opts...); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -424,6 +458,9 @@ func StartLocalNode(
 func UpsizeLocalNode(
 	app *application.Avalanche,
 	network models.Network,
+	blockchainName string,
+	blockchainID ids.ID,
+	subnetID ids.ID,
 	avalancheGoBinPath string,
 	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
@@ -484,6 +521,7 @@ func UpsizeLocalNode(
 		client.WithNetworkID(network.ID),
 		client.WithExecPath(avalancheGoBinPath),
 		client.WithRootDataDir(rootDir),
+		client.WithWhitelistedSubnets(subnetID.String()),
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(pluginDir),
 		client.WithFreshStakingIds(true),
@@ -517,23 +555,42 @@ func UpsizeLocalNode(
 	}
 
 	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Adding validator. Wait until healthy...")
+	spinner := spinSession.SpinToUser("Adding validator to existing local node")
+	// add new local node
 	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
-		return "", fmt.Errorf("failed to add local valildator: %w", err)
+		return newNodeName, fmt.Errorf("failed to add local valildator: %w", err)
 	}
-	ux.SpinComplete(spinner)
-	spinSession.Stop()
-
+	ux.Logger.Info("Waiting for node %s to be healthy", newNodeName)
+	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
+	if err != nil {
+		return newNodeName, fmt.Errorf("failed waiting for network to become healthy: %w", err)
+	}
+	/*
+		ux.Logger.Info("Cluster status after adding node %s: %s %s", newNodeName, clusterInfo.NodeNames, clusterInfo.Healthy)
+		ux.SpinComplete(spinner)
+		spinner = spinSession.SpinToUser("Tracking a subnet for new local validator")
+		if err := LocalNodeTrackSubnet(ctx, cli, app, rootDir, avalancheGoBinPath, blockchainName, blockchainID, subnetID, newNodeName); err != nil {
+			ux.SpinFailWithError(spinner, "", err)
+			return newNodeName, fmt.Errorf("failed to track subnet: %w", err)
+		}
+		// wait until cluster is healthy
+		spinner = spinSession.SpinToUser("Waiting for healthy local node")
+		clusterInfo, err = subnet.WaitForHealthy(ctx, cli)
+		if err != nil {
+			return newNodeName, fmt.Errorf("failed waiting for network to become healthy: %w", err)
+		}
+		ux.SpinComplete(spinner)
+		spinSession.Stop()
+	*/
+	if err := TrackSubnetWithLocalMachine(app, clusterName, blockchainName, avalancheGoBinPath); err != nil {
+		return newNodeName, fmt.Errorf("failed to track subnet: %w", err)
+	}
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Node logs directory: %s/%s/logs", rootDir, newNodeName)
 	ux.Logger.PrintToUser("")
 
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return "", err
-	}
-	nodeInfo := status.ClusterInfo.NodeInfos[newNodeName]
+	nodeInfo := clusterInfo.NodeInfos[newNodeName]
 	ux.Logger.PrintToUser("URI: %s", nodeInfo.Uri)
 	ux.Logger.PrintToUser("NodeID: %s", nodeInfo.Id)
 	ux.Logger.PrintToUser("")
