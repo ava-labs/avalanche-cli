@@ -180,7 +180,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 	ginkgo.It("Set Up POA Validator Manager", func() {
 		subnetIDStr, blockchainIDStr, err := createSovereignSubnet()
 		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		keyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, fmt.Sprintf("subnet_%s_airdrop", subnetName)+constants.KeySuffix)
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)

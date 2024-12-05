@@ -5,6 +5,8 @@ package keychain
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -153,7 +155,7 @@ func GetKeychainFromCmdLineFlags(
 			}
 		}
 	case network.Kind == models.Fuji:
-		if useEwoq {
+		if !simulatedPublicNetwork() && useEwoq {
 			return nil, ErrEwoqKeyOnFuji
 		}
 		// prompt the user if no key source was provided
@@ -176,6 +178,10 @@ func GetKeychainFromCmdLineFlags(
 
 	// get keychain accessor
 	return GetKeychain(app, useEwoq, useLedger, ledgerAddresses, keyName, network, requiredFunds)
+}
+
+func simulatedPublicNetwork() bool {
+	return os.Getenv(constants.SimulatePublicNetwork) != ""
 }
 
 func GetKeychain(

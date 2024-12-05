@@ -820,12 +820,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if createSubnet {
 		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
 		if err != nil {
+			fmt.Printf("we have err here %s \n", err)
 			return err
 		}
 		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
 		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
+			fmt.Printf("we have err here 2 %s \n", err)
 			return err
 		}
 	}

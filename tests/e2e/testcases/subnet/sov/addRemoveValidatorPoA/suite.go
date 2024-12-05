@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 	})
 
 	ginkgo.It("Can make cluster track a subnet", func() {
-		output, err := commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		output, err := commands.TrackLocalSubnet(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 		// parse blockchainID from output
