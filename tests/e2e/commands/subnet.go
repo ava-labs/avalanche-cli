@@ -44,6 +44,15 @@ func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, st
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
+func CreateSubnetEvmConfigSOVNew(subnetName string, genesisPath string) (string, string) {
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	// let's use a SubnetEVM version which has a guaranteed compatible avago
+	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
+	return mapping[utils.LatestEVM2AvagoKey], "v1.12.0-fuji"
+}
+
 /* #nosec G204 */
 func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath string, version string) {
 	// Check config does not already exist

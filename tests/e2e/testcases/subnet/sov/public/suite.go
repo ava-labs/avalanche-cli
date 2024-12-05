@@ -360,6 +360,80 @@ func initValidatorManagerFujiFlag(
 }
 
 var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
+	//ginkgo.BeforeEach(func() {
+	//	// key
+	//	_ = utils.DeleteKey(keyName)
+	//	output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
+	//	if err != nil {
+	//		fmt.Println(output)
+	//		utils.PrintStdErr(err)
+	//	}
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	// subnet config
+	//	_ = utils.DeleteConfigs(subnetName)
+	//	destroyLocalNode()
+	//})
+	//
+	//ginkgo.AfterEach(func() {
+	//	destroyLocalNode()
+	//	commands.DeleteSubnetConfig(subnetName)
+	//	err := utils.DeleteKey(keyName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	commands.CleanNetwork()
+	//})
+	//
+	//ginkgo.It("Test Create POA Subnet Config With Key Name for Validator Manager Flag", func() {
+	//	createSubnetEvmConfigValidatorManagerFlagKeyname(true, false)
+	//})
+	//
+	//ginkgo.It("Test Create POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
+	//	createSubnetEvmConfigValidatorManagerFlagPChain(true, false)
+	//})
+	//
+	//ginkgo.It("Test Create POA Subnet Config Without Proxy Owner Flag", func() {
+	//	createSubnetEvmConfigWithoutProxyOwner(true, false)
+	//})
+	//
+	//ginkgo.It("Create POA Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
+	//	createSubnetEvmConfig(true, false)
+	//	deploySubnetFujiFlag()
+	//})
+	//
+	//ginkgo.It("Create POS Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
+	//	createSubnetEvmConfig(false, true)
+	//	deploySubnetFujiFlag()
+	//})
+	//
+	//ginkgo.It("Start Local Node on Fuji & Deploy the Subnet To Fuji using cluster flag", func() {
+	//	_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	createSubnetEvmConfig(true, false)
+	//	deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
+	//	_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//})
+	//
+	//ginkgo.It("Mix and match network and cluster flags test 1", func() {
+	//	_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	createSubnetEvmConfig(true, false)
+	//	deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
+	//	_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	_, err = initValidatorManagerFujiFlag(subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//})
+	//ginkgo.It("Mix and match network and cluster flags test 2", func() {
+	//	createSubnetEvmConfig(true, false)
+	//	deploySubnetFujiFlagConvertOnly()
+	//	_, err := commands.TrackLocalSubnet(testLocalNodeName, subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//})
+
 	ginkgo.BeforeEach(func() {
 		// key
 		_ = utils.DeleteKey(keyName)
@@ -371,96 +445,21 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
 		_ = utils.DeleteConfigs(subnetName)
-		destroyLocalNode()
+		_, avagoVersion := commands.CreateSubnetEvmConfigSOVNew(subnetName, utils.SubnetEvmGenesisPath)
+
+		// local network
+		commands.StartNetworkWithVersion(avagoVersion)
 	})
 
-	ginkgo.AfterEach(func() {
-		destroyLocalNode()
-		commands.DeleteSubnetConfig(subnetName)
-		err := utils.DeleteKey(keyName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CleanNetwork()
-	})
+	//ginkgo.AfterEach(func() {
+	//	commands.DeleteSubnetConfig(subnetName)
+	//	err := utils.DeleteKey(keyName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	commands.CleanNetwork()
+	//})
 
-	ginkgo.It("Test Create POA Subnet Config With Key Name for Validator Manager Flag", func() {
-		createSubnetEvmConfigValidatorManagerFlagKeyname(true, false)
-	})
-
-	ginkgo.It("Test Create POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
-		createSubnetEvmConfigValidatorManagerFlagPChain(true, false)
-	})
-
-	ginkgo.It("Test Create POA Subnet Config Without Proxy Owner Flag", func() {
-		createSubnetEvmConfigWithoutProxyOwner(true, false)
-	})
-
-	ginkgo.It("Create POA Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
-		createSubnetEvmConfig(true, false)
+	ginkgo.It("deploy subnet to fuji sov", func() {
 		deploySubnetFujiFlag()
 	})
-
-	ginkgo.It("Create POS Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
-		createSubnetEvmConfig(false, true)
-		deploySubnetFujiFlag()
-	})
-
-	ginkgo.It("Start Local Node on Fuji & Deploy the Subnet To Fuji using cluster flag", func() {
-		_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
-		gomega.Expect(err).Should(gomega.BeNil())
-		createSubnetEvmConfig(true, false)
-		deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
-		_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
-		gomega.Expect(err).Should(gomega.BeNil())
-	})
-
-	ginkgo.It("Mix and match network and cluster flags test 1", func() {
-		_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
-		gomega.Expect(err).Should(gomega.BeNil())
-		createSubnetEvmConfig(true, false)
-		deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
-		_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = initValidatorManagerFujiFlag(subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-	})
-	ginkgo.It("Mix and match network and cluster flags test 2", func() {
-		createSubnetEvmConfig(true, false)
-		deploySubnetFujiFlagConvertOnly()
-		_, err := commands.TrackLocalSubnet(testLocalNodeName, subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
-		gomega.Expect(err).Should(gomega.BeNil())
-	})
-
-	//var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
-	//	ginkgo.BeforeEach(func() {
-	//		// key
-	//		_ = utils.DeleteKey(keyName)
-	//		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
-	//		if err != nil {
-	//			fmt.Println(output)
-	//			utils.PrintStdErr(err)
-	//		}
-	//		gomega.Expect(err).Should(gomega.BeNil())
-	//		// subnet config
-	//		_ = utils.DeleteConfigs(subnetName)
-	//		_, avagoVersion := commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
-	//
-	//		// local network
-	//		commands.StartNetworkWithVersion(avagoVersion)
-	//	})
-	//
-	//	ginkgo.AfterEach(func() {
-	//		commands.DeleteSubnetConfig(subnetName)
-	//		err := utils.DeleteKey(keyName)
-	//		gomega.Expect(err).Should(gomega.BeNil())
-	//		commands.CleanNetwork()
-	//	})
-	//
-	//	ginkgo.It("deploy subnet to fuji", func() {
-	//		deploySubnetFujiFlag()
-	//	})
 
 })

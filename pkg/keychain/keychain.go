@@ -158,10 +158,8 @@ func GetKeychainFromCmdLineFlags(
 		if !simulatedPublicNetwork() && useEwoq {
 			return nil, ErrEwoqKeyOnFuji
 		}
-		fmt.Printf("keyname %s \n", keyName)
 		// prompt the user if no key source was provided
 		if !useLedger && keyName == "" {
-			fmt.Printf("we here GetKeyOrLedger \n")
 			var err error
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), false)
 			if err != nil {

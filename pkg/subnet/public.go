@@ -390,10 +390,12 @@ func (d *PublicDeployer) DeploySubnet(
 ) (ids.ID, error) {
 	wallet, err := d.loadWallet()
 	if err != nil {
+		fmt.Printf("we have err loadWallet %s \n", err)
 		return ids.Empty, err
 	}
 	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
 	if err != nil {
+		fmt.Printf("we have err createSubnetTx %s \n", err)
 		return ids.Empty, err
 	}
 	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())

@@ -85,12 +85,12 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		commands.StartNetworkWithVersion(avagoVersion)
 	})
 
-	//ginkgo.AfterEach(func() {
-	//	commands.DeleteSubnetConfig(subnetName)
-	//	err := utils.DeleteKey(keyName)
-	//	gomega.Expect(err).Should(gomega.BeNil())
-	//	commands.CleanNetwork()
-	//})
+	ginkgo.AfterEach(func() {
+		commands.DeleteSubnetConfig(subnetName)
+		err := utils.DeleteKey(keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.CleanNetwork()
+	})
 
 	ginkgo.It("deploy subnet to fuji", func() {
 		deploySubnetToFujiNonSOV()
