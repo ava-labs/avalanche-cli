@@ -206,15 +206,15 @@ func addValidator(_ *cobra.Command, args []string) error {
 		for {
 			local := "Use my local machine to spin up an additional validator"
 			existing := "I have an existing Avalanche node (we will require its NodeID and BLS info)"
-			option, err := app.Prompt.CaptureList(
+			if option, err := app.Prompt.CaptureList(
 				"How would you like to set up the new validator",
 				[]string{local, existing},
-			)
-			if err != nil {
+			); err != nil {
 				return err
+			} else {
+				createLocalValidator = option == local
+				break
 			}
-			createLocalValidator = option == local
-			break
 		}
 	}
 
