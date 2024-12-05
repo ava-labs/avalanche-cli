@@ -230,8 +230,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 		blockchainID := sc.Networks[network.Name()].BlockchainID
 		subnetID := sc.Networks[network.Name()].SubnetID
 
-		ux.Logger.PrintToUser("Using AvalancheGo binary: %s", avalancheGoBinPath)
-		ux.Logger.PrintToUser("Subnet ID: %s", subnetID.String())
 		if nodeName, err = node.UpsizeLocalNode(
 			app,
 			network,
@@ -245,14 +243,23 @@ func addValidator(_ *cobra.Command, args []string) error {
 			return err
 		}
 		// get node data
-		nodeEndpoint, err := node.NodeNameToURI(nodeName)
+		nodeInfo, err := node.GetNodeInfo(nodeName)
 		if err != nil {
 			return err
 		}
-		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
+		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeInfo.Uri)
 		if err != nil {
 			return err
 		}
+		// update sidecar with new node
+		if err := node.AddNodeInfoToSidecar(&sc, nodeInfo, network); err != nil {
+			return err
+		}
+		if err := app.UpdateSidecar(&sc); err != nil {
+			return err
+		}
+		// make sure extra validator endpoint added for the new node
+		aggregatorExtraEndpoints = append(aggregatorExtraEndpoints, constants.LocalAPIEndpoint)
 	}
 
 	if nodeIDStr == "" {
@@ -283,6 +290,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
+	ux.Logger.PrintToUser("Using extra aggregator endpoints: %s", aggregatorExtraEndpoints)
 	return CallAddValidator(deployer, network, kc, blockchainName, nodeIDStr, publicKey, pop)
 }
 

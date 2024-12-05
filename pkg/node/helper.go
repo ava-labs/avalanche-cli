@@ -24,7 +24,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/utils/set"
 )
 
 const (
@@ -506,19 +508,31 @@ func GetNextNodeName() (string, error) {
 	}
 }
 
-func NodeNameToURI(nodeName string) (string, error) {
+func AddNodeInfoToSidecar(sc *models.Sidecar, nodeInfo *rpcpb.NodeInfo, network models.Network) error {
+	networkInfo := sc.Networks[network.Name()]
+	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
+	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
+	rpcEndpoints.Add(models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
+	wsEndpoints.Add(models.GetWSEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
+	networkInfo.RPCEndpoints = rpcEndpoints.List()
+	networkInfo.WSEndpoints = wsEndpoints.List()
+	sc.Networks[network.Name()] = networkInfo
+	return nil
+}
+
+func GetNodeInfo(nodeName string) (*rpcpb.NodeInfo, error) {
 	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	nodeInfo := status.ClusterInfo.NodeInfos[nodeName]
-	return nodeInfo.Uri, nil
+	return nodeInfo, nil
 }
 
 func GetNodeData(endpoint string) (

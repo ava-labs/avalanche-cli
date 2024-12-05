@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -29,7 +30,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
@@ -100,7 +100,7 @@ func TrackSubnetWithLocalMachine(
 	if err != nil {
 		return err
 	}
-	publicEndpoints := []string{}
+	networkInfo := sc.Networks[network.Name()]
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
 		if err := LocalNodeTrackSubnet(
@@ -116,24 +116,14 @@ func TrackSubnetWithLocalMachine(
 		); err != nil {
 			return err
 		}
-		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
+		AddNodeInfoToSidecar(&sc, nodeInfo, network)
 	}
-	networkInfo := sc.Networks[network.Name()]
-	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
-	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	for _, publicEndpoint := range publicEndpoints {
-		rpcEndpoints.Add(models.GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(models.GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-	}
-	networkInfo.RPCEndpoints = rpcEndpoints.List()
-	networkInfo.WSEndpoints = wsEndpoints.List()
 	for _, rpcURL := range networkInfo.RPCEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
 		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
 			return err
 		}
 	}
-	sc.Networks[network.Name()] = networkInfo
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err
 	}
@@ -167,6 +157,7 @@ func LocalNodeTrackSubnet(
 
 	opts := []client.OpOption{
 		client.WithWhitelistedSubnets(subnetID.String()),
+		client.WithRootDataDir(rootDir),
 		client.WithExecPath(avalancheGoBinPath),
 	}
 	ux.Logger.Info("Using client options: %v", opts)
@@ -541,7 +532,11 @@ func UpsizeLocalNode(
 		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
 	}
 
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
 	if err != nil {
 		return "", err
 	}
@@ -555,37 +550,43 @@ func UpsizeLocalNode(
 	}
 
 	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Adding validator to existing local node")
+	spinner := spinSession.SpinToUser("Adding validator with name: %s to the existing local node", newNodeName)
 	// add new local node
 	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
 		return newNodeName, fmt.Errorf("failed to add local valildator: %w", err)
 	}
-	ux.Logger.Info("Waiting for node %s to be healthy", newNodeName)
+	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
+	_, err = subnet.WaitForHealthy(ctx, cli)
+	if err != nil {
+		return newNodeName, fmt.Errorf("failed waiting for network to become healthy: %w", err)
+	}
+	ux.SpinComplete(spinner)
+	spinner = spinSession.SpinToUser("Tracking a subnet for new local validator")
+	time.Sleep(10 * time.Second) // delay before restarting new node
+	if err := LocalNodeTrackSubnet(ctx,
+		cli,
+		app,
+		rootDir,
+		avalancheGoBinPath,
+		blockchainName,
+		blockchainID,
+		subnetID,
+		newNodeName); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		return newNodeName, fmt.Errorf("failed to track subnet: %w", err)
+	}
+	// wait until cluster is healthy
+	spinner = spinSession.SpinToUser("Waiting for healthy local node")
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
 		return newNodeName, fmt.Errorf("failed waiting for network to become healthy: %w", err)
 	}
-	/*
-		ux.Logger.Info("Cluster status after adding node %s: %s %s", newNodeName, clusterInfo.NodeNames, clusterInfo.Healthy)
-		ux.SpinComplete(spinner)
-		spinner = spinSession.SpinToUser("Tracking a subnet for new local validator")
-		if err := LocalNodeTrackSubnet(ctx, cli, app, rootDir, avalancheGoBinPath, blockchainName, blockchainID, subnetID, newNodeName); err != nil {
-			ux.SpinFailWithError(spinner, "", err)
-			return newNodeName, fmt.Errorf("failed to track subnet: %w", err)
-		}
-		// wait until cluster is healthy
-		spinner = spinSession.SpinToUser("Waiting for healthy local node")
-		clusterInfo, err = subnet.WaitForHealthy(ctx, cli)
-		if err != nil {
-			return newNodeName, fmt.Errorf("failed waiting for network to become healthy: %w", err)
-		}
-		ux.SpinComplete(spinner)
-		spinSession.Stop()
-	*/
-	if err := TrackSubnetWithLocalMachine(app, clusterName, blockchainName, avalancheGoBinPath); err != nil {
-		return newNodeName, fmt.Errorf("failed to track subnet: %w", err)
-	}
+	ux.SpinComplete(spinner)
+	spinSession.Stop()
+
+	// update sidecar
+
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Node logs directory: %s/%s/logs", rootDir, newNodeName)
 	ux.Logger.PrintToUser("")
