@@ -116,7 +116,9 @@ func TrackSubnetWithLocalMachine(
 		); err != nil {
 			return err
 		}
-		AddNodeInfoToSidecar(&sc, nodeInfo, network)
+		if err := AddNodeInfoToSidecar(&sc, nodeInfo, network); err != nil {
+			return fmt.Errorf("failed to update sidecar with new node info: %w", err)
+		}
 	}
 	for _, rpcURL := range networkInfo.RPCEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
@@ -584,8 +586,6 @@ func UpsizeLocalNode(
 	}
 	ux.SpinComplete(spinner)
 	spinSession.Stop()
-
-	// update sidecar
 
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Node logs directory: %s/%s/logs", rootDir, newNodeName)
