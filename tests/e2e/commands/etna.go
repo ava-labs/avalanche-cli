@@ -239,8 +239,6 @@ func AddEtnaSubnetValidatorToCluster(
 		"blockchain",
 		"addValidator",
 		subnetName,
-		"--cluster",
-		clusterName,
 		"--ewoq",
 		"--balance",
 		strconv.Itoa(balance),
@@ -256,6 +254,9 @@ func AddEtnaSubnetValidatorToCluster(
 		"100s",
 		"--"+constants.SkipUpdateFlag,
 	)
+	if clusterName != "" {
+		cmd.Args = append(cmd.Args, "--cluster", clusterName)
+	}
 	if nodeEndpoint != "" {
 		cmd.Args = append(cmd.Args, "--node-endpoint", nodeEndpoint)
 	}

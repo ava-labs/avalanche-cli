@@ -33,7 +33,7 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 		fmt.Println(output)
 
 		output, err := commands.AddEtnaSubnetValidatorToCluster(
-			testLocalNodeName,
+			"",
 			subnetName,
 			"",
 			ewoqPChainAddress,

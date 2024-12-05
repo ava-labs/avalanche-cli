@@ -162,21 +162,17 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 	}
-	var (
-		err        error
-		nodeConfig map[string]interface{}
-	)
+	nodeConfig := make(map[string]interface{})
 	if nodeConfigPath != "" {
+		var err error
 		nodeConfig, err = utils.ReadJSON(nodeConfigPath)
 		if err != nil {
 			return err
 		}
 	}
-
 	if partialSync {
 		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 	}
-
 	return node.StartLocalNode(
 		app,
 		clusterName,
