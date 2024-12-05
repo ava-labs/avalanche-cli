@@ -171,6 +171,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 	if err := preAddChecks(network, sc.Sovereign); err != nil {
 		return err
+	}
 
 	if sc.Networks[network.Name()].ClusterName != "" {
 		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
