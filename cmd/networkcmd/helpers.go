@@ -282,11 +282,11 @@ func AddNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
 	}
 	wallet, err := primary.MakeWallet(
 		ctx,
-		&primary.WalletConfig{
-			URI:          constants.LocalAPIEndpoint,
-			AVAXKeychain: k.KeyChain(),
-			EthKeychain:  secp256k1fx.NewKeychain(),
-			SubnetIDs:    []ids.ID{subnetID},
+		constants.LocalAPIEndpoint,
+		k.KeyChain(),
+		secp256k1fx.NewKeychain(),
+		primary.WalletConfig{
+			SubnetIDs: []ids.ID{subnetID},
 		},
 	)
 	if err != nil {

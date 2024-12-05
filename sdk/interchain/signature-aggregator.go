@@ -1,4 +1,4 @@
-// Copyright (C) 2024, Ava Labs, Inc. All rights reserved
+// // Copyright (C) 2024, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
 package interchain
 
@@ -54,6 +54,7 @@ func createAppRequestNetwork(
 	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 ) (peers.AppRequestNetwork, error) {
+	_ = allowPrivatePeers
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
 		registerer,
