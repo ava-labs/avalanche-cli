@@ -503,7 +503,7 @@ func CallAddValidator(
 		ux.Logger.PrintToUser("  Weight: %d", weight)
 	}
 	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
-	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
+	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
 
 	return nil
 }
