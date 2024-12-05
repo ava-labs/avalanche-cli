@@ -67,10 +67,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if network.Kind == models.Mainnet && sc.Sovereign {
-		return errNotSupportedOnMainnet
-	}
-
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)

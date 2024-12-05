@@ -195,10 +195,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 	sovereign := sc.Sovereign
 
-	if sovereign && network.Kind == models.Mainnet {
-		return errNotSupportedOnMainnet
-	}
-
 	if sovereign && publicKey == "" && pop == "" {
 		publicKey, pop, err = promptProofOfPossession(true, true)
 		if err != nil {
