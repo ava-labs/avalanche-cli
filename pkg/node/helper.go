@@ -334,6 +334,7 @@ func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoV
 	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
+		"",
 	)
 	if err != nil {
 		return "", err

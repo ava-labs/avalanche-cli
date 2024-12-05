@@ -12,6 +12,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -251,6 +255,12 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if vmType == models.SubnetEvm {
 		if sovereign {
+			// if validatorManagerOwner flag is used, we get the C Chain address of the key used
+			if createFlags.validatorManagerOwner != "" {
+				if err = validateValidatorManagerOwnerFlag(createFlags.validatorManagerOwner); err != nil {
+					return err
+				}
+			}
 			if createFlags.validatorManagerOwner == "" {
 				createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
 				if err != nil {
@@ -262,6 +272,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 			// use the validator manager owner as the transparent proxy contract owner unless specified via cmd flag
 			if createFlags.proxyContractOwner != "" {
+				if err = validateValidatorManagerOwnerFlag(createFlags.proxyContractOwner); err != nil {
+					return err
+				}
 				sc.ProxyContractOwner = createFlags.proxyContractOwner
 			} else {
 				sc.ProxyContractOwner = sc.ValidatorManagerOwner
@@ -507,6 +520,24 @@ func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
 	flags[constants.PrecompileType] = precompilesJoined
 	flags[constants.NumberOfAirdrops] = strconv.Itoa(numAirdropAddresses)
 	metrics.HandleTracking(cmd, constants.MetricsSubnetCreateCommand, app, flags)
+	return nil
+}
+
+func validateValidatorManagerOwnerFlag(input string) error {
+	// check that flag value is not P Chain or X Chain address
+	_, _, _, err := address.Parse(input)
+	if err == nil {
+		return fmt.Errorf("validator manager owner has to be EVM address (in 0x format)")
+	}
+	// if flag value is a key name, we get the C Chain address of the key and set it as the value of
+	// the validator manager address
+	if !common.IsHexAddress(input) {
+		k, err := key.LoadSoft(models.UndefinedNetwork.ID, app.GetKeyPath(input))
+		if err != nil {
+			return err
+		}
+		createFlags.validatorManagerOwner = k.C()
+	}
 	return nil
 }
 

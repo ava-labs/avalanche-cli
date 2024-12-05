@@ -160,8 +160,18 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
-	cmd.Flags().StringVar(&icmSpec.ICMVersion, "teleporter-version", "latest", "teleporter version to deploy")
-	cmd.Flags().StringVar(&icmSpec.RelayerVersion, "relayer-version", "latest", "relayer version to deploy")
+	cmd.Flags().StringVar(
+		&icmSpec.ICMVersion,
+		"teleporter-version",
+		constants.LatestReleaseVersionTag,
+		"teleporter version to deploy",
+	)
+	cmd.Flags().StringVar(
+		&icmSpec.RelayerVersion,
+		"relayer-version",
+		constants.LatestPreReleaseVersionTag,
+		"relayer version to deploy",
+	)
 	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
 	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
 	cmd.Flags().Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
@@ -182,7 +192,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
-	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 1, "number of nodes to be created on local machine")
+	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 
 	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
@@ -616,6 +626,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					network = models.ConvertClusterToNetwork(network)
 				}
 			}
+			if numLocalNodes > 0 {
+				useLocalMachine = true
+			}
 			// ask user if we want to use local machine if cluster is not provided
 			if network.Kind != models.Local && !useLocalMachine && clusterNameFlagValue == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
@@ -625,6 +638,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
+			}
+			// default number of local machine nodes to be 1
+			// we set it here instead of at flag level so that we don't prompt if user wants to use local machine when they set numLocalNodes flag value
+			if useLocalMachine && numLocalNodes == 0 {
+				numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
 			}
 			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
 			if useLocalMachine && clusterNameFlagValue == "" {
@@ -1123,7 +1141,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				Amount:             relayerAmount,
 			}
 			if network.Kind == models.Local || useLocalMachine {
-				deployRelayerFlags.Key = constants.AWMRelayerKeyName
+				deployRelayerFlags.Key = constants.ICMRelayerKeyName
 				deployRelayerFlags.Amount = constants.DefaultRelayerAmount
 				deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
 			}

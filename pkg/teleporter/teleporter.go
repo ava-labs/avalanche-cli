@@ -411,7 +411,7 @@ func DeployAndFundRelayer(
 		return false, "", "", err
 	}
 	// get relayer address
-	relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
 	if err != nil {
 		return false, "", "", err
 	}
@@ -471,7 +471,7 @@ func GetInfo(
 	if err != nil {
 		return nil, err
 	}
-	ti.RelayerAddress, _, err = GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	ti.RelayerAddress, _, err = GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
 	if err != nil {
 		return nil, err
 	}

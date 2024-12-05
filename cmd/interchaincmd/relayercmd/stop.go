@@ -50,11 +50,11 @@ func stop(_ *cobra.Command, _ []string) error {
 	}
 	switch {
 	case network.ClusterName != "":
-		host, err := node.GetAWMRelayerHost(app, network.ClusterName)
+		host, err := node.GetICMRelayerHost(app, network.ClusterName)
 		if err != nil {
 			return err
 		}
-		if err := ssh.RunSSHStopAWMRelayerService(host); err != nil {
+		if err := ssh.RunSSHStopICMRelayerService(host); err != nil {
 			return err
 		}
 		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())

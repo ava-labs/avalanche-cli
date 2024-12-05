@@ -171,6 +171,9 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 	if err := preAddChecks(network, sc.Sovereign); err != nil {
 		return err
+
+	if sc.Networks[network.Name()].ClusterName != "" {
+		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
 	}
 
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
@@ -319,7 +322,11 @@ func CallAddValidator(
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
-	expiry := uint64(time.Now().Add(constants.DefaultValidationIDExpiryDuration).Unix())
+	blockchainTimestamp, err := getBlockchainTimestamp(network)
+	if err != nil {
+		return fmt.Errorf("failed to get blockchain timestamp: %w", err)
+	}
+	expiry := uint64(blockchainTimestamp.Add(constants.DefaultValidationIDExpiryDuration).Unix())
 
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -388,13 +395,13 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
-		balanceAVAX, err := promptValidatorBalance(availableBalance)
+		balance, err = promptValidatorBalance(availableBalance)
 		if err != nil {
 			return err
 		}
-		// convert to nanoAVAX
-		balance = balanceAVAX * units.Avax
 	}
+	// convert to nanoAVAX
+	balance *= units.Avax
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
@@ -667,7 +674,6 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 	defer cancel()
 	platformCli := platformvm.NewClient(network.Endpoint)
 	vs, err := platformCli.GetCurrentValidators(ctx, avagoconstants.PrimaryNetworkID, nil)
-	cancel()
 	if err != nil {
 		return 0, err
 	}
@@ -677,6 +683,13 @@ func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime t
 		}
 	}
 	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
+}
+
+func getBlockchainTimestamp(network models.Network) (time.Time, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	platformCli := platformvm.NewClient(network.Endpoint)
+	return platformCli.GetTimestamp(ctx)
 }
 
 func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {

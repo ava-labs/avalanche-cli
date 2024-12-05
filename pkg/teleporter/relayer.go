@@ -224,11 +224,27 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 
 func GetLatestRelayerReleaseVersion() (string, error) {
 	downloader := application.NewDownloader()
-	return downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+	return downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.ICMServicesRepoName))
+}
+
+func GetLatestRelayerPreReleaseVersion() (string, error) {
+	downloader := application.NewDownloader()
+	return downloader.GetLatestPreReleaseVersion(
+		constants.AvaLabsOrg,
+		constants.ICMServicesRepoName,
+		constants.ICMRelayerKind,
+	)
 }
 
 func InstallRelayer(binDir, version string) (string, error) {
-	if version == "" || version == "latest" {
+	if version == "" || version == constants.LatestPreReleaseVersionTag {
+		var err error
+		version, err = GetLatestRelayerPreReleaseVersion()
+		if err != nil {
+			return "", err
+		}
+	}
+	if version == constants.LatestReleaseVersionTag {
 		var err error
 		version, err = GetLatestRelayerReleaseVersion()
 		if err != nil {
@@ -236,8 +252,15 @@ func InstallRelayer(binDir, version string) (string, error) {
 		}
 	}
 	ux.Logger.PrintToUser("Relayer version %s", version)
+	if version == "" || version == "latest" {
+		var err error
+		version, err = GetLatestRelayerReleaseVersion()
+		if err != nil {
+			return "", err
+		}
+	}
 	versionBinDir := filepath.Join(binDir, version)
-	binPath := filepath.Join(versionBinDir, constants.AWMRelayerBin)
+	binPath := filepath.Join(versionBinDir, constants.ICMRelayerBin)
 	if utils.IsExecutable(binPath) {
 		return binPath, nil
 	}
@@ -308,9 +331,9 @@ func getRelayerURL(version string) (string, error) {
 	version = splittedVersion[1]
 	trimmedVersion := strings.TrimPrefix(version, "v")
 	return fmt.Sprintf(
-		"https://github.com/%s/%s/releases/download/awm-relayer%%2F%s/awm-relayer_%s_%s_%s.tar.gz",
+		"https://github.com/%s/%s/releases/download/icm-relayer%%2F%s/icm-relayer_%s_%s_%s.tar.gz",
 		constants.AvaLabsOrg,
-		constants.AWMRelayerRepoName,
+		constants.ICMServicesRepoName,
 		version,
 		trimmedVersion,
 		goos,

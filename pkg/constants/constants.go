@@ -38,9 +38,6 @@ const (
 	NodeCloudConfigFileName      = "node_cloud_config.json"
 	AnsibleDir                   = "ansible"
 	AnsibleHostInventoryFileName = "hosts"
-	StopAWSNode                  = "stop-aws-node"
-	CreateAWSNode                = "create-aws-node"
-	GetAWSNodeIP                 = "get-aws-node-ip"
 	ClustersConfigFileName       = "cluster_config.json"
 	ClustersConfigVersion        = "1"
 	StakerCertFileName           = "staker.crt"
@@ -68,7 +65,6 @@ const (
 	SSHFileOpsTimeout           = 100 * time.Second
 	SSHPOSTTimeout              = 10 * time.Second
 	SSHSleepBetweenChecks       = 1 * time.Second
-	SSHShell                    = "/bin/bash"
 	AWSVolumeTypeGP3            = "gp3"
 	AWSVolumeTypeIO1            = "io1"
 	AWSVolumeTypeIO2            = "io2"
@@ -84,10 +80,8 @@ const (
 	// TODO: remove after etna release is available
 	FirstEtnaRPCVersion = 38
 
-	PublicAccess       HTTPAccess = true
-	PrivateAccess      HTTPAccess = false
-	FujiAPIEndpoint               = "https://api.avax-test.network"
-	MainnetAPIEndpoint            = "https://api.avax.network"
+	FujiAPIEndpoint    = "https://api.avax-test.network"
+	MainnetAPIEndpoint = "https://api.avax.network"
 
 	// this depends on bootstrap snapshot
 	LocalAPIEndpoint                   = "http://127.0.0.1:9650"
@@ -103,27 +97,16 @@ const (
 
 	DefaultTokenSymbol = "TEST"
 
-	HealthCheckInterval = 100 * time.Millisecond
-
 	// it's unlikely anyone would want to name a snapshot `default`
 	// but let's add some more entropy
 	SnapshotsDirName = "snapshots"
 
 	DefaultSnapshotName = "default-1654102509"
 
-	Cortina17Version = "v1.10.17"
-	Durango11Version = "v1.11.11"
-	Durango12Version = "v1.11.12"
-
-	BootstrapSnapshotRawBranch = "https://github.com/ava-labs/avalanche-cli/raw/main/"
-
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
 	CliInstallationURL         = "https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh"
-	ExpectedCliInstallErr      = "resource temporarily unavailable"
 	EIPLimitErr                = "AddressLimitExceeded"
-	ErrCreatingAWSNode         = "failed to create AWS Node"
-	ErrCreatingGCPNode         = "failed to create GCP Node"
 	ErrReleasingGCPStaticIP    = "failed to release gcp static ip"
 	KeyDir                     = "key"
 	KeySuffix                  = ".pk"
@@ -163,7 +146,6 @@ const (
 	GCPDefaultAuthKeyPath                        = "~/.config/gcloud/application_default_credentials.json"
 	CertSuffix                                   = "-kp.pem"
 	AWSSecurityGroupSuffix                       = "-sg"
-	ExportSubnetSuffix                           = "-export.dat"
 	SSHTCPPort                                   = 22
 	AvalancheGoAPIPort                           = 9650
 	AvalancheGoP2PPort                           = 9651
@@ -171,24 +153,10 @@ const (
 	AvalancheGoLokiPort                          = 23101
 	CloudServerStorageSize                       = 1000
 	MonitoringCloudServerStorageSize             = 50
-	OutboundPort                                 = 0
-	// Set this one to true while testing changes that alter CLI execution on cloud nodes
-	// Disable it for releases to save cluster creation time
-	EnableSetupCLIFromSource           = false
-	SetupCLIFromSourceBranch           = "main"
-	BuildEnvGolangVersion              = "1.22.1"
-	IsHealthyJSONFile                  = "isHealthy.json"
-	IsBootstrappedJSONFile             = "isBootstrapped.json"
-	AvalancheGoVersionJSONFile         = "avalancheGoVersion.json"
-	SubnetSyncJSONFile                 = "isSubnetSynced.json"
-	AnsibleInventoryDir                = "inventories"
-	AnsibleTempInventoryDir            = "temp_inventories"
-	AnsibleStatusDir                   = "status"
-	AnsibleInventoryFlag               = "-i"
-	AnsibleExtraArgsIdentitiesOnlyFlag = "--ssh-extra-args='-o IdentitiesOnly=yes'"
-	AnsibleSSHShellParams              = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
-	AnsibleSSHUseAgentParams           = "-o StrictHostKeyChecking=no"
-	AnsibleExtraVarsFlag               = "--extra-vars"
+	BuildEnvGolangVersion                        = "1.22.1"
+	AnsibleInventoryDir                          = "inventories"
+	AnsibleSSHShellParams                        = "-o IdentitiesOnly=yes -o StrictHostKeyChecking=no"
+	AnsibleSSHUseAgentParams                     = "-o StrictHostKeyChecking=no"
 
 	ConfigAPMCredentialsFileKey   = "credentials-file"
 	ConfigAPMAdminAPIEndpointKey  = "admin-api-endpoint"
@@ -215,7 +183,8 @@ const (
 	SubnetEVMRepoName             = "subnet-evm"
 	CliRepoName                   = "avalanche-cli"
 	TeleporterRepoName            = "teleporter"
-	AWMRelayerRepoName            = "awm-relayer"
+	ICMServicesRepoName           = "icm-services"
+	ICMRelayerKind                = "icm-relayer"
 	SubnetEVMReleaseURL           = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
 	SubnetEVMArchive              = "subnet-evm_%s_linux_amd64.tar.gz"
 	CloudNodeConfigBasePath       = "/home/ubuntu/.avalanchego/"
@@ -235,36 +204,32 @@ const (
 	IPAddressSuffix               = "/32"
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
-	AWMRelayerInstallDir          = "awm-relayer"
+	ICMRelayerInstallDir          = "icm-relayer"
 	TeleporterInstallDir          = "teleporter"
-	AWMRelayerBin                 = "awm-relayer"
+	ICMRelayerBin                 = "icm-relayer"
 	LocalRelayerDir               = "local-relayer"
-	AWMRelayerConfigFilename      = "awm-relayer-config.json"
-	AWMRelayerStorageDir          = "awm-relayer-storage"
-	AWMRelayerLogFilename         = "awm-relayer.log"
-	AWMRelayerRunFilename         = "awm-relayer-process.json"
-	AWMRelayerDockerDir           = "/.awm-relayer"
-
-	AWMRelayerSnapshotConfsDir = "relayer-confs"
+	ICMRelayerConfigFilename      = "icm-relayer-config.json"
+	ICMRelayerStorageDir          = "icm-relayer-storage"
+	ICMRelayerLogFilename         = "icm-relayer.log"
+	ICMRelayerRunFilename         = "icm-relayer-process.json"
+	ICMRelayerDockerDir           = "/.icm-relayer"
 
 	ICMKeyName           = "cli-teleporter-deployer"
-	AWMRelayerKeyName    = "cli-awm-relayer"
+	ICMRelayerKeyName    = "cli-awm-relayer"
 	DefaultRelayerAmount = float64(10)
 
 	// to not interfere with other node services
-	RemoteAWMRelayerMetricsPort = 9091
+	RemoteICMRelayerMetricsPort = 9091
 
 	// enables having many local relayers
-	LocalNetworkLocalAWMRelayerMetricsPort = 9092
-	DevnetLocalAWMRelayerMetricsPort       = 9093
-	EtnaDevnetLocalAWMRelayerMetricsPort   = 9094
-	FujiLocalAWMRelayerMetricsPort         = 9095
+	LocalNetworkLocalICMRelayerMetricsPort = 9092
+	DevnetLocalICMRelayerMetricsPort       = 9093
+	EtnaDevnetLocalICMRelayerMetricsPort   = 9094
+	FujiLocalICMRelayerMetricsPort         = 9095
 
 	DevnetFlagsProposerVMUseCurrentHeight = true
 
 	SubnetEVMBin = "subnet-evm"
-
-	DefaultNodeRunURL = "http://127.0.0.1:9650"
 
 	APMDir                = ".apm"
 	APMLogName            = "apm.log"
@@ -320,10 +285,8 @@ const (
 	NotAvailableLabel         = "Not available"
 	BackendCmd                = "avalanche-cli-backend"
 
-	AvalancheGoVersionUnknown            = "n/a"
-	AvalancheGoCompatibilityVersionAdded = "v1.9.2"
-	AvalancheGoCompatibilityURL          = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
-	SubnetEVMRPCCompatibilityURL         = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
+	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
+	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
 
 	YesLabel = "Yes"
 	NoLabel  = "No"
@@ -334,18 +297,15 @@ const (
 	PluginDir = "plugins"
 	LocalDir  = "local"
 
-	MetricsNetwork               = "network"
-	MultiSig                     = "multi-sig"
-	SkipUpdateFlag               = "skip-update-check"
-	LastFileName                 = ".last_actions.json"
-	APIRole                      = "API"
-	ValidatorRole                = "Validator"
-	MonitorRole                  = "Monitor"
-	AWMRelayerRole               = "Relayer"
-	LoadTestRole                 = "LoadTest"
-	DefaultWalletCreationTimeout = 5 * time.Second
-
-	DefaultConfirmTxTimeout = 20 * time.Second
+	DefaultNumberOfLocalMachineNodes = 1
+	MetricsNetwork                   = "network"
+	SkipUpdateFlag                   = "skip-update-check"
+	LastFileName                     = ".last_actions.json"
+	APIRole                          = "API"
+	ValidatorRole                    = "Validator"
+	MonitorRole                      = "Monitor"
+	ICMRelayerRole                   = "Relayer"
+	LoadTestRole                     = "LoadTest"
 
 	PayTxsFeesMsg = "pay transaction fees"
 
@@ -359,9 +319,6 @@ const (
 	E2EDockerComposeFile    = "/tmp/avalanche-cli-docker-compose.yml"
 	E2EDebugAvalancheGoPath = "E2E_AVALANCHEGO_PATH"
 	GitExtension            = ".git"
-
-	// Docker
-	RemoteDockeSocketPath = "/var/run/docker.sock"
 
 	// Avalanche InterChain Token Transfer
 	ICTTDir     = "avalanche-interchain-token-transfer"
