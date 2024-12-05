@@ -5,11 +5,11 @@ package subnet
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"os"
 	"os/exec"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -226,7 +226,7 @@ func deploySubnetFujiFlag() {
 		subnetName,
 		"--fuji",
 		"--num-local-nodes=1",
-		"--ewoq",
+		"--key=ewoq",
 		"--change-owner-address",
 		ewoqPChainAddress,
 		"--"+constants.SkipUpdateFlag,
@@ -433,4 +433,34 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
+
+	//var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
+	//	ginkgo.BeforeEach(func() {
+	//		// key
+	//		_ = utils.DeleteKey(keyName)
+	//		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
+	//		if err != nil {
+	//			fmt.Println(output)
+	//			utils.PrintStdErr(err)
+	//		}
+	//		gomega.Expect(err).Should(gomega.BeNil())
+	//		// subnet config
+	//		_ = utils.DeleteConfigs(subnetName)
+	//		_, avagoVersion := commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
+	//
+	//		// local network
+	//		commands.StartNetworkWithVersion(avagoVersion)
+	//	})
+	//
+	//	ginkgo.AfterEach(func() {
+	//		commands.DeleteSubnetConfig(subnetName)
+	//		err := utils.DeleteKey(keyName)
+	//		gomega.Expect(err).Should(gomega.BeNil())
+	//		commands.CleanNetwork()
+	//	})
+	//
+	//	ginkgo.It("deploy subnet to fuji", func() {
+	//		deploySubnetFujiFlag()
+	//	})
+
 })

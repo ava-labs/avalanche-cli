@@ -32,7 +32,7 @@ func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string) (string,
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
 	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
-	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
+	return mapping[utils.LatestEVM2AvagoKey], "v1.12.0-fuji"
 }
 
 func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, string) {
@@ -517,6 +517,7 @@ func SimulateFujiDeployNonSOV(
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
+	fmt.Printf("command obtained %s \n", cmd.String())
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))

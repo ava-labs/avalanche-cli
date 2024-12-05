@@ -278,6 +278,7 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 }
 
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
+	fmt.Printf("we here during sov check %s \n", network.Kind)
 	if network.Kind != models.Local &&
 		network.Kind != models.Devnet &&
 		network.Kind != models.EtnaDevnet && !simulatedPublicNetwork() {
@@ -287,9 +288,13 @@ func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string
 		}
 		allocAddressMap := genesis.Alloc
 		for address := range allocAddressMap {
+			fmt.Printf("obtained address string %s \n", address.String())
+			fmt.Printf("obtained address string  2 %s \n", vm.PrefundedEwoqAddress.String())
+			//if !simulatedPublicNetwork() {
 			if address.String() == vm.PrefundedEwoqAddress.String() {
 				return fmt.Errorf("can't airdrop to default address on public networks, please edit the genesis by calling `avalanche subnet create %s --force`", chain)
 			}
+			//}
 		}
 	}
 	return nil
