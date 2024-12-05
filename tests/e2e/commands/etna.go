@@ -232,6 +232,7 @@ func AddEtnaSubnetValidatorToCluster(
 	nodeEndpoint string,
 	ewoqPChainAddress string,
 	balance int,
+	createLocalValidator bool,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -240,8 +241,6 @@ func AddEtnaSubnetValidatorToCluster(
 		subnetName,
 		"--cluster",
 		clusterName,
-		"--node-endpoint",
-		nodeEndpoint,
 		"--ewoq",
 		"--balance",
 		strconv.Itoa(balance),
@@ -257,6 +256,12 @@ func AddEtnaSubnetValidatorToCluster(
 		"100s",
 		"--"+constants.SkipUpdateFlag,
 	)
+	if nodeEndpoint != "" {
+		cmd.Args = append(cmd.Args, "--node-endpoint", nodeEndpoint)
+	}
+	if createLocalValidator {
+		cmd.Args = append(cmd.Args, "--create-local-validator")
+	}
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
