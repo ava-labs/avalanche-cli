@@ -203,11 +203,18 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add a aditional local node
 	if (!sovereign && nodeIDStr == "") || (sovereign && !createLocalValidator && nodeIDStr == "" && publicKey == "" && pop == "") {
-		createLocalValidator, err = prompts.NewPrompter().CaptureNoYes(
-			"Would you like to add a local validator to this Blockchain?",
-		)
-		if err != nil {
-			return err
+		for {
+			local := "Use my local machine to spin up an additional validator"
+			existing := "I have an existing Avalanche node (we will require its NodeID and BLS info)"
+			option, err := app.Prompt.CaptureList(
+				"How would you like to set up the new validator",
+				[]string{local, existing},
+			)
+			if err != nil {
+				return err
+			}
+			createLocalValidator = option == local
+			break
 		}
 	}
 
@@ -215,7 +222,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if createLocalValidator {
 		anrSettings := node.ANRSettings{}
 		nodeConfig := map[string]interface{}{}
-		ux.Logger.PrintToUser("Adding a local validator to blockchain %s", blockchainName)
+		ux.Logger.PrintToUser("Creating a new Avalanche node on local machine to add as a new validator to blockchain %s", blockchainName)
 		if app.AvagoNodeConfigExists(blockchainName) {
 			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
 			if err != nil {
@@ -294,7 +301,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
-	ux.Logger.PrintToUser("Using extra aggregator endpoints: %s", aggregatorExtraEndpoints)
 	return CallAddValidator(deployer, network, kc, blockchainName, nodeIDStr, publicKey, pop)
 }
 

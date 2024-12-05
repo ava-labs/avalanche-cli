@@ -552,19 +552,19 @@ func UpsizeLocalNode(
 	}
 
 	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Adding validator with name: %s to the existing local node", newNodeName)
+	spinner := spinSession.SpinToUser("Creating new node with name %s on local machine", newNodeName)
 	// add new local node
 	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
-		return newNodeName, fmt.Errorf("failed to add local valildator: %w", err)
+		return newNodeName, fmt.Errorf("failed to add local validator: %w", err)
 	}
 	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
 	_, err = subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
-		return newNodeName, fmt.Errorf("failed waiting for network to become healthy: %w", err)
+		return newNodeName, fmt.Errorf("failed waiting for node %s to be healthy: %w", newNodeName, err)
 	}
 	ux.SpinComplete(spinner)
-	spinner = spinSession.SpinToUser("Tracking a subnet for new local validator")
+	spinner = spinSession.SpinToUser("Tracking blockchain %s", blockchainName)
 	time.Sleep(10 * time.Second) // delay before restarting new node
 	if err := LocalNodeTrackSubnet(ctx,
 		cli,
@@ -576,13 +576,13 @@ func UpsizeLocalNode(
 		subnetID,
 		newNodeName); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
-		return newNodeName, fmt.Errorf("failed to track subnet: %w", err)
+		return newNodeName, fmt.Errorf("failed to track blockchain: %w", err)
 	}
 	// wait until cluster is healthy
-	spinner = spinSession.SpinToUser("Waiting for healthy local node")
+	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
-		return newNodeName, fmt.Errorf("failed waiting for network to become healthy: %w", err)
+		return newNodeName, fmt.Errorf("failed waiting for blockchain to become healthy: %w", err)
 	}
 	ux.SpinComplete(spinner)
 	spinSession.Stop()
@@ -592,8 +592,9 @@ func UpsizeLocalNode(
 	ux.Logger.PrintToUser("")
 
 	nodeInfo := clusterInfo.NodeInfos[newNodeName]
+	ux.Logger.PrintToUser("Node name: %s ", newNodeName)
 	ux.Logger.PrintToUser("URI: %s", nodeInfo.Uri)
-	ux.Logger.PrintToUser("NodeID: %s", nodeInfo.Id)
+	ux.Logger.PrintToUser("Node-ID: %s", nodeInfo.Id)
 	ux.Logger.PrintToUser("")
 	return newNodeName, nil
 }
