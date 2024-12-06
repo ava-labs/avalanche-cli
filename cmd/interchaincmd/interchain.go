@@ -3,6 +3,7 @@
 package interchaincmd
 
 import (
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -26,5 +27,7 @@ set and manage interoperability between blockchains.`,
 	cmd.AddCommand(tokentransferrercmd.NewCmd(app))
 	// interchain relayer
 	cmd.AddCommand(relayercmd.NewCmd(app))
+	// interchain messenger
+	cmd.AddCommand(messengercmd.NewCmd(app))
 	return cmd
 }

@@ -19,9 +19,9 @@ import (
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/network/peer"
 
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -1098,7 +1098,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				BlockchainName: blockchainName,
 			}
 			chainSpec.SetEnabled(true, false, false, false, false)
-			deployICMFlags := teleportercmd.DeployFlags{
+			deployICMFlags := messengercmd.DeployFlags{
 				ChainFlags: chainSpec,
 				PrivateKeyFlags: contract.PrivateKeyFlags{
 					KeyName: icmKeyName,
@@ -1114,7 +1114,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				CChainKeyName:                cchainIcmKeyName,
 			}
 			ux.Logger.PrintToUser("")
-			if err := teleportercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
+			if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
 				return err
 			}
 		}

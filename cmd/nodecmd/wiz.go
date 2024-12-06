@@ -17,7 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -388,7 +388,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
 		ux.Logger.PrintToUser("")
-		flags := teleportercmd.DeployFlags{
+		flags := messengercmd.DeployFlags{
 			ChainFlags: contract.ChainSpec{
 				BlockchainName: subnetName,
 			},
@@ -408,7 +408,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			RegistryBydecodePath:         teleporterRegistryBydecodePath,
 			IncludeCChain:                true,
 		}
-		if err := teleportercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
+		if err := messengercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("")
