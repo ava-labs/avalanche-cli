@@ -69,6 +69,7 @@ var (
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 	aggregatorExtraEndpoints            []string
+	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
 )
 
@@ -103,6 +104,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
+	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
@@ -382,6 +384,7 @@ func CallAddValidator(
 		disableOwners,
 		weight,
 		extraAggregatorPeers,
+		aggregatorAllowPrivatePeers,
 		aggregatorLogLevel,
 		pos,
 		delegationFee,
@@ -413,6 +416,7 @@ func CallAddValidator(
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
+		aggregatorAllowPrivatePeers,
 		aggregatorLogLevel,
 	); err != nil {
 		return err

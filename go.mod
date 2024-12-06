@@ -5,9 +5,9 @@ go 1.22.10
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241130135139-a0946c5366be
-	github.com/ava-labs/avalanchego v1.12.0
+	github.com/ava-labs/avalanchego v1.12.1-0.20241203223023-13e07a1b3a1e
 	github.com/ava-labs/coreth v0.13.9-rc.1
-	github.com/ava-labs/icm-services v1.4.1-0.20241204155340-088ac5680293
+	github.com/ava-labs/icm-services v1.4.1-0.20241206142126-a4955545c89c
 	github.com/ava-labs/subnet-evm v0.6.12
 	github.com/aws/aws-sdk-go-v2 v1.32.6
 	github.com/aws/aws-sdk-go-v2/config v1.28.6
@@ -45,7 +45,7 @@ require (
 	golang.org/x/mod v0.22.0
 	golang.org/x/net v0.31.0
 	golang.org/x/oauth2 v0.23.0
-	golang.org/x/sync v0.9.0
+	golang.org/x/sync v0.10.0
 	golang.org/x/text v0.20.0
 	google.golang.org/api v0.184.0
 	google.golang.org/protobuf v1.35.2
@@ -223,7 +223,7 @@ require (
 	gonum.org/v1/gonum v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
-	google.golang.org/grpc v1.68.0 // indirect
+	google.golang.org/grpc v1.68.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
