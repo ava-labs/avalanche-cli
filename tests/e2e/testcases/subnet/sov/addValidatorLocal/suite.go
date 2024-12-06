@@ -37,6 +37,17 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
+
+		output, err = commands.AddEtnaSubnetValidatorToCluster(
+			"",
+			subnetName,
+			"",
+			ewoqPChainAddress,
+			1,
+			true,
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
 	})
 
 	ginkgo.It("Can destroy local node", func() {
