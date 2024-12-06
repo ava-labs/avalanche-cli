@@ -257,7 +257,7 @@ func AddEtnaSubnetValidatorToCluster(
 	if clusterName != "" {
 		cmd.Args = append(cmd.Args, "--cluster", clusterName)
 	} else {
-		cmd.Args = append(cmd.Args, "--etna-devnet")
+		cmd.Args = append(cmd.Args, "--local")
 	}
 	if nodeEndpoint != "" {
 		cmd.Args = append(cmd.Args, "--node-endpoint", nodeEndpoint)
