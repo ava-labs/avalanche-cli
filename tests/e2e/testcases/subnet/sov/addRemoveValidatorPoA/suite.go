@@ -91,6 +91,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			"http://127.0.0.1:9660",
 			ewoqPChainAddress,
 			1,
+			100,
 			false, // use existing avago running
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -104,6 +105,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			"http://127.0.0.1:9662",
 			ewoqPChainAddress,
 			1,
+			100,
 			false, // use existing avago running
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
