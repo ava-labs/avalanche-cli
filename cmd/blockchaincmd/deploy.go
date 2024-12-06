@@ -1128,7 +1128,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				icmSpec.SkipRelayerDeploy = !yes
 			}
 		}
-		if !icmSpec.SkipRelayerDeploy && network.Kind != models.Fuji {
+		if !icmSpec.SkipRelayerDeploy && (network.Kind != models.Fuji && network.Kind != models.Mainnet) {
 			deployRelayerFlags := relayercmd.DeployFlags{
 				Version:            icmSpec.RelayerVersion,
 				BinPath:            icmSpec.RelayerBinPath,
