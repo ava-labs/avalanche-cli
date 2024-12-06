@@ -3,6 +3,7 @@
 package node
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -28,7 +30,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
@@ -99,48 +100,76 @@ func TrackSubnetWithLocalMachine(
 	if err != nil {
 		return err
 	}
-	publicEndpoints := []string{}
+	networkInfo := sc.Networks[network.Name()]
+	rpcEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		if app.ChainConfigExists(blockchainName) {
-			inputChainConfigPath := app.GetChainConfigPath(blockchainName)
-			outputChainConfigPath := filepath.Join(rootDir, nodeInfo.Name, "configs", "chains", blockchainID.String(), "config.json")
-			if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-				return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-			}
-			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
-				return err
-			}
-		}
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
-		opts := []client.OpOption{
-			client.WithWhitelistedSubnets(subnetID.String()),
-			client.WithExecPath(avalancheGoBinPath),
-		}
-		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
+		if err := LocalNodeTrackSubnet(
+			ctx,
+			cli,
+			app,
+			rootDir,
+			avalancheGoBinPath,
+			blockchainName,
+			blockchainID,
+			subnetID,
+			nodeInfo.Name,
+		); err != nil {
 			return err
 		}
-		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
+		if err := AddNodeInfoToSidecar(&sc, nodeInfo, network); err != nil {
+			return fmt.Errorf("failed to update sidecar with new node info: %w", err)
+		}
+		rpcEndpoints = append(rpcEndpoints, models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
 	}
-	networkInfo := sc.Networks[network.Name()]
-	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
-	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	for _, publicEndpoint := range publicEndpoints {
-		rpcEndpoints.Add(models.GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(models.GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-	}
-	networkInfo.RPCEndpoints = rpcEndpoints.List()
-	networkInfo.WSEndpoints = wsEndpoints.List()
-	for _, rpcURL := range networkInfo.RPCEndpoints {
+	for _, rpcURL := range rpcEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
 		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
 			return err
 		}
 	}
-	sc.Networks[network.Name()] = networkInfo
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", clusterName, blockchainName)
+	return nil
+}
+
+func LocalNodeTrackSubnet(
+	ctx context.Context,
+	cli client.Client,
+	app *application.Avalanche,
+	rootDir string,
+	avalancheGoBinPath string,
+	blockchainName string,
+	blockchainID ids.ID,
+	subnetID ids.ID,
+	nodeName string,
+) error {
+	if app.ChainConfigExists(blockchainName) {
+		inputChainConfigPath := app.GetChainConfigPath(blockchainName)
+		outputChainConfigPath := filepath.Join(rootDir, nodeName, "configs", "chains", blockchainID.String(), "config.json")
+		ux.Logger.Info("Creating chain conf directory %s", filepath.Dir(outputChainConfigPath))
+		if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
+			return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
+		}
+		ux.Logger.Info("Copying %s to %s", inputChainConfigPath, outputChainConfigPath)
+		if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
+			return err
+		}
+	}
+
+	opts := []client.OpOption{
+		client.WithWhitelistedSubnets(subnetID.String()),
+		client.WithRootDataDir(rootDir),
+		client.WithExecPath(avalancheGoBinPath),
+	}
+	ux.Logger.Info("Using client options: %v", opts)
+	ux.Logger.Info("Restarting node %s", nodeName)
+	if _, err := cli.RestartNode(ctx, nodeName, opts...); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -159,7 +188,6 @@ func StartLocalNode(
 	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
-	partialSync bool,
 	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
@@ -248,9 +276,6 @@ func StartLocalNode(
 
 	if nodeConfig == nil {
 		nodeConfig = map[string]interface{}{}
-	}
-	if partialSync {
-		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
 
@@ -422,6 +447,158 @@ func StartLocalNode(
 	}
 
 	return nil
+}
+
+// add additional validator to local node
+func UpsizeLocalNode(
+	app *application.Avalanche,
+	network models.Network,
+	blockchainName string,
+	blockchainID ids.ID,
+	subnetID ids.ID,
+	avalancheGoBinPath string,
+	nodeConfig map[string]interface{},
+	anrSettings ANRSettings,
+) (
+	string, // added nodeName
+	error,
+) {
+	clusterName, err := GetRunnningLocalNodeClusterName(app)
+	if err != nil {
+		return "", err
+	}
+	rootDir := app.GetLocalDir(clusterName)
+	pluginDir := filepath.Join(rootDir, "node1", "plugins")
+
+	if nodeConfig == nil {
+		nodeConfig = map[string]interface{}{}
+	}
+	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
+	nodeConfigBytes, err := json.Marshal(nodeConfig)
+	if err != nil {
+		return "", err
+	}
+	nodeConfigStr := string(nodeConfigBytes)
+
+	// we will remove this code soon, so it can be not DRY
+	if network.Kind == models.EtnaDevnet {
+		anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
+		anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
+		// prepare genesis and upgrade files for anr
+		genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
+		if err != nil {
+			return "", fmt.Errorf("could not create save Etna Devnet genesis file: %w", err)
+		}
+		if _, err := genesisFile.Write(constants.EtnaDevnetGenesisData); err != nil {
+			return "", fmt.Errorf("could not write Etna Devnet genesis data: %w", err)
+		}
+		if err := genesisFile.Close(); err != nil {
+			return "", fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
+		}
+		anrSettings.GenesisPath = genesisFile.Name()
+		defer os.Remove(anrSettings.GenesisPath)
+
+		upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
+		if err != nil {
+			return "", fmt.Errorf("could not create save Etna Devnet upgrade file: %w", err)
+		}
+		if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
+			return "", fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
+		}
+		anrSettings.UpgradePath = upgradeFile.Name()
+		if err := upgradeFile.Close(); err != nil {
+			return "", fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
+		}
+		defer os.Remove(anrSettings.UpgradePath)
+	}
+	// end of code to be removed
+	anrOpts := []client.OpOption{
+		client.WithNetworkID(network.ID),
+		client.WithExecPath(avalancheGoBinPath),
+		client.WithRootDataDir(rootDir),
+		client.WithWhitelistedSubnets(subnetID.String()),
+		client.WithReassignPortsIfUsed(true),
+		client.WithPluginDir(pluginDir),
+		client.WithFreshStakingIds(true),
+		client.WithZeroIP(false),
+		client.WithGlobalNodeConfig(nodeConfigStr),
+	}
+	if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
+		anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
+	}
+	if anrSettings.UpgradePath != "" && utils.FileExists(anrSettings.UpgradePath) {
+		anrOpts = append(anrOpts, client.WithUpgradePath(anrSettings.UpgradePath))
+	}
+	if anrSettings.BootstrapIDs != nil {
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(anrSettings.BootstrapIDs))
+	}
+	if anrSettings.BootstrapIPs != nil {
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
+	}
+
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := network.BootstrappingContext()
+	defer cancel()
+
+	newNodeName, err := GetNextNodeName()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate a new node name: %w", err)
+	}
+
+	spinSession := ux.NewUserSpinner()
+	spinner := spinSession.SpinToUser("Creating new node with name %s on local machine", newNodeName)
+	// add new local node
+	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		return newNodeName, fmt.Errorf("failed to add local validator: %w", err)
+	}
+	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
+	_, err = subnet.WaitForHealthy(ctx, cli)
+	if err != nil {
+		return newNodeName, fmt.Errorf("failed waiting for node %s to be healthy: %w", newNodeName, err)
+	}
+	ux.SpinComplete(spinner)
+	spinner = spinSession.SpinToUser("Tracking blockchain %s", blockchainName)
+	time.Sleep(10 * time.Second) // delay before restarting new node
+	if err := LocalNodeTrackSubnet(ctx,
+		cli,
+		app,
+		rootDir,
+		avalancheGoBinPath,
+		blockchainName,
+		blockchainID,
+		subnetID,
+		newNodeName); err != nil {
+		ux.SpinFailWithError(spinner, "", err)
+		return newNodeName, fmt.Errorf("failed to track blockchain: %w", err)
+	}
+	// wait until cluster is healthy
+	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
+	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
+	if err != nil {
+		return newNodeName, fmt.Errorf("failed waiting for blockchain to become healthy: %w", err)
+	}
+	ux.SpinComplete(spinner)
+	spinSession.Stop()
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Node logs directory: %s/%s/logs", rootDir, newNodeName)
+	ux.Logger.PrintToUser("")
+
+	nodeInfo := clusterInfo.NodeInfos[newNodeName]
+	ux.Logger.PrintToUser("Node name: %s ", newNodeName)
+	ux.Logger.PrintToUser("URI: %s", nodeInfo.Uri)
+	ux.Logger.PrintToUser("Node-ID: %s", nodeInfo.Id)
+	ux.Logger.PrintToUser("")
+	return newNodeName, nil
 }
 
 func localClusterDataExists(app *application.Avalanche, clusterName string) bool {

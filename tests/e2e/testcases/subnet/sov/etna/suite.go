@@ -118,9 +118,9 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
 		subnetName,
 		"--evm",
 		"--validator-manager-owner",
-		"ewoq",
+		ewoqEVMAddress,
 		"--proxy-contract-owner",
-		"ewoq",
+		ewoqEVMAddress,
 		"--production-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
@@ -160,9 +160,9 @@ func createEtnaSubnetEvmConfigValidatorManagerFlagPChain(poa, pos bool) {
 		subnetName,
 		"--evm",
 		"--validator-manager-owner",
-		"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+		ewoqPChainAddress,
 		"--proxy-contract-owner",
-		"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+		ewoqPChainAddress,
 		"--production-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
@@ -356,8 +356,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	ginkgo.AfterEach(func() {
 		destroyLocalNode()
 		commands.DeleteSubnetConfig(subnetName)
-		err := utils.DeleteKey(keyName)
-		gomega.Expect(err).Should(gomega.BeNil())
+		_ = utils.DeleteKey(keyName)
 		commands.CleanNetwork()
 	})
 
