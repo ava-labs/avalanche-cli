@@ -24,9 +24,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	apiConfig "github.com/ava-labs/awm-relayer/config"
-	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
-	"github.com/ava-labs/awm-relayer/relayer/config"
+	apiConfig "github.com/ava-labs/icm-services/config"
+	offchainregistry "github.com/ava-labs/icm-services/messages/off-chain-registry"
+	"github.com/ava-labs/icm-services/relayer/config"
 )
 
 const (

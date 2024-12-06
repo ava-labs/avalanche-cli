@@ -328,7 +328,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			// get awm-relayer latest version
+			// get icm-relayer latest version
 			relayerVersion, err := teleporter.GetLatestRelayerReleaseVersion()
 			if err != nil {
 				return err
