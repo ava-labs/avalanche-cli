@@ -93,12 +93,26 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 			"http://127.0.0.1:9660",
 			ewoqPChainAddress,
 			1,
+			false, // use existing
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 	})
 
-	ginkgo.It("Can get status of the cluster", func() {
+	ginkgo.It("Can add second validator", func() {
+		output, err := commands.AddEtnaSubnetValidatorToCluster(
+			testLocalNodeName,
+			subnetName,
+			"http://127.0.0.1:9662",
+			ewoqPChainAddress,
+			1,
+			false, // use existing
+		)
+		gomega.Expect(err).Should(gomega.BeNil())
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can get status of thecluster", func() {
 		output, err := commands.GetLocalClusterStatus(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
