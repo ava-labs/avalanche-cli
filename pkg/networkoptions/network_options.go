@@ -27,7 +27,6 @@ const (
 	Mainnet
 	Fuji
 	Local
-	EtnaDevnet
 	Devnet
 	Cluster
 )
@@ -40,8 +39,6 @@ func (n NetworkOption) String() string {
 		return "Fuji Testnet"
 	case Local:
 		return "Local Network"
-	case EtnaDevnet:
-		return "Etna Devnet"
 	case Devnet:
 		return "Devnet"
 	case Cluster:
@@ -58,8 +55,6 @@ func NetworkOptionFromString(s string) NetworkOption {
 		return Fuji
 	case s == "Local Network":
 		return Local
-	case s == "Etna Devnet":
-		return EtnaDevnet
 	case s == "Devnet" || strings.Contains(s, "Devnet"):
 		return Devnet
 	case s == "Cluster" || strings.Contains(s, "Cluster"):
@@ -70,13 +65,12 @@ func NetworkOptionFromString(s string) NetworkOption {
 }
 
 type NetworkFlags struct {
-	UseLocal      bool
-	UseEtnaDevnet bool
-	UseDevnet     bool
-	UseFuji       bool
-	UseMainnet    bool
-	Endpoint      string
-	ClusterName   string
+	UseLocal    bool
+	UseDevnet   bool
+	UseFuji     bool
+	UseMainnet  bool
+	Endpoint    string
+	ClusterName string
 }
 
 func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEndpoint bool, supportedNetworkOptions []NetworkOption) {
@@ -85,8 +79,6 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 		switch networkOption {
 		case Local:
 			cmd.Flags().BoolVarP(&networkFlags.UseLocal, "local", "l", false, "operate on a local network")
-		case EtnaDevnet:
-			cmd.Flags().BoolVarP(&networkFlags.UseEtnaDevnet, "etna-devnet", "", false, "operate on an etna devnet network")
 		case Devnet:
 			cmd.Flags().BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
 			addEndpoint = true
@@ -221,12 +213,11 @@ func GetNetworkFromCmdLineFlags(
 	}
 	// supported flags
 	networkFlagsMap := map[NetworkOption]string{
-		Local:      "--local",
-		EtnaDevnet: "--etna-devnet",
-		Devnet:     "--devnet",
-		Fuji:       "--fuji/--testnet",
-		Mainnet:    "--mainnet",
-		Cluster:    "--cluster",
+		Local:   "--local",
+		Devnet:  "--devnet",
+		Fuji:    "--fuji/--testnet",
+		Mainnet: "--mainnet",
+		Cluster: "--cluster",
 	}
 	supportedNetworksFlags := strings.Join(utils.Map(supportedNetworkOptions, func(n NetworkOption) string { return networkFlagsMap[n] }), ", ")
 	// received option
@@ -234,8 +225,6 @@ func GetNetworkFromCmdLineFlags(
 	switch {
 	case networkFlags.UseLocal:
 		networkOption = Local
-	case networkFlags.UseEtnaDevnet:
-		networkOption = EtnaDevnet
 	case networkFlags.UseDevnet:
 		networkOption = Devnet
 	case networkFlags.UseFuji:
@@ -275,7 +264,7 @@ func GetNetworkFromCmdLineFlags(
 		return models.UndefinedNetwork, errMsg
 	}
 	// mutual exclusion
-	if !flags.EnsureMutuallyExclusive([]bool{networkFlags.UseLocal, networkFlags.UseEtnaDevnet, networkFlags.UseDevnet, networkFlags.UseFuji, networkFlags.UseMainnet, networkFlags.ClusterName != ""}) {
+	if !flags.EnsureMutuallyExclusive([]bool{networkFlags.UseLocal, networkFlags.UseDevnet, networkFlags.UseFuji, networkFlags.UseMainnet, networkFlags.ClusterName != ""}) {
 		return models.UndefinedNetwork, fmt.Errorf("network flags %s are mutually exclusive", supportedNetworksFlags)
 	}
 
@@ -363,8 +352,6 @@ func GetNetworkFromCmdLineFlags(
 	switch networkOption {
 	case Local:
 		network = models.NewLocalNetwork()
-	case EtnaDevnet:
-		network = models.NewEtnaDevnetNetwork()
 	case Devnet:
 		networkID := uint32(0)
 		if networkFlags.Endpoint != "" {
@@ -376,11 +363,7 @@ func GetNetworkFromCmdLineFlags(
 				return models.UndefinedNetwork, err
 			}
 		}
-		if networkFlags.Endpoint == constants.EtnaDevnetEndpoint {
-			network = models.NewEtnaDevnetNetwork()
-		} else {
-			network = models.NewDevnetNetwork(networkFlags.Endpoint, networkID)
-		}
+		network = models.NewDevnetNetwork(networkFlags.Endpoint, networkID)
 	case Fuji:
 		network = models.NewFujiNetwork()
 	case Mainnet:

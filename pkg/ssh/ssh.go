@@ -576,7 +576,7 @@ func RunSSHRenderAvalancheNodeConfig(
 		if upgradeFileExists(host) {
 			avagoConf.UpgradePath = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
 		}
-		if network.Kind == models.Local || network.Kind == models.Devnet || network.Kind == models.EtnaDevnet || isAPIHost {
+		if network.Kind == models.Local || network.Kind == models.Devnet || isAPIHost {
 			avagoConf.HTTPHost = "0.0.0.0"
 		}
 		remoteAvagoConf, err := getAvalancheGoConfigData(host)

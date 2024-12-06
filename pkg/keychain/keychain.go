@@ -134,15 +134,6 @@ func GetKeychainFromCmdLineFlags(
 				return nil, err
 			}
 		}
-	case network.Kind == models.EtnaDevnet:
-		// prompt the user if no key source was provided
-		if !useEwoq && !useLedger && keyName == "" {
-			var err error
-			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, keychainGoal, app.GetKeyDir(), true)
-			if err != nil {
-				return nil, err
-			}
-		}
 	case network.Kind == models.Devnet:
 		// prompt the user if no key source was provided
 		if !useEwoq && !useLedger && keyName == "" {

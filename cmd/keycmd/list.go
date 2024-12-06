@@ -44,7 +44,6 @@ var (
 		networkoptions.Mainnet,
 		networkoptions.Fuji,
 		networkoptions.Local,
-		networkoptions.EtnaDevnet,
 		networkoptions.Devnet,
 	}
 	all             bool

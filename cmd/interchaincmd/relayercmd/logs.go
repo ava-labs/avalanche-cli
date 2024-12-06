@@ -26,7 +26,6 @@ import (
 var (
 	logsNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	raw   bool

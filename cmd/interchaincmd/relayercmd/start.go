@@ -22,7 +22,6 @@ var (
 	startNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Cluster,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	globalNetworkFlags networkoptions.NetworkFlags

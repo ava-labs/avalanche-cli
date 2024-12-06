@@ -33,7 +33,6 @@ var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Devnet,
 	networkoptions.Fuji,
 	networkoptions.Mainnet,
-	networkoptions.EtnaDevnet,
 }
 
 // avalanche blockchain removeValidator
