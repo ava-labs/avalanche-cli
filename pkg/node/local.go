@@ -101,7 +101,7 @@ func TrackSubnetWithLocalMachine(
 		return err
 	}
 	networkInfo := sc.Networks[network.Name()]
-	RPCEndpoints := []string{}
+	rpcEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
 		if err := LocalNodeTrackSubnet(
@@ -120,9 +120,9 @@ func TrackSubnetWithLocalMachine(
 		if err := AddNodeInfoToSidecar(&sc, nodeInfo, network); err != nil {
 			return fmt.Errorf("failed to update sidecar with new node info: %w", err)
 		}
-		RPCEndpoints = append(RPCEndpoints, models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
+		rpcEndpoints = append(rpcEndpoints, models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
 	}
-	for _, rpcURL := range RPCEndpoints {
+	for _, rpcURL := range rpcEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
 		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
 			return err
