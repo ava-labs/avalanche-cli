@@ -89,8 +89,8 @@ github.com/ava-labs/avalanchego v1.12.1-0.20241203223023-13e07a1b3a1e h1:pJJYryE
 github.com/ava-labs/avalanchego v1.12.1-0.20241203223023-13e07a1b3a1e/go.mod h1:yhD5dpZyStIVbxQ550EDi5w5SL7DQ/xGE6TIxosb7U0=
 github.com/ava-labs/coreth v0.13.9-rc.1 h1:qIICpC/OZGYUP37QnLgIqqwGmxnLwLpZaUlqJNI85vU=
 github.com/ava-labs/coreth v0.13.9-rc.1/go.mod h1:7aMsRIo/3GBE44qWZMjnfqdqfcfZ5yShTTm2LObLaYo=
-github.com/ava-labs/icm-services v1.4.1-0.20241206142126-a4955545c89c h1:nUJKqlJLKSVLWiG8jCs2gSAKPZwMIjZgpoquzAHppx8=
-github.com/ava-labs/icm-services v1.4.1-0.20241206142126-a4955545c89c/go.mod h1:insjVlfHLuCnEA2ZFbclnGAanO9EeXkryQO04WBSgE8=
+github.com/ava-labs/icm-services v1.4.1-0.20241206150258-be351e56eea0 h1:tmR+oBO0ODzFDIkur/6tcruo+nLFu6dxXKYvB2XTqIA=
+github.com/ava-labs/icm-services v1.4.1-0.20241206150258-be351e56eea0/go.mod h1:insjVlfHLuCnEA2ZFbclnGAanO9EeXkryQO04WBSgE8=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20241009183145-e6f90a8a1a60 h1:EL66gtXOAwR/4KYBjOV03LTWgkEXvLePribLlJNu4g0=
 github.com/ava-labs/ledger-avalanche/go v0.0.0-20241009183145-e6f90a8a1a60/go.mod h1:/7qKobTfbzBu7eSTVaXMTr56yTYk4j2Px6/8G+idxHo=
 github.com/ava-labs/subnet-evm v0.6.12 h1:jL3FmjdFcNfS0qwbehwN6DkAg9y7zexB1riiGBxRsM0=
