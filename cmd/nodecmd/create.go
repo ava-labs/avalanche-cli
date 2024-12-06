@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet, networkoptions.EtnaDevnet}
+	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Fuji, networkoptions.Devnet, networkoptions.EtnaDevnet}
 	globalNetworkFlags                    networkoptions.NetworkFlags
 	useAWS                                bool
 	useGCP                                bool
