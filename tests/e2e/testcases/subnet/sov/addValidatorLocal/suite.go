@@ -32,13 +32,8 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 		output := commands.DeploySubnetLocallySOV(subnetName)
 		fmt.Println(output)
 
-		output, err := commands.AddEtnaSubnetValidatorToCluster(
-			"",
+		output, err := commands.DeployEtnaLocalBlockchain(
 			subnetName,
-			"",
-			ewoqPChainAddress,
-			1,
-			true, // add another avago
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
