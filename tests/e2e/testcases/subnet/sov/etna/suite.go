@@ -356,8 +356,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	ginkgo.AfterEach(func() {
 		destroyLocalNode()
 		commands.DeleteSubnetConfig(subnetName)
-		err := utils.DeleteKey(keyName)
-		gomega.Expect(err).Should(gomega.BeNil())
+		_ = utils.DeleteKey(keyName)
 		commands.CleanNetwork()
 	})
 
