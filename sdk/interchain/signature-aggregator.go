@@ -54,7 +54,6 @@ func createAppRequestNetwork(
 	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 ) (peers.AppRequestNetwork, error) {
-	_ = allowPrivatePeers
 	peerNetwork, err := peers.NewNetwork(
 		logLevel,
 		registerer,
@@ -68,6 +67,7 @@ func createAppRequestNetwork(
 				BaseURL: network.Endpoint,
 			},
 		},
+		allowPrivatePeers,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer network: %w", err)
