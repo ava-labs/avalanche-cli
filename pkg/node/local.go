@@ -348,12 +348,42 @@ func StartLocalNode(
 		if network.Kind == models.Local {
 			anrSettings.BootstrapIDs = constants.LocalNetworkBootstrapNodeIDs
 			anrSettings.BootstrapIPs = constants.LocalNetworkBootstrapIPs
+
+			cliLocal, err := binutils.NewGRPCClientWithEndpoint(
+				binutils.LocalNetworkGRPCServerEndpoint,
+				binutils.WithAvoidRPCVersionCheck(true),
+				binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+			)
+			if err != nil {
+				return err
+			}
+			ctx2, cancel2 := utils.GetANRContext()
+			defer cancel2()
+
+			status, err := cliLocal.Status(ctx2)
+			if err != nil {
+				fmt.Printf("we have err here %s \n", err)
+				return err
+			}
+			fmt.Printf("status ANR %s \n", status.String())
+			fmt.Printf("status ANR clusterinfo %s \n", status.GetClusterInfo().GetRootDataDir())
+
+			fmt.Printf("obtained genesis path %s \n", filepath.Join(status.GetClusterInfo().GetRootDataDir(), "node1", "configs", "genesis.json"))
+			genesisBytes, err := os.ReadFile(filepath.Join(status.GetClusterInfo().GetRootDataDir(), "node1", "configs", "genesis.json"))
+			if err != nil {
+				return err
+			}
+
 			// prepare genesis and upgrade files for anr
 			genesisFile, err := os.CreateTemp("", "local_network_genesis")
 			if err != nil {
 				return fmt.Errorf("could not create save Local Network genesis file: %w", err)
 			}
-			if _, err := genesisFile.Write(constants.LocalNetworkGenesisData); err != nil {
+			//if _, err := genesisFile.Write(constants.LocalNetworkGenesisData); err != nil {
+			//	return fmt.Errorf("could not write Local Network genesis data: %w", err)
+			//}
+			fmt.Printf("genesis %s \n", string(genesisBytes))
+			if _, err := genesisFile.Write(genesisBytes); err != nil {
 				return fmt.Errorf("could not write Local Network genesis data: %w", err)
 			}
 			fmt.Printf("we are here at local pkg %s \n", string(constants.LocalNetworkGenesisData))
