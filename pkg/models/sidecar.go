@@ -33,6 +33,7 @@ type Sidecar struct {
 	Networks            map[string]NetworkData
 	ImportedFromAPM     bool
 	ImportedVMID        string
+	CustomVMBinaryPath  string
 	CustomVMRepoURL     string
 	CustomVMBranch      string
 	CustomVMBuildScript string

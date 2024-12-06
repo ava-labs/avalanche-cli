@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,6 +39,7 @@ const (
 
 type CreateFlags struct {
 	useSubnetEvm                  bool
+	useHyperVM                    bool
 	useCustomVM                   bool
 	chainID                       uint64
 	tokenSymbol                   string
@@ -59,11 +61,12 @@ type CreateFlags struct {
 }
 
 var (
-	createFlags CreateFlags
-	forceCreate bool
-	genesisPath string
-	vmFile      string
-	useRepo     bool
+	createFlags             CreateFlags
+	createGenesisFromBinary bool
+	forceCreate             bool
+	genesisPath             string
+	vmFile                  string
+	useRepo                 bool
 
 	errEmptyBlockchainName                        = errors.New("invalid empty name")
 	errIllegalNameCharacter                       = errors.New("illegal name character: only letters, no special characters allowed")
@@ -95,6 +98,7 @@ configuration, pass the -f flag.`,
 	}
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "file path of genesis to use")
 	cmd.Flags().BoolVar(&createFlags.useSubnetEvm, "evm", false, "use the Subnet-EVM as the base template")
+	cmd.Flags().BoolVar(&createFlags.useHyperVM, "hypervm", false, "use a HyperVM as the template")
 	cmd.Flags().BoolVar(&createFlags.useCustomVM, "custom", false, "use a custom VM template")
 	cmd.Flags().StringVar(&createFlags.vmVersion, "vm-version", "", "version of Subnet-EVM template to use")
 	cmd.Flags().BoolVar(&createFlags.useLatestPreReleasedVMVersion, preRelease, false, "use latest Subnet-EVM pre-released version, takes precedence over --vm-version")
@@ -202,7 +206,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// vm type exclusiveness
-	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVM}) {
+	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useHyperVM, createFlags.useCustomVM}) {
 		return errors.New("flags --evm,--custom are mutually exclusive")
 	}
 
@@ -221,7 +225,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// get vm kind
-	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useCustomVM)
+	vmType, err := vm.PromptVMType(app, createFlags.useSubnetEvm, createFlags.useHyperVM, createFlags.useCustomVM)
 	if err != nil {
 		return err
 	}
@@ -253,7 +257,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if vmType == models.SubnetEvm {
+	switch vmType {
+	case models.SubnetEvm:
 		if sovereign {
 			// if validatorManagerOwner flag is used, we get the C Chain address of the key used
 			if createFlags.validatorManagerOwner != "" {
@@ -367,7 +372,55 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-	} else {
+	case models.HyperVM:
+		if genesisPath == "" {
+			providePath := "I'll provide the genesis path"
+			binaryGen := "The VM binary will generate the genesis"
+			defaultGen := "Use the DefaultGenesis for my VM"
+			option, err := app.Prompt.CaptureList(
+				"How would you like to provide the genesis file?",
+				[]string{providePath, binaryGen, defaultGen},
+			)
+			if err != nil {
+				return err
+			}
+			switch option {
+			case providePath:
+				genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
+				if err != nil {
+					return err
+				}
+				genesisBytes, err = os.ReadFile(genesisPath)
+				if err != nil {
+					return err
+				}
+			case binaryGen:
+				createGenesisFromBinary = true
+			case defaultGen:
+				gb, err := vm.CreateDefaultHyperSDKGenesis(app)
+				if err != nil {
+					return err
+				}
+				genesisBytes = gb
+			}
+		}
+		var tokenSymbol string
+		sc, err = vm.CreateCustomSidecar(
+			sc,
+			app,
+			blockchainName,
+			useRepo,
+			customVMRepoURL,
+			customVMBranch,
+			customVMBuildScript,
+			vmFile,
+			tokenSymbol,
+			sovereign,
+		)
+		if err != nil {
+			return err
+		}
+	default:
 		if genesisPath == "" {
 			genesisPath, err = app.Prompt.CaptureExistingFilepath("Enter path to custom genesis")
 			if err != nil {
@@ -426,6 +479,14 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				}
 			}
 		}
+	}
+
+	if createGenesisFromBinary {
+		output, err := exec.Command(sc.CustomVMBinaryPath, "genesis").Output()
+		if err != nil {
+			return err
+		}
+		genesisBytes = output
 	}
 
 	if err = app.WriteGenesisFile(blockchainName, genesisBytes); err != nil {
