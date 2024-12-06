@@ -364,10 +364,6 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		createEtnaSubnetEvmConfigValidatorManagerFlagKeyname(true, false)
 	})
 
-	ginkgo.It("Test Create Etna POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
-		createEtnaSubnetEvmConfigValidatorManagerFlagPChain(true, false)
-	})
-
 	ginkgo.It("Test Create Etna POA Subnet Config Without Proxy Owner Flag", func() {
 		createEtnaSubnetEvmConfigWithoutProxyOwner(true, false)
 	})
@@ -410,5 +406,31 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
+	})
+})
+
+var _ = ginkgo.Describe("[Etna Subnet SOV With Errors]", func() {
+	ginkgo.BeforeEach(func() {
+		// key
+		_ = utils.DeleteKey(keyName)
+		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		// subnet config
+		_ = utils.DeleteConfigs(subnetName)
+		destroyLocalNode()
+	})
+
+	ginkgo.AfterEach(func() {
+		err := utils.DeleteKey(keyName)
+		gomega.Expect(err).Should(gomega.BeNil())
+		commands.CleanNetwork()
+	})
+
+	ginkgo.It("Test Create Etna POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
+		createEtnaSubnetEvmConfigValidatorManagerFlagPChain(true, false)
 	})
 })

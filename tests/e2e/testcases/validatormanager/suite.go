@@ -211,7 +211,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 			BootstrapValidators: avaGoBootstrapValidators,
 		}
 
-		err = subnetSDK.InitializeProofOfAuthority(network, k.PrivKeyHex(), extraAggregatorPeers, logging.Off)
+		err = subnetSDK.InitializeProofOfAuthority(network, k.PrivKeyHex(), extraAggregatorPeers, true, logging.Off)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })

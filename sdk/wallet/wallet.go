@@ -7,6 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/sdk/keychain"
 	"github.com/ava-labs/avalanchego/ids"
+	avagokeychain "github.com/ava-labs/avalanchego/utils/crypto/keychain"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
@@ -14,21 +15,24 @@ import (
 )
 
 type Wallet struct {
-	primary.Wallet
+	*primary.Wallet
 	Keychain keychain.Keychain
 	options  []common.Option
-	config   *primary.WalletConfig
+	config   primary.WalletConfig
 }
 
-func New(ctx context.Context, config *primary.WalletConfig) (Wallet, error) {
+func New(ctx context.Context, uri string, avaxKeychain avagokeychain.Keychain, config primary.WalletConfig) (Wallet, error) {
 	wallet, err := primary.MakeWallet(
 		ctx,
+		uri,
+		avaxKeychain,
+		nil,
 		config,
 	)
 	return Wallet{
 		Wallet: wallet,
 		Keychain: keychain.Keychain{
-			Keychain: config.AVAXKeychain,
+			Keychain: avaxKeychain,
 		},
 		config: config,
 	}, err

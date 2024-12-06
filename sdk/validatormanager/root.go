@@ -184,9 +184,9 @@ func GetPChainSubnetConversionWarpMessage(
 	managerAddress common.Address,
 	convertSubnetValidators []*txs.ConvertSubnetToL1Validator,
 ) (*warp.Message, error) {
-	validators := []warpMessage.SubnetToL1ConverstionValidatorData{}
+	validators := []warpMessage.SubnetToL1ConversionValidatorData{}
 	for _, convertSubnetValidator := range convertSubnetValidators {
-		validators = append(validators, warpMessage.SubnetToL1ConverstionValidatorData{
+		validators = append(validators, warpMessage.SubnetToL1ConversionValidatorData{
 			NodeID:       convertSubnetValidator.NodeID[:],
 			BLSPublicKey: convertSubnetValidator.Signer.PublicKey,
 			Weight:       convertSubnetValidator.Weight,

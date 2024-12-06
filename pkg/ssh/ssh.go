@@ -164,17 +164,17 @@ func ComposeSSHSetupICMRelayer(host *models.Host, relayerVersion string) error {
 	if err := docker.ComposeSSHSetupICMRelayer(host, relayerVersion); err != nil {
 		return err
 	}
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "icm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStartICMRelayerService runs script to start an AWM Relayer Service
 func RunSSHStartICMRelayerService(host *models.Host) error {
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "icm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHStopICMRelayerService runs script to start an AWM Relayer Service
 func RunSSHStopICMRelayerService(host *models.Host) error {
-	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
+	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "icm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego

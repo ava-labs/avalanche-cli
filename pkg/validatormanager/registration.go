@@ -361,6 +361,7 @@ func InitValidatorRegistration(
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevelStr string,
 	initWithPos bool,
 	delegationFee uint16,
@@ -455,7 +456,7 @@ func InitValidatorRegistration(
 		network,
 		aggregatorLogLevel,
 		0,
-		network.Kind == models.Local,
+		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
@@ -478,6 +479,7 @@ func FinishValidatorRegistration(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevelStr string,
 ) error {
 	subnetID, err := contract.GetSubnetID(
@@ -498,7 +500,7 @@ func FinishValidatorRegistration(
 		rpcURL,
 		aggregatorLogLevel,
 		0,
-		network.Kind == models.Local,
+		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,

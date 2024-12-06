@@ -124,6 +124,7 @@ func InitValidatorRemoval(
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevelStr string,
 	initWithPos bool,
 	force bool,
@@ -178,7 +179,7 @@ func InitValidatorRemoval(
 		network,
 		aggregatorLogLevel,
 		0,
-		network.Kind == models.Local,
+		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
@@ -217,6 +218,7 @@ func FinishValidatorRemoval(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevelStr string,
 ) error {
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
@@ -237,7 +239,7 @@ func FinishValidatorRemoval(
 		rpcURL,
 		aggregatorLogLevel,
 		0,
-		network.Kind == models.Local,
+		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,
