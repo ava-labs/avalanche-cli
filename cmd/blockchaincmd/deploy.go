@@ -16,6 +16,7 @@ import (
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
@@ -680,6 +681,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
+				if partialSync {
+					nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+				}
 				if network.Kind == models.Fuji {
 					globalNetworkFlags.UseFuji = true
 				}
@@ -690,7 +694,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					useEtnaDevnet,
 					avagoBinaryPath,
 					uint32(numLocalNodes),
-					partialSync,
 					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
