@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
@@ -201,8 +202,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			extraAggregatorPeers,
 			validatorManagerFlags.aggregatorLogLevel,
 			validatorManagerSDK.PoSParams{
-				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
-				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
+				MinimumStakeAmount:      utils.ApplyDefaultDenomination(initPOSManagerFlags.minimumStakeAmount),
+				MaximumStakeAmount:      utils.ApplyDefaultDenomination(initPOSManagerFlags.maximumStakeAmount),
 				MinimumStakeDuration:    initPOSManagerFlags.minimumStakeDuration,
 				MinimumDelegationFee:    initPOSManagerFlags.minimumDelegationFee,
 				MaximumStakeMultiplier:  initPOSManagerFlags.maximumStakeMultiplier,
