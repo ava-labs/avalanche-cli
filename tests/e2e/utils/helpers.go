@@ -836,11 +836,10 @@ func FundLedgerAddress(amount uint64) error {
 	kc := sk.KeyChain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
-		&primary.WalletConfig{
-			URI:          constants.LocalAPIEndpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  secp256k1fx.NewKeychain(),
-		},
+		constants.LocalAPIEndpoint,
+		kc,
+		secp256k1fx.NewKeychain(),
+		primary.WalletConfig{},
 	)
 	if err != nil {
 		return err
