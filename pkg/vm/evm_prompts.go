@@ -87,6 +87,7 @@ type SubnetEVMGenesisParams struct {
 	enableWarpPrecompile                bool
 	UsePoAValidatorManager              bool
 	UsePoSValidatorManager              bool
+	DisableTeleporterOnGenesis          bool
 }
 
 func PromptTokenSymbol(
@@ -248,7 +249,7 @@ func PromptSubnetEVMGenesisParams(
 	}
 
 	if sc.PoS() || sc.PoA() { // Teleporter bytecode makes genesis too big given the current max size (we include the bytecode for ValidatorManager, a proxy, and proxy admin)
-		params.UseTeleporter = false
+		params.DisableTeleporterOnGenesis = true
 	}
 
 	return params, tokenSymbol, nil
@@ -901,6 +902,7 @@ func PromptVMVersion(
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
+			"",
 		)
 	case "":
 		return promptUserForVMVersion(app, repoName)
@@ -930,6 +932,7 @@ func promptUserForVMVersion(
 		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
+			"",
 		)
 		if err != nil {
 			return "", err

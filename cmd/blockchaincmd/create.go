@@ -13,6 +13,10 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -64,8 +68,8 @@ var (
 	vmFile                  string
 	useRepo                 bool
 
-	errIllegalNameCharacter = errors.New(
-		"illegal name character: only letters, no special characters allowed")
+	errEmptyBlockchainName                        = errors.New("invalid empty name")
+	errIllegalNameCharacter                       = errors.New("illegal name character: only letters, no special characters allowed")
 	errMutuallyExlusiveVersionOptions             = errors.New("version flags --latest,--pre-release,vm-version are mutually exclusive")
 	errMutuallyExclusiveVMConfigOptions           = errors.New("--genesis flag disables --evm-chain-id,--evm-defaults,--production-defaults,--test-defaults")
 	errMutuallyExlusiveValidatorManagementOptions = errors.New("validator management type flags --proof-of-authority,--proof-of-stake are mutually exclusive")
@@ -256,6 +260,12 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	switch vmType {
 	case models.SubnetEvm:
 		if sovereign {
+			// if validatorManagerOwner flag is used, we get the C Chain address of the key used
+			if createFlags.validatorManagerOwner != "" {
+				if err = validateValidatorManagerOwnerFlag(createFlags.validatorManagerOwner); err != nil {
+					return err
+				}
+			}
 			if createFlags.validatorManagerOwner == "" {
 				createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
 				if err != nil {
@@ -267,6 +277,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 			// use the validator manager owner as the transparent proxy contract owner unless specified via cmd flag
 			if createFlags.proxyContractOwner != "" {
+				if err = validateValidatorManagerOwnerFlag(createFlags.proxyContractOwner); err != nil {
+					return err
+				}
 				sc.ProxyContractOwner = createFlags.proxyContractOwner
 			} else {
 				sc.ProxyContractOwner = sc.ValidatorManagerOwner
@@ -484,13 +497,23 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	// covers both subnet-evm vms and custom vms
 	if hasSubnetEVMGenesis, _, err := app.HasSubnetEVMGenesis(blockchainName); err != nil {
 		return err
-	} else if hasSubnetEVMGenesis && createFlags.enableDebugging {
-		if err := SetBlockchainConf(
-			blockchainName,
-			vm.EvmDebugConfig,
-			constants.ChainConfigFileName,
-		); err != nil {
-			return err
+	} else if hasSubnetEVMGenesis {
+		if createFlags.enableDebugging {
+			if err := SetBlockchainConf(
+				blockchainName,
+				vm.EvmDebugConfig,
+				constants.ChainConfigFileName,
+			); err != nil {
+				return err
+			}
+		} else {
+			if err := SetBlockchainConf(
+				blockchainName,
+				vm.EvmNonDebugConfig,
+				constants.ChainConfigFileName,
+			); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -561,7 +584,28 @@ func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
 	return nil
 }
 
+func validateValidatorManagerOwnerFlag(input string) error {
+	// check that flag value is not P Chain or X Chain address
+	_, _, _, err := address.Parse(input)
+	if err == nil {
+		return fmt.Errorf("validator manager owner has to be EVM address (in 0x format)")
+	}
+	// if flag value is a key name, we get the C Chain address of the key and set it as the value of
+	// the validator manager address
+	if !common.IsHexAddress(input) {
+		k, err := key.LoadSoft(models.UndefinedNetwork.ID, app.GetKeyPath(input))
+		if err != nil {
+			return err
+		}
+		createFlags.validatorManagerOwner = k.C()
+	}
+	return nil
+}
+
 func checkInvalidSubnetNames(name string) error {
+	if name == "" {
+		return errEmptyBlockchainName
+	}
 	// this is currently exactly the same code as in avalanchego/vms/platformvm/create_chain_tx.go
 	for _, r := range name {
 		if r > unicode.MaxASCII || !(unicode.IsLetter(r) || unicode.IsNumber(r) || r == ' ') {

@@ -3,7 +3,9 @@
 package networkcmd
 
 import (
+	_ "embed"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -15,22 +17,27 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanchego/config"
+
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
-var (
-	userProvidedAvagoVersion string
-	snapshotName             string
-	avagoBinaryPath          string
-)
+//go:embed upgrade.json
+var upgradeData []byte
 
-const (
-	latest  = "latest"
-	jsonExt = ".json"
-)
+type StartFlags struct {
+	UserProvidedAvagoVersion string
+	SnapshotName             string
+	AvagoBinaryPath          string
+	RelayerBinaryPath        string
+	NumNodes                 uint32
+}
+
+var startFlags StartFlags
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -42,30 +49,32 @@ By default, the command loads the default snapshot. If you provide the --snapsho
 flag, the network loads that snapshot instead. The command fails if the local network is
 already running.`,
 
-		RunE: StartNetwork,
+		RunE: start,
 		Args: cobrautils.ExactArgs(0),
 	}
 
-	cmd.Flags().StringVar(&userProvidedAvagoVersion, "avalanchego-version", latest, "use this version of avalanchego (ex: v1.17.12)")
-	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
+	cmd.Flags().StringVar(
+		&startFlags.UserProvidedAvagoVersion,
+		"avalanchego-version",
+		constants.DefaultAvalancheGoVersion,
+		"use this version of avalanchego (ex: v1.17.12)",
+	)
+	cmd.Flags().StringVar(&startFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
+	cmd.Flags().StringVar(&startFlags.RelayerBinaryPath, "relayer-path", "", "use this relayer binary path")
+	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
+	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network")
 
 	return cmd
 }
 
-func StartNetwork(*cobra.Command, []string) error {
-	var (
-		err          error
-		avagoVersion string
-	)
-	if avagoBinaryPath == "" {
-		avagoVersion, err = determineAvagoVersion(userProvidedAvagoVersion)
-		if err != nil {
-			return err
-		}
-	}
-	sd := subnet.NewLocalDeployer(app, avagoVersion, avagoBinaryPath, "", false)
+func start(*cobra.Command, []string) error {
+	return Start(startFlags, true)
+}
 
+func Start(flags StartFlags, printEndpoints bool) error {
+	sd := subnet.NewLocalDeployer(app, flags.UserProvidedAvagoVersion, flags.AvagoBinaryPath, "", false)
+
+	// this takes about 2 secs
 	if err := sd.StartServer(
 		constants.ServerRunFileLocalNetworkPrefix,
 		binutils.LocalNetworkGRPCServerPort,
@@ -73,11 +82,6 @@ func StartNetwork(*cobra.Command, []string) error {
 		app.GetSnapshotsDir(),
 		"",
 	); err != nil {
-		return err
-	}
-
-	needsRestart, avalancheGoBinPath, err := sd.SetupLocalEnv()
-	if err != nil {
 		return err
 	}
 
@@ -89,31 +93,21 @@ func StartNetwork(*cobra.Command, []string) error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 
-	bootstrapped, err := localnet.CheckNetworkIsAlreadyBootstrapped(ctx, cli)
+	bootstrapped, err := localnet.IsBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
 
 	if bootstrapped {
-		if !needsRestart {
-			ux.Logger.PrintToUser("Network has already been booted.")
-			return nil
-		}
-		if _, err := cli.Stop(ctx); err != nil {
-			return err
-		}
-		if err := app.ResetPluginsDir(); err != nil {
-			return err
-		}
+		ux.Logger.PrintToUser("Network has already been booted.")
+		return nil
 	}
 
-	var startMsg string
-	if snapshotName == constants.DefaultSnapshotName {
-		startMsg = "Starting previously deployed and stopped snapshot"
-	} else {
-		startMsg = fmt.Sprintf("Starting previously deployed and stopped snapshot %s...", snapshotName)
+	// this takes about 1 secs
+	avalancheGoBinPath, err := sd.SetupLocalEnv()
+	if err != nil {
+		return err
 	}
-	ux.Logger.PrintToUser(startMsg)
 
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
 
@@ -121,128 +115,176 @@ func StartNetwork(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-
 	rootDir := ""
 	logDir := ""
-	if !autoSave {
-		rootDir = tmpDir
-	} else {
-		logDir = tmpDir
-	}
-
 	pluginDir := app.GetPluginsDir()
-
-	loadSnapshotOpts := []client.OpOption{
-		client.WithExecPath(avalancheGoBinPath),
-		client.WithRootDataDir(rootDir),
-		client.WithLogRootDir(logDir),
-		client.WithReassignPortsIfUsed(true),
-		client.WithPluginDir(pluginDir),
-	}
-
-	// load global node configs if they exist
-	configStr, err := app.Conf.LoadNodeConfig()
+	nodeConfig, err := app.Conf.LoadNodeConfig()
 	if err != nil {
 		return err
 	}
-	if configStr != "" {
-		loadSnapshotOpts = append(loadSnapshotOpts, client.WithGlobalNodeConfig(configStr))
-	}
-
-	ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-	resp, err := cli.LoadSnapshot(
-		ctx,
-		snapshotName,
-		app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey),
-		loadSnapshotOpts...,
-	)
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.ProposerVMUseCurrentHeightKey, true)
 	if err != nil {
-		return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
+		return err
+	}
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxSizeKey, constants.LocalNetworkAvalancheGoMaxLogSize)
+	if err != nil {
+		return err
+	}
+	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxFilesKey, constants.LocalNetworkAvalancheGoMaxLogFiles)
+	if err != nil {
+		return err
+	}
+	if flags.SnapshotName == "" {
+		flags.SnapshotName = constants.DefaultSnapshotName
 	}
 
+	snapshotPath := app.GetSnapshotPath(flags.SnapshotName)
+	if sdkutils.DirExists(snapshotPath) {
+		ux.Logger.PrintToUser("Starting previously deployed and stopped snapshot")
+
+		if !autoSave {
+			rootDir = tmpDir
+		} else {
+			logDir = tmpDir
+		}
+
+		_, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(snapshotPath)
+		if err != nil {
+			return err
+		}
+		if extraLocalNetworkData.AvalancheGoPath == "" {
+			if flags.SnapshotName == constants.DefaultSnapshotName {
+				return fmt.Errorf("incompatible snapshot version. please cleanup with 'avalanche network clean'")
+			} else {
+				return fmt.Errorf("incompatible snapshot version. please cleanup dir under '%s'", snapshotPath)
+			}
+		}
+		if flags.AvagoBinaryPath == "" &&
+			flags.UserProvidedAvagoVersion == constants.DefaultAvalancheGoVersion &&
+			extraLocalNetworkData.AvalancheGoPath != "" {
+			avalancheGoBinPath = extraLocalNetworkData.AvalancheGoPath
+		}
+
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		if _, err := cli.LoadSnapshot(
+			ctx,
+			flags.SnapshotName,
+			autoSave,
+			client.WithExecPath(avalancheGoBinPath),
+			client.WithRootDataDir(rootDir),
+			client.WithLogRootDir(logDir),
+			client.WithReassignPortsIfUsed(false),
+			client.WithPluginDir(pluginDir),
+			client.WithGlobalNodeConfig(nodeConfig),
+		); err != nil {
+			if sd.BackendStartedHere() {
+				if innerErr := binutils.KillgRPCServerProcess(
+					app,
+					binutils.LocalNetworkGRPCServerEndpoint,
+					constants.ServerRunFileLocalNetworkPrefix,
+				); innerErr != nil {
+					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
+				}
+			}
+			return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
+		}
+
+		if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
+			return err
+		} else if b {
+			ux.Logger.PrintToUser("")
+			relayerBinPath := flags.RelayerBinaryPath
+			if relayerBinPath == "" {
+				relayerBinPath = extraLocalNetworkData.RelayerPath
+			}
+			if relayerBinPath, err := teleporter.DeployRelayer(
+				"latest",
+				relayerBinPath,
+				app.GetICMRelayerBinDir(),
+				relayerConfigPath,
+				app.GetLocalRelayerLogPath(models.Local),
+				app.GetLocalRelayerRunPath(models.Local),
+				app.GetLocalRelayerStorageDir(models.Local),
+			); err != nil {
+				return err
+			} else if err := localnet.WriteExtraLocalNetworkData("", relayerBinPath, "", ""); err != nil {
+				return err
+			}
+		}
+	} else {
+		// starting a new network from scratch
+		if flags.SnapshotName != constants.DefaultSnapshotName {
+			return fmt.Errorf("snapshot %s does not exists", flags.SnapshotName)
+		}
+		if autoSave {
+			if err := os.MkdirAll(snapshotPath, constants.DefaultPerms755); err != nil {
+				return err
+			}
+			rootDir = snapshotPath
+			logDir = tmpDir
+		} else {
+			rootDir = tmpDir
+		}
+
+		upgradeFile, err := os.CreateTemp("", "upgrade")
+		if err != nil {
+			return fmt.Errorf("could not create upgrade file: %w", err)
+		}
+		if _, err := upgradeFile.Write(upgradeData); err != nil {
+			return fmt.Errorf("could not write upgrade data: %w", err)
+		}
+		upgradePath := upgradeFile.Name()
+		if err := upgradeFile.Close(); err != nil {
+			return fmt.Errorf("could not close upgrade file: %w", err)
+		}
+		defer os.Remove(upgradePath)
+
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		if _, err := cli.Start(
+			ctx,
+			avalancheGoBinPath,
+			client.WithNumNodes(flags.NumNodes),
+			client.WithExecPath(avalancheGoBinPath),
+			client.WithRootDataDir(rootDir),
+			client.WithLogRootDir(logDir),
+			client.WithReassignPortsIfUsed(false),
+			client.WithPluginDir(pluginDir),
+			client.WithGlobalNodeConfig(nodeConfig),
+			client.WithUpgradePath(upgradePath),
+		); err != nil {
+			if sd.BackendStartedHere() {
+				if innerErr := binutils.KillgRPCServerProcess(
+					app,
+					binutils.LocalNetworkGRPCServerEndpoint,
+					constants.ServerRunFileLocalNetworkPrefix,
+				); innerErr != nil {
+					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
+				}
+			}
+			return fmt.Errorf("failed to start network: %w", err)
+		}
+	}
+
+	resp, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := localnet.WriteExtraLocalNetworkData(avalancheGoBinPath, "", "", ""); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.LogRootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
 
-	if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
-		return err
-	}
-
-	if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
-		return err
-	} else if b {
-		ux.Logger.PrintToUser("")
-		if err := teleporter.DeployRelayer(
-			"latest",
-			app.GetAWMRelayerBinDir(),
-			relayerConfigPath,
-			app.GetLocalRelayerLogPath(models.Local),
-			app.GetLocalRelayerRunPath(models.Local),
-			app.GetLocalRelayerStorageDir(models.Local),
-		); err != nil {
+	if printEndpoints {
+		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func determineAvagoVersion(userProvidedAvagoVersion string) (string, error) {
-	// a specific user provided version should override this calculation, so just return
-	if userProvidedAvagoVersion != latest {
-		return userProvidedAvagoVersion, nil
-	}
-
-	// Need to determine which subnets have been deployed
-	locallyDeployedSubnets, err := subnet.GetLocallyDeployedSubnetsFromFile(app)
-	if err != nil {
-		return "", err
-	}
-
-	// if no subnets have been deployed, use latest
-	if len(locallyDeployedSubnets) == 0 {
-		return latest, nil
-	}
-
-	currentRPCVersion := -1
-
-	// For each deployed subnet, check RPC versions
-	for _, deployedSubnet := range locallyDeployedSubnets {
-		sc, err := app.LoadSidecar(deployedSubnet)
-		if err != nil {
-			return "", err
-		}
-
-		// if you have a custom vm, you must provide the version explicitly
-		// if you upgrade from subnet-evm to a custom vm, the RPC version will be 0
-		if sc.VM == models.CustomVM || sc.Networks[models.Local.String()].RPCVersion == 0 {
-			continue
-		}
-
-		if currentRPCVersion == -1 {
-			currentRPCVersion = sc.Networks[models.Local.String()].RPCVersion
-		}
-
-		if sc.Networks[models.Local.String()].RPCVersion != currentRPCVersion {
-			return "", fmt.Errorf(
-				"RPC version mismatch. Expected %d, got %d for Subnet %s. Upgrade all subnets to the same RPC version to launch the network",
-				currentRPCVersion,
-				sc.RPCVersion,
-				sc.Name,
-			)
-		}
-	}
-
-	// If currentRPCVersion == -1, then only custom subnets have been deployed, the user must provide the version explicitly if not latest
-	if currentRPCVersion == -1 {
-		ux.Logger.PrintToUser("No Subnet RPC version found. Using latest AvalancheGo version")
-		return latest, nil
-	}
-
-	return vm.GetLatestAvalancheGoByProtocolVersion(
-		app,
-		currentRPCVersion,
-		constants.AvalancheGoCompatibilityURL,
-	)
 }

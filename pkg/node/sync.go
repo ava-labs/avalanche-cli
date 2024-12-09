@@ -159,8 +159,8 @@ func trackSubnet(
 		return err
 	}
 	for _, publicEndpoint := range publicEndpoints {
-		rpcEndpoints.Add(GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+		rpcEndpoints.Add(models.GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
+		wsEndpoints.Add(models.GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
 	}
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()

@@ -280,9 +280,6 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 
 	ginkgo.It("can list a subnet's validators non SOV", func() {
 		nodeIDs := []string{
-			"NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5",
-			"NodeID-GWPcbFJZFfZreETSoWjPimr846mXEKCtu",
-			"NodeID-NFBbbJ4qCmNaCzeW7sxErhvWqvEQMnYcN",
 			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
 			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
 		}

@@ -33,6 +33,8 @@ type DeployFlags struct {
 	MessengerDeployerTxPath      string
 	RegistryBydecodePath         string
 	PrivateKeyFlags              contract.PrivateKeyFlags
+	IncludeCChain                bool
+	CChainKeyName                string
 }
 
 const (
@@ -71,25 +73,30 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(&deployFlags.MessengerDeployerAddressPath, "messenger-deployer-address-path", "", "path to a messenger deployer address file")
 	cmd.Flags().StringVar(&deployFlags.MessengerDeployerTxPath, "messenger-deployer-tx-path", "", "path to a messenger deployer tx file")
 	cmd.Flags().StringVar(&deployFlags.RegistryBydecodePath, "registry-bytecode-path", "", "path to a registry bytecode file")
+	cmd.Flags().BoolVar(&deployFlags.IncludeCChain, "include-cchain", false, "deploy Teleporter also to C-Chain")
+	cmd.Flags().StringVar(&deployFlags.CChainKeyName, "cchain-key", "", "key to be used to pay fees to deploy ICM to C-Chain")
 	return cmd
 }
 
 func deploy(_ *cobra.Command, args []string) error {
-	return CallDeploy(args, deployFlags)
+	return CallDeploy(args, deployFlags, models.UndefinedNetwork)
 }
 
-func CallDeploy(_ []string, flags DeployFlags) error {
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"On what Network do you want to deploy the Teleporter Messenger?",
-		flags.Network,
-		true,
-		false,
-		deploySupportedNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
+func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
+	var err error
+	if network == models.UndefinedNetwork {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"On what Network do you want to deploy the Teleporter Messenger?",
+			flags.Network,
+			true,
+			false,
+			deploySupportedNetworkOptions,
+			"",
+		)
+		if err != nil {
+			return err
+		}
 	}
 	if err := flags.ChainFlags.CheckMutuallyExclusiveFields(); err != nil {
 		return err
@@ -194,7 +201,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if err != nil {
 		return err
 	}
-	if flags.ChainFlags.BlockchainName != "" && !alreadyDeployed {
+	if flags.ChainFlags.BlockchainName != "" && (!alreadyDeployed || flags.ForceRegistryDeploy) {
 		// update sidecar
 		sc, err := app.LoadSidecar(flags.ChainFlags.BlockchainName)
 		if err != nil {
@@ -214,9 +221,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
-	// automatic deploy to cchain for local/devnet
-	if !flags.ChainFlags.CChain && (network.Kind == models.Local || network.Kind == models.Devnet) {
-		ewoq, err := app.GetKey("ewoq", network, false)
+	// automatic deploy to cchain for local
+	if !flags.ChainFlags.CChain && (network.Kind == models.Local || flags.IncludeCChain) {
+		if flags.CChainKeyName == "" {
+			flags.CChainKeyName = "ewoq"
+		}
+		ewoq, err := app.GetKey(flags.CChainKeyName, network, false)
 		if err != nil {
 			return err
 		}
@@ -233,7 +243,12 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 		if !alreadyDeployed {
 			if network.Kind == models.Local {
-				if err := localnet.WriteExtraLocalNetworkData(teleporterMessengerAddress, teleporterRegistryAddress); err != nil {
+				if err := localnet.WriteExtraLocalNetworkData(
+					"",
+					"",
+					teleporterMessengerAddress,
+					teleporterRegistryAddress,
+				); err != nil {
 					return err
 				}
 			}

@@ -30,7 +30,7 @@ func GetHostWithCloudID(app *application.Avalanche, clusterName string, cloudID 
 	return nil, nil
 }
 
-func GetAWMRelayerHost(app *application.Avalanche, clusterName string) (*models.Host, error) {
+func GetICMRelayerHost(app *application.Avalanche, clusterName string) (*models.Host, error) {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func GetAWMRelayerHost(app *application.Avalanche, clusterName string) (*models.
 	for _, cloudID := range clusterConfig.GetCloudIDs() {
 		if nodeConfig, err := app.LoadClusterNodeConfig(cloudID); err != nil {
 			return nil, err
-		} else if nodeConfig.IsAWMRelayer {
+		} else if nodeConfig.IsICMRelayer {
 			relayerCloudID = nodeConfig.NodeID
 		}
 	}

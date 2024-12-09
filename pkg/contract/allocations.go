@@ -70,16 +70,26 @@ func GetBlockchainAirdropKeyInfo(
 			return "ewoq", ewoq.C(), ewoq.PrivKeyHex(), nil
 		}
 	}
-	for address := range genesis.Alloc {
+	maxBalance := big.NewInt(0)
+	maxBalanceKeyName := ""
+	maxBalanceAddr := ""
+	maxBalancePrivKey := ""
+	for address, alloc := range genesis.Alloc {
+		if alloc.Balance == nil {
+			continue
+		}
 		found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, address, false)
 		if err != nil {
 			return "", "", "", err
 		}
-		if found {
-			return keyName, addressStr, privKey, nil
+		if found && alloc.Balance.Cmp(maxBalance) > 0 {
+			maxBalance = alloc.Balance
+			maxBalanceKeyName = keyName
+			maxBalanceAddr = addressStr
+			maxBalancePrivKey = privKey
 		}
 	}
-	return "", "", "", nil
+	return maxBalanceKeyName, maxBalanceAddr, maxBalancePrivKey, nil
 }
 
 func SearchForManagedKey(

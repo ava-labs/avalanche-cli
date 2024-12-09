@@ -83,7 +83,6 @@ func createSovereignSubnet() (string, string, error) {
 		"deploy",
 		subnetName,
 		"--etna-devnet",
-		"--use-local-machine",
 		"--num-local-nodes=1",
 		"--ewoq",
 		"--convert-only",

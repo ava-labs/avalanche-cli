@@ -441,7 +441,7 @@ func GetCChainICMInfo(
 	registryAddress := ""
 	switch {
 	case network.Kind == models.Local:
-		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData()
+		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData("")
 		if err != nil {
 			return "", "", err
 		}
@@ -457,6 +457,9 @@ func GetCChainICMInfo(
 		}
 		messengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 		registryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+	case network.Kind == models.EtnaDevnet:
+		messengerAddress = constants.DefaultTeleporterMessengerAddress
+		registryAddress = constants.EtnaDevnetCChainTeleporterRegistryAddress
 	case network.Kind == models.Fuji:
 		messengerAddress = constants.DefaultTeleporterMessengerAddress
 		registryAddress = constants.FujiCChainTeleporterRegistryAddress

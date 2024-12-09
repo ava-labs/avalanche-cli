@@ -9,9 +9,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"golang.org/x/mod/semver"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
 const githubVersionTagName = "tag_name"
@@ -22,7 +23,7 @@ const githubVersionTagName = "tag_name"
 type Downloader interface {
 	Download(url string) ([]byte, error)
 	GetLatestReleaseVersion(releaseURL string) (string, error)
-	GetLatestPreReleaseVersion(org, repo string) (string, error)
+	GetLatestPreReleaseVersion(org, repo, kind string) (string, error)
 	GetAllReleasesForRepo(org, repo string) ([]string, error)
 }
 
@@ -46,7 +47,7 @@ func (downloader) Download(url string) ([]byte, error) {
 }
 
 // GetLatestPreReleaseVersion returns the latest available pre release version from github
-func (d downloader) GetLatestPreReleaseVersion(org, repo string) (string, error) {
+func (d downloader) GetLatestPreReleaseVersion(org, repo, kind string) (string, error) {
 	releases, err := d.GetAllReleasesForRepo(org, repo)
 	if err != nil {
 		return "", err
@@ -54,7 +55,15 @@ func (d downloader) GetLatestPreReleaseVersion(org, repo string) (string, error)
 	if len(releases) == 0 {
 		return "", fmt.Errorf("no releases found for org %s repo %s", org, repo)
 	}
-	return releases[0], nil
+	if kind == "" {
+		return releases[0], nil
+	}
+	for _, release := range releases {
+		if strings.HasPrefix(release, kind) {
+			return release, nil
+		}
+	}
+	return "", fmt.Errorf("no releases found for org %s repo %s kind %s", org, repo, kind)
 }
 
 func (d downloader) GetAllReleasesForRepo(org, repo string) ([]string, error) {
@@ -79,7 +88,7 @@ func (d downloader) GetAllReleasesForRepo(org, repo string) ([]string, error) {
 	releases := make([]string, len(releaseArr))
 	for i, r := range releaseArr {
 		version := r[githubVersionTagName].(string)
-		if !semver.IsValid(version) {
+		if !utils.IsValidSemanticVersion(version) {
 			return nil, fmt.Errorf("invalid version string: %s", version)
 		}
 		releases[i] = version
@@ -129,7 +138,7 @@ func (d downloader) GetLatestReleaseVersion(releaseURL string) (string, error) {
 	}
 
 	version := jsonStr[githubVersionTagName].(string)
-	if !semver.IsValid(version) {
+	if !utils.IsValidSemanticVersion(version) {
 		return "", fmt.Errorf("invalid version string: %s", version)
 	}
 

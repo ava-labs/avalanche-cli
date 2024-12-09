@@ -141,15 +141,15 @@ func (c *GcpCloud) SetupNetwork(ipAddress, networkName string) (*compute.Network
 	if _, err := c.SetFirewallRule("0.0.0.0/0",
 		fmt.Sprintf("%s-%s", networkName, "default"),
 		networkName,
-		[]string{strconv.Itoa(constants.AvalanchegoP2PPort), strconv.Itoa(constants.AvalanchegoLokiPort)}); err != nil {
+		[]string{strconv.Itoa(constants.AvalancheGoP2PPort), strconv.Itoa(constants.AvalancheGoLokiPort)}); err != nil {
 		return nil, err
 	}
 	if _, err := c.SetFirewallRule(ipAddress,
 		fmt.Sprintf("%s-%s", networkName, strings.ReplaceAll(ipAddress, ".", "")),
 		networkName,
 		[]string{
-			strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-			strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
+			strconv.Itoa(constants.SSHTCPPort), strconv.Itoa(constants.AvalancheGoAPIPort),
+			strconv.Itoa(constants.AvalancheGoMonitoringPort), strconv.Itoa(constants.AvalancheGoGrafanaPort),
 		}); err != nil {
 		return nil, err
 	}
@@ -348,7 +348,7 @@ func (c *GcpCloud) CheckFirewallExists(firewallName string, checkMonitoring bool
 		if firewall.Name == firewallName {
 			if checkMonitoring {
 				for _, allowed := range firewall.Allowed {
-					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoMonitoringPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalanchegoLokiPort))) {
+					if !(slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalancheGoGrafanaPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalancheGoMonitoringPort)) && slices.Contains(allowed.Ports, strconv.Itoa(constants.AvalancheGoLokiPort))) {
 						return false, nil
 					}
 				}

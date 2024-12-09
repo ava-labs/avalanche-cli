@@ -367,7 +367,7 @@ func DeploySubnetLocallyWithArgsNonSOV(subnetName string, version string, confPa
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
 	// in case we want to use specific avago for local tests
-	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
+	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalancheGoPath)
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
@@ -405,7 +405,7 @@ func DeploySubnetLocallyWithArgsSOV(subnetName string, version string, confPath 
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
 	// in case we want to use specific avago for local tests
-	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
+	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalancheGoPath)
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
@@ -443,7 +443,7 @@ func DeploySubnetLocallyWithArgsAndOutputNonSOV(subnetName string, version strin
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
 	// in case we want to use specific avago for local tests
-	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
+	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalancheGoPath)
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
@@ -466,7 +466,7 @@ func DeploySubnetLocallyWithArgsAndOutputSOV(subnetName string, version string, 
 		cmdArgs = append(cmdArgs, "--config", confPath)
 	}
 	// in case we want to use specific avago for local tests
-	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
+	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalancheGoPath)
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}

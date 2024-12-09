@@ -613,9 +613,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					networkName := fmt.Sprintf("%s-network", prefix)
 					firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
 					ports := []string{
-						strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-						strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-						strconv.Itoa(constants.AvalanchegoLokiPort),
+						strconv.Itoa(constants.AvalancheGoMachineMetricsPort), strconv.Itoa(constants.AvalancheGoAPIPort),
+						strconv.Itoa(constants.AvalancheGoMonitoringPort), strconv.Itoa(constants.AvalancheGoGrafanaPort),
+						strconv.Itoa(constants.AvalancheGoLokiPort),
 					}
 					if err = gcpClient.AddFirewall(
 						monitoringNodeConfig.PublicIPs[0],
@@ -739,7 +739,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					return
 				}
 				ux.Logger.Info("RunSSHSetupPrometheusConfig completed")
-				if err := ssh.RunSSHSetupLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
+				if err := ssh.RunSSHSetupLokiConfig(monitoringHost, constants.AvalancheGoLokiPort); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -787,7 +787,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
+				if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalancheGoLokiPort, cloudID, nodeID.String(), ""); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -1211,7 +1211,7 @@ func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
-	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalanchegoGrafanaPort)))
+	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalancheGoGrafanaPort)))
 	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
@@ -1220,7 +1220,7 @@ func getMonitoringHint(monitoringHostIP string) {
 func waitForMonitoringEndpoint(monitoringHost *models.Host) error {
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Waiting for monitoring endpoint to be available")
-	if err := monitoringHost.WaitForPort(constants.AvalanchegoGrafanaPort, constants.SSHLongRunningScriptTimeout); err != nil {
+	if err := monitoringHost.WaitForPort(constants.AvalancheGoGrafanaPort, constants.SSHLongRunningScriptTimeout); err != nil {
 		spinner.Error()
 		return err
 	}
@@ -1469,8 +1469,8 @@ func getPrometheusTargets(clusterName string) ([]string, []string, []string, err
 		return avalancheGoPorts, machinePorts, ltPorts, err
 	}
 	for _, host := range inventoryHosts {
-		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalancheGoAPIPort)))
+		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalancheGoMachineMetricsPort)))
 	}
 	// no need to check error here as it's ok to have no load test instances
 	separateHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetLoadTestInventoryDir(clusterName))
