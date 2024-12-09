@@ -16,6 +16,7 @@ import (
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/network/peer"
 
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
@@ -189,6 +190,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
+	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
@@ -580,15 +582,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if changeOwnerAddress == "" {
-		// use provided key as change owner unless already set
-		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-			changeOwnerAddress = pAddr[0]
-			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
-		}
-	}
-
 	if sidecar.Sovereign {
+		if changeOwnerAddress == "" {
+			// use provided key as change owner unless already set
+			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
+				changeOwnerAddress = pAddr[0]
+				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
+			}
+		}
 		if !generateNodeID {
 			if network.Kind == models.Local {
 				if len(bootstrapEndpoints) == 0 {
@@ -681,6 +682,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
+				if partialSync {
+					nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+				}
 				if network.Kind == models.Fuji {
 					globalNetworkFlags.UseFuji = true
 				}
@@ -691,7 +695,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					useEtnaDevnet,
 					avagoBinaryPath,
 					uint32(numLocalNodes),
-					partialSync,
 					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
@@ -1039,6 +1042,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					network,
 					genesisPrivateKey,
 					extraAggregatorPeers,
+					aggregatorAllowPrivatePeers,
 					logLvl,
 					validatorManagerSDK.PoSParams{
 						MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
@@ -1055,7 +1059,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			} else {
 				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-				if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
+				if err := subnetSDK.InitializeProofOfAuthority(
+					network,
+					genesisPrivateKey,
+					extraAggregatorPeers,
+					aggregatorAllowPrivatePeers,
+					logLvl,
+				); err != nil {
 					return err
 				}
 				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
@@ -1128,7 +1138,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				icmSpec.SkipRelayerDeploy = !yes
 			}
 		}
-		if !icmSpec.SkipRelayerDeploy && network.Kind != models.Fuji {
+		if !icmSpec.SkipRelayerDeploy && (network.Kind != models.Fuji && network.Kind != models.Mainnet) {
 			deployRelayerFlags := relayercmd.DeployFlags{
 				Version:            icmSpec.RelayerVersion,
 				BinPath:            icmSpec.RelayerBinPath,

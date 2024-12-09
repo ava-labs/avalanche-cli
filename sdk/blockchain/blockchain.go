@@ -345,6 +345,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevel logging.Level,
 ) error {
 	if c.SubnetID == ids.Empty {
@@ -393,7 +394,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		network,
 		aggregatorLogLevel,
 		0,
-		network.Kind == models.Local,
+		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
@@ -424,6 +425,7 @@ func (c *Subnet) InitializeProofOfStake(
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevel logging.Level,
 	posParams validatormanager.PoSParams,
 ) error {
@@ -451,7 +453,7 @@ func (c *Subnet) InitializeProofOfStake(
 		network,
 		aggregatorLogLevel,
 		0,
-		network.Kind == models.Local,
+		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
