@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleporter
+package interchain
 
 import (
 	"fmt"
@@ -59,14 +59,14 @@ func getTeleporterURLs(version string) (string, string, string, string) {
 	return messengerContractAddressURL, messengerDeployerAddressURL, messengerDeployerTxURL, registryBydecodeURL
 }
 
-type Deployer struct {
+type ICMDeployer struct {
 	messengerContractAddress string
 	messengerDeployerAddress string
 	messengerDeployerTx      string
 	registryBydecode         string
 }
 
-func (t *Deployer) GetAssets(
+func (t *ICMDeployer) GetAssets(
 	teleporterInstallDir string,
 	version string,
 ) (string, string, string, string, error) {
@@ -76,14 +76,14 @@ func (t *Deployer) GetAssets(
 	return t.messengerContractAddress, t.messengerDeployerAddress, t.messengerDeployerTx, t.registryBydecode, nil
 }
 
-func (t *Deployer) CheckAssets() error {
+func (t *ICMDeployer) CheckAssets() error {
 	if t.messengerContractAddress == "" || t.messengerDeployerAddress == "" || t.messengerDeployerTx == "" || t.registryBydecode == "" {
 		return fmt.Errorf("teleporter assets has not been initialized")
 	}
 	return nil
 }
 
-func (t *Deployer) SetAssetsFromPaths(
+func (t *ICMDeployer) SetAssetsFromPaths(
 	messengerContractAddressPath string,
 	messengerDeployerAddressPath string,
 	messengerDeployerTxPath string,
@@ -120,7 +120,7 @@ func (t *Deployer) SetAssetsFromPaths(
 	return nil
 }
 
-func (t *Deployer) SetAssets(
+func (t *ICMDeployer) SetAssets(
 	messengerContractAddress string,
 	messengerDeployerAddress string,
 	messengerDeployerTx string,
@@ -140,7 +140,7 @@ func (t *Deployer) SetAssets(
 	}
 }
 
-func (t *Deployer) DownloadAssets(
+func (t *ICMDeployer) DownloadAssets(
 	teleporterInstallDir string,
 	version string,
 ) error {
@@ -234,7 +234,7 @@ func (t *Deployer) DownloadAssets(
 	return nil
 }
 
-func (t *Deployer) Deploy(
+func (t *ICMDeployer) Deploy(
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -263,7 +263,7 @@ func (t *Deployer) Deploy(
 	return alreadyDeployed, messengerAddress, registryAddress, err
 }
 
-func (t *Deployer) DeployMessenger(
+func (t *ICMDeployer) DeployMessenger(
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -313,7 +313,7 @@ func (t *Deployer) DeployMessenger(
 	return false, t.messengerContractAddress, nil
 }
 
-func (t *Deployer) DeployRegistry(
+func (t *ICMDeployer) DeployRegistry(
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -388,7 +388,7 @@ func SetProposerVM(
 
 func DeployAndFundRelayer(
 	app *application.Avalanche,
-	td *Deployer,
+	td *ICMDeployer,
 	network models.Network,
 	subnetName string,
 	blockchainID string,
@@ -437,7 +437,7 @@ func getTeleporterKeyInfo(
 	return k.C(), k.PrivKeyHex(), InterchainMessagingPrefundedAddressBalance, nil
 }
 
-type Info struct {
+type ICMInfo struct {
 	Version                  string
 	FundedAddress            string
 	FundedBalance            *big.Int
@@ -445,11 +445,11 @@ type Info struct {
 	RelayerAddress           string
 }
 
-func GetInfo(
+func GetICMInfo(
 	app *application.Avalanche,
-) (*Info, error) {
+) (*ICMInfo, error) {
 	var err error
-	ti := Info{}
+	ti := ICMInfo{}
 	ti.FundedAddress, _, ti.FundedBalance, err = getTeleporterKeyInfo(
 		app,
 		constants.ICMKeyName,
@@ -463,7 +463,7 @@ func GetInfo(
 	if err != nil {
 		return nil, err
 	}
-	deployer := Deployer{}
+	deployer := ICMDeployer{}
 	_, ti.MessengerDeployerAddress, _, _, err = deployer.GetAssets(
 		app.GetTeleporterBinDir(),
 		ti.Version,

@@ -7,11 +7,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -161,14 +161,14 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	case flags.Version != "" && flags.Version != "latest":
 		icmVersion = flags.Version
 	default:
-		icmInfo, err := teleporter.GetInfo(app)
+		icmInfo, err := interchain.GetICMInfo(app)
 		if err != nil {
 			return err
 		}
 		icmVersion = icmInfo.Version
 	}
 	// deploy to subnet
-	td := teleporter.Deployer{}
+	td := interchain.ICMDeployer{}
 	if flags.MessengerContractAddressPath != "" {
 		if err := td.SetAssetsFromPaths(
 			flags.MessengerContractAddressPath,

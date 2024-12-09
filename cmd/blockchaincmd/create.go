@@ -12,20 +12,19 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/ava-labs/avalanche-cli/pkg/key"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
@@ -240,7 +239,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	// get teleporter info
-	teleporterInfo, err := teleporter.GetInfo(app)
+	teleporterInfo, err := interchain.GetICMInfo(app)
 	if err != nil {
 		return err
 	}

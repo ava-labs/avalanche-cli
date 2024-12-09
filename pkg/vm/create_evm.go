@@ -12,9 +12,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/interchain/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/subnet-evm/core"
@@ -78,7 +78,7 @@ func CreateEvmSidecar(
 
 func CreateEVMGenesis(
 	params SubnetEVMGenesisParams,
-	teleporterInfo *teleporter.Info,
+	icmInfo *interchain.ICMInfo,
 	addICMRegistryToGenesis bool,
 	proxyOwner string,
 	rewardBasisPoints uint64,
@@ -95,7 +95,7 @@ func CreateEVMGenesis(
 	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
 		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but warp precompile is disabled")
 	}
-	if (params.UseTeleporter || params.UseExternalGasToken) && teleporterInfo == nil {
+	if (params.UseTeleporter || params.UseExternalGasToken) && icmInfo == nil {
 		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but no teleporter info was provided")
 	}
 
@@ -108,7 +108,7 @@ func CreateEVMGenesis(
 		if params.initialTokenAllocation == nil {
 			params.initialTokenAllocation = core.GenesisAlloc{}
 		}
-		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
+		params.initialTokenAllocation[common.HexToAddress(icmInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
 		if !params.DisableTeleporterOnGenesis {
@@ -139,7 +139,7 @@ func CreateEVMGenesis(
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
 			params.nativeMinterPrecompileAllowList.AdminAddresses,
-			common.HexToAddress(teleporterInfo.FundedAddress),
+			common.HexToAddress(icmInfo.FundedAddress),
 		)
 	}
 
@@ -149,9 +149,9 @@ func CreateEVMGenesis(
 	if params.UseTeleporter || params.UseExternalGasToken {
 		addTeleporterAddressesToAllowLists(
 			&precompiles,
-			teleporterInfo.FundedAddress,
-			teleporterInfo.MessengerDeployerAddress,
-			teleporterInfo.RelayerAddress,
+			icmInfo.FundedAddress,
+			icmInfo.MessengerDeployerAddress,
+			icmInfo.RelayerAddress,
 		)
 	}
 

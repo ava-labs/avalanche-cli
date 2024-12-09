@@ -10,9 +10,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
@@ -166,7 +166,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	}
 	// send tx to the ICM contract at the source
 	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
-	tx, receipt, err := teleporter.SendCrossChainMessage(
+	tx, receipt, err := interchain.SendCrossChainMessage(
 		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
 		privateKey,
@@ -192,7 +192,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
 	}
 
-	event, err := evm.GetEventFromLogs(receipt.Logs, teleporter.ParseSendCrossChainMessage)
+	event, err := evm.GetEventFromLogs(receipt.Logs, interchain.ParseSendCrossChainMessage)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	arrivalCheckTimeout := 10 * time.Second
 	t0 := time.Now()
 	for {
-		if b, err := teleporter.MessageReceived(
+		if b, err := interchain.MessageReceived(
 			destRPCEndpoint,
 			common.HexToAddress(destMessengerAddress),
 			event.MessageID,

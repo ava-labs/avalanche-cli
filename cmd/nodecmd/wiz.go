@@ -13,22 +13,21 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/metrics"
-
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -329,7 +328,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			// get awm-relayer latest version
-			relayerVersion, err := teleporter.GetLatestRelayerReleaseVersion()
+			relayerVersion, err := interchain.GetLatestRelayerReleaseVersion()
 			if err != nil {
 				return err
 			}
@@ -498,13 +497,13 @@ func updateProposerVMs(
 			if blockchainID == ids.Empty {
 				return ErrNoBlockchainID
 			}
-			if err := teleporter.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
+			if err := interchain.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
 				return err
 			}
 		}
 	}
 	ux.Logger.PrintToUser("Updating proposerVM on c-chain")
-	return teleporter.SetProposerVM(app, network, "C", "")
+	return interchain.SetProposerVM(app, network, "C", "")
 }
 
 func setICMRelayerHost(host *models.Host, relayerVersion string) error {
@@ -569,7 +568,7 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err != nil {
 		return err
 	}
-	if err := teleporter.FundRelayer(
+	if err := interchain.FundRelayer(
 		network.BlockchainEndpoint(blockchainID.String()),
 		teleporterKey.PrivKeyHex(),
 		relayerKey.C(),
@@ -580,7 +579,7 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err != nil {
 		return err
 	}
-	return teleporter.FundRelayer(
+	return interchain.FundRelayer(
 		network.BlockchainEndpoint("C"),
 		ewoqKey.PrivKeyHex(),
 		relayerKey.C(),
@@ -960,7 +959,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 }
 
 func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, blockchainName string) error {
-	relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
+	relayerAddress, relayerPrivateKey, err := interchain.GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
 	if err != nil {
 		return err
 	}
@@ -974,7 +973,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 	}
 	ux.Logger.PrintToUser("updating configuration file %s", configPath)
 
-	if err := teleporter.CreateBaseRelayerConfigIfMissing(
+	if err := interchain.CreateBaseRelayerConfigIfMissing(
 		configPath,
 		logging.Info.LowerString(),
 		app.GetICMRelayerServiceStorageDir(storageBasePath),
@@ -1002,7 +1001,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
-	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+	if err = interchain.AddSourceAndDestinationToRelayerConfig(
 		configPath,
 		rpcEndpoint,
 		wsEndpoint,
@@ -1034,7 +1033,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
-	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+	if err = interchain.AddSourceAndDestinationToRelayerConfig(
 		configPath,
 		rpcEndpoint,
 		wsEndpoint,
