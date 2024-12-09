@@ -30,6 +30,7 @@ var (
 	blockchainIDstr string
 	nodeURL         string
 	useSubnetEvm    bool
+	useHyperVM      bool
 	useCustomVM     bool
 )
 
@@ -52,6 +53,7 @@ flag.`,
 	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running subnet validator")
 
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "import a subnet-evm")
+	cmd.Flags().BoolVar(&useHyperVM, "hypervm", false, "import a hypervm")
 	cmd.Flags().BoolVar(&useCustomVM, "custom", false, "use a custom VM template")
 	cmd.Flags().BoolVar(
 		&overwriteImport,
@@ -140,7 +142,7 @@ func importPublic(*cobra.Command, []string) error {
 	// TODO: it's probably possible to deploy VMs with the same name on a public network
 	// In this case, an import could clash because the tool supports unique names only
 
-	vmType, err := vm.PromptVMType(app, useSubnetEvm, useCustomVM)
+	vmType, err := vm.PromptVMType(app, useSubnetEvm, useHyperVM, useCustomVM)
 	if err != nil {
 		return err
 	}

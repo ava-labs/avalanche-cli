@@ -61,6 +61,7 @@ func CreateCustomSidecar(
 			if err != nil {
 				return nil, err
 			}
+			sc.CustomVMBinaryPath = vmPath
 		}
 	}
 	if useRepo {
