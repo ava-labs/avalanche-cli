@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 )
@@ -161,24 +162,23 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 	}
-	var (
-		err        error
-		nodeConfig map[string]interface{}
-	)
+	nodeConfig := make(map[string]interface{})
 	if nodeConfigPath != "" {
+		var err error
 		nodeConfig, err = utils.ReadJSON(nodeConfigPath)
 		if err != nil {
 			return err
 		}
 	}
-
+	if partialSync {
+		nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+	}
 	return node.StartLocalNode(
 		app,
 		clusterName,
 		globalNetworkFlags.UseEtnaDevnet,
 		avalanchegoBinaryPath,
 		numNodes,
-		partialSync,
 		nodeConfig,
 		anrSettings,
 		avaGoVersionSetting,
