@@ -165,6 +165,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			avalancheGoBinPath = extraLocalNetworkData.AvalancheGoPath
 		}
 
+		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
+
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.LoadSnapshot(
 			ctx,
@@ -238,6 +240,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			return fmt.Errorf("could not close upgrade file: %w", err)
 		}
 		defer os.Remove(upgradePath)
+
+		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(

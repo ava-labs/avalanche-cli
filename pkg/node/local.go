@@ -24,6 +24,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	anrnetwork "github.com/ava-labs/avalanche-network-runner/network"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
@@ -259,6 +260,7 @@ func StartLocalNode(
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 	if err != nil {
 		return err
@@ -320,6 +322,13 @@ func StartLocalNode(
 				constants.FujiAPIEndpoint,
 				clusterName,
 			)
+		case globalNetworkFlags.UseLocal:
+			network = models.NewNetwork(
+				models.Local,
+				constants.LocalNetworkID,
+				constants.LocalAPIEndpoint,
+				clusterName,
+			)
 		default:
 			network, err = networkoptions.GetNetworkFromCmdLineFlags(
 				app,
@@ -336,6 +345,61 @@ func StartLocalNode(
 		}
 		if network.Kind == models.Fuji {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
+		}
+		if network.Kind == models.Local {
+			cli, err := binutils.NewGRPCClient()
+			if err != nil {
+				return err
+			}
+			if isBootstrapped, err := localnet.IsBootstrapped(ctx, cli); err != nil {
+				return err
+			} else if !isBootstrapped {
+				return fmt.Errorf("no local network is running")
+			}
+			status, err := cli.Status(ctx)
+			if err != nil {
+				return err
+			}
+			rootDataDir := status.ClusterInfo.RootDataDir
+			networkJsonPath := filepath.Join(rootDataDir, "network.json")
+			bs, err := os.ReadFile(networkJsonPath)
+			if err != nil {
+				return fmt.Errorf("could not read local network config file %s: %w", networkJsonPath, err)
+			}
+			var networkJson anrnetwork.Config
+			if err := json.Unmarshal(bs, &networkJson); err != nil {
+				return err
+			}
+			fmt.Println(rootDataDir)
+			for id, ip := range networkJson.BeaconConfig {
+				anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
+				anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
+			}
+			// prepare genesis and upgrade files for anr
+			genesisFile, err := os.CreateTemp("", "local_network_genesis")
+			if err != nil {
+				return fmt.Errorf("could not create local network genesis file: %w", err)
+			}
+			if _, err := genesisFile.Write([]byte(networkJson.Genesis)); err != nil {
+				return fmt.Errorf("could not write local network genesis file: %w", err)
+			}
+			if err := genesisFile.Close(); err != nil {
+				return fmt.Errorf("could not close local network genesis file: %w", err)
+			}
+			anrSettings.GenesisPath = genesisFile.Name()
+			defer os.Remove(anrSettings.GenesisPath)
+			upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
+			if err != nil {
+				return fmt.Errorf("could not create local network upgrade file: %w", err)
+			}
+			if _, err := upgradeFile.Write([]byte(networkJson.Upgrade)); err != nil {
+				return fmt.Errorf("could not write local network upgrade file: %w", err)
+			}
+			anrSettings.UpgradePath = upgradeFile.Name()
+			if err := upgradeFile.Close(); err != nil {
+				return fmt.Errorf("could not close local network upgrade file: %w", err)
+			}
+			defer os.Remove(anrSettings.UpgradePath)
 		}
 		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err
