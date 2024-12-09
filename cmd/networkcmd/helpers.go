@@ -84,6 +84,8 @@ func TrackSubnet(
 	if err != nil {
 		return err
 	}
+	fmt.Printf("status ANR %s \n", status.String())
+	fmt.Printf("status ANR clusterinfo %s \n", status.GetClusterInfo().GetRootDataDir())
 	publicEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 		if app.ChainConfigExists(blockchainName) {

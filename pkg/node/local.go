@@ -370,6 +370,67 @@ func StartLocalNode(
 			}
 			defer os.Remove(anrSettings.UpgradePath)
 		}
+		if network.Kind == models.Local {
+			anrSettings.BootstrapIDs = constants.LocalNetworkBootstrapNodeIDs
+			anrSettings.BootstrapIPs = constants.LocalNetworkBootstrapIPs
+
+			cliLocal, err := binutils.NewGRPCClientWithEndpoint(
+				binutils.LocalNetworkGRPCServerEndpoint,
+				binutils.WithAvoidRPCVersionCheck(true),
+				binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+			)
+			if err != nil {
+				return err
+			}
+			ctx2, cancel2 := utils.GetANRContext()
+			defer cancel2()
+
+			status, err := cliLocal.Status(ctx2)
+			if err != nil {
+				fmt.Printf("we have err here %s \n", err)
+				return err
+			}
+			fmt.Printf("status ANR %s \n", status.String())
+			fmt.Printf("status ANR clusterinfo %s \n", status.GetClusterInfo().GetRootDataDir())
+
+			fmt.Printf("obtained genesis path %s \n", filepath.Join(status.GetClusterInfo().GetRootDataDir(), "node1", "configs", "genesis.json"))
+			genesisBytes, err := os.ReadFile(filepath.Join(status.GetClusterInfo().GetRootDataDir(), "node1", "configs", "genesis.json"))
+			if err != nil {
+				return err
+			}
+
+			// prepare genesis and upgrade files for anr
+			genesisFile, err := os.CreateTemp("", "local_network_genesis")
+			if err != nil {
+				return fmt.Errorf("could not create save Local Network genesis file: %w", err)
+			}
+			//if _, err := genesisFile.Write(constants.LocalNetworkGenesisData); err != nil {
+			//	return fmt.Errorf("could not write Local Network genesis data: %w", err)
+			//}
+			fmt.Printf("genesis %s \n", string(genesisBytes))
+			if _, err := genesisFile.Write(genesisBytes); err != nil {
+				return fmt.Errorf("could not write Local Network genesis data: %w", err)
+			}
+			fmt.Printf("we are here at local pkg %s \n", string(constants.LocalNetworkGenesisData))
+			if err := genesisFile.Close(); err != nil {
+				return fmt.Errorf("could not close Local Network genesis file: %w", err)
+			}
+			anrSettings.GenesisPath = genesisFile.Name()
+			defer os.Remove(anrSettings.GenesisPath)
+
+			upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
+			if err != nil {
+				return fmt.Errorf("could not create save Local Network upgrade file: %w", err)
+			}
+			if _, err := upgradeFile.Write(constants.LocalNetworkUpgradeData); err != nil {
+				return fmt.Errorf("could not write Local Network upgrade data: %w", err)
+			}
+			anrSettings.UpgradePath = upgradeFile.Name()
+			if err := upgradeFile.Close(); err != nil {
+				return fmt.Errorf("could not close Local Network upgrade file: %w", err)
+			}
+			defer os.Remove(anrSettings.UpgradePath)
+		}
 
 		if anrSettings.StakingTLSKeyPath != "" && anrSettings.StakingCertKeyPath != "" && anrSettings.StakingSignerKeyPath != "" {
 			if err := os.MkdirAll(filepath.Join(rootDir, "node1", "staking"), 0o700); err != nil {
