@@ -27,6 +27,7 @@ jobs:
             "\\[Etna Subnet SOV\\]",
             "\\[Etna AddRemove Validator SOV PoA\\]",
             "\\[Etna AddRemove Validator SOV PoS\\]",
+            "\\[Etna Add Validator SOV Local\\]",
             "\\[Subnet\\]",
             "\\[Upgrade expect network failure\\]",
             "\\[Upgrade public network\\]",
@@ -51,6 +52,8 @@ jobs:
             suite: "\\[Etna AddRemove Validator SOV PoA\\]"
           - os: ubuntu-latest
             suite: "\\[Etna AddRemove Validator SOV PoS\\]"
+          - os: ubuntu-latest
+            suite: "\\[Etna Add Validator SOV Local\\]"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
