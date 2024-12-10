@@ -294,9 +294,9 @@ func removeValidatorSOV(
 		uptimeSec,
 		isBootstrapValidator || force,
 	)
-	if err != nil && err == validatormanagerSDK.ErrValidatorIneligibleForRewards {
+	if err != nil && errors.Is(err, validatormanagerSDK.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Validator %s is not eligible for rewards", nodeID)
-		force, err = app.Prompt.CaptureNoYes("Are you sure you want to still remove the validator?")
+		force, err = app.Prompt.CaptureNoYes("Do you want to continue with validator removal?")
 		if err != nil {
 			return err
 		}
@@ -311,6 +311,7 @@ func removeValidatorSOV(
 			ownerPrivateKey,
 			nodeID,
 			extraAggregatorPeers,
+			aggregatorAllowPrivatePeers,
 			aggregatorLogLevel,
 			sc.PoS(),
 			uptimeSec,
