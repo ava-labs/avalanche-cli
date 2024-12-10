@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 
 const (
 	updateInterval = 500 * time.Millisecond
+	maxFileSize    = 10 * 1024 * 1024 * 1024 // 10GB per file
 	// public archive
 	PChainArchiveFuji = "https://avalanchego-public-database.avax-test.network/p-chain/avalanchego/data-tar/latest.tar"
 )
@@ -60,7 +62,6 @@ func newGetter(endpoint string, target string) (Getter, error) {
 // logLevel: the log level
 func NewDownloader(
 	network network.Network,
-	target string,
 	logLevel logging.Level,
 ) (Downloader, error) {
 	tmpFile, err := os.CreateTemp("", "avalanche-cli-public-archive-*")
@@ -134,7 +135,8 @@ func (d Downloader) UnpackTo(targetDir string) error {
 	}
 	defer tarFile.Close()
 
-	tarReader := tar.NewReader(tarFile)
+	tarReader := tar.NewReader(io.LimitReader(tarFile, maxFileSize))
+	extractedSize := int64(0)
 	for {
 		header, err := tarReader.Next()
 		if err == io.EOF {
@@ -146,7 +148,23 @@ func (d Downloader) UnpackTo(targetDir string) error {
 			return fmt.Errorf("error reading tar archive: %w", err)
 		}
 
-		targetPath := filepath.Join(targetDir, header.Name)
+		targetPath := filepath.Join(targetDir, filepath.Clean(header.Name))
+
+		// security checks
+		if !strings.HasPrefix(targetPath, filepath.Clean(targetDir)+string(os.PathSeparator)) {
+			d.logger.Error("Invalid file path", zap.String("path", targetPath))
+			return fmt.Errorf("invalid file path: %s", targetPath)
+		}
+		if extractedSize+header.Size > maxFileSize {
+			d.logger.Error("File too large", zap.String("path", header.Name), zap.Int64("size", header.Size))
+			return fmt.Errorf("file too large: %s", header.Name)
+		}
+		if strings.Contains(header.Name, "..") {
+			d.logger.Error("Invalid file path", zap.String("path", header.Name))
+			return fmt.Errorf("invalid file path: %s", header.Name)
+		}
+		// end of security checks
+
 		switch header.Typeflag {
 		case tar.TypeDir:
 			d.logger.Debug("Creating directory", zap.String("path", targetPath))
@@ -162,10 +180,16 @@ func (d Downloader) UnpackTo(targetDir string) error {
 				return fmt.Errorf("failed to create file: %w", err)
 			}
 			defer outFile.Close()
-			if _, err := io.Copy(outFile, tarReader); err != nil {
+			copied, err := io.CopyN(outFile, tarReader, header.Size)
+			if err != nil {
 				d.logger.Error("Failed to write file", zap.Error(err))
 				return fmt.Errorf("failed to write file: %w", err)
 			}
+			if copied < header.Size {
+				d.logger.Error("Incomplete file write", zap.String("path", targetPath))
+				return fmt.Errorf("incomplete file write for %s", targetPath)
+			}
+			extractedSize += header.Size
 		default:
 			d.logger.Debug("Skipping file", zap.String("path", targetPath))
 		}
