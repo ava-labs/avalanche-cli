@@ -232,16 +232,13 @@ func AddEtnaSubnetValidatorToCluster(
 	nodeEndpoint string,
 	ewoqPChainAddress string,
 	balance int,
+	createLocalValidator bool,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
 		"blockchain",
 		"addValidator",
 		subnetName,
-		"--cluster",
-		clusterName,
-		"--node-endpoint",
-		nodeEndpoint,
 		"--ewoq",
 		"--balance",
 		strconv.Itoa(balance),
@@ -257,6 +254,17 @@ func AddEtnaSubnetValidatorToCluster(
 		"100s",
 		"--"+constants.SkipUpdateFlag,
 	)
+	if clusterName != "" {
+		cmd.Args = append(cmd.Args, "--cluster", clusterName)
+	} else {
+		cmd.Args = append(cmd.Args, "--local")
+	}
+	if nodeEndpoint != "" {
+		cmd.Args = append(cmd.Args, "--node-endpoint", nodeEndpoint)
+	}
+	if createLocalValidator {
+		cmd.Args = append(cmd.Args, "--create-local-validator")
+	}
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -315,6 +323,31 @@ func GetLocalClusterStatus(
 	if blockchainName != "" {
 		cmd.Args = append(cmd.Args, "--blockchain", blockchainName)
 	}
+	fmt.Println(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
+}
+
+func DeployEtnaLocalBlockchain(
+	blockchainName string,
+) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		"blockchain",
+		"deploy",
+		blockchainName,
+		"--skip-relayer",
+		"--etna-devnet",
+		"--ewoq",
+		"--use-local-machine",
+		"--"+constants.SkipUpdateFlag,
+	)
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

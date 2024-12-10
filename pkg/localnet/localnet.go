@@ -81,8 +81,8 @@ func GetExtraLocalNetworkData(rootDataDir string) (bool, ExtraLocalNetworkData, 
 func WriteExtraLocalNetworkData(
 	avalancheGoPath string,
 	relayerPath string,
-	cchainTeleporterMessengerAddress string,
-	cchainTeleporterRegistryAddress string,
+	cchainICMMessengerAddress string,
+	cchainICMRegistryAddress string,
 ) error {
 	clusterInfo, err := GetClusterInfo()
 	if err != nil {
@@ -103,11 +103,11 @@ func WriteExtraLocalNetworkData(
 	if relayerPath != "" {
 		extraLocalNetworkData.RelayerPath = utils.ExpandHome(relayerPath)
 	}
-	if cchainTeleporterMessengerAddress != "" {
-		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainTeleporterMessengerAddress
+	if cchainICMMessengerAddress != "" {
+		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainICMMessengerAddress
 	}
-	if cchainTeleporterRegistryAddress != "" {
-		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainTeleporterRegistryAddress
+	if cchainICMRegistryAddress != "" {
+		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainICMRegistryAddress
 	}
 	bs, err := json.Marshal(&extraLocalNetworkData)
 	if err != nil {

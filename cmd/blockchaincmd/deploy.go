@@ -16,11 +16,12 @@ import (
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/network/peer"
 
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -156,14 +157,21 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic teleporter deploy on local networks [to be deprecated]")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic teleporter deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
 	cmd.Flags().StringVar(
 		&icmSpec.ICMVersion,
 		"teleporter-version",
 		constants.LatestReleaseVersionTag,
-		"teleporter version to deploy",
+		"ICM version to deploy",
+	)
+	cmd.Flags().StringVar(
+		&icmSpec.ICMVersion,
+		"icm-version",
+		constants.LatestReleaseVersionTag,
+		"ICM version to deploy",
 	)
 	cmd.Flags().StringVar(
 		&icmSpec.RelayerVersion,
@@ -179,16 +187,17 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().StringVar(&cchainIcmKeyName, "cchain-icm-key", "", "key to be used to pay for ICM deploys on C-Chain")
 	cmd.Flags().BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
 	cmd.Flags().StringVar(&cChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
-	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an interchain messenger contract address file")
-	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an interchain messenger deployer address file")
-	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an interchain messenger deployer tx file")
-	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an interchain messenger registry bytecode file")
+	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
+	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an ICM Messenger deployer address file")
+	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an ICM Messenger deployer tx file")
+	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
+	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
@@ -394,7 +403,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if icmSpec.MessengerContractAddressPath != "" || icmSpec.MessengerDeployerAddressPath != "" || icmSpec.MessengerDeployerTxPath != "" || icmSpec.RegistryBydecodePath != "" {
 		if icmSpec.MessengerContractAddressPath == "" || icmSpec.MessengerDeployerAddressPath == "" || icmSpec.MessengerDeployerTxPath == "" || icmSpec.RegistryBydecodePath == "" {
-			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
+			return fmt.Errorf("if setting any ICM asset path, you must set all ICM asset paths")
 		}
 	}
 
@@ -574,15 +583,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if changeOwnerAddress == "" {
-		// use provided key as change owner unless already set
-		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-			changeOwnerAddress = pAddr[0]
-			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
-		}
-	}
-
 	if sidecar.Sovereign {
+		if changeOwnerAddress == "" {
+			// use provided key as change owner unless already set
+			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
+				changeOwnerAddress = pAddr[0]
+				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
+			}
+		}
 		if !generateNodeID {
 			if network.Kind == models.Local {
 				if len(bootstrapEndpoints) == 0 {
@@ -675,6 +683,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						return err
 					}
 				}
+				if partialSync {
+					nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+				}
 				if network.Kind == models.Fuji {
 					globalNetworkFlags.UseFuji = true
 				}
@@ -685,7 +696,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					useEtnaDevnet,
 					avagoBinaryPath,
 					uint32(numLocalNodes),
-					partialSync,
 					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
@@ -1031,10 +1041,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					network,
 					genesisPrivateKey,
 					extraAggregatorPeers,
+					aggregatorAllowPrivatePeers,
 					logLvl,
 					validatorManagerSDK.PoSParams{
-						MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
-						MaximumStakeAmount:      big.NewInt(int64(poSMaximumStakeAmount)),
+						MinimumStakeAmount:      utils.ApplyDefaultDenomination(poSMinimumStakeAmount),
+						MaximumStakeAmount:      utils.ApplyDefaultDenomination(poSMaximumStakeAmount),
 						MinimumStakeDuration:    poSMinimumStakeDuration,
 						MinimumDelegationFee:    poSMinimumDelegationFee,
 						MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
@@ -1047,7 +1058,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			} else {
 				ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-				if err := subnetSDK.InitializeProofOfAuthority(network, genesisPrivateKey, extraAggregatorPeers, logLvl); err != nil {
+				if err := subnetSDK.InitializeProofOfAuthority(
+					network,
+					genesisPrivateKey,
+					extraAggregatorPeers,
+					aggregatorAllowPrivatePeers,
+					logLvl,
+				); err != nil {
 					return err
 				}
 				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
@@ -1090,7 +1107,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				BlockchainName: blockchainName,
 			}
 			chainSpec.SetEnabled(true, false, false, false, false)
-			deployICMFlags := teleportercmd.DeployFlags{
+			deployICMFlags := messengercmd.DeployFlags{
 				ChainFlags: chainSpec,
 				PrivateKeyFlags: contract.PrivateKeyFlags{
 					KeyName: icmKeyName,
@@ -1106,7 +1123,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				CChainKeyName:                cchainIcmKeyName,
 			}
 			ux.Logger.PrintToUser("")
-			if err := teleportercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
+			if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
 				return err
 			}
 		}
@@ -1120,7 +1137,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				icmSpec.SkipRelayerDeploy = !yes
 			}
 		}
-		if !icmSpec.SkipRelayerDeploy && network.Kind != models.Fuji {
+		if !icmSpec.SkipRelayerDeploy && (network.Kind != models.Fuji && network.Kind != models.Mainnet) {
 			deployRelayerFlags := relayercmd.DeployFlags{
 				Version:            icmSpec.RelayerVersion,
 				BinPath:            icmSpec.RelayerBinPath,

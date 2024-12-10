@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
@@ -23,11 +24,12 @@ import (
 )
 
 type ValidatorManagerFlags struct {
-	Network                  networkoptions.NetworkFlags
-	PrivateKeyFlags          contract.PrivateKeyFlags
-	rpcEndpoint              string
-	aggregatorLogLevel       string
-	aggregatorExtraEndpoints []string
+	Network                     networkoptions.NetworkFlags
+	PrivateKeyFlags             contract.PrivateKeyFlags
+	rpcEndpoint                 string
+	aggregatorLogLevel          string
+	aggregatorExtraEndpoints    []string
+	aggregatorAllowPrivatePeers bool
 }
 
 type POSManagerSpecFlags struct {
@@ -56,7 +58,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "initValidatorManager blockchainName",
 		Short: "Initializes Proof of Authority(PoA) or Proof of Stake(PoS) Validator Manager on a given Network and Blockchain",
-		Long:  "Initializes Proof of Authority(PoA) or Proof of Stake(PoS)Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/teleporter/tree/staking-contract/contracts/validator-manager",
+		Long:  "Initializes Proof of Authority(PoA) or Proof of Stake(PoS)Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/icm-contracts/tree/main/contracts/validator-manager",
 		RunE:  initValidatorManager,
 		Args:  cobrautils.ExactArgs(1),
 	}
@@ -64,6 +66,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	validatorManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&validatorManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
 	cmd.Flags().StringSliceVar(&validatorManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
+	cmd.Flags().BoolVar(&validatorManagerFlags.aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().StringVar(&validatorManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
@@ -184,6 +187,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			network,
 			privateKey,
 			extraAggregatorPeers,
+			validatorManagerFlags.aggregatorAllowPrivatePeers,
 			validatorManagerFlags.aggregatorLogLevel,
 		); err != nil {
 			return err
@@ -199,10 +203,11 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			network,
 			privateKey,
 			extraAggregatorPeers,
+			validatorManagerFlags.aggregatorAllowPrivatePeers,
 			validatorManagerFlags.aggregatorLogLevel,
 			validatorManagerSDK.PoSParams{
-				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
-				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
+				MinimumStakeAmount:      utils.ApplyDefaultDenomination(initPOSManagerFlags.minimumStakeAmount),
+				MaximumStakeAmount:      utils.ApplyDefaultDenomination(initPOSManagerFlags.maximumStakeAmount),
 				MinimumStakeDuration:    initPOSManagerFlags.minimumStakeDuration,
 				MinimumDelegationFee:    initPOSManagerFlags.minimumDelegationFee,
 				MaximumStakeMultiplier:  initPOSManagerFlags.maximumStakeMultiplier,

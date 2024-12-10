@@ -3,15 +3,14 @@
 package blockchaincmd
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/units"
 
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -20,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -69,7 +69,10 @@ var (
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
 	aggregatorExtraEndpoints            []string
+	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
+
+	createLocalValidator bool
 )
 
 // avalanche blockchain addValidator
@@ -101,8 +104,11 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&pop, "bls-proof-of-possession", "", "set the BLS proof of possession of the validator to add")
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
+	cmd.Flags().BoolVar(&createLocalValidator, "create-local-validator", false, "create additional local validator and add it to existing running local node")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
+	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
@@ -118,6 +124,20 @@ Testnet or Mainnet.`,
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 
 	return cmd
+}
+
+func preAddChecks(network models.Network, sovereign bool) error {
+	if sovereign && network.Kind == models.Mainnet {
+		return errNotSupportedOnMainnet
+	}
+	if nodeEndpoint != "" && createLocalValidator {
+		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
+	}
+	if createLocalValidator && (nodeIDStr != "" || publicKey != "" || pop != "") {
+		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used")
+	}
+
+	return nil
 }
 
 func addValidator(_ *cobra.Command, args []string) error {
@@ -151,6 +171,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
+	if err := preAddChecks(network, sc.Sovereign); err != nil {
+		return err
+	}
+
 	if sc.Networks[network.Name()].ClusterName != "" {
 		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
 	}
@@ -170,18 +194,87 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	sovereign := sc.Sovereign
+
 	if nodeEndpoint != "" {
-		infoClient := info.NewClient(nodeEndpoint)
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
 		if err != nil {
 			return err
 		}
-		nodeIDStr = nodeID.String()
-		publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-		pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
 	}
+
+	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add a aditional local node
+	if (!sovereign && nodeIDStr == "") || (sovereign && !createLocalValidator && nodeIDStr == "" && publicKey == "" && pop == "") {
+		for {
+			local := "Use my local machine to spin up an additional validator"
+			existing := "I have an existing Avalanche node (we will require its NodeID and BLS info)"
+			if option, err := app.Prompt.CaptureList(
+				"How would you like to set up the new validator",
+				[]string{local, existing},
+			); err != nil {
+				return err
+			} else {
+				createLocalValidator = option == local
+				break
+			}
+		}
+	}
+
+	// if user chose to upsize a local node to add another local validator
+	if createLocalValidator {
+		anrSettings := node.ANRSettings{}
+		nodeConfig := map[string]interface{}{}
+		ux.Logger.PrintToUser("Creating a new Avalanche node on local machine to add as a new validator to blockchain %s", blockchainName)
+		if app.AvagoNodeConfigExists(blockchainName) {
+			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
+			if err != nil {
+				return err
+			}
+		}
+		if partialSync {
+			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+		}
+		avalancheGoBinPath, err := node.GetLocalNodeAvalancheGoBinPath()
+		if err != nil {
+			return fmt.Errorf("failed to get local node avalanche go bin path: %w", err)
+		}
+
+		nodeName := ""
+		blockchainID := sc.Networks[network.Name()].BlockchainID
+		subnetID := sc.Networks[network.Name()].SubnetID
+
+		if nodeName, err = node.UpsizeLocalNode(
+			app,
+			network,
+			blockchainName,
+			blockchainID,
+			subnetID,
+			avalancheGoBinPath,
+			nodeConfig,
+			anrSettings,
+		); err != nil {
+			return err
+		}
+		// get node data
+		nodeInfo, err := node.GetNodeInfo(nodeName)
+		if err != nil {
+			return err
+		}
+		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeInfo.Uri)
+		if err != nil {
+			return err
+		}
+		// update sidecar with new node
+		if err := node.AddNodeInfoToSidecar(&sc, nodeInfo, network); err != nil {
+			return err
+		}
+		if err := app.UpdateSidecar(&sc); err != nil {
+			return err
+		}
+		// make sure extra validator endpoint added for the new node
+		aggregatorExtraEndpoints = append(aggregatorExtraEndpoints, constants.LocalAPIEndpoint)
+	}
+
 	if nodeIDStr == "" {
 		nodeID, err := PromptNodeID("add as a blockchain validator")
 		if err != nil {
@@ -192,8 +285,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err := prompts.ValidateNodeID(nodeIDStr); err != nil {
 		return err
 	}
-
-	sovereign := sc.Sovereign
 
 	if sovereign && publicKey == "" && pop == "" {
 		publicKey, pop, err = promptProofOfPossession(true, true)
@@ -378,6 +469,7 @@ func CallAddValidator(
 		disableOwners,
 		weight,
 		extraAggregatorPeers,
+		aggregatorAllowPrivatePeers,
 		aggregatorLogLevel,
 		pos,
 		delegationFee,
@@ -409,6 +501,7 @@ func CallAddValidator(
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
+		aggregatorAllowPrivatePeers,
 		aggregatorLogLevel,
 	); err != nil {
 		return err
@@ -421,7 +514,7 @@ func CallAddValidator(
 		ux.Logger.PrintToUser("  Weight: %d", weight)
 	}
 	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
-	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the Subnet")
+	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
 
 	return nil
 }
