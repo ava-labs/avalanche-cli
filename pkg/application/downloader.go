@@ -89,7 +89,9 @@ func (d downloader) GetAllReleasesForRepo(org, repo string) ([]string, error) {
 	for i, r := range releaseArr {
 		version := r[githubVersionTagName].(string)
 		if !utils.IsValidSemanticVersion(version) {
-			return nil, fmt.Errorf("invalid version string: %s", version)
+			if repo != constants.ICMServicesRepoName {
+				return nil, fmt.Errorf("invalid version string: %s", version)
+			}
 		}
 		releases[i] = version
 	}

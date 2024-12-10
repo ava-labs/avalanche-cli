@@ -371,7 +371,6 @@ func StartLocalNode(
 			if err := json.Unmarshal(bs, &networkJson); err != nil {
 				return err
 			}
-			fmt.Println(rootDataDir)
 			for id, ip := range networkJson.BeaconConfig {
 				anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
 				anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
@@ -793,7 +792,45 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	return localClusters, nil
 }
 
+func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	currentlyRunningRootDir := ""
+	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if cli != nil {
+		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
+		if status != nil && status.ClusterInfo != nil {
+			if status.ClusterInfo.RootDataDir != "" {
+				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
+			}
+		}
+	}
+	if currentlyRunningRootDir == "" {
+		return nil
+	}
+	localClusters, err := listLocalClusters(app, nil)
+	if err != nil {
+		return fmt.Errorf("failed to list local clusters: %w", err)
+	}
+	for clusterName, rootDir := range localClusters {
+		clusterConf, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster config: %w", err)
+		}
+		network := models.ConvertClusterToNetwork(clusterConf.Network)
+		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
+			_ = DestroyLocalNode(app, clusterName)
+		}
+	}
+	return nil
+}
+
 func LocalStatus(app *application.Avalanche, clusterName string, blockchainName string) error {
+	DestroyCurrentIfLocalNetwork(app)
 	clustersToList := make([]string, 0)
 	if clusterName != "" {
 		if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
@@ -840,18 +877,20 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 		healthStatus := ""
 		avagoURIOuput := ""
 
+		clusterConf, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster config: %w", err)
+		}
+		network := models.ConvertClusterToNetwork(clusterConf.Network)
+		networkKind := fmt.Sprintf(" [%s]", logging.Orange.Wrap(network.Name()))
+
 		// load sidecar and cluster config for the cluster  if blockchainName is not empty
 		blockchainID := ids.Empty
 		if blockchainName != "" {
-			clusterConf, err := app.GetClusterConfig(clusterName)
-			if err != nil {
-				return fmt.Errorf("failed to get cluster config: %w", err)
-			}
 			sc, err := app.LoadSidecar(blockchainName)
 			if err != nil {
 				return err
 			}
-			network := models.ConvertClusterToNetwork(clusterConf.Network)
 			blockchainID = sc.Networks[network.Name()].BlockchainID
 		}
 		if rootDir == currentlyRunningRootDir {
@@ -891,7 +930,7 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 		} else {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
 		}
-		ux.Logger.PrintToUser("- %s: %s %s %s", clusterName, rootDir, currenlyRunning, healthStatus)
+		ux.Logger.PrintToUser("- %s: %s %s %s %s", clusterName, rootDir, networkKind, currenlyRunning, healthStatus)
 		ux.Logger.PrintToUser(avagoURIOuput)
 	}
 

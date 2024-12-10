@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -83,7 +84,7 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	return nil
+	return node.DestroyCurrentIfLocalNetwork(app)
 }
 
 func removeLocalDeployInfoFromSidecars() error {
