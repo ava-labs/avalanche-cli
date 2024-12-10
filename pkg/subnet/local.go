@@ -212,11 +212,11 @@ func IssueRemoveSubnetValidatorTx(kc keychain.Keychain, subnetID ids.ID, nodeID 
 	api := constants.LocalAPIEndpoint
 	wallet, err := primary.MakeWallet(
 		ctx,
-		&primary.WalletConfig{
-			URI:          api,
-			AVAXKeychain: kc,
-			EthKeychain:  secp256k1fx.NewKeychain(),
-			SubnetIDs:    []ids.ID{subnetID},
+		api,
+		kc,
+		secp256k1fx.NewKeychain(),
+		primary.WalletConfig{
+			SubnetIDs: []ids.ID{subnetID},
 		},
 	)
 	if err != nil {
