@@ -96,21 +96,24 @@ func (d Downloader) Download() error {
 	t := time.NewTicker(updateInterval)
 	defer t.Stop()
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	done := make(chan struct{})
 	go func() {
-		defer wg.Done()
-		for range t.C {
-			d.getter.bytesComplete = resp.BytesComplete()
-			d.logger.Info("Download progress",
-				zap.Int64("bytesComplete", d.getter.bytesComplete),
-				zap.Int64("size", d.getter.size),
-			)
+		defer close(done)
+		for {
+			select {
+			case <-t.C:
+				d.getter.bytesComplete = resp.BytesComplete()
+				d.logger.Info("Download progress",
+					zap.Int64("bytesComplete", d.getter.bytesComplete),
+					zap.Int64("size", d.getter.size))
+			case <-resp.Done:
+				return
+			}
 		}
 	}()
 	<-resp.Done // Wait for the download to finish
 	t.Stop()    // Stop the ticker
-	wg.Wait()
+	<-done
 
 	// check for errors
 	if err := resp.Err(); err != nil {
@@ -173,6 +176,11 @@ func (d Downloader) UnpackTo(targetDir string) error {
 				return fmt.Errorf("failed to create directory: %w", err)
 			}
 		case tar.TypeReg:
+			d.logger.Debug("Ensure parent directory exists for ", zap.String("path", targetPath))
+			if err := os.MkdirAll(filepath.Dir(targetPath), os.FileMode(0755)); err != nil {
+				d.logger.Error("Failed to create parent directory for file", zap.Error(err))
+				return fmt.Errorf("failed to create parent directory for file: %w", err)
+			}
 			d.logger.Debug("Creating file", zap.String("path", targetPath))
 			outFile, err := os.Create(targetPath)
 			if err != nil {
