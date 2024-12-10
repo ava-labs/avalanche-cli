@@ -180,7 +180,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		}
 	} else {
 		if err := td.DownloadAssets(
-			app.GetTeleporterBinDir(),
+			app.GetICMContractsBinDir(),
 			icmVersion,
 		); err != nil {
 			return err

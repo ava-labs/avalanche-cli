@@ -181,7 +181,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 	ux.Logger.PrintToUser(t.Render())
 
-	// Teleporter
+	// ICM
 	t = table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -189,8 +189,8 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle("Teleporter")
-	hasTeleporterInfo := false
+	t.SetTitle("ICM")
+	hasICMInfo := false
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
@@ -203,15 +203,15 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			continue
 		}
 		if data.TeleporterMessengerAddress != "" {
-			t.AppendRow(table.Row{net, "Teleporter Messenger Address", data.TeleporterMessengerAddress})
-			hasTeleporterInfo = true
+			t.AppendRow(table.Row{net, "ICM Messenger Address", data.TeleporterMessengerAddress})
+			hasICMInfo = true
 		}
 		if data.TeleporterRegistryAddress != "" {
-			t.AppendRow(table.Row{net, "Teleporter Registry Address", data.TeleporterRegistryAddress})
-			hasTeleporterInfo = true
+			t.AppendRow(table.Row{net, "ICM Registry Address", data.TeleporterRegistryAddress})
+			hasICMInfo = true
 		}
 	}
-	if hasTeleporterInfo {
+	if hasICMInfo {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(t.Render())
 	}
@@ -273,13 +273,13 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 }
 
 func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
-	teleporterKeyAddress := ""
+	icmKeyAddress := ""
 	if sc.TeleporterReady {
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, app.GetKeyPath(sc.TeleporterKey))
 		if err != nil {
 			return err
 		}
-		teleporterKeyAddress = k.C()
+		icmKeyAddress = k.C()
 	}
 	_, subnetAirdropAddress, _, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, sc.Name)
 	if err != nil {
@@ -308,7 +308,7 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 			description := ""
 			privKey := ""
 			switch address.Hex() {
-			case teleporterKeyAddress:
+			case icmKeyAddress:
 				description = logging.Orange.Wrap("Used by ICM")
 			case subnetAirdropAddress:
 				description = logging.Orange.Wrap("Main funded account")
