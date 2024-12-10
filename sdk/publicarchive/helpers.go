@@ -1,10 +1,20 @@
 package publicarchive
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 // IsEmpty returns true if the Downloader is empty and not initialized
 func (d Downloader) IsEmpty() bool {
 	return d.getter.client == nil
+}
+
+func (d Downloader) GetDownloadedFilePath() (string, error) {
+	if d.GetBytesComplete() != d.GetDownloadSize() {
+		return "", fmt.Errorf("download is not completed")
+	}
+	return d.getter.request.Filename, nil
 }
 
 // GetDownloadSize returns the size of the download

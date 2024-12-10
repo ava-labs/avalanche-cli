@@ -416,6 +416,14 @@ func StartLocalNode(
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
+		// preseed nodes data from public archive. ignore errors
+		nodeNames := []string{}
+		for i := 1; i <= int(numNodes); i++ {
+			nodeNames = append(nodeNames, fmt.Sprintf("node%d", i))
+		}
+		err := SeedClusterData(network, rootDir, nodeNames)
+		ux.Logger.Info("seeding public archive data finished with error: %v[ignored]", err)
+
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			_ = DestroyLocalNode(app, clusterName)

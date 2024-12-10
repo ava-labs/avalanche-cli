@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -24,8 +26,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/publicarchive"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 )
 
@@ -553,4 +558,67 @@ func GetNodeData(endpoint string) (
 		"0x" + hex.EncodeToString(proofOfPossession.PublicKey[:]),
 		"0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:]),
 		nil
+}
+
+func SeedClusterData(
+	clusterNetwork models.Network,
+	rootDir string,
+	nodeNames []string,
+) error {
+	// only fuji is supported for now
+	if clusterNetwork.Kind != models.Fuji {
+		return fmt.Errorf("unsupported network: %s", clusterNetwork.Name())
+	}
+	network := network.FujiNetwork()
+	ux.Logger.Info("downloading public archive for network %s", clusterNetwork.Name())
+	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.Verbo) // off as we run inside of the spinner
+	if err != nil {
+		return fmt.Errorf("failed to create public archive downloader for network %s: %w", clusterNetwork.Name(), err)
+	}
+
+	if err := publicArcDownloader.Download(); err != nil {
+		return fmt.Errorf("failed to download public archive: %w", err)
+	}
+	// defer publicArcDownloader.CleanUp()
+	if path, err := publicArcDownloader.GetDownloadedFilePath(); err != nil {
+		return fmt.Errorf("failed to get downloaded file path: %w", err)
+	} else {
+		ux.Logger.Info("public archive downloaded to %s", path)
+	}
+
+	wg := sync.WaitGroup{}
+	errChan := make(chan error, len(nodeNames))
+
+	for _, nodeName := range nodeNames {
+		wg.Add(1)
+		go func(nodeName string) {
+			defer wg.Done()
+			target := filepath.Join(rootDir, nodeName, "db")
+			ux.Logger.Info("unpacking public archive to %s", target)
+			if err := publicArcDownloader.UnpackTo(target); err != nil {
+				errChan <- fmt.Errorf("failed to unpack public archive: %w", err)
+			}
+		}(nodeName)
+		return nil
+	}
+
+	wg.Wait()
+	close(errChan)
+
+	if len(errChan) > 0 {
+		_ = CleanUpClusterNodeData(rootDir, nodeNames)
+	}
+	for err := range errChan {
+		return err
+	}
+	return nil
+}
+
+func CleanUpClusterNodeData(rootDir string, nodesNames []string) error {
+	for _, nodeName := range nodesNames {
+		if err := os.RemoveAll(filepath.Join(rootDir, nodeName)); err != nil {
+			return err
+		}
+	}
+	return nil
 }

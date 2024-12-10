@@ -88,9 +88,10 @@ func NewDownloader(
 }
 
 func (d Downloader) Download() error {
+	d.logger.Info("Download started from", zap.String("url", d.getter.request.URL().String()))
+
 	d.currentOp.Lock()
 	defer d.currentOp.Unlock()
-	d.logger.Info("Download started from", zap.String("url", d.getter.request.URL().String()))
 
 	resp := d.getter.client.Do(d.getter.request)
 	d.setDownloadSize(resp.Size())
@@ -107,8 +108,8 @@ func (d Downloader) Download() error {
 			case <-t.C:
 				d.setBytesComplete(resp.BytesComplete())
 				d.logger.Info("Download progress",
-					zap.Int64("bytesComplete", d.getter.bytesComplete),
-					zap.Int64("size", d.getter.size))
+					zap.Int64("bytesComplete", d.GetBytesComplete()),
+					zap.Int64("size", d.GetDownloadSize()))
 			case <-resp.Done:
 				return
 			}
