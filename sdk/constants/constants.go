@@ -10,5 +10,6 @@ const (
 	APIRequestLargeTimeout = 2 * time.Minute
 
 	// node
-	WriteReadUserOnlyPerms = 0o600
+	WriteReadUserOnlyPerms    = 0o600
+	WriteReadUserOnlyDirPerms = 0o700
 )
