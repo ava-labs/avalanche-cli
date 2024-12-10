@@ -47,22 +47,31 @@ func TestDownloader_Download(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Create a temporary file for download target
 	tmpFile, err := os.CreateTemp("", "test-download-*")
-	require.NoError(t, err)
+	require.NoError(t, err, "Temporary file creation failed")
 	defer os.Remove(tmpFile.Name())
 
+	// Ensure newGetter initializes properly
 	getter, err := newGetter(server.URL, tmpFile.Name())
-	require.NoError(t, err)
+	require.NoError(t, err, "Getter initialization failed")
 
+	// Ensure the getter has a valid request
+	require.NotNil(t, getter.request, "Getter request is nil")
+
+	// Initialize a no-op logger to avoid output
 	logger := logging.NoLog{}
 	downloader := Downloader{
-		getter: getter,
-		logger: logger,
-		mutex:  &sync.Mutex{},
+		getter:    getter,
+		logger:    logger,
+		currentOp: &sync.Mutex{},
 	}
 
+	// Test the Download functionality
 	err = downloader.Download()
 	require.NoError(t, err, "Download should not return an error")
+
+	// Validate the downloaded content
 	content, err := os.ReadFile(tmpFile.Name())
 	require.NoError(t, err, "Reading downloaded file should not return an error")
 	require.Equal(t, mockData, content, "Downloaded file content should match the mock data")
@@ -108,7 +117,8 @@ func TestDownloader_UnpackTo(t *testing.T) {
 				Filename: tmpTar.Name(),
 			},
 		},
-		logger: logger,
+		logger:    logger,
+		currentOp: &sync.Mutex{},
 	}
 
 	err = downloader.UnpackTo(targetDir)
@@ -121,4 +131,44 @@ func TestDownloader_UnpackTo(t *testing.T) {
 		require.NoError(t, err, fmt.Sprintf("Reading file %s should not return an error", file.Name))
 		require.Equal(t, file.Body, string(content), fmt.Sprintf("File content for %s should match", file.Name))
 	}
+}
+
+func TestDownloader_EndToEnd(t *testing.T) {
+	// Set up a temporary directory for testing
+	tmpDir := t.TempDir()
+	targetDir := filepath.Join(tmpDir, "extracted_files")
+
+	// Configure the test network (Fuji in this case)
+	net := network.Network{ID: constants.FujiID}
+
+	// Initialize a logger
+	logLevel := logging.Debug
+
+	// Step 1: Create the downloader
+	downloader, err := NewDownloader(net, logLevel)
+	require.NoError(t, err, "Failed to initialize downloader")
+
+	// Step 2: Start the download
+	t.Log("Starting download...")
+	err = downloader.Download()
+	require.NoError(t, err, "Download failed")
+
+	// Step 3: Unpack the downloaded archive
+	t.Log("Unpacking downloaded archive...")
+	err = downloader.UnpackTo(targetDir)
+	require.NoError(t, err, "Failed to unpack archive")
+
+	// Step 4: Validate the extracted files
+	t.Log("Validating extracted files...")
+	fileInfo, err := os.Stat(targetDir)
+	require.NoError(t, err, "Extracted directory does not exist")
+	require.True(t, fileInfo.IsDir(), "Extracted path is not a directory")
+
+	// Check that at least one file is extracted
+	extractedFiles, err := os.ReadDir(targetDir)
+	require.NoError(t, err, "Failed to read extracted directory contents")
+	require.NotEmpty(t, extractedFiles, "No files extracted from archive")
+
+	// Step 5: Clean up (optional since TempDir handles this automatically)
+	t.Log("Test completed successfully!")
 }

@@ -1,5 +1,7 @@
 package publicarchive
 
+import "os"
+
 // IsEmpty returns true if the Downloader is empty and not initialized
 func (d Downloader) IsEmpty() bool {
 	return d.getter.client == nil
@@ -29,4 +31,8 @@ func (d Downloader) setBytesComplete(progress int64) {
 	d.getter.mutex.Lock()
 	defer d.getter.mutex.Unlock()
 	d.getter.bytesComplete = progress
+}
+
+func (d Downloader) CleanUp() {
+	_ = os.Remove(d.getter.request.Filename)
 }

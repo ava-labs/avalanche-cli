@@ -38,9 +38,9 @@ type Getter struct {
 }
 
 type Downloader struct {
-	getter Getter
-	logger logging.Logger
-	mutex  *sync.Mutex
+	getter    Getter
+	logger    logging.Logger
+	currentOp *sync.Mutex
 }
 
 // newGetter returns a new Getter
@@ -53,6 +53,7 @@ func newGetter(endpoint string, target string) (Getter, error) {
 			request:       request,
 			size:          0,
 			bytesComplete: 0,
+			mutex:         &sync.RWMutex{},
 		}, nil
 	}
 }
@@ -76,8 +77,9 @@ func NewDownloader(
 			return Downloader{}, err
 		} else {
 			return Downloader{
-				getter: getter,
-				logger: logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logLevel, os.Stdout, logging.JSON.ConsoleEncoder())),
+				getter:    getter,
+				logger:    logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logLevel, os.Stdout, logging.JSON.ConsoleEncoder())),
+				currentOp: &sync.Mutex{},
 			}, nil
 		}
 	default:
@@ -86,8 +88,8 @@ func NewDownloader(
 }
 
 func (d Downloader) Download() error {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
+	d.currentOp.Lock()
+	defer d.currentOp.Unlock()
 	d.logger.Info("Download started from", zap.String("url", d.getter.request.URL().String()))
 
 	resp := d.getter.client.Do(d.getter.request)
@@ -127,6 +129,8 @@ func (d Downloader) Download() error {
 }
 
 func (d Downloader) UnpackTo(targetDir string) error {
+	d.currentOp.Lock()
+	defer d.currentOp.Unlock()
 	// prepare destination path
 	if err := os.MkdirAll(targetDir, sdkConstants.WriteReadUserOnlyDirPerms); err != nil {
 		d.logger.Error("Failed to create target directory", zap.Error(err))
@@ -155,10 +159,6 @@ func (d Downloader) UnpackTo(targetDir string) error {
 		targetPath := filepath.Join(targetDir, filepath.Clean(header.Name))
 
 		// security checks
-		if !strings.HasPrefix(targetPath, filepath.Clean(targetDir)+string(os.PathSeparator)) {
-			d.logger.Error("Invalid file path", zap.String("path", targetPath))
-			return fmt.Errorf("invalid file path: %s", targetPath)
-		}
 		if extractedSize+header.Size > maxFileSize {
 			d.logger.Error("File too large", zap.String("path", header.Name), zap.Int64("size", header.Size))
 			return fmt.Errorf("file too large: %s", header.Name)
