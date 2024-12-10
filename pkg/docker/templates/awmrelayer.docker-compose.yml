@@ -1,11 +1,11 @@
 name: avalanche-cli
 services:
-  awm-relayer:
-    image: avaplatform/awm-relayer:{{ .ICMRelayerVersion }}
-    container_name: awm-relayer
+  icm-relayer:
+    image: avaplatform/icm-relayer:{{ .ICMRelayerVersion }}
+    container_name: icm-relayer
     restart: unless-stopped
     user: "1000:1000"  # ubuntu user
     network_mode: "host"
     volumes:
-      - /home/ubuntu/.avalanche-cli/services/awm-relayer:/.awm-relayer:rw
-    command: 'awm-relayer --config-file /.awm-relayer/awm-relayer-config.json'
+      - /home/ubuntu/.avalanche-cli/services/icm-relayer:/.icm-relayer:rw
+    command: 'icm-relayer --config-file /.icm-relayer/icm-relayer-config.json'
