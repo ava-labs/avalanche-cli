@@ -20,9 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/utils/units"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
@@ -31,10 +28,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/components/avax"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
@@ -326,7 +325,6 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 	blockchainIDs := map[string]struct{}{}
 	// split output by newline
 	lines := strings.Split(output, "\n")
-	i := 0
 	for _, line := range lines {
 		if !strings.Contains(line, "rpc") {
 			continue
@@ -334,11 +332,6 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		startIndex := strings.Index(line, "http")
 		if startIndex == -1 {
 			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
-		}
-		i++
-		if i%2 == 1 {
-			// only returning blockchainID based RPCs, not aliased
-			continue
 		}
 		endIndex := strings.Index(line, "rpc")
 		rpc := line[startIndex : endIndex+3]
@@ -358,7 +351,7 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		}
 	}
 	if len(rpcs) == 0 {
-		return nil, errors.New("no RPCs where found")
+		return nil, errors.New("no RPCs were found")
 	}
 	return rpcs, nil
 }
@@ -612,25 +605,33 @@ func DownloadCustomVMBin(subnetEVMversion string) (string, error) {
 	return subnetEVMBin, nil
 }
 
-func ParsePublicDeployOutput(output string) (string, error) {
+// ParsePublicDeployOutput can parse Subnet ID or Blockchain ID
+func ParsePublicDeployOutput(output string, parseType string) (string, error) {
 	lines := strings.Split(output, "\n")
-	var subnetID string
+	var targetID string
 	for _, line := range lines {
-		if !strings.Contains(line, "Subnet ID") && !strings.Contains(line, "RPC URL") {
+		if !strings.Contains(line, "Subnet ID") && !strings.Contains(line, "RPC URL") && !strings.Contains(line, " Blockchain ID") {
 			continue
 		}
 		words := strings.Split(line, "|")
 		if len(words) != 4 {
 			return "", errors.New("error parsing output: invalid number of words in line")
 		}
-		if strings.Contains(line, "Subnet ID") {
-			subnetID = strings.TrimSpace(words[2])
+		if parseType == SubnetIDParseType {
+			if strings.Contains(line, "Subnet ID") {
+				targetID = strings.TrimSpace(words[2])
+			}
+		}
+		if parseType == BlockchainIDParseType {
+			if strings.Contains(line, "Blockchain ID") {
+				targetID = strings.TrimSpace(words[2])
+			}
 		}
 	}
-	if subnetID == "" {
+	if targetID == "" {
 		return "", errors.New("information not found in output")
 	}
-	return subnetID, nil
+	return targetID, nil
 }
 
 func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
@@ -652,7 +653,7 @@ func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
 			return err
 		}
 	}
-	ctx, cancel = utils.GetAPIContext()
+	ctx, cancel = utils.GetANRContext()
 	_, err = cli.Health(ctx)
 	cancel()
 	if err != nil {
@@ -835,11 +836,10 @@ func FundLedgerAddress(amount uint64) error {
 	kc := sk.KeyChain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
-		&primary.WalletConfig{
-			URI:          constants.LocalAPIEndpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  secp256k1fx.NewKeychain(),
-		},
+		constants.LocalAPIEndpoint,
+		kc,
+		secp256k1fx.NewKeychain(),
+		primary.WalletConfig{},
 	)
 	if err != nil {
 		return err
@@ -1065,4 +1065,8 @@ func GetKeyTransferFee(output string) (uint64, error) {
 		}
 	}
 	return feeNAvax, nil
+}
+
+func GetAPILargeContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
 }

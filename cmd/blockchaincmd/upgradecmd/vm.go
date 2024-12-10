@@ -225,10 +225,11 @@ func updateToLatestVersion(vmType models.VMType, sc models.Sidecar, networkToUpg
 	currentVersion := sc.VMVersion
 
 	// check latest version
-	latestVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestVersion, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		vmType.RepoName(),
-	))
+		"",
+	)
 	if err != nil {
 		return err
 	}

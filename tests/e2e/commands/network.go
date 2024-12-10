@@ -69,7 +69,7 @@ func StartNetworkWithVersion(version string) string {
 		)
 	}
 	// in case we want to use specific avago for local tests
-	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalanchegoPath)
+	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalancheGoPath)
 	if debugAvalanchegoPath != "" {
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}

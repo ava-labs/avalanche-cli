@@ -53,7 +53,7 @@ func promptOwners(
 			return nil, 0, fmt.Errorf("user cancelled operation")
 		}
 	}
-	ux.Logger.PrintToUser("Your Subnet's control keys: %s", controlKeys)
+	ux.Logger.PrintToUser("Your blockchain control keys: %s", controlKeys)
 	// validate and prompt for threshold
 	if threshold == 0 && subnetAuthKeys != nil {
 		threshold = uint32(len(subnetAuthKeys))
@@ -288,4 +288,47 @@ func getThreshold(maxLen int) (uint32, error) {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(intTh), err
+}
+
+func getKeyForChangeOwner(network models.Network) (string, error) {
+	changeAddrPrompt := "Which key would you like to set as change owner for leftover AVAX if the node is removed from validator set?"
+
+	const (
+		getFromStored = "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
+		custom        = "Custom"
+	)
+
+	listOptions := []string{getFromStored, custom}
+	listDecision, err := app.Prompt.CaptureList(changeAddrPrompt, listOptions)
+	if err != nil {
+		return "", err
+	}
+
+	var key string
+
+	switch listDecision {
+	case getFromStored:
+		key, err = prompts.CaptureKeyAddress(
+			app.Prompt,
+			"be set as a change owner for leftover AVAX",
+			app.GetKeyDir(),
+			app.GetKey,
+			network,
+			prompts.PChainFormat,
+		)
+		if err != nil {
+			return "", err
+		}
+	case custom:
+		addrPrompt := "Enter change address (P-chain format)"
+		changeAddr, err := app.Prompt.CaptureAddress(addrPrompt)
+		if err != nil {
+			return "", err
+		}
+		key = changeAddr.String()
+	}
+	if err != nil {
+		return "", err
+	}
+	return key, nil
 }

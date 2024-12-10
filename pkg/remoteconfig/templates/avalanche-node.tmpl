@@ -2,7 +2,9 @@
 	"http-host": "{{.HTTPHost}}",
 	"api-admin-enabled": {{.APIAdminEnabled}},
 	"index-enabled": {{.IndexEnabled}},
+	"proposervm-use-current-height-bool": {{.ProposerVMUseCurrentHeight}},
 	"network-id": "{{if .NetworkID}}{{.NetworkID}}{{else}}fuji{{end}}",
+	"partial-sync-primary-network": "{{ .PartialSync }}",
 {{- if .BootstrapIDs }}
 	"bootstrap-ids": "{{ .BootstrapIDs }}",
 {{- end }}
@@ -11,6 +13,9 @@
 {{- end }}
 {{- if .GenesisPath }}
 	"genesis-file": "{{ .GenesisPath }}",
+{{- end }}
+{{- if .UpgradePath }}
+	"upgrade-file": "{{ .UpgradePath }}",
 {{- end }}
 {{- if .PublicIP }}
 	"public-ip": "{{.PublicIP}}",

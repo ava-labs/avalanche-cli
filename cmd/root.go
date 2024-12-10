@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
@@ -16,12 +18,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
@@ -35,6 +37,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
+	ansi "github.com/k0kubun/go-ansi"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -97,13 +100,20 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.AddCommand(nodecmd.NewCmd(app))
 
 	// add teleporter command
-	rootCmd.AddCommand(teleportercmd.NewCmd(app))
+	subcmd := messengercmd.NewCmd(app)
+	subcmd.Use = "teleporter"
+	rootCmd.AddCommand(subcmd)
 
 	// add interchain command
 	rootCmd.AddCommand(interchaincmd.NewCmd(app))
 
+	// add icm command
+	subcmd = messengercmd.NewCmd(app)
+	subcmd.Use = "icm"
+	rootCmd.AddCommand(subcmd)
+
 	// add ictt command
-	subcmd := tokentransferrercmd.NewCmd(app)
+	subcmd = tokentransferrercmd.NewCmd(app)
 	subcmd.Use = "ictt"
 	subcmd.Short = "Manage Interchain Token Transferrers (shorthand for `interchain TokenTransferrer`)"
 	subcmd.Long = "The ictt command suite provides tools to deploy and manage Interchain Token Transferrers."
@@ -259,8 +269,7 @@ func setupEnv() (string, error) {
 	baseDir := filepath.Join(usr.HomeDir, constants.BaseDirName)
 
 	// Create base dir if it doesn't exist
-	err = os.MkdirAll(baseDir, os.ModePerm)
-	if err != nil {
+	if err := os.MkdirAll(baseDir, os.ModePerm); err != nil {
 		// no logger here yet
 		fmt.Printf("failed creating the basedir %s: %s\n", baseDir, err)
 		return "", err
@@ -270,41 +279,49 @@ func setupEnv() (string, error) {
 	snapshotsDir := filepath.Join(baseDir, constants.SnapshotsDirName)
 	if err = os.MkdirAll(snapshotsDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the snapshots dir %s: %s\n", snapshotsDir, err)
-		os.Exit(1)
+		return "", err
 	}
 
 	// Create key dir if it doesn't exist
 	keyDir := filepath.Join(baseDir, constants.KeyDir)
 	if err = os.MkdirAll(keyDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the key dir %s: %s\n", keyDir, err)
-		os.Exit(1)
+		return "", err
 	}
 
 	// Create custom vm dir if it doesn't exist
 	vmDir := filepath.Join(baseDir, constants.CustomVMDir)
 	if err = os.MkdirAll(vmDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the vm dir %s: %s\n", vmDir, err)
-		os.Exit(1)
+		return "", err
 	}
 
 	// Create subnet dir if it doesn't exist
 	subnetDir := filepath.Join(baseDir, constants.SubnetDir)
 	if err = os.MkdirAll(subnetDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the subnet dir %s: %s\n", subnetDir, err)
-		os.Exit(1)
+		return "", err
 	}
 
 	// Create repos dir if it doesn't exist
 	repoDir := filepath.Join(baseDir, constants.ReposDir)
 	if err = os.MkdirAll(repoDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the repo dir %s: %s\n", repoDir, err)
-		os.Exit(1)
+		return "", err
 	}
 
+	// Create nodes dir if it doesn't exist
+	nodesDir := filepath.Join(baseDir, constants.NodesDir)
+	if err = os.MkdirAll(nodesDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the nodes dir %s: %s\n", nodesDir, err)
+		return "", err
+	}
+
+	// Create plugin dir if it doesn't exist
 	pluginDir := filepath.Join(baseDir, constants.PluginDir)
 	if err = os.MkdirAll(pluginDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the plugin dir %s: %s\n", pluginDir, err)
-		os.Exit(1)
+		return "", err
 	}
 
 	return baseDir, nil
@@ -359,8 +376,18 @@ func initConfig() {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	go handleInterrupt()
 	app = application.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
 	cobrautils.HandleErrors(err)
+}
+
+func handleInterrupt() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-sigChan
+	fmt.Println()
+	fmt.Println("received signal:", sig.String())
+	ansi.CursorShow()
 }

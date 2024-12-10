@@ -254,6 +254,7 @@ func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sid
 	if print {
 		blockchainIDstr := "<your-blockchain-id>"
 		if sc.Networks != nil &&
+			!sc.NetworkDataIsEmpty(networkKey) &&
 			sc.Networks[networkKey].BlockchainID != ids.Empty {
 			blockchainIDstr = sc.Networks[networkKey].BlockchainID.String()
 		}
@@ -304,7 +305,7 @@ func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sid
 
 	ux.Logger.PrintToUser("Trying to install the upgrade files at the provided %s path", avalanchegoChainConfigDir)
 	chainDir := filepath.Join(avalanchegoChainConfigDir, sc.Networks[networkKey].BlockchainID.String())
-	destPath := filepath.Join(chainDir, constants.UpgradeBytesFileName)
+	destPath := filepath.Join(chainDir, constants.UpgradeFileName)
 	if err = os.Mkdir(chainDir, constants.DefaultPerms755); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("failed to create blockchain directory: %w", err)
 	}
@@ -318,6 +319,9 @@ func applyPublicNetworkUpgrade(blockchainName, networkKey string, sc *models.Sid
 
 func validateUpgrade(blockchainName, networkKey string, sc *models.Sidecar, skipPrompting bool) ([]params.PrecompileUpgrade, string, error) {
 	// if there's no entry in the Sidecar, we assume there hasn't been a deploy yet
+	if sc.NetworkDataIsEmpty(networkKey) {
+		return nil, "", subnetNotYetDeployed()
+	}
 	chainID := sc.Networks[networkKey].BlockchainID
 	if chainID == ids.Empty {
 		return nil, "", errors.New(ErrSubnetNotDeployedOutput)

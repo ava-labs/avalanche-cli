@@ -8,11 +8,11 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ethereum/go-ethereum/common"
@@ -52,12 +52,6 @@ const (
 	confirmAddressAllocationOption = "Confirm and finalize the initial token allocation"
 )
 
-var DefaultEwoqAllocation = core.GenesisAlloc{
-	PrefundedEwoqAddress: {
-		Balance: defaultEVMAirdropAmount,
-	},
-}
-
 type FeeConfig struct {
 	lowThroughput    bool
 	mediumThroughput bool
@@ -75,7 +69,7 @@ type FeeConfig struct {
 
 type SubnetEVMGenesisParams struct {
 	chainID                             uint64
-	UseTeleporter                       bool
+	UseICM                              bool
 	UseExternalGasToken                 bool
 	initialTokenAllocation              core.GenesisAlloc
 	feeConfig                           FeeConfig
@@ -90,6 +84,9 @@ type SubnetEVMGenesisParams struct {
 	enableContractDeployerPrecompile    bool
 	contractDeployerPrecompileAllowList AllowList
 	enableWarpPrecompile                bool
+	UsePoAValidatorManager              bool
+	UsePoSValidatorManager              bool
+	DisableICMOnGenesis                 bool
 }
 
 func PromptTokenSymbol(
@@ -148,7 +145,7 @@ func PromptVMType(
 // if useDefaults is true, it will:
 // - use native gas token, allocating 1m to a newly created key
 // - customize fee config for low throughput
-// - use teleporter
+// - use ICM
 // - enable warp precompile
 // - disable the other precompiles
 // in the other case, will prompt for all these settings
@@ -156,15 +153,16 @@ func PromptVMType(
 // tokenSymbol is not needed to build a genesis but is needed in the ux flow
 // as such, is returned separately from the genesis params
 //
-// prompts the user for chainID, tokenSymbol, and useTeleporter, unless
+// prompts the user for chainID, tokenSymbol, and useICM, unless
 // provided in call args
 func PromptSubnetEVMGenesisParams(
 	app *application.Avalanche,
+	sc *models.Sidecar,
 	version string,
 	chainID uint64,
 	tokenSymbol string,
 	blockchainName string,
-	useTeleporter *bool,
+	useICM *bool,
 	defaultsKind DefaultsKind,
 	useWarp bool,
 	useExternalGasToken bool,
@@ -173,6 +171,25 @@ func PromptSubnetEVMGenesisParams(
 		err    error
 		params SubnetEVMGenesisParams
 	)
+	params.initialTokenAllocation = core.GenesisAlloc{}
+
+	if sc.PoA() {
+		params.UsePoAValidatorManager = true
+		params.initialTokenAllocation[common.HexToAddress(sc.ValidatorManagerOwner)] = core.GenesisAccount{
+			Balance: defaultPoAOwnerBalance,
+		}
+	}
+
+	if sc.PoS() {
+		params.UsePoSValidatorManager = true
+
+		params.enableNativeMinterPrecompile = true
+		params.nativeMinterPrecompileAllowList.EnabledAddresses = append(
+			params.nativeMinterPrecompileAllowList.EnabledAddresses,
+			common.HexToAddress(validatorManagerSDK.ProxyContractAddress),
+		)
+		params.enableRewardManagerPrecompile = true
+	}
 
 	// Chain ID
 	params.chainID = chainID
@@ -204,21 +221,25 @@ func PromptSubnetEVMGenesisParams(
 	}
 
 	// Interoperability
-	params.UseTeleporter, err = PromptInterop(app, useTeleporter, defaultsKind, params.UseExternalGasToken)
+	params.UseICM, err = PromptInterop(app, useICM, defaultsKind, params.UseExternalGasToken)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 
 	// Warp
 	params.enableWarpPrecompile = useWarp
-	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
-		return SubnetEVMGenesisParams{}, "", fmt.Errorf("warp should be enabled for teleporter to work")
+	if (params.UseICM || params.UseExternalGasToken) && !params.enableWarpPrecompile {
+		return SubnetEVMGenesisParams{}, "", fmt.Errorf("warp should be enabled for ICM to work")
 	}
 
 	// Permissioning
 	params, err = promptPermissioning(app, version, defaultsKind, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
+	}
+
+	if sc.PoS() || sc.PoA() { // ICM bytecode makes genesis too big given the current max size (we include the bytecode for ValidatorManager, a proxy, and proxy admin)
+		params.DisableICMOnGenesis = true
 	}
 
 	return params, tokenSymbol, nil
@@ -264,7 +285,7 @@ func promptGasTokenKind(
 				ux.Logger.PrintToUser(logging.Bold.Wrap("A token from another blockchain"))
 				ux.Logger.PrintToUser("Use an ERC-20 token (USDC, WETH, etc.) or the native token (e.g. AVAX) of another blockchain within the Avalanche network as the transaction fee token.")
 				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter will be activated automatically. For more info on Teleporter, visit: https://github.com/ava-labs/teleporter")
+				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol ICM will be activated automatically. For more info on ICM, visit: https://github.com/ava-labs/icm-contracts/tree/main/contracts/teleporter")
 				continue
 			}
 			break
@@ -321,47 +342,57 @@ func displayAllocations(alloc core.GenesisAlloc) {
 	table.Render()
 }
 
-func createNewKeyAllocation(app *application.Avalanche, subnetName string) (core.GenesisAlloc, error) {
+func addNewKeyAllocation(allocations core.GenesisAlloc, app *application.Avalanche, subnetName string) error {
 	keyName := utils.GetDefaultBlockchainAirdropKeyName(subnetName)
 	k, err := app.GetKey(keyName, models.NewLocalNetwork(), true)
 	if err != nil {
-		return core.GenesisAlloc{}, err
+		return err
 	}
 	ux.Logger.PrintToUser("prefunding address %s with balance %s", k.C(), defaultEVMAirdropAmount)
+	allocations[common.HexToAddress(k.C())] = core.GenesisAccount{
+		Balance: defaultEVMAirdropAmount,
+	}
+	return nil
+}
 
-	return core.GenesisAlloc{
-		common.HexToAddress(k.C()): {
-			Balance: defaultEVMAirdropAmount,
-		},
-	}, nil
+func addEwoqAllocation(allocations core.GenesisAlloc) {
+	allocations[PrefundedEwoqAddress] = core.GenesisAccount{
+		Balance: defaultEVMAirdropAmount,
+	}
 }
 
 func getNativeGasTokenAllocationConfig(
+	allocations core.GenesisAlloc,
 	app *application.Avalanche,
 	subnetName string,
 	tokenSymbol string,
-) (core.GenesisAlloc, error) {
+) error {
 	// Get the type of initial token allocation from the user prompt.
 	allocOption, err := app.Prompt.CaptureList(
 		"How should the initial token allocation be structured?",
 		[]string{allocateToNewKeyOption, allocateToEwoqOption, customAllocationOption},
 	)
 	if err != nil {
-		return core.GenesisAlloc{}, err
+		return err
 	}
 
 	// If the user chooses to allocate to a new key, generate a new key and allocate the default amount to it.
 	if allocOption == allocateToNewKeyOption {
-		return createNewKeyAllocation(app, subnetName)
+		return addNewKeyAllocation(allocations, app, subnetName)
 	}
 
 	if allocOption == allocateToEwoqOption {
 		ux.Logger.PrintToUser("prefunding address %s with balance %s", PrefundedEwoqAddress, defaultEVMAirdropAmount)
-		return DefaultEwoqAllocation, nil
+		addEwoqAllocation(allocations)
+		return nil
 	}
 
 	if allocOption == customAllocationOption {
-		res := core.GenesisAlloc{}
+		if len(allocations) != 0 {
+			fmt.Println()
+			fmt.Println(logging.Bold.Wrap("Addresses automatically allocated"))
+			displayAllocations(allocations)
+		}
 		for {
 			// Prompt for the action the user wants to take on the allocation list.
 			action, err := app.Prompt.CaptureList(
@@ -375,108 +406,118 @@ func getNativeGasTokenAllocationConfig(
 				},
 			)
 			if err != nil {
-				return core.GenesisAlloc{}, err
+				return err
 			}
 
 			switch action {
 			case addAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to allocate to")
 				if err != nil {
-					return core.GenesisAlloc{}, err
+					return err
 				}
 
 				// Check if the address already has an allocation entry.
-				if _, ok := res[address]; ok {
+				if _, ok := allocations[address]; ok {
 					ux.Logger.PrintToUser("Address already has an allocation entry. Use edit or remove to modify.")
 					continue
 				}
 
 				balance, err := app.Prompt.CaptureUint64(fmt.Sprintf("Amount to allocate (in %s units)", tokenSymbol))
 				if err != nil {
-					return core.GenesisAlloc{}, err
+					return err
 				}
 
-				res[address] = core.GenesisAccount{
+				allocations[address] = core.GenesisAccount{
 					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), OneAvax),
 				}
 			case changeAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to update the allocation of")
 				if err != nil {
-					return core.GenesisAlloc{}, err
+					return err
 				}
 
 				// Check the address has an existing allocation entry.
-				if _, ok := res[address]; !ok {
+				if _, ok := allocations[address]; !ok {
 					ux.Logger.PrintToUser("Address not found in the allocation list")
 					continue
 				}
 
 				balance, err := app.Prompt.CaptureUint64(fmt.Sprintf("Updated amount to allocate (in %s units)", tokenSymbol))
 				if err != nil {
-					return core.GenesisAlloc{}, err
+					return err
 				}
-				res[address] = core.GenesisAccount{
+				allocations[address] = core.GenesisAccount{
 					Balance: new(big.Int).Mul(new(big.Int).SetUint64(balance), OneAvax),
 				}
 			case removeAddressAllocationOption:
 				address, err := app.Prompt.CaptureAddress("Address to remove from the allocation list")
 				if err != nil {
-					return core.GenesisAlloc{}, err
+					return err
 				}
 
 				// Check the address has an existing allocation entry.
-				if _, ok := res[address]; !ok {
+				if _, ok := allocations[address]; !ok {
 					ux.Logger.PrintToUser("Address not found in the allocation list")
 					continue
 				}
 
-				delete(res, address)
+				delete(allocations, address)
 			case previewAddressAllocationOption:
-				displayAllocations(res)
+				displayAllocations(allocations)
 			case confirmAddressAllocationOption:
-				displayAllocations(res)
+				displayAllocations(allocations)
 				confirm, err := app.Prompt.CaptureYesNo("Are you sure you want to finalize this allocation list?")
 				if err != nil {
-					return core.GenesisAlloc{}, err
+					return err
 				}
 				if confirm {
-					return res, nil
+					return nil
 				}
 			default:
-				return core.GenesisAlloc{}, fmt.Errorf("invalid allocation modification option")
+				return fmt.Errorf("invalid allocation modification option")
 			}
 		}
 	}
-	return core.GenesisAlloc{}, fmt.Errorf("invalid allocation option")
+	return fmt.Errorf("invalid allocation option")
 }
 
-func getNativeMinterPrecompileConfig(app *application.Avalanche, version string) (AllowList, bool, error) {
-	option, err := app.Prompt.CaptureList(
-		"Allow minting of new native tokens?",
-		[]string{fixedSupplyOption, dynamicSupplyOption},
-	)
-	if err != nil {
-		return AllowList{}, false, err
-	}
-
-	if option == fixedSupplyOption {
-		return AllowList{}, false, nil
-	}
-
-	if option == dynamicSupplyOption {
-		for {
-			allowList, cancel, err := GenerateAllowList(app, "mint native tokens", version)
-			if err != nil {
-				return AllowList{}, false, err
-			}
-			if cancel {
-				continue
-			}
-			return allowList, true, nil
+func getNativeMinterPrecompileConfig(
+	app *application.Avalanche,
+	alreadyEnabled bool,
+	allowList AllowList,
+	version string,
+) (AllowList, bool, error) {
+	if !alreadyEnabled {
+		option, err := app.Prompt.CaptureList(
+			"Allow minting of new native tokens?",
+			[]string{fixedSupplyOption, dynamicSupplyOption},
+		)
+		if err != nil {
+			return AllowList{}, false, err
+		}
+		if option == fixedSupplyOption {
+			return AllowList{}, false, nil
+		}
+	} else {
+		confirm, err := app.Prompt.CaptureYesNo("Minting of native tokens automatically enabled. Do you want to configure allow list?")
+		if err != nil {
+			return AllowList{}, false, err
+		}
+		if !confirm {
+			return AllowList{}, false, nil
 		}
 	}
 
-	return AllowList{}, false, fmt.Errorf("invalid option")
+	for {
+		allowList, cancel, err := GenerateAllowList(app, allowList, "mint native tokens", version)
+		if err != nil {
+			return AllowList{}, false, err
+		}
+		if cancel {
+			continue
+		}
+		return allowList, true, nil
+	}
 }
 
 // prompts for token symbol, initial token allocation, and native minter precompile
@@ -502,27 +543,30 @@ func promptNativeGasToken(
 
 	if defaultsKind == TestDefaults {
 		ux.Logger.PrintToUser("prefunding address %s with balance %s", PrefundedEwoqAddress, defaultEVMAirdropAmount)
-		params.initialTokenAllocation = DefaultEwoqAllocation
+		addEwoqAllocation(params.initialTokenAllocation)
 		return params, tokenSymbol, nil
 	}
 
 	if defaultsKind == ProductionDefaults {
-		params.initialTokenAllocation, err = createNewKeyAllocation(app, blockchainName)
+		err = addNewKeyAllocation(params.initialTokenAllocation, app, blockchainName)
 		return params, tokenSymbol, err
 	}
 
 	// No defaults case. Prompt for initial token allocation and native minter precompile options.
-	alloc, err := getNativeGasTokenAllocationConfig(app, blockchainName, tokenSymbol)
+	if err := getNativeGasTokenAllocationConfig(params.initialTokenAllocation, app, blockchainName, tokenSymbol); err != nil {
+		return SubnetEVMGenesisParams{}, "", err
+	}
+
+	allowList, nativeMinterEnabled, err := getNativeMinterPrecompileConfig(
+		app,
+		params.enableNativeMinterPrecompile,
+		params.nativeMinterPrecompileAllowList,
+		version,
+	)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 
-	allowList, nativeMinterEnabled, err := getNativeMinterPrecompileConfig(app, version)
-	if err != nil {
-		return SubnetEVMGenesisParams{}, "", err
-	}
-
-	params.initialTokenAllocation = alloc
 	params.enableNativeMinterPrecompile = nativeMinterEnabled
 	params.nativeMinterPrecompileAllowList = allowList
 	return params, tokenSymbol, nil
@@ -656,7 +700,7 @@ func promptFeeConfig(
 		switch option {
 		case dontChangeFeeSettingsOption:
 		case changeFeeSettingsOption:
-			params.feeManagerPrecompileAllowList, cancel, err = GenerateAllowList(app, "adjust the gas fees", version)
+			params.feeManagerPrecompileAllowList, cancel, err = GenerateAllowList(app, AllowList{}, "adjust the gas fees", version)
 			if err != nil {
 				return SubnetEVMGenesisParams{}, err
 			}
@@ -684,7 +728,7 @@ func promptFeeConfig(
 		switch option {
 		case burnFees:
 		case distributeFees:
-			params.rewardManagerPrecompileAllowList, cancel, err = GenerateAllowList(app, "customize gas fees distribution", version)
+			params.rewardManagerPrecompileAllowList, cancel, err = GenerateAllowList(app, AllowList{}, "customize gas fees distribution", version)
 			if err != nil {
 				return SubnetEVMGenesisParams{}, err
 			}
@@ -701,19 +745,19 @@ func promptFeeConfig(
 	return params, nil
 }
 
-// if useTeleporter is defined, will enable/disable teleporter based on it
-// is useDefaults is true, will enable teleporter
-// if using external gas token, will assume teleporter to be enabled
-// if other cases, prompts the user for wether to enable teleporter
+// if useICM is defined, will enable/disable ICM based on it
+// is useDefaults is true, will enable ICM
+// if using external gas token, will assume ICM to be enabled
+// if other cases, prompts the user for wether to enable ICM
 func PromptInterop(
 	app *application.Avalanche,
-	useTeleporterFlag *bool,
+	useICMFlag *bool,
 	defaultsKind DefaultsKind,
 	useExternalGasToken bool,
 ) (bool, error) {
 	switch {
-	case useTeleporterFlag != nil:
-		return *useTeleporterFlag, nil
+	case useICMFlag != nil:
+		return *useICMFlag, nil
 	case defaultsKind != NoDefaults:
 		return true, nil
 	case useExternalGasToken:
@@ -779,7 +823,7 @@ func promptPermissioning(
 				}
 				switch option {
 				case approvedCanSubmitTransactionsOption:
-					params.transactionPrecompileAllowList, cancel, err = GenerateAllowList(app, "issue transactions", version)
+					params.transactionPrecompileAllowList, cancel, err = GenerateAllowList(app, AllowList{}, "issue transactions", version)
 					if err != nil {
 						return SubnetEVMGenesisParams{}, err
 					}
@@ -808,7 +852,7 @@ func promptPermissioning(
 				}
 				switch option {
 				case approvedCanDeployContractsOption:
-					params.contractDeployerPrecompileAllowList, cancel, err = GenerateAllowList(app, "deploy smart contracts", version)
+					params.contractDeployerPrecompileAllowList, cancel, err = GenerateAllowList(app, AllowList{}, "deploy smart contracts", version)
 					if err != nil {
 						return SubnetEVMGenesisParams{}, err
 					}
@@ -840,14 +884,16 @@ func PromptVMVersion(
 ) (string, error) {
 	switch vmVersion {
 	case latest:
-		return app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		return app.Downloader.GetLatestReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
-		))
+			"",
+		)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
+			"",
 		)
 	case "":
 		return promptUserForVMVersion(app, repoName)
@@ -866,10 +912,9 @@ func promptUserForVMVersion(
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
 		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
-			binutils.GetGithubLatestReleaseURL(
-				constants.AvaLabsOrg,
-				repoName,
-			),
+			constants.AvaLabsOrg,
+			repoName,
+			"",
 		)
 		if err != nil {
 			return "", err
@@ -877,6 +922,7 @@ func promptUserForVMVersion(
 		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
+			"",
 		)
 		if err != nil {
 			return "", err
@@ -917,6 +963,7 @@ func promptUserForVMVersion(
 	versions, err := app.Downloader.GetAllReleasesForRepo(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
+		application.All,
 	)
 	if err != nil {
 		return "", err

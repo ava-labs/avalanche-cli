@@ -53,16 +53,13 @@ func getGCPCloudCredentials() (*compute.Service, string, string, error) {
 	var err error
 	var gcpCredentialsPath string
 	var gcpProjectName string
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return nil, "", "", err
-		}
-		if clustersConfig.GCPConfig != (models.GCPConfig{}) {
-			gcpProjectName = clustersConfig.GCPConfig.ProjectName
-			gcpCredentialsPath = clustersConfig.GCPConfig.ServiceAccFilePath
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return nil, "", "", err
+	}
+	if clustersConfig.GCPConfig != (models.GCPConfig{}) {
+		gcpProjectName = clustersConfig.GCPConfig.ProjectName
+		gcpCredentialsPath = clustersConfig.GCPConfig.ServiceAccFilePath
 	}
 	if gcpProjectName == "" {
 		if cmdLineGCPProjectName != "" {
@@ -210,9 +207,9 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				networkName,
 				[]string{
 					strconv.Itoa(constants.SSHTCPPort),
-					strconv.Itoa(constants.AvalanchegoAPIPort),
-					strconv.Itoa(constants.AvalanchegoMonitoringPort),
-					strconv.Itoa(constants.AvalanchegoGrafanaPort),
+					strconv.Itoa(constants.AvalancheGoAPIPort),
+					strconv.Itoa(constants.AvalancheGoMonitoringPort),
+					strconv.Itoa(constants.AvalancheGoGrafanaPort),
 				},
 			)
 			if err != nil {
@@ -226,7 +223,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				return nil, nil, "", "", err
 			}
 			if !firewallExists {
-				_, err := gcpClient.SetFirewallRule(userIPAddress, firewallMonitoringName, networkName, []string{strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort)})
+				_, err := gcpClient.SetFirewallRule(userIPAddress, firewallMonitoringName, networkName, []string{strconv.Itoa(constants.AvalancheGoMonitoringPort), strconv.Itoa(constants.AvalancheGoGrafanaPort)})
 				if err != nil {
 					return nil, nil, "", "", err
 				}
@@ -237,7 +234,7 @@ func createGCEInstances(gcpClient *gcpAPI.GcpCloud,
 				return nil, nil, "", "", err
 			}
 			if !firewallExists {
-				_, err := gcpClient.SetFirewallRule("0.0.0.0/0", firewallLoggingName, networkName, []string{strconv.Itoa(constants.AvalanchegoLokiPort)})
+				_, err := gcpClient.SetFirewallRule("0.0.0.0/0", firewallLoggingName, networkName, []string{strconv.Itoa(constants.AvalancheGoLokiPort)})
 				if err != nil {
 					return nil, nil, "", "", err
 				}
@@ -380,13 +377,9 @@ func createGCPInstance(
 }
 
 func updateClustersConfigGCPKeyFilepath(projectName, serviceAccountKeyFilepath string) error {
-	clustersConfig := models.ClustersConfig{}
-	var err error
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if projectName != "" {
 		clustersConfig.GCPConfig.ProjectName = projectName
@@ -405,9 +398,9 @@ func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName st
 	networkName := fmt.Sprintf("%s-network", prefix)
 	firewallName := fmt.Sprintf("%s-%s-%s", networkName, strings.ReplaceAll(publicIP, ".", ""), label)
 	ports := []string{
-		strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-		strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-		strconv.Itoa(constants.AvalanchegoLokiPort),
+		strconv.Itoa(constants.AvalancheGoMachineMetricsPort), strconv.Itoa(constants.AvalancheGoAPIPort),
+		strconv.Itoa(constants.AvalancheGoMonitoringPort), strconv.Itoa(constants.AvalancheGoGrafanaPort),
+		strconv.Itoa(constants.AvalancheGoLokiPort),
 	}
 	if err = gcpClient.AddFirewall(
 		publicIP,
@@ -421,7 +414,7 @@ func grantAccessToPublicIPViaFirewall(gcpClient *gcpAPI.GcpCloud, projectName st
 	return nil
 }
 
-func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *models.Host) error {
+func setGCPICMRelayerSecurityGroupRule(awmRelayerHost *models.Host) error {
 	gcpClient, _, _, _, projectName, err := getGCPConfig(true)
 	if err != nil {
 		return err
@@ -433,7 +426,7 @@ func setGCPAWMRelayerSecurityGroupRule(awmRelayerHost *models.Host) error {
 	networkName := fmt.Sprintf("%s-network", prefix)
 	firewallName := fmt.Sprintf("%s-%s-relayer", networkName, strings.ReplaceAll(awmRelayerHost.IP, ".", ""))
 	ports := []string{
-		strconv.Itoa(constants.AvalanchegoAPIPort),
+		strconv.Itoa(constants.AvalancheGoAPIPort),
 	}
 	return gcpClient.AddFirewall(
 		awmRelayerHost.IP,

@@ -3,10 +3,13 @@
 package utils
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSplitKeyValueStringToMap(t *testing.T) {
@@ -291,5 +294,90 @@ func TestRetryFunction(t *testing.T) {
 	}
 	if result != nil {
 		t.Errorf("Expected nil result, got %v", result)
+	}
+}
+
+func TestSetJSONKey(t *testing.T) {
+	tests := []struct {
+		desc      string
+		json      string
+		k         string
+		v         interface{}
+		shouldErr bool
+		out       string
+	}{
+		{
+			desc:      "invalid json",
+			json:      "",
+			k:         "k",
+			v:         "v",
+			shouldErr: true,
+			out:       "",
+		},
+		{
+			desc:      "empty json",
+			json:      "{}",
+			k:         "k",
+			v:         "v",
+			shouldErr: false,
+			out:       "{\"k\": \"v\"}",
+		},
+		{
+			desc:      "remove value",
+			json:      "{\"k\": \"v\"}",
+			k:         "k",
+			v:         nil,
+			shouldErr: false,
+			out:       "{}",
+		},
+		{
+			desc:      "remove value on empty",
+			json:      "{}",
+			k:         "k",
+			v:         nil,
+			shouldErr: false,
+			out:       "{}",
+		},
+		{
+			desc:      "remove value on multiple",
+			json:      "{\"k\": \"v\", \"k2\": \"v2\"}",
+			k:         "k",
+			v:         nil,
+			shouldErr: false,
+			out:       "{\"k2\": \"v2\"}",
+		},
+		{
+			desc:      "change value",
+			json:      "{\"k\": \"v\"}",
+			k:         "k",
+			v:         "newv",
+			shouldErr: false,
+			out:       "{\"k\": \"newv\"}",
+		},
+		{
+			desc:      "change value on multiple",
+			json:      "{\"k\": \"v\", \"k2\": \"v2\"}",
+			k:         "k",
+			v:         "v1",
+			shouldErr: false,
+			out:       "{\"k\": \"v1\", \"k2\": \"v2\"}",
+		},
+	}
+
+	require := require.New(t)
+	for _, test := range tests {
+		out, err := SetJSONKey(test.json, test.k, test.v)
+		if test.shouldErr {
+			require.Error(err, test.desc)
+		} else {
+			require.NoError(err, test.desc)
+			var expectedOutMap map[string]interface{}
+			var outMap map[string]interface{}
+			err := json.Unmarshal([]byte(out), &outMap)
+			require.NoError(err, test.desc)
+			err = json.Unmarshal([]byte(test.out), &expectedOutMap)
+			require.NoError(err, test.desc)
+			require.Equal(expectedOutMap, outMap, test.desc)
+		}
 	}
 }

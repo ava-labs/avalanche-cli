@@ -13,22 +13,21 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/metrics"
-
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
@@ -49,35 +48,35 @@ const (
 )
 
 var (
-	forceSubnetCreate                      bool
-	subnetGenesisFile                      string
-	useEvmSubnet                           bool
-	useCustomSubnet                        bool
-	evmVersion                             string
-	evmChainID                             uint64
-	evmToken                               string
-	evmTestDefaults                        bool
-	evmProductionDefaults                  bool
-	useLatestEvmReleasedVersion            bool
-	useLatestEvmPreReleasedVersion         bool
-	customVMRepoURL                        string
-	customVMBranch                         string
-	customVMBuildScript                    string
-	nodeConf                               string
-	subnetConf                             string
-	chainConf                              string
-	validators                             []string
-	customGrafanaDashboardPath             string
-	teleporterReady                        bool
-	runRelayer                             bool
-	teleporterVersion                      string
-	teleporterMessengerContractAddressPath string
-	teleporterMessengerDeployerAddressPath string
-	teleporterMessengerDeployerTxPath      string
-	teleporterRegistryBydecodePath         string
-	deployTeleporterMessenger              bool
-	deployTeleporterRegistry               bool
-	replaceKeyPair                         bool
+	forceSubnetCreate               bool
+	subnetGenesisFile               string
+	useEvmSubnet                    bool
+	useCustomSubnet                 bool
+	evmVersion                      string
+	evmChainID                      uint64
+	evmToken                        string
+	evmTestDefaults                 bool
+	evmProductionDefaults           bool
+	useLatestEvmReleasedVersion     bool
+	useLatestEvmPreReleasedVersion  bool
+	customVMRepoURL                 string
+	customVMBranch                  string
+	customVMBuildScript             string
+	nodeConf                        string
+	subnetConf                      string
+	chainConf                       string
+	validators                      []string
+	customGrafanaDashboardPath      string
+	icmReady                        bool
+	runRelayer                      bool
+	icmVersion                      string
+	icmMessengerContractAddressPath string
+	icmMessengerDeployerAddressPath string
+	icmMessengerDeployerTxPath      string
+	icmRegistryBydecodePath         string
+	deployICMMessenger              bool
+	deployICMRegistry               bool
+	replaceKeyPair                  bool
 )
 
 func newWizCmd() *cobra.Command {
@@ -106,7 +105,8 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "use default weight/start/duration params for subnet validator")
 	cmd.Flags().BoolVar(&forceSubnetCreate, "force-subnet-create", false, "overwrite the existing subnet configuration if one exists")
 	cmd.Flags().StringVar(&subnetGenesisFile, "subnet-genesis", "", "file path of the subnet genesis")
-	cmd.Flags().BoolVar(&teleporterReady, "teleporter", false, "generate a teleporter-ready vm")
+	cmd.Flags().BoolVar(&icmReady, "teleporter", false, "generate an icm-ready vm")
+	cmd.Flags().BoolVar(&icmReady, "icm", false, "generate an icm-ready vm")
 	cmd.Flags().BoolVar(&runRelayer, "relayer", false, "run AWM relayer when deploying the vm")
 	cmd.Flags().BoolVar(&useEvmSubnet, "evm-subnet", false, "use Subnet-EVM as the subnet virtual machine")
 	cmd.Flags().BoolVar(&useCustomSubnet, "custom-subnet", false, "use a custom VM as the subnet virtual machine")
@@ -138,13 +138,20 @@ The node wiz command creates a devnet and deploys, sync and validate a subnet in
 	cmd.Flags().StringVar(&volumeType, "aws-volume-type", "gp3", "AWS volume type")
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	cmd.Flags().StringVar(&grafanaPkg, "grafana-pkg", "", "use grafana pkg instead of apt repo(by default), for example https://dl.grafana.com/oss/release/grafana_10.4.1_amd64.deb")
-	cmd.Flags().StringVar(&teleporterVersion, "teleporter-version", "latest", "teleporter version to deploy")
-	cmd.Flags().StringVar(&teleporterMessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to a teleporter messenger contract address file")
-	cmd.Flags().StringVar(&teleporterMessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to a teleporter messenger deployer address file")
-	cmd.Flags().StringVar(&teleporterMessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to a teleporter messenger deployer tx file")
-	cmd.Flags().StringVar(&teleporterRegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to a teleporter registry bytecode file")
-	cmd.Flags().BoolVar(&deployTeleporterMessenger, "deploy-teleporter-messenger", true, "deploy Interchain Messenger")
-	cmd.Flags().BoolVar(&deployTeleporterRegistry, "deploy-teleporter-registry", true, "deploy Interchain Registry")
+	cmd.Flags().StringVar(&icmVersion, "teleporter-version", "latest", "icm version to deploy")
+	cmd.Flags().StringVar(&icmMessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an icm messenger contract address file")
+	cmd.Flags().StringVar(&icmMessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an icm messenger deployer address file")
+	cmd.Flags().StringVar(&icmMessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an icm messenger deployer tx file")
+	cmd.Flags().StringVar(&icmRegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an icm registry bytecode file")
+	cmd.Flags().BoolVar(&deployICMMessenger, "deploy-teleporter-messenger", true, "deploy Interchain Messenger")
+	cmd.Flags().BoolVar(&deployICMRegistry, "deploy-teleporter-registry", true, "deploy Interchain Registry")
+	cmd.Flags().StringVar(&icmVersion, "icm-version", "latest", "icm version to deploy")
+	cmd.Flags().StringVar(&icmMessengerContractAddressPath, "icm-messenger-contract-address-path", "", "path to an icm messenger contract address file")
+	cmd.Flags().StringVar(&icmMessengerDeployerAddressPath, "icm-messenger-deployer-address-path", "", "path to an icm messenger deployer address file")
+	cmd.Flags().StringVar(&icmMessengerDeployerTxPath, "icm-messenger-deployer-tx-path", "", "path to an icm messenger deployer tx file")
+	cmd.Flags().StringVar(&icmRegistryBydecodePath, "icm-registry-bytecode-path", "", "path to an icm registry bytecode file")
+	cmd.Flags().BoolVar(&deployICMMessenger, "deploy-icm-messenger", true, "deploy Interchain Messenger")
+	cmd.Flags().BoolVar(&deployICMRegistry, "deploy-icm-registry", true, "deploy Interchain Registry")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
 	cmd.Flags().StringSliceVar(&subnetAliases, "subnet-aliases", nil, "additional subnet aliases to be used for RPC calls in addition to subnet blockchain name")
@@ -257,7 +264,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 
@@ -319,30 +326,30 @@ func wiz(cmd *cobra.Command, args []string) error {
 	var awmRelayerHost *models.Host
 	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
-		awmRelayerHost, err = node.GetAWMRelayerHost(app, clusterName)
+		awmRelayerHost, err = node.GetICMRelayerHost(app, clusterName)
 		if err != nil {
 			return err
 		}
 		if awmRelayerHost == nil {
-			awmRelayerHost, err = chooseAWMRelayerHost(clusterName)
+			awmRelayerHost, err = chooseICMRelayerHost(clusterName)
 			if err != nil {
 				return err
 			}
 			// get awm-relayer latest version
-			relayerVersion, err := teleporter.GetLatestRelayerReleaseVersion()
+			relayerVersion, err := interchain.GetLatestRelayerReleaseVersion()
 			if err != nil {
 				return err
 			}
-			if err := setAWMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
+			if err := setICMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
 				return err
 			}
-			if err := setAWMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
+			if err := setICMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
 				return err
 			}
 		} else {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
-			if err := ssh.RunSSHStopAWMRelayerService(awmRelayerHost); err != nil {
+			if err := ssh.RunSSHStopICMRelayerService(awmRelayerHost); err != nil {
 				return err
 			}
 		}
@@ -354,7 +361,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
@@ -372,23 +379,23 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if b, err := hasTeleporterDeploys(clusterName); err != nil {
+	if b, err := hasICMDeploys(clusterName); err != nil {
 		return err
 	} else if b {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Updating Proposer VMs"))
 		ux.Logger.PrintToUser("")
 		if err := updateProposerVMs(network); err != nil {
-			// not going to consider fatal, as teleporter messaging will be working fine after a failed first msg
+			// not going to consider fatal, as icm messaging will be working fine after a failed first msg
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("failure setting proposer: %s"), err)
 		}
 	}
 
 	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up teleporter on subnet"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("Setting up ICM on subnet"))
 		ux.Logger.PrintToUser("")
-		flags := teleportercmd.DeployFlags{
+		flags := messengercmd.DeployFlags{
 			ChainFlags: contract.ChainSpec{
 				BlockchainName: subnetName,
 			},
@@ -398,24 +405,26 @@ func wiz(cmd *cobra.Command, args []string) error {
 			Network: networkoptions.NetworkFlags{
 				ClusterName: clusterName,
 			},
-			DeployMessenger:              deployTeleporterMessenger,
-			DeployRegistry:               deployTeleporterRegistry,
-			Version:                      teleporterVersion,
-			MessengerContractAddressPath: teleporterMessengerContractAddressPath,
-			MessengerDeployerAddressPath: teleporterMessengerDeployerAddressPath,
-			MessengerDeployerTxPath:      teleporterMessengerDeployerTxPath,
-			RegistryBydecodePath:         teleporterRegistryBydecodePath,
+			DeployMessenger:              deployICMMessenger,
+			DeployRegistry:               deployICMRegistry,
+			ForceRegistryDeploy:          true,
+			Version:                      icmVersion,
+			MessengerContractAddressPath: icmMessengerContractAddressPath,
+			MessengerDeployerAddressPath: icmMessengerDeployerAddressPath,
+			MessengerDeployerTxPath:      icmMessengerDeployerTxPath,
+			RegistryBydecodePath:         icmRegistryBydecodePath,
+			IncludeCChain:                true,
 		}
-		if err := teleportercmd.CallDeploy([]string{}, flags); err != nil {
+		if err := messengercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
 		ux.Logger.PrintToUser("")
-		if err := updateAWMRelayerFunds(network, sc, blockchainID); err != nil {
+		if err := updateICMRelayerFunds(network, sc, blockchainID); err != nil {
 			return err
 		}
-		if err := updateAWMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
+		if err := updateICMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
 			return err
 		}
 	}
@@ -451,7 +460,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func hasTeleporterDeploys(
+func hasICMDeploys(
 	clusterName string,
 ) (bool, error) {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
@@ -496,16 +505,16 @@ func updateProposerVMs(
 			if blockchainID == ids.Empty {
 				return ErrNoBlockchainID
 			}
-			if err := teleporter.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
+			if err := interchain.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
 				return err
 			}
 		}
 	}
 	ux.Logger.PrintToUser("Updating proposerVM on c-chain")
-	return teleporter.SetProposerVM(app, network, "C", "")
+	return interchain.SetProposerVM(app, network, "C", "")
 }
 
-func setAWMRelayerHost(host *models.Host, relayerVersion string) error {
+func setICMRelayerHost(host *models.Host, relayerVersion string) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
@@ -513,25 +522,25 @@ func setAWMRelayerHost(host *models.Host, relayerVersion string) error {
 	if err != nil {
 		return err
 	}
-	if err := ssh.ComposeSSHSetupAWMRelayer(host, relayerVersion); err != nil {
+	if err := ssh.ComposeSSHSetupICMRelayer(host, relayerVersion); err != nil {
 		return err
 	}
-	nodeConfig.IsAWMRelayer = true
+	nodeConfig.IsICMRelayer = true
 	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
-func updateAWMRelayerHostConfig(network models.Network, host *models.Host, blockchainName string) error {
+func updateICMRelayerHostConfig(network models.Network, host *models.Host, blockchainName string) error {
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay blockchain %s", host.GetCloudID(), blockchainName)
 	if err := addBlockchainToRelayerConf(network, host.GetCloudID(), blockchainName); err != nil {
 		return err
 	}
-	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
+	if err := ssh.RunSSHUploadNodeICMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
 		return err
 	}
-	return ssh.RunSSHStartAWMRelayerService(host)
+	return ssh.RunSSHStartICMRelayerService(host)
 }
 
-func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
+func chooseICMRelayerHost(clusterName string) (*models.Host, error) {
 	// first look up for separate monitoring host
 	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
 	if utils.FileExists(monitoringInventoryFile) {
@@ -558,18 +567,18 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 	return nil, fmt.Errorf("no hosts found on cluster")
 }
 
-func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
-	relayerKey, err := app.GetKey(constants.AWMRelayerKeyName, network, true)
+func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
+	relayerKey, err := app.GetKey(constants.ICMRelayerKeyName, network, true)
 	if err != nil {
 		return err
 	}
-	teleporterKey, err := app.GetKey(sc.TeleporterKey, network, true)
+	icmKey, err := app.GetKey(sc.TeleporterKey, network, true)
 	if err != nil {
 		return err
 	}
-	if err := teleporter.FundRelayer(
+	if err := interchain.FundRelayer(
 		network.BlockchainEndpoint(blockchainID.String()),
-		teleporterKey.PrivKeyHex(),
+		icmKey.PrivKeyHex(),
 		relayerKey.C(),
 	); err != nil {
 		return nil
@@ -578,7 +587,7 @@ func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err != nil {
 		return err
 	}
-	return teleporter.FundRelayer(
+	return interchain.FundRelayer(
 		network.BlockchainEndpoint("C"),
 		ewoqKey.PrivKeyHex(),
 		relayerKey.C(),
@@ -636,59 +645,8 @@ func checkRPCCompatibility(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
-	return checkHostsAreRPCCompatible(hosts, subnetName)
-}
-
-func waitForHealthyCluster(
-	clusterName string,
-	timeout time.Duration,
-	poolTime time.Duration,
-) error {
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	cluster, ok := clustersConfig.Clusters[clusterName]
-	if !ok {
-		return fmt.Errorf("cluster %s does not exist", clusterName)
-	}
-	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
-	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
-	defer disconnectHosts(hosts)
-	startTime := time.Now()
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
-	for {
-		unhealthyNodes, err := getUnhealthyNodes(hosts)
-		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
-			return err
-		}
-		if len(unhealthyNodes) == 0 {
-			ux.SpinComplete(spinner)
-			spinSession.Stop()
-			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
-			return nil
-		}
-		if time.Since(startTime) > timeout {
-			ux.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
-			spinSession.Stop()
-			ux.Logger.PrintToUser("")
-			ux.Logger.RedXToUser("Unhealthy Nodes")
-			for _, failedNode := range unhealthyNodes {
-				ux.Logger.PrintToUser("  " + failedNode)
-			}
-			ux.Logger.PrintToUser("")
-			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
-		}
-		time.Sleep(poolTime)
-	}
+	defer node.DisconnectHosts(hosts)
+	return node.CheckHostsAreRPCCompatible(app, hosts, subnetName)
 }
 
 func waitForSubnetValidators(
@@ -714,7 +672,7 @@ func waitForSubnetValidators(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	startTime := time.Now()
 	for {
@@ -781,7 +739,7 @@ func waitForClusterSubnetStatus(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	startTime := time.Now()
 	for {
 		wg := sync.WaitGroup{}
@@ -876,7 +834,7 @@ func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
 	return filteredHosts, nil
 }
 
-func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
+func setICMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
@@ -905,13 +863,13 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 			if !securityGroupExists {
 				return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
 			}
-			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort); !inSG {
+			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalancheGoAPIPort); !inSG {
 				if err = ec2Svc.AddSecurityGroupRule(
 					*sg.GroupId,
 					"ingress",
 					"tcp",
 					awmRelayerHost.IP+constants.IPAddressSuffix,
-					constants.AvalanchegoAPIPort,
+					constants.AvalancheGoAPIPort,
 				); err != nil {
 					return err
 				}
@@ -923,7 +881,7 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 		}
 	}
 	if hasGCPNodes {
-		if err := setGCPAWMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
+		if err := setGCPICMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
 			return err
 		}
 	}
@@ -985,7 +943,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
-			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalancheGoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
 				wgResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -1009,25 +967,25 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 }
 
 func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, blockchainName string) error {
-	relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	relayerAddress, relayerPrivateKey, err := interchain.GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
 	if err != nil {
 		return err
 	}
 
-	storageBasePath := constants.AWMRelayerDockerDir
+	storageBasePath := constants.ICMRelayerDockerDir
 	configBasePath := app.GetNodeInstanceDirPath(cloudNodeID)
 
-	configPath := app.GetAWMRelayerServiceConfigPath(configBasePath)
+	configPath := app.GetICMRelayerServiceConfigPath(configBasePath)
 	if err := os.MkdirAll(filepath.Dir(configPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("updating configuration file %s", configPath)
 
-	if err := teleporter.CreateBaseRelayerConfigIfMissing(
+	if err := interchain.CreateBaseRelayerConfigIfMissing(
 		configPath,
 		logging.Info.LowerString(),
-		app.GetAWMRelayerServiceStorageDir(storageBasePath),
-		constants.RemoteAWMRelayerMetricsPort,
+		app.GetICMRelayerServiceStorageDir(storageBasePath),
+		constants.RemoteICMRelayerMetricsPort,
 		network,
 	); err != nil {
 		return err
@@ -1051,7 +1009,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
-	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+	if err = interchain.AddSourceAndDestinationToRelayerConfig(
 		configPath,
 		rpcEndpoint,
 		wsEndpoint,
@@ -1083,7 +1041,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
-	if err = teleporter.AddSourceAndDestinationToRelayerConfig(
+	if err = interchain.AddSourceAndDestinationToRelayerConfig(
 		configPath,
 		rpcEndpoint,
 		wsEndpoint,

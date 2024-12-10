@@ -73,7 +73,7 @@ func (*Config) GetConfigStringValue(key string) string {
 func (*Config) LoadNodeConfig() (string, error) {
 	globalConfigs := viper.GetStringMap(constants.ConfigNodeConfigKey)
 	if len(globalConfigs) == 0 {
-		return "", nil
+		return "{}", nil
 	}
 	configStr, err := json.Marshal(globalConfigs)
 	if err != nil {

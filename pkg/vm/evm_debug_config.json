@@ -1,4 +1,5 @@
 {
+  "database-type": "leveldb",
   "log-level": "debug",
   "warp-api-enabled": true,
   "eth-apis": [

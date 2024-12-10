@@ -4,14 +4,14 @@
 package migrations
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-
+	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 const oldSubnetEVM = "SubnetEVM"
@@ -38,12 +38,14 @@ func migrateSubnetEVMNames(app *application.Avalanche, runner *migrationRunner) 
 		}
 
 		if !app.SidecarExists(subnet.Name()) {
-			return fmt.Errorf(
-				"subnet %s has inconsistent configuration. there is no %s file present on directory %s. please backup any file and then remove the subnet",
+			ux.Logger.PrintToUser(
+				logging.Yellow.Wrap("blockchain %s has inconsistent configuration. cleaning it up"),
 				subnet.Name(),
-				constants.SidecarFileName,
-				dirName,
 			)
+			if err := blockchaincmd.CallDeleteBlockchain(subnet.Name()); err != nil {
+				return err
+			}
+			continue
 		}
 
 		sc, err := app.LoadSidecar(subnet.Name())
