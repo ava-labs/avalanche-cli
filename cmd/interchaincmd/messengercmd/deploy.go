@@ -1,17 +1,17 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleportercmd
+package messengercmd
 
 import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -51,12 +51,12 @@ var (
 	deployFlags DeployFlags
 )
 
-// avalanche teleporter deploy
-func newDeployCmd() *cobra.Command {
+// avalanche interchain messenger deploy
+func NewDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "deploy",
-		Short: "Deploys Teleporter into a given Network and Subnet",
-		Long:  `Deploys Teleporter into a given Network and Subnet.`,
+		Short: "Deploys ICM Messenger and Registry into a given L1",
+		Long:  `Deploys ICM Messenger and Registry into a given L1.`,
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
@@ -64,16 +64,16 @@ func newDeployCmd() *cobra.Command {
 	deployFlags.PrivateKeyFlags.AddToCmd(cmd, "to fund ICM deploy")
 	deployFlags.ChainFlags.SetEnabled(true, true, false, false, true)
 	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM into %s")
-	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy Teleporter Messenger")
-	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy Teleporter Registry")
-	cmd.Flags().BoolVar(&deployFlags.ForceRegistryDeploy, "force-registry-deploy", false, "deploy Teleporter Registry even if Messenger has already been deployed")
+	cmd.Flags().BoolVar(&deployFlags.DeployMessenger, "deploy-messenger", true, "deploy ICM Messenger")
+	cmd.Flags().BoolVar(&deployFlags.DeployRegistry, "deploy-registry", true, "deploy ICM Registry")
+	cmd.Flags().BoolVar(&deployFlags.ForceRegistryDeploy, "force-registry-deploy", false, "deploy ICM Registry even if Messenger has already been deployed")
 	cmd.Flags().StringVar(&deployFlags.RPCURL, "rpc-url", "", "use the given RPC URL to connect to the subnet")
 	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
 	cmd.Flags().StringVar(&deployFlags.MessengerContractAddressPath, "messenger-contract-address-path", "", "path to a messenger contract address file")
 	cmd.Flags().StringVar(&deployFlags.MessengerDeployerAddressPath, "messenger-deployer-address-path", "", "path to a messenger deployer address file")
 	cmd.Flags().StringVar(&deployFlags.MessengerDeployerTxPath, "messenger-deployer-tx-path", "", "path to a messenger deployer tx file")
 	cmd.Flags().StringVar(&deployFlags.RegistryBydecodePath, "registry-bytecode-path", "", "path to a registry bytecode file")
-	cmd.Flags().BoolVar(&deployFlags.IncludeCChain, "include-cchain", false, "deploy Teleporter also to C-Chain")
+	cmd.Flags().BoolVar(&deployFlags.IncludeCChain, "include-cchain", false, "deploy ICM also to C-Chain")
 	cmd.Flags().StringVar(&deployFlags.CChainKeyName, "cchain-key", "", "key to be used to pay fees to deploy ICM to C-Chain")
 	return cmd
 }
@@ -87,7 +87,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	if network == models.UndefinedNetwork {
 		network, err = networkoptions.GetNetworkFromCmdLineFlags(
 			app,
-			"On what Network do you want to deploy the Teleporter Messenger?",
+			"On what Network do you want to deploy the ICM Messenger?",
 			flags.Network,
 			true,
 			false,
@@ -105,7 +105,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		return fmt.Errorf("you should set at least one of --deploy-messenger/--deploy-registry to true")
 	}
 	if !flags.ChainFlags.Defined() {
-		prompt := "Which Blockchain would you like to deploy Teleporter to?"
+		prompt := "Which Blockchain would you like to deploy ICM to?"
 		if cancel, err := contract.PromptChain(
 			app,
 			network,
@@ -142,7 +142,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	if privateKey == "" {
 		privateKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"deploy teleporter",
+			"deploy ICM",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -152,23 +152,23 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return err
 		}
 	}
-	var teleporterVersion string
+	var icmVersion string
 	switch {
 	case flags.MessengerContractAddressPath != "" || flags.MessengerDeployerAddressPath != "" || flags.MessengerDeployerTxPath != "" || flags.RegistryBydecodePath != "":
 		if flags.MessengerContractAddressPath == "" || flags.MessengerDeployerAddressPath == "" || flags.MessengerDeployerTxPath == "" || flags.RegistryBydecodePath == "" {
-			return fmt.Errorf("if setting any teleporter asset path, you must set all teleporter asset paths")
+			return fmt.Errorf("if setting any ICM asset path, you must set all ICM asset paths")
 		}
 	case flags.Version != "" && flags.Version != "latest":
-		teleporterVersion = flags.Version
+		icmVersion = flags.Version
 	default:
-		teleporterInfo, err := teleporter.GetInfo(app)
+		icmInfo, err := interchain.GetICMInfo(app)
 		if err != nil {
 			return err
 		}
-		teleporterVersion = teleporterInfo.Version
+		icmVersion = icmInfo.Version
 	}
 	// deploy to subnet
-	td := teleporter.Deployer{}
+	td := interchain.ICMDeployer{}
 	if flags.MessengerContractAddressPath != "" {
 		if err := td.SetAssetsFromPaths(
 			flags.MessengerContractAddressPath,
@@ -180,8 +180,8 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		}
 	} else {
 		if err := td.DownloadAssets(
-			app.GetTeleporterBinDir(),
-			teleporterVersion,
+			app.GetICMContractsBinDir(),
+			icmVersion,
 		); err != nil {
 			return err
 		}
@@ -190,7 +190,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	if err != nil {
 		return err
 	}
-	alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
+	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
 		blockchainDesc,
 		rpcURL,
 		privateKey,
@@ -208,13 +208,13 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
 		sc.TeleporterReady = true
-		sc.TeleporterVersion = teleporterVersion
+		sc.TeleporterVersion = icmVersion
 		networkInfo := sc.Networks[network.Name()]
-		if teleporterMessengerAddress != "" {
-			networkInfo.TeleporterMessengerAddress = teleporterMessengerAddress
+		if messengerAddress != "" {
+			networkInfo.TeleporterMessengerAddress = messengerAddress
 		}
-		if teleporterRegistryAddress != "" {
-			networkInfo.TeleporterRegistryAddress = teleporterRegistryAddress
+		if registryAddress != "" {
+			networkInfo.TeleporterRegistryAddress = registryAddress
 		}
 		sc.Networks[network.Name()] = networkInfo
 		if err := app.UpdateSidecar(&sc); err != nil {
@@ -230,7 +230,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		if err != nil {
 			return err
 		}
-		alreadyDeployed, teleporterMessengerAddress, teleporterRegistryAddress, err := td.Deploy(
+		alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
 			cChainName,
 			network.BlockchainEndpoint(cChainAlias),
 			ewoq.PrivKeyHex(),
@@ -246,8 +246,8 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				if err := localnet.WriteExtraLocalNetworkData(
 					"",
 					"",
-					teleporterMessengerAddress,
-					teleporterRegistryAddress,
+					messengerAddress,
+					registryAddress,
 				); err != nil {
 					return err
 				}
@@ -257,11 +257,11 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				if err != nil {
 					return err
 				}
-				if teleporterMessengerAddress != "" {
-					clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress = teleporterMessengerAddress
+				if messengerAddress != "" {
+					clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress = messengerAddress
 				}
-				if teleporterRegistryAddress != "" {
-					clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress = teleporterRegistryAddress
+				if registryAddress != "" {
+					clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress = registryAddress
 				}
 				if err := app.SetClusterConfig(network.ClusterName, clusterConfig); err != nil {
 					return err

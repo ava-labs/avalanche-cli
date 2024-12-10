@@ -61,7 +61,7 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 		"--evm",
 		subnetName,
 		"--" + constants.SkipUpdateFlag,
-		"--teleporter=false",
+		"--icm=false",
 		"--evm-token",
 		"TOK",
 	}
@@ -105,7 +105,7 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 		"--proxy-contract-owner",
 		poaValidatorManagerOwner,
 		"--" + constants.SkipUpdateFlag,
-		"--teleporter=false",
+		"--icm=false",
 		"--evm-token",
 		"TOK",
 	}
@@ -189,7 +189,7 @@ func CreateCustomVMConfigNonSOV(subnetName string, genesisPath string, vmPath st
 		"--custom-vm-path",
 		vmPath,
 		"--"+constants.SkipUpdateFlag,
-		"--teleporter=false",
+		"--icm=false",
 		"--evm-token",
 		"TOK",
 	)
@@ -244,7 +244,7 @@ func CreateCustomVMConfigSOV(subnetName string, genesisPath string, vmPath strin
 		"--custom-vm-path",
 		vmPath,
 		"--"+constants.SkipUpdateFlag,
-		"--teleporter=false",
+		"--icm=false",
 		"--evm-token",
 		"TOK",
 	)
