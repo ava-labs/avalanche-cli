@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package teleporter
+package interchain
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	releaseURL                     = "https://github.com/ava-labs/teleporter/releases/download/%s/"
+	releaseURL                     = "https://github.com/ava-labs/icm-contracts/releases/download/%s/"
 	messengerContractAddressURLFmt = releaseURL + "/TeleporterMessenger_Contract_Address_%s.txt"
 	messengerDeployerAddressURLFmt = releaseURL + "/TeleporterMessenger_Deployer_Address_%s.txt"
 	messengerDeployerTxURLFmt      = releaseURL + "/TeleporterMessenger_Deployment_Transaction_%s.txt"
@@ -34,7 +34,7 @@ var (
 	InterchainMessagingPrefundedAddressBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600))
 )
 
-func getTeleporterURLs(version string) (string, string, string, string) {
+func getICMURLs(version string) (string, string, string, string) {
 	messengerContractAddressURL := fmt.Sprintf(
 		messengerContractAddressURLFmt,
 		version,
@@ -58,31 +58,31 @@ func getTeleporterURLs(version string) (string, string, string, string) {
 	return messengerContractAddressURL, messengerDeployerAddressURL, messengerDeployerTxURL, registryBydecodeURL
 }
 
-type Deployer struct {
+type ICMDeployer struct {
 	messengerContractAddress string
 	messengerDeployerAddress string
 	messengerDeployerTx      string
 	registryBydecode         string
 }
 
-func (t *Deployer) GetAssets(
-	teleporterInstallDir string,
+func (t *ICMDeployer) GetAssets(
+	icmInstallDir string,
 	version string,
 ) (string, string, string, string, error) {
-	if err := t.DownloadAssets(teleporterInstallDir, version); err != nil {
+	if err := t.DownloadAssets(icmInstallDir, version); err != nil {
 		return "", "", "", "", err
 	}
 	return t.messengerContractAddress, t.messengerDeployerAddress, t.messengerDeployerTx, t.registryBydecode, nil
 }
 
-func (t *Deployer) CheckAssets() error {
+func (t *ICMDeployer) CheckAssets() error {
 	if t.messengerContractAddress == "" || t.messengerDeployerAddress == "" || t.messengerDeployerTx == "" || t.registryBydecode == "" {
-		return fmt.Errorf("teleporter assets has not been initialized")
+		return fmt.Errorf("icm assets has not been initialized")
 	}
 	return nil
 }
 
-func (t *Deployer) SetAssetsFromPaths(
+func (t *ICMDeployer) SetAssetsFromPaths(
 	messengerContractAddressPath string,
 	messengerDeployerAddressPath string,
 	messengerDeployerTxPath string,
@@ -119,7 +119,7 @@ func (t *Deployer) SetAssetsFromPaths(
 	return nil
 }
 
-func (t *Deployer) SetAssets(
+func (t *ICMDeployer) SetAssets(
 	messengerContractAddress string,
 	messengerDeployerAddress string,
 	messengerDeployerTx string,
@@ -139,13 +139,13 @@ func (t *Deployer) SetAssets(
 	}
 }
 
-func (t *Deployer) DownloadAssets(
-	teleporterInstallDir string,
+func (t *ICMDeployer) DownloadAssets(
+	icmInstallDir string,
 	version string,
 ) error {
 	var err error
-	binDir := filepath.Join(teleporterInstallDir, version)
-	messengerContractAddressURL, messengerDeployerAddressURL, messengerDeployerTxURL, registryBydecodeURL := getTeleporterURLs(
+	binDir := filepath.Join(icmInstallDir, version)
+	messengerContractAddressURL, messengerDeployerAddressURL, messengerDeployerTxURL, registryBydecodeURL := getICMURLs(
 		version,
 	)
 	messengerContractAddressPath := filepath.Join(
@@ -174,7 +174,7 @@ func (t *Deployer) DownloadAssets(
 				return err
 			}
 		} else {
-			// get target teleporter messenger contract address
+			// get target icm messenger contract address
 			messengerContractAddressBytes, err = utils.DownloadWithTee(messengerContractAddressURL, messengerContractAddressPath)
 			if err != nil {
 				return err
@@ -192,7 +192,7 @@ func (t *Deployer) DownloadAssets(
 				return err
 			}
 		} else {
-			// get teleporter deployer address
+			// get icm deployer address
 			messengerDeployerAddressBytes, err = utils.DownloadWithTee(messengerDeployerAddressURL, messengerDeployerAddressPath)
 			if err != nil {
 				return err
@@ -233,7 +233,7 @@ func (t *Deployer) DownloadAssets(
 	return nil
 }
 
-func (t *Deployer) Deploy(
+func (t *ICMDeployer) Deploy(
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -262,7 +262,7 @@ func (t *Deployer) Deploy(
 	return alreadyDeployed, messengerAddress, registryAddress, err
 }
 
-func (t *Deployer) DeployMessenger(
+func (t *ICMDeployer) DeployMessenger(
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -278,10 +278,10 @@ func (t *Deployer) DeployMessenger(
 	if messengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.messengerContractAddress); err != nil {
 		return false, "", fmt.Errorf("failure making a request to %s: %w", rpcURL, err)
 	} else if messengerAlreadyDeployed {
-		ux.Logger.PrintToUser("Teleporter Messenger has already been deployed to %s", subnetName)
+		ux.Logger.PrintToUser("ICM Messenger has already been deployed to %s", subnetName)
 		return true, t.messengerContractAddress, nil
 	}
-	// get teleporter deployer balance
+	// get icm deployer balance
 	messengerDeployerBalance, err := evm.GetAddressBalance(
 		client,
 		t.messengerDeployerAddress,
@@ -305,14 +305,14 @@ func (t *Deployer) DeployMessenger(
 		return false, "", err
 	}
 	ux.Logger.PrintToUser(
-		"Teleporter Messenger successfully deployed to %s (%s)",
+		"ICM Messenger successfully deployed to %s (%s)",
 		subnetName,
 		t.messengerContractAddress,
 	)
 	return false, t.messengerContractAddress, nil
 }
 
-func (t *Deployer) DeployRegistry(
+func (t *ICMDeployer) DeployRegistry(
 	subnetName string,
 	rpcURL string,
 	privateKey string,
@@ -342,7 +342,7 @@ func (t *Deployer) DeployRegistry(
 		return "", err
 	}
 	ux.Logger.PrintToUser(
-		"Teleporter Registry successfully deployed to %s (%s)",
+		"ICM Registry successfully deployed to %s (%s)",
 		subnetName,
 		registryAddress,
 	)
@@ -387,7 +387,7 @@ func SetProposerVM(
 
 func DeployAndFundRelayer(
 	app *application.Avalanche,
-	td *Deployer,
+	td *ICMDeployer,
 	network models.Network,
 	subnetName string,
 	blockchainID string,
@@ -425,7 +425,7 @@ func DeployAndFundRelayer(
 	return alreadyDeployed, messengerAddress, registryAddress, err
 }
 
-func getTeleporterKeyInfo(
+func getICMKeyInfo(
 	app *application.Avalanche,
 	keyName string,
 ) (string, string, *big.Int, error) {
@@ -436,7 +436,7 @@ func getTeleporterKeyInfo(
 	return k.C(), k.PrivKeyHex(), InterchainMessagingPrefundedAddressBalance, nil
 }
 
-type Info struct {
+type ICMInfo struct {
 	Version                  string
 	FundedAddress            string
 	FundedBalance            *big.Int
@@ -444,25 +444,25 @@ type Info struct {
 	RelayerAddress           string
 }
 
-func GetInfo(
+func GetICMInfo(
 	app *application.Avalanche,
-) (*Info, error) {
+) (*ICMInfo, error) {
 	var err error
-	ti := Info{}
-	ti.FundedAddress, _, ti.FundedBalance, err = getTeleporterKeyInfo(
+	ti := ICMInfo{}
+	ti.FundedAddress, _, ti.FundedBalance, err = getICMKeyInfo(
 		app,
 		constants.ICMKeyName,
 	)
 	if err != nil {
 		return nil, err
 	}
-	ti.Version, err = app.Downloader.GetLatestReleaseVersion(constants.AvaLabsOrg, constants.TeleporterRepoName, "")
+	ti.Version, err = app.Downloader.GetLatestReleaseVersion(constants.AvaLabsOrg, constants.ICMContractsRepoName, "")
 	if err != nil {
 		return nil, err
 	}
-	deployer := Deployer{}
+	deployer := ICMDeployer{}
 	_, ti.MessengerDeployerAddress, _, _, err = deployer.GetAssets(
-		app.GetTeleporterBinDir(),
+		app.GetICMContractsBinDir(),
 		ti.Version,
 	)
 	if err != nil {
