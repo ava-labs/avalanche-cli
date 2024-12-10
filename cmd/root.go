@@ -168,6 +168,14 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+func UpdateCheckDisabled(app *application.Avalanche) bool {
+	// returns true obly if explicitly disabled in the config
+	if app.Conf.ConfigFileExists() {
+		return app.Conf.GetConfigBoolValue(constants.ConfigUpdatesDisabledKey)
+	}
+	return false
+}
+
 // checkForUpdates evaluates first if the user is maybe wanting to skip the update check
 // if there's no skip, it runs the update check
 func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
@@ -175,6 +183,10 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 		lastActs *application.LastActions
 		err      error
 	)
+	// check if update check is skipped
+	if UpdateCheckDisabled(app) {
+		return nil
+	}
 	// we store a timestamp of the last skip check in a file
 	lastActs, err = app.ReadLastActionsFile()
 	if err != nil {
