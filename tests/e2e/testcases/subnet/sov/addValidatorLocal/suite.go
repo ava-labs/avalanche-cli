@@ -44,6 +44,7 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 			"",
 			ewoqPChainAddress,
 			1,
+			1,
 			true,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
