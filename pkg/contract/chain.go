@@ -381,7 +381,7 @@ func GetICMInfo(
 			}
 			messengerAddress = addr.Hex()
 		} else if defaultToLatestReleasedMessenger {
-			messengerAddress = constants.DefaultTeleporterMessengerAddress
+			messengerAddress = constants.DefaultICMMessengerAddress
 		}
 	}
 	return registryAddress, messengerAddress, nil
@@ -458,14 +458,14 @@ func GetCChainICMInfo(
 		messengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 		registryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
 	case network.Kind == models.EtnaDevnet:
-		messengerAddress = constants.DefaultTeleporterMessengerAddress
-		registryAddress = constants.EtnaDevnetCChainTeleporterRegistryAddress
+		messengerAddress = constants.DefaultICMMessengerAddress
+		registryAddress = constants.EtnaDevnetCChainICMRegistryAddress
 	case network.Kind == models.Fuji:
-		messengerAddress = constants.DefaultTeleporterMessengerAddress
-		registryAddress = constants.FujiCChainTeleporterRegistryAddress
+		messengerAddress = constants.DefaultICMMessengerAddress
+		registryAddress = constants.FujiCChainICMRegistryAddress
 	case network.Kind == models.Mainnet:
-		messengerAddress = constants.DefaultTeleporterMessengerAddress
-		registryAddress = constants.MainnetCChainTeleporterRegistryAddress
+		messengerAddress = constants.DefaultICMMessengerAddress
+		registryAddress = constants.MainnetCChainICMRegistryAddress
 	}
 	return registryAddress, messengerAddress, nil
 }

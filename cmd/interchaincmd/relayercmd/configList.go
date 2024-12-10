@@ -386,7 +386,7 @@ func GenerateConfigSpec(
 					}
 				case explainOption:
 					ux.Logger.PrintToUser("A source blockchain is going to be listened by the relayer to check for new")
-					ux.Logger.PrintToUser("messages. You need to specify blockchain ID, teleporter addresses.")
+					ux.Logger.PrintToUser("messages. You need to specify blockchain ID, ICM addresses.")
 					ux.Logger.PrintToUser("A destination blockchain is going to be connected by the relayer in order")
 					ux.Logger.PrintToUser("to deliver a message. You need to specify blockchain ID, private key")
 					continue

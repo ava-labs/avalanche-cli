@@ -36,7 +36,7 @@ type Sidecar struct {
 	CustomVMRepoURL     string
 	CustomVMBranch      string
 	CustomVMBuildScript string
-	// Teleporter related
+	// ICM related
 	TeleporterReady   bool
 	TeleporterKey     string
 	TeleporterVersion string

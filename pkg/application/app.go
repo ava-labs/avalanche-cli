@@ -117,8 +117,8 @@ func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }
 
-func (app *Avalanche) GetTeleporterBinDir() string {
-	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.TeleporterInstallDir)
+func (app *Avalanche) GetICMContractsBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.ICMContractsInstallDir)
 }
 
 func (app *Avalanche) GetICMRelayerBinDir() string {
@@ -540,8 +540,8 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	network models.Network,
 	subnetID ids.ID,
 	blockchainID ids.ID,
-	teleporterMessengerAddress string,
-	teleporterRegistryAddress string,
+	icmMessengerAddress string,
+	icmRegistryAddress string,
 	bootstrapValidators []models.SubnetValidator,
 	clusterName string,
 ) error {
@@ -552,8 +552,8 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		SubnetID:                   subnetID,
 		BlockchainID:               blockchainID,
 		RPCVersion:                 sc.RPCVersion,
-		TeleporterMessengerAddress: teleporterMessengerAddress,
-		TeleporterRegistryAddress:  teleporterRegistryAddress,
+		TeleporterMessengerAddress: icmMessengerAddress,
+		TeleporterRegistryAddress:  icmRegistryAddress,
 		BootstrapValidators:        bootstrapValidators,
 		ClusterName:                clusterName,
 	}

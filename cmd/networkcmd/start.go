@@ -11,10 +11,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -197,7 +197,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			if relayerBinPath == "" {
 				relayerBinPath = extraLocalNetworkData.RelayerPath
 			}
-			if relayerBinPath, err := teleporter.DeployRelayer(
+			if relayerBinPath, err := interchain.DeployRelayer(
 				"latest",
 				relayerBinPath,
 				app.GetICMRelayerBinDir(),

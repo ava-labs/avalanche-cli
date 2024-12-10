@@ -12,9 +12,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/interchain/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/subnet-evm/core"
@@ -23,10 +23,10 @@ import (
 )
 
 var (
-	// 600 AVAX: to deploy teleporter contract, registry contract, and fund
+	// 600 AVAX: to deploy ICM contract, registry contract, and fund
 	// starting relayer operations
-	teleporterBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600))
-	// 1000 AVAX: to deploy teleporter contract, registry contract, fund
+	icmBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(600))
+	// 1000 AVAX: to deploy ICM contract, registry contract, fund
 	// starting relayer operations, and deploy bridge contracts
 	externalGasTokenBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1000))
 )
@@ -78,7 +78,7 @@ func CreateEvmSidecar(
 
 func CreateEVMGenesis(
 	params SubnetEVMGenesisParams,
-	teleporterInfo *teleporter.Info,
+	icmInfo *interchain.ICMInfo,
 	addICMRegistryToGenesis bool,
 	proxyOwner string,
 	rewardBasisPoints uint64,
@@ -92,26 +92,26 @@ func CreateEVMGenesis(
 			return nil, errors.New("none of the addresses in the transaction allow list precompile have any tokens allocated to them. Currently, no address can transact on the network. Allocate some funds to one of the allow list addresses to continue")
 		}
 	}
-	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
-		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but warp precompile is disabled")
+	if (params.UseICM || params.UseExternalGasToken) && !params.enableWarpPrecompile {
+		return nil, fmt.Errorf("a ICM enabled blockchain was requested but warp precompile is disabled")
 	}
-	if (params.UseTeleporter || params.UseExternalGasToken) && teleporterInfo == nil {
-		return nil, fmt.Errorf("a teleporter enabled blockchain was requested but no teleporter info was provided")
+	if (params.UseICM || params.UseExternalGasToken) && icmInfo == nil {
+		return nil, fmt.Errorf("a ICM enabled blockchain was requested but no ICM info was provided")
 	}
 
-	// Add the teleporter deployer to the initial token allocation if necessary.
-	if params.UseTeleporter || params.UseExternalGasToken {
-		balance := teleporterBalance
+	// Add the ICM deployer to the initial token allocation if necessary.
+	if params.UseICM || params.UseExternalGasToken {
+		balance := icmBalance
 		if params.UseExternalGasToken {
 			balance = externalGasTokenBalance
 		}
 		if params.initialTokenAllocation == nil {
 			params.initialTokenAllocation = core.GenesisAlloc{}
 		}
-		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
+		params.initialTokenAllocation[common.HexToAddress(icmInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
-		if !params.DisableTeleporterOnGenesis {
+		if !params.DisableICMOnGenesis {
 			icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
 			if addICMRegistryToGenesis {
 				// experimental
@@ -139,19 +139,19 @@ func CreateEVMGenesis(
 		params.enableNativeMinterPrecompile = true
 		params.nativeMinterPrecompileAllowList.AdminAddresses = append(
 			params.nativeMinterPrecompileAllowList.AdminAddresses,
-			common.HexToAddress(teleporterInfo.FundedAddress),
+			common.HexToAddress(icmInfo.FundedAddress),
 		)
 	}
 
 	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
 	precompiles := getPrecompiles(params, genesisBlock0Timestamp)
 
-	if params.UseTeleporter || params.UseExternalGasToken {
-		addTeleporterAddressesToAllowLists(
+	if params.UseICM || params.UseExternalGasToken {
+		addICMAddressesToAllowLists(
 			&precompiles,
-			teleporterInfo.FundedAddress,
-			teleporterInfo.MessengerDeployerAddress,
-			teleporterInfo.RelayerAddress,
+			icmInfo.FundedAddress,
+			icmInfo.MessengerDeployerAddress,
+			icmInfo.RelayerAddress,
 		)
 	}
 
