@@ -342,6 +342,7 @@ func StartLocalNode(
 			if err != nil {
 				return err
 			}
+			network.ClusterName = clusterName
 		}
 		if network.Kind == models.Fuji {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
