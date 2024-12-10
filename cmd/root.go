@@ -161,7 +161,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 func UpdateCheckDisabled(app *application.Avalanche) bool {
 	// returns true obly if explicitly disabled in the config
 	if app.Conf.ConfigFileExists() {
-		return !app.Conf.GetConfigBoolValue(constants.ConfigUpdatesEnabledKey)
+		return app.Conf.GetConfigBoolValue(constants.ConfigUpdatesDisabledKey)
 	}
 	return false
 }

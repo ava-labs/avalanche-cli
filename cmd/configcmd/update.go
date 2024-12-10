@@ -28,13 +28,13 @@ func handleUpdateSettings(_ *cobra.Command, args []string) error {
 	switch args[0] {
 	case constants.Enable:
 		ux.Logger.PrintToUser("Thank you for opting in Avalanche CLI automated update check")
-		err := saveUpdatePreferences(true)
+		err := saveUpdateDisabledPreferences(false)
 		if err != nil {
 			return err
 		}
 	case constants.Disable:
 		ux.Logger.PrintToUser("Avalanche CLI automated update check will no longer be performed")
-		err := saveUpdatePreferences(false)
+		err := saveUpdateDisabledPreferences(true)
 		if err != nil {
 			return err
 		}
@@ -44,6 +44,6 @@ func handleUpdateSettings(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func saveUpdatePreferences(enableUpdate bool) error {
-	return app.Conf.SetConfigValue(constants.ConfigUpdatesEnabledKey, enableUpdate)
+func saveUpdateDisabledPreferences(disableUpdate bool) error {
+	return app.Conf.SetConfigValue(constants.ConfigUpdatesDisabledKey, disableUpdate)
 }
