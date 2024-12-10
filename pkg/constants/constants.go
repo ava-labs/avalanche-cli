@@ -183,7 +183,7 @@ const (
 	AvalancheGoRepoName           = "avalanchego"
 	SubnetEVMRepoName             = "subnet-evm"
 	CliRepoName                   = "avalanche-cli"
-	TeleporterRepoName            = "teleporter"
+	ICMContractsRepoName          = "icm-contracts"
 	ICMServicesRepoName           = "icm-services"
 	ICMRelayerKind                = "icm-relayer"
 	SubnetEVMReleaseURL           = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
@@ -206,7 +206,7 @@ const (
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
 	ICMRelayerInstallDir          = "icm-relayer"
-	TeleporterInstallDir          = "teleporter"
+	ICMContractsInstallDir        = "icm-contracts"
 	ICMRelayerBin                 = "icm-relayer"
 	LocalRelayerDir               = "local-relayer"
 	ICMRelayerConfigFilename      = "icm-relayer-config.json"
@@ -322,14 +322,14 @@ const (
 	GitExtension            = ".git"
 
 	// Avalanche InterChain Token Transfer
-	ICTTDir     = "avalanche-interchain-token-transfer"
-	ICTTURL     = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
+	ICTTDir     = "icm-contracts"
+	ICTTURL     = "https://github.com/ava-labs/icm-contracts"
 	ICTTBranch  = "main"
-	ICTTVersion = "v1.0.0"
+	ICTTVersion = "8012c2a90638c1b777622e6427dbe4a88e329539"
 
 	// ICM
-	DefaultTeleporterMessengerAddress         = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
-	MainnetCChainTeleporterRegistryAddress    = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
-	FujiCChainTeleporterRegistryAddress       = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
-	EtnaDevnetCChainTeleporterRegistryAddress = "0xEe40DFF876204A99eCCB783FDc01eE0a2678Ae93"
+	DefaultICMMessengerAddress         = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	MainnetCChainICMRegistryAddress    = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
+	FujiCChainICMRegistryAddress       = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
+	EtnaDevnetCChainICMRegistryAddress = "0xEe40DFF876204A99eCCB783FDc01eE0a2678Ae93"
 )
