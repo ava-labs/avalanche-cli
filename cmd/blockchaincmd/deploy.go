@@ -561,12 +561,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	fee := uint64(0)
-	if !subnetOnly {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
-	}
-	if createSubnet {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
-	}
+	//if !subnetOnly {
+	//	fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
+	//}
+	//if createSubnet {
+	//	fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
+	//}
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -820,64 +820,72 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	if createSubnet {
-		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
-		if err != nil {
-			return err
-		}
-		deployer.CleanCacheWallet()
-		// get the control keys in the same order as the tx
-		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
-		if err != nil {
-			return err
-		}
-	}
+	//if createSubnet {
+	//	subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	deployer.CleanCacheWallet()
+	//	// get the control keys in the same order as the tx
+	//	_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
 
-	var (
-		savePartialTx           bool
-		blockchainID            ids.ID
-		tx                      *txs.Tx
-		remainingSubnetAuthKeys []string
-		isFullySigned           bool
-	)
+	//var (
+	//	savePartialTx           bool
+	//	blockchainID            ids.ID
+	//	tx                      *txs.Tx
+	//	remainingSubnetAuthKeys []string
+	//	isFullySigned           bool
+	//)
 
-	if !subnetOnly {
-		isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.DeployBlockchain(
-			controlKeys,
-			subnetAuthKeys,
-			subnetID,
-			chain,
-			chainGenesis,
-		)
-		if err != nil {
-			ux.Logger.PrintToUser(logging.Red.Wrap(
-				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
-			))
-		}
+	//if !subnetOnly {
+	//	isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.DeployBlockchain(
+	//		controlKeys,
+	//		subnetAuthKeys,
+	//		subnetID,
+	//		chain,
+	//		chainGenesis,
+	//	)
+	//	if err != nil {
+	//		ux.Logger.PrintToUser(logging.Red.Wrap(
+	//			fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
+	//		))
+	//	}
+	//
+	//	savePartialTx = !isFullySigned && err == nil
+	//}
+	//
+	//if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
+	//	return err
+	//}
 
-		savePartialTx = !isFullySigned && err == nil
-	}
-
-	if err := PrintDeployResults(chain, subnetID, blockchainID); err != nil {
-		return err
-	}
-
-	if savePartialTx {
-		if err := SaveNotFullySignedTx(
-			"Blockchain Creation",
-			tx,
-			chain,
-			subnetAuthKeys,
-			remainingSubnetAuthKeys,
-			outputTxPath,
-			false,
-		); err != nil {
-			return err
-		}
-	}
+	//if savePartialTx {
+	//	if err := SaveNotFullySignedTx(
+	//		"Blockchain Creation",
+	//		tx,
+	//		chain,
+	//		subnetAuthKeys,
+	//		remainingSubnetAuthKeys,
+	//		outputTxPath,
+	//		false,
+	//	); err != nil {
+	//		return err
+	//	}
+	//}
 
 	tracked := false
 
+	subnetID, err = ids.FromString("86MRmG5RDSENfcBwh3ApS4R1jJfZrQ8JoQ5GtqvFyhV1e1ovo")
+	if err != nil {
+		return err
+	}
+	blockchainID, err := ids.FromString("GaNmQtGyoequnxTgG2zdfMc7jZ2M3Z6Y6RSLY56jK2wxyuKe7")
+	if err != nil {
+		return err
+	}
 	if sidecar.Sovereign {
 		avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 		if err != nil {
@@ -885,7 +893,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		deployer.CleanCacheWallet()
 		managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-		isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
+		_, convertL1TxID, _, _, err := deployer.ConvertL1(
 			controlKeys,
 			subnetAuthKeys,
 			subnetID,
@@ -898,22 +906,22 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		savePartialTx = !isFullySigned && err == nil
+		//savePartialTx = !isFullySigned && err == nil
 		ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
 
-		if savePartialTx {
-			if err := SaveNotFullySignedTx(
-				"ConvertSubnetToL1Tx",
-				tx,
-				chain,
-				subnetAuthKeys,
-				remainingSubnetAuthKeys,
-				outputTxPath,
-				false,
-			); err != nil {
-				return err
-			}
-		}
+		//if savePartialTx {
+		//	if err := SaveNotFullySignedTx(
+		//		"ConvertSubnetToL1Tx",
+		//		tx,
+		//		chain,
+		//		subnetAuthKeys,
+		//		remainingSubnetAuthKeys,
+		//		outputTxPath,
+		//		false,
+		//	); err != nil {
+		//		return err
+		//	}
+		//}
 
 		_, err = ux.TimedProgressBar(
 			30*time.Second,

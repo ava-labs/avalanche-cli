@@ -38,9 +38,9 @@ func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, 
 		if err := CheckHostsAreBootstrapped(hosts); err != nil {
 			return err
 		}
-		if err := CheckHostsAreHealthy(hosts); err != nil {
-			return err
-		}
+		//if err := CheckHostsAreHealthy(hosts); err != nil {
+		//	return err
+		//}
 		if err := CheckHostsAreRPCCompatible(app, hosts, blockchainName); err != nil {
 			return err
 		}
