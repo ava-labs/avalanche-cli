@@ -47,7 +47,7 @@ type PublicDeployer struct {
 	kc      *keychain.Keychain
 	network models.Network
 	app     *application.Avalanche
-	wallet  primary.Wallet
+	wallet  *primary.Wallet
 }
 
 func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
@@ -138,7 +138,7 @@ func (d *PublicDeployer) SetL1ValidatorWeight(
 
 func (*PublicDeployer) createSetSubnetValidatorWeightTx(
 	message *warp.Message,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	unsignedTx, err := wallet.P().Builder().NewSetL1ValidatorWeightTx(
 		message.Bytes(),
@@ -184,7 +184,7 @@ func (*PublicDeployer) createRegisterSubnetValidatorTx(
 	balance uint64,
 	pop signer.ProofOfPossession,
 	message *warp.Message,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	unsignedTx, err := wallet.P().Builder().NewRegisterL1ValidatorTx(
 		balance,
@@ -604,17 +604,17 @@ func (d *PublicDeployer) Sign(
 	return nil
 }
 
-func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (primary.Wallet, error) {
+func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (*primary.Wallet, error) {
 	ctx := context.Background()
 	// filter out ids.Empty txs
 	filteredTxs := utils.Filter(subnetIDs, func(e ids.ID) bool { return e != ids.Empty })
 	wallet, err := primary.MakeWallet(
 		ctx,
-		&primary.WalletConfig{
-			URI:          d.network.Endpoint,
-			AVAXKeychain: d.kc.Keychain,
-			EthKeychain:  secp256k1fx.NewKeychain(),
-			SubnetIDs:    filteredTxs,
+		d.network.Endpoint,
+		d.kc.Keychain,
+		secp256k1fx.NewKeychain(),
+		primary.WalletConfig{
+			SubnetIDs: filteredTxs,
 		},
 	)
 	if err != nil {
@@ -627,7 +627,7 @@ func (d *PublicDeployer) CleanCacheWallet() {
 	d.wallet = nil
 }
 
-func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (primary.Wallet, error) {
+func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (*primary.Wallet, error) {
 	var err error
 	if d.wallet == nil {
 		d.wallet, err = d.loadWallet(preloadTxs...)
@@ -659,7 +659,7 @@ func (d *PublicDeployer) createBlockchainTx(
 	vmID,
 	subnetID ids.ID,
 	genesis []byte,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	fxIDs := make([]ids.ID, 0)
 	options := d.getMultisigTxOptions(subnetAuthKeys)
@@ -694,7 +694,7 @@ func (d *PublicDeployer) createConvertL1Tx(
 	chainID ids.ID,
 	address []byte,
 	validators []*txs.ConvertSubnetToL1Validator,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	unsignedTx, err := wallet.P().Builder().NewConvertSubnetToL1Tx(
@@ -724,7 +724,7 @@ func (d *PublicDeployer) createTransferSubnetOwnershipTx(
 	subnetID ids.ID,
 	controlKeys []string,
 	threshold uint32,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	addrs, err := address.ParseToIDs(controlKeys)
@@ -756,7 +756,7 @@ func (d *PublicDeployer) createTransferSubnetOwnershipTx(
 func (d *PublicDeployer) createAddSubnetValidatorTx(
 	subnetAuthKeys []ids.ShortID,
 	validator *txs.SubnetValidator,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
@@ -776,7 +776,7 @@ func (d *PublicDeployer) createRemoveValidatorTX(
 	subnetAuthKeys []ids.ShortID,
 	nodeID ids.NodeID,
 	subnetID ids.ID,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) (*txs.Tx, error) {
 	options := d.getMultisigTxOptions(subnetAuthKeys)
 	// create tx
@@ -803,7 +803,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 	assetID ids.ID,
 	startTime uint64,
 	endTime uint64,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	delegationFee uint32,
 	popBytes []byte,
 	blsProof *signer.ProofOfPossession,
@@ -879,7 +879,7 @@ func (d *PublicDeployer) issueAddPermissionlessValidatorTX(
 
 func (*PublicDeployer) signTx(
 	tx *txs.Tx,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 ) error {
 	if err := wallet.P().Signer().Sign(context.Background(), tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
@@ -887,7 +887,7 @@ func (*PublicDeployer) signTx(
 	return nil
 }
 
-func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet primary.Wallet) (ids.ID, error) {
+func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, wallet *primary.Wallet) (ids.ID, error) {
 	addrs, err := address.ParseToIDs(controlKeys)
 	if err != nil {
 		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
@@ -919,7 +919,7 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return d.Commit(&tx, true)
 }
 
-func printFee(kind string, wallet primary.Wallet, unsignedTx txs.UnsignedTx) error {
+func printFee(kind string, wallet *primary.Wallet, unsignedTx txs.UnsignedTx) error {
 	if showFees {
 		var pFeeCalculator avagofee.Calculator
 		pContext := wallet.P().Builder().Context()
@@ -989,7 +989,7 @@ func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platf
 }
 
 func IssueXToPExportTx(
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	usingLedger bool,
 	hasOnlyOneKey bool,
 	assetID ids.ID,
@@ -1036,7 +1036,7 @@ func IssueXToPExportTx(
 }
 
 func IssuePFromXImportTx(
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	usingLedger bool,
 	hasOnlyOneKey bool,
 	owner *secp256k1fx.OutputOwners,
