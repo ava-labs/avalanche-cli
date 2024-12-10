@@ -878,11 +878,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	tracked := false
 
-	subnetID, err = ids.FromString("86MRmG5RDSENfcBwh3ApS4R1jJfZrQ8JoQ5GtqvFyhV1e1ovo")
+	subnetID, err = ids.FromString("fRfQ6Jak6gPSYPdUgDY8pgEgaLHcMAxMFArghATJUYivAvUqj")
 	if err != nil {
 		return err
 	}
-	blockchainID, err := ids.FromString("GaNmQtGyoequnxTgG2zdfMc7jZ2M3Z6Y6RSLY56jK2wxyuKe7")
+	blockchainID, err := ids.FromString("2i4YaQ8SJpBwF7M9rP18SK5xUSytUnpEjmSo9zhbDxTmdSQ79t")
 	if err != nil {
 		return err
 	}
@@ -1031,6 +1031,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			ownerAddress := common.HexToAddress(sidecar.ValidatorManagerOwner)
+			fmt.Printf("ownerAddress %s \n", ownerAddress.String())
+			fmt.Printf("subnetID %s \n", subnetID.String())
+
+			fmt.Printf("blockchainID %s \n", blockchainID.String())
+			fmt.Printf("rpcURL %s \n", rpcURL)
+
+			fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)
+
+			fmt.Printf("avaGoBootstrapValidators %s \n", avaGoBootstrapValidators)
+			fmt.Printf("genesisPrivateKey %s \n", genesisPrivateKey)
+
 			subnetSDK := blockchainSDK.Subnet{
 				SubnetID:            subnetID,
 				BlockchainID:        blockchainID,
