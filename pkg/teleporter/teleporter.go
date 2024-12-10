@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -457,9 +456,7 @@ func GetInfo(
 	if err != nil {
 		return nil, err
 	}
-	ti.Version, err = app.Downloader.GetLatestReleaseVersion(
-		binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.TeleporterRepoName),
-	)
+	ti.Version, err = app.Downloader.GetLatestReleaseVersion(constants.AvaLabsOrg, constants.TeleporterRepoName, "")
 	if err != nil {
 		return nil, err
 	}

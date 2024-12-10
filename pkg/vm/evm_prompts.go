@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -885,10 +884,11 @@ func PromptVMVersion(
 ) (string, error) {
 	switch vmVersion {
 	case latest:
-		return app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+		return app.Downloader.GetLatestReleaseVersion(
 			constants.AvaLabsOrg,
 			repoName,
-		))
+			"",
+		)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
@@ -912,10 +912,9 @@ func promptUserForVMVersion(
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
 		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
-			binutils.GetGithubLatestReleaseURL(
-				constants.AvaLabsOrg,
-				repoName,
-			),
+			constants.AvaLabsOrg,
+			repoName,
+			"",
 		)
 		if err != nil {
 			return "", err
@@ -964,6 +963,7 @@ func promptUserForVMVersion(
 	versions, err := app.Downloader.GetAllReleasesForRepo(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
+		application.All,
 	)
 	if err != nil {
 		return "", err
