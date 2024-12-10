@@ -27,7 +27,7 @@ func getValidatorContractManagerAddr() (string, error) {
 		"",
 		models.UndefinedNetwork,
 		prompts.EVMFormat,
-		"Enter address",
+		"Enter address (C-Chain address)",
 	)
 }
 
