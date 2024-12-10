@@ -113,13 +113,14 @@ func SetupPoA(
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevelStr string,
 ) error {
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	return subnet.InitializeProofOfAuthority(network, privateKey, aggregatorExtraPeerEndpoints, aggregatorLogLevel)
+	return subnet.InitializeProofOfAuthority(network, privateKey, aggregatorExtraPeerEndpoints, aggregatorAllowPrivatePeers, aggregatorLogLevel)
 }
 
 // setups PoA manager after a successful execution of
@@ -132,6 +133,7 @@ func SetupPoS(
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevelStr string,
 	posParams validatorManagerSDK.PoSParams,
 ) error {
@@ -142,6 +144,7 @@ func SetupPoS(
 	return subnet.InitializeProofOfStake(network,
 		privateKey,
 		aggregatorExtraPeerEndpoints,
+		aggregatorAllowPrivatePeers,
 		aggregatorLogLevel,
 		posParams,
 	)
