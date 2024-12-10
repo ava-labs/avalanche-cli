@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -457,9 +456,7 @@ func GetICMInfo(
 	if err != nil {
 		return nil, err
 	}
-	ti.Version, err = app.Downloader.GetLatestReleaseVersion(
-		binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.ICMContractsRepoName),
-	)
+	ti.Version, err = app.Downloader.GetLatestReleaseVersion(constants.AvaLabsOrg, constants.ICMContractsRepoName, "")
 	if err != nil {
 		return nil, err
 	}

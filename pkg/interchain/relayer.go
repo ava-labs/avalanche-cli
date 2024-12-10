@@ -224,7 +224,11 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 
 func GetLatestRelayerReleaseVersion() (string, error) {
 	downloader := application.NewDownloader()
-	return downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.ICMServicesRepoName))
+	return downloader.GetLatestReleaseVersion(
+		constants.AvaLabsOrg,
+		constants.ICMServicesRepoName,
+		constants.ICMRelayerKind,
+	)
 }
 
 func GetLatestRelayerPreReleaseVersion() (string, error) {
