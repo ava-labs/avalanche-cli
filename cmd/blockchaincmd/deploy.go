@@ -1050,8 +1050,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					aggregatorAllowPrivatePeers,
 					logLvl,
 					validatorManagerSDK.PoSParams{
-						MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
-						MaximumStakeAmount:      big.NewInt(int64(poSMaximumStakeAmount)),
+						MinimumStakeAmount:      utils.ApplyDefaultDenomination(poSMinimumStakeAmount),
+						MaximumStakeAmount:      utils.ApplyDefaultDenomination(poSMaximumStakeAmount),
 						MinimumStakeDuration:    poSMinimumStakeDuration,
 						MinimumDelegationFee:    poSMinimumDelegationFee,
 						MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
