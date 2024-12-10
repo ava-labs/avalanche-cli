@@ -61,9 +61,7 @@ func PrintSubnetEndpoints(
 		{Number: 1, AutoMerge: true},
 	})
 	t.SetTitle(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
-	aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainName)
 	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
-	t.AppendRow(table.Row{"Localhost", aliasedURL})
 	t.AppendRow(table.Row{"Localhost", blockchainIDURL})
 	if utils.InsideCodespace() {
 		var err error
@@ -71,11 +69,6 @@ func PrintSubnetEndpoints(
 		if err != nil {
 			return err
 		}
-		aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
-		if err != nil {
-			return err
-		}
-		t.AppendRow(table.Row{"Codespace", aliasedURL})
 		t.AppendRow(table.Row{"Codespace", blockchainIDURL})
 	}
 	printFunc(t.Render())

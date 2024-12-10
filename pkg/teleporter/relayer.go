@@ -24,14 +24,17 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/awm-relayer/config"
-	offchainregistry "github.com/ava-labs/awm-relayer/messages/off-chain-registry"
+	apiConfig "github.com/ava-labs/icm-services/config"
+	offchainregistry "github.com/ava-labs/icm-services/messages/off-chain-registry"
+	"github.com/ava-labs/icm-services/relayer/config"
 )
 
 const (
-	localRelayerSetupTime     = 2 * time.Second
-	localRelayerCheckPoolTime = 100 * time.Millisecond
-	localRelayerCheckTimeout  = 3 * time.Second
+	localRelayerSetupTime         = 2 * time.Second
+	localRelayerCheckPoolTime     = 100 * time.Millisecond
+	localRelayerCheckTimeout      = 3 * time.Second
+	defaultDBWriteIntervalSeconds = 10
+	defaultSignatureCacheSize     = 1024 * 1024
 )
 
 var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
@@ -93,24 +96,28 @@ type relayerRunFile struct {
 
 func DeployRelayer(
 	version string,
+	binPath string,
 	binDir string,
 	configPath string,
 	logFilePath string,
 	runFilePath string,
 	storageDir string,
-) error {
-	if err := RelayerCleanup(runFilePath, storageDir); err != nil {
-		return err
+) (string, error) {
+	if err := RelayerCleanup(runFilePath, logFilePath, storageDir); err != nil {
+		return "", err
 	}
-	binPath, err := InstallRelayer(binDir, version)
-	if err != nil {
-		return err
+	if binPath == "" {
+		var err error
+		binPath, err = InstallRelayer(binDir, version)
+		if err != nil {
+			return "", err
+		}
 	}
 	pid, err := executeRelayer(binPath, configPath, logFilePath)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return saveRelayerRunFile(runFilePath, pid)
+	return binPath, saveRelayerRunFile(runFilePath, pid)
 }
 
 func RelayerIsUp(runFilePath string) (bool, int, *os.Process, error) {
@@ -145,7 +152,12 @@ func GetProcess(pid int) (*os.Process, error) {
 	return proc, nil
 }
 
-func RelayerCleanup(runFilePath string, storageDir string) error {
+func RelayerCleanup(
+	runFilePath string,
+	logFilePath string,
+	storageDir string,
+) error {
+	_ = os.Remove(logFilePath)
 	if err := os.RemoveAll(storageDir); err != nil {
 		return err
 	}
@@ -212,11 +224,27 @@ func saveRelayerRunFile(runFilePath string, pid int) error {
 
 func GetLatestRelayerReleaseVersion() (string, error) {
 	downloader := application.NewDownloader()
-	return downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.AWMRelayerRepoName))
+	return downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.ICMServicesRepoName))
+}
+
+func GetLatestRelayerPreReleaseVersion() (string, error) {
+	downloader := application.NewDownloader()
+	return downloader.GetLatestPreReleaseVersion(
+		constants.AvaLabsOrg,
+		constants.ICMServicesRepoName,
+		constants.ICMRelayerKind,
+	)
 }
 
 func InstallRelayer(binDir, version string) (string, error) {
-	if version == "" || version == "latest" {
+	if version == "" || version == constants.LatestPreReleaseVersionTag {
+		var err error
+		version, err = GetLatestRelayerPreReleaseVersion()
+		if err != nil {
+			return "", err
+		}
+	}
+	if version == constants.LatestReleaseVersionTag {
 		var err error
 		version, err = GetLatestRelayerReleaseVersion()
 		if err != nil {
@@ -224,8 +252,15 @@ func InstallRelayer(binDir, version string) (string, error) {
 		}
 	}
 	ux.Logger.PrintToUser("Relayer version %s", version)
+	if version == "" || version == "latest" {
+		var err error
+		version, err = GetLatestRelayerReleaseVersion()
+		if err != nil {
+			return "", err
+		}
+	}
 	versionBinDir := filepath.Join(binDir, version)
-	binPath := filepath.Join(versionBinDir, constants.AWMRelayerBin)
+	binPath := filepath.Join(versionBinDir, constants.ICMRelayerBin)
 	if utils.IsExecutable(binPath) {
 		return binPath, nil
 	}
@@ -289,11 +324,16 @@ func getRelayerURL(version string) (string, error) {
 	if goos != "linux" && goos != "darwin" {
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
+	splittedVersion := strings.Split(version, "/")
+	if len(splittedVersion) != 2 {
+		return "", fmt.Errorf("invalid relayer version %s", version)
+	}
+	version = splittedVersion[1]
 	trimmedVersion := strings.TrimPrefix(version, "v")
 	return fmt.Sprintf(
-		"https://github.com/%s/%s/releases/download/%s/awm-relayer_%s_%s_%s.tar.gz",
+		"https://github.com/%s/%s/releases/download/icm-relayer%%2F%s/icm-relayer_%s_%s_%s.tar.gz",
 		constants.AvaLabsOrg,
-		constants.AWMRelayerRepoName,
+		constants.ICMServicesRepoName,
 		version,
 		trimmedVersion,
 		goos,
@@ -352,11 +392,11 @@ func CreateBaseRelayerConfig(
 ) error {
 	awmRelayerConfig := &config.Config{
 		LogLevel: logLevel,
-		PChainAPI: &config.APIConfig{
+		PChainAPI: &apiConfig.APIConfig{
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
-		InfoAPI: &config.APIConfig{
+		InfoAPI: &apiConfig.APIConfig{
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
@@ -365,6 +405,8 @@ func CreateBaseRelayerConfig(
 		SourceBlockchains:      []*config.SourceBlockchain{},
 		DestinationBlockchains: []*config.DestinationBlockchain{},
 		MetricsPort:            metricsPort,
+		DBWriteIntervalSeconds: defaultDBWriteIntervalSeconds,
+		SignatureCacheSize:     defaultSignatureCacheSize,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }
@@ -472,10 +514,10 @@ func addSourceToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: rpcEndpoint,
 		},
-		WSEndpoint: config.APIConfig{
+		WSEndpoint: apiConfig.APIConfig{
 			BaseURL: wsEndpoint,
 		},
 		MessageContracts: map[string]config.MessageProtocolConfig{
@@ -509,7 +551,7 @@ func addDestinationToRelayerConfig(
 		SubnetID:     subnetID,
 		BlockchainID: blockchainID,
 		VM:           config.EVM.String(),
-		RPCEndpoint: config.APIConfig{
+		RPCEndpoint: apiConfig.APIConfig{
 			BaseURL: rpcEndpoint,
 		},
 		AccountPrivateKey: relayerFundedAddressKey,

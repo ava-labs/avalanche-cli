@@ -30,8 +30,10 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
+
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/exp/slices"
+	"golang.org/x/mod/semver"
 )
 
 func SetupRealtimeCLIOutput(
@@ -493,37 +495,6 @@ func FileIsSubnetEVMGenesis(genesisPath string) (bool, error) {
 	return ByteSliceIsSubnetEvmGenesis(genesisBytes), nil
 }
 
-func GetKeyNames(keyDir string, addEwoq bool) ([]string, error) {
-	matches, err := os.ReadDir(keyDir)
-	if err != nil {
-		return nil, err
-	}
-	var names []string
-	for _, m := range matches {
-		if strings.HasSuffix(m.Name(), constants.KeySuffix) {
-			names = append(names, strings.TrimSuffix(m.Name(), constants.KeySuffix))
-		}
-	}
-	userKeys := []string{}
-	cliKeys := []string{}
-	subnetKeys := []string{}
-	for _, keyName := range names {
-		switch {
-		case strings.HasPrefix(keyName, "cli-"):
-			cliKeys = append(cliKeys, keyName)
-		case strings.HasPrefix(keyName, "subnet_"):
-			subnetKeys = append(subnetKeys, keyName)
-		default:
-			userKeys = append(userKeys, keyName)
-		}
-	}
-	if addEwoq {
-		userKeys = append(userKeys, "ewoq")
-	}
-	names = append(append(userKeys, subnetKeys...), cliKeys...)
-	return names, nil
-}
-
 func GetDefaultBlockchainAirdropKeyName(blockchainName string) string {
 	return "subnet_" + blockchainName + "_airdrop"
 }
@@ -588,4 +559,16 @@ func LogLevelToEmoji(logLevel string) (string, error) {
 		levelEmoji = "💀"
 	}
 	return levelEmoji, nil
+}
+
+func IsValidSemanticVersion(version string) bool {
+	if !semver.IsValid(version) {
+		// remove tool part, just in case (eg icm-relayer/v1.5.1)
+		versionParts := strings.Split(version, "/")
+		if len(versionParts) == 2 && semver.IsValid(versionParts[1]) {
+			return true
+		}
+		return false
+	}
+	return true
 }

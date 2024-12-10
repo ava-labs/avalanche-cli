@@ -60,5 +60,7 @@ manage your Blockchain configurations and live deployments.`,
 	cmd.AddCommand(newValidatorsCmd())
 	// subnet changeOwner
 	cmd.AddCommand(newChangeOwnerCmd())
+	// subnet changeWeight
+	cmd.AddCommand(newChangeWeightCmd())
 	return cmd
 }

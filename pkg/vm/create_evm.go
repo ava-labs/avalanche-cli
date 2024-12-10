@@ -14,7 +14,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/utils"
@@ -31,16 +32,22 @@ var (
 )
 
 func CreateEvmSidecar(
+	sc *models.Sidecar,
 	app *application.Avalanche,
 	subnetName string,
 	subnetEVMVersion string,
 	tokenSymbol string,
 	getRPCVersionFromBinary bool,
+	sovereign bool,
 ) (*models.Sidecar, error) {
 	var (
 		err        error
 		rpcVersion int
 	)
+
+	if sc == nil {
+		sc = &models.Sidecar{}
+	}
 
 	if getRPCVersionFromBinary {
 		_, vmBin, err := binutils.SetupSubnetEVM(app, subnetEVMVersion)
@@ -58,26 +65,24 @@ func CreateEvmSidecar(
 		}
 	}
 
-	sc := models.Sidecar{
-		Name:        subnetName,
-		VM:          models.SubnetEvm,
-		VMVersion:   subnetEVMVersion,
-		RPCVersion:  rpcVersion,
-		Subnet:      subnetName,
-		TokenSymbol: tokenSymbol,
-		TokenName:   tokenSymbol + " Token",
-	}
-
-	return &sc, nil
+	sc.Name = subnetName
+	sc.VM = models.SubnetEvm
+	sc.VMVersion = subnetEVMVersion
+	sc.RPCVersion = rpcVersion
+	sc.Subnet = subnetName
+	sc.TokenSymbol = tokenSymbol
+	sc.TokenName = tokenSymbol + " Token"
+	sc.Sovereign = sovereign
+	return sc, nil
 }
 
 func CreateEVMGenesis(
-	blockchainName string,
 	params SubnetEVMGenesisParams,
 	teleporterInfo *teleporter.Info,
+	addICMRegistryToGenesis bool,
+	proxyOwner string,
+	rewardBasisPoints uint64,
 ) ([]byte, error) {
-	ux.Logger.PrintToUser("creating genesis for blockchain %s", blockchainName)
-
 	feeConfig := getFeeConfig(params)
 
 	// Validity checks on the parameter settings.
@@ -106,6 +111,28 @@ func CreateEVMGenesis(
 		params.initialTokenAllocation[common.HexToAddress(teleporterInfo.FundedAddress)] = core.GenesisAccount{
 			Balance: balance,
 		}
+		if !params.DisableTeleporterOnGenesis {
+			icmgenesis.AddICMMessengerContractToAllocations(params.initialTokenAllocation)
+			if addICMRegistryToGenesis {
+				// experimental
+				if err := icmgenesis.AddICMRegistryContractToAllocations(params.initialTokenAllocation); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	if params.UsePoAValidatorManager && params.UsePoSValidatorManager {
+		return nil, fmt.Errorf("blockchain can not be both PoA and PoS")
+	}
+	if params.UsePoAValidatorManager {
+		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+	} else if params.UsePoSValidatorManager {
+		validatormanager.AddPoSValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+		validatormanager.AddRewardCalculatorToAllocations(params.initialTokenAllocation, rewardBasisPoints)
+		params.enableNativeMinterPrecompile = true
 	}
 
 	if params.UseExternalGasToken {

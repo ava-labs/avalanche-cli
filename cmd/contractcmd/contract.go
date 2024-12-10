@@ -22,5 +22,7 @@ and interacting with smart contracts.`,
 	app = injectedApp
 	// contract deploy
 	cmd.AddCommand(newDeployCmd())
+	// contract initValidatorManager
+	cmd.AddCommand(newInitValidatorManagerCmd())
 	return cmd
 }

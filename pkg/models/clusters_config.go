@@ -28,6 +28,7 @@ type ClusterConfig struct {
 	ExtraNetworkData   ExtraNetworkData
 	Subnets            []string
 	External           bool
+	Local              bool
 	HTTPAccess         constants.HTTPAccess
 }
 
@@ -53,14 +54,17 @@ func (cc *ClusterConfig) GetValidatorHosts(hosts []*Host) []*Host {
 }
 
 func (cc *ClusterConfig) IsAPIHost(hostCloudID string) bool {
-	return slices.Contains(cc.APINodes, hostCloudID)
+	return cc.Local || slices.Contains(cc.APINodes, hostCloudID)
 }
 
 func (cc *ClusterConfig) IsAvalancheGoHost(hostCloudID string) bool {
-	return slices.Contains(cc.Nodes, hostCloudID)
+	return cc.Local || slices.Contains(cc.Nodes, hostCloudID)
 }
 
 func (cc *ClusterConfig) GetCloudIDs() []string {
+	if cc.Local {
+		return nil
+	}
 	r := cc.Nodes
 	if cc.MonitoringInstance != "" {
 		r = append(r, cc.MonitoringInstance)
@@ -80,8 +84,8 @@ func (cc *ClusterConfig) GetHostRoles(nodeConf NodeConfig) []string {
 	if nodeConf.IsMonitor {
 		roles = append(roles, constants.MonitorRole)
 	}
-	if nodeConf.IsAWMRelayer {
-		roles = append(roles, constants.AWMRelayerRole)
+	if nodeConf.IsICMRelayer {
+		roles = append(roles, constants.ICMRelayerRole)
 	}
 	return roles
 }

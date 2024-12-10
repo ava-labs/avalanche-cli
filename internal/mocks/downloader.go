@@ -69,9 +69,9 @@ func (_m *Downloader) GetAllReleasesForRepo(org string, repo string) ([]string, 
 	return r0, r1
 }
 
-// GetLatestPreReleaseVersion provides a mock function with given fields: org, repo
-func (_m *Downloader) GetLatestPreReleaseVersion(org string, repo string) (string, error) {
-	ret := _m.Called(org, repo)
+// GetLatestPreReleaseVersion provides a mock function with given fields: org, repo, kind
+func (_m *Downloader) GetLatestPreReleaseVersion(org string, repo string, kind string) (string, error) {
+	ret := _m.Called(org, repo, kind)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetLatestPreReleaseVersion")
@@ -79,17 +79,17 @@ func (_m *Downloader) GetLatestPreReleaseVersion(org string, repo string) (strin
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string) (string, error)); ok {
-		return rf(org, repo)
+	if rf, ok := ret.Get(0).(func(string, string, string) (string, error)); ok {
+		return rf(org, repo, kind)
 	}
-	if rf, ok := ret.Get(0).(func(string, string) string); ok {
-		r0 = rf(org, repo)
+	if rf, ok := ret.Get(0).(func(string, string, string) string); ok {
+		r0 = rf(org, repo, kind)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(org, repo)
+	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
+		r1 = rf(org, repo, kind)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -23,9 +23,67 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
-	ginkgo.It("can stop and restart a deployed subnet", func() {
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+	ginkgo.It("can stop and restart a deployed subnet non SOV", func() {
+		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc := rpcs[0]
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// Deploy greeter contract
+		scriptOutput, scriptErr, err := utils.RunHardhatScript(utils.GreeterScript)
+		if scriptErr != "" {
+			fmt.Println(scriptOutput)
+			fmt.Println(scriptErr)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.ParseGreeterAddress(scriptOutput)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// Check greeter script before stopping
+		scriptOutput, scriptErr, err = utils.RunHardhatScript(utils.GreeterCheck)
+		if scriptErr != "" {
+			fmt.Println(scriptOutput)
+			fmt.Println(scriptErr)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.StopNetwork()
+		restartOutput := commands.StartNetwork()
+		rpcs, err = utils.ParseRPCsFromOutput(restartOutput)
+		fmt.Println(restartOutput)
+		if err != nil {
+			fmt.Println(restartOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+		rpc = rpcs[0]
+
+		err = utils.SetHardhatRPC(rpc)
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		// Check greeter contract has right value
+		scriptOutput, scriptErr, err = utils.RunHardhatScript(utils.GreeterCheck)
+		if scriptErr != "" {
+			fmt.Println(scriptOutput)
+			fmt.Println(scriptErr)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("can stop and restart a deployed subnet SOV", func() {
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
+		// TODO: use commands.DeploySubnetLocallySOV once having etna release
+		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -79,9 +137,37 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("clean hard deletes plugin binaries", func() {
-		commands.CreateSubnetEvmConfig(subnetName, utils.SubnetEvmGenesisPath)
-		deployOutput := commands.DeploySubnetLocally(subnetName)
+	ginkgo.It("clean hard deletes plugin binaries non SOV", func() {
+		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
+		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
+		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
+		if err != nil {
+			fmt.Println(deployOutput)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
+
+		// check that plugin binaries exist
+		plugins, err := utils.GetPluginBinaries()
+		// should have only subnet-evm binary
+		gomega.Expect(len(plugins)).Should(gomega.Equal(1))
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.CleanNetwork()
+
+		// check that plugin binaries exist
+		plugins, err = utils.GetPluginBinaries()
+		// should be empty
+		gomega.Expect(len(plugins)).Should(gomega.Equal(0))
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		commands.DeleteSubnetConfig(subnetName)
+	})
+
+	ginkgo.It("clean hard deletes plugin binaries SOV", func() {
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
+		// TODO: use commands.DeploySubnetLocallySOV once having etna release
+		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)

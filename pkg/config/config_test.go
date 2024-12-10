@@ -36,7 +36,7 @@ func Test_LoadNodeConfig_EmptyConfig(t *testing.T) {
 
 	config, err := cf.LoadNodeConfig()
 	require.NoError(err)
-	require.Empty(config)
+	require.Equal("{}", config)
 }
 
 func Test_LoadNodeConfig_NoConfig(t *testing.T) {
@@ -49,7 +49,7 @@ func Test_LoadNodeConfig_NoConfig(t *testing.T) {
 
 	config, err := cf.LoadNodeConfig()
 	require.NoError(err)
-	require.Empty(config)
+	require.Equal("{}", config)
 }
 
 func useViper(configName string) error {

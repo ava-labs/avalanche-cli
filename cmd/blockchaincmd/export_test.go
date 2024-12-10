@@ -38,11 +38,13 @@ func TestExportImportSubnet(t *testing.T) {
 	genBytes, err := os.ReadFile("../../" + utils.SubnetEvmGenesisPath)
 	require.NoError(err)
 	sc, err := vm.CreateEvmSidecar(
+		nil,
 		app,
 		testSubnet,
 		vmVersion,
 		"Test",
 		false,
+		true,
 	)
 	require.NoError(err)
 	err = app.WriteGenesisFile(testSubnet, genBytes)

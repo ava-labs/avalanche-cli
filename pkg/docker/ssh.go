@@ -25,7 +25,18 @@ func ValidateComposeFile(host *models.Host, composeFile string, timeout time.Dur
 }
 
 // ComposeSSHSetupNode sets up an AvalancheGo node and dependencies on a remote host over SSH.
-func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoVersion string, withMonitoring bool, publicAccessToHTTPPort bool) error {
+func ComposeSSHSetupNode(
+	host *models.Host,
+	network models.Network,
+	avalancheGoVersion string,
+	avalanchegoBootstrapIDs []string,
+	avalanchegoBootstrapIPs []string,
+	partialSync bool,
+	avalanchegoGenesisFilePath string,
+	avalanchegoUpgradeFilePath string,
+	withMonitoring bool,
+	publicAccessToHTTPPort bool,
+) error {
 	startTime := time.Now()
 	folderStructure := remoteconfig.RemoteFoldersToCreateAvalanchego()
 	for _, dir := range folderStructure {
@@ -41,7 +52,18 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 		return err
 	}
 	ux.Logger.Info("AvalancheGo Docker image %s ready on %s[%s] after %s", avagoDockerImage, host.NodeID, host.IP, time.Since(startTime))
-	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(host, network, publicAccessToHTTPPort)
+	nodeConfFile, cChainConfFile, err := prepareAvalanchegoConfig(
+		host,
+		network,
+		AvalancheGoConfigOptions{
+			BootstrapIDs:      avalanchegoBootstrapIDs,
+			BootstrapIPs:      avalanchegoBootstrapIPs,
+			PartialSync:       partialSync,
+			GenesisPath:       avalanchegoGenesisFilePath,
+			UpgradePath:       avalanchegoUpgradeFilePath,
+			AllowPublicAccess: publicAccessToHTTPPort,
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -60,12 +82,22 @@ func ComposeSSHSetupNode(host *models.Host, network models.Network, avalancheGoV
 	if err := host.Upload(cChainConfFile, remoteconfig.GetRemoteAvalancheCChainConfig(), constants.SSHFileOpsTimeout); err != nil {
 		return err
 	}
+	if avalanchegoGenesisFilePath != "" {
+		if err := host.Upload(avalanchegoGenesisFilePath, remoteconfig.GetRemoteAvalancheGenesis(), constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
+	}
+	if avalanchegoUpgradeFilePath != "" {
+		if err := host.Upload(avalanchegoUpgradeFilePath, remoteconfig.GetRemoteAvalancheUpgrade(), constants.SSHFileOpsTimeout); err != nil {
+			return err
+		}
+	}
 	ux.Logger.Info("AvalancheGo configs uploaded to %s[%s] after %s", host.NodeID, host.IP, time.Since(startTime))
 	return ComposeOverSSH("Compose Node",
 		host,
 		constants.SSHScriptTimeout,
 		"templates/avalanchego.docker-compose.yml",
-		dockerComposeInputs{
+		DockerComposeInputs{
 			AvalanchegoVersion: avalancheGoVersion,
 			WithMonitoring:     withMonitoring,
 			WithAvalanchego:    true,
@@ -80,7 +112,7 @@ func ComposeSSHSetupLoadTest(host *models.Host) error {
 		host,
 		constants.SSHScriptTimeout,
 		"templates/avalanchego.docker-compose.yml",
-		dockerComposeInputs{
+		DockerComposeInputs{
 			WithMonitoring:  true,
 			WithAvalanchego: false,
 		})
@@ -133,15 +165,15 @@ func ComposeSSHSetupMonitoring(host *models.Host) error {
 		host,
 		constants.SSHScriptTimeout,
 		"templates/monitoring.docker-compose.yml",
-		dockerComposeInputs{})
+		DockerComposeInputs{})
 }
 
-func ComposeSSHSetupAWMRelayer(host *models.Host, relayerVersion string) error {
+func ComposeSSHSetupICMRelayer(host *models.Host, relayerVersion string) error {
 	return ComposeOverSSH("Setup AWM Relayer",
 		host,
 		constants.SSHScriptTimeout,
 		"templates/awmrelayer.docker-compose.yml",
-		dockerComposeInputs{
-			AWMRelayerVersion: relayerVersion,
+		DockerComposeInputs{
+			ICMRelayerVersion: relayerVersion,
 		})
 }

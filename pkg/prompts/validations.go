@@ -72,6 +72,22 @@ func validateFujiStakingDuration(input string) error {
 	return nil
 }
 
+func validateEtnaDuration(input string) error {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d < constants.StakingEtnaMinimumDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.StakingEtnaMinimumDuration))
+	}
+	return nil
+}
+
+func validateDuration(input string) error {
+	_, err := time.ParseDuration(input)
+	return err
+}
+
 func validateTime(input string) error {
 	t, err := time.Parse(constants.TimeParseLayout, input)
 	if err != nil {
@@ -83,7 +99,7 @@ func validateTime(input string) error {
 	return err
 }
 
-func validateNodeID(input string) error {
+func ValidateNodeID(input string) error {
 	_, err := ids.NodeIDFromString(input)
 	return err
 }
@@ -127,6 +143,22 @@ func validateWeight(input string) error {
 		return errors.New("the weight must be an integer between 1 and 100")
 	}
 	return nil
+}
+
+func validateValidatorBalanceFunc(availableBalance uint64) func(string) error {
+	return func(input string) error {
+		val, err := strconv.ParseUint(input, 10, 64)
+		if err != nil {
+			return err
+		}
+		if val < 1 {
+			return fmt.Errorf("subnet validator balance must be at least 1 AVAX")
+		}
+		if val > availableBalance {
+			return fmt.Errorf("current balance of %d is not sufficient for subnet validator balance to be %d AVAX", availableBalance, val)
+		}
+		return nil
+	}
 }
 
 func validateBiggerThanZero(input string) error {
@@ -353,4 +385,11 @@ func ValidateHexa(input string) error {
 		return errors.New("string not in hexa format")
 	}
 	return err
+}
+
+func ValidatePositiveInt(val int) error {
+	if val <= 0 {
+		return fmt.Errorf("value must be greater than cero")
+	}
+	return nil
 }

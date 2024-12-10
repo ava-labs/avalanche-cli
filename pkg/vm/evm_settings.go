@@ -13,6 +13,9 @@ import (
 //go:embed evm_debug_config.json
 var EvmDebugConfig []byte
 
+//go:embed evm_non_debug_config.json
+var EvmNonDebugConfig []byte
+
 var (
 	// current avacloud settings
 	LowGasLimit     = big.NewInt(12_000_000)
@@ -29,4 +32,5 @@ var (
 
 	OneAvax                 = new(big.Int).SetUint64(1000000000000000000)
 	defaultEVMAirdropAmount = new(big.Int).Exp(big.NewInt(10), big.NewInt(24), nil) // 10^24
+	defaultPoAOwnerBalance  = new(big.Int).Mul(OneAvax, big.NewInt(10))             // 10 Native Tokens
 )

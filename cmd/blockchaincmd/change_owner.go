@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -93,6 +94,10 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
+	}
+
+	if sc.Sovereign {
+		return errors.New("avalanche blockchain changeOwner is not applicable to sovereign blockchains")
 	}
 
 	subnetID := sc.Networks[network.Name()].SubnetID

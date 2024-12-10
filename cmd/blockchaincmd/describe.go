@@ -16,10 +16,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -105,6 +107,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 	t.AppendRow(table.Row{"VM ID", vmIDstr, vmIDstr}, rowConfig)
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
+	t.AppendRow(table.Row{"Validation", sc.ValidatorManagement, sc.ValidatorManagement}, rowConfig)
 
 	locallyDeployed, err := localnet.Deployed(sc.Name)
 	if err != nil {
@@ -112,10 +115,13 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 
 	localChainID := ""
+	blockchainID := ""
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
-			return err
+			ux.Logger.RedXToUser("%s is supposed to be deployed to network %s: %s ", blockchainName, network.Name(), err)
+			ux.Logger.PrintToUser("")
+			continue
 		}
 		if network.Kind == models.Local && !locallyDeployed {
 			continue
@@ -154,10 +160,24 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			}
 		}
 		if data.BlockchainID != ids.Empty {
+			blockchainID = data.BlockchainID.String()
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			t.AppendRow(table.Row{net, "BlockchainID (CB58)", data.BlockchainID.String()})
 			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
 		}
+		endpoint, _, err := contract.GetBlockchainEndpoints(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainName: sc.Name,
+			},
+			false,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+		t.AppendRow(table.Row{net, "RPC Endpoint", endpoint})
 	}
 	ux.Logger.PrintToUser(t.Render())
 
@@ -174,7 +194,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
-			return err
+			continue
 		}
 		if network.Kind == models.Local && !locallyDeployed {
 			continue
@@ -215,6 +235,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		if err := printAllocations(sc, genesis); err != nil {
 			return err
 		}
+		printSmartContracts(sc, genesis)
 		printPrecompiles(genesis)
 	}
 
@@ -224,7 +245,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			return err
 		}
 
-		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(sc.Name)
+		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(blockchainID)
 		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
 		if err != nil {
 			return err
@@ -253,16 +274,14 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 	teleporterKeyAddress := ""
-	teleporterPrivKey := ""
 	if sc.TeleporterReady {
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, app.GetKeyPath(sc.TeleporterKey))
 		if err != nil {
 			return err
 		}
 		teleporterKeyAddress = k.C()
-		teleporterPrivKey = k.PrivKeyHex()
 	}
-	subnetAirdropKeyName, subnetAirdropAddress, subnetAirdropPrivKey, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, sc.Name)
+	_, subnetAirdropAddress, _, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, sc.Name)
 	if err != nil {
 		return err
 	}
@@ -273,28 +292,88 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 		t.Style().Title.Format = text.FormatUpper
 		t.Style().Options.SeparateRows = true
 		t.SetTitle("Initial Token Allocation")
-		t.AppendHeader(table.Row{"Description", "Address and Private Key", "Amount (10^18)", "Amount (wei)"})
-		for address := range genesis.Alloc {
-			amount := genesis.Alloc[address].Balance
+		t.AppendHeader(table.Row{
+			"Description",
+			"Address and Private Key",
+			fmt.Sprintf("Amount (%s)", sc.TokenSymbol),
+			"Amount (wei)",
+		})
+		for address, allocation := range genesis.Alloc {
+			amount := allocation.Balance
+			// we are only interested in supply distribution here
+			if amount == nil || big.NewInt(0).Cmp(amount) == 0 {
+				continue
+			}
 			formattedAmount := new(big.Int).Div(amount, big.NewInt(params.Ether))
 			description := ""
 			privKey := ""
 			switch address.Hex() {
 			case teleporterKeyAddress:
-				description = fmt.Sprintf("%s\n%s", sc.TeleporterKey, logging.Orange.Wrap("Teleporter Deploys"))
-				privKey = teleporterPrivKey
+				description = logging.Orange.Wrap("Used by ICM")
 			case subnetAirdropAddress:
-				description = fmt.Sprintf("%s\n%s", subnetAirdropKeyName, logging.Orange.Wrap("Main funded account"))
-				privKey = subnetAirdropPrivKey
+				description = logging.Orange.Wrap("Main funded account")
 			case vm.PrefundedEwoqAddress.Hex():
-				description = "Main funded account EWOQ"
-				privKey = vm.PrefundedEwoqPrivate
+				description = logging.Orange.Wrap("Main funded account")
+			case sc.ValidatorManagerOwner:
+				description = logging.Orange.Wrap("Validator Manager Owner")
+			case sc.ProxyContractOwner:
+				description = logging.Orange.Wrap("Proxy Admin Owner")
+			}
+			var (
+				found bool
+				name  string
+			)
+			found, name, _, privKey, err = contract.SearchForManagedKey(app, models.NewLocalNetwork(), address, true)
+			if err != nil {
+				return err
+			}
+			if found {
+				description = fmt.Sprintf("%s\n%s", description, name)
 			}
 			t.AppendRow(table.Row{description, address.Hex() + "\n" + privKey, formattedAmount.String(), amount.String()})
 		}
 		ux.Logger.PrintToUser(t.Render())
 	}
 	return nil
+}
+
+func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
+	if len(genesis.Alloc) == 0 {
+		return
+	}
+	ux.Logger.PrintToUser("")
+	t := table.NewWriter()
+	t.Style().Title.Align = text.AlignCenter
+	t.Style().Title.Format = text.FormatUpper
+	t.Style().Options.SeparateRows = true
+	t.SetTitle("Smart Contracts")
+	t.AppendHeader(table.Row{"Description", "Address", "Deployer"})
+	for address, allocation := range genesis.Alloc {
+		if len(allocation.Code) == 0 {
+			continue
+		}
+		var description, deployer string
+		switch {
+		case address == common.HexToAddress(icmgenesis.MessengerContractAddress):
+			description = "ICM Messenger"
+			deployer = icmgenesis.MessengerDeployerAddress
+		case address == common.HexToAddress(validatorManagerSDK.ValidatorContractAddress):
+			if sc.PoA() {
+				description = "PoA Validator Manager"
+			} else {
+				description = "Native Token Staking Manager"
+			}
+		case address == common.HexToAddress(validatorManagerSDK.ProxyContractAddress):
+			description = "Transparent Proxy"
+		case address == common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress):
+			description = "Proxy Admin"
+			deployer = sc.ProxyContractOwner
+		case address == common.HexToAddress(validatorManagerSDK.RewardCalculatorAddress):
+			description = "Reward Calculator"
+		}
+		t.AppendRow(table.Row{description, address.Hex(), deployer})
+	}
+	ux.Logger.PrintToUser(t.Render())
 }
 
 func printPrecompiles(genesis core.Genesis) {

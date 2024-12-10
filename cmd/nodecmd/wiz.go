@@ -257,7 +257,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 
@@ -319,30 +319,30 @@ func wiz(cmd *cobra.Command, args []string) error {
 	var awmRelayerHost *models.Host
 	if sc.TeleporterReady && sc.RunRelayer && isEVMGenesis {
 		// get or set AWM Relayer host and configure/stop service
-		awmRelayerHost, err = node.GetAWMRelayerHost(app, clusterName)
+		awmRelayerHost, err = node.GetICMRelayerHost(app, clusterName)
 		if err != nil {
 			return err
 		}
 		if awmRelayerHost == nil {
-			awmRelayerHost, err = chooseAWMRelayerHost(clusterName)
+			awmRelayerHost, err = chooseICMRelayerHost(clusterName)
 			if err != nil {
 				return err
 			}
-			// get awm-relayer latest version
+			// get icm-relayer latest version
 			relayerVersion, err := teleporter.GetLatestRelayerReleaseVersion()
 			if err != nil {
 				return err
 			}
-			if err := setAWMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
+			if err := setICMRelayerHost(awmRelayerHost, relayerVersion); err != nil {
 				return err
 			}
-			if err := setAWMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
+			if err := setICMRelayerSecurityGroupRule(clusterName, awmRelayerHost); err != nil {
 				return err
 			}
 		} else {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(logging.Green.Wrap("Stopping AWM Relayer Service"))
-			if err := ssh.RunSSHStopAWMRelayerService(awmRelayerHost); err != nil {
+			if err := ssh.RunSSHStopICMRelayerService(awmRelayerHost); err != nil {
 				return err
 			}
 		}
@@ -354,7 +354,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := syncSubnet(cmd, []string{clusterName, subnetName}); err != nil {
 		return err
 	}
-	if err := waitForHealthyCluster(clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
+	if err := node.WaitForHealthyCluster(app, clusterName, healthCheckTimeout, healthCheckPoolTime); err != nil {
 		return err
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
@@ -400,22 +400,24 @@ func wiz(cmd *cobra.Command, args []string) error {
 			},
 			DeployMessenger:              deployTeleporterMessenger,
 			DeployRegistry:               deployTeleporterRegistry,
+			ForceRegistryDeploy:          true,
 			Version:                      teleporterVersion,
 			MessengerContractAddressPath: teleporterMessengerContractAddressPath,
 			MessengerDeployerAddressPath: teleporterMessengerDeployerAddressPath,
 			MessengerDeployerTxPath:      teleporterMessengerDeployerTxPath,
 			RegistryBydecodePath:         teleporterRegistryBydecodePath,
+			IncludeCChain:                true,
 		}
-		if err := teleportercmd.CallDeploy([]string{}, flags); err != nil {
+		if err := teleportercmd.CallDeploy([]string{}, flags, models.UndefinedNetwork); err != nil {
 			return err
 		}
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Starting AWM Relayer Service"))
 		ux.Logger.PrintToUser("")
-		if err := updateAWMRelayerFunds(network, sc, blockchainID); err != nil {
+		if err := updateICMRelayerFunds(network, sc, blockchainID); err != nil {
 			return err
 		}
-		if err := updateAWMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
+		if err := updateICMRelayerHostConfig(network, awmRelayerHost, subnetName); err != nil {
 			return err
 		}
 	}
@@ -505,7 +507,7 @@ func updateProposerVMs(
 	return teleporter.SetProposerVM(app, network, "C", "")
 }
 
-func setAWMRelayerHost(host *models.Host, relayerVersion string) error {
+func setICMRelayerHost(host *models.Host, relayerVersion string) error {
 	cloudID := host.GetCloudID()
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("configuring AWM Relayer on host %s", cloudID)
@@ -513,25 +515,25 @@ func setAWMRelayerHost(host *models.Host, relayerVersion string) error {
 	if err != nil {
 		return err
 	}
-	if err := ssh.ComposeSSHSetupAWMRelayer(host, relayerVersion); err != nil {
+	if err := ssh.ComposeSSHSetupICMRelayer(host, relayerVersion); err != nil {
 		return err
 	}
-	nodeConfig.IsAWMRelayer = true
+	nodeConfig.IsICMRelayer = true
 	return app.CreateNodeCloudConfigFile(cloudID, &nodeConfig)
 }
 
-func updateAWMRelayerHostConfig(network models.Network, host *models.Host, blockchainName string) error {
+func updateICMRelayerHostConfig(network models.Network, host *models.Host, blockchainName string) error {
 	ux.Logger.PrintToUser("setting AWM Relayer on host %s to relay blockchain %s", host.GetCloudID(), blockchainName)
 	if err := addBlockchainToRelayerConf(network, host.GetCloudID(), blockchainName); err != nil {
 		return err
 	}
-	if err := ssh.RunSSHUploadNodeAWMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
+	if err := ssh.RunSSHUploadNodeICMRelayerConfig(host, app.GetNodeInstanceDirPath(host.GetCloudID())); err != nil {
 		return err
 	}
-	return ssh.RunSSHStartAWMRelayerService(host)
+	return ssh.RunSSHStartICMRelayerService(host)
 }
 
-func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
+func chooseICMRelayerHost(clusterName string) (*models.Host, error) {
 	// first look up for separate monitoring host
 	monitoringInventoryFile := app.GetMonitoringInventoryDir(clusterName)
 	if utils.FileExists(monitoringInventoryFile) {
@@ -558,8 +560,8 @@ func chooseAWMRelayerHost(clusterName string) (*models.Host, error) {
 	return nil, fmt.Errorf("no hosts found on cluster")
 }
 
-func updateAWMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
-	relayerKey, err := app.GetKey(constants.AWMRelayerKeyName, network, true)
+func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchainID ids.ID) error {
+	relayerKey, err := app.GetKey(constants.ICMRelayerKeyName, network, true)
 	if err != nil {
 		return err
 	}
@@ -636,59 +638,8 @@ func checkRPCCompatibility(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
-	return checkHostsAreRPCCompatible(hosts, subnetName)
-}
-
-func waitForHealthyCluster(
-	clusterName string,
-	timeout time.Duration,
-	poolTime time.Duration,
-) error {
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Waiting for node(s) in cluster %s to be healthy...", clusterName)
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	cluster, ok := clustersConfig.Clusters[clusterName]
-	if !ok {
-		return fmt.Errorf("cluster %s does not exist", clusterName)
-	}
-	allHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
-	if err != nil {
-		return err
-	}
-	hosts := cluster.GetValidatorHosts(allHosts) // exlude api nodes
-	defer disconnectHosts(hosts)
-	startTime := time.Now()
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Checking if node(s) are healthy...")
-	for {
-		unhealthyNodes, err := getUnhealthyNodes(hosts)
-		if err != nil {
-			ux.SpinFailWithError(spinner, "", err)
-			return err
-		}
-		if len(unhealthyNodes) == 0 {
-			ux.SpinComplete(spinner)
-			spinSession.Stop()
-			ux.Logger.GreenCheckmarkToUser("Nodes healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
-			return nil
-		}
-		if time.Since(startTime) > timeout {
-			ux.SpinFailWithError(spinner, "", fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds())))
-			spinSession.Stop()
-			ux.Logger.PrintToUser("")
-			ux.Logger.RedXToUser("Unhealthy Nodes")
-			for _, failedNode := range unhealthyNodes {
-				ux.Logger.PrintToUser("  " + failedNode)
-			}
-			ux.Logger.PrintToUser("")
-			return fmt.Errorf("cluster not healthy after %d seconds", uint32(timeout.Seconds()))
-		}
-		time.Sleep(poolTime)
-	}
+	defer node.DisconnectHosts(hosts)
+	return node.CheckHostsAreRPCCompatible(app, hosts, subnetName)
 }
 
 func waitForSubnetValidators(
@@ -714,7 +665,7 @@ func waitForSubnetValidators(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	nodeIDMap, failedNodesMap := getNodeIDs(hosts)
 	startTime := time.Now()
 	for {
@@ -781,7 +732,7 @@ func waitForClusterSubnetStatus(
 			return err
 		}
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	startTime := time.Now()
 	for {
 		wg := sync.WaitGroup{}
@@ -876,7 +827,7 @@ func filterHosts(hosts []*models.Host, nodes []string) ([]*models.Host, error) {
 	return filteredHosts, nil
 }
 
-func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
+func setICMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.Host) error {
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
@@ -905,13 +856,13 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 			if !securityGroupExists {
 				return fmt.Errorf("security group %s doesn't exist in region %s", nodeConfig.SecurityGroup, nodeConfig.Region)
 			}
-			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalanchegoAPIPort); !inSG {
+			if inSG := awsAPI.CheckIPInSg(&sg, awmRelayerHost.IP, constants.AvalancheGoAPIPort); !inSG {
 				if err = ec2Svc.AddSecurityGroupRule(
 					*sg.GroupId,
 					"ingress",
 					"tcp",
 					awmRelayerHost.IP+constants.IPAddressSuffix,
-					constants.AvalanchegoAPIPort,
+					constants.AvalancheGoAPIPort,
 				); err != nil {
 					return err
 				}
@@ -923,7 +874,7 @@ func setAWMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 		}
 	}
 	if hasGCPNodes {
-		if err := setGCPAWMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
+		if err := setGCPICMRelayerSecurityGroupRule(awmRelayerHost); err != nil {
 			return err
 		}
 	}
@@ -985,7 +936,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 				ux.SpinFailWithError(spinner, "", err)
 				return
 			}
-			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalanchegoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
+			if err = ssh.RunSSHSetupPromtailConfig(host, monitoringHosts[0].IP, constants.AvalancheGoLokiPort, cloudID, nodeID.String(), chainID); err != nil {
 				wgResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -1009,15 +960,15 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 }
 
 func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, blockchainName string) error {
-	relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.AWMRelayerKeyName))
+	relayerAddress, relayerPrivateKey, err := teleporter.GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
 	if err != nil {
 		return err
 	}
 
-	storageBasePath := constants.AWMRelayerDockerDir
+	storageBasePath := constants.ICMRelayerDockerDir
 	configBasePath := app.GetNodeInstanceDirPath(cloudNodeID)
 
-	configPath := app.GetAWMRelayerServiceConfigPath(configBasePath)
+	configPath := app.GetICMRelayerServiceConfigPath(configBasePath)
 	if err := os.MkdirAll(filepath.Dir(configPath), constants.DefaultPerms755); err != nil {
 		return err
 	}
@@ -1026,8 +977,8 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 	if err := teleporter.CreateBaseRelayerConfigIfMissing(
 		configPath,
 		logging.Info.LowerString(),
-		app.GetAWMRelayerServiceStorageDir(storageBasePath),
-		constants.RemoteAWMRelayerMetricsPort,
+		app.GetICMRelayerServiceStorageDir(storageBasePath),
+		constants.RemoteICMRelayerMetricsPort,
 		network,
 	); err != nil {
 		return err

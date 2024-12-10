@@ -41,6 +41,8 @@ func RegisterRemote(
 		privateKey,
 		remoteAddress,
 		nil,
+		"register remote with home",
+		nil,
 		"registerWithHome((address, uint256))",
 		feeInfo,
 	)
