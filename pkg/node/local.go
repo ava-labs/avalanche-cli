@@ -259,6 +259,7 @@ func StartLocalNode(
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 	if err != nil {
 		return err

@@ -118,10 +118,6 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 	network.HandlePublicNetworkSimulation()
 
-	if sc.Sovereign && network.Kind == models.Mainnet {
-		return errNotSupportedOnMainnet
-	}
-
 	if !sc.Sovereign {
 		if outputTxPath != "" {
 			return errors.New("--output-tx-path flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")

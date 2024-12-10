@@ -107,10 +107,11 @@ func (*versionMapper) GetAvagoURL() string {
 
 func (*versionMapper) GetEligibleVersions(sortedVersions []string, repoName string, app *application.Avalanche) ([]string, error) {
 	// get latest avago release to make sure we're not picking a release currently in progress but not available for download
-	latest, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latest, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		repoName,
-	))
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}

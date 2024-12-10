@@ -285,6 +285,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err := prompts.ValidateNodeID(nodeIDStr); err != nil {
 		return err
 	}
+
 	if sovereign && publicKey == "" && pop == "" {
 		publicKey, pop, err = promptProofOfPossession(true, true)
 		if err != nil {
