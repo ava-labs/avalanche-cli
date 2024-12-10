@@ -26,7 +26,7 @@ const (
 	updateInterval = 500 * time.Millisecond
 	maxFileSize    = 10 * 1024 * 1024 * 1024 // 10GB per file
 	// public archive
-	PChainArchiveFuji = "https://avalanchego-public-database.avax-test.network/p-chain/avalanchego/data-tar/latest.tar"
+	PChainArchiveFuji = "https://avalanchego-public-database.avax-test.network/testnet/p-chain/avalanchego/data-tar/latest.tar"
 )
 
 type Getter struct {
@@ -34,6 +34,7 @@ type Getter struct {
 	request       *grab.Request
 	size          int64
 	bytesComplete int64
+	mutex         *sync.RWMutex
 }
 
 type Downloader struct {
@@ -90,7 +91,7 @@ func (d Downloader) Download() error {
 	d.logger.Info("Download started from", zap.String("url", d.getter.request.URL().String()))
 
 	resp := d.getter.client.Do(d.getter.request)
-	d.getter.size = resp.Size()
+	d.setDownloadSize(resp.Size())
 	d.logger.Debug("Download response received",
 		zap.String("status", resp.HTTPResponse.Status))
 	t := time.NewTicker(updateInterval)
@@ -102,7 +103,7 @@ func (d Downloader) Download() error {
 		for {
 			select {
 			case <-t.C:
-				d.getter.bytesComplete = resp.BytesComplete()
+				d.setBytesComplete(resp.BytesComplete())
 				d.logger.Info("Download progress",
 					zap.Int64("bytesComplete", d.getter.bytesComplete),
 					zap.Int64("size", d.getter.size))
@@ -177,7 +178,7 @@ func (d Downloader) UnpackTo(targetDir string) error {
 			}
 		case tar.TypeReg:
 			d.logger.Debug("Ensure parent directory exists for ", zap.String("path", targetPath))
-			if err := os.MkdirAll(filepath.Dir(targetPath), os.FileMode(0755)); err != nil {
+			if err := os.MkdirAll(filepath.Dir(targetPath), os.FileMode(0o755)); err != nil {
 				d.logger.Error("Failed to create parent directory for file", zap.Error(err))
 				return fmt.Errorf("failed to create parent directory for file: %w", err)
 			}
