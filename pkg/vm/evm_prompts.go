@@ -70,7 +70,7 @@ type FeeConfig struct {
 
 type SubnetEVMGenesisParams struct {
 	chainID                             uint64
-	UseTeleporter                       bool
+	UseICM                              bool
 	UseExternalGasToken                 bool
 	initialTokenAllocation              core.GenesisAlloc
 	feeConfig                           FeeConfig
@@ -87,7 +87,7 @@ type SubnetEVMGenesisParams struct {
 	enableWarpPrecompile                bool
 	UsePoAValidatorManager              bool
 	UsePoSValidatorManager              bool
-	DisableTeleporterOnGenesis          bool
+	DisableICMOnGenesis                 bool
 }
 
 func PromptTokenSymbol(
@@ -146,7 +146,7 @@ func PromptVMType(
 // if useDefaults is true, it will:
 // - use native gas token, allocating 1m to a newly created key
 // - customize fee config for low throughput
-// - use teleporter
+// - use ICM
 // - enable warp precompile
 // - disable the other precompiles
 // in the other case, will prompt for all these settings
@@ -154,7 +154,7 @@ func PromptVMType(
 // tokenSymbol is not needed to build a genesis but is needed in the ux flow
 // as such, is returned separately from the genesis params
 //
-// prompts the user for chainID, tokenSymbol, and useTeleporter, unless
+// prompts the user for chainID, tokenSymbol, and useICM, unless
 // provided in call args
 func PromptSubnetEVMGenesisParams(
 	app *application.Avalanche,
@@ -163,7 +163,7 @@ func PromptSubnetEVMGenesisParams(
 	chainID uint64,
 	tokenSymbol string,
 	blockchainName string,
-	useTeleporter *bool,
+	useICM *bool,
 	defaultsKind DefaultsKind,
 	useWarp bool,
 	useExternalGasToken bool,
@@ -222,15 +222,15 @@ func PromptSubnetEVMGenesisParams(
 	}
 
 	// Interoperability
-	params.UseTeleporter, err = PromptInterop(app, useTeleporter, defaultsKind, params.UseExternalGasToken)
+	params.UseICM, err = PromptInterop(app, useICM, defaultsKind, params.UseExternalGasToken)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err
 	}
 
 	// Warp
 	params.enableWarpPrecompile = useWarp
-	if (params.UseTeleporter || params.UseExternalGasToken) && !params.enableWarpPrecompile {
-		return SubnetEVMGenesisParams{}, "", fmt.Errorf("warp should be enabled for teleporter to work")
+	if (params.UseICM || params.UseExternalGasToken) && !params.enableWarpPrecompile {
+		return SubnetEVMGenesisParams{}, "", fmt.Errorf("warp should be enabled for ICM to work")
 	}
 
 	// Permissioning
@@ -239,8 +239,8 @@ func PromptSubnetEVMGenesisParams(
 		return SubnetEVMGenesisParams{}, "", err
 	}
 
-	if sc.PoS() || sc.PoA() { // Teleporter bytecode makes genesis too big given the current max size (we include the bytecode for ValidatorManager, a proxy, and proxy admin)
-		params.DisableTeleporterOnGenesis = true
+	if sc.PoS() || sc.PoA() { // ICM bytecode makes genesis too big given the current max size (we include the bytecode for ValidatorManager, a proxy, and proxy admin)
+		params.DisableICMOnGenesis = true
 	}
 
 	return params, tokenSymbol, nil
@@ -286,7 +286,7 @@ func promptGasTokenKind(
 				ux.Logger.PrintToUser(logging.Bold.Wrap("A token from another blockchain"))
 				ux.Logger.PrintToUser("Use an ERC-20 token (USDC, WETH, etc.) or the native token (e.g. AVAX) of another blockchain within the Avalanche network as the transaction fee token.")
 				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol Teleporter will be activated automatically. For more info on Teleporter, visit: https://github.com/ava-labs/teleporter")
+				ux.Logger.PrintToUser("If a token from another blockchain is used, the interoperability protocol ICM will be activated automatically. For more info on ICM, visit: https://github.com/ava-labs/icm-contracts/tree/main/contracts/teleporter")
 				continue
 			}
 			break
@@ -746,19 +746,19 @@ func promptFeeConfig(
 	return params, nil
 }
 
-// if useTeleporter is defined, will enable/disable teleporter based on it
-// is useDefaults is true, will enable teleporter
-// if using external gas token, will assume teleporter to be enabled
-// if other cases, prompts the user for wether to enable teleporter
+// if useICM is defined, will enable/disable ICM based on it
+// is useDefaults is true, will enable ICM
+// if using external gas token, will assume ICM to be enabled
+// if other cases, prompts the user for wether to enable ICM
 func PromptInterop(
 	app *application.Avalanche,
-	useTeleporterFlag *bool,
+	useICMFlag *bool,
 	defaultsKind DefaultsKind,
 	useExternalGasToken bool,
 ) (bool, error) {
 	switch {
-	case useTeleporterFlag != nil:
-		return *useTeleporterFlag, nil
+	case useICMFlag != nil:
+		return *useICMFlag, nil
 	case defaultsKind != NoDefaults:
 		return true, nil
 	case useExternalGasToken:

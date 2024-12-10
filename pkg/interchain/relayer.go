@@ -37,7 +37,7 @@ const (
 	defaultSignatureCacheSize     = 1024 * 1024
 )
 
-var teleporterRelayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
+var relayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 
 func GetRelayerKeyInfo(keyPath string) (string, string, error) {
 	var (
@@ -64,23 +64,23 @@ func GetRelayerKeyInfo(keyPath string) (string, string, error) {
 func FundRelayer(
 	rpcURL string,
 	prefundedPrivateKey string,
-	teleporterRelayerAddress string,
+	relayerAddress string,
 ) error {
-	// get teleporter relayer balance
+	// get relayer balance
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return err
 	}
-	teleporterRelayerBalance, err := evm.GetAddressBalance(client, teleporterRelayerAddress)
+	relayerBalance, err := evm.GetAddressBalance(client, relayerAddress)
 	if err != nil {
 		return err
 	}
-	if teleporterRelayerBalance.Cmp(teleporterRelayerRequiredBalance) < 0 {
-		toFund := big.NewInt(0).Sub(teleporterRelayerRequiredBalance, teleporterRelayerBalance)
+	if relayerBalance.Cmp(relayerRequiredBalance) < 0 {
+		toFund := big.NewInt(0).Sub(relayerRequiredBalance, relayerBalance)
 		err := evm.FundAddress(
 			client,
 			prefundedPrivateKey,
-			teleporterRelayerAddress,
+			relayerAddress,
 			toFund,
 		)
 		if err != nil {
