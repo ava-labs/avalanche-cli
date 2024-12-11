@@ -433,7 +433,7 @@ func StartLocalNode(
 
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			//_ = DestroyLocalNode(app, clusterName)
+			_ = DestroyLocalNode(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)
