@@ -335,6 +335,13 @@ func StartLocalNode(
 			}
 		}
 		if network.Kind == models.Fuji {
+			// disable indexing for fuji
+			nodeConfig[config.IndexEnabledKey] = false
+			nodeConfigBytes, err := json.Marshal(nodeConfig)
+			if err != nil {
+				return err
+			}
+			nodeConfigStr = string(nodeConfigBytes)
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		}
 		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
@@ -426,7 +433,7 @@ func StartLocalNode(
 
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			_ = DestroyLocalNode(app, clusterName)
+			//_ = DestroyLocalNode(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 		ux.SpinComplete(spinner)

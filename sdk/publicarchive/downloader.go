@@ -200,9 +200,11 @@ func (d Downloader) UnpackTo(targetDir string) error {
 				return fmt.Errorf("incomplete file write for %s", targetPath)
 			}
 			extractedSize += header.Size
+			d.logger.Debug("Written bytes", zap.Int64("bytes", extractedSize))
 		default:
 			d.logger.Debug("Skipping file", zap.String("path", targetPath))
 		}
 	}
+	d.logger.Info("Download unpacked to", zap.String("path", targetDir))
 	return nil
 }

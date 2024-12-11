@@ -571,7 +571,7 @@ func SeedClusterData(
 	}
 	network := network.FujiNetwork()
 	ux.Logger.Info("downloading public archive for network %s", clusterNetwork.Name())
-	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.Verbo) // off as we run inside of the spinner
+	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.Off) // off as we run inside of the spinner
 	if err != nil {
 		return fmt.Errorf("failed to create public archive downloader for network %s: %w", clusterNetwork.Name(), err)
 	}
@@ -587,30 +587,39 @@ func SeedClusterData(
 	}
 
 	wg := sync.WaitGroup{}
-	errChan := make(chan error, len(nodeNames))
+	mu := sync.Mutex{}
+	var firstErr error
 
 	for _, nodeName := range nodeNames {
+		target := filepath.Join(rootDir, nodeName, "db")
+		ux.Logger.Info("unpacking public archive to %s", target)
+
+		// Skip if target already exists
+		if _, err := os.Stat(target); err == nil {
+			ux.Logger.Info("data folder already exists at %s. Skipping...", target)
+			continue
+		}
 		wg.Add(1)
-		go func(nodeName string) {
+		go func(target string) {
 			defer wg.Done()
-			target := filepath.Join(rootDir, nodeName, "db")
-			ux.Logger.Info("unpacking public archive to %s", target)
+
 			if err := publicArcDownloader.UnpackTo(target); err != nil {
-				errChan <- fmt.Errorf("failed to unpack public archive: %w", err)
+				// Capture the first error encountered
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = fmt.Errorf("failed to unpack public archive: %w", err)
+					_ = CleanUpClusterNodeData(rootDir, nodeNames)
+				}
+				mu.Unlock()
 			}
-		}(nodeName)
-		return nil
+		}(target)
 	}
-
 	wg.Wait()
-	close(errChan)
 
-	if len(errChan) > 0 {
-		_ = CleanUpClusterNodeData(rootDir, nodeNames)
+	if firstErr != nil {
+		return firstErr
 	}
-	for err := range errChan {
-		return err
-	}
+	ux.Logger.PrintToUser("public archive unpacked to %s", rootDir)
 	return nil
 }
 
