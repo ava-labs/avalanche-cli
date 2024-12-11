@@ -4,6 +4,8 @@ package utils
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsValidIPPort(t *testing.T) {
@@ -77,22 +79,14 @@ func TestSplitRPCURI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			endpoint, chain, err := SplitRPCURI(tt.requestURI)
+			endpoint, chain, err := SplitAvalanchegoRPCURI(tt.requestURI)
 
 			if tt.expectError {
-				if err == nil {
-					t.Errorf("expected an error but got nil")
-				}
+				require.Error(t, err, "expected an error but got nil")
 			} else {
-				if err != nil {
-					t.Errorf("did not expect an error but got: %v", err)
-				}
-				if endpoint != tt.expectedEndpoint {
-					t.Errorf("expected Endpoint: %s, got: %s", tt.expectedEndpoint, endpoint)
-				}
-				if chain != tt.expectedChain {
-					t.Errorf("expected Chain: %s, got: %s", tt.expectedChain, chain)
-				}
+				require.NoError(t, err, "did not expect an error but got one")
+				require.Equal(t, tt.expectedEndpoint, endpoint, "unexpected Endpoint")
+				require.Equal(t, tt.expectedChain, chain, "unexpected Chain")
 			}
 		})
 	}

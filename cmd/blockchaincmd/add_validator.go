@@ -766,7 +766,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 	var selectedDuration time.Duration
 	if useDefaultDuration {
 		// avoid setting both globals useDefaultDuration and duration
-		selectedDuration, err = utils.GetValidationTime(network.Endpoint, nodeID, avagoconstants.PrimaryNetworkID, start)
+		selectedDuration, err = utils.GetRemainingValidationTime(network.Endpoint, nodeID, avagoconstants.PrimaryNetworkID, start)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
