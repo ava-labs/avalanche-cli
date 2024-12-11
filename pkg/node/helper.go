@@ -619,7 +619,7 @@ func SeedClusterData(
 	if firstErr != nil {
 		return firstErr
 	}
-	ux.Logger.PrintToUser("public archive unpacked to %s", rootDir)
+	ux.Logger.PrintToUser("Public archive unpacked to: %s", rootDir)
 	return nil
 }
 
