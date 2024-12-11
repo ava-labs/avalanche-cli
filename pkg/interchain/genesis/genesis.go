@@ -112,8 +112,8 @@ func AddICMRegistryContractToAllocations(
 // ICM Messenger and ICM registry,
 // based on their expected addresses [MessengerContractAddress] and
 // [RegistryContractAddress]
-// to be used by local blockchain deploy to determine if a teleporter deploy
-// or a registry deploy is needed
+// to be used by local blockchain deploy to determine if a ICM messenger or
+// or registry deploy is needed
 func ICMAtGenesis(
 	genesisData []byte,
 ) (bool, bool, error) {

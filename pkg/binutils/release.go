@@ -72,10 +72,7 @@ func InstallBinary(
 	case version == "latest":
 		// get latest version
 		var err error
-		version, err = app.Downloader.GetLatestReleaseVersion(GetGithubLatestReleaseURL(
-			org,
-			repo,
-		))
+		version, err = app.Downloader.GetLatestReleaseVersion(org, repo, "")
 		if err != nil {
 			return "", "", err
 		}

@@ -12,20 +12,19 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/ava-labs/avalanche-cli/pkg/key"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
@@ -44,7 +43,7 @@ type CreateFlags struct {
 	useTestDefaults               bool
 	useProductionDefaults         bool
 	useWarp                       bool
-	useTeleporter                 bool
+	useICM                        bool
 	vmVersion                     string
 	useLatestReleasedVMVersion    bool
 	useLatestPreReleasedVMVersion bool
@@ -111,8 +110,9 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
 	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
-	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for teleporter)")
-	cmd.Flags().BoolVar(&createFlags.useTeleporter, "teleporter", false, "interoperate with other blockchains using teleporter")
+	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for ICM)")
+	cmd.Flags().BoolVar(&createFlags.useICM, "teleporter", false, "interoperate with other blockchains using ICM")
+	cmd.Flags().BoolVar(&createFlags.useICM, "icm", false, "interoperate with other blockchains using ICM")
 	cmd.Flags().BoolVar(&createFlags.useExternalGasToken, "external-gas-token", false, "use a gas token from another blockchain")
 	cmd.Flags().BoolVar(&createFlags.addICMRegistryToGenesis, "icm-registry-at-genesis", false, "setup ICM registry smart contract on genesis [experimental]")
 	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
@@ -228,19 +228,23 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	var (
 		genesisBytes        []byte
-		useTeleporterFlag   *bool
-		deployTeleporter    bool
+		useICMFlag          *bool
+		deployICM           bool
 		useExternalGasToken bool
 	)
 
-	// get teleporter flag as a pointer (3 values: undef/true/false)
+	// get ICM flag as a pointer (3 values: undef/true/false)
 	flagName := "teleporter"
 	if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
-		useTeleporterFlag = &createFlags.useTeleporter
+		useICMFlag = &createFlags.useICM
+	}
+	flagName = "icm"
+	if flag := cmd.Flags().Lookup(flagName); flag != nil && flag.Changed {
+		useICMFlag = &createFlags.useICM
 	}
 
-	// get teleporter info
-	teleporterInfo, err := teleporter.GetInfo(app)
+	// get ICM info
+	icmInfo, err := interchain.GetICMInfo(app)
 	if err != nil {
 		return err
 	}
@@ -317,7 +321,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInterop(app, useTeleporterFlag, defaultsKind, false)
+			deployICM, err = vm.PromptInterop(app, useICMFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
@@ -335,7 +339,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				createFlags.chainID,
 				createFlags.tokenSymbol,
 				blockchainName,
-				useTeleporterFlag,
+				useICMFlag,
 				defaultsKind,
 				createFlags.useWarp,
 				createFlags.useExternalGasToken,
@@ -343,11 +347,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter = params.UseTeleporter
+			deployICM = params.UseICM
 			useExternalGasToken = params.UseExternalGasToken
 			genesisBytes, err = vm.CreateEVMGenesis(
 				params,
-				teleporterInfo,
+				icmInfo,
 				createFlags.addICMRegistryToGenesis,
 				sc.ProxyContractOwner,
 				createFlags.rewardBasisPoints,
@@ -384,7 +388,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			deployTeleporter, err = vm.PromptInterop(app, useTeleporterFlag, defaultsKind, false)
+			deployICM, err = vm.PromptInterop(app, useICMFlag, defaultsKind, false)
 			if err != nil {
 				return err
 			}
@@ -405,21 +409,21 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if deployTeleporter || useExternalGasToken {
+	if deployICM || useExternalGasToken {
 		sc.TeleporterReady = true
 		sc.RunRelayer = true // TODO: remove this once deploy asks if deploying relayer
 		sc.ExternalToken = useExternalGasToken
 		sc.TeleporterKey = constants.ICMKeyName
-		sc.TeleporterVersion = teleporterInfo.Version
+		sc.TeleporterVersion = icmInfo.Version
 		if genesisPath != "" {
 			if evmCompatibleGenesis, err := utils.FileIsSubnetEVMGenesis(genesisPath); err != nil {
 				return err
 			} else if evmCompatibleGenesis {
-				// evm genesis file was given. make appropriate checks and customizations for teleporter
+				// evm genesis file was given. make appropriate checks and customizations for ICM
 				genesisBytes, err = addSubnetEVMGenesisPrefundedAddress(
 					genesisBytes,
-					teleporterInfo.FundedAddress,
-					teleporterInfo.FundedBalance.String(),
+					icmInfo.FundedAddress,
+					icmInfo.FundedBalance.String(),
 				)
 				if err != nil {
 					return err

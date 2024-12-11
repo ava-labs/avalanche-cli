@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -114,17 +113,19 @@ func upgrade(_ *cobra.Command, args []string) error {
 // it will install the newest subnet EVM version and install the latest avalanche Go that is still compatible with the Subnet EVM version
 // if the node is not tracking any subnet, it will just install latestAvagoVersion
 func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo, error) {
-	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
-	))
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
-	latestSubnetEVMVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestSubnetEVMVersion, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
-	))
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}

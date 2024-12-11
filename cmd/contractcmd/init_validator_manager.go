@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
@@ -57,7 +58,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "initValidatorManager blockchainName",
 		Short: "Initializes Proof of Authority(PoA) or Proof of Stake(PoS) Validator Manager on a given Network and Blockchain",
-		Long:  "Initializes Proof of Authority(PoA) or Proof of Stake(PoS)Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/teleporter/tree/staking-contract/contracts/validator-manager",
+		Long:  "Initializes Proof of Authority(PoA) or Proof of Stake(PoS)Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/icm-contracts/tree/main/contracts/validator-manager",
 		RunE:  initValidatorManager,
 		Args:  cobrautils.ExactArgs(1),
 	}
@@ -205,8 +206,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
 			validatorManagerFlags.aggregatorLogLevel,
 			validatorManagerSDK.PoSParams{
-				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
-				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),
+				MinimumStakeAmount:      utils.ApplyDefaultDenomination(initPOSManagerFlags.minimumStakeAmount),
+				MaximumStakeAmount:      utils.ApplyDefaultDenomination(initPOSManagerFlags.maximumStakeAmount),
 				MinimumStakeDuration:    initPOSManagerFlags.minimumStakeDuration,
 				MinimumDelegationFee:    initPOSManagerFlags.minimumDelegationFee,
 				MaximumStakeMultiplier:  initPOSManagerFlags.maximumStakeMultiplier,
