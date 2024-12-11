@@ -157,7 +157,12 @@ func (d Downloader) UnpackTo(targetDir string) error {
 			return fmt.Errorf("error reading tar archive: %w", err)
 		}
 
-		targetPath := filepath.Join(targetDir, filepath.Clean(header.Name))
+		relPath, err := filepath.Rel(targetDir, filepath.Join(targetDir, header.Name))
+		if err != nil || strings.HasPrefix(relPath, "..") {
+			d.logger.Error("Invalid file path", zap.String("path", header.Name))
+			return fmt.Errorf("invalid file path: %s", header.Name)
+		}
+		targetPath := filepath.Join(targetDir, relPath)
 
 		// security checks
 		if extractedSize+header.Size > maxFileSize {
