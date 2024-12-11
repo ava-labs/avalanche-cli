@@ -232,8 +232,11 @@ func (n *Network) Equals(n2 Network) bool {
 // Context for bootstrapping a partial synced Node
 func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
 	timeout := constants.ANRRequestTimeout
-	if n.Kind == Fuji {
+	switch n.Kind {
+	case Fuji:
 		timeout = constants.FujiBootstrapTimeout
+	case Mainnet:
+		timeout = constants.MainnetBootstrapTimeout
 	}
 	return context.WithTimeout(context.Background(), timeout)
 }
