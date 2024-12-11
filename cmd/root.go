@@ -5,6 +5,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"os"
 	"os/signal"
 	"os/user"
@@ -136,6 +137,8 @@ Deprecation notice: use 'avalanche blockchain'`
 
 	// add contract command
 	rootCmd.AddCommand(contractcmd.NewCmd(app))
+	// add validator commmand
+	rootCmd.AddCommand(validatorcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 

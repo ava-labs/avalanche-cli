@@ -111,3 +111,27 @@ func GetOwners(network models.Network, subnetID ids.ID) (bool, []string, uint32,
 	}
 	return isPermissioned, controlKeysStrs, threshold, nil
 }
+
+func GetBalance(network models.Network, subnetID ids.ID, index uint32) error {
+	pClient := platformvm.NewClient(network.Endpoint)
+	ctx := context.Background()
+	validationID := subnetID.Append(index)
+	validatorResponse, _, err := pClient.GetL1Validator(ctx, validationID)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("validatorResponse %s \n", validatorResponse)
+	//controlKeys := subnetResponse.ControlKeys
+	//threshold := subnetResponse.Threshold
+	//isPermissioned := subnetResponse.IsPermissioned
+	//hrp := key.GetHRP(network.ID)
+	//controlKeysStrs := []string{}
+	//for _, addr := range controlKeys {
+	//	addrStr, err := address.Format("P", hrp, addr[:])
+	//	if err != nil {
+	//		return false, nil, 0, err
+	//	}
+	//	controlKeysStrs = append(controlKeysStrs, addrStr)
+	//}
+	return nil
+}

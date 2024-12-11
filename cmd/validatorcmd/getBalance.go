@@ -3,36 +3,43 @@
 package validatorcmd
 
 import (
-	"errors"
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
 
 var (
-	ErrUserAbortedInstallation = errors.New("user canceled installation")
-	ErrNoVersion               = errors.New("failed to find current version - did you install following official instructions?")
-	app                        *application.Avalanche
-	yes                        bool
+	subnetID string
+	nodeID   string
 )
 
-func NewGetBalanceCmd(injectedApp *application.Avalanche, version string) *cobra.Command {
-	app = injectedApp
+func NewGetBalanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "getBalance",
 		Short: "Gets current balance of validator on P-Chain",
-		Long: `Validator's balance is used to pay for continuous fee to the P-Chain. 
-When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1.
-	This command gets the remaining validator P-Chain balance`,
-		RunE:    getBalance,
-		Args:    cobrautils.ExactArgs(0),
-		Version: version,
+		Long: `This command gets the remaining validator P-Chain balance that is available to pay
+P-Chain continuous fee`,
+		RunE: getBalance,
+		Args: cobrautils.ExactArgs(0),
 	}
 
-	cmd.Flags().BoolVarP(&yes, "node-id", "c", false, "Assume yes for installation")
+	cmd.Flags().StringVar(&subnetID, "subnet-id", "", "subnetID of L1 that the node is validating")
+	cmd.Flags().StringVar(&nodeID, "node-id", "", "Node-ID of validator")
 	return cmd
 }
 
 func getBalance(cmd *cobra.Command, _ []string) error {
+	subnetID, err := ids.FromString("d")
+	if err != nil {
+		return err
+	}
+	index := uint32(0)
+	network := models.NewFujiNetwork()
+	err := txutils.GetBalance(network, subnetID, index)
+	if err != nil {
+		return err
+	}
 	return nil
 }
