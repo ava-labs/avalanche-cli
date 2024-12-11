@@ -179,7 +179,7 @@ func importPublic(*cobra.Command, []string) error {
 		// no node was queried, ask the user
 		switch vmType {
 		case models.SubnetEvm:
-			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, application.All)
+			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, "", application.All)
 			if err != nil {
 				return err
 			}
