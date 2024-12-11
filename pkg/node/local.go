@@ -321,6 +321,13 @@ func StartLocalNode(
 				constants.FujiAPIEndpoint,
 				clusterName,
 			)
+		case globalNetworkFlags.UseMainnet:
+			network = models.NewNetwork(
+				models.Mainnet,
+				avagoconstants.MainnetID,
+				constants.MainnetAPIEndpoint,
+				clusterName,
+			)
 		default:
 			network, err = networkoptions.GetNetworkFromCmdLineFlags(
 				app,
