@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -188,6 +189,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		nodeConfig,
 		anrSettings,
 		avaGoVersionSetting,
+		models.Network{},
 		globalNetworkFlags,
 		localStartSupportedNetworkOptions,
 	)

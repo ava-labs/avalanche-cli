@@ -698,7 +698,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
-					globalNetworkFlags,
+					network,
+					networkoptions.NetworkFlags{},
 					nil,
 				); err != nil {
 					return err

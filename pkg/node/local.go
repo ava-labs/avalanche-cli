@@ -29,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -192,8 +191,9 @@ func StartLocalNode(
 	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
-	globalNetworkFlags networkoptions.NetworkFlags,
-	createSupportedNetworkOptions []networkoptions.NetworkOption,
+	network models.Network,
+	networkFlags networkoptions.NetworkFlags,
+	supportedNetworkOptions []networkoptions.NetworkOption,
 ) error {
 	var err error
 
@@ -306,44 +306,31 @@ func StartLocalNode(
 		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
-		network := models.UndefinedNetwork
-		switch {
-		case useEtnaDevnet:
-			network = models.NewNetwork(
-				models.Devnet,
-				constants.EtnaDevnetNetworkID,
-				constants.EtnaDevnetEndpoint,
-				clusterName,
-			)
-		case globalNetworkFlags.UseFuji:
-			network = models.NewNetwork(
-				models.Fuji,
-				avagoconstants.FujiID,
-				constants.FujiAPIEndpoint,
-				clusterName,
-			)
-		case globalNetworkFlags.UseLocal:
-			network = models.NewNetwork(
-				models.Local,
-				constants.LocalNetworkID,
-				constants.LocalAPIEndpoint,
-				clusterName,
-			)
-		default:
-			network, err = networkoptions.GetNetworkFromCmdLineFlags(
-				app,
-				"",
-				globalNetworkFlags,
-				false,
-				true,
-				createSupportedNetworkOptions,
-				"",
-			)
-			if err != nil {
-				return err
+		if network.Kind == models.Undefined {
+			switch {
+			case useEtnaDevnet:
+				network = models.NewNetwork(
+					models.Devnet,
+					constants.EtnaDevnetNetworkID,
+					constants.EtnaDevnetEndpoint,
+					clusterName,
+				)
+			default:
+				network, err = networkoptions.GetNetworkFromCmdLineFlags(
+					app,
+					"",
+					networkFlags,
+					false,
+					true,
+					supportedNetworkOptions,
+					"",
+				)
+				if err != nil {
+					return err
+				}
 			}
-			network.ClusterName = clusterName
 		}
+		network.ClusterName = clusterName
 		if network.Kind == models.Fuji {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		}
@@ -401,7 +388,7 @@ func StartLocalNode(
 			}
 			defer os.Remove(anrSettings.UpgradePath)
 		}
-		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
+		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, networkFlags); err != nil {
 			return err
 		}
 		if useEtnaDevnet {
@@ -671,7 +658,12 @@ func localClusterDataExists(app *application.Avalanche, clusterName string) bool
 }
 
 // stub for now
-func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
+func preLocalChecks(
+	anrSettings ANRSettings,
+	avaGoVersionSettings AvalancheGoVersionSettings,
+	useEtnaDevnet bool,
+	networkFlags networkoptions.NetworkFlags,
+) error {
 	// expand passed paths
 	if anrSettings.GenesisPath != "" {
 		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)
@@ -683,7 +675,7 @@ func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVer
 	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
 		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
 	}
-	if useEtnaDevnet && (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
+	if useEtnaDevnet && (networkFlags.UseDevnet || networkFlags.UseFuji) {
 		return fmt.Errorf("etna devnet can only be used with devnet")
 	}
 	if useEtnaDevnet && anrSettings.GenesisPath != "" {
