@@ -21,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/onsi/ginkgo/v2"
@@ -143,7 +142,7 @@ func getBootstrapValidator() ([]*txs.ConvertSubnetToL1Validator, error) {
 	bootstrapValidator := models.SubnetValidator{
 		NodeID:               nodeID.String(),
 		Weight:               constants.BootstrapValidatorWeight,
-		Balance:              constants.BootstrapValidatorBalanceAVAX * units.Avax,
+		Balance:              constants.BootstrapValidatorBalance,
 		BLSPublicKey:         publicKey,
 		BLSProofOfPossession: pop,
 		ChangeOwnerAddr:      ewoqPChainAddress,

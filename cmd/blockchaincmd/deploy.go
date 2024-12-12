@@ -107,7 +107,7 @@ var (
 	poSMinimumDelegationFee   uint16
 	poSMaximumStakeMultiplier uint8
 	poSWeightToValueFactor    uint64
-	deployBalance             uint64
+	deployBalanceAVAX         float64
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -201,10 +201,10 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
-	cmd.Flags().Uint64Var(
-		&deployBalance,
+	cmd.Flags().Float64Var(
+		&deployBalanceAVAX,
 		"balance",
-		constants.BootstrapValidatorBalance/units.Avax,
+		constants.BootstrapValidatorBalance/float64(units.Avax),
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
@@ -595,6 +595,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
+
 	if sidecar.Sovereign {
 		if changeOwnerAddress == "" {
 			// use provided key as change owner unless already set
@@ -659,7 +661,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
 			if useLocalMachine && clusterNameFlagValue == "" {
-				requiredBalance := deployBalance * uint64(numLocalNodes) * units.Avax
+				requiredBalance := deployBalance * uint64(numLocalNodes)
 				if availableBalance < requiredBalance {
 					return fmt.Errorf(
 						"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
@@ -757,7 +759,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
 					NodeID:               nodeID.String(),
 					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              deployBalance * units.Avax,
+					Balance:              deployBalance,
 					BLSPublicKey:         publicKey,
 					BLSProofOfPossession: pop,
 					ChangeOwnerAddr:      changeOwnerAddress,
@@ -765,7 +767,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		case clusterNameFlagValue != "":
 			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network)
+			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
 			if err != nil {
 				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
 			}
@@ -775,7 +777,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				network,
 				changeOwnerAddress,
 				numBootstrapValidators,
-				deployBalance*units.Avax,
+				deployBalance,
 				availableBalance,
 			)
 			if err != nil {
@@ -792,7 +794,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		requiredBalance := deployBalance * uint64(len(bootstrapValidators)) * units.Avax
+		requiredBalance := deployBalance * uint64(len(bootstrapValidators))
 		if availableBalance < requiredBalance {
 			return fmt.Errorf(
 				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
@@ -1214,7 +1216,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getClusterBootstrapValidators(clusterName string, network models.Network) ([]models.SubnetValidator, error) {
+func getClusterBootstrapValidators(
+	clusterName string,
+	network models.Network,
+	deployBalance uint64,
+) ([]models.SubnetValidator, error) {
 	clusterConf, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
@@ -1238,7 +1244,7 @@ func getClusterBootstrapValidators(clusterName string, network models.Network) (
 		subnetValidators = append(subnetValidators, models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              deployBalance * units.Avax,
+			Balance:              deployBalance,
 			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
 			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
 			ChangeOwnerAddr:      changeAddr,
