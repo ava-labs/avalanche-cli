@@ -82,7 +82,7 @@ func createSovereignSubnet() (string, string, error) {
 		"blockchain",
 		"deploy",
 		subnetName,
-		"--etna-devnet",
+		"--local",
 		"--num-local-nodes=1",
 		"--ewoq",
 		"--convert-only",

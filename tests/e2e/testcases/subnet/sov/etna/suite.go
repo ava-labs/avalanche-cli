@@ -219,7 +219,7 @@ func deployEtnaSubnetEtnaFlag() {
 		"blockchain",
 		"deploy",
 		subnetName,
-		"--etna-devnet",
+		"--local",
 		"--num-local-nodes=1",
 		"--ewoq",
 		"--change-owner-address",
@@ -247,7 +247,7 @@ func deployEtnaSubnetEtnaFlagConvertOnly() {
 		"blockchain",
 		"deploy",
 		subnetName,
-		"--etna-devnet",
+		"--local",
 		"--num-local-nodes=1",
 		"--convert-only",
 		"--ewoq",
@@ -324,7 +324,7 @@ func initValidatorManagerEtnaFlag(
 		"contract",
 		"initValidatorManager",
 		subnetName,
-		"--etna-devnet",
+		"--local",
 		"--genesis-key",
 		"--"+constants.SkipUpdateFlag,
 	)
@@ -368,17 +368,17 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		createEtnaSubnetEvmConfigWithoutProxyOwner(true, false)
 	})
 
-	ginkgo.It("Create Etna POA Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
+	ginkgo.It("Create Etna POA Subnet Config & Deploy the Subnet To Etna Local Network On Local Machine", func() {
 		createEtnaSubnetEvmConfig(true, false)
 		deployEtnaSubnetEtnaFlag()
 	})
 
-	ginkgo.It("Create Etna POS Subnet Config & Deploy the Subnet To Public Etna On Local Machine", func() {
+	ginkgo.It("Create Etna POS Subnet Config & Deploy the Subnet To Etna Local Network On Local Machine", func() {
 		createEtnaSubnetEvmConfig(false, true)
 		deployEtnaSubnetEtnaFlag()
 	})
 
-	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Public Etna using cluster flag", func() {
+	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Etna Local Network using cluster flag", func() {
 		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
 		createEtnaSubnetEvmConfig(true, false)

@@ -23,9 +23,8 @@ const (
 )
 
 const (
-	etnaDevnetFlag = "--etna-devnet"
-	PoSString      = "proof-of-stake"
-	PoAString      = "proof-of-authority"
+	PoSString = "proof-of-stake"
+	PoAString = "proof-of-authority"
 )
 
 func CreateEtnaSubnetEvmConfig(
@@ -88,7 +87,7 @@ func CreateLocalEtnaDevnetNode(
 		"local",
 		"start",
 		clusterName,
-		etnaDevnetFlag,
+		"--local",
 		"--num-nodes",
 		fmt.Sprintf("%d", numNodes),
 		"--"+constants.SkipUpdateFlag,
@@ -343,7 +342,7 @@ func DeployEtnaLocalBlockchain(
 		"deploy",
 		blockchainName,
 		"--skip-relayer",
-		"--etna-devnet",
+		"--local",
 		"--ewoq",
 		"--use-local-machine",
 		"--"+constants.SkipUpdateFlag,
