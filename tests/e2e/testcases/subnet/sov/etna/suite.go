@@ -379,7 +379,8 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 
 	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Etna Local Network using cluster flag", func() {
-		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
+		_ = commands.StartNetwork()
+		_, err := commands.CreateLocalEtnaNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
 		createEtnaSubnetEvmConfig(true, false)
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)
@@ -390,7 +391,8 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 
 	ginkgo.It("Mix and match network and cluster flags test 1", func() {
-		_, err := commands.CreateLocalEtnaDevnetNode(testLocalNodeName, 1)
+		_ = commands.StartNetwork()
+		_, err := commands.CreateLocalEtnaNode(testLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
 		createEtnaSubnetEvmConfig(true, false)
 		deployEtnaSubnetClusterFlagConvertOnly(testLocalNodeName)

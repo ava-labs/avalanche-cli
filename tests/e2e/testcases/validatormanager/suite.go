@@ -190,7 +190,8 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		gomega.Expect(err).Should(gomega.BeNil())
 		evm.WaitForChainID(client)
 
-		network := models.NewNetworkFromCluster(models.NewEtnaDevnetNetwork(), testLocalNodeName)
+		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), testLocalNodeName)
+
 		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers([]string{"http://127.0.0.1:9650"})
 		gomega.Expect(err).Should(gomega.BeNil())
 

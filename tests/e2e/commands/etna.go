@@ -77,7 +77,7 @@ func CreateEtnaSubnetEvmConfig(
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func CreateLocalEtnaDevnetNode(
+func CreateLocalEtnaNode(
 	clusterName string,
 	numNodes int,
 ) (string, error) {

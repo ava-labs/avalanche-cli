@@ -32,8 +32,14 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 			commands.PoS,
 		)
 	})
-	ginkgo.It("Can create a local node connected to Etna Devnet", func() {
-		output, err := commands.CreateLocalEtnaDevnetNode(
+
+	ginkgo.It("Can create an Etna Local Network", func() {
+		output := commands.StartNetwork()
+		fmt.Println(output)
+	})
+
+	ginkgo.It("Can create a local node connected to Etna Local Network", func() {
+		output, err := commands.CreateLocalEtnaNode(
 			testLocalNodeName,
 			7,
 		)
@@ -153,5 +159,9 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		output, err := commands.DestroyLocalNode(testLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
+	})
+
+	ginkgo.It("Can destroy Etna Local Network", func() {
+		commands.CleanNetwork()
 	})
 })
