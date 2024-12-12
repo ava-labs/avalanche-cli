@@ -362,16 +362,16 @@ func StartLocalNode(
 				return err
 			}
 			rootDataDir := status.ClusterInfo.RootDataDir
-			networkJsonPath := filepath.Join(rootDataDir, "network.json")
-			bs, err := os.ReadFile(networkJsonPath)
+			networkJSONPath := filepath.Join(rootDataDir, "network.json")
+			bs, err := os.ReadFile(networkJSONPath)
 			if err != nil {
-				return fmt.Errorf("could not read local network config file %s: %w", networkJsonPath, err)
+				return fmt.Errorf("could not read local network config file %s: %w", networkJSONPath, err)
 			}
-			var networkJson anrnetwork.Config
-			if err := json.Unmarshal(bs, &networkJson); err != nil {
+			var networkJSON anrnetwork.Config
+			if err := json.Unmarshal(bs, &networkJSON); err != nil {
 				return err
 			}
-			for id, ip := range networkJson.BeaconConfig {
+			for id, ip := range networkJSON.BeaconConfig {
 				anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
 				anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
 			}
@@ -380,7 +380,7 @@ func StartLocalNode(
 			if err != nil {
 				return fmt.Errorf("could not create local network genesis file: %w", err)
 			}
-			if _, err := genesisFile.Write([]byte(networkJson.Genesis)); err != nil {
+			if _, err := genesisFile.Write([]byte(networkJSON.Genesis)); err != nil {
 				return fmt.Errorf("could not write local network genesis file: %w", err)
 			}
 			if err := genesisFile.Close(); err != nil {
@@ -392,7 +392,7 @@ func StartLocalNode(
 			if err != nil {
 				return fmt.Errorf("could not create local network upgrade file: %w", err)
 			}
-			if _, err := upgradeFile.Write([]byte(networkJson.Upgrade)); err != nil {
+			if _, err := upgradeFile.Write([]byte(networkJSON.Upgrade)); err != nil {
 				return fmt.Errorf("could not write local network upgrade file: %w", err)
 			}
 			anrSettings.UpgradePath = upgradeFile.Name()
@@ -830,7 +830,6 @@ func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
 }
 
 func LocalStatus(app *application.Avalanche, clusterName string, blockchainName string) error {
-	DestroyCurrentIfLocalNetwork(app)
 	clustersToList := make([]string, 0)
 	if clusterName != "" {
 		if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
