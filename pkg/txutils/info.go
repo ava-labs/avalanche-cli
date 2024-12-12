@@ -114,6 +114,7 @@ func GetOwners(network models.Network, subnetID ids.ID) (bool, []string, uint32,
 
 func GetValidatorPChainBalanceBootstrapValidator(network models.Network, subnetID ids.ID, index uint32) (uint64, error) {
 	validationID := subnetID.Append(index)
+	fmt.Printf("obtained index %s \n", index)
 	return GetValidatorPChainBalanceValidationID(network, validationID)
 }
 
@@ -124,5 +125,6 @@ func GetValidatorPChainBalanceValidationID(network models.Network, validationID 
 	if err != nil {
 		return 0, err
 	}
+	fmt.Printf("validator %s \n", validatorResponse.NodeID)
 	return validatorResponse.Balance, nil
 }

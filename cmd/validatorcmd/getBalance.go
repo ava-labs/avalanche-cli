@@ -61,10 +61,6 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	isBootstrapValidator, err := app.Prompt.CaptureYesNo("Is the validator a bootstrap validator?")
-	if err != nil {
-		return err
-	}
 	var balance uint64
 	if validationIDStr != "" {
 		validationID, err := ids.FromString(validationIDStr)
@@ -75,8 +71,14 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
+		ux.Logger.PrintToUser("  Validator Balance: %.5f", float64(balance)/float64(units.Avax))
+		return nil
 	}
 
+	isBootstrapValidator, err := app.Prompt.CaptureYesNo("Is the validator a bootstrap validator?")
+	if err != nil {
+		return err
+	}
 	if isBootstrapValidator {
 		if l1 == "" {
 			return fmt.Errorf("--l1 flag is required to get bootstrap validator balance")
