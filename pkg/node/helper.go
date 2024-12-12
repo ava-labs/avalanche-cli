@@ -329,10 +329,11 @@ func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoV
 	if avagoVersion.UseCustomAvalanchegoVersion != "" {
 		return avagoVersion.UseCustomAvalanchegoVersion, nil
 	}
-	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
-	))
+		"",
+	)
 	if err != nil {
 		return "", err
 	}
