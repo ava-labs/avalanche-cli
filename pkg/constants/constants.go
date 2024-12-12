@@ -119,7 +119,7 @@ const (
 	TimeParseLayout = "2006-01-02 15:04:05"
 	MinStakeWeight  = 1
 	// Default balance when we prompt users for bootstrap validators
-	BootstrapValidatorBalanceAVAX = 1
+	BootstrapValidatorBalance = 1000000000
 	// Default weight when we prompt users for bootstrap validators
 	BootstrapValidatorWeight = 100
 	// Default weight when we prompt users for non bootstrap validators
