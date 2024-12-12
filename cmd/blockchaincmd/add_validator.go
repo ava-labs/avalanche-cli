@@ -405,7 +405,7 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
-		balance, err = promptValidatorBalance(availableBalance)
+		balance, err = promptValidatorBalance(availableBalance / units.Avax)
 		if err != nil {
 			return err
 		}

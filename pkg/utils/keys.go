@@ -8,7 +8,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 )
 
@@ -51,5 +50,5 @@ func GetNetworkBalance(addressList []ids.ShortID, networkEndpoint string) (uint6
 	if err != nil {
 		return 0, err
 	}
-	return uint64(bal.Balance) / units.Avax, nil
+	return uint64(bal.Balance), nil
 }

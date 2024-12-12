@@ -124,13 +124,28 @@ func promptBootstrapValidators(
 	changeOwnerAddress string,
 	numBootstrapValidators int,
 	validatorBalance uint64,
+	availableBalance uint64,
 ) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	var err error
 	if numBootstrapValidators == 0 {
+		maxNumValidators := availableBalance / validatorBalance
 		numBootstrapValidators, err = app.Prompt.CaptureInt(
 			"How many bootstrap validators do you want to set up?",
-			prompts.ValidatePositiveInt,
+			func(n int) error {
+				if err := prompts.ValidatePositiveInt(n); err != nil {
+					return err
+				}
+				if n > int(maxNumValidators) {
+					return fmt.Errorf(
+						"given available balance %d, the maximum number of validators with balance %d is %d",
+						availableBalance,
+						validatorBalance,
+						maxNumValidators,
+					)
+				}
+				return nil
+			},
 		)
 	}
 	if err != nil {

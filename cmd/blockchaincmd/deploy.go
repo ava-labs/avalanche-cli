@@ -109,6 +109,7 @@ var (
 	poSMinimumDelegationFee   uint16
 	poSMaximumStakeMultiplier uint8
 	poSWeightToValueFactor    uint64
+	deployBalance             uint64
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
@@ -202,7 +203,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().Uint64Var(
-		&balance,
+		&deployBalance,
 		"balance",
 		constants.BootstrapValidatorBalanceAVAX,
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
@@ -590,6 +591,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
+	if err != nil {
+		return err
+	}
+
 	if sidecar.Sovereign {
 		if changeOwnerAddress == "" {
 			// use provided key as change owner unless already set
@@ -654,6 +660,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
 			if useLocalMachine && clusterNameFlagValue == "" {
+				requiredBalance := deployBalance * uint64(numLocalNodes) * units.Avax
+				if availableBalance < requiredBalance {
+					return fmt.Errorf(
+						"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
+						numLocalNodes,
+						requiredBalance,
+						availableBalance,
+					)
+				}
 				// stop local avalanchego process so that we can generate new local cluster
 				_ = node.StopLocalNode(app)
 				anrSettings := node.ANRSettings{}
@@ -743,7 +758,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
 					NodeID:               nodeID.String(),
 					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              balance * units.Avax,
+					Balance:              deployBalance * units.Avax,
 					BLSPublicKey:         publicKey,
 					BLSProofOfPossession: pop,
 					ChangeOwnerAddr:      changeOwnerAddress,
@@ -761,7 +776,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				network,
 				changeOwnerAddress,
 				numBootstrapValidators,
-				balance*units.Avax,
+				deployBalance*units.Avax,
+				availableBalance,
 			)
 			if err != nil {
 				return err
@@ -774,6 +790,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 	if subnetOnly && subnetIDStr != "" {
 		return errMutuallyExlusiveSubnetFlags
+	}
+
+	requiredBalance := deployBalance * uint64(len(bootstrapValidators)) * units.Avax
+	if availableBalance < requiredBalance {
+		return fmt.Errorf(
+			"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
+			len(bootstrapValidators),
+			requiredBalance,
+			availableBalance,
+		)
 	}
 
 	network.HandlePublicNetworkSimulation()
@@ -1210,7 +1236,7 @@ func getClusterBootstrapValidators(clusterName string, network models.Network) (
 		subnetValidators = append(subnetValidators, models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              balance * units.Avax,
+			Balance:              deployBalance * units.Avax,
 			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
 			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
 			ChangeOwnerAddr:      changeAddr,
