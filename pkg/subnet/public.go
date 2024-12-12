@@ -919,6 +919,38 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return d.Commit(&tx, true)
 }
 
+func (d *PublicDeployer) increaseValidatorPChainBalance(controlKeys []string, threshold uint32, wallet *primary.Wallet) (ids.ID, error) {
+	addrs, err := address.ParseToIDs(controlKeys)
+	if err != nil {
+		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
+	}
+	owners := &secp256k1fx.OutputOwners{
+		Addrs:     addrs,
+		Threshold: threshold,
+		Locktime:  0,
+	}
+	if d.kc.UsesLedger {
+		showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "CreateSubnet transaction")
+	}
+	unsignedTx, err := wallet.P().Builder().NewIncreaseL1ValidatorBalanceTx(
+		owners,
+	)
+	if unsignedTx != nil {
+		if err := printFee("CreateSubnetTx", wallet, unsignedTx); err != nil {
+			return ids.Empty, err
+		}
+	}
+	if err != nil {
+		return ids.Empty, fmt.Errorf("error building tx: %w", err)
+	}
+	tx := txs.Tx{Unsigned: unsignedTx}
+	if err := wallet.P().Signer().Sign(context.Background(), &tx); err != nil {
+		return ids.Empty, fmt.Errorf("error signing tx: %w", err)
+	}
+
+	return d.Commit(&tx, true)
+}
+
 func printFee(kind string, wallet *primary.Wallet, unsignedTx txs.UnsignedTx) error {
 	if showFees {
 		var pFeeCalculator avagofee.Calculator
@@ -1082,4 +1114,21 @@ func showLedgerSignatureMsg(
 	if usingLedger {
 		ux.Logger.PrintToUser("*** Please sign %s on the ledger device %s***", toSignDesc, multipleTimesMsg)
 	}
+}
+
+func (d *PublicDeployer) IncreaseValidatorPChainBalance(
+	controlKeys []string,
+	threshold uint32,
+) (ids.ID, error) {
+	wallet, err := d.loadWallet()
+	if err != nil {
+		return ids.Empty, err
+	}
+	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
+	if err != nil {
+		return ids.Empty, err
+	}
+	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
+	time.Sleep(2 * time.Second)
+	return subnetID, nil
 }

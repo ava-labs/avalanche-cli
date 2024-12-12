@@ -14,15 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var globalNetworkFlags networkoptions.NetworkFlags
-
-var (
-	l1              string
-	subnetID        string
-	validationIDStr string
-)
-
-var getBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
+var increaseBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Devnet,
 	networkoptions.EtnaDevnet,
@@ -30,24 +22,23 @@ var getBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Mainnet,
 }
 
-func NewGetBalanceCmd() *cobra.Command {
+func NewIncreaseBalanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "increaseBalance",
-		Short: "Gets current balance of validator on P-Chain",
-		Long: `This command gets the remaining validator P-Chain balance that is available to pay
-P-Chain continuous fee`,
-		RunE: getBalance,
-		Args: cobrautils.ExactArgs(0),
+		Short: "Increase current balance of validator on P-Chain",
+		Long:  `This command increases the validator P-Chain balance`,
+		RunE:  increaseBalance,
+		Args:  cobrautils.ExactArgs(0),
 	}
 
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, increaseBalanceSupportedNetworkOptions)
 	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (to get balance of bootstrap validators only)")
 	cmd.Flags().StringVar(&subnetID, "subnet-id", "", "subnetID of L1 that the node is validating")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validationIDStr of the validator")
 	return cmd
 }
 
-func getBalance(_ *cobra.Command, _ []string) error {
+func increaseBalance(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
