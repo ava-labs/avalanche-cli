@@ -122,7 +122,8 @@ const (
 	MinStakeWeight  = 1
 	// Default balance when we prompt users for bootstrap validators
 	// nAVAX
-	BootstrapValidatorBalance = uint64(0.1 * float64(units.Avax))
+	BootstrapValidatorBalanceNanoAVAX = uint64(BootstrapValidatorBalanceAVAX * float64(units.Avax))
+	BootstrapValidatorBalanceAVAX     = 0.1
 	// Default weight when we prompt users for bootstrap validators
 	BootstrapValidatorWeight = 100
 	// Default weight when we prompt users for non bootstrap validators
