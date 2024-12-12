@@ -120,7 +120,6 @@ func GetValidatorPChainBalanceBootstrapValidator(network models.Network, subnetI
 func GetValidatorPChainBalanceValidationID(network models.Network, validationID ids.ID) (uint64, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
 	ctx := context.Background()
-	validationID, _ = ids.FromString("2vKCTXoueQ9SSWH7KmpMimbD6LQY1HmPuFDqKWJtAuCUjHkH23")
 	validatorResponse, _, err := pClient.GetL1Validator(ctx, validationID)
 	if err != nil {
 		return 0, err

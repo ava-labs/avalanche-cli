@@ -137,7 +137,7 @@ Deprecation notice: use 'avalanche blockchain'`
 
 	// add contract command
 	rootCmd.AddCommand(contractcmd.NewCmd(app))
-	// add validator commmand
+	// add validator command
 	rootCmd.AddCommand(validatorcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)

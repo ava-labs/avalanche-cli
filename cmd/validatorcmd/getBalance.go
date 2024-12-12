@@ -4,6 +4,7 @@ package validatorcmd
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -46,7 +47,7 @@ P-Chain continuous fee`,
 	return cmd
 }
 
-func getBalance(cmd *cobra.Command, _ []string) error {
+func getBalance(_ *cobra.Command, _ []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -67,6 +68,9 @@ func getBalance(cmd *cobra.Command, _ []string) error {
 	var balance uint64
 	if validationIDStr != "" {
 		validationID, err := ids.FromString(validationIDStr)
+		if err != nil {
+			return err
+		}
 		balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
 		if err != nil {
 			return err
@@ -82,7 +86,7 @@ func getBalance(cmd *cobra.Command, _ []string) error {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
 		if !sc.Sovereign {
-			return fmt.Errorf("avalance validator getBalance command is only applicable to sovereign L1s")
+			return fmt.Errorf("avalanche validator getBalance command is only applicable to sovereign L1s")
 		}
 		bootstrapValidators := sc.Networks[network.Name()].BootstrapValidators
 		if len(bootstrapValidators) == 0 {
