@@ -256,13 +256,6 @@ func InstallRelayer(binDir, version string) (string, error) {
 		}
 	}
 	ux.Logger.PrintToUser("Relayer version %s", version)
-	if version == "" || version == "latest" {
-		var err error
-		version, err = GetLatestRelayerReleaseVersion()
-		if err != nil {
-			return "", err
-		}
-	}
 	versionBinDir := filepath.Join(binDir, version)
 	binPath := filepath.Join(versionBinDir, constants.ICMRelayerBin)
 	if utils.IsExecutable(binPath) {
@@ -328,18 +321,37 @@ func getRelayerURL(version string) (string, error) {
 	if goos != "linux" && goos != "darwin" {
 		return "", fmt.Errorf("OS not supported: %s", goos)
 	}
-	splittedVersion := strings.Split(version, "/")
-	if len(splittedVersion) != 2 {
-		return "", fmt.Errorf("invalid relayer version %s", version)
+	component := "icm-relayer"
+	semanticVersion := strings.TrimPrefix(version, component+"/")
+	if semanticVersion != version {
+		return fmt.Sprintf(
+			"https://github.com/%s/%s/releases/download/icm-relayer%%2F%s/icm-relayer_%s_%s_%s.tar.gz",
+			constants.AvaLabsOrg,
+			constants.ICMServicesRepoName,
+			semanticVersion,
+			strings.TrimPrefix(semanticVersion, "v"),
+			goos,
+			goarch,
+		), nil
 	}
-	version = splittedVersion[1]
-	trimmedVersion := strings.TrimPrefix(version, "v")
+	semanticVersion = strings.TrimPrefix(version, component+"-")
+	if semanticVersion != version {
+		return fmt.Sprintf(
+			"https://github.com/%s/%s/releases/download/icm-relayer-%s/icm-relayer_%s_%s_%s.tar.gz",
+			constants.AvaLabsOrg,
+			constants.ICMServicesRepoName,
+			semanticVersion,
+			strings.TrimPrefix(semanticVersion, "v"),
+			goos,
+			goarch,
+		), nil
+	}
 	return fmt.Sprintf(
-		"https://github.com/%s/%s/releases/download/icm-relayer%%2F%s/icm-relayer_%s_%s_%s.tar.gz",
+		"https://github.com/%s/%s/releases/download/%s/icm-relayer_%s_%s_%s.tar.gz",
 		constants.AvaLabsOrg,
 		constants.ICMServicesRepoName,
-		version,
-		trimmedVersion,
+		semanticVersion,
+		strings.TrimPrefix(semanticVersion, "v"),
 		goos,
 		goarch,
 	), nil
@@ -374,6 +386,7 @@ func CreateBaseRelayerConfigIfMissing(
 	storageLocation string,
 	metricsPort uint16,
 	network models.Network,
+	allowPrivateIPs bool,
 ) error {
 	if !utils.FileExists(relayerConfigPath) {
 		return CreateBaseRelayerConfig(
@@ -382,6 +395,7 @@ func CreateBaseRelayerConfigIfMissing(
 			storageLocation,
 			metricsPort,
 			network,
+			allowPrivateIPs,
 		)
 	}
 	return nil
@@ -393,6 +407,7 @@ func CreateBaseRelayerConfig(
 	storageLocation string,
 	metricsPort uint16,
 	network models.Network,
+	allowPrivateIPs bool,
 ) error {
 	awmRelayerConfig := &config.Config{
 		LogLevel: logLevel,
@@ -411,6 +426,7 @@ func CreateBaseRelayerConfig(
 		MetricsPort:            metricsPort,
 		DBWriteIntervalSeconds: defaultDBWriteIntervalSeconds,
 		SignatureCacheSize:     defaultSignatureCacheSize,
+		AllowPrivateIPs:        allowPrivateIPs,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }

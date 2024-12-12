@@ -37,7 +37,7 @@ type Downloader interface {
 	Download(url string) ([]byte, error)
 	GetLatestReleaseVersion(org, repo, component string) (string, error)
 	GetLatestPreReleaseVersion(org, repo, component string) (string, error)
-	GetAllReleasesForRepo(org, repo string, kind ReleaseKind) ([]string, error)
+	GetAllReleasesForRepo(org, repo, component string, kind ReleaseKind) ([]string, error)
 }
 
 type downloader struct{}
@@ -61,7 +61,7 @@ func (downloader) Download(url string) ([]byte, error) {
 
 // GetLatestPreReleaseVersion returns the latest available pre release or release version from github
 func (d downloader) GetLatestPreReleaseVersion(org, repo, component string) (string, error) {
-	releases, err := d.GetAllReleasesForRepo(org, repo, All)
+	releases, err := d.GetAllReleasesForRepo(org, repo, component, All)
 	if err != nil {
 		return "", err
 	}
@@ -84,7 +84,7 @@ func (d downloader) GetLatestReleaseVersion(org, repo, component string) (string
 	if component == "" {
 		return d.getLatestReleaseVersion(org, repo)
 	}
-	releases, err := d.GetAllReleasesForRepo(org, repo, Release)
+	releases, err := d.GetAllReleasesForRepo(org, repo, component, Release)
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +99,7 @@ func (d downloader) GetLatestReleaseVersion(org, repo, component string) (string
 	return "", fmt.Errorf("no releases found for org %s repo %s component %s", org, repo, component)
 }
 
-func (d downloader) GetAllReleasesForRepo(org, repo string, kind ReleaseKind) ([]string, error) {
+func (d downloader) GetAllReleasesForRepo(org, repo, component string, kind ReleaseKind) ([]string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", org, repo)
 	token := os.Getenv(constants.GithubAPITokenEnvVarName)
 	body, err := d.doAPIRequest(url, token)
@@ -134,7 +134,7 @@ func (d downloader) GetAllReleasesForRepo(org, repo string, kind ReleaseKind) ([
 			continue
 		}
 		version := r[githubVersionTagName].(string)
-		if !utils.IsValidSemanticVersion(version) {
+		if !utils.IsValidSemanticVersion(version, component) {
 			// will skip ICM services version format errors until format is firmly defined
 			if repo == constants.ICMServicesRepoName {
 				continue
@@ -188,7 +188,7 @@ func (d downloader) getLatestReleaseVersion(org, repo string) (string, error) {
 	}
 
 	version := jsonStr[githubVersionTagName].(string)
-	if !utils.IsValidSemanticVersion(version) {
+	if !utils.IsValidSemanticVersion(version, "") {
 		return "", fmt.Errorf("invalid version string: %s", version)
 	}
 
