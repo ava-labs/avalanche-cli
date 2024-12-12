@@ -335,20 +335,11 @@ func StartLocalNode(
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		}
 		if network.Kind == models.Local {
-			cli, err := binutils.NewGRPCClient()
+			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
-				return err
+				return fmt.Errorf("failure trying to connect to local network: %s", err)
 			}
-			if isBootstrapped, err := localnet.IsBootstrapped(ctx, cli); err != nil {
-				return err
-			} else if !isBootstrapped {
-				return fmt.Errorf("no local network is running")
-			}
-			status, err := cli.Status(ctx)
-			if err != nil {
-				return err
-			}
-			rootDataDir := status.ClusterInfo.RootDataDir
+			rootDataDir := clusterInfo.RootDataDir
 			networkJSONPath := filepath.Join(rootDataDir, "network.json")
 			bs, err := os.ReadFile(networkJSONPath)
 			if err != nil {
