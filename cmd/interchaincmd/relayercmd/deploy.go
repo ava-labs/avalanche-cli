@@ -37,6 +37,7 @@ type DeployFlags struct {
 	BlockchainFundingKey string
 	CChainFundingKey     string
 	BinPath              string
+	AllowPrivateIPs      bool
 }
 
 var (
@@ -62,7 +63,12 @@ func newDeployCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	cmd.Flags().StringVar(&deployFlags.BinPath, "bin-path", "", "use the given relayer binary")
-	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
+	cmd.Flags().StringVar(
+		&deployFlags.Version,
+		"version",
+		constants.LatestPreReleaseVersionTag,
+		"version to deploy",
+	)
 	cmd.Flags().StringVar(&deployFlags.LogLevel, "log-level", "", "log level to use for relayer logs")
 	cmd.Flags().StringSliceVar(&deployFlags.BlockchainsToRelay, "blockchains", nil, "blockchains to relay as source and destination")
 	cmd.Flags().BoolVar(&deployFlags.RelayCChain, "cchain", false, "relay C-Chain as source and destination")
@@ -70,6 +76,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().Float64Var(&deployFlags.Amount, "amount", 0, "automatically fund fee payments with the given amount")
 	cmd.Flags().StringVar(&deployFlags.BlockchainFundingKey, "blockchain-funding-key", "", "key to be used to fund relayer account on all l1s")
 	cmd.Flags().StringVar(&deployFlags.CChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
+	cmd.Flags().BoolVar(&deployFlags.AllowPrivateIPs, "allow-private-ips", true, "allow relayer to connec to private ips")
 	return cmd
 }
 
@@ -432,6 +439,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		storageDir,
 		uint16(metricsPort),
 		network,
+		flags.AllowPrivateIPs,
 	); err != nil {
 		return err
 	}
