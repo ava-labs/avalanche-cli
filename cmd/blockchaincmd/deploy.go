@@ -792,14 +792,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return errMutuallyExlusiveSubnetFlags
 	}
 
-	requiredBalance := deployBalance * uint64(len(bootstrapValidators)) * units.Avax
-	if availableBalance < requiredBalance {
-		return fmt.Errorf(
-			"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
-			len(bootstrapValidators),
-			requiredBalance,
-			availableBalance,
-		)
+	if sidecar.Sovereign {
+		requiredBalance := deployBalance * uint64(len(bootstrapValidators)) * units.Avax
+		if availableBalance < requiredBalance {
+			return fmt.Errorf(
+				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
+				len(bootstrapValidators),
+				requiredBalance,
+				availableBalance,
+			)
+		}
 	}
 
 	network.HandlePublicNetworkSimulation()
