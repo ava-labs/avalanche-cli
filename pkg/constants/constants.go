@@ -4,6 +4,8 @@ package constants
 
 import (
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/units"
 )
 
 type HTTPAccess bool
@@ -120,7 +122,7 @@ const (
 	MinStakeWeight  = 1
 	// Default balance when we prompt users for bootstrap validators
 	// nAVAX
-	BootstrapValidatorBalance = 1000000000
+	BootstrapValidatorBalance = uint64(0.1 * float64(units.Avax))
 	// Default weight when we prompt users for bootstrap validators
 	BootstrapValidatorWeight = 100
 	// Default weight when we prompt users for non bootstrap validators
