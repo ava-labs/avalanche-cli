@@ -5,68 +5,435 @@ package subnet
 
 import (
 	"fmt"
-	"os"
-	"regexp"
-	"strings"
-	"time"
-
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	cliutils "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
+	"os"
+	"os/exec"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 const (
-	subnetName     = "e2eSubnetTest"
-	controlKeys    = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	keyName        = "ewoq"
-	ledger1Seed    = "ledger1"
-	ledger2Seed    = "ledger2"
-	ledger3Seed    = "ledger3"
-	txFnamePrefix  = "avalanche-cli-tx-"
-	mainnetChainID = 123456
+	CLIBinary         = "./bin/avalanche"
+	subnetName        = "e2eSubnetTest"
+	keyName           = "ewoq"
+	ewoqEVMAddress    = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
+	ewoqPChainAddress = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
+	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
-func deploySubnetToFujiSOV() (string, map[string]utils.NodeInfo) {
-	// deploy
-	s := commands.SimulateFujiDeploySOV(subnetName, keyName, controlKeys)
-	subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
+func createSubnetEvmConfig(poa, pos bool) {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
-	// add validators to subnet
-	nodeInfos, err := utils.GetNodesInfo()
-	gomega.Expect(err).Should(gomega.BeNil())
-	for _, nodeInfo := range nodeInfos {
-		start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-		_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	cmdArgs := []string{
+		"blockchain",
+		"create",
+		subnetName,
+		"--evm",
+		"--validator-manager-owner",
+		ewoqEVMAddress,
+		"--proxy-contract-owner",
+		ewoqEVMAddress,
+		"--production-defaults",
+		"--evm-chain-id=99999",
+		"--evm-token=TOK",
+		"--teleporter=false",
+		"--" + constants.SkipUpdateFlag,
 	}
-	// join to copy vm binary and update config file
-	for _, nodeInfo := range nodeInfos {
-		_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
+	if poa {
+		cmdArgs = append(cmdArgs, "--proof-of-authority")
+	} else if pos {
+		cmdArgs = append(cmdArgs, "--proof-of-stake")
 	}
-	// get and check whitelisted subnets from config file
-	var whitelistedSubnets string
-	for _, nodeInfo := range nodeInfos {
-		whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
-		gomega.Expect(err).Should(gomega.BeNil())
-		whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
-		gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
+
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	fmt.Printf("full command %s \n", cmd.String())
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
 	}
-	// update nodes whitelisted subnets
-	err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
 	gomega.Expect(err).Should(gomega.BeNil())
-	// wait for subnet walidators to be up
-	err = utils.WaitSubnetValidators(subnetID, nodeInfos)
+
+	// Config should now exist
+	exists, err = utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
-	return subnetID, nodeInfos
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+func createSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	cmdArgs := []string{
+		"blockchain",
+		"create",
+		subnetName,
+		"--evm",
+		"--validator-manager-owner",
+		ewoqEVMAddress,
+		"--production-defaults",
+		"--evm-chain-id=99999",
+		"--evm-token=TOK",
+		"--teleporter=false",
+		"--" + constants.SkipUpdateFlag,
+	}
+	if poa {
+		cmdArgs = append(cmdArgs, "--proof-of-authority")
+	} else if pos {
+		cmdArgs = append(cmdArgs, "--proof-of-stake")
+	}
+
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Config should now exist
+	exists, err = utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+func createSubnetEvmConfigValidatorManagerFlagKeyname(poa, pos bool) {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	cmdArgs := []string{
+		"blockchain",
+		"create",
+		subnetName,
+		"--evm",
+		"--validator-manager-owner",
+		"ewoq",
+		"--proxy-contract-owner",
+		"ewoq",
+		"--production-defaults",
+		"--evm-chain-id=99999",
+		"--evm-token=TOK",
+		"--teleporter=false",
+		"--" + constants.SkipUpdateFlag,
+	}
+	if poa {
+		cmdArgs = append(cmdArgs, "--proof-of-authority")
+	} else if pos {
+		cmdArgs = append(cmdArgs, "--proof-of-stake")
+	}
+
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Config should now exist
+	exists, err = utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+}
+
+func createSubnetEvmConfigValidatorManagerFlagPChain(poa, pos bool) {
+	// Check config does not already exist
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	cmdArgs := []string{
+		"blockchain",
+		"create",
+		subnetName,
+		"--evm",
+		"--validator-manager-owner",
+		"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+		"--proxy-contract-owner",
+		"P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p",
+		"--production-defaults",
+		"--evm-chain-id=99999",
+		"--evm-token=TOK",
+		"--teleporter=false",
+		"--" + constants.SkipUpdateFlag,
+	}
+	if poa {
+		cmdArgs = append(cmdArgs, "--proof-of-authority")
+	} else if pos {
+		cmdArgs = append(cmdArgs, "--proof-of-stake")
+	}
+
+	cmd := exec.Command(CLIBinary, cmdArgs...)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).ShouldNot(gomega.BeNil())
+}
+
+func destroyLocalNode() {
+	_, err := os.Stat(testLocalNodeName)
+	if os.IsNotExist(err) {
+		return
+	}
+	cmd := exec.Command(
+		CLIBinary,
+		"node",
+		"local",
+		"destroy",
+		testLocalNodeName,
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+}
+
+func deploySubnetFujiFlag() {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	err = os.Setenv(constants.SimulatePublicNetwork, "true")
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Deploy subnet on fuji with local machine as bootstrap validator
+	cmd := exec.Command(
+		CLIBinary,
+		"blockchain",
+		"deploy",
+		subnetName,
+		"--fuji",
+		"--num-local-nodes=1",
+		"--key=ewoq",
+		"--change-owner-address",
+		ewoqPChainAddress,
+		"--"+constants.SkipUpdateFlag,
+	)
+	fmt.Printf("full command %s \n", cmd.String())
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	err = os.Unsetenv(constants.SimulatePublicNetwork)
+	gomega.Expect(err).Should(gomega.BeNil())
+
+}
+
+func deploySubnetFujiFlagConvertOnly() {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// Deploy subnet on etna devnet with local machine as bootstrap validator
+	cmd := exec.Command(
+		CLIBinary,
+		"blockchain",
+		"deploy",
+		subnetName,
+		"--fuji",
+		"--num-local-nodes=1",
+		"--convert-only",
+		"--ewoq",
+		"--change-owner-address",
+		ewoqPChainAddress,
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+}
+
+func deployFujiSubnetClusterFlagConvertOnly(clusterName string) {
+	// Check config exists
+	exists, err := utils.SubnetConfigExists(subnetName)
+	gomega.Expect(err).Should(gomega.BeNil())
+	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// enable simulation of public network execution paths on a local network
+	err = os.Setenv(constants.SimulatePublicNetwork, "true")
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// Deploy subnet on fuji with local machine as bootstrap validator
+	cmd := exec.Command(
+		CLIBinary,
+		"blockchain",
+		"deploy",
+		subnetName,
+		fmt.Sprintf("--cluster=%s", clusterName),
+		"--convert-only",
+		"--ewoq",
+		"--change-owner-address",
+		ewoqPChainAddress,
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	fmt.Println(string(output))
+	if err != nil {
+		fmt.Println(cmd.String())
+		utils.PrintStdErr(err)
+	}
+
+	gomega.Expect(err).Should(gomega.BeNil())
+
+	// disable simulation of public network execution paths on a local network
+	err = os.Unsetenv(constants.SimulatePublicNetwork)
+	gomega.Expect(err).Should(gomega.BeNil())
+}
+
+func initValidatorManagerClusterFlag(
+	subnetName string,
+	clusterName string,
+) error {
+	cmd := exec.Command(
+		CLIBinary,
+		"contract",
+		"initValidatorManager",
+		subnetName,
+		"--cluster",
+		clusterName,
+		"--genesis-key",
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return err
+}
+
+func initValidatorManagerFujiFlag(
+	subnetName string,
+) (string, error) {
+	cmd := exec.Command(
+		CLIBinary,
+		"contract",
+		"initValidatorManager",
+		subnetName,
+		"--fuji",
+		"--genesis-key",
+		"--"+constants.SkipUpdateFlag,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
 }
 
 var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
+	//ginkgo.BeforeEach(func() {
+	//	// key
+	//	_ = utils.DeleteKey(keyName)
+	//	output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
+	//	if err != nil {
+	//		fmt.Println(output)
+	//		utils.PrintStdErr(err)
+	//	}
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	// subnet config
+	//	_ = utils.DeleteConfigs(subnetName)
+	//	destroyLocalNode()
+	//})
+	//
+	//ginkgo.AfterEach(func() {
+	//	destroyLocalNode()
+	//	commands.DeleteSubnetConfig(subnetName)
+	//	err := utils.DeleteKey(keyName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	commands.CleanNetwork()
+	//})
+	//
+	//ginkgo.It("Test Create POA Subnet Config With Key Name for Validator Manager Flag", func() {
+	//	createSubnetEvmConfigValidatorManagerFlagKeyname(true, false)
+	//})
+	//
+	//ginkgo.It("Test Create POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
+	//	createSubnetEvmConfigValidatorManagerFlagPChain(true, false)
+	//})
+	//
+	//ginkgo.It("Test Create POA Subnet Config Without Proxy Owner Flag", func() {
+	//	createSubnetEvmConfigWithoutProxyOwner(true, false)
+	//})
+	//
+	//ginkgo.It("Create POA Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
+	//	createSubnetEvmConfig(true, false)
+	//	deploySubnetFujiFlag()
+	//})
+	//
+	//ginkgo.It("Create POS Subnet Config & Deploy the Subnet To Fuji On Local Machine", func() {
+	//	createSubnetEvmConfig(false, true)
+	//	deploySubnetFujiFlag()
+	//})
+	//
+	//ginkgo.It("Start Local Node on Fuji & Deploy the Subnet To Fuji using cluster flag", func() {
+	//	_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	createSubnetEvmConfig(true, false)
+	//	deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
+	//	_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//})
+	//
+	//ginkgo.It("Mix and match network and cluster flags test 1", func() {
+	//	_, err := commands.CreateLocalFujiNode(testLocalNodeName, 1)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	createSubnetEvmConfig(true, false)
+	//	deployFujiSubnetClusterFlagConvertOnly(testLocalNodeName)
+	//	_, err = commands.TrackLocalSubnet(testLocalNodeName, subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	_, err = initValidatorManagerFujiFlag(subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//})
+	//ginkgo.It("Mix and match network and cluster flags test 2", func() {
+	//	createSubnetEvmConfig(true, false)
+	//	deploySubnetFujiFlagConvertOnly()
+	//	_, err := commands.TrackLocalSubnet(testLocalNodeName, subnetName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	err = initValidatorManagerClusterFlag(subnetName, testLocalNodeName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//})
+
 	ginkgo.BeforeEach(func() {
 		// key
 		_ = utils.DeleteKey(keyName)
@@ -78,339 +445,21 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
 		_ = utils.DeleteConfigs(subnetName)
-		_, avagoVersion := commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
+		_, avagoVersion := commands.CreateSubnetEvmConfigSOVNew(subnetName, utils.SubnetEvmGenesisPath)
 
 		// local network
 		commands.StartNetworkWithVersion(avagoVersion)
 	})
 
-	ginkgo.AfterEach(func() {
-		commands.DeleteSubnetConfig(subnetName)
-		err := utils.DeleteKey(keyName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CleanNetwork()
+	//ginkgo.AfterEach(func() {
+	//	commands.DeleteSubnetConfig(subnetName)
+	//	err := utils.DeleteKey(keyName)
+	//	gomega.Expect(err).Should(gomega.BeNil())
+	//	commands.CleanNetwork()
+	//})
+
+	ginkgo.It("deploy subnet to fuji sov", func() {
+		deploySubnetFujiFlag()
 	})
 
-	ginkgo.It("deploy subnet to fuji SOV", func() {
-		deploySubnetToFujiSOV()
-	})
-
-	ginkgo.It("deploy subnet to mainnet SOV", func() {
-		var interactionEndCh, ledgerSimEndCh chan struct{}
-		if os.Getenv("LEDGER_SIM") != "" {
-			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(7, ledger1Seed, true)
-		}
-		// fund ledger address
-		genesisParams := genesis.MainnetParams
-		err := utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
-		gomega.Expect(err).Should(gomega.BeNil())
-		fmt.Println()
-		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
-		s := commands.SimulateMainnetDeploySOV(subnetName, 0, false)
-		// deploy
-		subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
-		gomega.Expect(err).Should(gomega.BeNil())
-		// add validators to subnet
-		nodeInfos, err := utils.GetNodesInfo()
-		gomega.Expect(err).Should(gomega.BeNil())
-		nodeIdx := 1
-		for _, nodeInfo := range nodeInfos {
-			fmt.Println(logging.LightRed.Wrap(
-				fmt.Sprintf("ADDING VALIDATOR %d of %d. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING", nodeIdx, len(nodeInfos))))
-			start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-			_ = commands.SimulateMainnetAddValidator(subnetName, nodeInfo.ID, start, "24h", "20")
-			nodeIdx++
-		}
-		if os.Getenv("LEDGER_SIM") != "" {
-			close(interactionEndCh)
-			<-ledgerSimEndCh
-		}
-		fmt.Println(logging.LightBlue.Wrap("EXECUTING NON INTERACTIVE PART OF THE TEST: JOIN/WHITELIST/WAIT/HARDHAT"))
-		// join to copy vm binary and update config file
-		for _, nodeInfo := range nodeInfos {
-			_ = commands.SimulateMainnetJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
-		}
-		// get and check whitelisted subnets from config file
-		var whitelistedSubnets string
-		for _, nodeInfo := range nodeInfos {
-			whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
-			gomega.Expect(err).Should(gomega.BeNil())
-			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
-			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
-		}
-		// update nodes whitelisted subnets
-		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
-		gomega.Expect(err).Should(gomega.BeNil())
-		// wait for subnet walidators to be up
-		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// this is a simulation, so app is probably saving the info in the
-		// `local network` section of the sidecar instead of the `fuji` section...
-		// ...need to manipulate the `fuji` section of the sidecar to contain the subnetID info
-		// so that the `stats` command for `fuji` can find it
-		output := commands.SimulateGetSubnetStatsFuji(subnetName, subnetID)
-		gomega.Expect(output).Should(gomega.Not(gomega.BeNil()))
-		gomega.Expect(output).Should(gomega.ContainSubstring("Current validators"))
-		gomega.Expect(output).Should(gomega.ContainSubstring("NodeID-"))
-	})
-
-	ginkgo.It("deploy subnet with new chain id SOV", func() {
-		subnetMainnetChainID, err := utils.GetSubnetEVMMainneChainID(subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(0)))
-		_ = commands.SimulateMainnetDeploySOV(subnetName, mainnetChainID, true)
-		subnetMainnetChainID, err = utils.GetSubnetEVMMainneChainID(subnetName)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(subnetMainnetChainID).Should(gomega.Equal(uint(mainnetChainID)))
-	})
-
-	ginkgo.It("remove validator fuji SOV", func() {
-		subnetIDStr, nodeInfos := deploySubnetToFujiSOV()
-
-		// pick a validator to remove
-		var validatorToRemove string
-		for _, nodeInfo := range nodeInfos {
-			validatorToRemove = nodeInfo.ID
-			break
-		}
-
-		// confirm current validator set
-		subnetID, err := ids.FromString(subnetIDStr)
-		gomega.Expect(err).Should(gomega.BeNil())
-		validators, err := subnet.GetSubnetValidators(subnetID)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(validators)).Should(gomega.Equal(5))
-
-		// Check that the validatorToRemove is in the subnet validator set
-		var found bool
-		for _, validator := range validators {
-			if validator.NodeID.String() == validatorToRemove {
-				found = true
-				break
-			}
-		}
-		gomega.Expect(found).Should(gomega.BeTrue())
-
-		// remove validator
-		_ = commands.SimulateFujiRemoveValidator(subnetName, keyName, validatorToRemove)
-
-		// confirm current validator set
-		validators, err = subnet.GetSubnetValidators(subnetID)
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(len(validators)).Should(gomega.Equal(4))
-
-		// Check that the validatorToRemove is NOT in the subnet validator set
-		found = false
-		for _, validator := range validators {
-			if validator.NodeID.String() == validatorToRemove {
-				found = true
-				break
-			}
-		}
-		gomega.Expect(found).Should(gomega.BeFalse())
-	})
-
-	ginkgo.It("mainnet multisig deploy SOV", func() {
-		// this is not expected to be executed with real ledgers
-		// as that will complicate too much the test flow
-		gomega.Expect(os.Getenv("LEDGER_SIM")).Should(gomega.Equal("true"), "multisig test not designed for real ledgers: please set env var LEDGER_SIM to true")
-
-		txPath, err := utils.GetTmpFilePath(txFnamePrefix)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// obtain ledger2 addr
-		interactionEndCh, ledgerSimEndCh := utils.StartLedgerSim(0, ledger2Seed, false)
-		ledger2Addr, err := utils.GetLedgerAddress(models.NewLocalNetwork(), 0)
-		gomega.Expect(err).Should(gomega.BeNil())
-		close(interactionEndCh)
-		<-ledgerSimEndCh
-
-		// obtain ledger3 addr
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(0, ledger3Seed, false)
-		ledger3Addr, err := utils.GetLedgerAddress(models.NewLocalNetwork(), 0)
-		gomega.Expect(err).Should(gomega.BeNil())
-		close(interactionEndCh)
-		<-ledgerSimEndCh
-
-		// ledger4 addr
-		// will not be used to sign, only as a extra control key, so no sim is needed to generate it
-		ledger4Addr := "P-custom18g2tekxzt60j3sn8ymjx6qvk96xunhctkyzckt"
-
-		// start the deploy process with ledger1
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(2, ledger1Seed, true)
-
-		// obtain ledger1 addr
-		ledger1Addr, err := utils.GetLedgerAddress(models.NewLocalNetwork(), 0)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// multisig deploy from unfunded ledger1 should not create any subnet/blockchain
-		gomega.Expect(err).Should(gomega.BeNil())
-		s := commands.SimulateMultisigMainnetDeploySOV(
-			subnetName,
-			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
-			[]string{ledger2Addr, ledger3Addr},
-			txPath,
-			true,
-		)
-		toMatch := "(?s).+Not enough funds in the first (?s).+ indices of Ledger(?s).+Error: not enough funds on ledger(?s).+"
-		matched, err := regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// let's fund the ledger
-		genesisParams := genesis.MainnetParams
-		err = utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,
-		// instead signing only its tx fee as it is not a subnet auth key,
-		// and creating the tx file to wait for subnet auths from ledger2 and ledger3
-		s = commands.SimulateMultisigMainnetDeploySOV(
-			subnetName,
-			[]string{ledger2Addr, ledger3Addr, ledger4Addr},
-			[]string{ledger2Addr, ledger3Addr},
-			txPath,
-			false,
-		)
-		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger1Addr + "(?s).+Subnet has been created with ID(?s).+" + //nolint:goconst
-			"0 of 2 required Blockchain Creation signatures have been signed\\. Saving tx to disk to enable remaining signing\\.(?s).+" +
-			"Addresses remaining to sign the tx\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+" //nolint:goconst
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// try to commit before signature is complete (no funded wallet needed for commit)
-		s = commands.TransactionCommit(
-			subnetName,
-			txPath,
-			true,
-		)
-		toMatch = "(?s).*0 of 2 required signatures have been signed\\.(?s).+" +
-			"Addresses remaining to sign the tx\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+" +
-			"(?s).+Error: tx is not fully signed(?s).+" //nolint:goconst
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// try to sign using unauthorized ledger1
-		s = commands.TransactionSignWithLedger(
-			subnetName,
-			txPath,
-			true,
-		)
-		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger1Addr + "(?s).+There are no required subnet auth keys present in the wallet(?s).+" +
-			"Expected one of:\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+Error: no remaining signer address present in wallet.*"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// wait for end of ledger1 simulation
-		close(interactionEndCh)
-		<-ledgerSimEndCh
-
-		// try to commit before signature is complete
-		s = commands.TransactionCommit(
-			subnetName,
-			txPath,
-			true,
-		)
-		toMatch = "(?s).*0 of 2 required signatures have been signed\\.(?s).+" +
-			"Addresses remaining to sign the tx\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+" +
-			"(?s).+Error: tx is not fully signed(?s).+"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// sign using ledger2
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger2Seed, true)
-		s = commands.TransactionSignWithLedger(
-			subnetName,
-			txPath,
-			false,
-		)
-		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger2Addr + "(?s).+1 of 2 required Tx signatures have been signed\\.(?s).+" +
-			"Addresses remaining to sign the tx\\s+" + ledger3Addr + ".*"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// try to sign using ledger2 which already signed
-		s = commands.TransactionSignWithLedger(
-			subnetName,
-			txPath,
-			true,
-		)
-		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger2Addr + "(?s).+There are no required subnet auth keys present in the wallet(?s).+" +
-			"Expected one of:\\s+" + ledger3Addr + "(?s).+Error: no remaining signer address present in wallet.*"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// wait for end of ledger2 simulation
-		close(interactionEndCh)
-		<-ledgerSimEndCh
-
-		// try to commit before signature is complete
-		s = commands.TransactionCommit(
-			subnetName,
-			txPath,
-			true,
-		)
-		toMatch = "(?s).*1 of 2 required signatures have been signed\\.(?s).+" +
-			"Addresses remaining to sign the tx\\s+" + ledger3Addr +
-			"(?s).+Error: tx is not fully signed(?s).+"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// sign with ledger3
-		interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(1, ledger3Seed, true)
-		s = commands.TransactionSignWithLedger(
-			subnetName,
-			txPath,
-			false,
-		)
-		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger3Addr + "(?s).+Tx is fully signed, and ready to be committed(?s).+"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// try to sign using ledger3 which already signedtx is already fully signed"
-		s = commands.TransactionSignWithLedger(
-			subnetName,
-			txPath,
-			true,
-		)
-		toMatch = "(?s).*Tx is fully signed, and ready to be committed(?s).+Error: tx is already fully signed"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// wait for end of ledger3 simulation
-		close(interactionEndCh)
-		<-ledgerSimEndCh
-
-		// commit after complete signature
-		s = commands.TransactionCommit(
-			subnetName,
-			txPath,
-			false,
-		)
-		toMatch = "(?s).+DEPLOYMENT RESULTS(?s).+Blockchain ID(?s).+"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-
-		// try to commit again
-		s = commands.TransactionCommit(
-			subnetName,
-			txPath,
-			true,
-		)
-		toMatch = "(?s).*Error: error issuing tx with ID(?s).+: failed to decode client response: couldn't issue tx: failed to read consumed(?s).+"
-		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
-	})
 })
