@@ -681,22 +681,6 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 	}
 }
 
-func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	platformCli := platformvm.NewClient(network.Endpoint)
-	vs, err := platformCli.GetCurrentValidators(ctx, avagoconstants.PrimaryNetworkID, nil)
-	if err != nil {
-		return 0, err
-	}
-	for _, v := range vs {
-		if v.NodeID == nodeID {
-			return time.Unix(int64(v.EndTime), 0).Sub(startTime), nil
-		}
-	}
-	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
-}
-
 func getBlockchainTimestamp(network models.Network) (time.Time, error) {
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
@@ -782,7 +766,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 	var selectedDuration time.Duration
 	if useDefaultDuration {
 		// avoid setting both globals useDefaultDuration and duration
-		selectedDuration, err = getMaxValidationTime(network, nodeID, start)
+		selectedDuration, err = utils.GetRemainingValidationTime(network.Endpoint, nodeID, avagoconstants.PrimaryNetworkID, start)
 		if err != nil {
 			return time.Time{}, 0, err
 		}
