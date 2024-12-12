@@ -119,7 +119,12 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func promptBootstrapValidators(network models.Network, changeOwnerAddress string, numBootstrapValidators int) ([]models.SubnetValidator, error) {
+func promptBootstrapValidators(
+	network models.Network,
+	changeOwnerAddress string,
+	numBootstrapValidators int,
+	validatorBalance uint64,
+) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	var err error
 	if numBootstrapValidators == 0 {
@@ -173,7 +178,7 @@ func promptBootstrapValidators(network models.Network, changeOwnerAddress string
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              constants.BootstrapValidatorBalance,
+			Balance:              balance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
 			ChangeOwnerAddr:      changeOwnerAddress,

@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/set"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -200,6 +201,12 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
+	cmd.Flags().Uint64Var(
+		&balance,
+		"balance",
+		constants.BootstrapValidatorBalanceAVAX,
+		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
+	)
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 
@@ -736,7 +743,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
 					NodeID:               nodeID.String(),
 					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              constants.BootstrapValidatorBalance,
+					Balance:              balance * units.Avax,
 					BLSPublicKey:         publicKey,
 					BLSProofOfPossession: pop,
 					ChangeOwnerAddr:      changeOwnerAddress,
@@ -750,7 +757,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 
 		default:
-			bootstrapValidators, err = promptBootstrapValidators(network, changeOwnerAddress, numBootstrapValidators)
+			bootstrapValidators, err = promptBootstrapValidators(
+				network,
+				changeOwnerAddress,
+				numBootstrapValidators,
+				balance*units.Avax,
+			)
 			if err != nil {
 				return err
 			}
@@ -1198,7 +1210,7 @@ func getClusterBootstrapValidators(clusterName string, network models.Network) (
 		subnetValidators = append(subnetValidators, models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              constants.BootstrapValidatorBalance,
+			Balance:              balance * units.Avax,
 			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
 			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
 			ChangeOwnerAddr:      changeAddr,
