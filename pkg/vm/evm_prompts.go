@@ -963,6 +963,7 @@ func promptUserForVMVersion(
 	versions, err := app.Downloader.GetAllReleasesForRepo(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
+		"",
 		application.All,
 	)
 	if err != nil {

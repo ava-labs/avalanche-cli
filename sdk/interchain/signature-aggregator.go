@@ -66,8 +66,8 @@ func createAppRequestNetwork(
 			InfoAPI: &apiConfig.APIConfig{
 				BaseURL: network.Endpoint,
 			},
+			AllowPrivateIPs: allowPrivatePeers,
 		},
-		allowPrivatePeers,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer network: %w", err)

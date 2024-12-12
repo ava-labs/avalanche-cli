@@ -987,6 +987,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		app.GetICMRelayerServiceStorageDir(storageBasePath),
 		constants.RemoteICMRelayerMetricsPort,
 		network,
+		true,
 	); err != nil {
 		return err
 	}
