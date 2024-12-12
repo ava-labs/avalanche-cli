@@ -178,7 +178,7 @@ func promptBootstrapValidators(
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              balance,
+			Balance:              validatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
 			ChangeOwnerAddr:      changeOwnerAddress,
