@@ -41,7 +41,7 @@ func CreateEtnaSubnetEvmConfig(
 	rewardBasisPoints := ""
 	subnetManagementStr := PoAString
 	if subnetManagementType == PoS {
-		rewardBasisPoints = "--reward-basis-points=100"
+		rewardBasisPoints = "--reward-basis-points=1000000000"
 		subnetManagementStr = PoSString
 	}
 	// Create config
@@ -64,6 +64,7 @@ func CreateEtnaSubnetEvmConfig(
 	if rewardBasisPoints != "" {
 		cmd.Args = append(cmd.Args, rewardBasisPoints)
 	}
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
@@ -232,6 +233,7 @@ func AddEtnaSubnetValidatorToCluster(
 	nodeEndpoint string,
 	ewoqPChainAddress string,
 	balance int,
+	stakeAmount int,
 	createLocalValidator bool,
 ) (string, error) {
 	cmd := exec.Command(
@@ -247,7 +249,7 @@ func AddEtnaSubnetValidatorToCluster(
 		"--disable-owner",
 		ewoqPChainAddress,
 		"--stake-amount",
-		"2",
+		strconv.Itoa(stakeAmount),
 		"--delegation-fee",
 		"100",
 		"--staking-period",
@@ -281,6 +283,7 @@ func RemoveEtnaSubnetValidatorFromCluster(
 	subnetName string,
 	nodeEndpoint string,
 	keyName string,
+	uptimeSec uint64,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -296,6 +299,9 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		keyName,
 		"--key",
 		keyName,
+		"--uptime",
+		strconv.Itoa(int(uptimeSec)),
+		"--force",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
