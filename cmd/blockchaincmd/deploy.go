@@ -925,7 +925,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("")
-
+		for index, avagoValidator := range avaGoBootstrapValidators {
+			for bootstrapValidatorIndex, validator := range bootstrapValidators {
+				avagoValidatorNodeID, err := ids.ToNodeID(avagoValidator.NodeID)
+				if err != nil {
+					return err
+				}
+				if validator.NodeID == avagoValidatorNodeID.String() {
+					validationID := subnetID.Append(uint32(index))
+					bootstrapValidators[bootstrapValidatorIndex].ValidationID = validationID.String()
+				}
+			}
+		}
 		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,

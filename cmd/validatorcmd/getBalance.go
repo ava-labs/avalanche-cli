@@ -104,8 +104,11 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		validatorIndex := bootstrapValidatorsToIndexMap[chosenValidator]
-		balance, err = txutils.GetValidatorPChainBalanceBootstrapValidator(network, sc.Networks[network.Name()].SubnetID, uint32(validatorIndex))
+		validationID, err := ids.FromString(bootstrapValidators[bootstrapValidatorsToIndexMap[chosenValidator]].ValidationID)
+		if err != nil {
+			return err
+		}
+		balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
 		if err != nil {
 			return err
 		}
