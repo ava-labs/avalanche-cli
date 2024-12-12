@@ -409,9 +409,10 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
+	} else {
+		// convert to nanoAVAX
+		balance *= units.Avax
 	}
-	// convert to nanoAVAX
-	balance *= units.Avax
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)

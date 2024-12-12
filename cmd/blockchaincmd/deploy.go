@@ -204,7 +204,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().Float64Var(
 		&deployBalanceAVAX,
 		"balance",
-		constants.BootstrapValidatorBalance/float64(units.Avax),
+		float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
