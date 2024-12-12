@@ -3,17 +3,31 @@
 package validatorcmd
 
 import (
+	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/spf13/cobra"
 )
 
+var globalNetworkFlags networkoptions.NetworkFlags
+
 var (
-	subnetID string
-	nodeID   string
+	l1              string
+	subnetID        string
+	validationIDStr string
 )
+
+var getBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Devnet,
+	networkoptions.EtnaDevnet,
+	networkoptions.Fuji,
+	networkoptions.Mainnet,
+}
 
 func NewGetBalanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -25,21 +39,81 @@ P-Chain continuous fee`,
 		Args: cobrautils.ExactArgs(0),
 	}
 
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
+	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (to get balance of bootstrap validators only)")
 	cmd.Flags().StringVar(&subnetID, "subnet-id", "", "subnetID of L1 that the node is validating")
-	cmd.Flags().StringVar(&nodeID, "node-id", "", "Node-ID of validator")
+	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validationIDStr of the validator")
 	return cmd
 }
 
 func getBalance(cmd *cobra.Command, _ []string) error {
-	subnetID, err := ids.FromString("d")
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		"",
+		globalNetworkFlags,
+		true,
+		false,
+		getBalanceSupportedNetworkOptions,
+		"",
+	)
 	if err != nil {
 		return err
 	}
-	index := uint32(0)
-	network := models.NewFujiNetwork()
-	err := txutils.GetBalance(network, subnetID, index)
+
+	isBootstrapValidator, err := app.Prompt.CaptureYesNo("Is the validator a bootstrap validator?")
 	if err != nil {
 		return err
 	}
+	var balance uint64
+	if validationIDStr != "" {
+		validationID, err := ids.FromString(validationIDStr)
+		balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if isBootstrapValidator {
+		if l1 == "" {
+			return fmt.Errorf("--l1 flag is required to get bootstrap validator balance")
+		}
+		sc, err := app.LoadSidecar(l1)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		if !sc.Sovereign {
+			return fmt.Errorf("avalance validator getBalance command is only applicable to sovereign L1s")
+		}
+		bootstrapValidators := sc.Networks[network.Name()].BootstrapValidators
+		if len(bootstrapValidators) == 0 {
+			return fmt.Errorf("this L1 does not have any bootstrap validators")
+		}
+		bootstrapValidatorsString := []string{}
+		bootstrapValidatorsToIndexMap := make(map[string]int)
+		for index, validator := range bootstrapValidators {
+			bootstrapValidatorsString = append(bootstrapValidatorsString, validator.NodeID)
+			bootstrapValidatorsToIndexMap[validator.NodeID] = index
+		}
+		chosenValidator, err := app.Prompt.CaptureList("Which bootstrap validator do you want to get balance of?", bootstrapValidatorsString)
+		if err != nil {
+			return err
+		}
+		validatorIndex := bootstrapValidatorsToIndexMap[chosenValidator]
+		balance, err = txutils.GetValidatorPChainBalanceBootstrapValidator(network, sc.Networks[network.Name()].SubnetID, uint32(validatorIndex))
+		if err != nil {
+			return err
+		}
+	} else {
+		validationID, err := app.Prompt.CaptureID("What is the validator's validationID?")
+		if err != nil {
+			return err
+		}
+		balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
+		if err != nil {
+			return err
+		}
+	}
+	ux.Logger.PrintToUser("  Validator Balance: %.5f", float64(balance)/float64(units.Avax))
+
 	return nil
 }
