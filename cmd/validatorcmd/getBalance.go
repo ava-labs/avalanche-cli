@@ -18,7 +18,6 @@ var globalNetworkFlags networkoptions.NetworkFlags
 
 var (
 	l1              string
-	subnetID        string
 	validationIDStr string
 )
 
@@ -41,8 +40,7 @@ P-Chain continuous fee`,
 	}
 
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
-	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (to get balance of bootstrap validators only)")
-	cmd.Flags().StringVar(&subnetID, "subnet-id", "", "subnetID of L1 that the node is validating")
+	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (required to get balance of bootstrap validators)")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validationIDStr of the validator")
 	return cmd
 }

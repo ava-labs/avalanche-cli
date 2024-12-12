@@ -925,9 +925,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("")
-		if err = setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID); err != nil {
-			return err
-		}
+		setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
 		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
@@ -1176,20 +1174,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func setBootstrapValidatorValidationID(avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator, bootstrapValidators []models.SubnetValidator, subnetID ids.ID) error {
+func setBootstrapValidatorValidationID(avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator, bootstrapValidators []models.SubnetValidator, subnetID ids.ID) {
 	for index, avagoValidator := range avaGoBootstrapValidators {
 		for bootstrapValidatorIndex, validator := range bootstrapValidators {
-			avagoValidatorNodeID, err := ids.ToNodeID(avagoValidator.NodeID)
-			if err != nil {
-				return err
-			}
+			avagoValidatorNodeID, _ := ids.ToNodeID(avagoValidator.NodeID)
 			if validator.NodeID == avagoValidatorNodeID.String() {
 				validationID := subnetID.Append(uint32(index))
 				bootstrapValidators[bootstrapValidatorIndex].ValidationID = validationID.String()
 			}
 		}
 	}
-	return nil
 }
 
 func getClusterBootstrapValidators(clusterName string, network models.Network) ([]models.SubnetValidator, error) {
