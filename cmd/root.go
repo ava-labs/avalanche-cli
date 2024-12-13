@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
@@ -136,6 +138,8 @@ Deprecation notice: use 'avalanche blockchain'`
 
 	// add contract command
 	rootCmd.AddCommand(contractcmd.NewCmd(app))
+	// add validator command
+	rootCmd.AddCommand(validatorcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 
