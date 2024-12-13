@@ -1,5 +1,5 @@
 # ============= Compilation Stage ================
-FROM golang:1.22.8-bullseye AS builder
+FROM golang:1.22.8-bookworm AS builder
 
 WORKDIR /build
 # Copy and download avalanche dependencies using go mod
