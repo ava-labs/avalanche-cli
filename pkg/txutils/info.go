@@ -111,3 +111,13 @@ func GetOwners(network models.Network, subnetID ids.ID) (bool, []string, uint32,
 	}
 	return isPermissioned, controlKeysStrs, threshold, nil
 }
+
+func GetValidatorPChainBalanceValidationID(network models.Network, validationID ids.ID) (uint64, error) {
+	pClient := platformvm.NewClient(network.Endpoint)
+	ctx := context.Background()
+	validatorResponse, _, err := pClient.GetL1Validator(ctx, validationID)
+	if err != nil {
+		return 0, err
+	}
+	return validatorResponse.Balance, nil
+}
