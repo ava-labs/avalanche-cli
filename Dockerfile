@@ -1,5 +1,5 @@
 # ============= Compilation Stage ================
-FROM golang:1.22.8-bullseye AS builder
+FROM golang:1.22.10-bookworm AS builder
 
 WORKDIR /build
 # Copy and download avalanche dependencies using go mod
@@ -12,7 +12,7 @@ COPY . .
 RUN ./scripts/build.sh
 
 # ============= Cleanup Stage ================
-FROM debian:11-slim
+FROM debian:12-slim
 WORKDIR /
 
 # Copy the executables into the container
