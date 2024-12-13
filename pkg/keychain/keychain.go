@@ -198,13 +198,13 @@ func GetKeychain(
 		}
 		// always have index 0, for change
 		ledgerIndices := []uint32{0}
-		//if requiredFunds > 0 {
-		//	ledgerIndicesAux, err := searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//	ledgerIndices = append(ledgerIndices, ledgerIndicesAux...)
-		//}
+		if requiredFunds > 0 {
+			ledgerIndicesAux, err := searchForFundedLedgerIndices(network, ledgerDevice, requiredFunds)
+			if err != nil {
+				return nil, err
+			}
+			ledgerIndices = append(ledgerIndices, ledgerIndicesAux...)
+		}
 		if len(ledgerAddresses) > 0 {
 			ledgerIndicesAux, err := getLedgerIndices(ledgerDevice, ledgerAddresses)
 			if err != nil {
