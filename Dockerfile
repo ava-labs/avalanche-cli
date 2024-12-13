@@ -12,7 +12,7 @@ COPY . .
 RUN ./scripts/build.sh
 
 # ============= Cleanup Stage ================
-FROM debian:11-slim
+FROM debian:12-slim
 WORKDIR /
 
 # Copy the executables into the container
