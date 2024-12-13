@@ -919,24 +919,16 @@ func (d *PublicDeployer) createSubnetTx(controlKeys []string, threshold uint32, 
 	return d.Commit(&tx, true)
 }
 
-func (d *PublicDeployer) increaseValidatorPChainBalance(controlKeys []string, threshold uint32, wallet *primary.Wallet) (ids.ID, error) {
-	addrs, err := address.ParseToIDs(controlKeys)
-	if err != nil {
-		return ids.Empty, fmt.Errorf("failure parsing control keys: %w", err)
-	}
-	owners := &secp256k1fx.OutputOwners{
-		Addrs:     addrs,
-		Threshold: threshold,
-		Locktime:  0,
-	}
+func (d *PublicDeployer) increaseValidatorPChainBalance(validationID ids.ID, balance uint64, wallet *primary.Wallet) (ids.ID, error) {
 	if d.kc.UsesLedger {
-		showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "CreateSubnet transaction")
+		showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "IncreaseL1ValidatorBalance transaction")
 	}
 	unsignedTx, err := wallet.P().Builder().NewIncreaseL1ValidatorBalanceTx(
-		owners,
+		validationID,
+		balance,
 	)
 	if unsignedTx != nil {
-		if err := printFee("CreateSubnetTx", wallet, unsignedTx); err != nil {
+		if err := printFee("IncreaseL1ValidatorBalanceTx", wallet, unsignedTx); err != nil {
 			return ids.Empty, err
 		}
 	}
@@ -1117,18 +1109,18 @@ func showLedgerSignatureMsg(
 }
 
 func (d *PublicDeployer) IncreaseValidatorPChainBalance(
-	controlKeys []string,
-	threshold uint32,
+	validationID ids.ID,
+	balance uint64,
 ) (ids.ID, error) {
 	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
-	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
+	txID, err := d.increaseValidatorPChainBalance(validationID, balance, wallet)
 	if err != nil {
 		return ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
+	ux.Logger.PrintToUser("Validator balance has been increased with tx ID: %s", txID.String())
 	time.Sleep(2 * time.Second)
-	return subnetID, nil
+	return txID, nil
 }
