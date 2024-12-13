@@ -969,7 +969,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("")
-
+		setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
 		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
@@ -1218,6 +1218,19 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
+
+func setBootstrapValidatorValidationID(avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator, bootstrapValidators []models.SubnetValidator, subnetID ids.ID) {
+	for index, avagoValidator := range avaGoBootstrapValidators {
+		for bootstrapValidatorIndex, validator := range bootstrapValidators {
+			avagoValidatorNodeID, _ := ids.ToNodeID(avagoValidator.NodeID)
+			if validator.NodeID == avagoValidatorNodeID.String() {
+				validationID := subnetID.Append(uint32(index))
+				bootstrapValidators[bootstrapValidatorIndex].ValidationID = validationID.String()
+			}
+		}
+	}
+}
+
 
 func getClusterBootstrapValidators(
 	clusterName string,
