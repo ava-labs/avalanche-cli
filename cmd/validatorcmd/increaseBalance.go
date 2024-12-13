@@ -43,7 +43,6 @@ func NewIncreaseBalanceCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, increaseBalanceSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (to get balance of bootstrap validators only)")
-	cmd.Flags().StringVar(&subnetID, "subnet-id", "", "subnetID of L1 that the node is validating")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validationIDStr of the validator")
 	return cmd
 }
