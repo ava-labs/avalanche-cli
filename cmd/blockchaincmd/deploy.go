@@ -1231,7 +1231,6 @@ func setBootstrapValidatorValidationID(avaGoBootstrapValidators []*txs.ConvertSu
 	}
 }
 
-
 func getClusterBootstrapValidators(
 	clusterName string,
 	network models.Network,
