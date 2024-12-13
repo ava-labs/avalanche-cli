@@ -11,10 +11,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -34,6 +34,7 @@ type StartFlags struct {
 	SnapshotName             string
 	AvagoBinaryPath          string
 	RelayerBinaryPath        string
+	RelayerVersion           string
 	NumNodes                 uint32
 }
 
@@ -63,6 +64,12 @@ already running.`,
 	cmd.Flags().StringVar(&startFlags.RelayerBinaryPath, "relayer-path", "", "use this relayer binary path")
 	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
 	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network")
+	cmd.Flags().StringVar(
+		&startFlags.RelayerVersion,
+		"relayer-version",
+		constants.LatestPreReleaseVersionTag,
+		"use this relayer version",
+	)
 
 	return cmd
 }
@@ -165,6 +172,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			avalancheGoBinPath = extraLocalNetworkData.AvalancheGoPath
 		}
 
+		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
+
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.LoadSnapshot(
 			ctx,
@@ -197,8 +206,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			if relayerBinPath == "" {
 				relayerBinPath = extraLocalNetworkData.RelayerPath
 			}
-			if relayerBinPath, err := teleporter.DeployRelayer(
-				"latest",
+			if relayerBinPath, err := interchain.DeployRelayer(
+				flags.RelayerVersion,
 				relayerBinPath,
 				app.GetICMRelayerBinDir(),
 				relayerConfigPath,
@@ -238,6 +247,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			return fmt.Errorf("could not close upgrade file: %w", err)
 		}
 		defer os.Remove(upgradePath)
+
+		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		if _, err := cli.Start(

@@ -259,6 +259,7 @@ func StartLocalNode(
 	if err != nil {
 		return err
 	}
+	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 	if err != nil {
 		return err
@@ -320,6 +321,13 @@ func StartLocalNode(
 				constants.FujiAPIEndpoint,
 				clusterName,
 			)
+		case globalNetworkFlags.UseMainnet:
+			network = models.NewNetwork(
+				models.Mainnet,
+				avagoconstants.MainnetID,
+				constants.MainnetAPIEndpoint,
+				clusterName,
+			)
 		default:
 			network, err = networkoptions.GetNetworkFromCmdLineFlags(
 				app,
@@ -336,6 +344,8 @@ func StartLocalNode(
 		}
 		if network.Kind == models.Fuji {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
+		} else if network.Kind == models.Mainnet {
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 1-2 hours"))
 		}
 		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
 			return err

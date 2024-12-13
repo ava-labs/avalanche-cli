@@ -12,11 +12,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -37,6 +37,7 @@ type DeployFlags struct {
 	BlockchainFundingKey string
 	CChainFundingKey     string
 	BinPath              string
+	AllowPrivateIPs      bool
 }
 
 var (
@@ -62,7 +63,12 @@ func newDeployCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	cmd.Flags().StringVar(&deployFlags.BinPath, "bin-path", "", "use the given relayer binary")
-	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
+	cmd.Flags().StringVar(
+		&deployFlags.Version,
+		"version",
+		constants.LatestPreReleaseVersionTag,
+		"version to deploy",
+	)
 	cmd.Flags().StringVar(&deployFlags.LogLevel, "log-level", "", "log level to use for relayer logs")
 	cmd.Flags().StringSliceVar(&deployFlags.BlockchainsToRelay, "blockchains", nil, "blockchains to relay as source and destination")
 	cmd.Flags().BoolVar(&deployFlags.RelayCChain, "cchain", false, "relay C-Chain as source and destination")
@@ -70,6 +76,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().Float64Var(&deployFlags.Amount, "amount", 0, "automatically fund fee payments with the given amount")
 	cmd.Flags().StringVar(&deployFlags.BlockchainFundingKey, "blockchain-funding-key", "", "key to be used to fund relayer account on all l1s")
 	cmd.Flags().StringVar(&deployFlags.CChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
+	cmd.Flags().BoolVar(&deployFlags.AllowPrivateIPs, "allow-private-ips", true, "allow relayer to connec to private ips")
 	return cmd
 }
 
@@ -124,7 +131,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	}
 
 	if !deployToRemote {
-		if isUP, _, _, err := teleporter.RelayerIsUp(app.GetLocalRelayerRunPath(network.Kind)); err != nil {
+		if isUP, _, _, err := interchain.RelayerIsUp(app.GetLocalRelayerRunPath(network.Kind)); err != nil {
 			return err
 		} else if isUP {
 			return fmt.Errorf("there is already a local relayer deployed for %s", network.Kind.String())
@@ -426,17 +433,18 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	// create config
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Generating relayer config file at %s", configPath)
-	if err := teleporter.CreateBaseRelayerConfig(
+	if err := interchain.CreateBaseRelayerConfig(
 		configPath,
 		flags.LogLevel,
 		storageDir,
 		uint16(metricsPort),
 		network,
+		flags.AllowPrivateIPs,
 	); err != nil {
 		return err
 	}
 	for _, source := range configSpec.sources {
-		if err := teleporter.AddSourceToRelayerConfig(
+		if err := interchain.AddSourceToRelayerConfig(
 			configPath,
 			source.rpcEndpoint,
 			source.wsEndpoint,
@@ -450,7 +458,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		}
 	}
 	for _, destination := range configSpec.destinations {
-		if err := teleporter.AddDestinationToRelayerConfig(
+		if err := interchain.AddDestinationToRelayerConfig(
 			configPath,
 			destination.rpcEndpoint,
 			destination.subnetID,
@@ -463,7 +471,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	if len(configSpec.sources) > 0 && len(configSpec.destinations) > 0 {
 		// relayer fails for empty configs
-		binPath, err := teleporter.DeployRelayer(
+		binPath, err := interchain.DeployRelayer(
 			flags.Version,
 			flags.BinPath,
 			app.GetICMRelayerBinDir(),
