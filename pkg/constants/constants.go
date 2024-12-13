@@ -58,7 +58,8 @@ const (
 	APIRequestLargeTimeout = 10 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
-	FujiBootstrapTimeout = 15 * time.Minute
+	FujiBootstrapTimeout    = 15 * time.Minute
+	MainnetBootstrapTimeout = 2 * time.Hour
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute

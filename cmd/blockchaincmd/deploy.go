@@ -712,6 +712,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if network.Kind == models.Fuji {
 					globalNetworkFlags.UseFuji = true
 				}
+				if network.Kind == models.Mainnet {
+					globalNetworkFlags.UseMainnet = true
+				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
 					app,
@@ -1227,7 +1230,6 @@ func setBootstrapValidatorValidationID(avaGoBootstrapValidators []*txs.ConvertSu
 		}
 	}
 }
-
 
 func getClusterBootstrapValidators(
 	clusterName string,
