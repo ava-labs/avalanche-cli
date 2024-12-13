@@ -18,7 +18,6 @@ var globalNetworkFlags networkoptions.NetworkFlags
 
 var (
 	l1              string
-	subnetID        string
 	validationIDStr string
 )
 
@@ -32,7 +31,7 @@ var getBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
 
 func NewGetBalanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "increaseBalance",
+		Use:   "getBalance",
 		Short: "Gets current balance of validator on P-Chain",
 		Long: `This command gets the remaining validator P-Chain balance that is available to pay
 P-Chain continuous fee`,
@@ -41,8 +40,7 @@ P-Chain continuous fee`,
 	}
 
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
-	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (to get balance of bootstrap validators only)")
-	cmd.Flags().StringVar(&subnetID, "subnet-id", "", "subnetID of L1 that the node is validating")
+	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (required to get balance of bootstrap validators)")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validationIDStr of the validator")
 	return cmd
 }
@@ -88,7 +86,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
 		if !sc.Sovereign {
-			return fmt.Errorf("avalanche validator increaseBalance command is only applicable to sovereign L1s")
+			return fmt.Errorf("avalanche validator getBalance command is only applicable to sovereign L1s")
 		}
 		bootstrapValidators := sc.Networks[network.Name()].BootstrapValidators
 		if len(bootstrapValidators) == 0 {
