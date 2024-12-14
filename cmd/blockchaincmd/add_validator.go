@@ -95,7 +95,7 @@ Testnet or Mainnet.`,
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
-	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee to P-Chain")
+	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee on P-Chain")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -285,6 +285,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if err := prompts.ValidateNodeID(nodeIDStr); err != nil {
 		return err
 	}
+
 	if sovereign && publicKey == "" && pop == "" {
 		publicKey, pop, err = promptProofOfPossession(true, true)
 		if err != nil {
@@ -404,13 +405,14 @@ func CallAddValidator(
 		if err != nil {
 			return err
 		}
-		balance, err = promptValidatorBalance(availableBalance)
+		balance, err = promptValidatorBalance(availableBalance / units.Avax)
 		if err != nil {
 			return err
 		}
+	} else {
+		// convert to nanoAVAX
+		balance *= units.Avax
 	}
-	// convert to nanoAVAX
-	balance *= units.Avax
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
@@ -680,22 +682,6 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 	}
 }
 
-func getMaxValidationTime(network models.Network, nodeID ids.NodeID, startTime time.Time) (time.Duration, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	platformCli := platformvm.NewClient(network.Endpoint)
-	vs, err := platformCli.GetCurrentValidators(ctx, avagoconstants.PrimaryNetworkID, nil)
-	if err != nil {
-		return 0, err
-	}
-	for _, v := range vs {
-		if v.NodeID == nodeID {
-			return time.Unix(int64(v.EndTime), 0).Sub(startTime), nil
-		}
-	}
-	return 0, errors.New("nodeID not found in validator set: " + nodeID.String())
-}
-
 func getBlockchainTimestamp(network models.Network) (time.Time, error) {
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
@@ -781,7 +767,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 	var selectedDuration time.Duration
 	if useDefaultDuration {
 		// avoid setting both globals useDefaultDuration and duration
-		selectedDuration, err = getMaxValidationTime(network, nodeID, start)
+		selectedDuration, err = utils.GetRemainingValidationTime(network.Endpoint, nodeID, avagoconstants.PrimaryNetworkID, start)
 		if err != nil {
 			return time.Time{}, 0, err
 		}

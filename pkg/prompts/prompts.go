@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/units"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -301,6 +303,7 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
+// CaptureValidatorBalance captures balance in nanoAVAX
 func (*realPrompter) CaptureValidatorBalance(
 	promptStr string,
 	availableBalance uint64,
@@ -314,7 +317,12 @@ func (*realPrompter) CaptureValidatorBalance(
 		return 0, err
 	}
 
-	return strconv.ParseUint(amountStr, 10, 64)
+	amountFloat, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(amountFloat * float64(units.Avax)), nil
 }
 
 func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {

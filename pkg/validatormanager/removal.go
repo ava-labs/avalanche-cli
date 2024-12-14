@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -21,42 +22,53 @@ import (
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
+	"github.com/ava-labs/subnet-evm/warp/messages"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-func ValidatorManagerInitializeValidatorRemoval(
+func InitializeValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
-	ownerPrivateKey string,
-	validationID [32]byte,
+	privateKey string,
+	validationID ids.ID,
 	isPoS bool,
+	uptimeProofSignedMessage *warp.Message,
 	force bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	if isPoS {
-		// PoS only supports forcefull removal //TODO: implement uptime proof to remove this restriction
-		// posEndValidation := "initializeEndValidation(bytes32,bool,uint32)"
-		posEndValidation := "forceInitializeEndValidation(bytes32,bool,uint32)"
 		if force {
-			posEndValidation = "forceInitializeEndValidation(bytes32,bool,uint32)"
+			return contract.TxToMethod(
+				rpcURL,
+				privateKey,
+				managerAddress,
+				big.NewInt(0),
+				"force POS validator removal",
+				validatorManagerSDK.ErrorSignatureToError,
+				"forceInitializeEndValidation(bytes32,bool,uint32)",
+				validationID,
+				false, // no uptime proof if force
+				uint32(0),
+			)
 		}
-
-		return contract.TxToMethod(
+		// remove PoS validator with uptime proof
+		return contract.TxToMethodWithWarpMessage(
 			rpcURL,
-			ownerPrivateKey,
+			privateKey,
 			managerAddress,
+			uptimeProofSignedMessage,
 			big.NewInt(0),
-			"POS validator removal initialization",
+			"POS validator removal with uptime proof",
 			validatorManagerSDK.ErrorSignatureToError,
-			posEndValidation,
+			"initializeEndValidation(bytes32,bool,uint32)",
 			validationID,
-			false, // don't include uptime proof - rely on network to calculate uptime
+			true, // submit uptime proof
 			uint32(0),
 		)
 	}
 	// PoA case
 	return contract.TxToMethod(
 		rpcURL,
-		ownerPrivateKey,
+		privateKey,
 		managerAddress,
 		big.NewInt(0),
 		"POA validator removal initialization",
@@ -66,7 +78,47 @@ func ValidatorManagerInitializeValidatorRemoval(
 	)
 }
 
-func ValidatorManagerGetSubnetValidatorWeightMessage(
+func GetUptimeProofMessage(
+	network models.Network,
+	aggregatorLogLevel logging.Level,
+	aggregatorQuorumPercentage uint64,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	subnetID ids.ID,
+	blockchainID ids.ID,
+	validationID ids.ID,
+	uptime uint64,
+) (*warp.Message, error) {
+	uptimePayload, err := messages.NewValidatorUptime(validationID, uptime)
+	if err != nil {
+		return nil, err
+	}
+	addressedCall, err := warpPayload.NewAddressedCall(nil, uptimePayload.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	uptimeProofUnsignedMessage, err := warp.NewUnsignedMessage(
+		network.ID,
+		blockchainID,
+		addressedCall.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	signatureAggregator, err := interchain.NewSignatureAggregator(
+		network,
+		aggregatorLogLevel,
+		subnetID,
+		aggregatorQuorumPercentage,
+		true, // allow private peers
+		aggregatorExtraPeerEndpoints,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return signatureAggregator.Sign(uptimeProofUnsignedMessage, nil)
+}
+
+func GetSubnetValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogLevel logging.Level,
 	aggregatorQuorumPercentage uint64,
@@ -127,6 +179,7 @@ func InitValidatorRemoval(
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogLevelStr string,
 	initWithPos bool,
+	uptimeSec uint64,
 	force bool,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
@@ -154,13 +207,44 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Using validationID: %s for nodeID: %s", validationID, nodeID)
-	tx, _, err := ValidatorManagerInitializeValidatorRemoval(
+
+	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
+	if err != nil {
+		aggregatorLogLevel = defaultAggregatorLogLevel
+	}
+	signedUptimeProof := &warp.Message{}
+	if initWithPos {
+		if err != nil {
+			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data")
+		}
+		if uptimeSec == 0 {
+			uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
+			if err != nil {
+				return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data for nodeID: %s via %s ", nodeID, rpcURL)
+			}
+		}
+		ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
+		signedUptimeProof, err = GetUptimeProofMessage(
+			network,
+			aggregatorLogLevel,
+			0,
+			aggregatorExtraPeerEndpoints,
+			subnetID,
+			blockchainID,
+			validationID,
+			uptimeSec,
+		)
+		if err != nil {
+			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime proof")
+		}
+	}
+	tx, _, err := InitializeValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		ownerPrivateKey,
 		validationID,
 		initWithPos,
+		signedUptimeProof, // is empty for non-PoS
 		force,
 	)
 	if err != nil {
@@ -170,12 +254,8 @@ func InitValidatorRemoval(
 		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceeding to the next step")
 	}
 
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	nonce := uint64(1)
-	signedMsg, err := ValidatorManagerGetSubnetValidatorWeightMessage(
+	signedMsg, err := GetSubnetValidatorWeightMessage(
 		network,
 		aggregatorLogLevel,
 		0,
@@ -191,7 +271,7 @@ func InitValidatorRemoval(
 	return signedMsg, validationID, err
 }
 
-func ValidatorManagerCompleteValidatorRemoval(
+func CompleteValidatorRemoval(
 	rpcURL string,
 	managerAddress common.Address,
 	privateKey string, // not need to be owner atm
@@ -234,7 +314,7 @@ func FinishValidatorRemoval(
 	if err != nil {
 		aggregatorLogLevel = defaultAggregatorLogLevel
 	}
-	signedMessage, err := ValidatorManagerGetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
 		aggregatorLogLevel,
@@ -254,7 +334,7 @@ func FinishValidatorRemoval(
 	); err != nil {
 		return err
 	}
-	tx, _, err := ValidatorManagerCompleteValidatorRemoval(
+	tx, _, err := CompleteValidatorRemoval(
 		rpcURL,
 		managerAddress,
 		privateKey,

@@ -14,4 +14,6 @@ type SubnetValidator struct {
 	BLSProofOfPossession string `json:"BLSProofOfPossession"`
 
 	ChangeOwnerAddr string `json:"ChangeOwnerAddr"`
+
+	ValidationID string `json:"ValidationID"`
 }
