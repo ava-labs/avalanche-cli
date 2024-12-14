@@ -339,7 +339,7 @@ func StartLocalNode(
 		if network.Kind == models.Local {
 			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
-				return fmt.Errorf("failure trying to connect to local network: %s", err)
+				return fmt.Errorf("failure trying to connect to local network: %w", err)
 			}
 			rootDataDir := clusterInfo.RootDataDir
 			networkJSONPath := filepath.Join(rootDataDir, "network.json")
@@ -552,6 +552,51 @@ func UpsizeLocalNode(
 		anrSettings.UpgradePath = upgradeFile.Name()
 		if err := upgradeFile.Close(); err != nil {
 			return "", fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
+		}
+		defer os.Remove(anrSettings.UpgradePath)
+	}
+	if network.Kind == models.Local {
+		clusterInfo, err := localnet.GetClusterInfo()
+		if err != nil {
+			return "", fmt.Errorf("failure trying to connect to local network: %w", err)
+		}
+		rootDataDir := clusterInfo.RootDataDir
+		networkJSONPath := filepath.Join(rootDataDir, "network.json")
+		bs, err := os.ReadFile(networkJSONPath)
+		if err != nil {
+			return "", fmt.Errorf("could not read local network config file %s: %w", networkJSONPath, err)
+		}
+		var networkJSON anrnetwork.Config
+		if err := json.Unmarshal(bs, &networkJSON); err != nil {
+			return "", err
+		}
+		for id, ip := range networkJSON.BeaconConfig {
+			anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
+			anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
+		}
+		// prepare genesis and upgrade files for anr
+		genesisFile, err := os.CreateTemp("", "local_network_genesis")
+		if err != nil {
+			return "", fmt.Errorf("could not create local network genesis file: %w", err)
+		}
+		if _, err := genesisFile.Write([]byte(networkJSON.Genesis)); err != nil {
+			return "", fmt.Errorf("could not write local network genesis file: %w", err)
+		}
+		if err := genesisFile.Close(); err != nil {
+			return "", fmt.Errorf("could not close local network genesis file: %w", err)
+		}
+		anrSettings.GenesisPath = genesisFile.Name()
+		defer os.Remove(anrSettings.GenesisPath)
+		upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
+		if err != nil {
+			return "", fmt.Errorf("could not create local network upgrade file: %w", err)
+		}
+		if _, err := upgradeFile.Write([]byte(networkJSON.Upgrade)); err != nil {
+			return "", fmt.Errorf("could not write local network upgrade file: %w", err)
+		}
+		anrSettings.UpgradePath = upgradeFile.Name()
+		if err := upgradeFile.Close(); err != nil {
+			return "", fmt.Errorf("could not close local network upgrade file: %w", err)
 		}
 		defer os.Remove(anrSettings.UpgradePath)
 	}
