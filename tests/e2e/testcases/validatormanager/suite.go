@@ -74,7 +74,7 @@ func createSovereignSubnet() (string, string, error) {
 	if err := createEtnaSubnetEvmConfig(); err != nil {
 		return "", "", err
 	}
-	// Deploy subnet on etna devnet with local machine as bootstrap validator
+	// Deploy subnet on etna local network with local machine as bootstrap validator
 	cmd := exec.Command(
 		CLIBinary,
 		"blockchain",
@@ -126,8 +126,8 @@ func destroyLocalNode() {
 	}
 }
 
-func getBootstrapValidator() ([]*txs.ConvertSubnetToL1Validator, error) {
-	infoClient := info.NewClient("http://127.0.0.1:9650")
+func getBootstrapValidator(uri string) ([]*txs.ConvertSubnetToL1Validator, error) {
+	infoClient := info.NewClient(uri)
 	ctx, cancel := utils.GetAPILargeContext()
 	defer cancel()
 	nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
@@ -178,19 +178,22 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 	ginkgo.It("Set Up POA Validator Manager", func() {
 		subnetIDStr, blockchainIDStr, err := createSovereignSubnet()
 		gomega.Expect(err).Should(gomega.BeNil())
+		uris, err := utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(uris)).Should(gomega.Equal(1))
 		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		keyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, fmt.Sprintf("subnet_%s_airdrop", utils.SubnetName)+constants.KeySuffix)
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 		gomega.Expect(err).Should(gomega.BeNil())
-		rpcURL := fmt.Sprintf("http://127.0.0.1:9650/ext/bc/%s/rpc", blockchainIDStr)
+		rpcURL := fmt.Sprintf("%s/ext/bc/%s/rpc", uris[0], blockchainIDStr)
 		client, err := evm.GetClient(rpcURL)
 		gomega.Expect(err).Should(gomega.BeNil())
 		evm.WaitForChainID(client)
 
 		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), utils.TestLocalNodeName)
 
-		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers([]string{"http://127.0.0.1:9650"})
+		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers(uris)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		subnetID, err := ids.FromString(subnetIDStr)
@@ -199,7 +202,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		blockchainID, err := ids.FromString(blockchainIDStr)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		avaGoBootstrapValidators, err := getBootstrapValidator()
+		avaGoBootstrapValidators, err := getBootstrapValidator(uris[0])
 		gomega.Expect(err).Should(gomega.BeNil())
 		ownerAddress := common.HexToAddress(ewoqEVMAddress)
 		subnetSDK := blockchainSDK.Subnet{
