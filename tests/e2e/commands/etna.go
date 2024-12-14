@@ -58,6 +58,7 @@ func CreateEtnaSubnetEvmConfig(
 		"--test-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
+		"--icm=false",
 		"--"+constants.SkipUpdateFlag,
 	)
 	if rewardBasisPoints != "" {
