@@ -142,7 +142,7 @@ func getBootstrapValidator() ([]*txs.ConvertSubnetToL1Validator, error) {
 	bootstrapValidator := models.SubnetValidator{
 		NodeID:               nodeID.String(),
 		Weight:               constants.BootstrapValidatorWeight,
-		Balance:              constants.BootstrapValidatorBalance,
+		Balance:              constants.BootstrapValidatorBalanceNanoAVAX,
 		BLSPublicKey:         publicKey,
 		BLSProofOfPossession: pop,
 		ChangeOwnerAddr:      ewoqPChainAddress,
