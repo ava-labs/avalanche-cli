@@ -5,15 +5,15 @@ package subnet
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
-
-var blockchainID = ""
 
 const (
 	CLIBinary         = "./bin/avalanche"
@@ -22,6 +22,11 @@ const (
 	ewoqEVMAddress    = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 	ewoqPChainAddress = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 	testLocalNodeName = "e2eSubnetTest-local-node"
+)
+
+var (
+	blockchainID     string
+	localClusterUris []string
 )
 
 var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
@@ -45,6 +50,9 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
+		localClusterUris, err = utils.GetLocalClusterUris()
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(len(localClusterUris)).Should(gomega.Equal(7))
 	})
 
 	ginkgo.It("Deploy Etna Subnet", func() {
@@ -52,11 +60,11 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 			subnetName,
 			testLocalNodeName,
 			[]string{
-				"http://127.0.0.1:9650",
-				"http://127.0.0.1:9652",
-				"http://127.0.0.1:9654",
-				"http://127.0.0.1:9656",
-				"http://127.0.0.1:9658",
+				localClusterUris[0],
+				localClusterUris[1],
+				localClusterUris[2],
+				localClusterUris[3],
+				localClusterUris[4],
 			},
 			ewoqPChainAddress,
 			true, // convertOnly
@@ -85,7 +93,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	ginkgo.It("Can initialize a PoS Manager contract", func() {
 		output, err := commands.InitValidatorManager(subnetName,
 			testLocalNodeName,
-			"http://127.0.0.1:9650",
+			localClusterUris[0],
 			blockchainID,
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -96,7 +104,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		output, err := commands.AddEtnaSubnetValidatorToCluster(
 			testLocalNodeName,
 			subnetName,
-			"http://127.0.0.1:9660",
+			localClusterUris[5],
 			ewoqPChainAddress,
 			1,
 			100,
@@ -110,7 +118,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		output, err := commands.AddEtnaSubnetValidatorToCluster(
 			testLocalNodeName,
 			subnetName,
-			"http://127.0.0.1:9662",
+			localClusterUris[6],
 			ewoqPChainAddress,
 			1,
 			100,
@@ -124,10 +132,19 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		output, err := commands.GetLocalClusterStatus(testLocalNodeName, subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
-		// make sure we can find string with "http://127.0.0.1:9660" and "L1:Validating" string in the output
-		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9652.*Validating`), "expect to have L1 validating")
-		// make sure we can do the same for "http://127.0.0.1:9662"
-		gomega.Expect(output).To(gomega.MatchRegexp(`http://127\.0\.0\.1:9654.*Validating`), "expect to have L1 validating")
+		// make sure we can find string with "http://127.0.0.1:port" and "L1:Validating" string in the output
+		parsedURL, err := url.Parse(localClusterUris[1])
+		gomega.Expect(err).Should(gomega.BeNil())
+		port := parsedURL.Port()
+		gomega.Expect(port).Should(gomega.Not(gomega.BeEmpty()))
+		regexp := fmt.Sprintf(`http://127\.0\.0\.1:%s.*Validating`, port)
+		gomega.Expect(output).To(gomega.MatchRegexp(regexp), fmt.Sprintf("expect to have L1 validated by port %s", port))
+		parsedURL, err = url.Parse(localClusterUris[2])
+		gomega.Expect(err).Should(gomega.BeNil())
+		port = parsedURL.Port()
+		gomega.Expect(port).Should(gomega.Not(gomega.BeEmpty()))
+		regexp = fmt.Sprintf(`http://127\.0\.0\.1:%s.*Validating`, port)
+		gomega.Expect(output).To(gomega.MatchRegexp(regexp), fmt.Sprintf("expect to have L1 validated by port %s", port))
 	})
 
 	ginkgo.It("Can sleep for min stake duration", func() {
@@ -138,7 +155,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		output, err := commands.RemoveEtnaSubnetValidatorFromCluster(
 			testLocalNodeName,
 			subnetName,
-			"http://127.0.0.1:9654",
+			localClusterUris[2],
 			keyName,
 			0,
 		)
