@@ -674,6 +674,10 @@ func UpsizeLocalNode(
 		return newNodeName, fmt.Errorf("failed to track blockchain: %w", err)
 	}
 	// wait until cluster is healthy
+	ux.Logger.Info("Waiting for node: %s to be bootstrapping %s", newNodeName, blockchainName)
+	if err := WaitBootstrapped(cli, blockchainID.String()); err != nil {
+		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping")
+	}
 	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
