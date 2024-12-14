@@ -54,7 +54,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Deploy Etna Subnet", func() {
-		output, err := commands.DeployEtnaSubnetToCluster(
+		output, err := commands.DeployEtnaBlockchain(
 			utils.SubnetName,
 			utils.TestLocalNodeName,
 			[]string{
@@ -171,7 +171,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 		commands.CleanNetwork()
 	})
 
-	ginkgo.It("Can remote Etna Subnet Config", func() {
+	ginkgo.It("Can remove Etna Subnet Config", func() {
 		commands.DeleteSubnetConfig(utils.SubnetName)
 	})
 })

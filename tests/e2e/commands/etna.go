@@ -125,7 +125,7 @@ func DestroyLocalNode(
 	return string(output), err
 }
 
-func DeployEtnaSubnetToCluster(
+func DeployEtnaBlockchain(
 	subnetName string,
 	clusterName string,
 	bootstrapEndpoints []string,
@@ -146,20 +146,27 @@ func DeployEtnaSubnetToCluster(
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet on etna devnet with local machine as bootstrap validator
-	cmd := exec.Command(
-		CLIBinary,
+	args := []string{
 		"blockchain",
 		"deploy",
 		subnetName,
-		"--cluster",
-		clusterName,
-		bootstrapEndpointsFlag,
-		convertOnlyFlag,
 		"--ewoq",
 		"--change-owner-address",
 		ewoqPChainAddress,
-		"--"+constants.SkipUpdateFlag,
-	)
+		"--" + constants.SkipUpdateFlag,
+	}
+	if clusterName != "" {
+		args = append(args, "--cluster", clusterName)
+	} else {
+		args = append(args, "--local")
+	}
+	if convertOnlyFlag != "" {
+		args = append(args, convertOnlyFlag)
+	}
+	if bootstrapEndpointsFlag != "" {
+		args = append(args, bootstrapEndpointsFlag)
+	}
+	cmd := exec.Command(CLIBinary, args...)
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
@@ -328,31 +335,6 @@ func GetLocalClusterStatus(
 	if blockchainName != "" {
 		cmd.Args = append(cmd.Args, "--blockchain", blockchainName)
 	}
-	fmt.Println(cmd)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output), err
-}
-
-func DeployEtnaLocalBlockchain(
-	blockchainName string,
-) (string, error) {
-	cmd := exec.Command(
-		CLIBinary,
-		"blockchain",
-		"deploy",
-		blockchainName,
-		"--skip-relayer",
-		"--local",
-		"--ewoq",
-		"--use-local-machine",
-		"--"+constants.SkipUpdateFlag,
-	)
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
