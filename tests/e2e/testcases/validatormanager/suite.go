@@ -29,19 +29,17 @@ import (
 
 const (
 	CLIBinary         = "./bin/avalanche"
-	subnetName        = "e2eSubnetTest"
 	keyName           = "ewoq"
 	avalancheGoPath   = "--avalanchego-path"
 	ewoqEVMAddress    = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 	ewoqPChainAddress = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
 var err error
 
 func createEtnaSubnetEvmConfig() error {
 	// Check config does not already exist
-	_, err = utils.SubnetConfigExists(subnetName)
+	_, err = utils.SubnetConfigExists(utils.SubnetName)
 	if err != nil {
 		return err
 	}
@@ -51,7 +49,7 @@ func createEtnaSubnetEvmConfig() error {
 		CLIBinary,
 		"blockchain",
 		"create",
-		subnetName,
+		utils.SubnetName,
 		"--evm",
 		"--proof-of-authority",
 		"--validator-manager-owner",
@@ -81,7 +79,7 @@ func createSovereignSubnet() (string, string, error) {
 		CLIBinary,
 		"blockchain",
 		"deploy",
-		subnetName,
+		utils.SubnetName,
 		"--local",
 		"--num-local-nodes=1",
 		"--ewoq",
@@ -108,7 +106,7 @@ func createSovereignSubnet() (string, string, error) {
 }
 
 func destroyLocalNode() {
-	_, err := os.Stat(testLocalNodeName)
+	_, err := os.Stat(utils.TestLocalNodeName)
 	if os.IsNotExist(err) {
 		return
 	}
@@ -117,7 +115,7 @@ func destroyLocalNode() {
 		"node",
 		"local",
 		"destroy",
-		testLocalNodeName,
+		utils.TestLocalNodeName,
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
@@ -166,13 +164,13 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 		// subnet config
-		_ = utils.DeleteConfigs(subnetName)
+		_ = utils.DeleteConfigs(utils.SubnetName)
 		destroyLocalNode()
 	})
 
 	ginkgo.AfterEach(func() {
 		destroyLocalNode()
-		commands.DeleteSubnetConfig(subnetName)
+		commands.DeleteSubnetConfig(utils.SubnetName)
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CleanNetwork()
@@ -180,9 +178,9 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 	ginkgo.It("Set Up POA Validator Manager", func() {
 		subnetIDStr, blockchainIDStr, err := createSovereignSubnet()
 		gomega.Expect(err).Should(gomega.BeNil())
-		_, err = commands.TrackLocalEtnaSubnet(testLocalNodeName, subnetName)
+		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		keyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, fmt.Sprintf("subnet_%s_airdrop", subnetName)+constants.KeySuffix)
+		keyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, fmt.Sprintf("subnet_%s_airdrop", utils.SubnetName)+constants.KeySuffix)
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 		rpcURL := fmt.Sprintf("http://127.0.0.1:9650/ext/bc/%s/rpc", blockchainIDStr)
@@ -190,7 +188,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		gomega.Expect(err).Should(gomega.BeNil())
 		evm.WaitForChainID(client)
 
-		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), testLocalNodeName)
+		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), utils.TestLocalNodeName)
 
 		extraAggregatorPeers, err := blockchaincmd.ConvertURIToPeers([]string{"http://127.0.0.1:9650"})
 		gomega.Expect(err).Should(gomega.BeNil())
