@@ -561,14 +561,14 @@ func LogLevelToEmoji(logLevel string) (string, error) {
 	return levelEmoji, nil
 }
 
-func IsValidSemanticVersion(version string) bool {
+func IsValidSemanticVersion(version string, component string) bool {
 	if !semver.IsValid(version) {
-		// remove tool part, just in case (eg icm-relayer/v1.5.1)
-		versionParts := strings.Split(version, "/")
-		if len(versionParts) == 2 && semver.IsValid(versionParts[1]) {
+		versionTail := strings.TrimPrefix(version, component+"-")
+		if semver.IsValid(versionTail) {
 			return true
 		}
-		return false
+		versionTail = strings.TrimPrefix(version, component+"/")
+		return semver.IsValid(versionTail)
 	}
 	return true
 }

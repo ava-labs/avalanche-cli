@@ -147,15 +147,15 @@ func validateWeight(input string) error {
 
 func validateValidatorBalanceFunc(availableBalance uint64) func(string) error {
 	return func(input string) error {
-		val, err := strconv.ParseUint(input, 10, 64)
+		val, err := strconv.ParseFloat(input, 64)
 		if err != nil {
 			return err
 		}
-		if val < 1 {
-			return fmt.Errorf("subnet validator balance must be at least 1 AVAX")
+		if val < constants.BootstrapValidatorBalanceAVAX {
+			return fmt.Errorf("subnet validator balance must be at least 0.1 AVAX")
 		}
-		if val > availableBalance {
-			return fmt.Errorf("current balance of %d is not sufficient for subnet validator balance to be %d AVAX", availableBalance, val)
+		if val > float64(availableBalance) {
+			return fmt.Errorf("current balance of %d is not sufficient for subnet validator balance to be %2f AVAX", availableBalance, val)
 		}
 		return nil
 	}
