@@ -649,6 +649,10 @@ func UpsizeLocalNode(
 		ux.SpinFailWithError(spinner, "", err)
 		return newNodeName, fmt.Errorf("failed to add local validator: %w", err)
 	}
+	ux.Logger.Info("Waiting for node: %s to be bootstrapping P-Chain", newNodeName)
+	if err := WaitBootstrapped(cli, "P"); err != nil {
+		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+	}
 	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
 	_, err = subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
@@ -1001,4 +1005,32 @@ func GetBlockchainStatus(uri string, blockchainID string) (
 		return "Not Syncing", nil
 	}
 	return status.String(), nil
+}
+
+func WaitBootstrapped(cli client.Client, blockchainID string) error {
+	blockchainBootstrapCheckFrequency := time.Second
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		for {
+			infoClient := info.NewClient(nodeInfo.GetUri())
+			boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
+			if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
+				return err
+			}
+			if boostrapped {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(blockchainBootstrapCheckFrequency):
+			}
+		}
+	}
+	return err
 }
