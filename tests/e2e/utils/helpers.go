@@ -326,6 +326,9 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 	// split output by newline
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
+		if strings.Contains(line, "Waiting") {
+			continue
+		}
 		if !strings.Contains(line, "rpc") {
 			continue
 		}
@@ -334,6 +337,9 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
 		}
 		endIndex := strings.Index(line, "rpc")
+		if startIndex > endIndex+3 {
+			return nil, fmt.Errorf("unexpected format while looking for RPC info on output: %s", line)
+		}
 		rpc := line[startIndex : endIndex+3]
 		rpcComponents := strings.Split(rpc, "/")
 		if len(rpcComponents) != expectedRPCComponentsLen {

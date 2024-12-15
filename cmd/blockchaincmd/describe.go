@@ -241,7 +241,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	if locallyDeployed {
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, sc.Name); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, sc.Name); err != nil {
 			return err
 		}
 

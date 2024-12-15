@@ -40,7 +40,7 @@ func TrackSubnetWithLocalMachine(
 	blockchainName string,
 	avalancheGoBinPath string,
 ) error {
-	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+	if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
 	sc, err := app.LoadSidecar(blockchainName)
@@ -177,7 +177,7 @@ func LocalNodeTrackSubnet(
 	return nil
 }
 
-func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, error) {
+func CheckClusterIsLocal(app *application.Avalanche, clusterName string) (bool, error) {
 	clustersConfig, err := app.GetClustersConfig()
 	if err != nil {
 		return false, err
@@ -206,7 +206,7 @@ func StartLocalNode(
 	if clusterExists, err := CheckClusterExists(app, clusterName); err != nil {
 		return fmt.Errorf("error checking clusters info: %w", err)
 	} else if clusterExists {
-		if localClusterExists, err = checkClusterIsLocal(app, clusterName); err != nil {
+		if localClusterExists, err = CheckClusterIsLocal(app, clusterName); err != nil {
 			return fmt.Errorf("error verifying if cluster is local: %w", err)
 		} else if !localClusterExists {
 			return fmt.Errorf("cluster %s is not a local one", clusterName)
@@ -775,7 +775,7 @@ func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
 		return err
 	}
 
-	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+	if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local cluster %q not found", clusterName)
 	}
 
@@ -831,7 +831,7 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	}
 	for clusterName := range clustersConfig.Clusters {
 		if len(clusterNamesToInclude) == 0 || slices.Contains(clusterNamesToInclude, clusterName) {
-			if ok, err := checkClusterIsLocal(app, clusterName); err == nil && ok {
+			if ok, err := CheckClusterIsLocal(app, clusterName); err == nil && ok {
 				localClusters[clusterName] = app.GetLocalDir(clusterName)
 			}
 		}
@@ -876,10 +876,47 @@ func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
 	return nil
 }
 
+func StopCurrentIfLocalNetwork(app *application.Avalanche) error {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	currentlyRunningRootDir := ""
+	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if cli != nil {
+		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
+		if status != nil && status.ClusterInfo != nil {
+			if status.ClusterInfo.RootDataDir != "" {
+				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
+			}
+		}
+	}
+	if currentlyRunningRootDir == "" {
+		return nil
+	}
+	localClusters, err := listLocalClusters(app, nil)
+	if err != nil {
+		return fmt.Errorf("failed to list local clusters: %w", err)
+	}
+	for clusterName, rootDir := range localClusters {
+		clusterConf, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster config: %w", err)
+		}
+		network := models.ConvertClusterToNetwork(clusterConf.Network)
+		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
+			return StopLocalNode(app)
+		}
+	}
+	return nil
+}
+
 func LocalStatus(app *application.Avalanche, clusterName string, blockchainName string) error {
 	clustersToList := make([]string, 0)
 	if clusterName != "" {
-		if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+		if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 			return fmt.Errorf("local cluster %q not found", clusterName)
 		}
 		clustersToList = append(clustersToList, clusterName)

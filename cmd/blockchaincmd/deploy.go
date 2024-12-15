@@ -77,7 +77,6 @@ var (
 	useLocalMachine                 bool
 	useEwoq                         bool
 	ledgerAddresses                 []string
-	sovereign                       bool
 	subnetIDStr                     string
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool
@@ -543,7 +542,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		useEwoq = true
 
-		if !sovereign {
+		if !sidecar.Sovereign {
 			// sovereign blockchains are deployed into new local clusters,
 			// non sovereign blockchains are deployed into the local network itself
 			if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {

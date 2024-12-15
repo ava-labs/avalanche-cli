@@ -224,7 +224,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, blockchainName); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, blockchainName); err != nil {
 			return err
 		}
 
