@@ -4,6 +4,7 @@ package validatorcmd
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
