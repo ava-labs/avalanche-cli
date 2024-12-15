@@ -164,3 +164,15 @@ func GetVersion() (bool, string, int, error) {
 	parsedVersion := "v" + splitVersion[1]
 	return true, parsedVersion, int(versionResponse.RPCProtocolVersion), nil
 }
+
+func GetBlockchainNames() ([]string, error) {
+	clusterInfo, err := GetClusterInfo()
+	if err != nil {
+		return nil, err
+	}
+	blockchainNames := []string{}
+	for _, chainInfo := range clusterInfo.CustomChains {
+		blockchainNames = append(blockchainNames, chainInfo.ChainName)
+	}
+	return blockchainNames, nil
+}
