@@ -1121,6 +1121,5 @@ func (d *PublicDeployer) IncreaseValidatorPChainBalance(
 		return ids.Empty, err
 	}
 	ux.Logger.PrintToUser("Validator balance has been increased with tx ID: %s", txID.String())
-	time.Sleep(2 * time.Second)
 	return txID, nil
 }
