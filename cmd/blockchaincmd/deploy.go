@@ -1202,7 +1202,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				deployRelayerFlags.CChainFundingKey = "ewoq"
 			}
 			if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
-				ux.Logger.PrintToUser("Relayer is not deployed due to %w", err)
+				ux.Logger.PrintToUser("Relayer is not deployed due to %v", err)
 				ux.Logger.PrintToUser("To deploy relayer, call `avalanche interchain relayer deploy`")
 			} else {
 				ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
