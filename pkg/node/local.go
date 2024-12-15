@@ -122,6 +122,10 @@ func TrackSubnetWithLocalMachine(
 		}
 		rpcEndpoints = append(rpcEndpoints, models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
 	}
+	ux.Logger.PrintToUser("Waiting for blockchain %s to be bootstrapped", blockchainName)
+	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
+		return fmt.Errorf("failure waiting for local cluster %s bootstrapping", blockchainName)
+	}
 	for _, rpcURL := range rpcEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
 		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
@@ -473,6 +477,11 @@ func StartLocalNode(
 		}
 	}
 
+	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
+	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
+		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+	}
+
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", rootDir)
@@ -650,7 +659,7 @@ func UpsizeLocalNode(
 		return newNodeName, fmt.Errorf("failed to add local validator: %w", err)
 	}
 	ux.Logger.Info("Waiting for node: %s to be bootstrapping P-Chain", newNodeName)
-	if err := WaitBootstrapped(cli, "P"); err != nil {
+	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
 		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
 	}
 	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
@@ -675,7 +684,7 @@ func UpsizeLocalNode(
 	}
 	// wait until cluster is healthy
 	ux.Logger.Info("Waiting for node: %s to be bootstrapping %s", newNodeName, blockchainName)
-	if err := WaitBootstrapped(cli, blockchainID.String()); err != nil {
+	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
 		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping")
 	}
 	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
@@ -1011,10 +1020,8 @@ func GetBlockchainStatus(uri string, blockchainID string) (
 	return status.String(), nil
 }
 
-func WaitBootstrapped(cli client.Client, blockchainID string) error {
+func WaitBootstrapped(ctx context.Context, cli client.Client, blockchainID string) error {
 	blockchainBootstrapCheckFrequency := time.Second
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
 	status, err := cli.Status(ctx)
 	if err != nil {
 		return err
