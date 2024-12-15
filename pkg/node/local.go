@@ -339,7 +339,7 @@ func StartLocalNode(
 		if network.Kind == models.Local {
 			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
-				return fmt.Errorf("failure trying to connect to local network: %s", err)
+				return fmt.Errorf("failure trying to connect to local network: %w", err)
 			}
 			rootDataDir := clusterInfo.RootDataDir
 			networkJSONPath := filepath.Join(rootDataDir, "network.json")
