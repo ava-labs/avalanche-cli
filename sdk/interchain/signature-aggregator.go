@@ -124,6 +124,7 @@ func initSignatureAggregator(
 		return nil, fmt.Errorf("failed to create signature aggregator: %w", err)
 	}
 	sa.aggregator = signatureAggregator
+	time.Sleep(1 * time.Minute)
 	return sa, nil
 }
 
