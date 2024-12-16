@@ -127,9 +127,6 @@ Testnet or Mainnet.`,
 }
 
 func preAddChecks(network models.Network, sovereign bool) error {
-	if sovereign && network.Kind == models.Mainnet {
-		return errNotSupportedOnMainnet
-	}
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
