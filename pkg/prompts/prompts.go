@@ -107,6 +107,7 @@ type Prompter interface {
 	CaptureEtnaDuration(promptStr string) (time.Duration, error)
 	CaptureFujiDuration(promptStr string) (time.Duration, error)
 	CaptureMainnetDuration(promptStr string) (time.Duration, error)
+	CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
@@ -253,6 +254,20 @@ func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, er
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateMainnetStakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
+func (*realPrompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateMainnetL1StakingDuration,
 	}
 
 	durationStr, err := prompt.Run()
