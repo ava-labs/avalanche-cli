@@ -126,7 +126,7 @@ Testnet or Mainnet.`,
 	return cmd
 }
 
-func preAddChecks(network models.Network, sovereign bool) error {
+func preAddChecks() error {
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
@@ -168,7 +168,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
-	if err := preAddChecks(network, sc.Sovereign); err != nil {
+	if err := preAddChecks(); err != nil {
 		return err
 	}
 
