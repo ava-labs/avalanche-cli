@@ -293,6 +293,13 @@ func setupEnv() (string, error) {
 		return "", err
 	}
 
+	// Create run dir if it doesn't exist
+	runDir := filepath.Join(baseDir, constants.RunDir)
+	if err = os.MkdirAll(runDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the run dir %s: %s\n", runDir, err)
+		return "", err
+	}
+
 	// Create custom vm dir if it doesn't exist
 	vmDir := filepath.Join(baseDir, constants.CustomVMDir)
 	if err = os.MkdirAll(vmDir, os.ModePerm); err != nil {
