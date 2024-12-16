@@ -45,7 +45,6 @@ var (
 	validatorManagerSupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	validatorManagerFlags ValidatorManagerFlags

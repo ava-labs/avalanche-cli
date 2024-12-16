@@ -41,7 +41,6 @@ var (
 		networkoptions.Devnet,
 		networkoptions.Fuji,
 		networkoptions.Mainnet,
-		networkoptions.EtnaDevnet,
 	}
 
 	nodeIDStr                 string
@@ -664,8 +663,6 @@ func PromptDuration(start time.Time, network models.Network) (time.Duration, err
 			d, err = app.Prompt.CaptureFujiDuration(txt)
 		case models.Mainnet:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
-		case models.EtnaDevnet:
-			d, err = app.Prompt.CaptureEtnaDuration(txt)
 		default:
 			d, err = app.Prompt.CaptureDuration(txt)
 		}

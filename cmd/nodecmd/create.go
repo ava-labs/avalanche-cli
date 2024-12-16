@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet, networkoptions.EtnaDevnet, networkoptions.Mainnet}
+	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet, networkoptions.Mainnet}
 	globalNetworkFlags                    networkoptions.NetworkFlags
 	useAWS                                bool
 	useGCP                                bool
@@ -220,8 +220,8 @@ func preCreateChecks(clusterName string) error {
 	}
 	if clusterConfig.Local {
 		return notImplementedForLocal("create")
-	} // bootsrap checks
-	if globalNetworkFlags.UseEtnaDevnet && (len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "") {
+	} // bootstrap checks
+	if len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "" {
 		return fmt.Errorf("etna devnet uses predefined bootsrap configuration")
 	}
 	if len(bootstrapIDs) != len(bootstrapIPs) {
@@ -296,41 +296,6 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	)
 	if err := preCreateChecks(clusterName); err != nil {
 		return err
-	}
-	if network.Kind == models.EtnaDevnet {
-		publicHTTPPortAccess = true // public http port access for etna devnet api for PoAManagerDeployment
-		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
-		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
-
-		// create genesis and upgrade files
-		genesisTmpFile, err := os.CreateTemp("", "genesis")
-		if err != nil {
-			return err
-		}
-		if _, err := genesisTmpFile.Write(constants.EtnaDevnetGenesisData); err != nil {
-			return err
-		}
-		if err := genesisTmpFile.Close(); err != nil {
-			return err
-		}
-		genesisPath = genesisTmpFile.Name()
-
-		upgradeTmpFile, err := os.CreateTemp("", "upgrade")
-		if err != nil {
-			return err
-		}
-		if _, err := upgradeTmpFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
-			return err
-		}
-		if err := upgradeTmpFile.Close(); err != nil {
-			return err
-		}
-		upgradePath = upgradeTmpFile.Name()
-
-		defer func() {
-			_ = os.Remove(genesisTmpFile.Name())
-			_ = os.Remove(upgradeTmpFile.Name())
-		}()
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use

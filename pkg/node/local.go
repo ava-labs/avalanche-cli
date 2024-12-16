@@ -379,35 +379,6 @@ func StartLocalNode(
 				return fmt.Errorf("could not close local network upgrade file: %w", err)
 			}
 			defer os.Remove(anrSettings.UpgradePath)
-		case network.Kind == models.EtnaDevnet:
-			anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
-			anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
-			// prepare genesis and upgrade files for anr
-			genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
-			if err != nil {
-				return fmt.Errorf("could not create save Etna Devnet genesis file: %w", err)
-			}
-			if _, err := genesisFile.Write(constants.EtnaDevnetGenesisData); err != nil {
-				return fmt.Errorf("could not write Etna Devnet genesis data: %w", err)
-			}
-			if err := genesisFile.Close(); err != nil {
-				return fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
-			}
-			anrSettings.GenesisPath = genesisFile.Name()
-			defer os.Remove(anrSettings.GenesisPath)
-
-			upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
-			if err != nil {
-				return fmt.Errorf("could not create save Etna Devnet upgrade file: %w", err)
-			}
-			if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
-				return fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
-			}
-			anrSettings.UpgradePath = upgradeFile.Name()
-			if err := upgradeFile.Close(); err != nil {
-				return fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
-			}
-			defer os.Remove(anrSettings.UpgradePath)
 		}
 
 		if anrSettings.StakingTLSKeyPath != "" && anrSettings.StakingCertKeyPath != "" && anrSettings.StakingSignerKeyPath != "" {
@@ -525,36 +496,6 @@ func UpsizeLocalNode(
 	nodeConfigStr := string(nodeConfigBytes)
 
 	// we will remove this code soon, so it can be not DRY
-	if network.Kind == models.EtnaDevnet {
-		anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
-		anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
-		// prepare genesis and upgrade files for anr
-		genesisFile, err := os.CreateTemp("", "etna_devnet_genesis")
-		if err != nil {
-			return "", fmt.Errorf("could not create save Etna Devnet genesis file: %w", err)
-		}
-		if _, err := genesisFile.Write(constants.EtnaDevnetGenesisData); err != nil {
-			return "", fmt.Errorf("could not write Etna Devnet genesis data: %w", err)
-		}
-		if err := genesisFile.Close(); err != nil {
-			return "", fmt.Errorf("could not close Etna Devnet genesis file: %w", err)
-		}
-		anrSettings.GenesisPath = genesisFile.Name()
-		defer os.Remove(anrSettings.GenesisPath)
-
-		upgradeFile, err := os.CreateTemp("", "etna_devnet_upgrade")
-		if err != nil {
-			return "", fmt.Errorf("could not create save Etna Devnet upgrade file: %w", err)
-		}
-		if _, err := upgradeFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
-			return "", fmt.Errorf("could not write Etna Devnet upgrade data: %w", err)
-		}
-		anrSettings.UpgradePath = upgradeFile.Name()
-		if err := upgradeFile.Close(); err != nil {
-			return "", fmt.Errorf("could not close Etna Devnet upgrade file: %w", err)
-		}
-		defer os.Remove(anrSettings.UpgradePath)
-	}
 	if network.Kind == models.Local {
 		clusterInfo, err := localnet.GetClusterInfo()
 		if err != nil {
@@ -719,18 +660,6 @@ func preLocalChecks(
 	// checks
 	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
 		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
-	}
-	if networkFlags.UseEtnaDevnet && (networkFlags.UseDevnet || networkFlags.UseFuji) {
-		return fmt.Errorf("etna devnet can only be used with devnet")
-	}
-	if networkFlags.UseEtnaDevnet && anrSettings.GenesisPath != "" {
-		return fmt.Errorf("etna devnet uses predefined genesis file")
-	}
-	if networkFlags.UseEtnaDevnet && anrSettings.UpgradePath != "" {
-		return fmt.Errorf("etna devnet uses predefined upgrade file")
-	}
-	if networkFlags.UseEtnaDevnet && (len(anrSettings.BootstrapIDs) != 0 || len(anrSettings.BootstrapIPs) != 0) {
-		return fmt.Errorf("etna devnet uses predefined bootstrap configuration")
 	}
 	if len(anrSettings.BootstrapIDs) != len(anrSettings.BootstrapIPs) {
 		return fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
