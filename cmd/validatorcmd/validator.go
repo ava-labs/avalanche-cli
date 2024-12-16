@@ -25,6 +25,7 @@ the validator will be considered inactive and will no longer participate in vali
 	app = injectedApp
 	// validator getBalance
 	cmd.AddCommand(NewGetBalanceCmd())
-
+	// validator increaseBalance
+	cmd.AddCommand(NewIncreaseBalanceCmd())
 	return cmd
 }
