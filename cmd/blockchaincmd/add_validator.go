@@ -376,7 +376,7 @@ func CallAddValidator(
 			}
 		}
 		if duration == 0 {
-			duration, err = PromptDuration(time.Now(), network)
+			duration, err = PromptDuration(time.Now(), network, pos)
 			if err != nil {
 				return nil
 			}
@@ -651,17 +651,19 @@ func CallAddValidatorNonSOV(
 	return err
 }
 
-func PromptDuration(start time.Time, network models.Network) (time.Duration, error) {
+func PromptDuration(start time.Time, network models.Network, isPos bool) (time.Duration, error) {
 	for {
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		var d time.Duration
 		var err error
-		switch network.Kind {
-		case models.Fuji:
+		switch {
+		case network.Kind == models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
-		case models.Mainnet:
+		case network.Kind == models.Mainnet && isPos:
+			d, err = app.Prompt.CaptureMainnetL1Duration(txt)
+		case network.Kind == models.Mainnet && !isPos:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
-		case models.EtnaDevnet:
+		case network.Kind == models.EtnaDevnet:
 			d, err = app.Prompt.CaptureEtnaDuration(txt)
 		default:
 			d, err = app.Prompt.CaptureDuration(txt)
@@ -756,7 +758,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		case defaultDurationOption:
 			useDefaultDuration = true
 		default:
-			duration, err = PromptDuration(start, network)
+			duration, err = PromptDuration(start, network, false) // notSoV
 			if err != nil {
 				return time.Time{}, 0, err
 			}

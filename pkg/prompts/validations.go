@@ -58,6 +58,21 @@ func validateMainnetStakingDuration(input string) error {
 	return nil
 }
 
+func validateMainnetL1StakingDuration(input string) error {
+	const minL1StakingDuration = 24 * time.Hour
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d > genesis.MainnetParams.MaxStakeDuration {
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MaxStakeDuration))
+	}
+	if d < minL1StakingDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MinStakeDuration))
+	}
+	return nil
+}
+
 func validateFujiStakingDuration(input string) error {
 	d, err := time.ParseDuration(input)
 	if err != nil {
