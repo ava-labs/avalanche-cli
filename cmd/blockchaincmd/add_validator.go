@@ -125,10 +125,7 @@ Testnet or Mainnet.`,
 	return cmd
 }
 
-func preAddChecks(network models.Network, sovereign bool) error {
-	if sovereign && network.Kind == models.Mainnet {
-		return errNotSupportedOnMainnet
-	}
+func preAddChecks() error {
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
@@ -170,7 +167,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
-	if err := preAddChecks(network, sc.Sovereign); err != nil {
+	if err := preAddChecks(); err != nil {
 		return err
 	}
 
@@ -378,7 +375,7 @@ func CallAddValidator(
 			}
 		}
 		if duration == 0 {
-			duration, err = PromptDuration(time.Now(), network)
+			duration, err = PromptDuration(time.Now(), network, true) // it's pos
 			if err != nil {
 				return nil
 			}
@@ -653,15 +650,17 @@ func CallAddValidatorNonSOV(
 	return err
 }
 
-func PromptDuration(start time.Time, network models.Network) (time.Duration, error) {
+func PromptDuration(start time.Time, network models.Network, isPos bool) (time.Duration, error) {
 	for {
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		var d time.Duration
 		var err error
-		switch network.Kind {
-		case models.Fuji:
+		switch {
+		case network.Kind == models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
-		case models.Mainnet:
+		case network.Kind == models.Mainnet && isPos:
+			d, err = app.Prompt.CaptureMainnetL1StakingDuration(txt)
+		case network.Kind == models.Mainnet && !isPos:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
 		default:
 			d, err = app.Prompt.CaptureDuration(txt)
@@ -756,7 +755,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		case defaultDurationOption:
 			useDefaultDuration = true
 		default:
-			duration, err = PromptDuration(start, network)
+			duration, err = PromptDuration(start, network, false) // notSoV
 			if err != nil {
 				return time.Time{}, 0, err
 			}

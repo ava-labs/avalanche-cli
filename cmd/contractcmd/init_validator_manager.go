@@ -46,6 +46,7 @@ var (
 		networkoptions.Local,
 		networkoptions.Devnet,
 		networkoptions.Fuji,
+		networkoptions.Mainnet,
 	}
 	validatorManagerFlags ValidatorManagerFlags
 	initPOSManagerFlags   POSManagerSpecFlags
