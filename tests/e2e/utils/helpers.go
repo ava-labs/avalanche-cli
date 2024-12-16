@@ -718,6 +718,28 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 	return nodesInfo, nil
 }
 
+func GetLocalClusterUris() ([]string, error) {
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	resp, err := cli.Status(ctx)
+	if err != nil {
+		return nil, err
+	}
+	uris := []string{}
+	for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
+		uris = append(uris, nodeInfo.Uri)
+	}
+	return uris, nil
+}
+
 func GetWhitelistedSubnetsFromConfigFile(configFile string) (string, error) {
 	fileBytes, err := os.ReadFile(configFile)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {

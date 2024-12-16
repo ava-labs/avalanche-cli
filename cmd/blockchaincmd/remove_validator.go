@@ -327,6 +327,12 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 
+	if err := UpdatePChainHeight(
+		"Waiting for P-Chain to update validator information ...",
+	); err != nil {
+		return err
+	}
+
 	if err := validatormanager.FinishValidatorRemoval(
 		app,
 		network,

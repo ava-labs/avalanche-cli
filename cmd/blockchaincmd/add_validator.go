@@ -400,6 +400,8 @@ func CallAddValidator(
 		}
 	}
 
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+
 	if balance == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {

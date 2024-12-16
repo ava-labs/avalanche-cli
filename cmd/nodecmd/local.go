@@ -184,7 +184,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	return node.StartLocalNode(
 		app,
 		clusterName,
-		globalNetworkFlags.UseEtnaDevnet,
 		avalanchegoBinaryPath,
 		numNodes,
 		nodeConfig,
