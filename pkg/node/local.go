@@ -355,8 +355,7 @@ func StartLocalNode(
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		} else if network.Kind == models.Mainnet {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 1-2 hours"))
-		}
-		if network.Kind == models.Local {
+		} else if network.Kind == models.Local {
 			cli, err := binutils.NewGRPCClient()
 			if err != nil {
 				return err
