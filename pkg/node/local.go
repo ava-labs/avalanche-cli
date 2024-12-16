@@ -939,10 +939,10 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 }
 
 func GetInfo(uri string, blockchainID string) (
-	ids.NodeID,                // nodeID
+	ids.NodeID, // nodeID
 	*signer.ProofOfPossession, // nodePOP
-	bool,                      // isBootstrapped
-	error,                     // error
+	bool, // isBootstrapped
+	error, // error
 ) {
 	client := info.NewClient(uri)
 	ctx, cancel := utils.GetAPILargeContext()
@@ -960,7 +960,7 @@ func GetInfo(uri string, blockchainID string) (
 
 func GetBlockchainStatus(uri string, blockchainID string) (
 	string, // status
-	error,  // error
+	error, // error
 ) {
 	client := platformvm.NewClient(uri)
 	ctx, cancel := utils.GetAPILargeContext()
