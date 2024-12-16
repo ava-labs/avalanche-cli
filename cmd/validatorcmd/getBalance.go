@@ -120,7 +120,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("  Validator Balance: %.5f", float64(balance)/float64(units.Avax))
+	ux.Logger.PrintToUser("  Validator Balance: %.5f AVAX", float64(balance)/float64(units.Avax))
 
 	return nil
 }

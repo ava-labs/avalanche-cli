@@ -339,8 +339,7 @@ func StartLocalNode(
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		} else if network.Kind == models.Mainnet {
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 1-2 hours"))
-		}
-		if network.Kind == models.Local {
+		} else if network.Kind == models.Local {
 			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
 				return fmt.Errorf("failure trying to connect to local network: %w", err)

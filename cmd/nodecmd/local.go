@@ -20,10 +20,11 @@ import (
 
 var (
 	localStartSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Fuji,
+		networkoptions.Local,
 		networkoptions.Devnet,
 		networkoptions.EtnaDevnet,
-		networkoptions.Local,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
 	}
 	avalanchegoBinaryPath string
 
