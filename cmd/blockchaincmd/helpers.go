@@ -111,13 +111,10 @@ func UpdatePChainHeight(
 	return nil
 }
 
-func getLocalBootstrapEndpoints(network models.Network) ([]string, error) {
+func getLocalBootstrapEndpoints() ([]string, error) {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	serverEndpoint := binutils.LocalClusterGRPCServerEndpoint
-	if network.Kind == models.Local {
-		serverEndpoint = binutils.LocalNetworkGRPCServerEndpoint
-	}
 	cli, err := binutils.NewGRPCClientWithEndpoint(serverEndpoint)
 	if err != nil {
 		return nil, err

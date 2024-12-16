@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
@@ -76,7 +77,6 @@ var (
 	useLocalMachine                 bool
 	useEwoq                         bool
 	ledgerAddresses                 []string
-	sovereign                       bool
 	subnetIDStr                     string
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool
@@ -542,13 +542,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		useEwoq = true
 
-		if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {
-			return err
-		} else if b {
-			return fmt.Errorf("blockchain %s has already been deployed", blockchainName)
+		if !sidecar.Sovereign {
+			// sovereign blockchains are deployed into new local clusters,
+			// non sovereign blockchains are deployed into the local network itself
+			if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {
+				return err
+			} else if b {
+				return fmt.Errorf("blockchain %s has already been deployed", blockchainName)
+			}
 		}
 	}
-	// end of local deploy
 
 	createSubnet := true
 	var subnetID ids.ID
@@ -607,21 +610,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if !generateNodeID {
 			if network.Kind == models.Local {
-				if len(bootstrapEndpoints) == 0 {
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
-					if err != nil {
-						return fmt.Errorf("error getting local host bootstrap endpoints: %w", err)
-					}
-				}
-				if changeOwnerAddress == "" {
-					k, err := app.GetKey("ewoq", network, false)
-					if err != nil {
-						return err
-					}
-					changeOwnerAddress = k.P()[0]
-				}
+				useLocalMachine = true
 			}
-			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+			networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
+			clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
 			if clusterNameFlagValue != "" {
 				clusterName = clusterNameFlagValue
 				clusterConfig, err := app.GetClusterConfig(clusterName)
@@ -632,7 +624,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if clusterConfig.Local {
 					useLocalMachine = true
 					if len(bootstrapEndpoints) == 0 {
-						bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
+						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 						if err != nil {
 							return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 								"please create your local node again and call subnet deploy command again", err)
@@ -645,7 +637,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				useLocalMachine = true
 			}
 			// ask user if we want to use local machine if cluster is not provided
-			if network.Kind != models.Local && !useLocalMachine && clusterNameFlagValue == "" {
+			if !useLocalMachine && clusterNameFlagValue == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
@@ -659,7 +651,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if useLocalMachine && numLocalNodes == 0 {
 				numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
 			}
-			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
+			// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 			if useLocalMachine && clusterNameFlagValue == "" {
 				requiredBalance := deployBalance * uint64(numLocalNodes)
 				if availableBalance < requiredBalance {
@@ -725,14 +717,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
-					globalNetworkFlags,
+					network,
+					networkoptions.NetworkFlags{},
 					nil,
 				); err != nil {
 					return err
 				}
 				clusterNameFlagValue = clusterName
 				if len(bootstrapEndpoints) == 0 {
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
+					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 					if err != nil {
 						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 							"please create your local node again and call subnet deploy command again", err)
@@ -994,14 +987,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			switch {
-			case network.Kind == models.Local:
-				if err := networkcmd.TrackSubnet(
-					blockchainName,
-					avagoBinaryPath,
-					sidecar.Sovereign,
-				); err != nil {
-					return err
-				}
 			case useLocalMachine:
 				if err := node.TrackSubnetWithLocalMachine(
 					app,
@@ -1145,31 +1130,29 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sidecar.TeleporterReady && tracked {
-		if !icmSpec.SkipICMDeploy {
-			chainSpec := contract.ChainSpec{
-				BlockchainName: blockchainName,
-			}
-			chainSpec.SetEnabled(true, false, false, false, false)
-			deployICMFlags := messengercmd.DeployFlags{
-				ChainFlags: chainSpec,
-				PrivateKeyFlags: contract.PrivateKeyFlags{
-					KeyName: icmKeyName,
-				},
-				DeployMessenger:              true,
-				DeployRegistry:               true,
-				ForceRegistryDeploy:          true,
-				Version:                      icmSpec.ICMVersion,
-				MessengerContractAddressPath: icmSpec.MessengerContractAddressPath,
-				MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
-				MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
-				RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
-				CChainKeyName:                cchainIcmKeyName,
-			}
-			ux.Logger.PrintToUser("")
-			if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
-				return err
-			}
+	if sidecar.TeleporterReady && tracked && !icmSpec.SkipICMDeploy {
+		chainSpec := contract.ChainSpec{
+			BlockchainName: blockchainName,
+		}
+		chainSpec.SetEnabled(true, false, false, false, false)
+		deployICMFlags := messengercmd.DeployFlags{
+			ChainFlags: chainSpec,
+			PrivateKeyFlags: contract.PrivateKeyFlags{
+				KeyName: icmKeyName,
+			},
+			DeployMessenger:              true,
+			DeployRegistry:               true,
+			ForceRegistryDeploy:          true,
+			Version:                      icmSpec.ICMVersion,
+			MessengerContractAddressPath: icmSpec.MessengerContractAddressPath,
+			MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
+			MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
+			RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
+			CChainKeyName:                cchainIcmKeyName,
+		}
+		ux.Logger.PrintToUser("")
+		if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
+			return err
 		}
 		if network.Kind != models.Local && !useLocalMachine {
 			if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
