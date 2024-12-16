@@ -327,6 +327,12 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
 
+	if err := UpdatePChainHeight(
+		"Waiting for P-Chain to update validator information ...",
+	); err != nil {
+		return err
+	}
+
 	if err := validatormanager.FinishValidatorRemoval(
 		app,
 		network,
@@ -346,12 +352,9 @@ func removeValidatorSOV(
 }
 
 func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Network, subnetID ids.ID, kc *keychain.Keychain, blockchainName string, nodeID ids.NodeID) error {
-	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	_, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
-	}
-	if !isPermissioned {
-		return ErrNotPermissionedSubnet
 	}
 
 	// add control keys to the keychain whenever possible

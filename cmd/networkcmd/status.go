@@ -38,7 +38,7 @@ func networkStatus(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("  Network Healthy: %t", clusterInfo.Healthy)
 		ux.Logger.PrintToUser("  Custom VMs Healthy: %t", clusterInfo.CustomChainsHealthy)
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, ""); err != nil {
 			return err
 		}
 	} else {

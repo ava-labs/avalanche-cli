@@ -456,10 +456,7 @@ func GetICMInfo(
 	if err != nil {
 		return nil, err
 	}
-	ti.Version, err = app.Downloader.GetLatestReleaseVersion(constants.AvaLabsOrg, constants.ICMContractsRepoName, "")
-	if err != nil {
-		return nil, err
-	}
+	ti.Version = constants.ICMVersion
 	deployer := ICMDeployer{}
 	_, ti.MessengerDeployerAddress, _, _, err = deployer.GetAssets(
 		app.GetICMContractsBinDir(),

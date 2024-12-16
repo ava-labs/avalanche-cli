@@ -85,12 +85,9 @@ func UpdateKeychainWithSubnetControlKeys(
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
-	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	_, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
-	}
-	if !isPermissioned {
-		return ErrNotPermissionedSubnet
 	}
 	// add control keys to the keychain whenever possible
 	if err := kc.AddAddresses(controlKeys); err != nil {
@@ -114,13 +111,10 @@ func UpdatePChainHeight(
 	return nil
 }
 
-func getLocalBootstrapEndpoints(network models.Network) ([]string, error) {
+func getLocalBootstrapEndpoints() ([]string, error) {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	serverEndpoint := binutils.LocalClusterGRPCServerEndpoint
-	if network.Kind == models.Local {
-		serverEndpoint = binutils.LocalNetworkGRPCServerEndpoint
-	}
 	cli, err := binutils.NewGRPCClientWithEndpoint(serverEndpoint)
 	if err != nil {
 		return nil, err

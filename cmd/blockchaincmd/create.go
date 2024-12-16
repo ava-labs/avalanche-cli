@@ -63,6 +63,7 @@ var (
 	genesisPath string
 	vmFile      string
 	useRepo     bool
+	sovereign   bool
 
 	errEmptyBlockchainName                        = errors.New("invalid empty name")
 	errIllegalNameCharacter                       = errors.New("illegal name character: only letters, no special characters allowed")
