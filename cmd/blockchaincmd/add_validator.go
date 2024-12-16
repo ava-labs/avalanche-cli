@@ -376,7 +376,7 @@ func CallAddValidator(
 			}
 		}
 		if duration == 0 {
-			duration, err = PromptDuration(time.Now(), network, pos)
+			duration, err = PromptDuration(time.Now(), network, true) // it's pos
 			if err != nil {
 				return nil
 			}
@@ -660,7 +660,7 @@ func PromptDuration(start time.Time, network models.Network, isPos bool) (time.D
 		case network.Kind == models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
 		case network.Kind == models.Mainnet && isPos:
-			d, err = app.Prompt.CaptureMainnetL1Duration(txt)
+			d, err = app.Prompt.CaptureMainnetL1StakingDuration(txt)
 		case network.Kind == models.Mainnet && !isPos:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
 		case network.Kind == models.EtnaDevnet:

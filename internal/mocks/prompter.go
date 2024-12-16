@@ -508,8 +508,8 @@ func (_m *Prompter) CaptureMainnetDuration(promptStr string) (time.Duration, err
 	return r0, r1
 }
 
-// CaptureMainnetL1Duration provides a mock function with given fields: promptStr
-func (_m *Prompter) CaptureMainnetL1Duration(promptStr string) (time.Duration, error) {
+// CaptureMainnetL1StakingDuration provides a mock function with given fields: promptStr
+func (_m *Prompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error) {
 	ret := _m.Called(promptStr)
 
 	if len(ret) == 0 {

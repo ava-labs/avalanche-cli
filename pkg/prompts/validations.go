@@ -68,7 +68,7 @@ func validateMainnetL1StakingDuration(input string) error {
 		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MaxStakeDuration))
 	}
 	if d < minL1StakingDuration {
-		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MinStakeDuration))
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(minL1StakingDuration))
 	}
 	return nil
 }
