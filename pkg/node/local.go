@@ -283,6 +283,7 @@ func StartLocalNode(
 		nodeConfig = map[string]interface{}{}
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
+	nodeConfig[config.IndexEnabledKey] = false
 
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
 	if err != nil {
@@ -333,7 +334,7 @@ func StartLocalNode(
 		case network.Kind == models.Fuji:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
 		case network.Kind == models.Mainnet:
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 1-2 hours"))
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
 		case network.Kind == models.Local:
 			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
