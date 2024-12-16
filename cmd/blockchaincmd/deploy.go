@@ -666,7 +666,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				_ = node.StopLocalNode(app)
 				anrSettings := node.ANRSettings{}
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
-				useEtnaDevnet := network.Kind == models.EtnaDevnet
 				if avagoBinaryPath == "" {
 					useLatestAvalanchegoPreReleaseVersion := true
 					useLatestAvalanchegoReleaseVersion := false
@@ -711,7 +710,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if err = node.StartLocalNode(
 					app,
 					clusterName,
-					useEtnaDevnet,
 					avagoBinaryPath,
 					uint32(numLocalNodes),
 					nodeConfig,

@@ -189,7 +189,6 @@ func CheckClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 func StartLocalNode(
 	app *application.Avalanche,
 	clusterName string,
-	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
 	nodeConfig map[string]interface{},
@@ -311,30 +310,25 @@ func StartLocalNode(
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		if network.Kind == models.Undefined {
-			switch {
-			case useEtnaDevnet:
-				network = models.NewNetwork(
-					models.Devnet,
-					constants.EtnaDevnetNetworkID,
-					constants.EtnaDevnetEndpoint,
-					clusterName,
-				)
-			default:
-				network, err = networkoptions.GetNetworkFromCmdLineFlags(
-					app,
-					"",
-					networkFlags,
-					false,
-					true,
-					supportedNetworkOptions,
-					"",
-				)
-				if err != nil {
-					return err
-				}
+			network, err = networkoptions.GetNetworkFromCmdLineFlags(
+				app,
+				"",
+				networkFlags,
+				false,
+				true,
+				supportedNetworkOptions,
+				"",
+			)
+			if err != nil {
+				return err
 			}
 		}
 		network.ClusterName = clusterName
+
+		if err := preLocalChecks(anrSettings, avaGoVersionSetting, networkFlags); err != nil {
+			return err
+		}
+
 		switch {
 		case network.Kind == models.Fuji:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
@@ -384,11 +378,7 @@ func StartLocalNode(
 				return fmt.Errorf("could not close local network upgrade file: %w", err)
 			}
 			defer os.Remove(anrSettings.UpgradePath)
-		}
-		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, networkFlags); err != nil {
-			return err
-		}
-		if useEtnaDevnet {
+		case network.Kind == models.EtnaDevnet:
 			anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
 			anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
 			// prepare genesis and upgrade files for anr
@@ -716,7 +706,6 @@ func localClusterDataExists(app *application.Avalanche, clusterName string) bool
 func preLocalChecks(
 	anrSettings ANRSettings,
 	avaGoVersionSettings AvalancheGoVersionSettings,
-	useEtnaDevnet bool,
 	networkFlags networkoptions.NetworkFlags,
 ) error {
 	// expand passed paths
@@ -730,16 +719,16 @@ func preLocalChecks(
 	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
 		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
 	}
-	if useEtnaDevnet && (networkFlags.UseDevnet || networkFlags.UseFuji) {
+	if networkFlags.UseEtnaDevnet && (networkFlags.UseDevnet || networkFlags.UseFuji) {
 		return fmt.Errorf("etna devnet can only be used with devnet")
 	}
-	if useEtnaDevnet && anrSettings.GenesisPath != "" {
+	if networkFlags.UseEtnaDevnet && anrSettings.GenesisPath != "" {
 		return fmt.Errorf("etna devnet uses predefined genesis file")
 	}
-	if useEtnaDevnet && anrSettings.UpgradePath != "" {
+	if networkFlags.UseEtnaDevnet && anrSettings.UpgradePath != "" {
 		return fmt.Errorf("etna devnet uses predefined upgrade file")
 	}
-	if useEtnaDevnet && (len(anrSettings.BootstrapIDs) != 0 || len(anrSettings.BootstrapIPs) != 0) {
+	if networkFlags.UseEtnaDevnet && (len(anrSettings.BootstrapIDs) != 0 || len(anrSettings.BootstrapIPs) != 0) {
 		return fmt.Errorf("etna devnet uses predefined bootstrap configuration")
 	}
 	if len(anrSettings.BootstrapIDs) != len(anrSettings.BootstrapIPs) {

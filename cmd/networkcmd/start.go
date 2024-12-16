@@ -322,7 +322,6 @@ func startLocalCluster(avalancheGoBinPath string) error {
 			if err = node.StartLocalNode(
 				app,
 				clusterName,
-				false,
 				avalancheGoBinPath,
 				0,
 				nil,
