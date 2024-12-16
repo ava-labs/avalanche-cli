@@ -18,6 +18,13 @@ import (
 )
 
 var (
+	localStartSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Devnet,
+		networkoptions.EtnaDevnet,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+	}
 	avalanchegoBinaryPath string
 
 	bootstrapIDs         []string
@@ -74,7 +81,7 @@ status by running avalanche node status local
 		RunE:              localStartNode,
 		PersistentPostRun: handlePostRun,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, localStartSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", true, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
@@ -183,7 +190,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		anrSettings,
 		avaGoVersionSetting,
 		globalNetworkFlags,
-		createSupportedNetworkOptions,
+		localStartSupportedNetworkOptions,
 	)
 }
 
