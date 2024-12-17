@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
@@ -136,6 +138,8 @@ Deprecation notice: use 'avalanche blockchain'`
 
 	// add contract command
 	rootCmd.AddCommand(contractcmd.NewCmd(app))
+	// add validator command
+	rootCmd.AddCommand(validatorcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 
@@ -286,6 +290,13 @@ func setupEnv() (string, error) {
 	keyDir := filepath.Join(baseDir, constants.KeyDir)
 	if err = os.MkdirAll(keyDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the key dir %s: %s\n", keyDir, err)
+		return "", err
+	}
+
+	// Create run dir if it doesn't exist
+	runDir := filepath.Join(baseDir, constants.RunDir)
+	if err = os.MkdirAll(runDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the run dir %s: %s\n", runDir, err)
 		return "", err
 	}
 

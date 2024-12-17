@@ -24,11 +24,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
+	anrnetwork "github.com/ava-labs/avalanche-network-runner/network"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -40,7 +40,7 @@ func TrackSubnetWithLocalMachine(
 	blockchainName string,
 	avalancheGoBinPath string,
 ) error {
-	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+	if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
 	sc, err := app.LoadSidecar(blockchainName)
@@ -122,6 +122,10 @@ func TrackSubnetWithLocalMachine(
 		}
 		rpcEndpoints = append(rpcEndpoints, models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
 	}
+	ux.Logger.PrintToUser("Waiting for blockchain %s to be bootstrapped", blockchainName)
+	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
+		return fmt.Errorf("failure waiting for local cluster %s bootstrapping", blockchainName)
+	}
 	for _, rpcURL := range rpcEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
 		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
@@ -173,7 +177,7 @@ func LocalNodeTrackSubnet(
 	return nil
 }
 
-func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, error) {
+func CheckClusterIsLocal(app *application.Avalanche, clusterName string) (bool, error) {
 	clustersConfig, err := app.GetClustersConfig()
 	if err != nil {
 		return false, err
@@ -185,14 +189,14 @@ func checkClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 func StartLocalNode(
 	app *application.Avalanche,
 	clusterName string,
-	useEtnaDevnet bool,
 	avalanchegoBinaryPath string,
 	numNodes uint32,
 	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
-	globalNetworkFlags networkoptions.NetworkFlags,
-	createSupportedNetworkOptions []networkoptions.NetworkOption,
+	network models.Network,
+	networkFlags networkoptions.NetworkFlags,
+	supportedNetworkOptions []networkoptions.NetworkOption,
 ) error {
 	var err error
 
@@ -201,7 +205,7 @@ func StartLocalNode(
 	if clusterExists, err := CheckClusterExists(app, clusterName); err != nil {
 		return fmt.Errorf("error checking clusters info: %w", err)
 	} else if clusterExists {
-		if localClusterExists, err = checkClusterIsLocal(app, clusterName); err != nil {
+		if localClusterExists, err = CheckClusterIsLocal(app, clusterName); err != nil {
 			return fmt.Errorf("error verifying if cluster is local: %w", err)
 		} else if !localClusterExists {
 			return fmt.Errorf("cluster %s is not a local one", clusterName)
@@ -279,6 +283,7 @@ func StartLocalNode(
 		nodeConfig = map[string]interface{}{}
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
+	nodeConfig[config.IndexEnabledKey] = false
 
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
 	if err != nil {
@@ -305,43 +310,76 @@ func StartLocalNode(
 		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
-		network := models.UndefinedNetwork
-		switch {
-		case useEtnaDevnet:
-			network = models.NewNetwork(
-				models.Devnet,
-				constants.EtnaDevnetNetworkID,
-				constants.EtnaDevnetEndpoint,
-				clusterName,
-			)
-		case globalNetworkFlags.UseFuji:
-			network = models.NewNetwork(
-				models.Fuji,
-				avagoconstants.FujiID,
-				constants.FujiAPIEndpoint,
-				clusterName,
-			)
-		default:
+		if network.Kind == models.Undefined {
 			network, err = networkoptions.GetNetworkFromCmdLineFlags(
 				app,
 				"",
-				globalNetworkFlags,
+				networkFlags,
 				false,
 				true,
-				createSupportedNetworkOptions,
+				supportedNetworkOptions,
 				"",
 			)
 			if err != nil {
 				return err
 			}
 		}
-		if network.Kind == models.Fuji {
-			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
-		}
-		if err := preLocalChecks(anrSettings, avaGoVersionSetting, useEtnaDevnet, globalNetworkFlags); err != nil {
+		network.ClusterName = clusterName
+
+		if err := preLocalChecks(anrSettings, avaGoVersionSetting, networkFlags); err != nil {
 			return err
 		}
-		if useEtnaDevnet {
+
+		switch {
+		case network.Kind == models.Fuji:
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
+		case network.Kind == models.Mainnet:
+			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
+		case network.Kind == models.Local:
+			clusterInfo, err := localnet.GetClusterInfo()
+			if err != nil {
+				return fmt.Errorf("failure trying to connect to local network: %w", err)
+			}
+			rootDataDir := clusterInfo.RootDataDir
+			networkJSONPath := filepath.Join(rootDataDir, "network.json")
+			bs, err := os.ReadFile(networkJSONPath)
+			if err != nil {
+				return fmt.Errorf("could not read local network config file %s: %w", networkJSONPath, err)
+			}
+			var networkJSON anrnetwork.Config
+			if err := json.Unmarshal(bs, &networkJSON); err != nil {
+				return err
+			}
+			for id, ip := range networkJSON.BeaconConfig {
+				anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
+				anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
+			}
+			// prepare genesis and upgrade files for anr
+			genesisFile, err := os.CreateTemp("", "local_network_genesis")
+			if err != nil {
+				return fmt.Errorf("could not create local network genesis file: %w", err)
+			}
+			if _, err := genesisFile.Write([]byte(networkJSON.Genesis)); err != nil {
+				return fmt.Errorf("could not write local network genesis file: %w", err)
+			}
+			if err := genesisFile.Close(); err != nil {
+				return fmt.Errorf("could not close local network genesis file: %w", err)
+			}
+			anrSettings.GenesisPath = genesisFile.Name()
+			defer os.Remove(anrSettings.GenesisPath)
+			upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
+			if err != nil {
+				return fmt.Errorf("could not create local network upgrade file: %w", err)
+			}
+			if _, err := upgradeFile.Write([]byte(networkJSON.Upgrade)); err != nil {
+				return fmt.Errorf("could not write local network upgrade file: %w", err)
+			}
+			anrSettings.UpgradePath = upgradeFile.Name()
+			if err := upgradeFile.Close(); err != nil {
+				return fmt.Errorf("could not close local network upgrade file: %w", err)
+			}
+			defer os.Remove(anrSettings.UpgradePath)
+		case network.Kind == models.EtnaDevnet:
 			anrSettings.BootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
 			anrSettings.BootstrapIPs = constants.EtnaDevnetBootstrapIPs
 			// prepare genesis and upgrade files for anr
@@ -430,6 +468,11 @@ func StartLocalNode(
 		}
 	}
 
+	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
+	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
+		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+	}
+
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", rootDir)
@@ -512,6 +555,51 @@ func UpsizeLocalNode(
 		}
 		defer os.Remove(anrSettings.UpgradePath)
 	}
+	if network.Kind == models.Local {
+		clusterInfo, err := localnet.GetClusterInfo()
+		if err != nil {
+			return "", fmt.Errorf("failure trying to connect to local network: %w", err)
+		}
+		rootDataDir := clusterInfo.RootDataDir
+		networkJSONPath := filepath.Join(rootDataDir, "network.json")
+		bs, err := os.ReadFile(networkJSONPath)
+		if err != nil {
+			return "", fmt.Errorf("could not read local network config file %s: %w", networkJSONPath, err)
+		}
+		var networkJSON anrnetwork.Config
+		if err := json.Unmarshal(bs, &networkJSON); err != nil {
+			return "", err
+		}
+		for id, ip := range networkJSON.BeaconConfig {
+			anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
+			anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
+		}
+		// prepare genesis and upgrade files for anr
+		genesisFile, err := os.CreateTemp("", "local_network_genesis")
+		if err != nil {
+			return "", fmt.Errorf("could not create local network genesis file: %w", err)
+		}
+		if _, err := genesisFile.Write([]byte(networkJSON.Genesis)); err != nil {
+			return "", fmt.Errorf("could not write local network genesis file: %w", err)
+		}
+		if err := genesisFile.Close(); err != nil {
+			return "", fmt.Errorf("could not close local network genesis file: %w", err)
+		}
+		anrSettings.GenesisPath = genesisFile.Name()
+		defer os.Remove(anrSettings.GenesisPath)
+		upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
+		if err != nil {
+			return "", fmt.Errorf("could not create local network upgrade file: %w", err)
+		}
+		if _, err := upgradeFile.Write([]byte(networkJSON.Upgrade)); err != nil {
+			return "", fmt.Errorf("could not write local network upgrade file: %w", err)
+		}
+		anrSettings.UpgradePath = upgradeFile.Name()
+		if err := upgradeFile.Close(); err != nil {
+			return "", fmt.Errorf("could not close local network upgrade file: %w", err)
+		}
+		defer os.Remove(anrSettings.UpgradePath)
+	}
 	// end of code to be removed
 	anrOpts := []client.OpOption{
 		client.WithNetworkID(network.ID),
@@ -561,6 +649,10 @@ func UpsizeLocalNode(
 		ux.SpinFailWithError(spinner, "", err)
 		return newNodeName, fmt.Errorf("failed to add local validator: %w", err)
 	}
+	ux.Logger.Info("Waiting for node: %s to be bootstrapping P-Chain", newNodeName)
+	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
+		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+	}
 	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
 	_, err = subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
@@ -582,6 +674,10 @@ func UpsizeLocalNode(
 		return newNodeName, fmt.Errorf("failed to track blockchain: %w", err)
 	}
 	// wait until cluster is healthy
+	ux.Logger.Info("Waiting for node: %s to be bootstrapping %s", newNodeName, blockchainName)
+	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
+		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping")
+	}
 	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
 	if err != nil {
@@ -608,7 +704,11 @@ func localClusterDataExists(app *application.Avalanche, clusterName string) bool
 }
 
 // stub for now
-func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVersionSettings, useEtnaDevnet bool, globalNetworkFlags networkoptions.NetworkFlags) error {
+func preLocalChecks(
+	anrSettings ANRSettings,
+	avaGoVersionSettings AvalancheGoVersionSettings,
+	networkFlags networkoptions.NetworkFlags,
+) error {
 	// expand passed paths
 	if anrSettings.GenesisPath != "" {
 		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)
@@ -620,16 +720,16 @@ func preLocalChecks(anrSettings ANRSettings, avaGoVersionSettings AvalancheGoVer
 	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
 		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
 	}
-	if useEtnaDevnet && (globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji) {
+	if networkFlags.UseEtnaDevnet && (networkFlags.UseDevnet || networkFlags.UseFuji) {
 		return fmt.Errorf("etna devnet can only be used with devnet")
 	}
-	if useEtnaDevnet && anrSettings.GenesisPath != "" {
+	if networkFlags.UseEtnaDevnet && anrSettings.GenesisPath != "" {
 		return fmt.Errorf("etna devnet uses predefined genesis file")
 	}
-	if useEtnaDevnet && anrSettings.UpgradePath != "" {
+	if networkFlags.UseEtnaDevnet && anrSettings.UpgradePath != "" {
 		return fmt.Errorf("etna devnet uses predefined upgrade file")
 	}
-	if useEtnaDevnet && (len(anrSettings.BootstrapIDs) != 0 || len(anrSettings.BootstrapIPs) != 0) {
+	if networkFlags.UseEtnaDevnet && (len(anrSettings.BootstrapIDs) != 0 || len(anrSettings.BootstrapIPs) != 0) {
 		return fmt.Errorf("etna devnet uses predefined bootstrap configuration")
 	}
 	if len(anrSettings.BootstrapIDs) != len(anrSettings.BootstrapIPs) {
@@ -665,7 +765,7 @@ func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
 		return err
 	}
 
-	if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+	if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local cluster %q not found", clusterName)
 	}
 
@@ -721,7 +821,7 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	}
 	for clusterName := range clustersConfig.Clusters {
 		if len(clusterNamesToInclude) == 0 || slices.Contains(clusterNamesToInclude, clusterName) {
-			if ok, err := checkClusterIsLocal(app, clusterName); err == nil && ok {
+			if ok, err := CheckClusterIsLocal(app, clusterName); err == nil && ok {
 				localClusters[clusterName] = app.GetLocalDir(clusterName)
 			}
 		}
@@ -729,10 +829,84 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	return localClusters, nil
 }
 
+func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	currentlyRunningRootDir := ""
+	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if cli != nil {
+		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
+		if status != nil && status.ClusterInfo != nil {
+			if status.ClusterInfo.RootDataDir != "" {
+				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
+			}
+		}
+	}
+	if currentlyRunningRootDir == "" {
+		return nil
+	}
+	localClusters, err := listLocalClusters(app, nil)
+	if err != nil {
+		return fmt.Errorf("failed to list local clusters: %w", err)
+	}
+	for clusterName, rootDir := range localClusters {
+		clusterConf, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster config: %w", err)
+		}
+		network := models.ConvertClusterToNetwork(clusterConf.Network)
+		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
+			_ = DestroyLocalNode(app, clusterName)
+		}
+	}
+	return nil
+}
+
+func StopCurrentIfLocalNetwork(app *application.Avalanche) error {
+	ctx, cancel := utils.GetANRContext()
+	defer cancel()
+	currentlyRunningRootDir := ""
+	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	if cli != nil {
+		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
+		if status != nil && status.ClusterInfo != nil {
+			if status.ClusterInfo.RootDataDir != "" {
+				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
+			}
+		}
+	}
+	if currentlyRunningRootDir == "" {
+		return nil
+	}
+	localClusters, err := listLocalClusters(app, nil)
+	if err != nil {
+		return fmt.Errorf("failed to list local clusters: %w", err)
+	}
+	for clusterName, rootDir := range localClusters {
+		clusterConf, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster config: %w", err)
+		}
+		network := models.ConvertClusterToNetwork(clusterConf.Network)
+		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
+			return StopLocalNode(app)
+		}
+	}
+	return nil
+}
+
 func LocalStatus(app *application.Avalanche, clusterName string, blockchainName string) error {
 	clustersToList := make([]string, 0)
 	if clusterName != "" {
-		if ok, err := checkClusterIsLocal(app, clusterName); err != nil || !ok {
+		if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 			return fmt.Errorf("local cluster %q not found", clusterName)
 		}
 		clustersToList = append(clustersToList, clusterName)
@@ -776,18 +950,20 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 		healthStatus := ""
 		avagoURIOuput := ""
 
+		clusterConf, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return fmt.Errorf("failed to get cluster config: %w", err)
+		}
+		network := models.ConvertClusterToNetwork(clusterConf.Network)
+		networkKind := fmt.Sprintf(" [%s]", logging.Orange.Wrap(network.Name()))
+
 		// load sidecar and cluster config for the cluster  if blockchainName is not empty
 		blockchainID := ids.Empty
 		if blockchainName != "" {
-			clusterConf, err := app.GetClusterConfig(clusterName)
-			if err != nil {
-				return fmt.Errorf("failed to get cluster config: %w", err)
-			}
 			sc, err := app.LoadSidecar(blockchainName)
 			if err != nil {
 				return err
 			}
-			network := models.ConvertClusterToNetwork(clusterConf.Network)
 			blockchainID = sc.Networks[network.Name()].BlockchainID
 		}
 		if rootDir == currentlyRunningRootDir {
@@ -827,7 +1003,7 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 		} else {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
 		}
-		ux.Logger.PrintToUser("- %s: %s %s %s", clusterName, rootDir, currenlyRunning, healthStatus)
+		ux.Logger.PrintToUser("- %s: %s %s %s %s", clusterName, rootDir, networkKind, currenlyRunning, healthStatus)
 		ux.Logger.PrintToUser(avagoURIOuput)
 	}
 
@@ -869,4 +1045,30 @@ func GetBlockchainStatus(uri string, blockchainID string) (
 		return "Not Syncing", nil
 	}
 	return status.String(), nil
+}
+
+func WaitBootstrapped(ctx context.Context, cli client.Client, blockchainID string) error {
+	blockchainBootstrapCheckFrequency := time.Second
+	status, err := cli.Status(ctx)
+	if err != nil {
+		return err
+	}
+	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+		for {
+			infoClient := info.NewClient(nodeInfo.GetUri())
+			boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
+			if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
+				return err
+			}
+			if boostrapped {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(blockchainBootstrapCheckFrequency):
+			}
+		}
+	}
+	return err
 }

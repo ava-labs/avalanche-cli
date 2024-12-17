@@ -47,6 +47,7 @@ var (
 		networkoptions.Devnet,
 		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
+		networkoptions.Mainnet,
 	}
 	validatorManagerFlags ValidatorManagerFlags
 	initPOSManagerFlags   POSManagerSpecFlags

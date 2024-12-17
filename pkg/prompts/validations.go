@@ -58,6 +58,21 @@ func validateMainnetStakingDuration(input string) error {
 	return nil
 }
 
+func validateMainnetL1StakingDuration(input string) error {
+	const minL1StakingDuration = 24 * time.Hour
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d > genesis.MainnetParams.MaxStakeDuration {
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MaxStakeDuration))
+	}
+	if d < minL1StakingDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(minL1StakingDuration))
+	}
+	return nil
+}
+
 func validateFujiStakingDuration(input string) error {
 	d, err := time.ParseDuration(input)
 	if err != nil {
@@ -145,17 +160,20 @@ func validateWeight(input string) error {
 	return nil
 }
 
-func validateValidatorBalanceFunc(availableBalance uint64) func(string) error {
+func validateValidatorBalanceFunc(availableBalance uint64, minBalance float64) func(string) error {
 	return func(input string) error {
-		val, err := strconv.ParseUint(input, 10, 64)
+		val, err := strconv.ParseFloat(input, 64)
 		if err != nil {
 			return err
 		}
-		if val < 1 {
-			return fmt.Errorf("subnet validator balance must be at least 1 AVAX")
+		if val == 0 {
+			return fmt.Errorf("entered value has to be greater than 0 AVAX")
 		}
-		if val > availableBalance {
-			return fmt.Errorf("current balance of %d is not sufficient for subnet validator balance to be %d AVAX", availableBalance, val)
+		if val < minBalance {
+			return fmt.Errorf("validator balance must be at least %2f AVAX", minBalance)
+		}
+		if val > float64(availableBalance) {
+			return fmt.Errorf("current balance of %d is not sufficient for validator balance to be %2f AVAX", availableBalance, val)
 		}
 		return nil
 	}

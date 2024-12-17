@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
@@ -43,12 +44,13 @@ import (
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm/fx"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
-	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
@@ -75,7 +77,6 @@ var (
 	useLocalMachine                 bool
 	useEwoq                         bool
 	ledgerAddresses                 []string
-	sovereign                       bool
 	subnetIDStr                     string
 	mainnetChainID                  uint32
 	skipCreatePrompt                bool
@@ -106,12 +107,12 @@ var (
 	poSMinimumDelegationFee   uint16
 	poSMaximumStakeMultiplier uint8
 	poSWeightToValueFactor    uint64
+	deployBalanceAVAX         float64
 
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
-	errNotSupportedOnMainnet       = errors.New("deploying sovereign blockchain is currently not supported on Mainnet")
 )
 
 // avalanche blockchain deploy
@@ -199,6 +200,12 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
+	cmd.Flags().Float64Var(
+		&deployBalanceAVAX,
+		"balance",
+		float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
+		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
+	)
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 
@@ -296,7 +303,7 @@ func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string
 		allocAddressMap := genesis.Alloc
 		for address := range allocAddressMap {
 			if address.String() == vm.PrefundedEwoqAddress.String() {
-				return fmt.Errorf("can't airdrop to default address on public networks, please edit the genesis by calling `avalanche subnet create %s --force`", chain)
+				return fmt.Errorf("can't airdrop to default address on public networks, please edit the genesis by calling `avalanche blockchain create %s --force`", chain)
 			}
 		}
 	}
@@ -534,13 +541,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		useEwoq = true
 
-		if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {
-			return err
-		} else if b {
-			return fmt.Errorf("blockchain %s has already been deployed", blockchainName)
+		if !sidecar.Sovereign {
+			// sovereign blockchains are deployed into new local clusters,
+			// non sovereign blockchains are deployed into the local network itself
+			if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {
+				return err
+			} else if b {
+				return fmt.Errorf("blockchain %s has already been deployed", blockchainName)
+			}
 		}
 	}
-	// end of local deploy
 
 	createSubnet := true
 	var subnetID ids.ID
@@ -582,6 +592,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
+	if err != nil {
+		return err
+	}
+
+	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
+
 	if sidecar.Sovereign {
 		if changeOwnerAddress == "" {
 			// use provided key as change owner unless already set
@@ -592,21 +609,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if !generateNodeID {
 			if network.Kind == models.Local {
-				if len(bootstrapEndpoints) == 0 {
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
-					if err != nil {
-						return fmt.Errorf("error getting local host bootstrap endpoints: %w", err)
-					}
-				}
-				if changeOwnerAddress == "" {
-					k, err := app.GetKey("ewoq", network, false)
-					if err != nil {
-						return err
-					}
-					changeOwnerAddress = k.P()[0]
-				}
+				useLocalMachine = true
 			}
-			clusterName := fmt.Sprintf("%s-local-node", blockchainName)
+			networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
+			clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
 			if clusterNameFlagValue != "" {
 				clusterName = clusterNameFlagValue
 				clusterConfig, err := app.GetClusterConfig(clusterName)
@@ -617,7 +623,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if clusterConfig.Local {
 					useLocalMachine = true
 					if len(bootstrapEndpoints) == 0 {
-						bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
+						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 						if err != nil {
 							return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 								"please create your local node again and call subnet deploy command again", err)
@@ -630,7 +636,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				useLocalMachine = true
 			}
 			// ask user if we want to use local machine if cluster is not provided
-			if network.Kind != models.Local && !useLocalMachine && clusterNameFlagValue == "" {
+			if !useLocalMachine && clusterNameFlagValue == "" {
 				ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 				ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
@@ -644,13 +650,21 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if useLocalMachine && numLocalNodes == 0 {
 				numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
 			}
-			// if no cluster provided - we create one  with fmt.Sprintf("%s-local-node", blockchainName) name
+			// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 			if useLocalMachine && clusterNameFlagValue == "" {
+				requiredBalance := deployBalance * uint64(numLocalNodes)
+				if availableBalance < requiredBalance {
+					return fmt.Errorf(
+						"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
+						numLocalNodes,
+						requiredBalance,
+						availableBalance,
+					)
+				}
 				// stop local avalanchego process so that we can generate new local cluster
 				_ = node.StopLocalNode(app)
 				anrSettings := node.ANRSettings{}
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
-				useEtnaDevnet := network.Kind == models.EtnaDevnet
 				if avagoBinaryPath == "" {
 					useLatestAvalanchegoPreReleaseVersion := true
 					useLatestAvalanchegoReleaseVersion := false
@@ -688,24 +702,27 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if network.Kind == models.Fuji {
 					globalNetworkFlags.UseFuji = true
 				}
+				if network.Kind == models.Mainnet {
+					globalNetworkFlags.UseMainnet = true
+				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 				if err = node.StartLocalNode(
 					app,
 					clusterName,
-					useEtnaDevnet,
 					avagoBinaryPath,
 					uint32(numLocalNodes),
 					nodeConfig,
 					anrSettings,
 					avagoVersionSettings,
-					globalNetworkFlags,
+					network,
+					networkoptions.NetworkFlags{},
 					nil,
 				); err != nil {
 					return err
 				}
 				clusterNameFlagValue = clusterName
 				if len(bootstrapEndpoints) == 0 {
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints(network)
+					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 					if err != nil {
 						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 							"please create your local node again and call subnet deploy command again", err)
@@ -735,7 +752,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
 					NodeID:               nodeID.String(),
 					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              constants.BootstrapValidatorBalance,
+					Balance:              deployBalance,
 					BLSPublicKey:         publicKey,
 					BLSProofOfPossession: pop,
 					ChangeOwnerAddr:      changeOwnerAddress,
@@ -743,13 +760,19 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		case clusterNameFlagValue != "":
 			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network)
+			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
 			if err != nil {
 				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
 			}
 
 		default:
-			bootstrapValidators, err = promptBootstrapValidators(network, changeOwnerAddress, numBootstrapValidators)
+			bootstrapValidators, err = promptBootstrapValidators(
+				network,
+				changeOwnerAddress,
+				numBootstrapValidators,
+				deployBalance,
+				availableBalance,
+			)
 			if err != nil {
 				return err
 			}
@@ -761,6 +784,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	// from here on we are assuming a public deploy
 	if subnetOnly && subnetIDStr != "" {
 		return errMutuallyExlusiveSubnetFlags
+	}
+
+	if sidecar.Sovereign {
+		requiredBalance := deployBalance * uint64(len(bootstrapValidators))
+		if availableBalance < requiredBalance {
+			return fmt.Errorf(
+				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
+				len(bootstrapValidators),
+				requiredBalance,
+				availableBalance,
+			)
+		}
 	}
 
 	network.HandlePublicNetworkSimulation()
@@ -924,7 +959,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		ux.Logger.PrintToUser("")
-
+		setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
 		if err := app.UpdateSidecarNetworks(
 			&sidecar,
 			network,
@@ -949,14 +984,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			switch {
-			case network.Kind == models.Local:
-				if err := networkcmd.TrackSubnet(
-					blockchainName,
-					avagoBinaryPath,
-					sidecar.Sovereign,
-				); err != nil {
-					return err
-				}
 			case useLocalMachine:
 				if err := node.TrackSubnetWithLocalMachine(
 					app,
@@ -1100,31 +1127,29 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sidecar.TeleporterReady && tracked {
-		if !icmSpec.SkipICMDeploy {
-			chainSpec := contract.ChainSpec{
-				BlockchainName: blockchainName,
-			}
-			chainSpec.SetEnabled(true, false, false, false, false)
-			deployICMFlags := messengercmd.DeployFlags{
-				ChainFlags: chainSpec,
-				PrivateKeyFlags: contract.PrivateKeyFlags{
-					KeyName: icmKeyName,
-				},
-				DeployMessenger:              true,
-				DeployRegistry:               true,
-				ForceRegistryDeploy:          true,
-				Version:                      icmSpec.ICMVersion,
-				MessengerContractAddressPath: icmSpec.MessengerContractAddressPath,
-				MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
-				MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
-				RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
-				CChainKeyName:                cchainIcmKeyName,
-			}
-			ux.Logger.PrintToUser("")
-			if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
-				return err
-			}
+	if sidecar.TeleporterReady && tracked && !icmSpec.SkipICMDeploy {
+		chainSpec := contract.ChainSpec{
+			BlockchainName: blockchainName,
+		}
+		chainSpec.SetEnabled(true, false, false, false, false)
+		deployICMFlags := messengercmd.DeployFlags{
+			ChainFlags: chainSpec,
+			PrivateKeyFlags: contract.PrivateKeyFlags{
+				KeyName: icmKeyName,
+			},
+			DeployMessenger:              true,
+			DeployRegistry:               true,
+			ForceRegistryDeploy:          true,
+			Version:                      icmSpec.ICMVersion,
+			MessengerContractAddressPath: icmSpec.MessengerContractAddressPath,
+			MessengerDeployerAddressPath: icmSpec.MessengerDeployerAddressPath,
+			MessengerDeployerTxPath:      icmSpec.MessengerDeployerTxPath,
+			RegistryBydecodePath:         icmSpec.RegistryBydecodePath,
+			CChainKeyName:                cchainIcmKeyName,
+		}
+		ux.Logger.PrintToUser("")
+		if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
+			return err
 		}
 		if network.Kind != models.Local && !useLocalMachine {
 			if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
@@ -1157,11 +1182,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				deployRelayerFlags.CChainFundingKey = "ewoq"
 			}
 			if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
-				return err
+				ux.Logger.PrintToUser("Relayer is not deployed due to %v", err)
+				ux.Logger.PrintToUser("To deploy relayer, call `avalanche interchain relayer deploy`")
+			} else {
+				ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
 			}
 		}
 	}
-
+	if sidecar.Sovereign {
+		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
+	} else {
+		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
+	}
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
@@ -1174,7 +1206,23 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getClusterBootstrapValidators(clusterName string, network models.Network) ([]models.SubnetValidator, error) {
+func setBootstrapValidatorValidationID(avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator, bootstrapValidators []models.SubnetValidator, subnetID ids.ID) {
+	for index, avagoValidator := range avaGoBootstrapValidators {
+		for bootstrapValidatorIndex, validator := range bootstrapValidators {
+			avagoValidatorNodeID, _ := ids.ToNodeID(avagoValidator.NodeID)
+			if validator.NodeID == avagoValidatorNodeID.String() {
+				validationID := subnetID.Append(uint32(index))
+				bootstrapValidators[bootstrapValidatorIndex].ValidationID = validationID.String()
+			}
+		}
+	}
+}
+
+func getClusterBootstrapValidators(
+	clusterName string,
+	network models.Network,
+	deployBalance uint64,
+) ([]models.SubnetValidator, error) {
 	clusterConf, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return nil, err
@@ -1198,7 +1246,7 @@ func getClusterBootstrapValidators(clusterName string, network models.Network) (
 		subnetValidators = append(subnetValidators, models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              constants.BootstrapValidatorBalance,
+			Balance:              deployBalance,
 			BLSPublicKey:         fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pub)),
 			BLSProofOfPossession: fmt.Sprintf("%s%s", "0x", hex.EncodeToString(pop)),
 			ChangeOwnerAddr:      changeAddr,

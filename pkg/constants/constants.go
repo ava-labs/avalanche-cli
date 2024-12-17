@@ -4,6 +4,8 @@ package constants
 
 import (
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/units"
 )
 
 type HTTPAccess bool
@@ -56,7 +58,8 @@ const (
 	APIRequestLargeTimeout = 10 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
-	FujiBootstrapTimeout = 15 * time.Minute
+	FujiBootstrapTimeout    = 15 * time.Minute
+	MainnetBootstrapTimeout = 24 * time.Hour
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute
@@ -120,7 +123,8 @@ const (
 	MinStakeWeight  = 1
 	// Default balance when we prompt users for bootstrap validators
 	// nAVAX
-	BootstrapValidatorBalance = 1000000000
+	BootstrapValidatorBalanceNanoAVAX = uint64(BootstrapValidatorBalanceAVAX * float64(units.Avax))
+	BootstrapValidatorBalanceAVAX     = 0.1
 	// Default weight when we prompt users for bootstrap validators
 	BootstrapValidatorWeight = 100
 	// Default weight when we prompt users for non bootstrap validators
@@ -328,6 +332,7 @@ const (
 	ICTTVersion = "8012c2a90638c1b777622e6427dbe4a88e329539"
 
 	// ICM
+	ICMVersion                         = "v1.0.0"
 	DefaultICMMessengerAddress         = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
 	MainnetCChainICMRegistryAddress    = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
 	FujiCChainICMRegistryAddress       = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"

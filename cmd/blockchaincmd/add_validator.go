@@ -95,7 +95,7 @@ Testnet or Mainnet.`,
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
-	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee to P-Chain")
+	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee on P-Chain")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -126,10 +126,7 @@ Testnet or Mainnet.`,
 	return cmd
 }
 
-func preAddChecks(network models.Network, sovereign bool) error {
-	if sovereign && network.Kind == models.Mainnet {
-		return errNotSupportedOnMainnet
-	}
+func preAddChecks() error {
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
@@ -171,7 +168,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
-	if err := preAddChecks(network, sc.Sovereign); err != nil {
+	if err := preAddChecks(); err != nil {
 		return err
 	}
 
@@ -311,7 +308,7 @@ func promptValidatorBalance(availableBalance uint64) (uint64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
 	txt := "What balance would you like to assign to the validator (in AVAX)?"
-	return app.Prompt.CaptureValidatorBalance(txt, availableBalance)
+	return app.Prompt.CaptureValidatorBalance(txt, availableBalance, constants.BootstrapValidatorBalanceAVAX)
 }
 
 func CallAddValidator(
@@ -379,7 +376,7 @@ func CallAddValidator(
 			}
 		}
 		if duration == 0 {
-			duration, err = PromptDuration(time.Now(), network)
+			duration, err = PromptDuration(time.Now(), network, true) // it's pos
 			if err != nil {
 				return nil
 			}
@@ -400,18 +397,21 @@ func CallAddValidator(
 		}
 	}
 
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+
 	if balance == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
 		}
-		balance, err = promptValidatorBalance(availableBalance)
+		balance, err = promptValidatorBalance(availableBalance / units.Avax)
 		if err != nil {
 			return err
 		}
+	} else {
+		// convert to nanoAVAX
+		balance *= units.Avax
 	}
-	// convert to nanoAVAX
-	balance *= units.Avax
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
@@ -651,17 +651,19 @@ func CallAddValidatorNonSOV(
 	return err
 }
 
-func PromptDuration(start time.Time, network models.Network) (time.Duration, error) {
+func PromptDuration(start time.Time, network models.Network, isPos bool) (time.Duration, error) {
 	for {
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		var d time.Duration
 		var err error
-		switch network.Kind {
-		case models.Fuji:
+		switch {
+		case network.Kind == models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
-		case models.Mainnet:
+		case network.Kind == models.Mainnet && isPos:
+			d, err = app.Prompt.CaptureMainnetL1StakingDuration(txt)
+		case network.Kind == models.Mainnet && !isPos:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
-		case models.EtnaDevnet:
+		case network.Kind == models.EtnaDevnet:
 			d, err = app.Prompt.CaptureEtnaDuration(txt)
 		default:
 			d, err = app.Prompt.CaptureDuration(txt)
@@ -756,7 +758,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		case defaultDurationOption:
 			useDefaultDuration = true
 		default:
-			duration, err = PromptDuration(start, network)
+			duration, err = PromptDuration(start, network, false) // notSoV
 			if err != nil {
 				return time.Time{}, 0, err
 			}

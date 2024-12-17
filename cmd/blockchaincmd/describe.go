@@ -109,21 +109,14 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
 	t.AppendRow(table.Row{"Validation", sc.ValidatorManagement, sc.ValidatorManagement}, rowConfig)
 
-	locallyDeployed, err := localnet.Deployed(sc.Name)
-	if err != nil {
-		return err
-	}
-
+	locallyDeployed := true
+	localEndpoint := ""
 	localChainID := ""
-	blockchainID := ""
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
 			ux.Logger.RedXToUser("%s is supposed to be deployed to network %s: %s ", blockchainName, network.Name(), err)
 			ux.Logger.PrintToUser("")
-			continue
-		}
-		if network.Kind == models.Local && !locallyDeployed {
 			continue
 		}
 		if network.Kind != models.Local && onlyLocalnetInfo {
@@ -137,7 +130,12 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			},
 		)
 		if err != nil {
-			return err
+			if network.Kind == models.Local {
+				locallyDeployed = false
+				continue
+			} else {
+				return err
+			}
 		}
 		if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
 			genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
@@ -160,7 +158,6 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			}
 		}
 		if data.BlockchainID != ids.Empty {
-			blockchainID = data.BlockchainID.String()
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			t.AppendRow(table.Row{net, "BlockchainID (CB58)", data.BlockchainID.String()})
 			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
@@ -176,6 +173,9 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		)
 		if err != nil {
 			return err
+		}
+		if network.Kind == models.Local {
+			localEndpoint = endpoint
 		}
 		t.AppendRow(table.Row{net, "RPC Endpoint", endpoint})
 	}
@@ -241,17 +241,22 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	if locallyDeployed {
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, sc.Name); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, sc.Name); err != nil {
 			return err
 		}
 
-		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(blockchainID)
 		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
 		if err != nil {
 			return err
 		}
 		if codespaceEndpoint != "" {
-			localEndpoint = codespaceEndpoint + "\n" + logging.Orange.Wrap("Please make sure to set visibility of port 9650 to public")
+			_, port, _, err := utils.GetURIHostPortAndPath(localEndpoint)
+			if err != nil {
+				return err
+			}
+			localEndpoint = codespaceEndpoint + "\n" + logging.Orange.Wrap(
+				fmt.Sprintf("Please make sure to set visibility of port %d to public", port),
+			)
 		}
 
 		// Wallet

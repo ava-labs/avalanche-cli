@@ -111,11 +111,22 @@ jobs:
         shell: bash
         run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter "${{ matrix.suite }}"
       
+      - name: Generate timestamp and sanitize matrix.suite
+        if: always()
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          CLEAN_SUITE=$(echo "${MATRIX_SUITE}" | sed 's/[^a-zA-Z0-9]/_/g')
+          echo "SUITE=${CLEAN_SUITE}" >> $GITHUB_ENV
+          echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
+        env:
+          MATRIX_SUITE: ${{ matrix.suite }}
+
       - name: Upload Artifact
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: cli-logs-${{ matrix.os }}
+          name: cli-logs-${{ matrix.os }}-${{ env.SUITE }}-${{ env.TIMESTAMP }}
+          include-hidden-files: true
           path: |
             ~/.avalanche-cli/
             !~/.avalanche-cli/bin/

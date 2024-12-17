@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/units"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -105,11 +107,12 @@ type Prompter interface {
 	CaptureEtnaDuration(promptStr string) (time.Duration, error)
 	CaptureFujiDuration(promptStr string) (time.Duration, error)
 	CaptureMainnetDuration(promptStr string) (time.Duration, error)
+	CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
-	CaptureValidatorBalance(promptStr string, availableBalance uint64) (uint64, error)
+	CaptureValidatorBalance(promptStr string, availableBalance uint64, minBalance float64) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string, validator func(int) error) (int, error)
 	CaptureUint8(promptStr string) (uint8, error)
@@ -261,6 +264,20 @@ func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, er
 	return time.ParseDuration(durationStr)
 }
 
+func (*realPrompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateMainnetL1StakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
 func (*realPrompter) CaptureDate(promptStr string) (time.Time, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
@@ -301,20 +318,27 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
+// CaptureValidatorBalance captures balance in nanoAVAX
 func (*realPrompter) CaptureValidatorBalance(
 	promptStr string,
 	availableBalance uint64,
+	minBalance float64,
 ) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateValidatorBalanceFunc(availableBalance),
+		Validate: validateValidatorBalanceFunc(availableBalance, minBalance),
 	}
 	amountStr, err := prompt.Run()
 	if err != nil {
 		return 0, err
 	}
 
-	return strconv.ParseUint(amountStr, 10, 64)
+	amountFloat, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(amountFloat * float64(units.Avax)), nil
 }
 
 func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
