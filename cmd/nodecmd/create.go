@@ -220,10 +220,8 @@ func preCreateChecks(clusterName string) error {
 	}
 	if clusterConfig.Local {
 		return notImplementedForLocal("create")
-	} // bootstrap checks
-	if len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "" {
-		return fmt.Errorf("etna devnet uses predefined bootsrap configuration")
 	}
+	// bootstrap checks
 	if len(bootstrapIDs) != len(bootstrapIPs) {
 		return fmt.Errorf("number of bootstrap ids and ip:port pairs must be equal")
 	}
