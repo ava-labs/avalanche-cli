@@ -18,7 +18,7 @@ func TestExpandHome(t *testing.T) {
 
 	// Test case 2: Relative path
 	relativePath := "testfile.txt"
-	expectedRelativePath := filepath.Join(".", relativePath)
+	expectedRelativePath, _ := filepath.Abs(relativePath)
 	expandedRelativePath := ExpandHome(relativePath)
 	if expandedRelativePath != expectedRelativePath {
 		t.Errorf("ExpandHome failed for relative path: expected %s, got %s", expectedRelativePath, expandedRelativePath)

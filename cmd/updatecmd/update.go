@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -50,8 +49,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 
 func Update(cmd *cobra.Command, isUserCalled bool, version string, lastActs *application.LastActions) error {
 	// first check if there is a new version exists
-	url := binutils.GetGithubLatestReleaseURL(constants.AvaLabsOrg, constants.CliRepoName)
-	latest, err := app.Downloader.GetLatestReleaseVersion(url)
+	latest, err := app.Downloader.GetLatestReleaseVersion(constants.AvaLabsOrg, constants.CliRepoName, "")
 	if err != nil {
 		app.Log.Warn("failed to get latest version for cli from repo", zap.Error(err))
 		return err

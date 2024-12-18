@@ -21,11 +21,7 @@ jobs:
           go-version-file: 'go.mod'
         
       - name: Lint Golang
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.56.2
-          working-directory: .
-          args: --timeout 5m
+        run: ./scripts/lint.sh
 
       - name: Check License
         run:  |

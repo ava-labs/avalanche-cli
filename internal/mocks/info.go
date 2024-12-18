@@ -358,14 +358,14 @@ func (_m *InfoClient) IsBootstrapped(_a0 context.Context, _a1 string, _a2 ...rpc
 	return r0, r1
 }
 
-// Peers provides a mock function with given fields: _a0, _a1
-func (_m *InfoClient) Peers(_a0 context.Context, _a1 ...rpc.Option) ([]info.Peer, error) {
-	_va := make([]interface{}, len(_a1))
-	for _i := range _a1 {
-		_va[_i] = _a1[_i]
+// Peers provides a mock function with given fields: _a0, _a1, _a2
+func (_m *InfoClient) Peers(_a0 context.Context, _a1 []ids.NodeID, _a2 ...rpc.Option) ([]info.Peer, error) {
+	_va := make([]interface{}, len(_a2))
+	for _i := range _a2 {
+		_va[_i] = _a2[_i]
 	}
 	var _ca []interface{}
-	_ca = append(_ca, _a0)
+	_ca = append(_ca, _a0, _a1)
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
@@ -375,19 +375,19 @@ func (_m *InfoClient) Peers(_a0 context.Context, _a1 ...rpc.Option) ([]info.Peer
 
 	var r0 []info.Peer
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) ([]info.Peer, error)); ok {
-		return rf(_a0, _a1...)
+	if rf, ok := ret.Get(0).(func(context.Context, []ids.NodeID, ...rpc.Option) ([]info.Peer, error)); ok {
+		return rf(_a0, _a1, _a2...)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, ...rpc.Option) []info.Peer); ok {
-		r0 = rf(_a0, _a1...)
+	if rf, ok := ret.Get(0).(func(context.Context, []ids.NodeID, ...rpc.Option) []info.Peer); ok {
+		r0 = rf(_a0, _a1, _a2...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]info.Peer)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, ...rpc.Option) error); ok {
-		r1 = rf(_a0, _a1...)
+	if rf, ok := ret.Get(1).(func(context.Context, []ids.NodeID, ...rpc.Option) error); ok {
+		r1 = rf(_a0, _a1, _a2...)
 	} else {
 		r1 = ret.Error(1)
 	}

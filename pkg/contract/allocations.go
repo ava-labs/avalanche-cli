@@ -70,19 +70,29 @@ func GetBlockchainAirdropKeyInfo(
 			return "ewoq", ewoq.C(), ewoq.PrivKeyHex(), nil
 		}
 	}
-	for address := range genesis.Alloc {
-		found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, address, false)
+	maxBalance := big.NewInt(0)
+	maxBalanceKeyName := ""
+	maxBalanceAddr := ""
+	maxBalancePrivKey := ""
+	for address, alloc := range genesis.Alloc {
+		if alloc.Balance == nil {
+			continue
+		}
+		found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, address, false)
 		if err != nil {
 			return "", "", "", err
 		}
-		if found {
-			return keyName, addressStr, privKey, nil
+		if found && alloc.Balance.Cmp(maxBalance) > 0 {
+			maxBalance = alloc.Balance
+			maxBalanceKeyName = keyName
+			maxBalanceAddr = addressStr
+			maxBalancePrivKey = privKey
 		}
 	}
-	return "", "", "", nil
+	return maxBalanceKeyName, maxBalanceAddr, maxBalancePrivKey, nil
 }
 
-func searchForManagedKey(
+func SearchForManagedKey(
 	app *application.Avalanche,
 	network models.Network,
 	address common.Address,
@@ -204,7 +214,7 @@ func getGenesisNativeMinterAdmin(
 			return false, false, "", "", "", nil
 		}
 		for _, admin := range allowListCfg.AllowListConfig.AdminAddresses {
-			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
 			if err != nil {
 				return false, false, "", "", "", err
 			}
@@ -238,7 +248,7 @@ func getGenesisNativeMinterManager(
 			return false, false, "", "", "", nil
 		}
 		for _, admin := range allowListCfg.AllowListConfig.ManagerAddresses {
-			found, keyName, addressStr, privKey, err := searchForManagedKey(app, network, admin, true)
+			found, keyName, addressStr, privKey, err := SearchForManagedKey(app, network, admin, true)
 			if err != nil {
 				return false, false, "", "", "", err
 			}
@@ -287,4 +297,20 @@ func GetEVMSubnetGenesisNativeMinterManager(
 		return false, false, "", "", "", fmt.Errorf("genesis native minter manager query is only supported on EVM based vms")
 	}
 	return getGenesisNativeMinterManager(app, network, genesisData)
+}
+
+func ContractAddressIsInGenesisData(
+	genesisData []byte,
+	contractAddress common.Address,
+) (bool, error) {
+	genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisData)
+	if err != nil {
+		return false, err
+	}
+	for address, allocation := range genesis.Alloc {
+		if address == contractAddress {
+			return len(allocation.Code) > 0, nil
+		}
+	}
+	return false, nil
 }

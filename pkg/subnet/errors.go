@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 const (
@@ -97,7 +98,8 @@ func FindErrorLogs(rootDirs ...string) {
 		})
 	}
 	if len(foundErrors) > 0 {
-		ux.Logger.PrintToUser("================!!! end of errors in logs !!! ========================")
+		ux.Logger.PrintToUser(logging.Reset.Wrap("================!!! end of errors in logs !!! ========================"))
+		ux.Logger.PrintToUser("")
 	}
 }
 

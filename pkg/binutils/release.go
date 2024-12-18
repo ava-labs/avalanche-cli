@@ -9,9 +9,11 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
 	"go.uber.org/zap"
-	"golang.org/x/mod/semver"
 )
 
 func installBinaryWithVersion(
@@ -60,23 +62,29 @@ func InstallBinary(
 	version string,
 	baseBinDir string,
 	installDir string,
-	binPrefix,
-	org,
+	binPrefix string,
+	org string,
 	repo string,
+	component string,
 	downloader GithubDownloader,
 	installer Installer,
 ) (string, string, error) {
-	if version == "latest" {
+	switch {
+	case version == constants.LatestReleaseVersionTag:
 		// get latest version
 		var err error
-		version, err = app.Downloader.GetLatestReleaseVersion(GetGithubLatestReleaseURL(
-			org,
-			repo,
-		))
+		version, err = app.Downloader.GetLatestReleaseVersion(org, repo, component)
 		if err != nil {
 			return "", "", err
 		}
-	} else if !semver.IsValid(version) {
+	case version == constants.LatestPreReleaseVersionTag:
+		// get latest pre release version
+		var err error
+		version, err = app.Downloader.GetLatestPreReleaseVersion(org, repo, component)
+		if err != nil {
+			return "", "", err
+		}
+	case !utils.IsValidSemanticVersion(version, component):
 		return "", "", fmt.Errorf(
 			"invalid version string. Must be semantic version ex: v1.7.14: %s", version)
 	}

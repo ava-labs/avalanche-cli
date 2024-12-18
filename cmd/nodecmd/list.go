@@ -6,8 +6,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
@@ -29,13 +30,9 @@ The node list command lists all clusters together with their nodes.`,
 }
 
 func list(_ *cobra.Command, _ []string) error {
-	var err error
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if len(clustersConfig.Clusters) == 0 {
 		ux.Logger.PrintToUser("There are no clusters defined.")
@@ -44,11 +41,12 @@ func list(_ *cobra.Command, _ []string) error {
 	sort.Strings(clusterNames)
 	for _, clusterName := range clusterNames {
 		clusterConf := clustersConfig.Clusters[clusterName]
-		if err := checkCluster(clusterName); err != nil {
+		if err := node.CheckCluster(app, clusterName); err != nil {
 			return err
 		}
+		cloudIDs := clusterConf.GetCloudIDs()
 		nodeIDs := []string{}
-		for _, cloudID := range clusterConf.GetCloudIDs() {
+		for _, cloudID := range cloudIDs {
 			nodeIDStr := "----------------------------------------"
 			if clusterConf.IsAvalancheGoHost(cloudID) {
 				if nodeID, err := getNodeID(app.GetNodeInstanceDirPath(cloudID)); err != nil {
@@ -59,9 +57,12 @@ func list(_ *cobra.Command, _ []string) error {
 			}
 			nodeIDs = append(nodeIDs, nodeIDStr)
 		}
-		if clusterConf.External {
+		switch {
+		case clusterConf.External:
 			ux.Logger.PrintToUser("cluster %q (%s) EXTERNAL", clusterName, clusterConf.Network.Kind.String())
-		} else {
+		case clusterConf.Local:
+			ux.Logger.PrintToUser("cluster %q (%s) LOCAL", clusterName, clusterConf.Network.Kind.String())
+		default:
 			ux.Logger.PrintToUser("Cluster %q (%s)", clusterName, clusterConf.Network.Kind.String())
 		}
 		for i, cloudID := range clusterConf.GetCloudIDs() {

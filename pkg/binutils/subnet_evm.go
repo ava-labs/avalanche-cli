@@ -25,6 +25,7 @@ func SetupSubnetEVM(app *application.Avalanche, subnetEVMVersion string) (string
 		subnetEVMBinPrefix,
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
+		"",
 		downloader,
 		installer,
 	)

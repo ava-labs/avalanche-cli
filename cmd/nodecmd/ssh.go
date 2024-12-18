@@ -14,9 +14,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/spf13/cobra"
 )
 
@@ -48,13 +51,9 @@ If no [cmd] is provided for the node, it will open ssh shell there.
 }
 
 func sshNode(_ *cobra.Command, args []string) error {
-	var err error
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if len(clustersConfig.Clusters) == 0 {
 		ux.Logger.PrintToUser("There are no clusters defined.")
@@ -63,6 +62,9 @@ func sshNode(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		// provide ssh connection string for all clusters
 		for clusterName, clusterConfig := range clustersConfig.Clusters {
+			if clusterConfig.Local {
+				continue
+			}
 			err := printClusterConnectionString(clusterName, clusterConfig.Network.Kind.String())
 			if err != nil {
 				return err
@@ -72,11 +74,14 @@ func sshNode(_ *cobra.Command, args []string) error {
 	} else {
 		clusterNameOrNodeID := args[0]
 		cmd := strings.Join(args[1:], " ")
-		if err := checkCluster(clusterNameOrNodeID); err == nil {
+		if err := node.CheckCluster(app, clusterNameOrNodeID); err == nil {
 			// clusterName detected
 			if len(args[1:]) == 0 {
 				return printClusterConnectionString(clusterNameOrNodeID, clustersConfig.Clusters[clusterNameOrNodeID].Network.Kind.String())
 			} else {
+				if clustersConfig.Clusters[clusterNameOrNodeID].Local {
+					return notImplementedForLocal("ssh")
+				}
 				clusterHosts, err := GetAllClusterHosts(clusterNameOrNodeID)
 				if err != nil {
 					return err
@@ -203,7 +208,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 		return err
 	}
 	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-	if utils.DirectoryExists(monitoringInventoryPath) {
+	if sdkutils.DirExists(monitoringInventoryPath) {
 		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 		if err != nil {
 			return err
@@ -219,7 +224,7 @@ func printClusterConnectionString(clusterName string, networkName string) error 
 
 // GetAllClusterHosts returns all hosts in a cluster including loadtest and monitoring hosts
 func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
-	if exists, err := checkClusterExists(clusterName); err != nil || !exists {
+	if exists, err := node.CheckClusterExists(app, clusterName); err != nil || !exists {
 		return nil, fmt.Errorf("cluster %s not found", clusterName)
 	}
 	clusterHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
@@ -227,7 +232,7 @@ func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
 		return nil, err
 	}
 	monitoringInventoryPath := app.GetMonitoringInventoryDir(clusterName)
-	if includeMonitor && utils.DirectoryExists(monitoringInventoryPath) {
+	if includeMonitor && sdkutils.DirExists(monitoringInventoryPath) {
 		monitoringHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(monitoringInventoryPath)
 		if err != nil {
 			return nil, err
@@ -235,7 +240,7 @@ func GetAllClusterHosts(clusterName string) ([]*models.Host, error) {
 		clusterHosts = append(clusterHosts, monitoringHosts...)
 	}
 	loadTestInventoryPath := filepath.Join(app.GetAnsibleInventoryDirPath(clusterName), constants.LoadTestDir)
-	if includeLoadTest && utils.DirectoryExists(loadTestInventoryPath) {
+	if includeLoadTest && sdkutils.DirExists(loadTestInventoryPath) {
 		loadTestHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(loadTestInventoryPath)
 		if err != nil {
 			return nil, err

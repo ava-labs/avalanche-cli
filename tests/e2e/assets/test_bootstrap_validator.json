@@ -1,0 +1,10 @@
+[
+  {
+    "NodeID": "NodeID-144PM69m93kSFyfTHMwULTmoGZSWzQ4C1",
+    "Weight": 20,
+    "Balance": 5,
+    "BLSPublicKey": "0x80b7851ce335cee149b7cfffbf6cf0bbca3c9b25026a24056e610976d095906e833a66d5ca5c56c23a3fe50e8785a81f",
+    "BLSProofOfPossession": "0x89e1d6d47ff04ec0c78501a029865140e9ec12baba75a95bfc5710b3fecb8db4b6cecb5ccb1136e19f88db0539deb4420306dd60145024197b41cf89179790f20146fba398bc4d13e08540ea812207f736ca007275e4ebdb840065fdb38573de",
+    "ChangeOwnerAddr": "P-custom1y5ku603lh583xs9v50p8kk0awcqzgeq0mezkqr"
+  }
+]

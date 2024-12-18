@@ -11,6 +11,7 @@ import (
 	"github.com/chelnak/ysmrr"
 	"github.com/chelnak/ysmrr/pkg/animations"
 	"github.com/chelnak/ysmrr/pkg/colors"
+	ansi "github.com/k0kubun/go-ansi"
 )
 
 type UserSpinner struct {
@@ -43,7 +44,9 @@ func (us *UserSpinner) Stop() {
 
 func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinner {
 	formattedMsg := fmt.Sprintf(msg, args...)
-	Logger.log.Info(formattedMsg + " [Spinner Start]")
+	if Logger != nil {
+		Logger.log.Info(formattedMsg + " [Spinner Start]")
+	}
 	sp := us.spinner.AddSpinner(formattedMsg)
 	us.mutex.Lock()
 	if !us.started {
@@ -55,6 +58,7 @@ func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinne
 }
 
 func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
+	ansi.CursorShow()
 	if txt == "" {
 		s.ErrorWithMessagef("%s err:%v", s.GetMessage(), err)
 	} else {
@@ -64,9 +68,12 @@ func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
 }
 
 func SpinComplete(s *ysmrr.Spinner) {
+	ansi.CursorShow()
 	if s.IsComplete() {
 		return
 	}
 	s.Complete()
-	Logger.log.Info(s.GetMessage() + " [Spinner Complete]")
+	if Logger != nil {
+		Logger.log.Info(s.GetMessage() + " [Spinner Complete]")
+	}
 }

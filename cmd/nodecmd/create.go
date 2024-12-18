@@ -14,15 +14,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 
-	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet}
+	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet, networkoptions.EtnaDevnet, networkoptions.Mainnet}
 	globalNetworkFlags                    networkoptions.NetworkFlags
 	useAWS                                bool
 	useGCP                                bool
@@ -70,12 +70,9 @@ var (
 	iops                                  int
 	volumeType                            string
 	volumeSize                            int
-	versionComments                       = map[string]string{
-		"v1.11.0-fuji": " (recommended for fuji durango)",
-	}
-	grafanaPkg           string
-	wizSubnet            string
-	publicHTTPPortAccess bool
+	grafanaPkg                            string
+	wizSubnet                             string
+	publicHTTPPortAccess                  bool
 )
 
 func newCreateCmd() *cobra.Command {
@@ -128,6 +125,11 @@ will apply to all nodes in the cluster`,
 	cmd.Flags().IntVar(&volumeSize, "aws-volume-size", constants.CloudServerStorageSize, "AWS volume size in GB")
 	cmd.Flags().BoolVar(&replaceKeyPair, "auto-replace-keypair", false, "automatically replaces key pair to access node if previous key pair is not found")
 	cmd.Flags().BoolVar(&publicHTTPPortAccess, "public-http-port", false, "allow public access to avalanchego HTTP port")
+	cmd.Flags().StringArrayVar(&bootstrapIDs, "bootstrap-ids", []string{}, "nodeIDs of bootstrap nodes")
+	cmd.Flags().StringArrayVar(&bootstrapIPs, "bootstrap-ips", []string{}, "IP:port pairs of bootstrap nodes")
+	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
+	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
+	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
 	return cmd
 }
 
@@ -135,8 +137,15 @@ will apply to all nodes in the cluster`,
 func handlePostRun(_ *cobra.Command, _ []string) {}
 
 func preCreateChecks(clusterName string) error {
-	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion, useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
-		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version, custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
+	if useCustomAvalanchegoVersion != "" || useAvalanchegoVersionFromSubnet != "" {
+		useLatestAvalanchegoReleaseVersion = false
+		useLatestAvalanchegoPreReleaseVersion = false
+	}
+	if !flags.EnsureMutuallyExclusive([]bool{useLatestAvalanchegoReleaseVersion, useLatestAvalanchegoPreReleaseVersion}) {
+		return fmt.Errorf("latest avalanchego released version, latest avalanchego pre-released version are mutually exclusive options")
+	}
+	if !flags.EnsureMutuallyExclusive([]bool{useAvalanchegoVersionFromSubnet != "", useCustomAvalanchegoVersion != ""}) {
+		return fmt.Errorf("custom avalanchego version and avalanchego version based on given subnet, are mutually exclusive options")
 	}
 	if useAWS && useGCP {
 		return fmt.Errorf("could not use both AWS and GCP cloud options")
@@ -199,12 +208,47 @@ func preCreateChecks(clusterName string) error {
 	if err := failForExternal(clusterName); err != nil {
 		return err
 	}
+	// check for local
+	clusterConfig := models.ClusterConfig{}
+	if ok, err := app.ClusterExists(clusterName); err != nil {
+		return err
+	} else if ok {
+		clusterConfig, err = app.GetClusterConfig(clusterName)
+		if err != nil {
+			return err
+		}
+	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("create")
+	} // bootsrap checks
+	if globalNetworkFlags.UseEtnaDevnet && (len(bootstrapIDs) != 0 || len(bootstrapIPs) != 0 || genesisPath != "" || upgradePath != "") {
+		return fmt.Errorf("etna devnet uses predefined bootsrap configuration")
+	}
+	if len(bootstrapIDs) != len(bootstrapIPs) {
+		return fmt.Errorf("number of bootstrap ids and ip:port pairs must be equal")
+	}
+	if genesisPath != "" && !utils.FileExists(genesisPath) {
+		return fmt.Errorf("genesis file %s does not exist", genesisPath)
+	}
+	if upgradePath != "" && !utils.FileExists(upgradePath) {
+		return fmt.Errorf("upgrade file %s does not exist", upgradePath)
+	}
+	// check ip:port pairs
+	for _, ipPortPair := range bootstrapIPs {
+		if ok := utils.IsValidIPPort(ipPortPair); !ok {
+			return fmt.Errorf("invalid ip:port pair %s", ipPortPair)
+		}
+	}
+	if globalNetworkFlags.UseDevnet {
+		partialSync = false
+		ux.Logger.PrintToUser("disabling partial sync default for devnet")
+	}
 
 	return nil
 }
 
 func checkClusterExternal(clusterName string) (bool, error) {
-	clusterExists, err := checkClusterExists(clusterName)
+	clusterExists, err := node.CheckClusterExists(app, clusterName)
 	if err != nil {
 		return false, fmt.Errorf("error checking cluster: %w", err)
 	}
@@ -241,9 +285,6 @@ func stringToAWSVolumeType(input string) types.VolumeType {
 
 func createNodes(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := preCreateChecks(clusterName); err != nil {
-		return err
-	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -253,12 +294,53 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		createSupportedNetworkOptions,
 		"",
 	)
-	if err != nil {
+	if err := preCreateChecks(clusterName); err != nil {
 		return err
+	}
+	if network.Kind == models.EtnaDevnet {
+		publicHTTPPortAccess = true // public http port access for etna devnet api for PoAManagerDeployment
+		bootstrapIDs = constants.EtnaDevnetBootstrapNodeIDs
+		bootstrapIPs = constants.EtnaDevnetBootstrapIPs
+
+		// create genesis and upgrade files
+		genesisTmpFile, err := os.CreateTemp("", "genesis")
+		if err != nil {
+			return err
+		}
+		if _, err := genesisTmpFile.Write(constants.EtnaDevnetGenesisData); err != nil {
+			return err
+		}
+		if err := genesisTmpFile.Close(); err != nil {
+			return err
+		}
+		genesisPath = genesisTmpFile.Name()
+
+		upgradeTmpFile, err := os.CreateTemp("", "upgrade")
+		if err != nil {
+			return err
+		}
+		if _, err := upgradeTmpFile.Write(constants.EtnaDevnetUpgradeData); err != nil {
+			return err
+		}
+		if err := upgradeTmpFile.Close(); err != nil {
+			return err
+		}
+		upgradePath = upgradeTmpFile.Name()
+
+		defer func() {
+			_ = os.Remove(genesisTmpFile.Name())
+			_ = os.Remove(upgradeTmpFile.Name())
+		}()
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	avalancheGoVersion, err := getAvalancheGoVersion()
+	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
+		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
+		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
+	}
+	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
 	if err != nil {
 		return err
 	}
@@ -392,7 +474,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	} else {
 		if cloudService == constants.AWSCloudService {
 			// Get AWS Credential, region and AMI
-			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.AWSCloudService) != nil) {
+			if !(authorizeAccess || node.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.AWSCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
 			ec2SvcMap, ami, numNodesMap, err := getAWSCloudConfig(awsProfile, false, nil, nodeType)
@@ -464,7 +546,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 				}
 			}
 		} else {
-			if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(constants.GCPCloudService) != nil) {
+			if !(authorizeAccess || node.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(constants.GCPCloudService) != nil) {
 				return fmt.Errorf("cloud access is required")
 			}
 			// Get GCP Credential, zone, Image ID, service account key file path, and GCP project name
@@ -531,9 +613,9 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					networkName := fmt.Sprintf("%s-network", prefix)
 					firewallName := fmt.Sprintf("%s-%s-monitoring", networkName, strings.ReplaceAll(monitoringNodeConfig.PublicIPs[0], ".", ""))
 					ports := []string{
-						strconv.Itoa(constants.AvalanchegoMachineMetricsPort), strconv.Itoa(constants.AvalanchegoAPIPort),
-						strconv.Itoa(constants.AvalanchegoMonitoringPort), strconv.Itoa(constants.AvalanchegoGrafanaPort),
-						strconv.Itoa(constants.AvalanchegoLokiPort),
+						strconv.Itoa(constants.AvalancheGoMachineMetricsPort), strconv.Itoa(constants.AvalancheGoAPIPort),
+						strconv.Itoa(constants.AvalancheGoMonitoringPort), strconv.Itoa(constants.AvalancheGoGrafanaPort),
+						strconv.Itoa(constants.AvalancheGoLokiPort),
 					}
 					if err = gcpClient.AddFirewall(
 						monitoringNodeConfig.PublicIPs[0],
@@ -657,7 +739,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					return
 				}
 				ux.Logger.Info("RunSSHSetupPrometheusConfig completed")
-				if err := ssh.RunSSHSetupLokiConfig(monitoringHost, constants.AvalanchegoLokiPort); err != nil {
+				if err := ssh.RunSSHSetupLokiConfig(monitoringHost, constants.AvalancheGoLokiPort); err != nil {
 					nodeResults.AddResult(monitoringHost.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -705,7 +787,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 					ux.SpinFailWithError(spinner, "", err)
 					return
 				}
-				if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalanchegoLokiPort, cloudID, nodeID.String(), ""); err != nil {
+				if err = ssh.RunSSHSetupPromtailConfig(host, monitoringNodeConfig.PublicIPs[0], constants.AvalancheGoLokiPort, cloudID, nodeID.String(), ""); err != nil {
 					nodeResults.AddResult(host.NodeID, nil, err)
 					ux.SpinFailWithError(spinner, "", err)
 					return
@@ -715,7 +797,17 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			spinner = spinSession.SpinToUser(utils.ScriptLog(host.NodeID, "Setup AvalancheGo"))
 			// check if host is a API host
 			publicAccessToHTTPPort := slices.Contains(cloudConfigMap.GetAllAPIInstanceIDs(), host.GetCloudID()) || publicHTTPPortAccess
-			if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, addMonitoring, publicAccessToHTTPPort); err != nil {
+			if err := docker.ComposeSSHSetupNode(host,
+				network,
+				avalancheGoVersion,
+				bootstrapIDs,
+				bootstrapIPs,
+				partialSync,
+				genesisPath,
+				upgradePath,
+				addMonitoring,
+				publicAccessToHTTPPort,
+			); err != nil {
 				nodeResults.AddResult(host.NodeID, nil, err)
 				ux.SpinFailWithError(spinner, "", err)
 				return
@@ -833,28 +925,26 @@ func saveExternalHostConfig(externalHostConfig models.RegionConfig, hostRegion, 
 }
 
 func getExistingMonitoringInstance(clusterName string) (string, error) {
-	if app.ClustersConfigExists() {
-		clustersConfig, err := app.LoadClustersConfig()
+	// check for local
+	clusterConfig := models.ClusterConfig{}
+	if ok, err := app.ClusterExists(clusterName); err != nil {
+		return "", err
+	} else if ok {
+		clusterConfig, err = app.GetClusterConfig(clusterName)
 		if err != nil {
 			return "", err
 		}
-		if _, ok := clustersConfig.Clusters[clusterName]; ok {
-			if clustersConfig.Clusters[clusterName].MonitoringInstance != "" {
-				return clustersConfig.Clusters[clusterName].MonitoringInstance, nil
-			}
-		}
+	}
+	if clusterConfig.MonitoringInstance != "" {
+		return clusterConfig.MonitoringInstance, nil
 	}
 	return "", nil
 }
 
 func updateKeyPairClustersConfig(cloudConfig models.NodeConfig) error {
-	clustersConfig := models.ClustersConfig{}
-	var err error
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if clustersConfig.KeyPair == nil {
 		clustersConfig.KeyPair = make(map[string]string)
@@ -887,20 +977,16 @@ func getNodeCloudConfig(node string) (models.RegionConfig, string, error) {
 }
 
 func addNodeToClustersConfig(network models.Network, nodeID, clusterName string, isAPIInstance bool, isExternalHost bool, nodeRole, loadTestName string) error {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return err
 	}
 	if clustersConfig.Clusters == nil {
 		clustersConfig.Clusters = make(map[string]models.ClusterConfig)
 	}
 	clusterConfig := clustersConfig.Clusters[clusterName]
 	// if supplied network in argument is empty, don't change current cluster network in cluster_config.json
-	if network != models.UndefinedNetwork {
+	if !network.IsUndefined() {
 		clusterConfig.Network = network
 	}
 	clusterConfig.HTTPAccess = constants.HTTPAccess(publicHTTPPortAccess)
@@ -987,57 +1073,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
 
-// getAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version
-// or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
-// version of their choice
-func getAvalancheGoVersion() (string, error) {
-	// skip this logic if custom-avalanchego-version flag is set
-	if useCustomAvalanchegoVersion != "" {
-		return useCustomAvalanchegoVersion, nil
-	}
-	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
-		constants.AvaLabsOrg,
-		constants.AvalancheGoRepoName,
-	))
-	if err != nil {
-		return "", err
-	}
-	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
-		constants.AvaLabsOrg,
-		constants.AvalancheGoRepoName,
-	)
-	if err != nil {
-		return "", err
-	}
-
-	if !useLatestAvalanchegoReleaseVersion && !useLatestAvalanchegoPreReleaseVersion && useCustomAvalanchegoVersion == "" && useAvalanchegoVersionFromSubnet == "" {
-		err := promptAvalancheGoVersionChoice(latestReleaseVersion, latestPreReleaseVersion)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	var version string
-	switch {
-	case useLatestAvalanchegoReleaseVersion:
-		version = latestReleaseVersion
-	case useLatestAvalanchegoPreReleaseVersion:
-		version = latestPreReleaseVersion
-	case useCustomAvalanchegoVersion != "":
-		version = useCustomAvalanchegoVersion
-	case useAvalanchegoVersionFromSubnet != "":
-		sc, err := app.LoadSidecar(useAvalanchegoVersionFromSubnet)
-		if err != nil {
-			return "", err
-		}
-		version, err = GetLatestAvagoVersionForRPC(sc.RPCVersion, latestPreReleaseVersion)
-		if err != nil {
-			return "", err
-		}
-	}
-	return version, nil
-}
-
 func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
 	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
 		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
@@ -1049,51 +1084,6 @@ func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersi
 		return "", err
 	}
 	return desiredAvagoVersion, nil
-}
-
-// promptAvalancheGoVersionChoice sets flags for either using the latest Avalanche Go
-// version or using the latest Avalanche Go version that is still compatible with the subnet that user
-// wants the cloud server to track
-func promptAvalancheGoVersionChoice(latestReleaseVersion string, latestPreReleaseVersion string) error {
-	latestReleaseVersionOption := "Use latest Avalanche Go Release Version" + versionComments[latestReleaseVersion]
-	latestPreReleaseVersionOption := "Use latest Avalanche Go Pre-release Version" + versionComments[latestPreReleaseVersion]
-	subnetBasedVersionOption := "Use the deployed Subnet's VM version that the node will be validating"
-	customOption := "Custom"
-
-	txt := "What version of Avalanche Go would you like to install in the node?"
-	versionOptions := []string{latestReleaseVersionOption, subnetBasedVersionOption, customOption}
-	if latestPreReleaseVersion != latestReleaseVersion {
-		versionOptions = []string{latestPreReleaseVersionOption, latestReleaseVersionOption, subnetBasedVersionOption, customOption}
-	}
-	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
-	if err != nil {
-		return err
-	}
-
-	switch versionOption {
-	case latestReleaseVersionOption:
-		useLatestAvalanchegoReleaseVersion = true
-	case latestPreReleaseVersionOption:
-		useLatestAvalanchegoPreReleaseVersion = true
-	case customOption:
-		useCustomAvalanchegoVersion, err = app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
-		if err != nil {
-			return err
-		}
-	default:
-		for {
-			useAvalanchegoVersionFromSubnet, err = app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
-			if err != nil {
-				return err
-			}
-			_, err = blockchaincmd.ValidateSubnetNameAndGetChains([]string{useAvalanchegoVersionFromSubnet})
-			if err == nil {
-				break
-			}
-			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", useAvalanchegoVersionFromSubnet))
-		}
-	}
-	return nil
 }
 
 func setCloudService() (string, error) {
@@ -1221,7 +1211,7 @@ func getMonitoringHint(monitoringHostIP string) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("To view unified node %s, visit the following link in your browser: ", logging.LightBlue.Wrap("monitoring dashboard"))
-	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalanchegoGrafanaPort)))
+	ux.Logger.PrintToUser(logging.Green.Wrap(fmt.Sprintf("http://%s:%d/dashboards", monitoringHostIP, constants.AvalancheGoGrafanaPort)))
 	ux.Logger.PrintToUser("Log in with username: admin, password: admin")
 	ux.Logger.PrintLineSeparator()
 	ux.Logger.PrintToUser("")
@@ -1230,7 +1220,7 @@ func getMonitoringHint(monitoringHostIP string) {
 func waitForMonitoringEndpoint(monitoringHost *models.Host) error {
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Waiting for monitoring endpoint to be available")
-	if err := monitoringHost.WaitForPort(constants.AvalanchegoGrafanaPort, constants.SSHLongRunningScriptTimeout); err != nil {
+	if err := monitoringHost.WaitForPort(constants.AvalancheGoGrafanaPort, constants.SSHLongRunningScriptTimeout); err != nil {
 		spinner.Error()
 		return err
 	}
@@ -1479,8 +1469,8 @@ func getPrometheusTargets(clusterName string) ([]string, []string, []string, err
 		return avalancheGoPorts, machinePorts, ltPorts, err
 	}
 	for _, host := range inventoryHosts {
-		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoAPIPort)))
-		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalanchegoMachineMetricsPort)))
+		avalancheGoPorts = append(avalancheGoPorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalancheGoAPIPort)))
+		machinePorts = append(machinePorts, fmt.Sprintf("'%s:%s'", host.IP, strconv.Itoa(constants.AvalancheGoMachineMetricsPort)))
 	}
 	// no need to check error here as it's ok to have no load test instances
 	separateHosts, _ := ansible.GetInventoryFromAnsibleInventoryFile(app.GetLoadTestInventoryDir(clusterName))

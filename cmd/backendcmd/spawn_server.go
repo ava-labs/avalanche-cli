@@ -13,12 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var app *application.Avalanche
+var (
+	app          *application.Avalanche
+	serverPort   string
+	gatewayPort  string
+	snapshotsDir string
+)
 
 // backendCmd is the command to run the backend gRPC process
 func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:    constants.BackendCmd,
 		Short:  "Run the backend server",
 		Long:   "This tool requires a backend process to run; this command starts it",
@@ -26,10 +31,17 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 		Args:   cobrautils.ExactArgs(0),
 		Hidden: true,
 	}
+	cmd.Flags().StringVar(&serverPort, "server-port", binutils.LocalNetworkGRPCServerPort, "server port to use")
+	cmd.Flags().StringVar(&gatewayPort, "gateway-port", binutils.LocalNetworkGRPCGatewayPort, "gateway port to use")
+	cmd.Flags().StringVar(&snapshotsDir, "snapshots-dir", "", "snapshots dir to use")
+	return cmd
 }
 
 func startBackend(_ *cobra.Command, _ []string) error {
-	s, err := binutils.NewGRPCServer(app.GetSnapshotsDir())
+	if snapshotsDir == "" {
+		snapshotsDir = app.GetSnapshotsDir()
+	}
+	s, err := binutils.NewGRPCServer(serverPort, gatewayPort, snapshotsDir)
 	if err != nil {
 		return err
 	}

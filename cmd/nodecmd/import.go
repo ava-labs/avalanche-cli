@@ -13,8 +13,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -42,7 +44,7 @@ affecting cloud nodes like node create or node destroy will be not applicable to
 
 func importFile(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if clusterExists, err := checkClusterExists(clusterName); clusterExists || err != nil {
+	if clusterExists, err := node.CheckClusterExists(app, clusterName); clusterExists || err != nil {
 		ux.Logger.RedXToUser("cluster %s already exists, please use a different name", clusterName)
 		return nil
 	}
@@ -61,7 +63,7 @@ func importFile(_ *cobra.Command, args []string) error {
 	}
 	for _, node := range nodestoCheck {
 		keyPath := filepath.Join(app.GetNodesDir(), node.NodeConfig.NodeID)
-		if utils.DirectoryExists(keyPath) {
+		if sdkutils.DirExists(keyPath) {
 			ux.Logger.RedXToUser("node %s already exists and belongs to the existing cluster, can't import", node.NodeConfig.NodeID)
 			ux.Logger.RedXToUser("you can use destroy command to remove the cluster it belongs to and then retry import")
 			return nil
@@ -109,13 +111,12 @@ func importFile(_ *cobra.Command, args []string) error {
 	// add cluster
 	clustersConfig := models.ClustersConfig{}
 	clustersConfig.Clusters = make(map[string]models.ClusterConfig)
-	if app.ClustersConfigExists() {
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			ux.Logger.RedXToUser("error loading clusters config: %v", err)
-			return err
-		}
+	clustersConfig, err = app.GetClustersConfig()
+	if err != nil {
+		ux.Logger.RedXToUser("error loading clusters config: %v", err)
+		return err
 	}
+
 	importCluster.ClusterConfig.Network.ClusterName = clusterName
 	clustersConfig.Clusters[clusterName] = importCluster.ClusterConfig
 	if err := app.WriteClustersConfigFile(&clustersConfig); err != nil {
