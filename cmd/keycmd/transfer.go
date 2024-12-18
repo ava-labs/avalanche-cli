@@ -50,7 +50,6 @@ var (
 		networkoptions.Mainnet,
 		networkoptions.Fuji,
 		networkoptions.Devnet,
-		networkoptions.EtnaDevnet,
 		networkoptions.Local,
 	}
 	keyName            string
