@@ -44,6 +44,7 @@ var (
 		networkoptions.Mainnet,
 		networkoptions.Fuji,
 		networkoptions.Local,
+		networkoptions.EtnaDevnet,
 		networkoptions.Devnet,
 	}
 	all             bool
@@ -693,12 +694,14 @@ func getXChainBalanceStr(xClient avm.Client, addr string) (string, error) {
 		return "", err
 	}
 	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
 	asset, err := xClient.GetAssetDescription(ctx, "AVAX")
 	if err != nil {
 		return "", err
 	}
+	ctx, cancel = utils.GetAPIContext()
+	defer cancel()
 	resp, err := xClient.GetBalance(ctx, xID, asset.AssetID.String(), false)
-	cancel()
 	if err != nil {
 		return "", err
 	}

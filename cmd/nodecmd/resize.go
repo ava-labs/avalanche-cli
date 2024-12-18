@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
@@ -56,18 +58,25 @@ func preResizeChecks(clusterName string) error {
 	if err := failForExternal(clusterName); err != nil {
 		return fmt.Errorf("cannot resize external cluster %s", clusterName)
 	}
+	clusterConfig, err := app.GetClusterConfig(clusterName)
+	if err != nil {
+		return err
+	}
+	if clusterConfig.Local {
+		return notImplementedForLocal("resize")
+	}
 	return nil
 }
 
 func resize(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := nodePkg.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if err := preResizeChecks(clusterName); err != nil {
 		return err
 	}
-	clusterNodes, err := getClusterNodes(clusterName)
+	clusterNodes, err := nodePkg.GetClusterNodes(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -105,7 +114,7 @@ func resize(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if !(authorizeAccess || authorizedAccessFromSettings()) && (requestCloudAuth(nodeConfig.CloudService) != nil) {
+		if !(authorizeAccess || nodePkg.AuthorizedAccessFromSettings(app)) && (requestCloudAuth(nodeConfig.CloudService) != nil) {
 			return fmt.Errorf("cloud access is required")
 		}
 		spinSession := ux.NewUserSpinner()

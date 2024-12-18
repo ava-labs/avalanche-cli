@@ -1,0 +1,87 @@
+{
+  "networkID": 76,
+  "allocations": [
+    {
+      "ethAddr": "0xC71A61a815e49d16C425482A342a367CD42E38a6",
+      "avaxAddr": "X-custom1v6vuwxjgr043sg0nuuhq70k6vgnule692fvnr9",
+      "initialAmount": 500000000000000000,
+      "unlockSchedule": [
+        {
+          "amount": 100000000000000000,
+          "locktime": 1633824000
+        },
+        {
+          "amount": 100000000000000000,
+          "locktime": 1633825000
+        },
+        {
+          "amount": 100000000000000000,
+          "locktime": 1633826000
+        },
+        {
+          "amount": 100000000000000000,
+          "locktime": 1633827000
+        },
+        {
+          "amount": 100000000000000000,
+          "locktime": 1633828000
+        }
+      ]
+    }
+  ],
+  "startTime": 1725300000,
+  "initialStakeDuration": 31530000,
+  "initialStakeDurationOffset": 5400,
+  "initialStakedFunds": [
+    "X-custom1v6vuwxjgr043sg0nuuhq70k6vgnule692fvnr9"
+  ],
+  "initialStakers": [
+    {
+      "nodeID": "NodeID-gpXWBExQSZXqJPQt6L6MnveUfgr7HJ4q",
+      "rewardAddress": "X-custom1v6vuwxjgr043sg0nuuhq70k6vgnule692fvnr9",
+      "delegationFee": 62500,
+      "signer": {
+        "publicKey": "0xa14d67f097d7e6514696fd83080794b6b5ca664001f2ede4fd6f01da4933db875ff028fec42b29fc5524941e0f20830f",
+        "proofOfPossession": "0x82352ae1e01038173e92e088bd34c2bee9cc4b34df5c5e8bd2773cef9238eef870c2f93fa89607332ccbb84aa66608c706b7c2f127b8b80c461c04bbc6082afbffe220aac79f66533ea7c63f0451d7d32456369dd335c9710938ee4111d08d79"
+      }
+    },
+    {
+      "nodeID": "NodeID-78ibWpjtZz5ZGT6EyTEdu8VKmboUHTuGT",
+      "rewardAddress": "X-custom1v6vuwxjgr043sg0nuuhq70k6vgnule692fvnr9",
+      "delegationFee": 62500,
+      "signer": {
+        "publicKey": "0x8327dbe1ba411c270637b080a8471fb41eeb8a9b3917af0727501ef8bdaa901d063780bd702f30f458a61f3d4297dc98",
+        "proofOfPossession": "0xa9c039b5765ab068bd632bbcdc9bc2a53f29e2c56b33e30d732a23d8c430d53ef47ebccfaa5cfcedd8f041c2c1348f0b0eac413192b7544d284f82d1fa0f74f98d5805905363b8186efdef6e77182fb1e7147f8511e900d195db06da6a22f0a0"
+      }
+    },
+    {
+      "nodeID": "NodeID-L4CY8B5uVSDe4cnN1BpeDsHacMp4q4q8q",
+      "rewardAddress": "X-custom1v6vuwxjgr043sg0nuuhq70k6vgnule692fvnr9",
+      "delegationFee": 62500,
+      "signer": {
+        "publicKey": "0xa98c646a8c862ec15326e4cfe2a0f66a8fb7cf555765f83ff320a1a76268228f3c8b262d1de4008e0ba49a89cfabfb95",
+        "proofOfPossession": "0x95c816a4d292a47c4d9934e358621d0785fd2920a1a304cebc9b7e47417e3fff780cfcddf7ca1177b45bbfac2f9978581761d9ddd55ec6142d92998eeadbafe8cd7651056fbb79afea643f0cd20ff4f6389ddd91ee2db4579438a6908609b4c1"
+      }
+    },
+    {
+      "nodeID": "NodeID-P5QGH4EXddrcyNAzkqyZKHXgEpVX6HExL",
+      "rewardAddress": "X-custom1v6vuwxjgr043sg0nuuhq70k6vgnule692fvnr9",
+      "delegationFee": 62500,
+      "signer": {
+        "publicKey": "0xb0d35ccf70a6d84e2bca1dc166a4c3324d7edd86e879add2ba6511c8ef6bfd89a15534e67467ccd9c9211534b33295a1",
+        "proofOfPossession": "0xa4b480a9a07b4a97630dd9d6e2bf4834a3e670448b5575e3ba72a03e06ec509ec859840a1104b18f0cd54696e6f98adb0e9f5260161332fe32a50cb1a9806b1b5025037731ea77c641d607fd0584ce29d7954f5e8f523c13a2e5732511227f50"
+      }
+    },
+    {
+      "nodeID": "NodeID-7eRvnfs2a2PvrPHUuCRRpPVAoVjbWxaFG",
+      "rewardAddress": "X-custom1v6vuwxjgr043sg0nuuhq70k6vgnule692fvnr9",
+      "delegationFee": 62500,
+      "signer": {
+        "publicKey": "0xa5fde6042c6e0ee482f46346df046000cd57dd878d36637a5a62adec07a5114cdeea094a85f4f72b46645f94e9076692",
+        "proofOfPossession": "0x91444230c5ceb8e51642139e1842b56f8563865376b6f4205beca4dc0bb0bc4b314bce1e19e3b542a3941ece51ae205e03a094824fee28f9f702ed310756f0637bf166371656e1c3eb9001df89f4cdccc73410242a6d875eb6363d12bce40316"
+      }
+    }
+  ],
+  "cChainGenesis": "{\"config\":{\"chainId\":43117,\"homesteadBlock\":0,\"daoForkBlock\":0,\"daoForkSupport\":true,\"eip150Block\":0,\"eip150Hash\":\"0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0\",\"eip155Block\":0,\"eip158Block\":0,\"byzantiumBlock\":0,\"constantinopleBlock\":0,\"petersburgBlock\":0,\"istanbulBlock\":0,\"muirGlacierBlock\":0},\"nonce\":\"0x0\",\"timestamp\":\"0x0\",\"extraData\":\"0x00\",\"gasLimit\":\"0x5f5e100\",\"difficulty\":\"0x0\",\"mixHash\":\"0x0000000000000000000000000000000000000000000000000000000000000000\",\"coinbase\":\"0x0000000000000000000000000000000000000000\",\"alloc\":{\"0100000000000000000000000000000000000000\":{\"code\":\"0x7300000000000000000000000000000000000000003014608060405260043610603d5760003560e01c80631e010439146042578063b6510bb314606e575b600080fd5b605c60048036036020811015605657600080fd5b503560b1565b60408051918252519081900360200190f35b818015607957600080fd5b5060af60048036036080811015608e57600080fd5b506001600160a01b03813516906020810135906040810135906060013560b6565b005b30cd90565b836001600160a01b031681836108fc8690811502906040516000604051808303818888878c8acf9550505050505015801560f4573d6000803e3d6000fd5b505050505056fea26469706673582212201eebce970fe3f5cb96bf8ac6ba5f5c133fc2908ae3dcd51082cfee8f583429d064736f6c634300060a0033\",\"balance\":\"0x0\"},\"0x643F2454430E218750b5e6533d9C0e0Dd50B8d68\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"},\"0xf9BFA4C45a8d830a591B3374320fd8CCF3FD75D4\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"},\"0xD9d4f16a71E23eDf8e2F2a1Ebecd46B03177a22c\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"},\"0x2a17831425bc6D20084D1526b1001C451ED4C4A7\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"},\"0x7c5A8639F1e86F134f1E4239429f756A1441e322\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"},\"0xfDDEf5cb0D09E483dBAB587BA958657B79A42E58\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"},\"0xB4cA6C121D6287af7ac7cb62Ae33d2b054b9FC44\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"},\"0xC71A61a815e49d16C425482A342a367CD42E38a6\":{\"balance\":\"0x1431E0FAE6D7217CAA0000000\"}},\"number\":\"0x0\",\"gasUsed\":\"0x0\",\"parentHash\":\"0x0000000000000000000000000000000000000000000000000000000000000000\"}",
+  "message": "Etna here we come"
+}

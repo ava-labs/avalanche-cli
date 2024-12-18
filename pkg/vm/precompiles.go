@@ -99,28 +99,29 @@ func configureRewardManager(
 
 func configureWarp(timestamp *uint64) warp.Config {
 	return warp.Config{
-		QuorumNumerator: warp.WarpDefaultQuorumNumerator,
+		QuorumNumerator:              warp.WarpDefaultQuorumNumerator,
+		RequirePrimaryNetworkSigners: true,
 		Upgrade: precompileconfig.Upgrade{
 			BlockTimestamp: timestamp,
 		},
 	}
 }
 
-func addTeleporterAddressesToAllowLists(
+func addICMAddressesToAllowLists(
 	precompile *params.Precompiles,
-	teleporterAddress string,
-	teleporterMessengerDeployerAddress string,
+	icmAddress string,
+	icmMessengerDeployerAddress string,
 	relayerAddress string,
 ) {
 	// tx allow list:
-	// teleporterAddress funds the other two and also deploys the registry
-	// teleporterMessengerDeployerAddress deploys the messenger
+	// icmAddress funds the other two and also deploys the registry
+	// icmMessengerDeployerAddress deploys the messenger
 	// relayerAddress is used by the relayer to send txs to the target chain
 	currentPrecompile := *precompile
 	precompileConfig := currentPrecompile[txallowlist.ConfigKey]
 	if precompileConfig != nil {
 		txAllowListConfig := precompileConfig.(*txallowlist.Config)
-		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress, relayerAddress} {
+		for _, address := range []string{icmAddress, icmMessengerDeployerAddress, relayerAddress} {
 			txAllowListConfig.AllowListConfig = addAddressToAllowed(
 				txAllowListConfig.AllowListConfig,
 				address,
@@ -128,12 +129,12 @@ func addTeleporterAddressesToAllowLists(
 		}
 	}
 	// contract deploy allow list:
-	// teleporterAddress deploys the registry
-	// teleporterMessengerDeployerAddress deploys the messenger
+	// icmAddress deploys the registry
+	// icmMessengerDeployerAddress deploys the messenger
 	precompileConfig = currentPrecompile[deployerallowlist.ConfigKey]
 	if precompileConfig != nil {
 		deployerAllowListConfig := precompileConfig.(*deployerallowlist.Config)
-		for _, address := range []string{teleporterAddress, teleporterMessengerDeployerAddress} {
+		for _, address := range []string{icmAddress, icmMessengerDeployerAddress} {
 			deployerAllowListConfig.AllowListConfig = addAddressToAllowed(
 				deployerAllowListConfig.AllowListConfig,
 				address,

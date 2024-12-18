@@ -8,8 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -47,19 +48,21 @@ You can check the status after upgrade by calling avalanche node status`,
 
 func upgrade(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
-	network := clusterConfig.Network
+	if clusterConfig.Local {
+		return notImplementedForLocal("upgrade")
+	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	toUpgradeNodesMap, err := getNodesUpgradeInfo(hosts)
 	if err != nil {
 		return err
@@ -68,9 +71,7 @@ func upgrade(_ *cobra.Command, args []string) error {
 	for host, upgradeInfo := range toUpgradeNodesMap {
 		if upgradeInfo.AvalancheGoVersion != "" {
 			spinner := spinSession.SpinToUser(utils.ScriptLog(host.NodeID, fmt.Sprintf("Upgrading avalanchego to version %s...", upgradeInfo.AvalancheGoVersion)))
-			// check if host is API host
-			publicAccessToHTTPPort := clusterConfig.IsAPIHost(host.GetCloudID()) || clusterConfig.HTTPAccess == constants.PublicAccess
-			if err := upgradeAvalancheGo(host, network, upgradeInfo.AvalancheGoVersion, publicAccessToHTTPPort); err != nil {
+			if err := upgradeAvalancheGo(host, upgradeInfo.AvalancheGoVersion); err != nil {
 				ux.SpinFailWithError(spinner, "", err)
 				return err
 			}
@@ -112,17 +113,19 @@ func upgrade(_ *cobra.Command, args []string) error {
 // it will install the newest subnet EVM version and install the latest avalanche Go that is still compatible with the Subnet EVM version
 // if the node is not tracking any subnet, it will just install latestAvagoVersion
 func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo, error) {
-	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
-	))
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
-	latestSubnetEVMVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestSubnetEVMVersion, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.SubnetEVMRepoName,
-	))
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -216,11 +219,9 @@ func checkIfKeyIsStandardVMName(vmName string) bool {
 
 func upgradeAvalancheGo(
 	host *models.Host,
-	network models.Network,
 	avaGoVersionToUpdateTo string,
-	publicAccessToHTTPPort bool,
 ) error {
-	if err := ssh.RunSSHUpgradeAvalanchego(host, network, avaGoVersionToUpdateTo, publicAccessToHTTPPort); err != nil {
+	if err := ssh.RunSSHUpgradeAvalanchego(host, avaGoVersionToUpdateTo); err != nil {
 		return err
 	}
 	return nil

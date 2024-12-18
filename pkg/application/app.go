@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -46,12 +47,16 @@ func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Con
 	app.Downloader = downloader
 }
 
-func (app *Avalanche) GetRunFile() string {
-	return filepath.Join(app.GetRunDir(), constants.ServerRunFile)
+func (app *Avalanche) GetRunFile(prefix string) string {
+	return filepath.Join(app.GetRunDir(), prefix+constants.ServerRunFile)
 }
 
 func (app *Avalanche) GetSnapshotsDir() string {
 	return filepath.Join(app.baseDir, constants.SnapshotsDirName)
+}
+
+func (app *Avalanche) GetSnapshotPath(snapshotName string) string {
+	return filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+snapshotName)
 }
 
 func (app *Avalanche) GetBaseDir() string {
@@ -89,6 +94,10 @@ func (app *Avalanche) GetPluginsDir() string {
 	return filepath.Join(app.baseDir, constants.PluginDir)
 }
 
+func (app *Avalanche) GetLocalDir(clusterName string) string {
+	return filepath.Join(app.baseDir, constants.LocalDir, clusterName)
+}
+
 // Remove all plugins from plugin dir
 func (app *Avalanche) ResetPluginsDir() error {
 	pluginDir := app.GetPluginsDir()
@@ -108,12 +117,12 @@ func (app *Avalanche) GetAvalanchegoBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir)
 }
 
-func (app *Avalanche) GetTeleporterBinDir() string {
-	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.TeleporterInstallDir)
+func (app *Avalanche) GetICMContractsBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.ICMContractsInstallDir)
 }
 
-func (app *Avalanche) GetAWMRelayerBinDir() string {
-	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.AWMRelayerInstallDir)
+func (app *Avalanche) GetICMRelayerBinDir() string {
+	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.ICMRelayerInstallDir)
 }
 
 func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string {
@@ -122,37 +131,37 @@ func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string 
 }
 
 func (app *Avalanche) GetLocalRelayerStorageDir(networkKind models.NetworkKind) string {
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerStorageDir)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetLocalRelayerConfigPath(networkKind models.NetworkKind, localNetworkRootDir string) string {
 	if localNetworkRootDir != "" {
-		return filepath.Join(localNetworkRootDir, constants.AWMRelayerConfigFilename)
+		return filepath.Join(localNetworkRootDir, constants.ICMRelayerConfigFilename)
 	}
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerConfigFilename)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerConfigFilename)
 }
 
 func (app *Avalanche) GetLocalRelayerLogPath(networkKind models.NetworkKind) string {
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerLogFilename)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerLogFilename)
 }
 
 func (app *Avalanche) GetLocalRelayerRunPath(networkKind models.NetworkKind) string {
-	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.AWMRelayerRunFilename)
+	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerRunFilename)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceDir(baseDir string) string {
-	return filepath.Join(app.GetServicesDir(baseDir), constants.AWMRelayerInstallDir)
+func (app *Avalanche) GetICMRelayerServiceDir(baseDir string) string {
+	return filepath.Join(app.GetServicesDir(baseDir), constants.ICMRelayerInstallDir)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceConfigPath(baseDir string) string {
-	return filepath.Join(app.GetAWMRelayerServiceDir(baseDir), constants.AWMRelayerConfigFilename)
+func (app *Avalanche) GetICMRelayerServiceConfigPath(baseDir string) string {
+	return filepath.Join(app.GetICMRelayerServiceDir(baseDir), constants.ICMRelayerConfigFilename)
 }
 
-func (app *Avalanche) GetAWMRelayerServiceStorageDir(baseDir string) string {
+func (app *Avalanche) GetICMRelayerServiceStorageDir(baseDir string) string {
 	if baseDir != "" {
-		return filepath.Join(baseDir, constants.AWMRelayerStorageDir)
+		return filepath.Join(baseDir, constants.ICMRelayerStorageDir)
 	}
-	return filepath.Join(app.GetAWMRelayerServiceDir(""), constants.AWMRelayerStorageDir)
+	return filepath.Join(app.GetICMRelayerServiceDir(""), constants.ICMRelayerStorageDir)
 }
 
 func (app *Avalanche) GetSubnetEVMBinDir() string {
@@ -160,7 +169,7 @@ func (app *Avalanche) GetSubnetEVMBinDir() string {
 }
 
 func (app *Avalanche) GetUpgradeBytesFilepath(blockchainName string) string {
-	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeFileName)
 }
 
 func (app *Avalanche) GetCustomVMPath(blockchainName string) string {
@@ -286,7 +295,7 @@ func (app *Avalanche) GetKey(keyName string, network models.Network, createIfMis
 }
 
 func (app *Avalanche) GetUpgradeBytesFilePath(blockchainName string) string {
-	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeBytesFileName)
+	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.UpgradeFileName)
 }
 
 func (app *Avalanche) GetDownloader() Downloader {
@@ -531,8 +540,10 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	network models.Network,
 	subnetID ids.ID,
 	blockchainID ids.ID,
-	teleporterMessengerAddress string,
-	teleporterRegistryAddress string,
+	icmMessengerAddress string,
+	icmRegistryAddress string,
+	bootstrapValidators []models.SubnetValidator,
+	clusterName string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -541,8 +552,10 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		SubnetID:                   subnetID,
 		BlockchainID:               blockchainID,
 		RPCVersion:                 sc.RPCVersion,
-		TeleporterMessengerAddress: teleporterMessengerAddress,
-		TeleporterRegistryAddress:  teleporterRegistryAddress,
+		TeleporterMessengerAddress: icmMessengerAddress,
+		TeleporterRegistryAddress:  icmRegistryAddress,
+		BootstrapValidators:        bootstrapValidators,
+		ClusterName:                clusterName,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
@@ -657,6 +670,11 @@ func (app *Avalanche) LoadClusterNodeConfig(nodeName string) (models.NodeConfig,
 
 func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 	clustersConfigPath := app.GetClustersConfigPath()
+	if !utils.FileExists(clustersConfigPath) {
+		return models.ClustersConfig{
+			Clusters: map[string]models.ClusterConfig{},
+		}, nil
+	}
 	jsonBytes, err := os.ReadFile(clustersConfigPath)
 	if err != nil {
 		return models.ClustersConfig{}, err
@@ -692,6 +710,13 @@ func (app *Avalanche) LoadClustersConfig() (models.ClustersConfig, error) {
 		return clustersConfig, err
 	}
 	return models.ClustersConfig{}, fmt.Errorf("unsupported clusters config version %s", v)
+}
+
+func (app *Avalanche) GetClustersConfig() (models.ClustersConfig, error) {
+	if app.ClustersConfigExists() {
+		return app.LoadClustersConfig()
+	}
+	return models.ClustersConfig{}, nil
 }
 
 func (app *Avalanche) WriteClustersConfigFile(clustersConfig *models.ClustersConfig) error {
@@ -734,7 +759,7 @@ func (app *Avalanche) CheckCertInSSHDir(certName string) (bool, error) {
 
 func (app *Avalanche) CreateMonitoringDir() error {
 	monitoringDir := app.GetMonitoringDir()
-	if !utils.DirectoryExists(monitoringDir) {
+	if !sdkutils.DirExists(monitoringDir) {
 		err := os.MkdirAll(monitoringDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
@@ -745,7 +770,7 @@ func (app *Avalanche) CreateMonitoringDir() error {
 
 func (app *Avalanche) CreateMonitoringDashboardDir() error {
 	monitoringDashboardDir := app.GetMonitoringDashboardDir()
-	if !utils.DirectoryExists(monitoringDashboardDir) {
+	if !sdkutils.DirExists(monitoringDashboardDir) {
 		err := os.MkdirAll(monitoringDashboardDir, constants.DefaultPerms755)
 		if err != nil {
 			return err
@@ -792,25 +817,19 @@ func (app *Avalanche) SetupMonitoringEnv() error {
 }
 
 func (app *Avalanche) ClusterExists(clusterName string) (bool, error) {
-	clustersConfig := models.ClustersConfig{}
-	if app.ClustersConfigExists() {
-		var err error
-		clustersConfig, err = app.LoadClustersConfig()
-		if err != nil {
-			return false, err
-		}
+	clustersConfig, err := app.GetClustersConfig()
+	if err != nil {
+		return false, err
 	}
 	_, ok := clustersConfig.Clusters[clusterName]
 	return ok, nil
 }
 
 func (app *Avalanche) GetClusterConfig(clusterName string) (models.ClusterConfig, error) {
-	exists, err := app.ClusterExists(clusterName)
-	if err != nil {
+	if exists, err := app.ClusterExists(clusterName); err != nil {
 		return models.ClusterConfig{}, err
-	}
-	if !exists {
-		return models.ClusterConfig{}, fmt.Errorf("cluster %q does not exists", clusterName)
+	} else if !exists {
+		return models.ClusterConfig{}, fmt.Errorf("cluster does not exists")
 	}
 	clustersConfig, err := app.LoadClustersConfig()
 	if err != nil {

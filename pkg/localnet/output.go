@@ -8,6 +8,8 @@ import (
 
 	"golang.org/x/exp/maps"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -16,6 +18,7 @@ import (
 
 // PrintLocalNetworkEndpoints prints the endpoints coming from the status call
 func PrintEndpoints(
+	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	subnetName string,
 ) error {
@@ -25,7 +28,7 @@ func PrintEndpoints(
 	}
 	for _, chainInfo := range clusterInfo.CustomChains {
 		if subnetName == "" || chainInfo.ChainName == subnetName {
-			if err := PrintSubnetEndpoints(printFunc, clusterInfo, chainInfo); err != nil {
+			if err := PrintSubnetEndpoints(app, printFunc, clusterInfo, chainInfo); err != nil {
 				return err
 			}
 			printFunc("")
@@ -38,6 +41,7 @@ func PrintEndpoints(
 }
 
 func PrintSubnetEndpoints(
+	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
 	chainInfo *rpcpb.CustomChainInfo,
@@ -61,9 +65,14 @@ func PrintSubnetEndpoints(
 		{Number: 1, AutoMerge: true},
 	})
 	t.SetTitle(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
-	aliasedURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainName)
 	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
-	t.AppendRow(table.Row{"Localhost", aliasedURL})
+	sc, err := app.LoadSidecar(chainInfo.ChainName)
+	if err == nil {
+		rpcEndpoints := sc.Networks[models.NewLocalNetwork().Name()].RPCEndpoints
+		if len(rpcEndpoints) > 0 {
+			blockchainIDURL = rpcEndpoints[0]
+		}
+	}
 	t.AppendRow(table.Row{"Localhost", blockchainIDURL})
 	if utils.InsideCodespace() {
 		var err error
@@ -71,11 +80,6 @@ func PrintSubnetEndpoints(
 		if err != nil {
 			return err
 		}
-		aliasedURL, err = utils.GetCodespaceURL(aliasedURL)
-		if err != nil {
-			return err
-		}
-		t.AppendRow(table.Row{"Codespace", aliasedURL})
 		t.AppendRow(table.Row{"Codespace", blockchainIDURL})
 	}
 	printFunc(t.Render())

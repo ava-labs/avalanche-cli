@@ -10,9 +10,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
@@ -45,20 +46,19 @@ configuration.`,
 func clean(*cobra.Command, []string) error {
 	app.Log.Info("killing gRPC server process...")
 
-	configSingleNodeEnabled := app.Conf.GetConfigBoolValue(constants.ConfigSingleNodeEnabledKey)
-
-	if _, err := subnet.SetDefaultSnapshot(app.GetSnapshotsDir(), true, "", configSingleNodeEnabled); err != nil {
-		app.Log.Warn("failed resetting default snapshot", zap.Error(err))
-	}
-
-	if err := binutils.KillgRPCServerProcess(app); err != nil {
+	if err := binutils.KillgRPCServerProcess(
+		app,
+		binutils.LocalNetworkGRPCServerEndpoint,
+		constants.ServerRunFileLocalNetworkPrefix,
+	); err != nil {
 		app.Log.Warn("failed killing server process", zap.Error(err))
 	} else {
 		ux.Logger.PrintToUser("Process terminated.")
 	}
 
-	if err := teleporter.RelayerCleanup(
+	if err := interchain.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
@@ -78,7 +78,13 @@ func clean(*cobra.Command, []string) error {
 	if err := removeLocalDeployInfoFromSidecars(); err != nil {
 		return err
 	}
-	return nil
+
+	snapshotPath := app.GetSnapshotPath(constants.DefaultSnapshotName)
+	if err := os.RemoveAll(snapshotPath); err != nil {
+		return err
+	}
+
+	return node.DestroyCurrentIfLocalNetwork(app)
 }
 
 func removeLocalDeployInfoFromSidecars() error {

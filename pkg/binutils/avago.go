@@ -21,6 +21,7 @@ func SetupAvalanchego(app *application.Avalanche, avagoVersion string) (string, 
 		avalanchegoBinPrefix,
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
+		"",
 		downloader,
 		installer,
 	)

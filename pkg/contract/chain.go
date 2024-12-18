@@ -181,8 +181,7 @@ func GetBlockchainEndpoints(
 		rpcEndpoint string
 		wsEndpoint  string
 	)
-	switch {
-	case chainSpec.BlockchainName != "":
+	if chainSpec.BlockchainName != "" {
 		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to load sidecar: %w", err)
@@ -205,16 +204,20 @@ func GetBlockchainEndpoints(
 		if len(sc.Networks[networkName].WSEndpoints) > 0 {
 			wsEndpoint = sc.Networks[networkName].WSEndpoints[0]
 		}
-	case chainSpec.CChain:
-		rpcEndpoint = network.CChainEndpoint()
-		wsEndpoint = network.CChainWSEndpoint()
-	case network.Kind == models.Local:
-		blockchainID, err := GetBlockchainID(app, network, chainSpec)
-		if err != nil {
-			return "", "", err
+	}
+	if rpcEndpoint == "" {
+		switch {
+		case chainSpec.CChain:
+			rpcEndpoint = network.CChainEndpoint()
+			wsEndpoint = network.CChainWSEndpoint()
+		case network.Kind == models.Local:
+			blockchainID, err := GetBlockchainID(app, network, chainSpec)
+			if err != nil {
+				return "", "", err
+			}
+			rpcEndpoint = network.BlockchainEndpoint(blockchainID.String())
+			wsEndpoint = network.BlockchainWSEndpoint(blockchainID.String())
 		}
-		rpcEndpoint = network.BlockchainEndpoint(blockchainID.String())
-		wsEndpoint = network.BlockchainWSEndpoint(blockchainID.String())
 	}
 	blockchainDesc, err := GetBlockchainDesc(chainSpec)
 	if err != nil {
@@ -378,7 +381,7 @@ func GetICMInfo(
 			}
 			messengerAddress = addr.Hex()
 		} else if defaultToLatestReleasedMessenger {
-			messengerAddress = constants.DefaultTeleporterMessengerAddress
+			messengerAddress = constants.DefaultICMMessengerAddress
 		}
 	}
 	return registryAddress, messengerAddress, nil
@@ -438,7 +441,7 @@ func GetCChainICMInfo(
 	registryAddress := ""
 	switch {
 	case network.Kind == models.Local:
-		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData()
+		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData("")
 		if err != nil {
 			return "", "", err
 		}
@@ -454,12 +457,15 @@ func GetCChainICMInfo(
 		}
 		messengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 		registryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+	case network.Kind == models.EtnaDevnet:
+		messengerAddress = constants.DefaultICMMessengerAddress
+		registryAddress = constants.EtnaDevnetCChainICMRegistryAddress
 	case network.Kind == models.Fuji:
-		messengerAddress = constants.DefaultTeleporterMessengerAddress
-		registryAddress = constants.FujiCChainTeleporterRegistryAddress
+		messengerAddress = constants.DefaultICMMessengerAddress
+		registryAddress = constants.FujiCChainICMRegistryAddress
 	case network.Kind == models.Mainnet:
-		messengerAddress = constants.DefaultTeleporterMessengerAddress
-		registryAddress = constants.MainnetCChainTeleporterRegistryAddress
+		messengerAddress = constants.DefaultICMMessengerAddress
+		registryAddress = constants.MainnetCChainICMRegistryAddress
 	}
 	return registryAddress, messengerAddress, nil
 }
