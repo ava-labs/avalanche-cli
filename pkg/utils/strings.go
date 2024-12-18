@@ -23,7 +23,7 @@ func SplitComaSeparatedInt(s string) []int {
 	})
 }
 
-// SplitString split string with a rune comma ignore quoted
+// SplitStringWithQuotes split string with a rune comma ignore quoted
 func SplitStringWithQuotes(str string, r rune) []string {
 	quoted := false
 	return strings.FieldsFunc(str, func(r1 rune) bool {
