@@ -58,6 +58,21 @@ func validateMainnetStakingDuration(input string) error {
 	return nil
 }
 
+func validateMainnetL1StakingDuration(input string) error {
+	const minL1StakingDuration = 24 * time.Hour
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d > genesis.MainnetParams.MaxStakeDuration {
+		return fmt.Errorf("exceeds maximum staking duration of %s", ux.FormatDuration(genesis.MainnetParams.MaxStakeDuration))
+	}
+	if d < minL1StakingDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(minL1StakingDuration))
+	}
+	return nil
+}
+
 func validateFujiStakingDuration(input string) error {
 	d, err := time.ParseDuration(input)
 	if err != nil {
@@ -72,6 +87,22 @@ func validateFujiStakingDuration(input string) error {
 	return nil
 }
 
+func validateEtnaDuration(input string) error {
+	d, err := time.ParseDuration(input)
+	if err != nil {
+		return err
+	}
+	if d < constants.StakingEtnaMinimumDuration {
+		return fmt.Errorf("below the minimum staking duration of %s", ux.FormatDuration(constants.StakingEtnaMinimumDuration))
+	}
+	return nil
+}
+
+func validateDuration(input string) error {
+	_, err := time.ParseDuration(input)
+	return err
+}
+
 func validateTime(input string) error {
 	t, err := time.Parse(constants.TimeParseLayout, input)
 	if err != nil {
@@ -83,7 +114,7 @@ func validateTime(input string) error {
 	return err
 }
 
-func validateNodeID(input string) error {
+func ValidateNodeID(input string) error {
 	_, err := ids.NodeIDFromString(input)
 	return err
 }
@@ -127,6 +158,25 @@ func validateWeight(input string) error {
 		return errors.New("the weight must be an integer between 1 and 100")
 	}
 	return nil
+}
+
+func validateValidatorBalanceFunc(availableBalance uint64, minBalance float64) func(string) error {
+	return func(input string) error {
+		val, err := strconv.ParseFloat(input, 64)
+		if err != nil {
+			return err
+		}
+		if val == 0 {
+			return fmt.Errorf("entered value has to be greater than 0 AVAX")
+		}
+		if val < minBalance {
+			return fmt.Errorf("validator balance must be at least %2f AVAX", minBalance)
+		}
+		if val > float64(availableBalance) {
+			return fmt.Errorf("current balance of %d is not sufficient for validator balance to be %2f AVAX", availableBalance, val)
+		}
+		return nil
+	}
 }
 
 func validateBiggerThanZero(input string) error {
@@ -353,4 +403,11 @@ func ValidateHexa(input string) error {
 		return errors.New("string not in hexa format")
 	}
 	return err
+}
+
+func ValidatePositiveInt(val int) error {
+	if val <= 0 {
+		return fmt.Errorf("value must be greater than cero")
+	}
+	return nil
 }

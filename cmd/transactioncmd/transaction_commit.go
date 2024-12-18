@@ -93,11 +93,10 @@ func commitTx(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 
 	if txutils.IsCreateChainTx(tx) {
-		// TODO: teleporter for multisig
 		if err := blockchaincmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "")
+		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "")
 	}
 
 	return nil

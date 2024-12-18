@@ -88,7 +88,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 	})
 	ginkgo.It("can wait up 30 seconds for avago to startup", func() {
 		timeout := 30 * time.Second
-		address := fmt.Sprintf("%s:%d", utils.E2EConvertIP(ElasticIP), constants.AvalanchegoP2PPort)
+		address := fmt.Sprintf("%s:%d", utils.E2EConvertIP(ElasticIP), constants.AvalancheGoP2PPort)
 		deadline := time.Now().Add(timeout)
 		var err error
 
@@ -166,7 +166,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		output := commands.NodeExport(exportFileName, false)
 		fmt.Println(output)
 		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("exported cluster [%s] configuration", constants.E2EClusterName)))
-		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("to %s", exportFileName)))
+		gomega.Expect(output).To(gomega.ContainSubstring(fmt.Sprintf("to /home/runner/work/avalanche-cli/avalanche-cli/%s", exportFileName)))
 		exportFile, err := utils.ReadFile(exportFileName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(exportFile)

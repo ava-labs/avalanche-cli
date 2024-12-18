@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/units"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -101,14 +103,20 @@ type Prompter interface {
 	CaptureEmail(promptStr string) (string, error)
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
+	CaptureDuration(promptStr string) (time.Duration, error)
+	CaptureEtnaDuration(promptStr string) (time.Duration, error)
 	CaptureFujiDuration(promptStr string) (time.Duration, error)
 	CaptureMainnetDuration(promptStr string) (time.Duration, error)
+	CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
+	CaptureValidatorBalance(promptStr string, availableBalance uint64, minBalance float64) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
-	CaptureInt(promptStr string) (int, error)
+	CaptureInt(promptStr string, validator func(int) error) (int, error)
+	CaptureUint8(promptStr string) (uint8, error)
+	CaptureUint16(promptStr string) (uint16, error)
 	CaptureUint32(promptStr string) (uint32, error)
 	CaptureUint64(promptStr string) (uint64, error)
 	CaptureFloat(promptStr string, validator func(float64) error) (float64, error)
@@ -200,6 +208,34 @@ func CaptureListDecision[T comparable](
 	}
 }
 
+func (*realPrompter) CaptureEtnaDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateEtnaDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
+func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
 func (*realPrompter) CaptureFujiDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
@@ -218,6 +254,20 @@ func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, er
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateMainnetStakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
+func (*realPrompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateMainnetL1StakingDuration,
 	}
 
 	durationStr, err := prompt.Run()
@@ -258,7 +308,7 @@ func (*realPrompter) CaptureID(promptStr string) (ids.ID, error) {
 func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateNodeID,
+		Validate: ValidateNodeID,
 	}
 
 	nodeIDStr, err := prompt.Run()
@@ -266,6 +316,29 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 		return ids.EmptyNodeID, err
 	}
 	return ids.NodeIDFromString(nodeIDStr)
+}
+
+// CaptureValidatorBalance captures balance in nanoAVAX
+func (*realPrompter) CaptureValidatorBalance(
+	promptStr string,
+	availableBalance uint64,
+	minBalance float64,
+) (uint64, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateValidatorBalanceFunc(availableBalance, minBalance),
+	}
+	amountStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	amountFloat, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(amountFloat * float64(units.Avax)), nil
 }
 
 func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
@@ -282,15 +355,15 @@ func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
 	return strconv.ParseUint(amountStr, 10, 64)
 }
 
-func (*realPrompter) CaptureInt(promptStr string) (int, error) {
+func (*realPrompter) CaptureInt(promptStr string, validator func(int) error) (int, error) {
 	prompt := promptui.Prompt{
 		Label: promptStr,
 		Validate: func(input string) error {
-			_, err := strconv.Atoi(input)
+			val, err := strconv.Atoi(input)
 			if err != nil {
 				return err
 			}
-			return nil
+			return validator(val)
 		},
 	}
 	input, err := prompt.Run()
@@ -302,6 +375,50 @@ func (*realPrompter) CaptureInt(promptStr string) (int, error) {
 		return 0, err
 	}
 	return val, nil
+}
+
+func (*realPrompter) CaptureUint8(promptStr string) (uint8, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			_, err := strconv.ParseUint(input, 0, 8)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	input, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	val, err := strconv.ParseUint(input, 0, 8)
+	if err != nil {
+		return 0, err
+	}
+	return uint8(val), nil
+}
+
+func (*realPrompter) CaptureUint16(promptStr string) (uint16, error) {
+	prompt := promptui.Prompt{
+		Label: promptStr,
+		Validate: func(input string) error {
+			_, err := strconv.ParseUint(input, 0, 16)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	input, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+	val, err := strconv.ParseUint(input, 0, 16)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(val), nil
 }
 
 func (*realPrompter) CaptureUint32(promptStr string) (uint32, error) {

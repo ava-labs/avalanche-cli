@@ -19,15 +19,16 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/monitoring"
 	"github.com/ava-labs/avalanche-cli/pkg/remoteconfig"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
-
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 )
 
 type scriptInputs struct {
@@ -158,32 +159,42 @@ func RunSSHRestartNode(host *models.Host) error {
 	return docker.RestartDockerComposeService(host, remoteComposeFile, avagoService, constants.SSHLongRunningScriptTimeout)
 }
 
-// ComposeSSHSetupAWMRelayer used docker compose to setup AWM Relayer
-func ComposeSSHSetupAWMRelayer(host *models.Host, relayerVersion string) error {
-	if err := docker.ComposeSSHSetupAWMRelayer(host, relayerVersion); err != nil {
+// ComposeSSHSetupICMRelayer used docker compose to setup AWM Relayer
+func ComposeSSHSetupICMRelayer(host *models.Host, relayerVersion string) error {
+	if err := docker.ComposeSSHSetupICMRelayer(host, relayerVersion); err != nil {
 		return err
 	}
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "icm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
-// RunSSHStartAWMRelayerService runs script to start an AWM Relayer Service
-func RunSSHStartAWMRelayerService(host *models.Host) error {
-	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
+// RunSSHStartICMRelayerService runs script to start an AWM Relayer Service
+func RunSSHStartICMRelayerService(host *models.Host) error {
+	return docker.StartDockerComposeService(host, utils.GetRemoteComposeFile(), "icm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
-// RunSSHStopAWMRelayerService runs script to start an AWM Relayer Service
-func RunSSHStopAWMRelayerService(host *models.Host) error {
-	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "awm-relayer", constants.SSHLongRunningScriptTimeout)
+// RunSSHStopICMRelayerService runs script to start an AWM Relayer Service
+func RunSSHStopICMRelayerService(host *models.Host) error {
+	return docker.StopDockerComposeService(host, utils.GetRemoteComposeFile(), "icm-relayer", constants.SSHLongRunningScriptTimeout)
 }
 
 // RunSSHUpgradeAvalanchego runs script to upgrade avalanchego
-func RunSSHUpgradeAvalanchego(host *models.Host, network models.Network, avalancheGoVersion string, publicAccessToHTTPPort bool) error {
+func RunSSHUpgradeAvalanchego(host *models.Host, avalancheGoVersion string) error {
 	withMonitoring, err := docker.WasNodeSetupWithMonitoring(host)
 	if err != nil {
 		return err
 	}
-
-	if err := docker.ComposeSSHSetupNode(host, network, avalancheGoVersion, withMonitoring, publicAccessToHTTPPort); err != nil {
+	if err := docker.ComposeOverSSH("Compose Node",
+		host,
+		constants.SSHScriptTimeout,
+		"templates/avalanchego.docker-compose.yml",
+		docker.DockerComposeInputs{
+			AvalanchegoVersion: avalancheGoVersion,
+			WithMonitoring:     withMonitoring,
+			WithAvalanchego:    true,
+			E2E:                utils.IsE2E(),
+			E2EIP:              utils.E2EConvertIP(host.IP),
+			E2ESuffix:          utils.E2ESuffix(host.IP),
+		}); err != nil {
 		return err
 	}
 	return docker.RestartDockerCompose(host, constants.SSHLongRunningScriptTimeout)
@@ -242,7 +253,7 @@ func replaceCustomVarDashboardValues(customGrafanaDashboardFileName, chainID str
 
 func RunSSHUpdateMonitoringDashboards(host *models.Host, monitoringDashboardPath, customGrafanaDashboardPath, chainID string) error {
 	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
-	if !utils.DirectoryExists(monitoringDashboardPath) {
+	if !sdkutils.DirExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
 	if customGrafanaDashboardPath != "" && utils.FileExists(utils.ExpandHome(customGrafanaDashboardPath)) {
@@ -278,7 +289,7 @@ func RunSSHSetupMonitoringFolders(host *models.Host) error {
 func RunSSHCopyMonitoringDashboards(host *models.Host, monitoringDashboardPath string) error {
 	// TODO: download dashboards from github instead
 	remoteDashboardsPath := utils.GetRemoteComposeServicePath("grafana", "dashboards")
-	if !utils.DirectoryExists(monitoringDashboardPath) {
+	if !sdkutils.DirExists(monitoringDashboardPath) {
 		return fmt.Errorf("%s does not exist", monitoringDashboardPath)
 	}
 	if err := host.MkdirAll(remoteDashboardsPath, constants.SSHFileOpsTimeout); err != nil {
@@ -391,14 +402,14 @@ func RunSSHDownloadNodePrometheusConfig(host *models.Host, nodeInstanceDirPath s
 	)
 }
 
-func RunSSHUploadNodeAWMRelayerConfig(host *models.Host, nodeInstanceDirPath string) error {
-	cloudAWMRelayerConfigDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.ServicesDir, constants.AWMRelayerInstallDir)
-	if err := host.MkdirAll(cloudAWMRelayerConfigDir, constants.SSHDirOpsTimeout); err != nil {
+func RunSSHUploadNodeICMRelayerConfig(host *models.Host, nodeInstanceDirPath string) error {
+	cloudICMRelayerConfigDir := filepath.Join(constants.CloudNodeCLIConfigBasePath, constants.ServicesDir, constants.ICMRelayerInstallDir)
+	if err := host.MkdirAll(cloudICMRelayerConfigDir, constants.SSHDirOpsTimeout); err != nil {
 		return err
 	}
 	return host.Upload(
-		filepath.Join(nodeInstanceDirPath, constants.ServicesDir, constants.AWMRelayerInstallDir, constants.AWMRelayerConfigFilename),
-		filepath.Join(cloudAWMRelayerConfigDir, constants.AWMRelayerConfigFilename),
+		filepath.Join(nodeInstanceDirPath, constants.ServicesDir, constants.ICMRelayerInstallDir, constants.ICMRelayerConfigFilename),
+		filepath.Join(cloudICMRelayerConfigDir, constants.ICMRelayerConfigFilename),
 		constants.SSHFileOpsTimeout,
 	)
 }
@@ -424,14 +435,21 @@ func RunSSHSetupDevNet(host *models.Host, nodeInstanceDirPath string) error {
 	}
 	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.GenesisFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName),
+		remoteconfig.GetRemoteAvalancheGenesis(),
+		constants.SSHFileOpsTimeout,
+	); err != nil {
+		return err
+	}
+	if err := host.Upload(
+		filepath.Join(nodeInstanceDirPath, constants.UpgradeFileName),
+		remoteconfig.GetRemoteAvalancheUpgrade(),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
 	}
 	if err := host.Upload(
 		filepath.Join(nodeInstanceDirPath, constants.NodeFileName),
-		filepath.Join(constants.CloudNodeConfigPath, constants.NodeFileName),
+		remoteconfig.GetRemoteAvalancheNodeConfig(),
 		constants.SSHFileOpsTimeout,
 	); err != nil {
 		return err
@@ -555,7 +573,10 @@ func RunSSHRenderAvalancheNodeConfig(
 		if genesisFileExists(host) {
 			avagoConf.GenesisPath = filepath.Join(constants.DockerNodeConfigPath, constants.GenesisFileName)
 		}
-		if network.Kind == models.Local || network.Kind == models.Devnet || isAPIHost {
+		if upgradeFileExists(host) {
+			avagoConf.UpgradePath = filepath.Join(constants.DockerNodeConfigPath, constants.UpgradeFileName)
+		}
+		if network.Kind == models.Local || network.Kind == models.Devnet || network.Kind == models.EtnaDevnet || isAPIHost {
 			avagoConf.HTTPHost = "0.0.0.0"
 		}
 		remoteAvagoConf, err := getAvalancheGoConfigData(host)
@@ -567,6 +588,13 @@ func RunSSHRenderAvalancheNodeConfig(
 		bootstrapIPs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ips")
 		avagoConf.BootstrapIDs = bootstrapIDs
 		avagoConf.BootstrapIPs = bootstrapIPs
+		partialSyncI, ok := remoteAvagoConf[config.PartialSyncPrimaryNetworkKey]
+		if ok {
+			partialSync, ok := partialSyncI.(bool)
+			if ok {
+				avagoConf.PartialSync = partialSync
+			}
+		}
 	}
 	// ready to render node config
 	nodeConf, err := remoteconfig.RenderAvalancheNodeConfig(avagoConf)
@@ -896,6 +924,11 @@ func composeFileExists(host *models.Host) bool {
 func genesisFileExists(host *models.Host) bool {
 	genesisFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.GenesisFileName))
 	return genesisFileExists
+}
+
+func upgradeFileExists(host *models.Host) bool {
+	upgradeFileExists, _ := host.FileExists(filepath.Join(constants.CloudNodeConfigPath, constants.UpgradeFileName))
+	return upgradeFileExists
 }
 
 func nodeConfigFileExists(host *models.Host) bool {

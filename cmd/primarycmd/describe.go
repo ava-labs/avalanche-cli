@@ -62,8 +62,8 @@ func describe(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	var (
-		teleporterMessengerAddress string
-		teleporterRegistryAddress  string
+		icmMessengerAddress string
+		icmRegistryAddress  string
 	)
 	blockchainID, err := utils.GetChainID(network.Endpoint, "C")
 	if err != nil {
@@ -78,18 +78,18 @@ func describe(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if network.Kind == models.Local {
-		if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(); err != nil {
+		if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(""); err != nil {
 			return err
 		} else if b {
-			teleporterMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
-			teleporterRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
+			icmMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress
+			icmRegistryAddress = extraLocalNetworkData.CChainTeleporterRegistryAddress
 		}
 	} else if network.ClusterName != "" {
 		if clusterConfig, err := app.GetClusterConfig(network.ClusterName); err != nil {
 			return err
 		} else {
-			teleporterMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
-			teleporterRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
+			icmMessengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
+			icmRegistryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
 		}
 	}
 	fmt.Print(logging.LightBlue.Wrap(art))
@@ -136,11 +136,11 @@ func describe(_ *cobra.Command, _ []string) error {
 	table.Append([]string{"Private Key", privKey})
 	table.Append([]string{"BlockchainID (CB58)", blockchainID.String()})
 	table.Append([]string{"BlockchainID (HEX)", blockchainIDHexEncoding})
-	if teleporterMessengerAddress != "" {
-		table.Append([]string{"Teleporter Messenger Address", teleporterMessengerAddress})
+	if icmMessengerAddress != "" {
+		table.Append([]string{"ICM Messenger Address", icmMessengerAddress})
 	}
-	if teleporterRegistryAddress != "" {
-		table.Append([]string{"Teleporter Registry Address", teleporterRegistryAddress})
+	if icmRegistryAddress != "" {
+		table.Append([]string{"ICM Registry Address", icmRegistryAddress})
 	}
 	table.Render()
 	return nil

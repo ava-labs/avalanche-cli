@@ -5,6 +5,8 @@ package nodecmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -41,29 +43,32 @@ It saves the deploy info both locally and remotely.
 func deploySubnet(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	subnetName := args[1]
-	if err := checkCluster(clusterName); err != nil {
+	if err := node.CheckCluster(app, clusterName); err != nil {
 		return err
 	}
 	if _, err := blockchaincmd.ValidateSubnetNameAndGetChains([]string{subnetName}); err != nil {
 		return err
 	}
-	clustersConfig, err := app.LoadClustersConfig()
+	clusterConfig, err := app.GetClusterConfig(clusterName)
 	if err != nil {
 		return err
 	}
-	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
+	if clusterConfig.Local {
+		return notImplementedForLocal("deploy")
+	}
+	if clusterConfig.Network.Kind != models.Devnet {
 		return fmt.Errorf("node deploy command must be applied to devnet clusters")
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
 		return err
 	}
-	defer disconnectHosts(hosts)
+	defer node.DisconnectHosts(hosts)
 	if !avoidChecks {
-		if err := checkHostsAreHealthy(hosts); err != nil {
+		if err := node.CheckHostsAreHealthy(hosts); err != nil {
 			return err
 		}
-		if err := checkHostsAreRPCCompatible(hosts, subnetName); err != nil {
+		if err := node.CheckHostsAreRPCCompatible(app, hosts, subnetName); err != nil {
 			return err
 		}
 	}

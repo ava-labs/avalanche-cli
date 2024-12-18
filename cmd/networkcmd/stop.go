@@ -9,8 +9,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -18,7 +19,12 @@ import (
 	"go.uber.org/zap"
 )
 
-var dontSave bool
+type StopFlags struct {
+	snapshotName string
+	dontSave     bool
+}
+
+var stopFlags StopFlags
 
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -32,16 +38,20 @@ reload this snapshot with network start --snapshot-name <snapshotName>. Otherwis
 network saves to the default snapshot, overwriting any existing state. You can reload the
 default snapshot with network start.`,
 
-		RunE: StopNetwork,
+		RunE: stop,
 		Args: cobrautils.ExactArgs(0),
 	}
-	cmd.Flags().StringVar(&snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
-	cmd.Flags().BoolVar(&dontSave, "dont-save", false, "do not save snapshot, just stop the network")
+	cmd.Flags().StringVar(&stopFlags.snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
+	cmd.Flags().BoolVar(&stopFlags.dontSave, "dont-save", false, "do not save snapshot, just stop the network")
 	return cmd
 }
 
-func StopNetwork(*cobra.Command, []string) error {
-	if err := stopAndSaveNetwork(dontSave); err != nil {
+func stop(*cobra.Command, []string) error {
+	return Stop(stopFlags)
+}
+
+func Stop(flags StopFlags) error {
+	if err := stopAndSaveNetwork(flags); err != nil {
 		if errors.Is(err, binutils.ErrGRPCTimeout) {
 			// no server to kill
 			return nil
@@ -51,15 +61,20 @@ func StopNetwork(*cobra.Command, []string) error {
 	}
 
 	var err error
-	if err = binutils.KillgRPCServerProcess(app); err != nil {
+	if err = binutils.KillgRPCServerProcess(
+		app,
+		binutils.LocalNetworkGRPCServerEndpoint,
+		constants.ServerRunFileLocalNetworkPrefix,
+	); err != nil {
 		app.Log.Warn("failed killing server process", zap.Error(err))
 		fmt.Println(err)
 	} else {
 		ux.Logger.PrintToUser("Server shutdown gracefully")
 	}
 
-	if err := teleporter.RelayerCleanup(
+	if err := interchain.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
+		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
 	); err != nil {
 		return err
@@ -68,7 +83,7 @@ func StopNetwork(*cobra.Command, []string) error {
 	return nil
 }
 
-func stopAndSaveNetwork(dontSave bool) error {
+func stopAndSaveNetwork(flags StopFlags) error {
 	cli, err := binutils.NewGRPCClient(
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
@@ -90,15 +105,19 @@ func stopAndSaveNetwork(dontSave bool) error {
 
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
 
-	if dontSave || autoSave {
+	if flags.dontSave || autoSave {
 		if _, err := cli.Stop(ctx); err != nil {
 			return fmt.Errorf("failed to stop network: %w", err)
 		}
 		return nil
 	} else {
-		if _, err = cli.SaveSnapshot(ctx, snapshotName, true); err != nil {
+		if _, err = cli.SaveSnapshot(ctx, flags.snapshotName, true); err != nil {
 			return fmt.Errorf("failed to stop network: %w", err)
 		}
+	}
+
+	if err := node.StopCurrentIfLocalNetwork(app); err != nil {
+		return err
 	}
 
 	ux.Logger.PrintToUser("Network stopped successfully.")

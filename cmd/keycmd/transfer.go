@@ -50,6 +50,7 @@ var (
 		networkoptions.Mainnet,
 		networkoptions.Fuji,
 		networkoptions.Devnet,
+		networkoptions.EtnaDevnet,
 		networkoptions.Local,
 	}
 	keyName            string
@@ -546,11 +547,10 @@ func pToPSend(
 	ethKeychain := secp256k1fx.NewKeychain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
-		&primary.WalletConfig{
-			URI:          network.Endpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  ethKeychain,
-		},
+		network.Endpoint,
+		kc,
+		ethKeychain,
+		primary.WalletConfig{},
 	)
 	if err != nil {
 		return err
@@ -623,11 +623,10 @@ func pToXSend(
 	ethKeychain := secp256k1fx.NewKeychain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
-		&primary.WalletConfig{
-			URI:          network.Endpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  ethKeychain,
-		},
+		network.Endpoint,
+		kc,
+		ethKeychain,
+		primary.WalletConfig{},
 	)
 	if err != nil {
 		return err
@@ -658,7 +657,7 @@ func pToXSend(
 
 func exportFromP(
 	amount uint64,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	blockchainID ids.ID,
 	blockchainAlias string,
 	to secp256k1fx.OutputOwners,
@@ -705,7 +704,7 @@ func exportFromP(
 }
 
 func importIntoX(
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	blockchainID ids.ID,
 	blockchainAlias string,
 	to secp256k1fx.OutputOwners,
@@ -753,11 +752,10 @@ func pToCSend(
 	ethKeychain := secp256k1fx.NewKeychain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
-		&primary.WalletConfig{
-			URI:          network.Endpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  ethKeychain,
-		},
+		network.Endpoint,
+		kc,
+		ethKeychain,
+		primary.WalletConfig{},
 	)
 	if err != nil {
 		return err
@@ -792,7 +790,7 @@ func pToCSend(
 
 func importIntoC(
 	network models.Network,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	blockchainID ids.ID,
 	blockchainAlias string,
 	destinationAddrStr string,
@@ -849,11 +847,10 @@ func cToPSend(
 	ethKeychain := sk.KeyChain()
 	wallet, err := primary.MakeWallet(
 		context.Background(),
-		&primary.WalletConfig{
-			URI:          network.Endpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  ethKeychain,
-		},
+		network.Endpoint,
+		kc,
+		ethKeychain,
+		primary.WalletConfig{},
 	)
 	if err != nil {
 		return err
@@ -876,11 +873,10 @@ func cToPSend(
 	time.Sleep(5 * time.Second)
 	wallet, err = primary.MakeWallet(
 		context.Background(),
-		&primary.WalletConfig{
-			URI:          network.Endpoint,
-			AVAXKeychain: kc,
-			EthKeychain:  ethKeychain,
-		},
+		network.Endpoint,
+		kc,
+		ethKeychain,
+		primary.WalletConfig{},
 	)
 	if err != nil {
 		return err
@@ -897,7 +893,7 @@ func cToPSend(
 func exportFromC(
 	network models.Network,
 	amount uint64,
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	blockchainID ids.ID,
 	blockchainAlias string,
 	to secp256k1fx.OutputOwners,
@@ -951,7 +947,7 @@ func exportFromC(
 }
 
 func importIntoP(
-	wallet primary.Wallet,
+	wallet *primary.Wallet,
 	blockchainID ids.ID,
 	blockchainAlias string,
 	to secp256k1fx.OutputOwners,

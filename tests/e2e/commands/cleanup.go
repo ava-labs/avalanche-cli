@@ -44,6 +44,9 @@ func DeleteE2ECluster() {
 	homeDir := usr.HomeDir
 	relativePath := "nodes"
 	content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
+	if err == os.ErrNotExist {
+		return
+	}
 	gomega.Expect(err).Should(gomega.BeNil())
 	clustersConfig := models.ClustersConfig{}
 	err = json.Unmarshal(content, &clustersConfig)

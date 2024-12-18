@@ -31,6 +31,8 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 		networkID = unsignedTx.NetworkID
 	case *txs.TransferSubnetOwnershipTx:
 		networkID = unsignedTx.NetworkID
+	case *txs.ConvertSubnetToL1Tx:
+		networkID = unsignedTx.NetworkID
 	default:
 		return models.UndefinedNetwork, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}
@@ -57,6 +59,8 @@ func GetSubnetID(tx *txs.Tx) (ids.ID, error) {
 	case *txs.AddPermissionlessValidatorTx:
 		subnetID = unsignedTx.Subnet
 	case *txs.TransferSubnetOwnershipTx:
+		subnetID = unsignedTx.Subnet
+	case *txs.ConvertSubnetToL1Tx:
 		subnetID = unsignedTx.Subnet
 	default:
 		return ids.Empty, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
@@ -106,4 +110,14 @@ func GetOwners(network models.Network, subnetID ids.ID) (bool, []string, uint32,
 		controlKeysStrs = append(controlKeysStrs, addrStr)
 	}
 	return isPermissioned, controlKeysStrs, threshold, nil
+}
+
+func GetValidatorPChainBalanceValidationID(network models.Network, validationID ids.ID) (uint64, error) {
+	pClient := platformvm.NewClient(network.Endpoint)
+	ctx := context.Background()
+	validatorResponse, _, err := pClient.GetL1Validator(ctx, validationID)
+	if err != nil {
+		return 0, err
+	}
+	return validatorResponse.Balance, nil
 }

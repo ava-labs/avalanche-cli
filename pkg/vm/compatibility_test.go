@@ -156,7 +156,7 @@ func TestGetLatestAvalancheGoByProtocolVersion(t *testing.T) {
 
 			mockDownloader := &mocks.Downloader{}
 			mockDownloader.On("Download", mock.Anything).Return(tt.testData, nil)
-			mockDownloader.On("GetLatestReleaseVersion", mock.Anything).Return(tt.latestVersion, nil)
+			mockDownloader.On("GetLatestReleaseVersion", mock.Anything, mock.Anything, mock.Anything).Return(tt.latestVersion, nil)
 
 			app := application.New()
 			app.Downloader = mockDownloader
