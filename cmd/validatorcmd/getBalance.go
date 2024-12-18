@@ -24,7 +24,6 @@ var (
 var getBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Devnet,
-	networkoptions.EtnaDevnet,
 	networkoptions.Fuji,
 	networkoptions.Mainnet,
 }
