@@ -3,7 +3,6 @@
 package constants
 
 import (
-	_ "embed"
 	"time"
 
 	"github.com/ava-labs/avalanchego/upgrade"

@@ -168,34 +168,6 @@ func (_m *Prompter) CaptureEmail(promptStr string) (string, error) {
 	return r0, r1
 }
 
-// CaptureEtnaDuration provides a mock function with given fields: promptStr
-func (_m *Prompter) CaptureEtnaDuration(promptStr string) (time.Duration, error) {
-	ret := _m.Called(promptStr)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CaptureEtnaDuration")
-	}
-
-	var r0 time.Duration
-	var r1 error
-	if rf, ok := ret.Get(0).(func(string) (time.Duration, error)); ok {
-		return rf(promptStr)
-	}
-	if rf, ok := ret.Get(0).(func(string) time.Duration); ok {
-		r0 = rf(promptStr)
-	} else {
-		r0 = ret.Get(0).(time.Duration)
-	}
-
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(promptStr)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // CaptureExistingFilepath provides a mock function with given fields: promptStr
 func (_m *Prompter) CaptureExistingFilepath(promptStr string) (string, error) {
 	ret := _m.Called(promptStr)
