@@ -15,7 +15,7 @@ require (
 	github.com/chelnak/ysmrr v0.4.0
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/ethereum/go-ethereum v1.13.14
-	github.com/fatih/color v1.17.0
+	github.com/fatih/color v1.18.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/jedib0t/go-pretty/v6 v6.5.9
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
