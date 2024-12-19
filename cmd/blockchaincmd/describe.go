@@ -129,7 +129,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			if network.Kind != models.Local {
 				return err
 			}
-			// include local network errors for cases
+			// ignore local network errors for cases
 			// where local network is down but sidecar contains
 			// local network metadata
 			// (eg host restarts)
