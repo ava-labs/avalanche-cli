@@ -81,8 +81,8 @@ func GetExtraLocalNetworkData(rootDataDir string) (bool, ExtraLocalNetworkData, 
 func WriteExtraLocalNetworkData(
 	avalancheGoPath string,
 	relayerPath string,
-	cchainTeleporterMessengerAddress string,
-	cchainTeleporterRegistryAddress string,
+	cchainICMMessengerAddress string,
+	cchainICMRegistryAddress string,
 ) error {
 	clusterInfo, err := GetClusterInfo()
 	if err != nil {
@@ -103,11 +103,11 @@ func WriteExtraLocalNetworkData(
 	if relayerPath != "" {
 		extraLocalNetworkData.RelayerPath = utils.ExpandHome(relayerPath)
 	}
-	if cchainTeleporterMessengerAddress != "" {
-		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainTeleporterMessengerAddress
+	if cchainICMMessengerAddress != "" {
+		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainICMMessengerAddress
 	}
-	if cchainTeleporterRegistryAddress != "" {
-		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainTeleporterRegistryAddress
+	if cchainICMRegistryAddress != "" {
+		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainICMRegistryAddress
 	}
 	bs, err := json.Marshal(&extraLocalNetworkData)
 	if err != nil {
@@ -163,4 +163,16 @@ func GetVersion() (bool, string, int, error) {
 	// index 0 should be avalanche, index 1 will be version
 	parsedVersion := "v" + splitVersion[1]
 	return true, parsedVersion, int(versionResponse.RPCProtocolVersion), nil
+}
+
+func GetBlockchainNames() ([]string, error) {
+	clusterInfo, err := GetClusterInfo()
+	if err != nil {
+		return nil, err
+	}
+	blockchainNames := []string{}
+	for _, chainInfo := range clusterInfo.CustomChains {
+		blockchainNames = append(blockchainNames, chainInfo.ChainName)
+	}
+	return blockchainNames, nil
 }

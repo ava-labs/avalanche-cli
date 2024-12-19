@@ -10,9 +10,10 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
@@ -55,7 +56,7 @@ func clean(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("Process terminated.")
 	}
 
-	if err := teleporter.RelayerCleanup(
+	if err := interchain.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
 		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
@@ -83,7 +84,7 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	return nil
+	return node.DestroyCurrentIfLocalNetwork(app)
 }
 
 func removeLocalDeployInfoFromSidecars() error {

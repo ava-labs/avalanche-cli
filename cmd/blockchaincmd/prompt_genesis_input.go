@@ -27,7 +27,7 @@ func getValidatorContractManagerAddr() (string, error) {
 		"",
 		models.UndefinedNetwork,
 		prompts.EVMFormat,
-		"Enter address",
+		"Enter address (C-Chain address)",
 	)
 }
 
@@ -119,13 +119,33 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	return nodeID.String(), publicKey, pop, nil
 }
 
-func promptBootstrapValidators(network models.Network, changeOwnerAddress string, numBootstrapValidators int) ([]models.SubnetValidator, error) {
+func promptBootstrapValidators(
+	network models.Network,
+	changeOwnerAddress string,
+	numBootstrapValidators int,
+	validatorBalance uint64,
+	availableBalance uint64,
+) ([]models.SubnetValidator, error) {
 	var subnetValidators []models.SubnetValidator
 	var err error
 	if numBootstrapValidators == 0 {
+		maxNumValidators := availableBalance / validatorBalance
 		numBootstrapValidators, err = app.Prompt.CaptureInt(
 			"How many bootstrap validators do you want to set up?",
-			prompts.ValidatePositiveInt,
+			func(n int) error {
+				if err := prompts.ValidatePositiveInt(n); err != nil {
+					return err
+				}
+				if n > int(maxNumValidators) {
+					return fmt.Errorf(
+						"given available balance %d, the maximum number of validators with balance %d is %d",
+						availableBalance,
+						validatorBalance,
+						maxNumValidators,
+					)
+				}
+				return nil
+			},
 		)
 	}
 	if err != nil {
@@ -173,7 +193,7 @@ func promptBootstrapValidators(network models.Network, changeOwnerAddress string
 		subnetValidator := models.SubnetValidator{
 			NodeID:               nodeID.String(),
 			Weight:               constants.BootstrapValidatorWeight,
-			Balance:              constants.BootstrapValidatorBalance,
+			Balance:              validatorBalance,
 			BLSPublicKey:         publicKey,
 			BLSProofOfPossession: pop,
 			ChangeOwnerAddr:      changeOwnerAddress,

@@ -67,10 +67,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if network.Kind == models.Mainnet && sc.Sovereign {
-		return errNotSupportedOnMainnet
-	}
-
 	if outputTxPath != "" {
 		if _, err := os.Stat(outputTxPath); err == nil {
 			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
@@ -152,6 +148,8 @@ func setWeight(_ *cobra.Command, args []string) error {
 		network,
 		blockchainName,
 		nodeID,
+		0, // automatic uptime
+		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
 	)
 	if err != nil {

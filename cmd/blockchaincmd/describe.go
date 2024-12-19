@@ -12,11 +12,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/interchain/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/teleporter/genesis"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -86,15 +86,11 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 
 	// VM/Deploys
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
+	t := ux.DefaultTable(sc.Name, nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
 	rowConfig := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
-	t.SetTitle(sc.Name)
 	t.AppendRow(table.Row{"Name", sc.Name, sc.Name}, rowConfig)
 	vmIDstr := sc.ImportedVMID
 	if vmIDstr == "" {
@@ -109,21 +105,14 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
 	t.AppendRow(table.Row{"Validation", sc.ValidatorManagement, sc.ValidatorManagement}, rowConfig)
 
-	locallyDeployed, err := localnet.Deployed(sc.Name)
-	if err != nil {
-		return err
-	}
-
+	locallyDeployed := true
+	localEndpoint := ""
 	localChainID := ""
-	blockchainID := ""
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
 			ux.Logger.RedXToUser("%s is supposed to be deployed to network %s: %s ", blockchainName, network.Name(), err)
 			ux.Logger.PrintToUser("")
-			continue
-		}
-		if network.Kind == models.Local && !locallyDeployed {
 			continue
 		}
 		if network.Kind != models.Local && onlyLocalnetInfo {
@@ -137,7 +126,12 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			},
 		)
 		if err != nil {
-			return err
+			if network.Kind == models.Local {
+				locallyDeployed = false
+				continue
+			} else {
+				return err
+			}
 		}
 		if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
 			genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
@@ -160,7 +154,6 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			}
 		}
 		if data.BlockchainID != ids.Empty {
-			blockchainID = data.BlockchainID.String()
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
 			t.AppendRow(table.Row{net, "BlockchainID (CB58)", data.BlockchainID.String()})
 			t.AppendRow(table.Row{net, "BlockchainID (HEX)", hexEncoding})
@@ -177,20 +170,19 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		if err != nil {
 			return err
 		}
+		if network.Kind == models.Local {
+			localEndpoint = endpoint
+		}
 		t.AppendRow(table.Row{net, "RPC Endpoint", endpoint})
 	}
 	ux.Logger.PrintToUser(t.Render())
 
-	// Teleporter
-	t = table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
+	// ICM
+	t = ux.DefaultTable("ICM", nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle("Teleporter")
-	hasTeleporterInfo := false
+	hasICMInfo := false
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
 		if err != nil {
@@ -203,26 +195,22 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			continue
 		}
 		if data.TeleporterMessengerAddress != "" {
-			t.AppendRow(table.Row{net, "Teleporter Messenger Address", data.TeleporterMessengerAddress})
-			hasTeleporterInfo = true
+			t.AppendRow(table.Row{net, "ICM Messenger Address", data.TeleporterMessengerAddress})
+			hasICMInfo = true
 		}
 		if data.TeleporterRegistryAddress != "" {
-			t.AppendRow(table.Row{net, "Teleporter Registry Address", data.TeleporterRegistryAddress})
-			hasTeleporterInfo = true
+			t.AppendRow(table.Row{net, "ICM Registry Address", data.TeleporterRegistryAddress})
+			hasICMInfo = true
 		}
 	}
-	if hasTeleporterInfo {
+	if hasICMInfo {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(t.Render())
 	}
 
 	// Token
 	ux.Logger.PrintToUser("")
-	t = table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
-	t.SetTitle("Token")
+	t = ux.DefaultTable("Token", nil)
 	t.AppendRow(table.Row{"Token Name", sc.TokenName})
 	t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
 	ux.Logger.PrintToUser(t.Render())
@@ -241,25 +229,26 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	if locallyDeployed {
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, sc.Name); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, sc.Name); err != nil {
 			return err
 		}
 
-		localEndpoint := models.NewLocalNetwork().BlockchainEndpoint(blockchainID)
 		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
 		if err != nil {
 			return err
 		}
 		if codespaceEndpoint != "" {
-			localEndpoint = codespaceEndpoint + "\n" + logging.Orange.Wrap("Please make sure to set visibility of port 9650 to public")
+			_, port, _, err := utils.GetURIHostPortAndPath(localEndpoint)
+			if err != nil {
+				return err
+			}
+			localEndpoint = codespaceEndpoint + "\n" + logging.Orange.Wrap(
+				fmt.Sprintf("Please make sure to set visibility of port %d to public", port),
+			)
 		}
 
 		// Wallet
-		t = table.NewWriter()
-		t.Style().Title.Align = text.AlignCenter
-		t.Style().Title.Format = text.FormatUpper
-		t.Style().Options.SeparateRows = true
-		t.SetTitle("Wallet Connection")
+		t = ux.DefaultTable("Wallet Connection", nil)
 		t.AppendRow(table.Row{"Network RPC URL", localEndpoint})
 		t.AppendRow(table.Row{"Network Name", sc.Name})
 		t.AppendRow(table.Row{"Chain ID", localChainID})
@@ -273,13 +262,13 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 }
 
 func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
-	teleporterKeyAddress := ""
+	icmKeyAddress := ""
 	if sc.TeleporterReady {
 		k, err := key.LoadSoft(models.NewLocalNetwork().ID, app.GetKeyPath(sc.TeleporterKey))
 		if err != nil {
 			return err
 		}
-		teleporterKeyAddress = k.C()
+		icmKeyAddress = k.C()
 	}
 	_, subnetAirdropAddress, _, err := subnet.GetDefaultSubnetAirdropKeyInfo(app, sc.Name)
 	if err != nil {
@@ -287,17 +276,15 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 	}
 	if len(genesis.Alloc) > 0 {
 		ux.Logger.PrintToUser("")
-		t := table.NewWriter()
-		t.Style().Title.Align = text.AlignCenter
-		t.Style().Title.Format = text.FormatUpper
-		t.Style().Options.SeparateRows = true
-		t.SetTitle("Initial Token Allocation")
-		t.AppendHeader(table.Row{
-			"Description",
-			"Address and Private Key",
-			fmt.Sprintf("Amount (%s)", sc.TokenSymbol),
-			"Amount (wei)",
-		})
+		t := ux.DefaultTable(
+			"Initial Token Allocation",
+			table.Row{
+				"Description",
+				"Address and Private Key",
+				fmt.Sprintf("Amount (%s)", sc.TokenSymbol),
+				"Amount (wei)",
+			},
+		)
 		for address, allocation := range genesis.Alloc {
 			amount := allocation.Balance
 			// we are only interested in supply distribution here
@@ -308,7 +295,7 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 			description := ""
 			privKey := ""
 			switch address.Hex() {
-			case teleporterKeyAddress:
+			case icmKeyAddress:
 				description = logging.Orange.Wrap("Used by ICM")
 			case subnetAirdropAddress:
 				description = logging.Orange.Wrap("Main funded account")
@@ -342,12 +329,10 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		return
 	}
 	ux.Logger.PrintToUser("")
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
-	t.SetTitle("Smart Contracts")
-	t.AppendHeader(table.Row{"Description", "Address", "Deployer"})
+	t := ux.DefaultTable(
+		"Smart Contracts",
+		table.Row{"Description", "Address", "Deployer"},
+	)
 	for address, allocation := range genesis.Alloc {
 		if len(allocation.Code) == 0 {
 			continue
@@ -378,14 +363,14 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 
 func printPrecompiles(genesis core.Genesis) {
 	ux.Logger.PrintToUser("")
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
+	t := ux.DefaultTable(
+		"Initial Precompile Configs",
+		table.Row{"Precompile", "Admin Addresses", "Manager Addresses", "Enabled Addresses"},
+	)
+	t.Style().Options.SeparateRows = false
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle("Initial Precompile Configs")
-	t.AppendHeader(table.Row{"Precompile", "Admin Addresses", "Manager Addresses", "Enabled Addresses"})
 
 	warpSet := false
 	allowListSet := false

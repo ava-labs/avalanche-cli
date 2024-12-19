@@ -5,11 +5,13 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"regexp"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
@@ -64,4 +66,25 @@ func IsValidIPPort(ipPortPair string) bool {
 		return false
 	}
 	return true
+}
+
+// SplitRPCURI splits the RPC URI into `endpoint` and `chain`.
+// Reverse operation of `fmt.Sprintf("%s/ext/bc/%s", endpoint, chain)`.
+// returns the `uri` and `chain` as strings, or an error if the request URI is invalid.
+func SplitAvalanchegoRPCURI(requestURI string) (string, string, error) {
+	// Define the regex pattern
+	pattern := `^(https?://[^/]+)/ext/bc/([^/]+)/rpc$`
+	regex := regexp.MustCompile(pattern)
+
+	// Match the pattern
+	matches := regex.FindStringSubmatch(requestURI)
+	if matches == nil || len(matches) != 3 {
+		return "", "", fmt.Errorf("invalid request URI format")
+	}
+
+	// Extract `endpoint` and `chain`
+	endpoint := matches[1]
+	chain := matches[2]
+
+	return endpoint, chain, nil
 }

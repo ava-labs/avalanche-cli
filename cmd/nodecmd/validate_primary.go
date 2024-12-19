@@ -206,7 +206,7 @@ func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, vali
 		}
 	default:
 		useCustomDuration = true
-		duration, err = blockchaincmd.PromptDuration(start, network)
+		duration, err = blockchaincmd.PromptDuration(start, network, false) // not L1
 		if err != nil {
 			return time.Time{}, 0, err
 		}

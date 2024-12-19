@@ -7,42 +7,44 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
 const (
 	CLIBinary         = "./bin/avalanche"
-	subnetName        = "e2eSubnetTest"
 	keyName           = "ewoq"
 	ewoqEVMAddress    = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 	ewoqPChainAddress = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	testLocalNodeName = "e2eSubnetTest-local-node"
 )
 
 var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
 		commands.CreateEtnaSubnetEvmConfig(
-			subnetName,
+			utils.SubnetName,
 			ewoqEVMAddress,
 			commands.PoS,
 		)
 	})
 	ginkgo.It("Can deploy blockchain to localhost and upsize it", func() {
-		output := commands.DeploySubnetLocallySOV(subnetName)
+		output := commands.StartNetwork()
 		fmt.Println(output)
-
-		output, err := commands.DeployEtnaLocalBlockchain(
-			subnetName,
+		output, err := commands.DeployEtnaBlockchain(
+			utils.SubnetName,
+			"",
+			nil,
+			ewoqPChainAddress,
+			false, // convertOnly
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
-
 		output, err = commands.AddEtnaSubnetValidatorToCluster(
 			"",
-			subnetName,
+			utils.SubnetName,
 			"",
 			ewoqPChainAddress,
+			1,
 			1,
 			true,
 		)
@@ -51,8 +53,16 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 	})
 
 	ginkgo.It("Can destroy local node", func() {
-		output, err := commands.DestroyLocalNode(testLocalNodeName)
+		output, err := commands.DestroyLocalNode(utils.TestLocalNodeName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
+	})
+
+	ginkgo.It("Can destroy Etna Local Network", func() {
+		commands.CleanNetwork()
+	})
+
+	ginkgo.It("Can remove Etna Subnet Config", func() {
+		commands.DeleteSubnetConfig(utils.SubnetName)
 	})
 })

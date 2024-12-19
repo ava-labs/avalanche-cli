@@ -8,14 +8,17 @@ import (
 
 	"golang.org/x/exp/maps"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // PrintLocalNetworkEndpoints prints the endpoints coming from the status call
 func PrintEndpoints(
+	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	subnetName string,
 ) error {
@@ -25,7 +28,7 @@ func PrintEndpoints(
 	}
 	for _, chainInfo := range clusterInfo.CustomChains {
 		if subnetName == "" || chainInfo.ChainName == subnetName {
-			if err := PrintSubnetEndpoints(printFunc, clusterInfo, chainInfo); err != nil {
+			if err := PrintSubnetEndpoints(app, printFunc, clusterInfo, chainInfo); err != nil {
 				return err
 			}
 			printFunc("")
@@ -38,6 +41,7 @@ func PrintEndpoints(
 }
 
 func PrintSubnetEndpoints(
+	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
 	chainInfo *rpcpb.CustomChainInfo,
@@ -53,15 +57,18 @@ func PrintSubnetEndpoints(
 	if nodeInfo == nil {
 		return fmt.Errorf("unexpected nil nodeInfo")
 	}
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
+	t := ux.DefaultTable(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName), nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
 	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
+	sc, err := app.LoadSidecar(chainInfo.ChainName)
+	if err == nil {
+		rpcEndpoints := sc.Networks[models.NewLocalNetwork().Name()].RPCEndpoints
+		if len(rpcEndpoints) > 0 {
+			blockchainIDURL = rpcEndpoints[0]
+		}
+	}
 	t.AppendRow(table.Row{"Localhost", blockchainIDURL})
 	if utils.InsideCodespace() {
 		var err error
@@ -79,17 +86,12 @@ func PrintNetworkEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
 ) error {
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
-	t.SetTitle("Nodes")
 	header := table.Row{"Name", "Node ID", "Localhost Endpoint"}
 	insideCodespace := utils.InsideCodespace()
 	if insideCodespace {
 		header = append(header, "Codespace Endpoint")
 	}
-	t.AppendHeader(header)
+	t := ux.DefaultTable("Nodes", header)
 	nodeNames := clusterInfo.NodeNames
 	sort.Strings(nodeNames)
 	nodeInfos := map[string]*rpcpb.NodeInfo{}

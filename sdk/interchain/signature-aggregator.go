@@ -1,4 +1,4 @@
-// Copyright (C) 2024, Ava Labs, Inc. All rights reserved
+// // Copyright (C) 2024, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
 package interchain
 
@@ -8,6 +8,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/ava-labs/icm-services/signature-aggregator/aggregator"
+	"github.com/ava-labs/icm-services/signature-aggregator/metrics"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -16,13 +19,11 @@ import (
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	apiConfig "github.com/ava-labs/awm-relayer/config"
-	"github.com/ava-labs/awm-relayer/peers"
-	"github.com/ava-labs/awm-relayer/signature-aggregator/aggregator"
-	"github.com/ava-labs/awm-relayer/signature-aggregator/config"
-	"github.com/ava-labs/awm-relayer/signature-aggregator/metrics"
-	awmTypes "github.com/ava-labs/awm-relayer/types"
-	awmUtils "github.com/ava-labs/awm-relayer/utils"
+	apiConfig "github.com/ava-labs/icm-services/config"
+	"github.com/ava-labs/icm-services/peers"
+	"github.com/ava-labs/icm-services/signature-aggregator/config"
+	awmTypes "github.com/ava-labs/icm-services/types"
+	awmUtils "github.com/ava-labs/icm-services/utils"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -57,7 +58,6 @@ func createAppRequestNetwork(
 		logLevel,
 		registerer,
 		nil,
-		allowPrivatePeers,
 		extraPeerEndpoints,
 		&config.Config{
 			PChainAPI: &apiConfig.APIConfig{
@@ -66,6 +66,7 @@ func createAppRequestNetwork(
 			InfoAPI: &apiConfig.APIConfig{
 				BaseURL: network.Endpoint,
 			},
+			AllowPrivateIPs: allowPrivatePeers,
 		},
 	)
 	if err != nil {
@@ -114,9 +115,9 @@ func initSignatureAggregator(
 	signatureAggregator, err := aggregator.NewSignatureAggregator(
 		network,
 		logger,
+		messageCreator,
 		DefaultSignatureCacheSize,
 		metricsInstance,
-		messageCreator,
 		etnaTime,
 	)
 	if err != nil {

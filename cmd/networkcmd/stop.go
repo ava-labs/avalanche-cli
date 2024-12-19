@@ -9,8 +9,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -71,7 +72,7 @@ func Stop(flags StopFlags) error {
 		ux.Logger.PrintToUser("Server shutdown gracefully")
 	}
 
-	if err := teleporter.RelayerCleanup(
+	if err := interchain.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
 		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
@@ -113,6 +114,10 @@ func stopAndSaveNetwork(flags StopFlags) error {
 		if _, err = cli.SaveSnapshot(ctx, flags.snapshotName, true); err != nil {
 			return fmt.Errorf("failed to stop network: %w", err)
 		}
+	}
+
+	if err := node.StopCurrentIfLocalNetwork(app); err != nil {
+		return err
 	}
 
 	ux.Logger.PrintToUser("Network stopped successfully.")

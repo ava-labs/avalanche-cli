@@ -23,9 +23,8 @@ const (
 )
 
 const (
-	etnaDevnetFlag = "--etna-devnet"
-	PoSString      = "proof-of-stake"
-	PoAString      = "proof-of-authority"
+	PoSString = "proof-of-stake"
+	PoAString = "proof-of-authority"
 )
 
 func CreateEtnaSubnetEvmConfig(
@@ -41,7 +40,7 @@ func CreateEtnaSubnetEvmConfig(
 	rewardBasisPoints := ""
 	subnetManagementStr := PoAString
 	if subnetManagementType == PoS {
-		rewardBasisPoints = "--reward-basis-points=100"
+		rewardBasisPoints = "--reward-basis-points=1000000000"
 		subnetManagementStr = PoSString
 	}
 	// Create config
@@ -59,11 +58,13 @@ func CreateEtnaSubnetEvmConfig(
 		"--test-defaults",
 		"--evm-chain-id=99999",
 		"--evm-token=TOK",
+		"--icm=false",
 		"--"+constants.SkipUpdateFlag,
 	)
 	if rewardBasisPoints != "" {
 		cmd.Args = append(cmd.Args, rewardBasisPoints)
 	}
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {
@@ -78,7 +79,7 @@ func CreateEtnaSubnetEvmConfig(
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func CreateLocalEtnaDevnetNode(
+func CreateLocalEtnaNode(
 	clusterName string,
 	numNodes int,
 ) (string, error) {
@@ -88,7 +89,7 @@ func CreateLocalEtnaDevnetNode(
 		"local",
 		"start",
 		clusterName,
-		etnaDevnetFlag,
+		"--local",
 		"--num-nodes",
 		fmt.Sprintf("%d", numNodes),
 		"--"+constants.SkipUpdateFlag,
@@ -125,7 +126,7 @@ func DestroyLocalNode(
 	return string(output), err
 }
 
-func DeployEtnaSubnetToCluster(
+func DeployEtnaBlockchain(
 	subnetName string,
 	clusterName string,
 	bootstrapEndpoints []string,
@@ -146,20 +147,27 @@ func DeployEtnaSubnetToCluster(
 	gomega.Expect(exists).Should(gomega.BeTrue())
 
 	// Deploy subnet on etna devnet with local machine as bootstrap validator
-	cmd := exec.Command(
-		CLIBinary,
+	args := []string{
 		"blockchain",
 		"deploy",
 		subnetName,
-		"--cluster",
-		clusterName,
-		bootstrapEndpointsFlag,
-		convertOnlyFlag,
 		"--ewoq",
 		"--change-owner-address",
 		ewoqPChainAddress,
-		"--"+constants.SkipUpdateFlag,
-	)
+		"--" + constants.SkipUpdateFlag,
+	}
+	if clusterName != "" {
+		args = append(args, "--cluster", clusterName)
+	} else {
+		args = append(args, "--local")
+	}
+	if convertOnlyFlag != "" {
+		args = append(args, convertOnlyFlag)
+	}
+	if bootstrapEndpointsFlag != "" {
+		args = append(args, bootstrapEndpointsFlag)
+	}
+	cmd := exec.Command(CLIBinary, args...)
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
@@ -232,6 +240,7 @@ func AddEtnaSubnetValidatorToCluster(
 	nodeEndpoint string,
 	ewoqPChainAddress string,
 	balance int,
+	stakeAmount int,
 	createLocalValidator bool,
 ) (string, error) {
 	cmd := exec.Command(
@@ -247,7 +256,7 @@ func AddEtnaSubnetValidatorToCluster(
 		"--disable-owner",
 		ewoqPChainAddress,
 		"--stake-amount",
-		"2",
+		strconv.Itoa(stakeAmount),
 		"--delegation-fee",
 		"100",
 		"--staking-period",
@@ -281,6 +290,7 @@ func RemoveEtnaSubnetValidatorFromCluster(
 	subnetName string,
 	nodeEndpoint string,
 	keyName string,
+	uptimeSec uint64,
 ) (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
@@ -296,6 +306,9 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		keyName,
 		"--key",
 		keyName,
+		"--uptime",
+		strconv.Itoa(int(uptimeSec)),
+		"--force",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
@@ -323,31 +336,6 @@ func GetLocalClusterStatus(
 	if blockchainName != "" {
 		cmd.Args = append(cmd.Args, "--blockchain", blockchainName)
 	}
-	fmt.Println(cmd)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
-		utils.PrintStdErr(err)
-	}
-	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output), err
-}
-
-func DeployEtnaLocalBlockchain(
-	blockchainName string,
-) (string, error) {
-	cmd := exec.Command(
-		CLIBinary,
-		"blockchain",
-		"deploy",
-		blockchainName,
-		"--skip-relayer",
-		"--etna-devnet",
-		"--ewoq",
-		"--use-local-machine",
-		"--"+constants.SkipUpdateFlag,
-	)
 	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

@@ -6,12 +6,13 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
-	"github.com/ava-labs/avalanche-cli/pkg/teleporter"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -22,11 +23,11 @@ var (
 	startNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Cluster,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	globalNetworkFlags networkoptions.NetworkFlags
 	binPath            string
+	version            string
 )
 
 // avalanche interchain relayer start
@@ -40,6 +41,12 @@ func newStartCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startNetworkOptions)
 	cmd.Flags().StringVar(&binPath, "bin-path", "", "use the given relayer binary")
+	cmd.Flags().StringVar(
+		&version,
+		"version",
+		constants.LatestPreReleaseVersionTag,
+		"version to use",
+	)
 	return cmd
 }
 
@@ -67,7 +74,7 @@ func start(_ *cobra.Command, _ []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
 	default:
-		if relayerIsUp, _, _, err := teleporter.RelayerIsUp(
+		if relayerIsUp, _, _, err := interchain.RelayerIsUp(
 			app.GetLocalRelayerRunPath(network.Kind),
 		); err != nil {
 			return err
@@ -92,8 +99,8 @@ func start(_ *cobra.Command, _ []string) error {
 		}
 		if !utils.FileExists(relayerConfigPath) {
 			return fmt.Errorf("there is no relayer configuration available")
-		} else if binPath, err := teleporter.DeployRelayer(
-			"latest",
+		} else if binPath, err := interchain.DeployRelayer(
+			version,
 			binPath,
 			app.GetICMRelayerBinDir(),
 			relayerConfigPath,

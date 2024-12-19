@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -64,33 +65,26 @@ func InstallBinary(
 	binPrefix string,
 	org string,
 	repo string,
-	kind string,
+	component string,
 	downloader GithubDownloader,
 	installer Installer,
 ) (string, string, error) {
 	switch {
-	case version == "latest":
+	case version == constants.LatestReleaseVersionTag:
 		// get latest version
 		var err error
-		version, err = app.Downloader.GetLatestReleaseVersion(GetGithubLatestReleaseURL(
-			org,
-			repo,
-		))
+		version, err = app.Downloader.GetLatestReleaseVersion(org, repo, component)
 		if err != nil {
 			return "", "", err
 		}
-	case version == "latest-prerelease":
+	case version == constants.LatestPreReleaseVersionTag:
 		// get latest pre release version
 		var err error
-		version, err = app.Downloader.GetLatestPreReleaseVersion(
-			org,
-			repo,
-			kind,
-		)
+		version, err = app.Downloader.GetLatestPreReleaseVersion(org, repo, component)
 		if err != nil {
 			return "", "", err
 		}
-	case !utils.IsValidSemanticVersion(version):
+	case !utils.IsValidSemanticVersion(version, component):
 		return "", "", fmt.Errorf(
 			"invalid version string. Must be semantic version ex: v1.7.14: %s", version)
 	}

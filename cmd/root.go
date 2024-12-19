@@ -13,17 +13,19 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd"
+	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/tokentransferrercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/keycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/nodecmd"
 	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
-	"github.com/ava-labs/avalanche-cli/cmd/teleportercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
@@ -100,13 +102,20 @@ in with avalanche subnet create myNewSubnet.`,
 	rootCmd.AddCommand(nodecmd.NewCmd(app))
 
 	// add teleporter command
-	rootCmd.AddCommand(teleportercmd.NewCmd(app))
+	subcmd := messengercmd.NewCmd(app)
+	subcmd.Use = "teleporter"
+	rootCmd.AddCommand(subcmd)
 
 	// add interchain command
 	rootCmd.AddCommand(interchaincmd.NewCmd(app))
 
+	// add icm command
+	subcmd = messengercmd.NewCmd(app)
+	subcmd.Use = "icm"
+	rootCmd.AddCommand(subcmd)
+
 	// add ictt command
-	subcmd := tokentransferrercmd.NewCmd(app)
+	subcmd = tokentransferrercmd.NewCmd(app)
 	subcmd.Use = "ictt"
 	subcmd.Short = "Manage Interchain Token Transferrers (shorthand for `interchain TokenTransferrer`)"
 	subcmd.Long = "The ictt command suite provides tools to deploy and manage Interchain Token Transferrers."
@@ -129,6 +138,8 @@ Deprecation notice: use 'avalanche blockchain'`
 
 	// add contract command
 	rootCmd.AddCommand(contractcmd.NewCmd(app))
+	// add validator command
+	rootCmd.AddCommand(validatorcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 
@@ -161,6 +172,14 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
+func UpdateCheckDisabled(app *application.Avalanche) bool {
+	// returns true obly if explicitly disabled in the config
+	if app.Conf.ConfigFileExists() {
+		return app.Conf.GetConfigBoolValue(constants.ConfigUpdatesDisabledKey)
+	}
+	return false
+}
+
 // checkForUpdates evaluates first if the user is maybe wanting to skip the update check
 // if there's no skip, it runs the update check
 func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
@@ -168,6 +187,10 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 		lastActs *application.LastActions
 		err      error
 	)
+	// check if update check is skipped
+	if UpdateCheckDisabled(app) {
+		return nil
+	}
 	// we store a timestamp of the last skip check in a file
 	lastActs, err = app.ReadLastActionsFile()
 	if err != nil {
@@ -267,6 +290,13 @@ func setupEnv() (string, error) {
 	keyDir := filepath.Join(baseDir, constants.KeyDir)
 	if err = os.MkdirAll(keyDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the key dir %s: %s\n", keyDir, err)
+		return "", err
+	}
+
+	// Create run dir if it doesn't exist
+	runDir := filepath.Join(baseDir, constants.RunDir)
+	if err = os.MkdirAll(runDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the run dir %s: %s\n", runDir, err)
 		return "", err
 	}
 

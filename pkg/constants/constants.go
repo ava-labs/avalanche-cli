@@ -4,6 +4,8 @@ package constants
 
 import (
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/units"
 )
 
 type HTTPAccess bool
@@ -56,7 +58,8 @@ const (
 	APIRequestLargeTimeout = 10 * time.Second
 	FastGRPCDialTimeout    = 100 * time.Millisecond
 
-	FujiBootstrapTimeout = 15 * time.Minute
+	FujiBootstrapTimeout    = 15 * time.Minute
+	MainnetBootstrapTimeout = 24 * time.Hour
 
 	SSHServerStartTimeout       = 1 * time.Minute
 	SSHScriptTimeout            = 2 * time.Minute
@@ -76,9 +79,6 @@ const (
 	LatestPreReleaseVersionTag = "latest-prerelease"
 	LatestReleaseVersionTag    = "latest"
 	DefaultAvalancheGoVersion  = LatestPreReleaseVersionTag
-
-	// TODO: remove after etna release is available
-	FirstEtnaRPCVersion = 38
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
@@ -120,7 +120,8 @@ const (
 	MinStakeWeight  = 1
 	// Default balance when we prompt users for bootstrap validators
 	// nAVAX
-	BootstrapValidatorBalance = 1000000000
+	BootstrapValidatorBalanceNanoAVAX = uint64(BootstrapValidatorBalanceAVAX * float64(units.Avax))
+	BootstrapValidatorBalanceAVAX     = 0.1
 	// Default weight when we prompt users for bootstrap validators
 	BootstrapValidatorWeight = 100
 	// Default weight when we prompt users for non bootstrap validators
@@ -162,6 +163,7 @@ const (
 	ConfigAPMAdminAPIEndpointKey  = "admin-api-endpoint"
 	ConfigNodeConfigKey           = "node-config"
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
+	ConfigUpdatesDisabledKey      = "UpdatesDisabled"
 	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
 	ConfigSnapshotsAutoSaveKey    = "SnapshotsAutoSaveEnabled"
 	OldConfigFileName             = ".avalanche-cli.json"
@@ -182,7 +184,7 @@ const (
 	AvalancheGoRepoName           = "avalanchego"
 	SubnetEVMRepoName             = "subnet-evm"
 	CliRepoName                   = "avalanche-cli"
-	TeleporterRepoName            = "teleporter"
+	ICMContractsRepoName          = "icm-contracts"
 	ICMServicesRepoName           = "icm-services"
 	ICMRelayerKind                = "icm-relayer"
 	SubnetEVMReleaseURL           = "https://github.com/ava-labs/subnet-evm/releases/download/%s/%s"
@@ -205,7 +207,7 @@ const (
 	AvalancheGoInstallDir         = "avalanchego"
 	SubnetEVMInstallDir           = "subnet-evm"
 	ICMRelayerInstallDir          = "icm-relayer"
-	TeleporterInstallDir          = "teleporter"
+	ICMContractsInstallDir        = "icm-contracts"
 	ICMRelayerBin                 = "icm-relayer"
 	LocalRelayerDir               = "local-relayer"
 	ICMRelayerConfigFilename      = "icm-relayer-config.json"
@@ -224,7 +226,6 @@ const (
 	// enables having many local relayers
 	LocalNetworkLocalICMRelayerMetricsPort = 9092
 	DevnetLocalICMRelayerMetricsPort       = 9093
-	EtnaDevnetLocalICMRelayerMetricsPort   = 9094
 	FujiLocalICMRelayerMetricsPort         = 9095
 
 	DevnetFlagsProposerVMUseCurrentHeight = true
@@ -321,14 +322,15 @@ const (
 	GitExtension            = ".git"
 
 	// Avalanche InterChain Token Transfer
-	ICTTDir     = "avalanche-interchain-token-transfer"
-	ICTTURL     = "https://github.com/ava-labs/avalanche-interchain-token-transfer"
+	ICTTDir     = "icm-contracts"
+	ICTTURL     = "https://github.com/ava-labs/icm-contracts"
 	ICTTBranch  = "main"
-	ICTTVersion = "v1.0.0"
+	ICTTVersion = "8012c2a90638c1b777622e6427dbe4a88e329539"
 
 	// ICM
-	DefaultTeleporterMessengerAddress         = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
-	MainnetCChainTeleporterRegistryAddress    = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
-	FujiCChainTeleporterRegistryAddress       = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
-	EtnaDevnetCChainTeleporterRegistryAddress = "0xEe40DFF876204A99eCCB783FDc01eE0a2678Ae93"
+	ICMVersion                      = "v1.0.0"
+	DefaultICMMessengerAddress      = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	MainnetCChainICMRegistryAddress = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
+	FujiCChainICMRegistryAddress    = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
+	ValidatorUptimeDeductible       = uint64(10) // seconds to make sure all L1 validators would agree on uptime
 )

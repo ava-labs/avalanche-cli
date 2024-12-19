@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm/runtime/subprocess"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"golang.org/x/mod/semver"
@@ -193,10 +192,11 @@ func GetAvailableAvalancheGoVersions(app *application.Avalanche, rpcVersion int,
 		return nil, ErrNoAvagoVersion
 	}
 	// get latest avago release to make sure we're not picking a release currently in progress but not available for download
-	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(binutils.GetGithubLatestReleaseURL(
+	latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
 		constants.AvaLabsOrg,
 		constants.AvalancheGoRepoName,
-	))
+		"",
+	)
 	if err != nil {
 		return nil, err
 	}
