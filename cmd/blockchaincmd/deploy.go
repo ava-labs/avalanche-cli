@@ -1326,7 +1326,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 func SaveNotFullySignedTx(
 	txName string,
 	tx *txs.Tx,
-	chain string,
+	blockchainName string,
 	subnetAuthKeys []string,
 	remainingSubnetAuthKeys []string,
 	outputTxPath string,
@@ -1361,26 +1361,30 @@ func SaveNotFullySignedTx(
 		return err
 	}
 	if signedCount == len(subnetAuthKeys) {
-		PrintReadyToSignMsg(chain, outputTxPath)
+		PrintReadyToSignMsg(blockchainName, outputTxPath)
 	} else {
-		PrintRemainingToSignMsg(chain, remainingSubnetAuthKeys, outputTxPath)
+		PrintRemainingToSignMsg(blockchainName, remainingSubnetAuthKeys, outputTxPath)
 	}
 	return nil
 }
 
 func PrintReadyToSignMsg(
-	chain string,
+	blockchainName string,
 	outputTxPath string,
 ) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Tx is fully signed, and ready to be committed")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Commit command:")
-	ux.Logger.PrintToUser("  avalanche transaction commit %s --input-tx-filepath %s", chain, outputTxPath)
+	cmdLine := fmt.Sprintf("  avalanche transaction commit %s --input-tx-filepath %s", blockchainName, outputTxPath)
+	if blockchainName == "" {
+		cmdLine = fmt.Sprintf("  avalanche transaction commit --input-tx-filepath %s", outputTxPath)
+	}
+	ux.Logger.PrintToUser(cmdLine)
 }
 
 func PrintRemainingToSignMsg(
-	chain string,
+	blockchainName string,
 	remainingSubnetAuthKeys []string,
 	outputTxPath string,
 ) {
@@ -1394,21 +1398,25 @@ func PrintRemainingToSignMsg(
 		"and run the signing command, or send %q to another user for signing.", outputTxPath)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Signing command:")
-	ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
+	cmdline := fmt.Sprintf("  avalanche transaction sign %s --input-tx-filepath %s", blockchainName, outputTxPath)
+	if blockchainName == "" {
+		cmdline = fmt.Sprintf("  avalanche transaction sign --input-tx-filepath %s", outputTxPath)
+	}
+	ux.Logger.PrintToUser(cmdline)
 	ux.Logger.PrintToUser("")
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
-	vmID, err := anrutils.VMID(chain)
+func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids.ID) error {
+	vmID, err := anrutils.VMID(blockchainName)
 	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 	}
 	header := []string{"Deployment results", ""}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)
 	table.SetAutoMergeCells(true)
-	table.Append([]string{"Chain Name", chain})
+	table.Append([]string{"Chain Name", blockchainName})
 	table.Append([]string{"Subnet ID", subnetID.String()})
 	table.Append([]string{"VM ID", vmID.String()})
 	if blockchainID != ids.Empty {

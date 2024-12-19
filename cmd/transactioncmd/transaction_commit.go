@@ -8,6 +8,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -19,11 +20,11 @@ import (
 // avalanche transaction commit
 func newTransactionCommitCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "commit [subnetName]",
+		Use:   "commit [blockchainName]",
 		Short: "commit a transaction",
 		Long:  "The transaction commit command commits a transaction by submitting it to the P-Chain.",
 		RunE:  commitTx,
-		Args:  cobrautils.ExactArgs(1),
+		Args:  cobrautils.MaximumNArgs(1),
 	}
 
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction signed by all signatories")
@@ -43,19 +44,54 @@ func commitTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	isCreateChainTx := txutils.IsCreateChainTx(tx)
+
 	network, err := txutils.GetNetwork(tx)
 	if err != nil {
 		return err
 	}
 
-	subnetName := args[0]
-	sc, err := app.LoadSidecar(subnetName)
+	subnetID, err := txutils.GetSubnetID(tx)
 	if err != nil {
 		return err
 	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
+	var (
+		blockchainName string
+		sc             models.Sidecar
+	)
+	if len(args) > 0 {
+		blockchainName = args[0]
+		// subnet ID from tx is always preferred
+		if subnetID == ids.Empty {
+			sc, err = app.LoadSidecar(blockchainName)
+			if err != nil {
+				return err
+			}
+			subnetID = sc.Networks[network.Name()].SubnetID
+			if subnetID == ids.Empty {
+				return errNoSubnetID
+			}
+		}
+	} else if isCreateChainTx {
+		ux.Logger.PrintToUser("Tx is going to create a new blockchain ID but CLI can't locally persist")
+		ux.Logger.PrintToUser("the new metadata as no blockchain name was provided.")
+		ux.Logger.PrintToUser("If you desire to locally persist the blockchain metadata, please ensure")
+		ux.Logger.PrintToUser("that CLI manages the blockchain configuration.")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("For that you should use the machine where 'avalanche blockchain create' was")
+		ux.Logger.PrintToUser("executed, or use another machine but first follow a export/import procedure using")
+		ux.Logger.PrintToUser("'avalanche blockchain export' 'avalanche blockchain import file'")
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("In case of continuing without preserving the metadata, please keep a manual record of")
+		ux.Logger.PrintToUser("the subnet ID and the new blockchain ID")
+		ux.Logger.PrintToUser("")
+		yes, err := app.Prompt.CaptureYesNo("Do you want to continue execution without locally presenving metadata?")
+		if err != nil {
+			return err
+		}
+		if !yes {
+			return nil
+		}
 	}
 
 	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
@@ -73,7 +109,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 	if len(remainingSubnetAuthKeys) != 0 {
 		signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
 		ux.Logger.PrintToUser("%d of %d required signatures have been signed.", signedCount, len(subnetAuthKeys))
-		blockchaincmd.PrintRemainingToSignMsg(subnetName, remainingSubnetAuthKeys, inputTxPath)
+		blockchaincmd.PrintRemainingToSignMsg(blockchainName, remainingSubnetAuthKeys, inputTxPath)
 		return fmt.Errorf("tx is not fully signed")
 	}
 
@@ -93,10 +129,14 @@ func commitTx(_ *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 
 	if txutils.IsCreateChainTx(tx) {
-		if err := blockchaincmd.PrintDeployResults(subnetName, subnetID, txID); err != nil {
+		if err := blockchaincmd.PrintDeployResults(blockchainName, subnetID, txID); err != nil {
 			return err
 		}
-		return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "")
+		if blockchainName != "" {
+			return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "")
+		}
+		ux.Logger.PrintToUser("This CLI instance will not locally preserve blockchain metadata.")
+		ux.Logger.PrintToUser("Please keep a record of the subnet ID and blockchain ID information.")
 	}
 
 	return nil
