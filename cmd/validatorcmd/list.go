@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
 
@@ -80,12 +80,10 @@ func list(_ *cobra.Command, args []string) error {
 
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
-	t.SetTitle(fmt.Sprintf("%s Validators", blockchainName))
-	t.AppendHeader(table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance"})
+	t := ux.DefaultTable(
+		fmt.Sprintf("%s Validators", blockchainName),
+		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance"},
+	)
 
 	for nodeID, validator := range validators {
 		validationID, err := validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
