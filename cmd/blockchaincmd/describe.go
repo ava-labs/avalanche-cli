@@ -109,7 +109,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t.AppendRow(table.Row{"VM Version", sc.VMVersion, sc.VMVersion}, rowConfig)
 	t.AppendRow(table.Row{"Validation", sc.ValidatorManagement, sc.ValidatorManagement}, rowConfig)
 
-	locallyDeployed := true
+	locallyDeployed := false
 	localEndpoint := ""
 	localChainID := ""
 	for net, data := range sc.Networks {
@@ -130,11 +130,17 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			},
 		)
 		if err != nil {
-			if network.Kind == models.Local {
-				locallyDeployed = false
-				continue
-			} else {
+			if network.Kind != models.Local {
 				return err
+			}
+			// include local network errors for cases
+			// where local network is down but sidecar contains
+			// local network metadata
+			// (eg host restarts)
+			continue
+		} else {
+			if network.Kind == models.Local {
+				locallyDeployed = true
 			}
 		}
 		if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
@@ -241,9 +247,11 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	if locallyDeployed {
 		ux.Logger.PrintToUser("")
+		fmt.Println("PRINT ENDPOINTS")
 		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, sc.Name); err != nil {
 			return err
 		}
+		fmt.Println("PRINT ENDPOINTS JO")
 
 		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
 		if err != nil {
