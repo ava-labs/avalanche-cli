@@ -80,9 +80,6 @@ const (
 	LatestReleaseVersionTag    = "latest"
 	DefaultAvalancheGoVersion  = LatestPreReleaseVersionTag
 
-	// TODO: remove after etna release is available
-	FirstEtnaRPCVersion = 38
-
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
 
@@ -229,7 +226,6 @@ const (
 	// enables having many local relayers
 	LocalNetworkLocalICMRelayerMetricsPort = 9092
 	DevnetLocalICMRelayerMetricsPort       = 9093
-	EtnaDevnetLocalICMRelayerMetricsPort   = 9094
 	FujiLocalICMRelayerMetricsPort         = 9095
 
 	DevnetFlagsProposerVMUseCurrentHeight = true
@@ -332,11 +328,9 @@ const (
 	ICTTVersion = "8012c2a90638c1b777622e6427dbe4a88e329539"
 
 	// ICM
-	ICMVersion                         = "v1.0.0"
-	DefaultICMMessengerAddress         = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
-	MainnetCChainICMRegistryAddress    = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
-	FujiCChainICMRegistryAddress       = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
-	EtnaDevnetCChainICMRegistryAddress = "0xEe40DFF876204A99eCCB783FDc01eE0a2678Ae93"
-
-	ValidatorUptimeDeductible = uint64(10) // seconds to make sure all L1 validators would agree on uptime
+	ICMVersion                      = "v1.0.0"
+	DefaultICMMessengerAddress      = "0x253b2784c75e510dD0fF1da844684a1aC0aa5fcf"
+	MainnetCChainICMRegistryAddress = "0x7C43605E14F391720e1b37E49C78C4b03A488d98"
+	FujiCChainICMRegistryAddress    = "0xF86Cb19Ad8405AEFa7d09C778215D2Cb6eBfB228"
+	ValidatorUptimeDeductible       = uint64(10) // seconds to make sure all L1 validators would agree on uptime
 )

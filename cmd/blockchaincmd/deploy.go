@@ -60,7 +60,6 @@ const skipRelayerFlagName = "skip-relayer"
 var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Local,
 	networkoptions.Devnet,
-	networkoptions.EtnaDevnet,
 	networkoptions.Fuji,
 	networkoptions.Mainnet,
 }
@@ -295,7 +294,7 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
 	if network.Kind != models.Local &&
 		network.Kind != models.Devnet &&
-		network.Kind != models.EtnaDevnet && !simulatedPublicNetwork() {
+		!simulatedPublicNetwork() {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
 			return err
@@ -505,10 +504,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if err != vm.ErrNoAvagoVersion {
 					return err
 				}
-				avagoVersion = constants.LatestPreReleaseVersionTag
-			}
-			// TODO: remove after etna release is available
-			if sidecar.RPCVersion == constants.FirstEtnaRPCVersion {
 				avagoVersion = constants.LatestPreReleaseVersionTag
 			}
 		}
