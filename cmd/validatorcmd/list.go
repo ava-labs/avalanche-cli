@@ -86,13 +86,15 @@ func list(_ *cobra.Command, args []string) error {
 	)
 
 	for nodeID, validator := range validators {
+		balance := uint64(0)
 		validationID, err := validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
-			return err
-		}
-		balance, err := txutils.GetValidatorPChainBalanceValidationID(network, validationID)
-		if err != nil {
-			return err
+			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
+		} else {
+			balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
+			if err != nil {
+				ux.Logger.RedXToUser("could not get balance for node %s due to %s", nodeID, err)
+			}
 		}
 		t.AppendRow(table.Row{nodeID, validationID, validator.Weight, float64(balance) / float64(units.Avax)})
 	}
