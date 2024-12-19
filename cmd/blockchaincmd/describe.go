@@ -134,10 +134,8 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			// local network metadata
 			// (eg host restarts)
 			continue
-		} else {
-			if network.Kind == models.Local {
-				locallyDeployed = true
-			}
+		} else if network.Kind == models.Local {
+			locallyDeployed = true
 		}
 		if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
 			genesis, err := utils.ByteSliceToSubnetEvmGenesis(genesisBytes)
