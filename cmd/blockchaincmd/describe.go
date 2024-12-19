@@ -86,15 +86,11 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	}
 
 	// VM/Deploys
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
+	t := ux.DefaultTable(sc.Name, nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
 	rowConfig := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
-	t.SetTitle(sc.Name)
 	t.AppendRow(table.Row{"Name", sc.Name, sc.Name}, rowConfig)
 	vmIDstr := sc.ImportedVMID
 	if vmIDstr == "" {
@@ -188,14 +184,10 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	ux.Logger.PrintToUser(t.Render())
 
 	// ICM
-	t = table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
+	t = ux.DefaultTable("ICM", nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle("ICM")
 	hasICMInfo := false
 	for net, data := range sc.Networks {
 		network, err := app.GetNetworkFromSidecarNetworkName(net)
@@ -224,11 +216,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	// Token
 	ux.Logger.PrintToUser("")
-	t = table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
-	t.SetTitle("Token")
+	t = ux.DefaultTable("Token", nil)
 	t.AppendRow(table.Row{"Token Name", sc.TokenName})
 	t.AppendRow(table.Row{"Token Symbol", sc.TokenSymbol})
 	ux.Logger.PrintToUser(t.Render())
@@ -268,11 +256,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		}
 
 		// Wallet
-		t = table.NewWriter()
-		t.Style().Title.Align = text.AlignCenter
-		t.Style().Title.Format = text.FormatUpper
-		t.Style().Options.SeparateRows = true
-		t.SetTitle("Wallet Connection")
+		t = ux.DefaultTable("Wallet Connection", nil)
 		t.AppendRow(table.Row{"Network RPC URL", localEndpoint})
 		t.AppendRow(table.Row{"Network Name", sc.Name})
 		t.AppendRow(table.Row{"Chain ID", localChainID})
@@ -300,17 +284,15 @@ func printAllocations(sc models.Sidecar, genesis core.Genesis) error {
 	}
 	if len(genesis.Alloc) > 0 {
 		ux.Logger.PrintToUser("")
-		t := table.NewWriter()
-		t.Style().Title.Align = text.AlignCenter
-		t.Style().Title.Format = text.FormatUpper
-		t.Style().Options.SeparateRows = true
-		t.SetTitle("Initial Token Allocation")
-		t.AppendHeader(table.Row{
-			"Description",
-			"Address and Private Key",
-			fmt.Sprintf("Amount (%s)", sc.TokenSymbol),
-			"Amount (wei)",
-		})
+		t := ux.DefaultTable(
+			"Initial Token Allocation",
+			table.Row{
+				"Description",
+				"Address and Private Key",
+				fmt.Sprintf("Amount (%s)", sc.TokenSymbol),
+				"Amount (wei)",
+			},
+		)
 		for address, allocation := range genesis.Alloc {
 			amount := allocation.Balance
 			// we are only interested in supply distribution here
@@ -355,12 +337,10 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		return
 	}
 	ux.Logger.PrintToUser("")
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
-	t.SetTitle("Smart Contracts")
-	t.AppendHeader(table.Row{"Description", "Address", "Deployer"})
+	t := ux.DefaultTable(
+		"Smart Contracts",
+		table.Row{"Description", "Address", "Deployer"},
+	)
 	for address, allocation := range genesis.Alloc {
 		if len(allocation.Code) == 0 {
 			continue
@@ -391,14 +371,14 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 
 func printPrecompiles(genesis core.Genesis) {
 	ux.Logger.PrintToUser("")
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
+	t := ux.DefaultTable(
+		"Initial Precompile Configs",
+		table.Row{"Precompile", "Admin Addresses", "Manager Addresses", "Enabled Addresses"},
+	)
+	t.Style().Options.SeparateRows = false
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle("Initial Precompile Configs")
-	t.AppendHeader(table.Row{"Precompile", "Admin Addresses", "Manager Addresses", "Enabled Addresses"})
 
 	warpSet := false
 	allowListSet := false
