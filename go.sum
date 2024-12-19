@@ -183,8 +183,8 @@ github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chelnak/ysmrr v0.4.0 h1:WMvLGPlBK0kb6wHf5z9FfNvpM6sB9765jy2ajYc1Sfs=
-github.com/chelnak/ysmrr v0.4.0/go.mod h1:8vCna4PJsPCb6eevtoG7Tljzfx3twpsO203Qj2gafLM=
+github.com/chelnak/ysmrr v0.5.0 h1:aCLTtiJbzJVhiRTL1zyTGnWSCdK3R44QeFklPZRt8tg=
+github.com/chelnak/ysmrr v0.5.0/go.mod h1:Eg/IrbWqE3hOD5itwl2GlekRD7um93ap4gHOsxe+KvQ=
 github.com/chengxilo/virtualterm v1.0.4 h1:Z6IpERbRVlfB8WkOmtbHiDbBANU7cimRIof7mk9/PwM=
 github.com/chengxilo/virtualterm v1.0.4/go.mod h1:DyxxBZz/x1iqJjFxTFcr6/x+jSpqN0iwWCOK1q10rlY=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
