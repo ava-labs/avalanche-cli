@@ -1408,30 +1408,6 @@ func PrintRemainingToSignMsg(
 }
 
 func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids.ID) error {
-	/*
-		header := []string{"Deployment results", ""}
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader(header)
-		table.SetRowLine(true)
-		table.SetAutoMergeCells(true)
-		if blockchainName != "" {
-			table.Append([]string{"Chain Name", blockchainName})
-		}
-		table.Append([]string{"Subnet ID", subnetID.String()})
-		if blockchainName != "" {
-			vmID, err := anrutils.VMID(blockchainName)
-			if err != nil {
-				return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
-			}
-			table.Append([]string{"VM ID", vmID.String()})
-		}
-		if blockchainID != ids.Empty {
-			table.Append([]string{"Blockchain ID", blockchainID.String()})
-			table.Append([]string{"P-Chain TXID", blockchainID.String()})
-		}
-		table.Render()
-	*/
-
 	t := ux.DefaultTable("Deployment results", nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 2, AutoMerge: true},
