@@ -23,6 +23,8 @@ the validator will be considered inactive and will no longer participate in vali
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
+	// validator list
+	cmd.AddCommand(NewListCmd())
 	// validator getBalance
 	cmd.AddCommand(NewGetBalanceCmd())
 	// validator increaseBalance
