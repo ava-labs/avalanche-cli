@@ -233,11 +233,9 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	if locallyDeployed {
 		ux.Logger.PrintToUser("")
-		fmt.Println("PRINT ENDPOINTS")
 		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, sc.Name); err != nil {
 			return err
 		}
-		fmt.Println("PRINT ENDPOINTS JO")
 
 		codespaceEndpoint, err := utils.GetCodespaceURL(localEndpoint)
 		if err != nil {
