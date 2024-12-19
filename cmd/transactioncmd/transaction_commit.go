@@ -128,7 +128,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("Transaction successful, transaction ID: %s", txID)
 
-	if txutils.IsCreateChainTx(tx) {
+	if isCreateChainTx {
 		if err := blockchaincmd.PrintDeployResults(blockchainName, subnetID, txID); err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 			return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "")
 		}
 		ux.Logger.PrintToUser("This CLI instance will not locally preserve blockchain metadata.")
-		ux.Logger.PrintToUser("Please keep a record of the subnet ID and blockchain ID information.")
+		ux.Logger.PrintToUser("Please keep a manual record of the subnet ID and blockchain ID information.")
 	}
 
 	return nil

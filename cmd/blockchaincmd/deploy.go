@@ -51,7 +51,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/olekukonko/tablewriter"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -158,6 +158,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "noicm", false, "skip automatic ICM deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
 	cmd.Flags().StringVar(
 		&icmSpec.ICMVersion,
@@ -1407,23 +1408,50 @@ func PrintRemainingToSignMsg(
 }
 
 func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids.ID) error {
-	vmID, err := anrutils.VMID(blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+	/*
+		header := []string{"Deployment results", ""}
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader(header)
+		table.SetRowLine(true)
+		table.SetAutoMergeCells(true)
+		if blockchainName != "" {
+			table.Append([]string{"Chain Name", blockchainName})
+		}
+		table.Append([]string{"Subnet ID", subnetID.String()})
+		if blockchainName != "" {
+			vmID, err := anrutils.VMID(blockchainName)
+			if err != nil {
+				return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+			}
+			table.Append([]string{"VM ID", vmID.String()})
+		}
+		if blockchainID != ids.Empty {
+			table.Append([]string{"Blockchain ID", blockchainID.String()})
+			table.Append([]string{"P-Chain TXID", blockchainID.String()})
+		}
+		table.Render()
+	*/
+
+	t := ux.DefaultTable("Deployment results", nil)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 2, AutoMerge: true},
+	})
+	if blockchainName != "" {
+		t.AppendRow(table.Row{"Chain Name", blockchainName})
 	}
-	header := []string{"Deployment results", ""}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetRowLine(true)
-	table.SetAutoMergeCells(true)
-	table.Append([]string{"Chain Name", blockchainName})
-	table.Append([]string{"Subnet ID", subnetID.String()})
-	table.Append([]string{"VM ID", vmID.String()})
+	t.AppendRow(table.Row{"Subnet ID", subnetID.String()})
+	if blockchainName != "" {
+		vmID, err := anrutils.VMID(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+		}
+		t.AppendRow(table.Row{"VM ID", vmID.String()})
+	}
 	if blockchainID != ids.Empty {
-		table.Append([]string{"Blockchain ID", blockchainID.String()})
-		table.Append([]string{"P-Chain TXID", blockchainID.String()})
+		t.AppendRow(table.Row{"Blockchain ID", blockchainID.String()})
+		t.AppendRow(table.Row{"P-Chain TXID", blockchainID.String()})
 	}
-	table.Render()
+	ux.Logger.PrintToUser(t.Render())
 	return nil
 }
 
