@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.32.6
 	github.com/aws/aws-sdk-go-v2/config v1.28.6
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.182.0
-	github.com/chelnak/ysmrr v0.4.0
+	github.com/chelnak/ysmrr v0.5.0
 	github.com/docker/docker v27.4.0+incompatible
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/fatih/color v1.18.0
@@ -32,7 +32,7 @@ require (
 	github.com/pingcap/errors v0.11.4
 	github.com/posthog/posthog-go v1.2.24
 	github.com/prometheus/client_golang v1.20.5
-	github.com/schollz/progressbar/v3 v3.16.1
+	github.com/schollz/progressbar/v3 v3.17.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/cobra v1.8.1
@@ -44,7 +44,7 @@ require (
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
 	golang.org/x/mod v0.22.0
 	golang.org/x/net v0.32.0
-	golang.org/x/oauth2 v0.23.0
+	golang.org/x/oauth2 v0.24.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/text v0.21.0
 	google.golang.org/api v0.184.0
