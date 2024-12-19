@@ -284,6 +284,7 @@ func StartLocalNode(
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
 	nodeConfig[config.IndexEnabledKey] = false
+	nodeConfig[config.IndexAllowIncompleteKey] = true
 
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
 	if err != nil {
