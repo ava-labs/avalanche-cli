@@ -132,7 +132,7 @@ func PromptVMType(
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser("Subnet-EVM is an EVM-compatible virtual machine that supports smart contract development in Solidity. This VM is an out-of-the-box solution for Blockchain deployers who want a dApp development experience that is nearly identical to Ethereum, without having to manage or create a custom virtual machine. For more information, please visit: https://github.com/ava-labs/subnet-evm")
 			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("Custom VMs are virtual machines created using SDKs such as Precompile-EVM, HyperSDK, Rust-SDK. For more information please visit: https://docs.avax.network/learn/avalanche/virtual-machines.")
+			ux.Logger.PrintToUser("Custom VMs are virtual machines created using SDKs such as Precompile-EVM, HyperSDK, Rust-SDK. For more information please visit: https://docs.avax.network/protocol/avalanche/virtual-machines.")
 			continue
 		}
 		break
