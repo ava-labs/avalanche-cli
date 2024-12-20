@@ -1122,6 +1122,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if sidecar.Sovereign {
+		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
+	} else {
+		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
+	}
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("At this point your are able to interact with your L1!"))
+
+	var icmErr, relayerErr error
 	if sidecar.TeleporterReady && tracked && !icmSpec.SkipICMDeploy {
 		chainSpec := contract.ChainSpec{
 			BlockchainName: blockchainName,
@@ -1144,58 +1153,78 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("")
 		if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
-			return err
-		}
-		if network.Kind != models.Local && !useLocalMachine {
-			if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
-				ux.Logger.PrintToUser("")
-				yes, err := app.Prompt.CaptureYesNo("Do you want to use set up a local interchain relayer?")
-				if err != nil {
-					return err
+			icmErr = err
+			ux.Logger.RedXToUser("Interchain Messaging is not deployed due to: %v", icmErr)
+		} else {
+			ux.Logger.GreenCheckmarkToUser("ICM is successfully deployed")
+			if network.Kind != models.Local && !useLocalMachine {
+				if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser("As Interchain Messaging was also deployed into your L1, you may")
+					ux.Logger.PrintToUser("want to setup a local relayer for the messages to be interchanged.")
+					ux.Logger.PrintToUser("This only relates to interchain communications.")
+					ux.Logger.PrintToUser("")
+					yes, err := app.Prompt.CaptureYesNo("Do you want to use set up a local interchain relayer?")
+					if err != nil {
+						return err
+					}
+					icmSpec.SkipRelayerDeploy = !yes
 				}
-				icmSpec.SkipRelayerDeploy = !yes
 			}
-		}
-		if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
-			deployRelayerFlags := relayercmd.DeployFlags{
-				Version:            icmSpec.RelayerVersion,
-				BinPath:            icmSpec.RelayerBinPath,
-				LogLevel:           icmSpec.RelayerLogLevel,
-				RelayCChain:        relayCChain,
-				CChainFundingKey:   cChainFundingKey,
-				BlockchainsToRelay: []string{blockchainName},
-				Key:                relayerKeyName,
-				Amount:             relayerAmount,
-				AllowPrivateIPs:    relayerAllowPrivateIPs,
-			}
-			if network.Kind == models.Local || useLocalMachine {
-				deployRelayerFlags.Key = constants.ICMRelayerKeyName
-				deployRelayerFlags.Amount = constants.DefaultRelayerAmount
-				deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
-			}
-			if network.Kind == models.Local {
-				deployRelayerFlags.CChainFundingKey = "ewoq"
-			}
-			if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
-				ux.Logger.PrintToUser("Relayer is not deployed due to %v", err)
-				ux.Logger.PrintToUser("To deploy relayer, call `avalanche interchain relayer deploy`")
-			} else {
-				ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
+			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+				deployRelayerFlags := relayercmd.DeployFlags{
+					Version:            icmSpec.RelayerVersion,
+					BinPath:            icmSpec.RelayerBinPath,
+					LogLevel:           icmSpec.RelayerLogLevel,
+					RelayCChain:        relayCChain,
+					CChainFundingKey:   cChainFundingKey,
+					BlockchainsToRelay: []string{blockchainName},
+					Key:                relayerKeyName,
+					Amount:             relayerAmount,
+					AllowPrivateIPs:    relayerAllowPrivateIPs,
+				}
+				if network.Kind == models.Local || useLocalMachine {
+					deployRelayerFlags.Key = constants.ICMRelayerKeyName
+					deployRelayerFlags.Amount = constants.DefaultRelayerAmount
+					deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
+				}
+				if network.Kind == models.Local {
+					deployRelayerFlags.CChainFundingKey = "ewoq"
+					deployRelayerFlags.CChainAmount = constants.DefaultRelayerAmount
+				}
+				if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
+					relayerErr = err
+					ux.Logger.RedXToUser("Relayer is not deployed due to: %v", relayerErr)
+				} else {
+					ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
+				}
 			}
 		}
 	}
-	if sidecar.Sovereign {
-		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
-	} else {
-		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
-	}
+
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
 	if network.Kind == models.Local && !simulatedPublicNetwork() {
 		ux.Logger.PrintToUser("")
-		return PrintSubnetInfo(blockchainName, true)
+		_ = PrintSubnetInfo(blockchainName, true)
+	}
+
+	if icmErr != nil {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Interchain Messaging is not deployed due to: %v", icmErr)
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To deploy ICM later on, call `avalanche icm deploy`")
+		ux.Logger.PrintToUser("To deploy a local relayer later on, call `avalanche interchain relayer deploy`")
+		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
+	}
+	if relayerErr != nil {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Relayer is not deployed due to: %v", relayerErr)
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To deploy a local relayer later on, call `avalanche interchain relayer deploy`")
+		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
 	}
 
 	return nil

@@ -77,6 +77,17 @@ func GetContractBytecode(
 	return code, err
 }
 
+func GetPrivateKeyBalance(
+	client ethclient.Client,
+	privateKey string,
+) (*big.Int, error) {
+	addr, err := PrivateKeyToAddress(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return GetAddressBalance(client, addr.Hex())
+}
+
 func GetAddressBalance(
 	client ethclient.Client,
 	addressStr string,
@@ -831,4 +842,12 @@ func WaitForRPC(ctx context.Context, rpcURL string) error {
 		case <-time.After(1 * time.Second):
 		}
 	}
+}
+
+func PrivateKeyToAddress(privateKey string) (common.Address, error) {
+	pk, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	return crypto.PubkeyToAddress(pk.PublicKey), nil
 }
