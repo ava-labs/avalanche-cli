@@ -197,7 +197,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 	if availableBalance == 0 {
-		return fmt.Errorf("choosen key has zero balance")
+		return fmt.Errorf("chosen key has zero balance")
 	}
 
 	if nodeEndpoint != "" {
