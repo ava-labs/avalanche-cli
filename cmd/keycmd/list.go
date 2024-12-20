@@ -60,7 +60,7 @@ var (
 	showNativeToken bool
 )
 
-// avalanche subnet list
+// avalanche blockchain list
 func newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",

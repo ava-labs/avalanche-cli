@@ -1045,7 +1045,7 @@ func PromptChain(
 		return false, false, false, false, "", blockchainID, nil
 	}
 	if subnetOption == notListedOption {
-		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
+		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche blockchain import` command suite")
 		return true, false, false, false, "", "", nil
 	}
 	switch subnetOption {

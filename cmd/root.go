@@ -59,10 +59,10 @@ func NewRootCmd() *cobra.Command {
 		Use: "avalanche",
 		Long: `Avalanche-CLI is a command-line tool that gives developers access to
 everything Avalanche. This release specializes in helping developers
-build and test Subnets.
+build and test Blockchain networks.
 
 To get started, look at the documentation for the subcommands or jump right
-in with avalanche subnet create myNewSubnet.`,
+in with avalanche blockchain create myNewBlockchain.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
 		PersistentPostRun: handleTracking,
