@@ -24,9 +24,9 @@ import (
 
 func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
+		Use:   "list [blockchainName]",
 		Short: "Lists the validators of an L1",
-		Long:  `This command gets a list of the validatos of the L1`,
+		Long:  `This command gets a list of the validators of the L1`,
 		RunE:  list,
 		Args:  cobrautils.ExactArgs(1),
 	}

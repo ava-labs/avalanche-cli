@@ -32,11 +32,11 @@ var (
 // avalanche transaction sign
 func newTransactionSignCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "sign [subnetName]",
+		Use:   "sign [blockchainName]",
 		Short: "sign a transaction",
 		Long:  "The transaction sign command signs a multisig transaction.",
 		RunE:  signTx,
-		Args:  cobrautils.ExactArgs(1),
+		Args:  cobrautils.MaximumNArgs(1),
 	}
 
 	cmd.Flags().StringVar(&inputTxPath, inputTxPathFlag, "", "Path to the transaction file for signing")
@@ -96,23 +96,25 @@ func signTx(_ *cobra.Command, args []string) error {
 		return errors.New("unsupported network")
 	}
 
-	// we need subnet wallet signing validation + process
-	subnetName := args[0]
-	sc, err := app.LoadSidecar(subnetName)
+	// we need subnet ID for the wallet signing validation + process
+	subnetID, err := txutils.GetSubnetID(tx)
 	if err != nil {
 		return err
 	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
-	}
-
-	subnetIDFromTX, err := txutils.GetSubnetID(tx)
-	if err != nil {
-		return err
-	}
-	if subnetIDFromTX != ids.Empty {
-		subnetID = subnetIDFromTX
+	var blockchainName string
+	if len(args) > 0 {
+		blockchainName = args[0]
+		// subnet ID from tx is always preferred
+		if subnetID == ids.Empty {
+			sc, err := app.LoadSidecar(blockchainName)
+			if err != nil {
+				return err
+			}
+			subnetID = sc.Networks[network.Name()].SubnetID
+			if subnetID == ids.Empty {
+				return errNoSubnetID
+			}
+		}
 	}
 
 	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
@@ -130,7 +132,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	}
 
 	if len(remainingSubnetAuthKeys) == 0 {
-		blockchaincmd.PrintReadyToSignMsg(subnetName, inputTxPath)
+		blockchaincmd.PrintReadyToSignMsg(blockchainName, inputTxPath)
 		ux.Logger.PrintToUser("")
 		return fmt.Errorf("tx is already fully signed")
 	}
@@ -174,7 +176,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	if err := blockchaincmd.SaveNotFullySignedTx(
 		"Tx",
 		tx,
-		subnetName,
+		blockchainName,
 		subnetAuthKeys,
 		remainingSubnetAuthKeys,
 		inputTxPath,
