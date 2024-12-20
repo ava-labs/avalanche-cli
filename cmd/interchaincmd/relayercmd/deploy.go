@@ -235,7 +235,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			// from the blockchain id (as relayer logs cmd)
 			ux.Logger.PrintToUser("")
 			for _, destination := range configSpec.destinations {
-				addr, err := evm.PrivateKeyToAddress(destination.privateKey)
+				addr, err := utils.PrivateKeyToAddress(destination.privateKey)
 				if err != nil {
 					return err
 				}
@@ -281,7 +281,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	if fundBlockchains {
 		for _, destination := range configSpec.destinations {
-			addr, err := evm.PrivateKeyToAddress(destination.privateKey)
+			addr, err := utils.PrivateKeyToAddress(destination.privateKey)
 			if err != nil {
 				return err
 			}
@@ -399,10 +399,10 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 						fmt.Sprintf("Amount to transfer (available: %f)", balanceFlt),
 						func(f float64) error {
 							if f <= 0 {
-								return fmt.Errorf("not positive")
+								return fmt.Errorf("%f is not positive", f)
 							}
 							if f > balanceFlt {
-								return fmt.Errorf("exceeds available funding balance of %f", balanceFlt)
+								return fmt.Errorf("%f exceeds available funding balance of %f", f, balanceFlt)
 							}
 							return nil
 						},

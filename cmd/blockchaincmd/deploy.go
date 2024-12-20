@@ -1148,8 +1148,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
 	}
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser(logging.Green.Wrap("At this point your are able to interact with your L1!"))
+	if sidecar.Sovereign {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("At this point your are able to interact with your L1!"))
+	}
 
 	var icmErr, relayerErr error
 	if sidecar.TeleporterReady && tracked && !icmSpec.SkipICMDeploy {
@@ -1181,11 +1183,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			if network.Kind != models.Local && !useLocalMachine {
 				if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
 					ux.Logger.PrintToUser("")
-					ux.Logger.PrintToUser("As Interchain Messaging was also deployed into your L1, you may")
-					ux.Logger.PrintToUser("want to setup a local relayer for the messages to be interchanged.")
-					ux.Logger.PrintToUser("This only relates to interchain communications.")
-					ux.Logger.PrintToUser("")
-					yes, err := app.Prompt.CaptureYesNo("Do you want to use set up a local interchain relayer?")
+					yes, err := app.Prompt.CaptureYesNo("Do you want to setup local relayer for the messages to be interchanged, as Interchain Messaging was deployed to your blockchain?")
 					if err != nil {
 						return err
 					}
@@ -1237,7 +1235,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Interchain Messaging is not deployed due to: %v", icmErr)
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To deploy ICM later on, call `avalanche icm deploy`")
-		ux.Logger.PrintToUser("To deploy a local relayer later on, call `avalanche interchain relayer deploy`")
 		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
 	}
 	if relayerErr != nil {
