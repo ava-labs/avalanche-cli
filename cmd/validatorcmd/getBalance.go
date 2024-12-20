@@ -116,7 +116,7 @@ func getNodeValidationID(
 	validationIDOption := "I know the validation ID"
 	cancelOption := "Cancel"
 	option := l1ListOption
-	if l1 == "" {
+	if l1 == "" && nodeIDStr == "" {
 		options := []string{l1ListOption, validationIDOption, cancelOption}
 		option, err = app.Prompt.CaptureList(
 			"How do you want to specify the L1 validator",
