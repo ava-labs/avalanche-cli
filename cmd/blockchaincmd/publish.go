@@ -35,7 +35,7 @@ var (
 	noRepoPath     string
 
 	errSubnetNotDeployed = errors.New(
-		"only subnets which have already been deployed to either testnet (fuji) or mainnet can be published")
+		"only blockchains which have already been deployed to either testnet (fuji) or mainnet can be published")
 )
 
 type newPublisherFunc func(string, string, string) subnet.Publisher
@@ -55,11 +55,11 @@ func newPublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(&vmDescPath, "vm-file-path", "",
 		"Path to the VM description file. If not given, a prompting sequence will be initiated.")
 	cmd.Flags().StringVar(&subnetDescPath, "subnet-file-path", "",
-		"Path to the Subnet description file. If not given, a prompting sequence will be initiated.")
+		"Path to the Blockchain description file. If not given, a prompting sequence will be initiated.")
 	cmd.Flags().StringVar(&noRepoPath, "no-repo-path", "",
 		"Do not let the tool manage file publishing, but have it only generate the files and put them in the location given by this flag.")
 	cmd.Flags().BoolVar(&forceWrite, forceFlag, false,
-		"If true, ignores if the subnet has been published in the past, and attempts a forced publish.")
+		"If true, ignores if the blockchain has been published in the past, and attempts a forced publish.")
 	return cmd
 }
 
@@ -117,7 +117,7 @@ func doPublish(sc *models.Sidecar, blockchainName string, publisherCreateFunc ne
 		}
 		if published {
 			ux.Logger.PrintToUser(
-				"It appears this subnet has already been published, while no force flag has been detected.")
+				"It appears this blockchain has already been published, while no force flag has been detected.")
 			return errors.New("aborted")
 		}
 	}
@@ -132,7 +132,7 @@ func doPublish(sc *models.Sidecar, blockchainName string, publisherCreateFunc ne
 		return err
 	}
 
-	ux.Logger.PrintToUser("Nice! We got the subnet info. Let's now get the VM details")
+	ux.Logger.PrintToUser("Nice! We got the blockchain info. Let's now get the VM details")
 
 	if vmDescPath == "" {
 		vm, err = getVMInfo(sc)
@@ -182,10 +182,10 @@ func doPublish(sc *models.Sidecar, blockchainName string, publisherCreateFunc ne
 			}
 		}
 		if err := os.WriteFile(subnetFile, subnetYAML, constants.DefaultPerms755); err != nil {
-			return fmt.Errorf("failed creating the subnet description YAML file: %w", err)
+			return fmt.Errorf("failed creating the blockchain description YAML file: %w", err)
 		}
 		if err := os.WriteFile(vmFile, vmYAML, constants.DefaultPerms755); err != nil {
-			return fmt.Errorf("failed creating the subnet description YAML file: %w", err)
+			return fmt.Errorf("failed creating the blockchain description YAML file: %w", err)
 		}
 		ux.Logger.PrintToUser("YAML files written successfully to %s", noRepoPath)
 		return nil
@@ -263,7 +263,7 @@ func getAlias(reposDir string) error {
 				// double-check: actually this path exists...
 				if _, err := os.Stat(filepath.Join(reposDir, alias)); err == nil {
 					ux.Logger.PrintToUser(
-						"The repository with the given alias already exists locally. You may have already published this subnet there (the other explanation is that a different subnet has been published there).")
+						"The repository with the given alias already exists locally. You may have already published this blockchain there (the other explanation is that a different blockchain has been published there).")
 					yes, err := app.Prompt.CaptureYesNo("Do you wish to continue?")
 					if err != nil {
 						return err
@@ -338,19 +338,19 @@ func loadYAMLFile[T types.Definition](path string, defType T) error {
 }
 
 func getSubnetInfo(sc *models.Sidecar) (*types.Subnet, error) {
-	homepage, err := app.Prompt.CaptureStringAllowEmpty("What is the homepage of the Subnet project?")
+	homepage, err := app.Prompt.CaptureStringAllowEmpty("What is the homepage of the  Blockchain project?")
 	if err != nil {
 		return nil, err
 	}
 
-	desc, err := app.Prompt.CaptureStringAllowEmpty("Provide a free-text description of the Subnet")
+	desc, err := app.Prompt.CaptureStringAllowEmpty("Provide a free-text description of the Blockchain")
 	if err != nil {
 		return nil, err
 	}
 
 	maintrs, canceled, err := prompts.CaptureListDecision(
 		app.Prompt,
-		"Who are the maintainers of the Subnet?",
+		"Who are the maintainers of the Blockchain?",
 		app.Prompt.CaptureEmail,
 		"Provide a maintainer",
 		"Maintainer",

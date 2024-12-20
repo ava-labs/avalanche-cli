@@ -388,7 +388,7 @@ func getDeployedSubnetInfo(clusterName string, blockchainName string) (string, s
 			}
 		}
 	}
-	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche subnet deploy <blockchainName> --cluster <clusterName> first")
+	return "", "", fmt.Errorf("unable to find deployed Cluster info, please call avalanche blockchain deploy <blockchainName> --cluster <clusterName> first")
 }
 
 func createClusterYAMLFile(clusterName, subnetID, chainID string, separateHost *models.Host) error {

@@ -37,9 +37,9 @@ const (
 
 var (
 	ErrNetworkNotStartedOutput = "No local network running. Please start the network first."
-	ErrSubnetNotDeployedOutput = "Looks like this subnet has not been deployed to this network yet."
+	ErrSubnetNotDeployedOutput = "Looks like this blockchain has not been deployed to this network yet."
 
-	errSubnetNotYetDeployed       = errors.New("subnet not yet deployed")
+	errSubnetNotYetDeployed       = errors.New("blockchain not yet deployed")
 	errInvalidPrecompiles         = errors.New("invalid precompiles")
 	errNoBlockTimestamp           = errors.New("no blockTimestamp value set")
 	errBlockTimestampInvalid      = errors.New("blockTimestamp is invalid")
@@ -330,8 +330,8 @@ func validateUpgrade(blockchainName, networkKey string, sc *models.Sidecar, skip
 	netUpgradeBytes, err := app.ReadUpgradeFile(blockchainName)
 	if err != nil {
 		if err == os.ErrNotExist {
-			ux.Logger.PrintToUser("No file with upgrade specs for the given subnet has been found")
-			ux.Logger.PrintToUser("You may need to first create it with the `avalanche subnet upgrade generate` command or import it")
+			ux.Logger.PrintToUser("No file with upgrade specs for the given blockchain has been found")
+			ux.Logger.PrintToUser("You may need to first create it with the `avalanche blockchain upgrade generate` command or import it")
 			ux.Logger.PrintToUser("Aborting this command. No changes applied")
 		}
 		return nil, "", err

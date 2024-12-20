@@ -20,17 +20,17 @@ updating your developmental and deployed Blockchains.`,
 		RunE: cobrautils.CommandSuiteUsage,
 	}
 	app = injectedApp
-	// subnet upgrade vm
+	// blockchain upgrade vm
 	cmd.AddCommand(newUpgradeVMCmd())
-	// subnet upgrade generate
+	// blockchain upgrade generate
 	cmd.AddCommand(newUpgradeGenerateCmd())
-	// subnet upgrade import
+	// blockchain upgrade import
 	cmd.AddCommand(newUpgradeImportCmd())
-	// subnet upgrade export
+	// blockchain upgrade export
 	cmd.AddCommand(newUpgradeExportCmd())
-	// subnet upgrade print
+	// blockchain upgrade print
 	cmd.AddCommand(newUpgradePrintCmd())
-	// subnet upgrade apply
+	// blockchain upgrade apply
 	cmd.AddCommand(newUpgradeApplyCmd())
 	return cmd
 }

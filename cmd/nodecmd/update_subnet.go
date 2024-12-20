@@ -76,7 +76,7 @@ func updateSubnet(_ *cobra.Command, args []string) error {
 }
 
 // doUpdateSubnet exports deployed subnet in user's local machine to cloud server and calls node to
-// restart tracking the specified subnet (similar to avalanche subnet join <subnetName> command)
+// restart tracking the specified subnet (similar to avalanche blockchain join <subnetName> command)
 func doUpdateSubnet(
 	hosts []*models.Host,
 	clusterName string,

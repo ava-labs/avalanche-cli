@@ -89,7 +89,7 @@ func TestExportImportSubnet(t *testing.T) {
 	err = importBlockchain(nil, []string{"this-does-also-not-exist-import-should-fail"})
 	require.ErrorIs(err, os.ErrNotExist)
 	err = importBlockchain(nil, []string{exportOutput})
-	require.ErrorContains(err, "subnet already exists")
+	require.ErrorContains(err, "blockchain already exists")
 	genFile := filepath.Join(app.GetBaseDir(), constants.SubnetDir, testSubnet, constants.GenesisFileName)
 	err = os.Remove(genFile)
 	require.NoError(err)

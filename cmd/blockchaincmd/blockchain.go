@@ -56,11 +56,11 @@ manage your Blockchain configurations and live deployments.`,
 	cmd.AddCommand(vmidCmd())
 	// blockchain removeValidator
 	cmd.AddCommand(newRemoveValidatorCmd())
-	// subnet validators
+	// blockchain validators
 	cmd.AddCommand(newValidatorsCmd())
-	// subnet changeOwner
+	// blockchain changeOwner
 	cmd.AddCommand(newChangeOwnerCmd())
-	// subnet changeWeight
+	// blockchain changeWeight
 	cmd.AddCommand(newChangeWeightCmd())
 	return cmd
 }

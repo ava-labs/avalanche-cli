@@ -27,7 +27,7 @@ func GetLocallyDeployedSubnetsFromFile(app *application.Avalanche) ([]string, er
 		sc, err := app.LoadSidecar(subnetDir.Name())
 		if err == os.ErrNotExist {
 			// don't fail on missing sidecar file, just warn
-			ux.Logger.PrintToUser("warning: inconsistent subnet directory. No sidecar file found for subnet %s", subnetDir.Name())
+			ux.Logger.PrintToUser("warning: inconsistent subnet directory. No sidecar file found for blockchain %s", subnetDir.Name())
 			continue
 		}
 		if err != nil {

@@ -29,8 +29,8 @@ var changeOwnerSupportedNetworkOptions = []networkoptions.NetworkOption{
 func newChangeOwnerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "changeOwner [blockchainName]",
-		Short: "Change owner of the blockchain's subnet",
-		Long:  `The blockchain changeOwner changes the owner of the subnet of the deployed Blockchain.`,
+		Short: "Change owner of the blockchain",
+		Long:  `The blockchain changeOwner changes the owner of the deployed Blockchain.`,
 		RunE:  changeOwner,
 		Args:  cobrautils.ExactArgs(1),
 	}
@@ -39,11 +39,11 @@ func newChangeOwnerCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet]")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet]")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate transfer subnet ownership tx")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate transfer blockchain ownership tx")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the transfer subnet ownership tx")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make blockchain changes")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the transfer blockchain ownership tx")
 	return cmd
 }
 
@@ -134,7 +134,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	controlKeys, threshold, err = promptOwners(
 		kc,
@@ -161,7 +161,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	}
 	if !isFullySigned {
 		if err := SaveNotFullySignedTx(
-			"Transfer Subnet Ownership",
+			"Transfer Blockchain Ownership",
 			tx,
 			blockchainName,
 			subnetAuthKeys,

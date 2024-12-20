@@ -66,7 +66,7 @@ func exportSubnet(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
 	if !app.SidecarExists(blockchainName) {
-		return fmt.Errorf("invalid subnet %q", blockchainName)
+		return fmt.Errorf("invalid blockchain %q", blockchainName)
 	}
 
 	sc, err := app.LoadSidecar(blockchainName)
