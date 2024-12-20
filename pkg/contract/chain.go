@@ -33,6 +33,7 @@ type ChainSpec struct {
 	BlockchainID              string
 	blockchainIDFlagEnabled   bool
 	blockchainIDFlagName      string
+	OnlySOV                   bool
 }
 
 const (
@@ -399,7 +400,7 @@ func PromptChain(
 		blockchainNames []string
 	)
 	if chainSpec.blockchainNameFlagEnabled {
-		blockchainNames, err = app.GetBlockchainNamesOnNetwork(network)
+		blockchainNames, err = app.GetBlockchainNamesOnNetwork(network, chainSpec.OnlySOV)
 		if err != nil {
 			return false, err
 		}
