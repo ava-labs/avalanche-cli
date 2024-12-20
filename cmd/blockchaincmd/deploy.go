@@ -648,6 +648,26 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 			if useLocalMachine && clusterNameFlagValue == "" {
+				if clusterExists, err := node.CheckClusterIsLocal(app, clusterName); err != nil {
+					return err
+				} else if clusterExists {
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser(
+						logging.Red.Wrap("A local machine L1 deploy already exists for %s L1 and network %s"),
+						blockchainName,
+						network.Name(),
+					)
+					yes, err := app.Prompt.CaptureNoYes(
+						fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
+					)
+					if err != nil {
+						return err
+					}
+					if !yes {
+						return nil
+					}
+					_ = node.DestroyLocalNode(app, clusterName)
+				}
 				requiredBalance := deployBalance * uint64(numLocalNodes)
 				if availableBalance < requiredBalance {
 					return fmt.Errorf(
