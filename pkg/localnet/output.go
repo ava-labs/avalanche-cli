@@ -9,6 +9,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -34,8 +35,15 @@ func PrintEndpoints(
 			printFunc("")
 		}
 	}
-	if err := PrintNetworkEndpoints(printFunc, clusterInfo); err != nil {
+	if err := PrintNetworkEndpoints("Primary Nodes", printFunc, clusterInfo); err != nil {
 		return err
+	}
+	clusterInfo, err = GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err == nil {
+		printFunc("")
+		if err := PrintNetworkEndpoints("L1 Nodes", printFunc, clusterInfo); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -83,6 +91,7 @@ func PrintSubnetEndpoints(
 }
 
 func PrintNetworkEndpoints(
+	title string,
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
 ) error {
@@ -91,7 +100,7 @@ func PrintNetworkEndpoints(
 	if insideCodespace {
 		header = append(header, "Codespace Endpoint")
 	}
-	t := ux.DefaultTable("Nodes", header)
+	t := ux.DefaultTable(title, header)
 	nodeNames := clusterInfo.NodeNames
 	sort.Strings(nodeNames)
 	nodeInfos := map[string]*rpcpb.NodeInfo{}
