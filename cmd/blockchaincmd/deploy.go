@@ -51,7 +51,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/olekukonko/tablewriter"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -158,6 +158,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "noicm", false, "skip automatic ICM deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
 	cmd.Flags().StringVar(
 		&icmSpec.ICMVersion,
@@ -1326,7 +1327,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 func SaveNotFullySignedTx(
 	txName string,
 	tx *txs.Tx,
-	chain string,
+	blockchainName string,
 	subnetAuthKeys []string,
 	remainingSubnetAuthKeys []string,
 	outputTxPath string,
@@ -1361,26 +1362,30 @@ func SaveNotFullySignedTx(
 		return err
 	}
 	if signedCount == len(subnetAuthKeys) {
-		PrintReadyToSignMsg(chain, outputTxPath)
+		PrintReadyToSignMsg(blockchainName, outputTxPath)
 	} else {
-		PrintRemainingToSignMsg(chain, remainingSubnetAuthKeys, outputTxPath)
+		PrintRemainingToSignMsg(blockchainName, remainingSubnetAuthKeys, outputTxPath)
 	}
 	return nil
 }
 
 func PrintReadyToSignMsg(
-	chain string,
+	blockchainName string,
 	outputTxPath string,
 ) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Tx is fully signed, and ready to be committed")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Commit command:")
-	ux.Logger.PrintToUser("  avalanche transaction commit %s --input-tx-filepath %s", chain, outputTxPath)
+	cmdLine := fmt.Sprintf("  avalanche transaction commit %s --input-tx-filepath %s", blockchainName, outputTxPath)
+	if blockchainName == "" {
+		cmdLine = fmt.Sprintf("  avalanche transaction commit --input-tx-filepath %s", outputTxPath)
+	}
+	ux.Logger.PrintToUser(cmdLine)
 }
 
 func PrintRemainingToSignMsg(
-	chain string,
+	blockchainName string,
 	remainingSubnetAuthKeys []string,
 	outputTxPath string,
 ) {
@@ -1394,28 +1399,35 @@ func PrintRemainingToSignMsg(
 		"and run the signing command, or send %q to another user for signing.", outputTxPath)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Signing command:")
-	ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
+	cmdline := fmt.Sprintf("  avalanche transaction sign %s --input-tx-filepath %s", blockchainName, outputTxPath)
+	if blockchainName == "" {
+		cmdline = fmt.Sprintf("  avalanche transaction sign --input-tx-filepath %s", outputTxPath)
+	}
+	ux.Logger.PrintToUser(cmdline)
 	ux.Logger.PrintToUser("")
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
-	vmID, err := anrutils.VMID(chain)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids.ID) error {
+	t := ux.DefaultTable("Deployment results", nil)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 2, AutoMerge: true},
+	})
+	if blockchainName != "" {
+		t.AppendRow(table.Row{"Chain Name", blockchainName})
 	}
-	header := []string{"Deployment results", ""}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetRowLine(true)
-	table.SetAutoMergeCells(true)
-	table.Append([]string{"Chain Name", chain})
-	table.Append([]string{"Subnet ID", subnetID.String()})
-	table.Append([]string{"VM ID", vmID.String()})
+	t.AppendRow(table.Row{"Subnet ID", subnetID.String()})
+	if blockchainName != "" {
+		vmID, err := anrutils.VMID(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+		}
+		t.AppendRow(table.Row{"VM ID", vmID.String()})
+	}
 	if blockchainID != ids.Empty {
-		table.Append([]string{"Blockchain ID", blockchainID.String()})
-		table.Append([]string{"P-Chain TXID", blockchainID.String()})
+		t.AppendRow(table.Row{"Blockchain ID", blockchainID.String()})
+		t.AppendRow(table.Row{"P-Chain TXID", blockchainID.String()})
 	}
-	table.Render()
+	ux.Logger.PrintToUser(t.Render())
 	return nil
 }
 
