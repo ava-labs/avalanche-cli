@@ -192,6 +192,14 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 	sovereign := sc.Sovereign
 
+	availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
+	if err != nil {
+		return err
+	}
+	if availableBalance == 0 {
+		return fmt.Errorf("choosen key has zero balance")
+	}
+
 	if nodeEndpoint != "" {
 		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
 		if err != nil {
@@ -512,7 +520,7 @@ func CallAddValidator(
 	if !pos {
 		ux.Logger.PrintToUser("  Weight: %d", weight)
 	}
-	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
+	ux.Logger.PrintToUser("  Balance: %f", float64(balance)/float64(units.Avax))
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
 
 	return nil
