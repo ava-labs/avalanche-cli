@@ -206,19 +206,9 @@ func GetBlockchainEndpoints(
 			wsEndpoint = sc.Networks[networkName].WSEndpoints[0]
 		}
 	}
-	if rpcEndpoint == "" {
-		switch {
-		case chainSpec.CChain:
-			rpcEndpoint = network.CChainEndpoint()
-			wsEndpoint = network.CChainWSEndpoint()
-		case network.Kind == models.Local:
-			blockchainID, err := GetBlockchainID(app, network, chainSpec)
-			if err != nil {
-				return "", "", err
-			}
-			rpcEndpoint = network.BlockchainEndpoint(blockchainID.String())
-			wsEndpoint = network.BlockchainWSEndpoint(blockchainID.String())
-		}
+	if rpcEndpoint == "" && chainSpec.CChain {
+		rpcEndpoint = network.CChainEndpoint()
+		wsEndpoint = network.CChainWSEndpoint()
 	}
 	blockchainDesc, err := GetBlockchainDesc(chainSpec)
 	if err != nil {
@@ -419,10 +409,13 @@ func PromptChain(
 		return cancel, err
 	}
 	if blockchainID != "" {
-		// map from alias to blockchain ID (or identity)
-		chainID, err := utils.GetChainID(network.Endpoint, blockchainID)
+		chainID, err := ids.FromString(blockchainID)
 		if err != nil {
-			return cancel, err
+			// map from alias to blockchain ID (or identity)
+			chainID, err = utils.GetChainID(network.Endpoint, blockchainID)
+			if err != nil {
+				return cancel, err
+			}
 		}
 		blockchainID = chainID.String()
 	}

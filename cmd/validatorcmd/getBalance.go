@@ -127,7 +127,7 @@ func getNodeValidationID(
 		chainSpec := contract.ChainSpec{
 			BlockchainName: l1,
 		}
-		chainSpec.SetEnabled(true, false, false, false, false)
+		chainSpec.SetEnabled(true, false, false, false, true)
 		chainSpec.OnlySOV = true
 		if l1 == "" {
 			if cancel, err := contract.PromptChain(
@@ -144,12 +144,14 @@ func getNodeValidationID(
 			l1 = chainSpec.BlockchainName
 		}
 		if nodeIDStr == "" {
-			sc, err := app.LoadSidecar(l1)
-			if err != nil {
-				return ids.Empty, false, fmt.Errorf("failed to load sidecar: %w", err)
-			}
-			if !sc.Sovereign {
-				return ids.Empty, false, fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
+			if l1 != "" {
+				sc, err := app.LoadSidecar(l1)
+				if err != nil {
+					return ids.Empty, false, fmt.Errorf("failed to load sidecar: %w", err)
+				}
+				if !sc.Sovereign {
+					return ids.Empty, false, fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
+				}
 			}
 			subnetID, err := contract.GetSubnetID(app, network, chainSpec)
 			if err != nil {
@@ -187,6 +189,7 @@ func getNodeValidationID(
 		if err != nil {
 			return ids.Empty, false, err
 		}
+		fmt.Println(rpcURL)
 		managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 		validationID, err = validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
