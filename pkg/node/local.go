@@ -758,7 +758,10 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	return localClusters, nil
 }
 
-func CurrentIsLocalNetwork(app *application.Avalanche) (bool, string, error) {
+// ConnectedToLocalNetwork returns true if a local cluster is running
+// and it is connected to a local network.
+// It also returns the name of the cluster that is connected to the local network
+func ConnectedToLocalNetwork(app *application.Avalanche) (bool, string, error) {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	currentlyRunningRootDir := ""
@@ -795,8 +798,8 @@ func CurrentIsLocalNetwork(app *application.Avalanche) (bool, string, error) {
 	return false, "", nil
 }
 
-func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
-	isLocal, clusterName, err := CurrentIsLocalNetwork(app)
+func DestroyLocalNetworkConnectedCluster(app *application.Avalanche) error {
+	isLocal, clusterName, err := ConnectedToLocalNetwork(app)
 	if err != nil {
 		return err
 	}
@@ -806,8 +809,8 @@ func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
 	return nil
 }
 
-func StopCurrentIfLocalNetwork(app *application.Avalanche) error {
-	isLocal, _, err := CurrentIsLocalNetwork(app)
+func StopLocalNetworkConnectedCluster(app *application.Avalanche) error {
+	isLocal, _, err := ConnectedToLocalNetwork(app)
 	if err != nil {
 		return err
 	}
