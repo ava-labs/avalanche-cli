@@ -39,6 +39,15 @@ func NewListCmd() *cobra.Command {
 }
 
 func list(_ *cobra.Command, args []string) error {
+	blockchainName := args[0]
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+	if !sc.Sovereign {
+		return fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -50,15 +59,6 @@ func list(_ *cobra.Command, args []string) error {
 	)
 	if err != nil {
 		return err
-	}
-
-	blockchainName := args[0]
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
-	}
-	if !sc.Sovereign {
-		return fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
 	}
 
 	chainSpec := contract.ChainSpec{
