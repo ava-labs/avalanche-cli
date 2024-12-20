@@ -885,11 +885,11 @@ func contains[T comparable](list []T, element T) bool {
 func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
 	for _, walletKey := range walletKeys {
 		if slices.Contains(controlKeys, walletKey) && !slices.Contains(subnetAuthKeys, walletKey) {
-			return fmt.Errorf("wallet key %s is a subnet control key so it must be included in subnet auth keys", walletKey)
+			return fmt.Errorf("wallet key %s is a control key so it must be included in blockchain auth keys", walletKey)
 		}
 	}
 	if len(subnetAuthKeys) != int(threshold) {
-		return fmt.Errorf("number of given subnet auth differs from the threshold")
+		return fmt.Errorf("number of given blockchain auth keys differs from the threshold")
 	}
 	for _, subnetAuthKey := range subnetAuthKeys {
 		found := false
@@ -900,7 +900,7 @@ func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKe
 			}
 		}
 		if !found {
-			return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
+			return fmt.Errorf("blockchain auth key %s does not belong to control keys", subnetAuthKey)
 		}
 	}
 	return nil
@@ -917,7 +917,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 	filteredControlKeys = append(filteredControlKeys, controlKeys...)
 	for _, walletKey := range walletKeys {
 		if slices.Contains(controlKeys, walletKey) {
-			ux.Logger.PrintToUser("Adding wallet key %s to the tx subnet auth keys as it is a subnet control key", walletKey)
+			ux.Logger.PrintToUser("Adding wallet key %s to the tx auth keys as it is a blockchain control key", walletKey)
 			subnetAuthKeys = append(subnetAuthKeys, walletKey)
 			index, err := utils.GetIndexInSlice(filteredControlKeys, walletKey)
 			if err != nil {
@@ -928,7 +928,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 	}
 	for len(subnetAuthKeys) != int(threshold) {
 		subnetAuthKey, err := prompt.CaptureList(
-			"Choose a subnet auth key",
+			"Choose a blockchain auth key",
 			filteredControlKeys,
 		)
 		if err != nil {
@@ -1045,7 +1045,7 @@ func PromptChain(
 		return false, false, false, false, "", blockchainID, nil
 	}
 	if subnetOption == notListedOption {
-		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche blockchain import` command suite")
+		ux.Logger.PrintToUser("Please import the blockchain first, using the `avalanche blockchain import` command suite")
 		return true, false, false, false, "", "", nil
 	}
 	switch subnetOption {
