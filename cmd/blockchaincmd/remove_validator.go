@@ -377,7 +377,7 @@ func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Netwo
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for remove validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for remove validator tx creation: %s", subnetAuthKeys)
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())
