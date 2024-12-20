@@ -657,7 +657,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						blockchainName,
 						network.Name(),
 					)
-					ux.Logger.PrintToUser("You may desired to clean it up if a previous deploy execution was unsuccessful")
 					yes, err := app.Prompt.CaptureNoYes(
 						fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
 					)
