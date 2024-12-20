@@ -33,7 +33,13 @@ func GetEndpoint() (string, error) {
 }
 
 func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
-	cli, err := binutils.NewGRPCClient(
+	return GetClusterInfoWithEndpoint(binutils.LocalNetworkGRPCServerEndpoint)
+}
+
+func GetClusterInfoWithEndpoint(grpcServerEndpoint string) (*rpcpb.ClusterInfo, error) {
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		grpcServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
 	)
 	if err != nil {
