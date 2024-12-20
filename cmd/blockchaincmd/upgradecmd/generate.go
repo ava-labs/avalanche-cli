@@ -80,7 +80,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 			"may cause the network to halt and recovering may be difficult.")))
 	ux.Logger.PrintToUser(logging.Reset.Wrap(
 		"Please consult " + logging.Cyan.Wrap(
-			"https://docs.avax.network/subnets/customize-a-subnet#network-upgrades-enabledisable-precompiles ") +
+			"https://docs.avax.network/avalanche-l1s/upgrade/customize-avalanche-l1#network-upgrades-enabledisable-precompiles ") +
 			logging.Reset.Wrap("for more information")))
 
 	txt := "Press [Enter] to continue, or abort by choosing 'no'"
