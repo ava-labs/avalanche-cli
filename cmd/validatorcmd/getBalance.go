@@ -91,6 +91,10 @@ func getBalance(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
+// getNodeValidationID returns the node validation ID based on input
+// present in given args and prompted to the user
+// it also returns a boolean that is true if the user cancels
+// operations during prompting
 func getNodeValidationID(
 	network models.Network,
 	l1 string,
@@ -127,7 +131,13 @@ func getNodeValidationID(
 		chainSpec := contract.ChainSpec{
 			BlockchainName: l1,
 		}
-		chainSpec.SetEnabled(true, false, false, false, true)
+		chainSpec.SetEnabled(
+			true,  // prompt blockchain name
+			false, // do not prompt for PChain
+			false, // do not prompt for XChain
+			false, // do not prompt for CChain
+			true,  // prompt blockchain ID
+		)
 		chainSpec.OnlySOV = true
 		if l1 == "" {
 			if cancel, err := contract.PromptChain(
@@ -189,7 +199,6 @@ func getNodeValidationID(
 		if err != nil {
 			return ids.Empty, false, err
 		}
-		fmt.Println(rpcURL)
 		managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 		validationID, err = validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
