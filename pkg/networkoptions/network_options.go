@@ -51,6 +51,8 @@ func NetworkOptionFromString(s string) NetworkOption {
 	switch {
 	case s == "Mainnet":
 		return Mainnet
+	case s == "Fuji":
+		return Fuji
 	case s == "Fuji Testnet":
 		return Fuji
 	case s == "Local Network":

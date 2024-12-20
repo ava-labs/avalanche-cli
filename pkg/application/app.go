@@ -598,7 +598,10 @@ func (app *Avalanche) GetBlockchainNames() ([]string, error) {
 	return names, nil
 }
 
-func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]string, error) {
+func (app *Avalanche) GetBlockchainNamesOnNetwork(
+	network models.Network,
+	onlySOV bool,
+) ([]string, error) {
 	blockchainNames, err := app.GetBlockchainNames()
 	if err != nil {
 		return nil, err
@@ -620,7 +623,8 @@ func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]str
 				}
 			}
 		}
-		if sc.Networks[networkName].BlockchainID != ids.Empty {
+		sovKindCriteria := !onlySOV || onlySOV && sc.Sovereign
+		if sc.Networks[networkName].BlockchainID != ids.Empty && sovKindCriteria {
 			filtered = append(filtered, blockchainName)
 		}
 	}
