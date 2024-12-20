@@ -113,7 +113,7 @@ func CheckHostsAreRPCCompatible(app *application.Avalanche, hosts []*models.Host
 }
 
 func getRPCIncompatibleNodes(app *application.Avalanche, hosts []*models.Host, subnetName string) ([]string, error) {
-	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of subnet %s ...", subnetName)
+	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of blockchain %s ...", subnetName)
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return nil, err
@@ -413,7 +413,7 @@ func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVer
 			if err == nil {
 				break
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", useAvalanchegoVersionFromSubnet))
+			ux.Logger.PrintToUser(fmt.Sprintf("no blockchain named as %s found", useAvalanchegoVersionFromSubnet))
 		}
 		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
 	}
@@ -423,7 +423,7 @@ func GetLatestAvagoVersionForRPC(app *application.Avalanche, configuredRPCVersio
 	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
 		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
 	if errors.Is(err, vm.ErrNoAvagoVersion) {
-		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
+		ux.Logger.PrintToUser("No Avalanchego version found for blockchain. Defaulting to latest pre-release version")
 		return latestPreReleaseVersion, nil
 	}
 	if err != nil {

@@ -720,7 +720,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 					if err != nil {
 						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-							"please create your local node again and call subnet deploy command again", err)
+							"please create your local node again and call blockchain deploy command again", err)
 					}
 				}
 			}
@@ -1091,7 +1091,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			}
 		} else {
-			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
+			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
@@ -1307,7 +1307,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
+		return nil, fmt.Errorf("blockchain name %s is invalid: %w", args[0], err)
 	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
@@ -1317,7 +1317,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	if len(chains) == 0 {
-		return nil, errors.New("Invalid subnet " + args[0])
+		return nil, errors.New("Invalid blockchain " + args[0])
 	}
 
 	return chains, nil
