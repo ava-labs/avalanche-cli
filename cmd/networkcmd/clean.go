@@ -84,7 +84,7 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	return node.DestroyCurrentIfLocalNetwork(app)
+	return node.DestroyLocalNetworkConnectedCluster(app)
 }
 
 func removeLocalDeployInfoFromSidecars() error {
