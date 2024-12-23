@@ -758,7 +758,10 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	return localClusters, nil
 }
 
-func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
+// ConnectedToLocalNetwork returns true if a local cluster is running
+// and it is connected to a local network.
+// It also returns the name of the cluster that is connected to the local network
+func ConnectedToLocalNetwork(app *application.Avalanche) (bool, string, error) {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	currentlyRunningRootDir := ""
@@ -776,58 +779,43 @@ func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
 		}
 	}
 	if currentlyRunningRootDir == "" {
-		return nil
+		return false, "", nil
 	}
 	localClusters, err := listLocalClusters(app, nil)
 	if err != nil {
-		return fmt.Errorf("failed to list local clusters: %w", err)
+		return false, "", fmt.Errorf("failed to list local clusters: %w", err)
 	}
 	for clusterName, rootDir := range localClusters {
 		clusterConf, err := app.GetClusterConfig(clusterName)
 		if err != nil {
-			return fmt.Errorf("failed to get cluster config: %w", err)
+			return false, "", fmt.Errorf("failed to get cluster config: %w", err)
 		}
 		network := models.ConvertClusterToNetwork(clusterConf.Network)
 		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
-			_ = DestroyLocalNode(app, clusterName)
+			return true, clusterName, nil
 		}
+	}
+	return false, "", nil
+}
+
+func DestroyLocalNetworkConnectedCluster(app *application.Avalanche) error {
+	isLocal, clusterName, err := ConnectedToLocalNetwork(app)
+	if err != nil {
+		return err
+	}
+	if isLocal {
+		_ = DestroyLocalNode(app, clusterName)
 	}
 	return nil
 }
 
-func StopCurrentIfLocalNetwork(app *application.Avalanche) error {
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	currentlyRunningRootDir := ""
-	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if cli != nil {
-		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
-		if status != nil && status.ClusterInfo != nil {
-			if status.ClusterInfo.RootDataDir != "" {
-				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
-			}
-		}
-	}
-	if currentlyRunningRootDir == "" {
-		return nil
-	}
-	localClusters, err := listLocalClusters(app, nil)
+func StopLocalNetworkConnectedCluster(app *application.Avalanche) error {
+	isLocal, _, err := ConnectedToLocalNetwork(app)
 	if err != nil {
-		return fmt.Errorf("failed to list local clusters: %w", err)
+		return err
 	}
-	for clusterName, rootDir := range localClusters {
-		clusterConf, err := app.GetClusterConfig(clusterName)
-		if err != nil {
-			return fmt.Errorf("failed to get cluster config: %w", err)
-		}
-		network := models.ConvertClusterToNetwork(clusterConf.Network)
-		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
-			return StopLocalNode(app)
-		}
+	if isLocal {
+		return StopLocalNode(app)
 	}
 	return nil
 }

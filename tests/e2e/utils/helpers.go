@@ -332,6 +332,9 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 		if !strings.Contains(line, "rpc") {
 			continue
 		}
+		if !strings.Contains(line, "http") {
+			continue
+		}
 		startIndex := strings.Index(line, "http")
 		if startIndex == -1 {
 			return nil, fmt.Errorf("no url in RPC URL line: %s", line)
