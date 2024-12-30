@@ -23,10 +23,10 @@ import (
 func newChangeWeightCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "changeWeight [blockchainName]",
-		Short: "Changes the weight of a Subnet validator",
-		Long: `The blockchain changeWeight command changes the weight of a Subnet Validator.
+		Short: "Changes the weight of a L1 validator",
+		Long: `The blockchain changeWeight command changes the weight of a L1 Validator.
 
-The Subnet has to be a Proof of Authority Subnet-Only Validator Subnet.`,
+The L1 has to be a Proof of Authority L1.`,
 		RunE: setWeight,
 		Args: cobrautils.ExactArgs(1),
 	}
@@ -135,10 +135,10 @@ func setWeight(_ *cobra.Command, args []string) error {
 	isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
 	if err != nil {
 		// just warn the user, don't fail
-		ux.Logger.PrintToUser("failed to check if node is a validator on the subnet: %s", err)
+		ux.Logger.PrintToUser("failed to check if node is a validator: %s", err)
 	} else if !isValidator {
 		// this is actually an error
-		return fmt.Errorf("node %s is not a validator on subnet %s", nodeID, subnetID)
+		return fmt.Errorf("node %s is not a validator for blockchain %s", nodeID, subnetID)
 	}
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)

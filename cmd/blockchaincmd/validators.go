@@ -31,7 +31,7 @@ func newValidatorsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validators [blockchainName]",
 		Short: "List subnets validators of a blockchain",
-		Long: `The blockchain validators command lists the validators of a blockchain's subnet and provides
+		Long: `The blockchain validators command lists the validators of a blockchain and provides
 several statistics about them.`,
 		RunE: printValidators,
 		Args: cobrautils.ExactArgs(1),
