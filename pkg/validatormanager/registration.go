@@ -409,7 +409,7 @@ func InitValidatorRegistration(
 			if !errors.Is(err, validatorManagerSDK.ErrNodeAlreadyRegistered) {
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
-			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+			ux.Logger.PrintToUser(logging.Blue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
 		}
 	} else {
@@ -429,7 +429,7 @@ func InitValidatorRegistration(
 			if !errors.Is(err, validatorManagerSDK.ErrNodeAlreadyRegistered) {
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
-			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
 		}
 	}
@@ -522,7 +522,11 @@ func FinishValidatorRegistration(
 		signedMessage,
 	)
 	if err != nil {
-		return evm.TransactionError(tx, err, "failure completing validator registration")
+		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidationID) {
+			return evm.TransactionError(tx, err, "failure completing validator registration")
+		} else {
+			return fmt.Errorf("the Validator was already fully registered on the Manager")
+		}
 	}
 	return nil
 }

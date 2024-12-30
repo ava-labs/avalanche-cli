@@ -544,7 +544,10 @@ func (d *PublicDeployer) Commit(
 		repeats             = 3
 		sleepBetweenRepeats = 2 * time.Second
 	)
-	var issueTxErr error
+	var (
+		issueTxErr error
+		errors     []error
+	)
 	wallet, err := d.loadCacheWallet()
 	if err != nil {
 		return ids.Empty, err
@@ -565,12 +568,13 @@ func (d *PublicDeployer) Commit(
 		} else {
 			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), issueTxErr)
 		}
-		ux.Logger.RedXToUser("%s", issueTxErr)
+		errors = append(errors, issueTxErr)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	if issueTxErr != nil {
 		d.CleanCacheWallet()
 	}
+	utils.PrintNovelErrors(errors, issueTxErr, ux.Logger.PrintToUser)
 	return tx.ID(), issueTxErr
 }
 

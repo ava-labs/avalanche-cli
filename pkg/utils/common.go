@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
@@ -571,4 +572,19 @@ func IsValidSemanticVersion(version string, component string) bool {
 		return semver.IsValid(versionTail)
 	}
 	return true
+}
+
+func PrintNovelErrors(
+	errors []error,
+	returnedError error,
+	print func(string, ...interface{}),
+) {
+	errSet := set.Set[string]{}
+	errSet.Add(returnedError.Error())
+	for _, err := range errors {
+		if !errSet.Contains(err.Error()) {
+			print(err.Error())
+			errSet.Add(err.Error())
+		}
+	}
 }
