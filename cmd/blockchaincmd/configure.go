@@ -27,8 +27,7 @@ func newConfigureCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "configure [blockchainName]",
 		Short: "Adds additional config files for the avalanchego nodes",
-		Long: `AvalancheGo nodes support several different configuration files. Blockchains have their own
-config which applies to all chains/VMs in the Blockchain. Each chain within the Blockchain
+		Long: `AvalancheGo nodes support several different configuration files. Each network (a Subnet or an L1) has their own config which applies to all blockchains/VMs in the network. Each blockchain within the network
 can have its own chain config. A chain can also have special requirements for the AvalancheGo node 
 configuration itself. This command allows you to set all those files.`,
 		RunE: configure,
