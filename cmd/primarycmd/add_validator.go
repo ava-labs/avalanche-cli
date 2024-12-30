@@ -92,7 +92,7 @@ func promptProofOfPossession() (jsonProofOfPossession, error) {
 	if publicKey == "" || pop == "" {
 		ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 		ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
-		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
 	}
 	var err error
 	if publicKey == "" {
