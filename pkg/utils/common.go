@@ -579,6 +579,9 @@ func PrintNovelErrors(
 	returnedError error,
 	print func(string, ...interface{}),
 ) {
+	if returnedError == nil {
+		return
+	}
 	errSet := set.Set[string]{}
 	errSet.Add(returnedError.Error())
 	for _, err := range errors {
