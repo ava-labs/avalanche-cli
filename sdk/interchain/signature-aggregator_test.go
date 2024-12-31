@@ -4,7 +4,6 @@ package interchain
 
 import (
 	"testing"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -30,7 +29,6 @@ func instantiateAggregator(t *testing.T) (
 		prometheus.DefaultRegisterer,
 		subnetID,
 		DefaultQuorumPercentage,
-		time.Time{},
 	)
 	require.Equal(t, err, nil)
 	return aggregator, mockNetwork, err

@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -67,7 +68,8 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's removal (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "dump signature aggregator logs to stdout")
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
 	return cmd
@@ -266,6 +268,23 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
+	logLvl, err := logging.ToLevel(aggregatorLogLevel)
+	if err != nil {
+		logLvl = logging.Debug
+	}
+	aggregatorLogDir := app.GetLogDir()
+	if clusterNameFlagValue != "" {
+		aggregatorLogDir = app.GetLocalDir(clusterNameFlagValue)
+	}
+	aggregatorLogger, err := utils.NewLogger(
+		"signature-aggregator",
+		logLvl,
+		aggregatorLogDir,
+		aggregatorLogToStdout,
+	)
+	if err != nil {
+		return err
+	}
 	if force && sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
@@ -284,7 +303,7 @@ func removeValidatorSOV(
 		nodeID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		sc.PoS(),
 		uptimeSec,
 		isBootstrapValidator || force,
@@ -307,7 +326,7 @@ func removeValidatorSOV(
 			nodeID,
 			extraAggregatorPeers,
 			aggregatorAllowPrivatePeers,
-			aggregatorLogLevel,
+			aggregatorLogger,
 			sc.PoS(),
 			uptimeSec,
 			true, // force
@@ -341,7 +360,7 @@ func removeValidatorSOV(
 		validationID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 	); err != nil {
 		return err
 	}

@@ -346,7 +346,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 ) error {
 	if c.SubnetID == ids.Empty {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
@@ -392,7 +392,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -426,7 +426,7 @@ func (c *Subnet) InitializeProofOfStake(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
 ) error {
 	if err := evm.SetupProposerVM(
@@ -451,7 +451,7 @@ func (c *Subnet) InitializeProofOfStake(
 	}
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,

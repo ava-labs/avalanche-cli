@@ -175,7 +175,7 @@ func (p PoSParams) Verify() error {
 // [managerAddress], and the initial list of [validators]
 func GetPChainSubnetConversionWarpMessage(
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -223,7 +223,7 @@ func GetPChainSubnetConversionWarpMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,
