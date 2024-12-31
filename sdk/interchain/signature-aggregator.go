@@ -6,12 +6,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/ava-labs/icm-services/signature-aggregator/aggregator"
 	"github.com/ava-labs/icm-services/signature-aggregator/metrics"
 
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -49,13 +47,13 @@ type SignatureAggregator struct {
 // - error: An error if the creation of the AppRequestNetwork failed.
 func createAppRequestNetwork(
 	network models.Network,
-	logLevel logging.Level,
+	logger logging.Logger,
 	registerer prometheus.Registerer,
 	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 ) (peers.AppRequestNetwork, error) {
 	peerNetwork, err := peers.NewNetwork(
-		logLevel,
+		logger,
 		registerer,
 		nil,
 		extraPeerEndpoints,
@@ -89,7 +87,6 @@ func initSignatureAggregator(
 	registerer prometheus.Registerer,
 	subnetID ids.ID,
 	quorumPercentage uint64,
-	etnaTime time.Time,
 ) (*SignatureAggregator, error) {
 	sa := &SignatureAggregator{}
 	// set quorum percentage
@@ -118,7 +115,6 @@ func initSignatureAggregator(
 		messageCreator,
 		DefaultSignatureCacheSize,
 		metricsInstance,
-		etnaTime,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create signature aggregator: %w", err)
@@ -145,20 +141,19 @@ func NewSignatureAggregator(
 	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
 	registerer := prometheus.NewRegistry()
-	peerNetwork, err := createAppRequestNetwork(network, logLevel, registerer, allowPrivatePeers, extraPeerEndpoints)
-	if err != nil {
-		return nil, err
-	}
 	logger := logging.NewLogger(
-		"init-aggregator",
+		"aggregator",
 		logging.NewWrappedCore(
 			logLevel,
 			os.Stdout,
 			logging.JSON.ConsoleEncoder(),
 		),
 	)
-	etnaTime := constants.EtnaActivationTime[network.ID]
-	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage, etnaTime)
+	peerNetwork, err := createAppRequestNetwork(network, logger, registerer, allowPrivatePeers, extraPeerEndpoints)
+	if err != nil {
+		return nil, err
+	}
+	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
 }
 
 // AggregateSignatures aggregates signatures for a given message and justification.

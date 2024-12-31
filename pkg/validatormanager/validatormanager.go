@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultAggregatorLogLevel = logging.Off
+	defaultAggregatorLogLevel = logging.Debug
 )
 
 //go:embed deployed_poa_validator_manager_bytecode.txt
