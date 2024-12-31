@@ -16,10 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const (
-	defaultAggregatorLogLevel = logging.Debug
-)
-
 //go:embed deployed_poa_validator_manager_bytecode.txt
 var deployedPoAValidatorManagerBytecode []byte
 
@@ -112,13 +108,15 @@ func SetupPoA(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 ) error {
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
-	return subnet.InitializeProofOfAuthority(network, privateKey, aggregatorExtraPeerEndpoints, aggregatorAllowPrivatePeers, aggregatorLogLevel)
+	return subnet.InitializeProofOfAuthority(
+		network,
+		privateKey,
+		aggregatorExtraPeerEndpoints,
+		aggregatorAllowPrivatePeers,
+		aggregatorLogger,
+	)
 }
 
 // setups PoA manager after a successful execution of
@@ -132,18 +130,14 @@ func SetupPoS(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 	posParams validatorManagerSDK.PoSParams,
 ) error {
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	return subnet.InitializeProofOfStake(network,
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		posParams,
 	)
 }

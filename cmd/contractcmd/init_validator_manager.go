@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
@@ -28,6 +29,7 @@ type ValidatorManagerFlags struct {
 	PrivateKeyFlags             contract.PrivateKeyFlags
 	rpcEndpoint                 string
 	aggregatorLogLevel          string
+	aggregatorLogToStdout       bool
 	aggregatorExtraEndpoints    []string
 	aggregatorAllowPrivatePeers bool
 }
@@ -68,6 +70,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&validatorManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&validatorManagerFlags.aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().StringVar(&validatorManagerFlags.aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&validatorManagerFlags.aggregatorLogToStdout, "aggregator-log-to-stdout", false, "dump signature aggregator logs to stdout")
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
@@ -155,6 +158,23 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	logLvl, err := logging.ToLevel(validatorManagerFlags.aggregatorLogLevel)
+	if err != nil {
+		logLvl = logging.Debug
+	}
+	aggregatorLogDir := app.GetLogDir()
+	if clusterName != "" {
+		aggregatorLogDir = app.GetLocalDir(clusterName)
+	}
+	aggregatorLogger, err := utils.NewLogger(
+		"signature-aggregator",
+		logLvl,
+		aggregatorLogDir,
+		validatorManagerFlags.aggregatorLogToStdout,
+	)
+	if err != nil {
+		return err
+	}
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -188,7 +208,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			privateKey,
 			extraAggregatorPeers,
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
-			validatorManagerFlags.aggregatorLogLevel,
+			aggregatorLogger,
 		); err != nil {
 			return err
 		}
@@ -204,7 +224,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			privateKey,
 			extraAggregatorPeers,
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
-			validatorManagerFlags.aggregatorLogLevel,
+			aggregatorLogger,
 			validatorManagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
 				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),

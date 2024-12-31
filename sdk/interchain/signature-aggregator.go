@@ -5,7 +5,6 @@ package interchain
 import (
 	"encoding/hex"
 	"fmt"
-	"os"
 
 	"github.com/ava-labs/icm-services/signature-aggregator/aggregator"
 	"github.com/ava-labs/icm-services/signature-aggregator/metrics"
@@ -134,21 +133,13 @@ func initSignatureAggregator(
 // Returns a new signature aggregator instance, or an error if creation fails.
 func NewSignatureAggregator(
 	network models.Network,
-	logLevel logging.Level,
+	logger logging.Logger,
 	subnetID ids.ID,
 	quorumPercentage uint64,
 	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
 	registerer := prometheus.NewRegistry()
-	logger := logging.NewLogger(
-		"aggregator",
-		logging.NewWrappedCore(
-			logLevel,
-			os.Stdout,
-			logging.JSON.ConsoleEncoder(),
-		),
-	)
 	peerNetwork, err := createAppRequestNetwork(network, logger, registerer, allowPrivatePeers, extraPeerEndpoints)
 	if err != nil {
 		return nil, err

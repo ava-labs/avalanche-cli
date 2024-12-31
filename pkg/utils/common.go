@@ -591,3 +591,22 @@ func PrintNovelErrors(
 		}
 	}
 }
+
+func NewLogger(
+	logName string,
+	logLevel logging.Level,
+	logDir string,
+	logToStdout bool,
+) (logging.Logger, error) {
+	logConfig := logging.Config{
+		RotatingWriterConfig: logging.RotatingWriterConfig{
+			Directory: logDir,
+		},
+		LogLevel: logLevel,
+	}
+	if logToStdout {
+		logConfig.DisplayLevel = logLevel
+	}
+	logFactory := logging.NewFactory(logConfig)
+	return logFactory.Make(logName)
+}

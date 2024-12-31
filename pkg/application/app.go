@@ -98,6 +98,10 @@ func (app *Avalanche) GetLocalDir(clusterName string) string {
 	return filepath.Join(app.baseDir, constants.LocalDir, clusterName)
 }
 
+func (app *Avalanche) GetLogDir() string {
+	return filepath.Join(app.baseDir, constants.LogDir)
+}
+
 // Remove all plugins from plugin dir
 func (app *Avalanche) ResetPluginsDir() error {
 	pluginDir := app.GetPluginsDir()
