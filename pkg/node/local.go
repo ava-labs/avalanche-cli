@@ -103,7 +103,7 @@ func TrackSubnetWithLocalMachine(
 	networkInfo := sc.Networks[network.Name()]
 	rpcEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
+		ux.Logger.PrintToUser("Restarting node %s to track blockchain", nodeInfo.Name)
 		if err := LocalNodeTrackSubnet(
 			ctx,
 			cli,
@@ -124,7 +124,7 @@ func TrackSubnetWithLocalMachine(
 	}
 	ux.Logger.PrintToUser("Waiting for blockchain %s to be bootstrapped", blockchainName)
 	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
-		return fmt.Errorf("failure waiting for local cluster %s bootstrapping", blockchainName)
+		return fmt.Errorf("failure waiting for local cluster %s bootstrapping: %w", blockchainName, err)
 	}
 	for _, rpcURL := range rpcEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
@@ -442,7 +442,7 @@ func StartLocalNode(
 
 	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
 	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
-		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
@@ -593,7 +593,7 @@ func UpsizeLocalNode(
 	}
 	ux.Logger.Info("Waiting for node: %s to be bootstrapping P-Chain", newNodeName)
 	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
-		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
 	}
 	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
 	_, err = subnet.WaitForHealthy(ctx, cli)
@@ -618,7 +618,7 @@ func UpsizeLocalNode(
 	// wait until cluster is healthy
 	ux.Logger.Info("Waiting for node: %s to be bootstrapping %s", newNodeName, blockchainName)
 	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
-		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping")
+		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping: %w", err)
 	}
 	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
