@@ -9,6 +9,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func GetKeyNames(keyDir string, addEwoq bool) ([]string, error) {
@@ -51,4 +54,12 @@ func GetNetworkBalance(addressList []ids.ShortID, networkEndpoint string) (uint6
 		return 0, err
 	}
 	return uint64(bal.Balance), nil
+}
+
+func PrivateKeyToAddress(privateKey string) (common.Address, error) {
+	pk, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	return crypto.PubkeyToAddress(pk.PublicKey), nil
 }

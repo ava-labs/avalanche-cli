@@ -65,7 +65,7 @@ guides the user through the process using an interactive wizard.`,
 func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 	blockchainName = args[0]
 	if !app.GenesisExists(blockchainName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", blockchainName)
+		ux.Logger.PrintToUser("The provided blockchain name %q does not exist", blockchainName)
 		return nil
 	}
 	// print some warning/info message
@@ -80,7 +80,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 			"may cause the network to halt and recovering may be difficult.")))
 	ux.Logger.PrintToUser(logging.Reset.Wrap(
 		"Please consult " + logging.Cyan.Wrap(
-			"https://docs.avax.network/subnets/customize-a-subnet#network-upgrades-enabledisable-precompiles ") +
+			"https://docs.avax.network/avalanche-l1s/upgrade/customize-avalanche-l1#network-upgrades-enabledisable-precompiles ") +
 			logging.Reset.Wrap("for more information")))
 
 	txt := "Press [Enter] to continue, or abort by choosing 'no'"

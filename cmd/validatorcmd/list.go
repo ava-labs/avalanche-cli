@@ -4,6 +4,7 @@ package validatorcmd
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -13,9 +14,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
+	"golang.org/x/exp/maps"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -36,6 +39,15 @@ func NewListCmd() *cobra.Command {
 }
 
 func list(_ *cobra.Command, args []string) error {
+	blockchainName := args[0]
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+	if !sc.Sovereign {
+		return fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
@@ -49,7 +61,6 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	blockchainName := args[0]
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
 	}
@@ -85,7 +96,16 @@ func list(_ *cobra.Command, args []string) error {
 		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance"},
 	)
 
-	for nodeID, validator := range validators {
+	nodeIDs := maps.Keys(validators)
+	nodeIDStrs := utils.Map(nodeIDs, func(nodeID ids.NodeID) string { return nodeID.String() })
+	sort.Strings(nodeIDStrs)
+
+	for _, nodeIDStr := range nodeIDStrs {
+		nodeID, err := ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			return err
+		}
+		validator := validators[nodeID]
 		balance := uint64(0)
 		validationID, err := validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {

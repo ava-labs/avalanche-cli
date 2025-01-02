@@ -14,15 +14,15 @@ func NewCmd(injectedApp *application.Avalanche) *cobra.Command {
 	app = injectedApp
 	cmd := &cobra.Command{
 		Use:   "network",
-		Short: "Manage locally deployed subnets",
-		Long: `The network command suite provides a collection of tools for managing local Subnet
+		Short: "Manage locally deployed blockchains",
+		Long: `The network command suite provides a collection of tools for managing local Blockchain
 deployments.
 
-When you deploy a Subnet locally, it runs on a local, multi-node Avalanche network. The
-subnet deploy command starts this network in the background. This command suite allows you
+When you deploy a Blockchain locally, it runs on a local, multi-node Avalanche network. The
+blockchain deploy command starts this network in the background. This command suite allows you
 to shutdown, restart, and clear that network.
 
-This network currently supports multiple, concurrently deployed Subnets.`,
+This network currently supports multiple, concurrently deployed Blockchains.`,
 		RunE: cobrautils.CommandSuiteUsage,
 		Args: cobrautils.ExactArgs(0),
 	}

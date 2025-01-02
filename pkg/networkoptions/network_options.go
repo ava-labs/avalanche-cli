@@ -51,6 +51,8 @@ func NetworkOptionFromString(s string) NetworkOption {
 	switch {
 	case s == "Mainnet":
 		return Mainnet
+	case s == "Fuji":
+		return Fuji
 	case s == "Fuji Testnet":
 		return Fuji
 	case s == "Local Network":
@@ -207,7 +209,7 @@ func GetNetworkFromCmdLineFlags(
 		supportedNetworkOptionsStrs = strings.Join(utils.Map(supportedNetworkOptions, func(s NetworkOption) string { return s.String() }), ", ")
 		filteredSupportedNetworkOptionsStrs = strings.Join(utils.Map(filteredSupportedNetworkOptions, func(s NetworkOption) string { return s.String() }), ", ")
 		if len(filteredSupportedNetworkOptions) == 0 {
-			return models.UndefinedNetwork, fmt.Errorf("no supported deployed networks available on subnet %q. please deploy to one of: [%s]", subnetName, supportedNetworkOptionsStrs)
+			return models.UndefinedNetwork, fmt.Errorf("no supported deployed networks available on blockchain %q. please deploy to one of: [%s]", subnetName, supportedNetworkOptionsStrs)
 		}
 		supportedNetworkOptions = filteredSupportedNetworkOptions
 	}
@@ -259,7 +261,7 @@ func GetNetworkFromCmdLineFlags(
 			if len(scDevnetEndpoints) != 0 {
 				endpointsMsg = fmt.Sprintf(". valid devnet endpoints: [%s]", strings.Join(scDevnetEndpoints, ", "))
 			}
-			errMsg = fmt.Errorf("network flag %s is not available on subnet %s. use one of %s or made a deploy for that network%s%s", networkFlagsMap[networkOption], subnetName, supportedNetworksFlags, clustersMsg, endpointsMsg)
+			errMsg = fmt.Errorf("network flag %s is not available on blockchain %s. use one of %s or made a deploy for that network%s%s", networkFlagsMap[networkOption], subnetName, supportedNetworksFlags, clustersMsg, endpointsMsg)
 		}
 		return models.UndefinedNetwork, errMsg
 	}
@@ -339,7 +341,7 @@ func GetNetworkFromCmdLineFlags(
 
 	if subnetName != "" && networkFlags.ClusterName != "" {
 		if _, err := utils.GetIndexInSlice(scClusterNames, networkFlags.ClusterName); err != nil {
-			return models.UndefinedNetwork, fmt.Errorf("subnet %s has not been deployed to cluster %s", subnetName, networkFlags.ClusterName)
+			return models.UndefinedNetwork, fmt.Errorf("blockchain %s has not been deployed to cluster %s", subnetName, networkFlags.ClusterName)
 		}
 	}
 

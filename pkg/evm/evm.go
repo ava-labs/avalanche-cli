@@ -77,6 +77,17 @@ func GetContractBytecode(
 	return code, err
 }
 
+func GetPrivateKeyBalance(
+	client ethclient.Client,
+	privateKey string,
+) (*big.Int, error) {
+	addr, err := utils.PrivateKeyToAddress(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return GetAddressBalance(client, addr.Hex())
+}
+
 func GetAddressBalance(
 	client ethclient.Client,
 	addressStr string,
