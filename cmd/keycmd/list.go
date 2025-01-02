@@ -60,7 +60,7 @@ var (
 	showNativeToken bool
 )
 
-// avalanche subnet list
+// avalanche blockchain list
 func newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -126,7 +126,7 @@ keys or for the ledger addresses associated to certain indices.`,
 		&subnets,
 		"subnets",
 		[]string{},
-		"subnets to show information about (p=p-chain, x=x-chain, c=c-chain, and subnet names) (default p,x,c)",
+		"subnets to show information about (p=p-chain, x=x-chain, c=c-chain, and blockchain names) (default p,x,c)",
 	)
 	cmd.Flags().StringSliceVar(
 		&subnets,

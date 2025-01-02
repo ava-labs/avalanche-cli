@@ -558,7 +558,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		ClusterName:                clusterName,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
-		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
+		return fmt.Errorf("creation of blockchain was successful, but failed to update sidecar: %w", err)
 	}
 	return nil
 }
@@ -598,7 +598,10 @@ func (app *Avalanche) GetBlockchainNames() ([]string, error) {
 	return names, nil
 }
 
-func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]string, error) {
+func (app *Avalanche) GetBlockchainNamesOnNetwork(
+	network models.Network,
+	onlySOV bool,
+) ([]string, error) {
 	blockchainNames, err := app.GetBlockchainNames()
 	if err != nil {
 		return nil, err
@@ -620,7 +623,8 @@ func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]str
 				}
 			}
 		}
-		if sc.Networks[networkName].BlockchainID != ids.Empty {
+		sovKindCriteria := !onlySOV || onlySOV && sc.Sovereign
+		if sc.Networks[networkName].BlockchainID != ids.Empty && sovKindCriteria {
 			filtered = append(filtered, blockchainName)
 		}
 	}

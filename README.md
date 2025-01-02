@@ -65,7 +65,7 @@ avalanche network start
 
 ## Notable Features
 
-- Creation of Subnet-EVM, and custom virtual machine subnet configurations
+- Creation of Subnet-EVM, and custom virtual machine blockchain configurations
 - Precompile integration and configuration
 - Local deployment of L1s for development and rapid prototyping
 - Fuji Testnet and Avalanche Mainnet deployment of L1s

@@ -277,7 +277,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 			txPath,
 			false,
 		)
-		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger1Addr + "(?s).+Subnet has been created with ID(?s).+" + //nolint:goconst
+		toMatch = "(?s).+Ledger addresses:(?s).+  " + ledger1Addr + "(?s).+Blockchain has been created with ID(?s).+" + //nolint:goconst
 			"0 of 2 required Blockchain Creation signatures have been signed\\. Saving tx to disk to enable remaining signing\\.(?s).+" +
 			"Addresses remaining to sign the tx\\s+" + ledger2Addr + "(?s).+" + ledger3Addr + "(?s).+" //nolint:goconst
 		matched, err = regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
