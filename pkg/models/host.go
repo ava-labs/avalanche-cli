@@ -343,7 +343,7 @@ func (h *Host) FileExists(path string) (bool, error) {
 	return true, nil
 }
 
-// CreateTemp creates a temporary file on the remote server.
+// CreateTempFile creates a temporary file on the remote server.
 func (h *Host) CreateTempFile() (string, error) {
 	if !h.Connected() {
 		if err := h.Connect(0); err != nil {
