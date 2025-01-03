@@ -9,11 +9,12 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 // PrintLocalNetworkEndpoints prints the endpoints coming from the status call
@@ -34,8 +35,15 @@ func PrintEndpoints(
 			printFunc("")
 		}
 	}
-	if err := PrintNetworkEndpoints(printFunc, clusterInfo); err != nil {
+	if err := PrintNetworkEndpoints("Primary Nodes", printFunc, clusterInfo); err != nil {
 		return err
+	}
+	clusterInfo, err = GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err == nil {
+		printFunc("")
+		if err := PrintNetworkEndpoints("L1 Nodes", printFunc, clusterInfo); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -57,14 +65,10 @@ func PrintSubnetEndpoints(
 	if nodeInfo == nil {
 		return fmt.Errorf("unexpected nil nodeInfo")
 	}
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
+	t := ux.DefaultTable(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName), nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
 	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
 	sc, err := app.LoadSidecar(chainInfo.ChainName)
 	if err == nil {
@@ -87,20 +91,16 @@ func PrintSubnetEndpoints(
 }
 
 func PrintNetworkEndpoints(
+	title string,
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
 ) error {
-	t := table.NewWriter()
-	t.Style().Title.Align = text.AlignCenter
-	t.Style().Title.Format = text.FormatUpper
-	t.Style().Options.SeparateRows = true
-	t.SetTitle("Nodes")
 	header := table.Row{"Name", "Node ID", "Localhost Endpoint"}
 	insideCodespace := utils.InsideCodespace()
 	if insideCodespace {
 		header = append(header, "Codespace Endpoint")
 	}
-	t.AppendHeader(header)
+	t := ux.DefaultTable(title, header)
 	nodeNames := clusterInfo.NodeNames
 	sort.Strings(nodeNames)
 	nodeInfos := map[string]*rpcpb.NodeInfo{}

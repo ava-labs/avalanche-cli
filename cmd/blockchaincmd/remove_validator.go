@@ -46,8 +46,8 @@ var (
 func newRemoveValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "removeValidator [blockchainName]",
-		Short: "Remove a permissioned validator from your blockchain's subnet",
-		Long: `The blockchain removeValidator command stops a whitelisted, subnet network validator from
+		Short: "Remove a permissioned validator from your blockchain",
+		Long: `The blockchain removeValidator command stops a whitelisted blockchain network validator from
 validating your deployed Blockchain.
 
 To remove the validator from the Subnet's allow list, provide the validator's unique NodeID. You can bypass
@@ -57,7 +57,7 @@ these prompts by providing the values with flags.`,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, removeValidatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non-SOV blockchain only) file path of the removeValidator tx")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -377,7 +377,7 @@ func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Netwo
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for remove validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for remove validator tx creation: %s", subnetAuthKeys)
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())

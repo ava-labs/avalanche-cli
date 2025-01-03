@@ -51,7 +51,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/olekukonko/tablewriter"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -128,7 +128,7 @@ attempts to deploy the same Blockchain to the same network (local, Fuji, Mainnet
 allowed. If you'd like to redeploy a Blockchain locally for testing, you must first call
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
 redeploy the chain with fresh state. You can deploy the same Blockchain to multiple networks,
-so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
+so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.`,
 		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
 		Args:              cobrautils.ExactArgs(1),
@@ -144,9 +144,9 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make blockchain changes")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -158,6 +158,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
+	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "noicm", false, "skip automatic ICM deploy")
 	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
 	cmd.Flags().StringVar(
 		&icmSpec.ICMVersion,
@@ -368,7 +369,7 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 		if decision == useSameChainID {
 			sc.SubnetEVMMainnetChainID = uint(originalChainID)
 		} else {
-			ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer != %d.", originalChainID)
+			ux.Logger.PrintToUser("Enter your blockchain's ChainID. It can be any positive integer != %d.", originalChainID)
 			newChainID, err := app.Prompt.CapturePositiveInt(
 				"ChainID",
 				[]prompts.Comparator{
@@ -428,7 +429,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.ImportedFromAPM {
-		return errors.New("unable to deploy subnets imported from a repo")
+		return errors.New("unable to deploy blockchains imported from a repo")
 	}
 
 	if outputTxPath != "" {
@@ -621,7 +622,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 						if err != nil {
 							return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-								"please create your local node again and call subnet deploy command again", err)
+								"please create your local node again and call blockchain deploy command again", err)
 						}
 					}
 					network = models.ConvertClusterToNetwork(network)
@@ -647,6 +648,26 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 			if useLocalMachine && clusterNameFlagValue == "" {
+				if clusterExists, err := node.CheckClusterIsLocal(app, clusterName); err != nil {
+					return err
+				} else if clusterExists {
+					ux.Logger.PrintToUser("")
+					ux.Logger.PrintToUser(
+						logging.Red.Wrap("A local machine L1 deploy already exists for %s L1 and network %s"),
+						blockchainName,
+						network.Name(),
+					)
+					yes, err := app.Prompt.CaptureNoYes(
+						fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
+					)
+					if err != nil {
+						return err
+					}
+					if !yes {
+						return nil
+					}
+					_ = node.DestroyLocalNode(app, clusterName)
+				}
 				requiredBalance := deployBalance * uint64(numLocalNodes)
 				if availableBalance < requiredBalance {
 					return fmt.Errorf(
@@ -720,7 +741,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 					if err != nil {
 						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-							"please create your local node again and call subnet deploy command again", err)
+							"please create your local node again and call blockchain deploy command again", err)
 					}
 				}
 			}
@@ -845,7 +866,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your blockchain auth keys for chain creation: %s", subnetAuthKeys)
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
@@ -924,7 +945,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			avaGoBootstrapValidators,
 		)
 		if err != nil {
-			ux.Logger.RedXToUser("error converting subnet: %s. fix the issue and try again with a new convert cmd", err)
+			ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
 			return err
 		}
 
@@ -1091,7 +1112,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			}
 		} else {
-			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
+			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
@@ -1122,6 +1143,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if sidecar.Sovereign {
+		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
+	} else {
+		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
+	}
+	if sidecar.Sovereign {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser(logging.Green.Wrap("At this point your are able to interact with your L1!"))
+	}
+
+	var icmErr, relayerErr error
 	if sidecar.TeleporterReady && tracked && !icmSpec.SkipICMDeploy {
 		chainSpec := contract.ChainSpec{
 			BlockchainName: blockchainName,
@@ -1144,58 +1176,73 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		ux.Logger.PrintToUser("")
 		if err := messengercmd.CallDeploy([]string{}, deployICMFlags, network); err != nil {
-			return err
-		}
-		if network.Kind != models.Local && !useLocalMachine {
-			if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
-				ux.Logger.PrintToUser("")
-				yes, err := app.Prompt.CaptureYesNo("Do you want to use set up a local interchain relayer?")
-				if err != nil {
-					return err
+			icmErr = err
+			ux.Logger.RedXToUser("Interchain Messaging is not deployed due to: %v", icmErr)
+		} else {
+			ux.Logger.GreenCheckmarkToUser("ICM is successfully deployed")
+			if network.Kind != models.Local && !useLocalMachine {
+				if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
+					ux.Logger.PrintToUser("")
+					yes, err := app.Prompt.CaptureYesNo("Do you want to setup local relayer for the messages to be interchanged, as Interchain Messaging was deployed to your blockchain?")
+					if err != nil {
+						return err
+					}
+					icmSpec.SkipRelayerDeploy = !yes
 				}
-				icmSpec.SkipRelayerDeploy = !yes
 			}
-		}
-		if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
-			deployRelayerFlags := relayercmd.DeployFlags{
-				Version:            icmSpec.RelayerVersion,
-				BinPath:            icmSpec.RelayerBinPath,
-				LogLevel:           icmSpec.RelayerLogLevel,
-				RelayCChain:        relayCChain,
-				CChainFundingKey:   cChainFundingKey,
-				BlockchainsToRelay: []string{blockchainName},
-				Key:                relayerKeyName,
-				Amount:             relayerAmount,
-				AllowPrivateIPs:    relayerAllowPrivateIPs,
-			}
-			if network.Kind == models.Local || useLocalMachine {
-				deployRelayerFlags.Key = constants.ICMRelayerKeyName
-				deployRelayerFlags.Amount = constants.DefaultRelayerAmount
-				deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
-			}
-			if network.Kind == models.Local {
-				deployRelayerFlags.CChainFundingKey = "ewoq"
-			}
-			if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
-				ux.Logger.PrintToUser("Relayer is not deployed due to %v", err)
-				ux.Logger.PrintToUser("To deploy relayer, call `avalanche interchain relayer deploy`")
-			} else {
-				ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
+			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+				deployRelayerFlags := relayercmd.DeployFlags{
+					Version:            icmSpec.RelayerVersion,
+					BinPath:            icmSpec.RelayerBinPath,
+					LogLevel:           icmSpec.RelayerLogLevel,
+					RelayCChain:        relayCChain,
+					CChainFundingKey:   cChainFundingKey,
+					BlockchainsToRelay: []string{blockchainName},
+					Key:                relayerKeyName,
+					Amount:             relayerAmount,
+					AllowPrivateIPs:    relayerAllowPrivateIPs,
+				}
+				if network.Kind == models.Local || useLocalMachine {
+					deployRelayerFlags.Key = constants.ICMRelayerKeyName
+					deployRelayerFlags.Amount = constants.DefaultRelayerAmount
+					deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
+				}
+				if network.Kind == models.Local {
+					deployRelayerFlags.CChainFundingKey = "ewoq"
+					deployRelayerFlags.CChainAmount = constants.DefaultRelayerAmount
+				}
+				if err := relayercmd.CallDeploy(nil, deployRelayerFlags, network); err != nil {
+					relayerErr = err
+					ux.Logger.RedXToUser("Relayer is not deployed due to: %v", relayerErr)
+				} else {
+					ux.Logger.GreenCheckmarkToUser("Relayer is successfully deployed")
+				}
 			}
 		}
 	}
-	if sidecar.Sovereign {
-		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
-	} else {
-		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
-	}
+
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
 	if network.Kind == models.Local && !simulatedPublicNetwork() {
 		ux.Logger.PrintToUser("")
-		return PrintSubnetInfo(blockchainName, true)
+		_ = PrintSubnetInfo(blockchainName, true)
+	}
+
+	if icmErr != nil {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Interchain Messaging is not deployed due to: %v", icmErr)
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To deploy ICM later on, call `avalanche icm deploy`")
+		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
+	}
+	if relayerErr != nil {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Relayer is not deployed due to: %v", relayerErr)
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("To deploy a local relayer later on, call `avalanche interchain relayer deploy`")
+		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
 	}
 
 	return nil
@@ -1307,7 +1354,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
+		return nil, fmt.Errorf("blockchain name %s is invalid: %w", args[0], err)
 	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
@@ -1317,7 +1364,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	if len(chains) == 0 {
-		return nil, errors.New("Invalid subnet " + args[0])
+		return nil, errors.New("Invalid blockchain " + args[0])
 	}
 
 	return chains, nil
@@ -1326,7 +1373,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 func SaveNotFullySignedTx(
 	txName string,
 	tx *txs.Tx,
-	chain string,
+	blockchainName string,
 	subnetAuthKeys []string,
 	remainingSubnetAuthKeys []string,
 	outputTxPath string,
@@ -1361,26 +1408,30 @@ func SaveNotFullySignedTx(
 		return err
 	}
 	if signedCount == len(subnetAuthKeys) {
-		PrintReadyToSignMsg(chain, outputTxPath)
+		PrintReadyToSignMsg(blockchainName, outputTxPath)
 	} else {
-		PrintRemainingToSignMsg(chain, remainingSubnetAuthKeys, outputTxPath)
+		PrintRemainingToSignMsg(blockchainName, remainingSubnetAuthKeys, outputTxPath)
 	}
 	return nil
 }
 
 func PrintReadyToSignMsg(
-	chain string,
+	blockchainName string,
 	outputTxPath string,
 ) {
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Tx is fully signed, and ready to be committed")
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Commit command:")
-	ux.Logger.PrintToUser("  avalanche transaction commit %s --input-tx-filepath %s", chain, outputTxPath)
+	cmdLine := fmt.Sprintf("  avalanche transaction commit %s --input-tx-filepath %s", blockchainName, outputTxPath)
+	if blockchainName == "" {
+		cmdLine = fmt.Sprintf("  avalanche transaction commit --input-tx-filepath %s", outputTxPath)
+	}
+	ux.Logger.PrintToUser(cmdLine)
 }
 
 func PrintRemainingToSignMsg(
-	chain string,
+	blockchainName string,
 	remainingSubnetAuthKeys []string,
 	outputTxPath string,
 ) {
@@ -1394,28 +1445,35 @@ func PrintRemainingToSignMsg(
 		"and run the signing command, or send %q to another user for signing.", outputTxPath)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Signing command:")
-	ux.Logger.PrintToUser("  avalanche transaction sign %s --input-tx-filepath %s", chain, outputTxPath)
+	cmdline := fmt.Sprintf("  avalanche transaction sign %s --input-tx-filepath %s", blockchainName, outputTxPath)
+	if blockchainName == "" {
+		cmdline = fmt.Sprintf("  avalanche transaction sign --input-tx-filepath %s", outputTxPath)
+	}
+	ux.Logger.PrintToUser(cmdline)
 	ux.Logger.PrintToUser("")
 }
 
-func PrintDeployResults(chain string, subnetID ids.ID, blockchainID ids.ID) error {
-	vmID, err := anrutils.VMID(chain)
-	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
+func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids.ID) error {
+	t := ux.DefaultTable("Deployment results", nil)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 2, AutoMerge: true},
+	})
+	if blockchainName != "" {
+		t.AppendRow(table.Row{"Chain Name", blockchainName})
 	}
-	header := []string{"Deployment results", ""}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(header)
-	table.SetRowLine(true)
-	table.SetAutoMergeCells(true)
-	table.Append([]string{"Chain Name", chain})
-	table.Append([]string{"Subnet ID", subnetID.String()})
-	table.Append([]string{"VM ID", vmID.String()})
+	t.AppendRow(table.Row{"Subnet ID", subnetID.String()})
+	if blockchainName != "" {
+		vmID, err := anrutils.VMID(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
+		}
+		t.AppendRow(table.Row{"VM ID", vmID.String()})
+	}
 	if blockchainID != ids.Empty {
-		table.Append([]string{"Blockchain ID", blockchainID.String()})
-		table.Append([]string{"P-Chain TXID", blockchainID.String()})
+		t.AppendRow(table.Row{"Blockchain ID", blockchainID.String()})
+		t.AppendRow(table.Row{"P-Chain TXID", blockchainID.String()})
 	}
-	table.Render()
+	ux.Logger.PrintToUser(t.Render())
 	return nil
 }
 
