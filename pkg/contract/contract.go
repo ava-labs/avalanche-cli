@@ -326,7 +326,6 @@ func TxToMethod(
 	txOpts.Value = payment
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
-		ux.Logger.PrintToUser("error on \"%s\": %s", description, err)
 		trace, traceCallErr := DebugTraceCall(
 			rpcURL,
 			privateKey,
@@ -340,11 +339,9 @@ func TxToMethod(
 			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
 			return tx, nil, err
 		}
-		errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError)
-		if err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
+		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
 			ux.Logger.RedXToUser("failure traying to match error selector on trace: %s", err)
-		}
-		if errorFromSignature != nil {
+		} else if errorFromSignature != nil {
 			return tx, nil, errorFromSignature
 		} else {
 			ux.Logger.PrintToUser("error trace for %s error:", description)
@@ -432,6 +429,18 @@ func TxToMethodWithWarpMessage(
 	return tx, receipt, nil
 }
 
+func printFailedReceiptStatusMessage(
+	rpcURL string,
+	description string,
+	tx *types.Transaction,
+) {
+	ux.Logger.PrintToUser("Failed receipt status for %s error on %s, tx hash %s",
+		description,
+		rpcURL,
+		tx.Hash(),
+	)
+}
+
 func handleFailedReceiptStatus(
 	rpcURL string,
 	description string,
@@ -444,24 +453,19 @@ func handleFailedReceiptStatus(
 		tx.Hash().String(),
 	)
 	if err != nil {
-		ux.Logger.PrintToUser(
-			"Could not get debug trace for %s error on %s, tx hash %s: %s",
-			description,
-			rpcURL,
-			tx.Hash(),
-			err,
-		)
+		printFailedReceiptStatusMessage(rpcURL, description, tx)
+		ux.Logger.PrintToUser("Could not get debug trace: %s", err)
 		ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
 		return tx, receipt, err
 	}
-	errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError)
-	if err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
+	if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
+		printFailedReceiptStatusMessage(rpcURL, description, tx)
 		ux.Logger.RedXToUser("failure traying to match error selector on trace: %s", err)
-	}
-	if errorFromSignature != nil {
+	} else if errorFromSignature != nil {
 		return tx, receipt, errorFromSignature
 	} else {
-		ux.Logger.PrintToUser("error trace for %s error:", description)
+		printFailedReceiptStatusMessage(rpcURL, description, tx)
+		ux.Logger.PrintToUser("error trace:")
 		ux.Logger.PrintToUser("%#v", trace)
 	}
 	return tx, receipt, ErrFailedReceiptStatus

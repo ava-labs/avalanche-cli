@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanchego/config"
@@ -482,14 +483,17 @@ func CallAddValidator(
 
 	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
 	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
-
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
+		if !strings.Contains(err.Error(), "warp message already issued for validationID") {
+			return err
+		}
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
+	} else {
+		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
+		if err := UpdatePChainHeight(
+			"Waiting for P-Chain to update validator information ...",
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := validatormanager.FinishValidatorRegistration(
