@@ -242,7 +242,7 @@ func TestLoadSubnetFile_BadKey(t *testing.T) {
 	require.NoError(err)
 
 	_, err = LoadSubnetFile(app, subnet1)
-	require.ErrorContains(err, "invalid subnet key")
+	require.ErrorContains(err, "invalid key")
 }
 
 func TestGetVMsInSubnet(t *testing.T) {

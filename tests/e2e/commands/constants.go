@@ -5,7 +5,7 @@ package commands
 
 const (
 	CLIBinary  = "./bin/avalanche"
-	SubnetCmd  = "subnet"
+	SubnetCmd  = "blockchain"
 	NetworkCmd = "network"
 	KeyCmd     = "key"
 	UpgradeCmd = "upgrade"

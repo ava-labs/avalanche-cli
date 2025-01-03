@@ -53,7 +53,7 @@ func EditConfigFile(
 	if subnetAvagoConfigFile != "" {
 		subnetAvagoConfigFileBytes, err := os.ReadFile(subnetAvagoConfigFile)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("failed to load extra flags from subnet avago config file %s: %w", subnetAvagoConfigFile, err)
+			return fmt.Errorf("failed to load extra flags from blockchain avalanchego config file %s: %w", subnetAvagoConfigFile, err)
 		}
 		var subnetAvagoConfig map[string]interface{}
 		if err := json.Unmarshal(subnetAvagoConfigFileBytes, &subnetAvagoConfig); err != nil {
@@ -61,7 +61,7 @@ func EditConfigFile(
 		}
 		for k, v := range subnetAvagoConfig {
 			if k == "track-subnets" || k == "whitelisted-subnets" {
-				ux.Logger.PrintToUser("ignoring configuration setting for %q, a subnet's avago conf should not change it", k)
+				ux.Logger.PrintToUser("ignoring configuration setting for %q, a blockchain avalanchego config file should not change it", k)
 				continue
 			}
 			avagoConfig[k] = v

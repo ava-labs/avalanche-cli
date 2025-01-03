@@ -598,7 +598,7 @@ func CallAddValidatorNonSOV(
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	selectedWeight, err := getWeight()
 	if err != nil {

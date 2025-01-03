@@ -172,7 +172,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := checkInvalidSubnetNames(blockchainName); err != nil {
-		return fmt.Errorf("subnet name %q is invalid: %w", blockchainName, err)
+		return fmt.Errorf("blockchain name %q is invalid: %w", blockchainName, err)
 	}
 
 	// version flags exclusiveness

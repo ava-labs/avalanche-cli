@@ -128,7 +128,7 @@ attempts to deploy the same Blockchain to the same network (local, Fuji, Mainnet
 allowed. If you'd like to redeploy a Blockchain locally for testing, you must first call
 avalanche network clean to reset all deployed chain state. Subsequent local deploys
 redeploy the chain with fresh state. You can deploy the same Blockchain to multiple networks,
-so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
+so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.`,
 		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
 		Args:              cobrautils.ExactArgs(1),
@@ -144,9 +144,9 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 	)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make subnet changes")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make subnet changes")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "control keys that will be used to authenticate chain creation")
+	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make blockchain changes")
+	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -369,7 +369,7 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 		if decision == useSameChainID {
 			sc.SubnetEVMMainnetChainID = uint(originalChainID)
 		} else {
-			ux.Logger.PrintToUser("Enter your subnet's ChainID. It can be any positive integer != %d.", originalChainID)
+			ux.Logger.PrintToUser("Enter your blockchain's ChainID. It can be any positive integer != %d.", originalChainID)
 			newChainID, err := app.Prompt.CapturePositiveInt(
 				"ChainID",
 				[]prompts.Comparator{
@@ -429,7 +429,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.ImportedFromAPM {
-		return errors.New("unable to deploy subnets imported from a repo")
+		return errors.New("unable to deploy blockchains imported from a repo")
 	}
 
 	if outputTxPath != "" {
@@ -622,7 +622,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 						if err != nil {
 							return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-								"please create your local node again and call subnet deploy command again", err)
+								"please create your local node again and call blockchain deploy command again", err)
 						}
 					}
 					network = models.ConvertClusterToNetwork(network)
@@ -741,7 +741,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 					if err != nil {
 						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-							"please create your local node again and call subnet deploy command again", err)
+							"please create your local node again and call blockchain deploy command again", err)
 					}
 				}
 			}
@@ -866,7 +866,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for chain creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your blockchain auth keys for chain creation: %s", subnetAuthKeys)
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
@@ -945,7 +945,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			avaGoBootstrapValidators,
 		)
 		if err != nil {
-			ux.Logger.RedXToUser("error converting subnet: %s. fix the issue and try again with a new convert cmd", err)
+			ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
 			return err
 		}
 
@@ -1112,7 +1112,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 			}
 		} else {
-			ux.Logger.GreenCheckmarkToUser("Converted subnet successfully generated")
+			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
@@ -1354,7 +1354,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 	// this should not be necessary but some bright guy might just be creating
 	// the genesis by hand or something...
 	if err := checkInvalidSubnetNames(args[0]); err != nil {
-		return nil, fmt.Errorf("subnet name %s is invalid: %w", args[0], err)
+		return nil, fmt.Errorf("blockchain name %s is invalid: %w", args[0], err)
 	}
 	// Check subnet exists
 	// TODO create a file that lists chains by subnet for fast querying
@@ -1364,7 +1364,7 @@ func ValidateSubnetNameAndGetChains(args []string) ([]string, error) {
 	}
 
 	if len(chains) == 0 {
-		return nil, errors.New("Invalid subnet " + args[0])
+		return nil, errors.New("Invalid blockchain " + args[0])
 	}
 
 	return chains, nil
