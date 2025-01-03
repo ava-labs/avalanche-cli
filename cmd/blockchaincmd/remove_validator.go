@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -322,14 +323,17 @@ func removeValidatorSOV(
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 	txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
 	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
-
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
+		if !strings.Contains(err.Error(), "could not load L1 validator: not found") {
+			return err
+		}
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
+	} else {
+		ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
+		if err := UpdatePChainHeight(
+			"Waiting for P-Chain to update validator information ...",
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := validatormanager.FinishValidatorRemoval(
