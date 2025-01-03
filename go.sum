@@ -87,8 +87,8 @@ github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241130135139-a0946c5366b
 github.com/ava-labs/avalanche-network-runner v1.8.4-0.20241130135139-a0946c5366be/go.mod h1:TOfc8r6sxs01mi2mWOYsRcJAbf3x3a4x0uxi8gVThso=
 github.com/ava-labs/avalanchego v1.12.1-0.20241210172525-c7ebd8fbae88 h1:tZdtOPFNblKZx+FmJOhqEfxUUscvPhcLHKGZO3BtQ6A=
 github.com/ava-labs/avalanchego v1.12.1-0.20241210172525-c7ebd8fbae88/go.mod h1:yhD5dpZyStIVbxQ550EDi5w5SL7DQ/xGE6TIxosb7U0=
-github.com/ava-labs/coreth v0.13.9-rc.1 h1:qIICpC/OZGYUP37QnLgIqqwGmxnLwLpZaUlqJNI85vU=
-github.com/ava-labs/coreth v0.13.9-rc.1/go.mod h1:7aMsRIo/3GBE44qWZMjnfqdqfcfZ5yShTTm2LObLaYo=
+github.com/ava-labs/coreth v0.14.0 h1:zOrgWXp67LBFj9UMcoXn0UTEv7GINyzUPjh9NrF8qm0=
+github.com/ava-labs/coreth v0.14.0/go.mod h1:SN79q6EKPd0viuUZMIg0xxZyUfnvSalZRo8HDJR3JHs=
 github.com/ava-labs/icm-contracts v1.0.9-0.20241210181701-a4bd5c92b056 h1:VJDtg5UW4SWBeEMtv6qdWgEohdZxEp3jGDAllH6f8eI=
 github.com/ava-labs/icm-contracts v1.0.9-0.20241210181701-a4bd5c92b056/go.mod h1:b6Hr01e5LWPua+nuZrSjjCyqfEhgFFdjBmKoJMoWTZo=
 github.com/ava-labs/icm-services v1.4.1-0.20241210192415-fbb658863e67 h1:KPgYE1Ij9IPH2LQ/9FuZVfiugOGaRxsW+SU2rKenXnI=
