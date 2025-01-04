@@ -5,6 +5,7 @@ package validatormanager
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -207,6 +208,9 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
+	if validationID == ids.Empty {
+		return nil, ids.Empty, fmt.Errorf("node %s is not a L1 validator", nodeID)
+	}
 
 	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
 	if err != nil {
@@ -251,7 +255,7 @@ func InitValidatorRemoval(
 		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 		}
-		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceeding to the next step")
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
 	}
 
 	nonce := uint64(1)
