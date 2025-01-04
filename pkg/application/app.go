@@ -98,6 +98,20 @@ func (app *Avalanche) GetLocalDir(clusterName string) string {
 	return filepath.Join(app.baseDir, constants.LocalDir, clusterName)
 }
 
+func (app *Avalanche) GetLogDir() string {
+	return filepath.Join(app.baseDir, constants.LogDir)
+}
+
+func (app *Avalanche) GetAggregatorLogDir(clusterName string) string {
+	if clusterName != "" {
+		conf, err := app.GetClusterConfig(clusterName)
+		if err == nil && conf.Local {
+			return app.GetLocalDir(clusterName)
+		}
+	}
+	return app.GetLogDir()
+}
+
 // Remove all plugins from plugin dir
 func (app *Avalanche) ResetPluginsDir() error {
 	pluginDir := app.GetPluginsDir()
@@ -271,7 +285,7 @@ func (app *Avalanche) GetAPMBaseDir() string {
 }
 
 func (app *Avalanche) GetAPMLog() string {
-	return filepath.Join(app.baseDir, constants.LogDir, constants.APMLogName)
+	return filepath.Join(app.GetLogDir(), constants.APMLogName)
 }
 
 func (app *Avalanche) GetAPMPluginDir() string {
