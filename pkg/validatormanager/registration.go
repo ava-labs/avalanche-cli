@@ -150,7 +150,7 @@ func InitializeValidatorRegistrationPoA(
 func GetSubnetValidatorRegistrationMessage(
 	rpcURL string,
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -222,7 +222,7 @@ func GetSubnetValidatorRegistrationMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,
@@ -280,7 +280,7 @@ func GetValidatorWeight(
 func GetPChainSubnetValidatorRegistrationWarpMessage(
 	network models.Network,
 	rpcURL string,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -309,7 +309,7 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,
@@ -362,7 +362,7 @@ func InitValidatorRegistration(
 	weight uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 	initWithPos bool,
 	delegationFee uint16,
 	stakeDuration time.Duration,
@@ -433,10 +433,6 @@ func InitValidatorRegistration(
 			alreadyInitialized = true
 		}
 	}
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	if initWithPos {
 		validationID, err := GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
@@ -454,7 +450,7 @@ func InitValidatorRegistration(
 	return GetSubnetValidatorRegistrationMessage(
 		rpcURL,
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -480,7 +476,7 @@ func FinishValidatorRegistration(
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 ) error {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -490,15 +486,11 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return err
 	}
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,

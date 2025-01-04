@@ -591,3 +591,34 @@ func PrintNovelErrors(
 		}
 	}
 }
+
+func NewLogger(
+	logName string,
+	logLevelStr string,
+	defaultLogLevelStr string,
+	logDir string,
+	logToStdout bool,
+	print func(string, ...interface{}),
+) (logging.Logger, error) {
+	logLevel, err := logging.ToLevel(logLevelStr)
+	if err != nil {
+		if logLevelStr != "" {
+			print("undefined logLevel %s. Setting %s log to %s", logLevelStr, logName, defaultLogLevelStr)
+		}
+		logLevel, err = logging.ToLevel(defaultLogLevelStr)
+		if err != nil {
+			return logging.NoLog{}, err
+		}
+	}
+	logConfig := logging.Config{
+		RotatingWriterConfig: logging.RotatingWriterConfig{
+			Directory: logDir,
+		},
+		LogLevel: logLevel,
+	}
+	if logToStdout {
+		logConfig.DisplayLevel = logLevel
+	}
+	logFactory := logging.NewFactory(logConfig)
+	return logFactory.Make(logName)
+}

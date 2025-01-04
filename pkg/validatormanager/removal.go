@@ -81,7 +81,7 @@ func InitializeValidatorRemoval(
 
 func GetUptimeProofMessage(
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
@@ -107,7 +107,7 @@ func GetUptimeProofMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		true, // allow private peers
@@ -121,7 +121,7 @@ func GetUptimeProofMessage(
 
 func GetSubnetValidatorWeightMessage(
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -157,7 +157,7 @@ func GetSubnetValidatorWeightMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,
@@ -178,7 +178,7 @@ func InitValidatorRemoval(
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 	initWithPos bool,
 	uptimeSec uint64,
 	force bool,
@@ -212,10 +212,6 @@ func InitValidatorRemoval(
 		return nil, ids.Empty, fmt.Errorf("node %s is not a L1 validator", nodeID)
 	}
 
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	signedUptimeProof := &warp.Message{}
 	if initWithPos {
 		if err != nil {
@@ -230,7 +226,7 @@ func InitValidatorRemoval(
 		ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
 		signedUptimeProof, err = GetUptimeProofMessage(
 			network,
-			aggregatorLogLevel,
+			aggregatorLogger,
 			0,
 			aggregatorExtraPeerEndpoints,
 			subnetID,
@@ -261,7 +257,7 @@ func InitValidatorRemoval(
 	nonce := uint64(1)
 	signedMsg, err := GetSubnetValidatorWeightMessage(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -303,7 +299,7 @@ func FinishValidatorRemoval(
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 ) error {
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	subnetID, err := contract.GetSubnetID(
@@ -314,14 +310,10 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return err
 	}
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
