@@ -214,9 +214,6 @@ func InitValidatorRemoval(
 
 	signedUptimeProof := &warp.Message{}
 	if initWithPos {
-		if err != nil {
-			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data")
-		}
 		if uptimeSec == 0 {
 			uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
 			if err != nil {
