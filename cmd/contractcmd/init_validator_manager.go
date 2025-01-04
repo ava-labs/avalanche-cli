@@ -158,19 +158,13 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	logLvl, err := logging.ToLevel(validatorManagerFlags.aggregatorLogLevel)
-	if err != nil {
-		logLvl = logging.Debug
-	}
-	aggregatorLogDir := app.GetLogDir()
-	if clusterName != "" {
-		aggregatorLogDir = app.GetLocalDir(clusterName)
-	}
 	aggregatorLogger, err := utils.NewLogger(
 		"signature-aggregator",
-		logLvl,
-		aggregatorLogDir,
+		validatorManagerFlags.aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterName),
 		validatorManagerFlags.aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err

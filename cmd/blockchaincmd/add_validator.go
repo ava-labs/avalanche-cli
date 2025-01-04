@@ -113,7 +113,7 @@ Testnet or Mainnet.`,
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "dump signature aggregator logs to stdout")
+	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for Subnets, not L1s) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
@@ -458,19 +458,13 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	logLvl, err := logging.ToLevel(aggregatorLogLevel)
-	if err != nil {
-		logLvl = logging.Debug
-	}
-	aggregatorLogDir := app.GetLogDir()
-	if clusterNameFlagValue != "" {
-		aggregatorLogDir = app.GetLocalDir(clusterNameFlagValue)
-	}
 	aggregatorLogger, err := utils.NewLogger(
 		"signature-aggregator",
-		logLvl,
-		aggregatorLogDir,
+		aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterNameFlagValue),
 		aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err
