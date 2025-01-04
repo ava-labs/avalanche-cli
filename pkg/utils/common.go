@@ -574,7 +574,10 @@ func IsValidSemanticVersion(version string, component string) bool {
 	return true
 }
 
-func PrintNovelErrors(
+// PrintUnreportedErrors takes a list of errors obtained by a routine, and the main error
+// it is going to report, and prints to the user the unreported errors only,
+// avoiding duplications
+func PrintUnreportedErrors(
 	errors []error,
 	returnedError error,
 	print func(string, ...interface{}),

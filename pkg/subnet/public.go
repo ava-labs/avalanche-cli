@@ -574,7 +574,7 @@ func (d *PublicDeployer) Commit(
 	if issueTxErr != nil {
 		d.CleanCacheWallet()
 	}
-	utils.PrintNovelErrors(errors, issueTxErr, ux.Logger.PrintToUser)
+	utils.PrintUnreportedErrors(errors, issueTxErr, ux.Logger.PrintToUser)
 	return tx.ID(), issueTxErr
 }
 
