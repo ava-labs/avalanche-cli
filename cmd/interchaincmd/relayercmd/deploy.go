@@ -313,7 +313,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				}
 				balanceFlt := new(big.Float).SetInt(balance)
 				balanceFlt = balanceFlt.Quo(balanceFlt, new(big.Float).SetInt(vm.OneAvax))
-				prompt := fmt.Sprintf("Do you want to fund relayer for destination %s (balance=%.9f)?", destination.blockchainDesc, balanceFlt)
+				prompt := fmt.Sprintf("Do you want to fund relayer for destination %s (current C-Chain AVAX balance: %.9f)?", destination.blockchainDesc, balanceFlt)
 				yesOption := "Yes, I will send funds to it"
 				noOption := "Not now"
 				options := []string{yesOption, noOption}
