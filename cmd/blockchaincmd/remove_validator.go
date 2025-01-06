@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -46,8 +48,8 @@ var (
 func newRemoveValidatorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "removeValidator [blockchainName]",
-		Short: "Remove a permissioned validator from your blockchain's subnet",
-		Long: `The blockchain removeValidator command stops a whitelisted, subnet network validator from
+		Short: "Remove a permissioned validator from your blockchain",
+		Long: `The blockchain removeValidator command stops a whitelisted blockchain network validator from
 validating your deployed Blockchain.
 
 To remove the validator from the Subnet's allow list, provide the validator's unique NodeID. You can bypass
@@ -57,7 +59,7 @@ these prompts by providing the values with flags.`,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, removeValidatorSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non-SOV blockchain only) file path of the removeValidator tx")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -67,7 +69,8 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's removal (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
 	return cmd
@@ -266,6 +269,17 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
+	aggregatorLogger, err := utils.NewLogger(
+		"signature-aggregator",
+		aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterNameFlagValue),
+		aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
+	)
+	if err != nil {
+		return err
+	}
 	if force && sc.PoS() {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Forcing removal of %s as it is a PoS bootstrap validator"), nodeID)
 	}
@@ -284,7 +298,7 @@ func removeValidatorSOV(
 		nodeID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		sc.PoS(),
 		uptimeSec,
 		isBootstrapValidator || force,
@@ -307,7 +321,7 @@ func removeValidatorSOV(
 			nodeID,
 			extraAggregatorPeers,
 			aggregatorAllowPrivatePeers,
-			aggregatorLogLevel,
+			aggregatorLogger,
 			sc.PoS(),
 			uptimeSec,
 			true, // force
@@ -322,14 +336,17 @@ func removeValidatorSOV(
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 	txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
 	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
-
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
+		if !strings.Contains(err.Error(), "could not load L1 validator: not found") {
+			return err
+		}
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
+	} else {
+		ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
+		if err := UpdatePChainHeight(
+			"Waiting for P-Chain to update validator information ...",
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := validatormanager.FinishValidatorRemoval(
@@ -341,7 +358,7 @@ func removeValidatorSOV(
 		validationID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 	); err != nil {
 		return err
 	}
@@ -377,7 +394,7 @@ func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Netwo
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for remove validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for remove validator tx creation: %s", subnetAuthKeys)
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())

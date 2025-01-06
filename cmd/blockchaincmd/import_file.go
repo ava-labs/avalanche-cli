@@ -63,9 +63,9 @@ flag.`,
 	)
 	cmd.Flags().StringVar(
 		&subnetAlias,
-		"subnet",
+		"blockchain",
 		"",
-		"the subnet configuration to import from the provided repo",
+		"the blockchain configuration to import from the provided repo",
 	)
 	return cmd
 }
@@ -80,7 +80,7 @@ func importBlockchain(_ *cobra.Command, args []string) error {
 		fileOption := "File"
 		apmOption := "Repository"
 		typeOptions := []string{fileOption, apmOption}
-		promptStr := "Would you like to import your subnet from a file or a repository?"
+		promptStr := "Would you like to import your blockchain from a file or a repository?"
 		result, err := app.Prompt.CaptureList(promptStr, typeOptions)
 		if err != nil {
 			return err
@@ -98,7 +98,7 @@ func importBlockchain(_ *cobra.Command, args []string) error {
 func importFromFile(importPath string) error {
 	var err error
 	if importPath == "" {
-		promptStr := "Select the file to import your subnet from"
+		promptStr := "Select the file to import your blockchain from"
 		importPath, err = app.Prompt.CaptureExistingFilepath(promptStr)
 		if err != nil {
 			return err
@@ -118,11 +118,11 @@ func importFromFile(importPath string) error {
 
 	blockchainName := importable.Sidecar.Name
 	if blockchainName == "" {
-		return errors.New("export data is malformed: missing subnet name")
+		return errors.New("export data is malformed: missing blockchain name")
 	}
 
 	if app.GenesisExists(blockchainName) && !overwriteImport {
-		return errors.New("subnet already exists. Use --" + forceFlag + " parameter to overwrite")
+		return errors.New("blockchain already exists. Use --" + forceFlag + " parameter to overwrite")
 	}
 
 	if importable.Sidecar.VM == models.CustomVM {
@@ -190,7 +190,7 @@ func importFromFile(importPath string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Subnet imported successfully")
+	ux.Logger.PrintToUser("Blockchain imported successfully")
 
 	return nil
 }
@@ -287,10 +287,10 @@ func importFromAPM() error {
 			}
 		}
 		if subnet == "" {
-			return fmt.Errorf("unable to find subnet %s", subnetAlias)
+			return fmt.Errorf("unable to find blockchain %s", subnetAlias)
 		}
 	} else {
-		promptStr = "Select a subnet to import"
+		promptStr = "Select a blockchain to import"
 		subnet, err = app.Prompt.CaptureList(promptStr, subnets)
 		if err != nil {
 			return err
@@ -308,9 +308,9 @@ func importFromAPM() error {
 	var vmType models.VMType = models.CustomVM
 
 	if len(subnetDescr.VMs) == 0 {
-		return errors.New("no vms found in the given subnet")
+		return errors.New("no vms found in the given blockchain")
 	} else if len(subnetDescr.VMs) == 0 {
-		return errors.New("multiple vm subnets not supported")
+		return errors.New("multiple vm blockchains are not supported")
 	}
 
 	vmDescr, err := apmintegration.LoadVMFile(app, repoAlias, subnetDescr.VMs[0])
@@ -333,7 +333,7 @@ func importFromAPM() error {
 		ImportedVMID:    vmDescr.ID,
 	}
 
-	ux.Logger.PrintToUser("Selected subnet, installing " + subnetKey)
+	ux.Logger.PrintToUser("Selected blockchain, installing " + subnetKey)
 
 	if err = apmintegration.InstallVM(app, subnetKey); err != nil {
 		return err

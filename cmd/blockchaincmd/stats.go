@@ -69,7 +69,7 @@ func stats(_ *cobra.Command, args []string) error {
 
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
-		return errors.New("no subnetID found for the provided subnet name; has this subnet actually been deployed to this network?")
+		return errors.New("no subnetID found for the provided blockchain name; has this blockchain actually been deployed to this network?")
 	}
 
 	pClient, infoClient := findAPIEndpoint(network)
