@@ -103,7 +103,7 @@ func TrackSubnetWithLocalMachine(
 	networkInfo := sc.Networks[network.Name()]
 	rpcEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		ux.Logger.PrintToUser("Restarting node %s to track blockchain", nodeInfo.Name)
+		ux.Logger.PrintToUser("Restarting node %s to track newly deployed network", nodeInfo.Name)
 		if err := LocalNodeTrackSubnet(
 			ctx,
 			cli,
