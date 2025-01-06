@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/shirou/gopsutil/process"
@@ -83,7 +84,7 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	return nil
+	return node.DestroyLocalNetworkConnectedCluster(app)
 }
 
 func removeLocalDeployInfoFromSidecars() error {

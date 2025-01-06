@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanchego/utils/units"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -102,14 +104,14 @@ type Prompter interface {
 	CaptureIndex(promptStr string, options []any) (int, error)
 	CaptureVersion(promptStr string) (string, error)
 	CaptureDuration(promptStr string) (time.Duration, error)
-	CaptureEtnaDuration(promptStr string) (time.Duration, error)
 	CaptureFujiDuration(promptStr string) (time.Duration, error)
 	CaptureMainnetDuration(promptStr string) (time.Duration, error)
+	CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error)
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
 	CaptureWeight(promptStr string) (uint64, error)
-	CaptureValidatorBalance(promptStr string, availableBalance uint64) (uint64, error)
+	CaptureValidatorBalance(promptStr string, availableBalance uint64, minBalance float64) (uint64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string, validator func(int) error) (int, error)
 	CaptureUint8(promptStr string) (uint8, error)
@@ -205,20 +207,6 @@ func CaptureListDecision[T comparable](
 	}
 }
 
-func (*realPrompter) CaptureEtnaDuration(promptStr string) (time.Duration, error) {
-	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateEtnaDuration,
-	}
-
-	durationStr, err := prompt.Run()
-	if err != nil {
-		return 0, err
-	}
-
-	return time.ParseDuration(durationStr)
-}
-
 func (*realPrompter) CaptureDuration(promptStr string) (time.Duration, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
@@ -251,6 +239,20 @@ func (*realPrompter) CaptureMainnetDuration(promptStr string) (time.Duration, er
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateMainnetStakingDuration,
+	}
+
+	durationStr, err := prompt.Run()
+	if err != nil {
+		return 0, err
+	}
+
+	return time.ParseDuration(durationStr)
+}
+
+func (*realPrompter) CaptureMainnetL1StakingDuration(promptStr string) (time.Duration, error) {
+	prompt := promptui.Prompt{
+		Label:    promptStr,
+		Validate: validateMainnetL1StakingDuration,
 	}
 
 	durationStr, err := prompt.Run()
@@ -301,20 +303,27 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
+// CaptureValidatorBalance captures balance in nanoAVAX
 func (*realPrompter) CaptureValidatorBalance(
 	promptStr string,
 	availableBalance uint64,
+	minBalance float64,
 ) (uint64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateValidatorBalanceFunc(availableBalance),
+		Validate: validateValidatorBalanceFunc(availableBalance, minBalance),
 	}
 	amountStr, err := prompt.Run()
 	if err != nil {
 		return 0, err
 	}
 
-	return strconv.ParseUint(amountStr, 10, 64)
+	amountFloat, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(amountFloat * float64(units.Avax)), nil
 }
 
 func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
@@ -876,11 +885,11 @@ func contains[T comparable](list []T, element T) bool {
 func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
 	for _, walletKey := range walletKeys {
 		if slices.Contains(controlKeys, walletKey) && !slices.Contains(subnetAuthKeys, walletKey) {
-			return fmt.Errorf("wallet key %s is a subnet control key so it must be included in subnet auth keys", walletKey)
+			return fmt.Errorf("wallet key %s is a control key so it must be included in auth keys", walletKey)
 		}
 	}
 	if len(subnetAuthKeys) != int(threshold) {
-		return fmt.Errorf("number of given subnet auth differs from the threshold")
+		return fmt.Errorf("number of given auth keys differs from the threshold")
 	}
 	for _, subnetAuthKey := range subnetAuthKeys {
 		found := false
@@ -891,7 +900,7 @@ func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKe
 			}
 		}
 		if !found {
-			return fmt.Errorf("subnet auth key %s does not belong to control keys", subnetAuthKey)
+			return fmt.Errorf("auth key %s does not belong to control keys", subnetAuthKey)
 		}
 	}
 	return nil
@@ -908,7 +917,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 	filteredControlKeys = append(filteredControlKeys, controlKeys...)
 	for _, walletKey := range walletKeys {
 		if slices.Contains(controlKeys, walletKey) {
-			ux.Logger.PrintToUser("Adding wallet key %s to the tx subnet auth keys as it is a subnet control key", walletKey)
+			ux.Logger.PrintToUser("Adding wallet key %s to the tx auth keys as it is a control key", walletKey)
 			subnetAuthKeys = append(subnetAuthKeys, walletKey)
 			index, err := utils.GetIndexInSlice(filteredControlKeys, walletKey)
 			if err != nil {
@@ -919,7 +928,7 @@ func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []strin
 	}
 	for len(subnetAuthKeys) != int(threshold) {
 		subnetAuthKey, err := prompt.CaptureList(
-			"Choose a subnet auth key",
+			"Choose an auth key",
 			filteredControlKeys,
 		)
 		if err != nil {
@@ -1036,7 +1045,7 @@ func PromptChain(
 		return false, false, false, false, "", blockchainID, nil
 	}
 	if subnetOption == notListedOption {
-		ux.Logger.PrintToUser("Please import the subnet first, using the `avalanche subnet import` command suite")
+		ux.Logger.PrintToUser("Please import the blockchain first, using the `avalanche blockchain import` command suite")
 		return true, false, false, false, "", "", nil
 	}
 	switch subnetOption {

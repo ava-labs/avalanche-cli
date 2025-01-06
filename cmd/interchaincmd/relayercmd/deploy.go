@@ -21,7 +21,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/spf13/cobra"
 )
@@ -34,22 +33,26 @@ type DeployFlags struct {
 	BlockchainsToRelay   []string
 	Key                  string
 	Amount               float64
+	CChainAmount         float64
 	BlockchainFundingKey string
 	CChainFundingKey     string
 	BinPath              string
+	AllowPrivateIPs      bool
 }
 
 var (
 	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Devnet,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	deployFlags DeployFlags
 )
 
-const disableDeployToRemotePrompt = true
+const (
+	disableDeployToRemotePrompt = true
+	aproxFundingFee             = 0.01
+)
 
 // avalanche interchain relayer deploy
 func newDeployCmd() *cobra.Command {
@@ -62,14 +65,21 @@ func newDeployCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
 	cmd.Flags().StringVar(&deployFlags.BinPath, "bin-path", "", "use the given relayer binary")
-	cmd.Flags().StringVar(&deployFlags.Version, "version", "latest", "version to deploy")
+	cmd.Flags().StringVar(
+		&deployFlags.Version,
+		"version",
+		constants.LatestPreReleaseVersionTag,
+		"version to deploy",
+	)
 	cmd.Flags().StringVar(&deployFlags.LogLevel, "log-level", "", "log level to use for relayer logs")
 	cmd.Flags().StringSliceVar(&deployFlags.BlockchainsToRelay, "blockchains", nil, "blockchains to relay as source and destination")
 	cmd.Flags().BoolVar(&deployFlags.RelayCChain, "cchain", false, "relay C-Chain as source and destination")
 	cmd.Flags().StringVar(&deployFlags.Key, "key", "", "key to be used by default both for rewards and to pay fees")
-	cmd.Flags().Float64Var(&deployFlags.Amount, "amount", 0, "automatically fund fee payments with the given amount")
+	cmd.Flags().Float64Var(&deployFlags.Amount, "amount", 0, "automatically fund l1s fee payments with the given amount")
+	cmd.Flags().Float64Var(&deployFlags.CChainAmount, "cchain-amount", 0, "automatically fund cchain fee payments with the given amount")
 	cmd.Flags().StringVar(&deployFlags.BlockchainFundingKey, "blockchain-funding-key", "", "key to be used to fund relayer account on all l1s")
 	cmd.Flags().StringVar(&deployFlags.CChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
+	cmd.Flags().BoolVar(&deployFlags.AllowPrivateIPs, "allow-private-ips", true, "allow relayer to connec to private ips")
 	return cmd
 }
 
@@ -225,11 +235,10 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			// from the blockchain id (as relayer logs cmd)
 			ux.Logger.PrintToUser("")
 			for _, destination := range configSpec.destinations {
-				pk, err := crypto.HexToECDSA(destination.privateKey)
+				addr, err := utils.PrivateKeyToAddress(destination.privateKey)
 				if err != nil {
 					return err
 				}
-				addr := crypto.PubkeyToAddress(pk.PublicKey)
 				client, err := evm.GetClient(destination.rpcEndpoint)
 				if err != nil {
 					return err
@@ -272,19 +281,32 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	if fundBlockchains {
 		for _, destination := range configSpec.destinations {
-			pk, err := crypto.HexToECDSA(destination.privateKey)
+			addr, err := utils.PrivateKeyToAddress(destination.privateKey)
 			if err != nil {
 				return err
 			}
-			addr := crypto.PubkeyToAddress(pk.PublicKey)
 			client, err := evm.GetClient(destination.rpcEndpoint)
 			if err != nil {
 				return err
 			}
+			cchainBlockchainID, err := contract.GetBlockchainID(
+				app,
+				network,
+				contract.ChainSpec{
+					CChain: true,
+				},
+			)
+			if err != nil {
+				return err
+			}
+			isCChainDestination := cchainBlockchainID.String() == destination.blockchainID
 			doPay := false
-			if flags.Amount != 0 {
+			switch {
+			case !isCChainDestination && flags.Amount != 0:
 				doPay = true
-			} else {
+			case isCChainDestination && flags.CChainAmount != 0:
+				doPay = true
+			default:
 				balance, err := evm.GetAddressBalance(client, addr.Hex())
 				if err != nil {
 					return err
@@ -324,17 +346,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 					privateKey = genesisPrivateKey
 				}
 				if flags.BlockchainFundingKey != "" || flags.CChainFundingKey != "" {
-					cchainBlockchainID, err := contract.GetBlockchainID(
-						app,
-						network,
-						contract.ChainSpec{
-							CChain: true,
-						},
-					)
-					if err != nil {
-						return err
-					}
-					if cchainBlockchainID.String() == destination.blockchainID {
+					if isCChainDestination {
 						if flags.CChainFundingKey != "" {
 							k, err := app.GetKey(flags.CChainFundingKey, network, false)
 							if err != nil {
@@ -365,15 +377,32 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 						return err
 					}
 				}
+				balance, err := evm.GetPrivateKeyBalance(client, privateKey)
+				if err != nil {
+					return err
+				}
+				if balance.Cmp(big.NewInt(0)) == 0 {
+					return fmt.Errorf("destination %s funding key as no balance", destination.blockchainDesc)
+				}
+				balanceBigFlt := new(big.Float).SetInt(balance)
+				balanceBigFlt = balanceBigFlt.Quo(balanceBigFlt, new(big.Float).SetInt(vm.OneAvax))
+				balanceFlt, _ := balanceBigFlt.Float64()
+				balanceFlt -= aproxFundingFee
 				var amountFlt float64
-				if flags.Amount != 0 {
+				switch {
+				case !isCChainDestination && flags.Amount != 0:
 					amountFlt = flags.Amount
-				} else {
+				case isCChainDestination && flags.CChainAmount != 0:
+					amountFlt = flags.CChainAmount
+				default:
 					amountFlt, err = app.Prompt.CaptureFloat(
-						"Amount to transfer",
+						fmt.Sprintf("Amount to transfer (available: %f)", balanceFlt),
 						func(f float64) error {
 							if f <= 0 {
-								return fmt.Errorf("not positive")
+								return fmt.Errorf("%f is not positive", f)
+							}
+							if f > balanceFlt {
+								return fmt.Errorf("%f exceeds available funding balance of %f", f, balanceFlt)
 							}
 							return nil
 						},
@@ -381,6 +410,14 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 					if err != nil {
 						return err
 					}
+				}
+				if amountFlt > balanceFlt {
+					return fmt.Errorf(
+						"desired balance %f for destination %s exceeds available funding balance of %f",
+						amountFlt,
+						destination.blockchainDesc,
+						balanceFlt,
+					)
 				}
 				amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 				amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
@@ -416,8 +453,6 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			metricsPort = constants.LocalNetworkLocalICMRelayerMetricsPort
 		case models.Devnet:
 			metricsPort = constants.DevnetLocalICMRelayerMetricsPort
-		case models.EtnaDevnet:
-			metricsPort = constants.EtnaDevnetLocalICMRelayerMetricsPort
 		case models.Fuji:
 			metricsPort = constants.FujiLocalICMRelayerMetricsPort
 		}
@@ -432,6 +467,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		storageDir,
 		uint16(metricsPort),
 		network,
+		flags.AllowPrivateIPs,
 	); err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanchego/config"
@@ -41,7 +42,6 @@ var (
 		networkoptions.Devnet,
 		networkoptions.Fuji,
 		networkoptions.Mainnet,
-		networkoptions.EtnaDevnet,
 	}
 
 	nodeIDStr                 string
@@ -61,6 +61,7 @@ var (
 	disableOwnerAddr          string
 	rpcURL                    string
 	aggregatorLogLevel        string
+	aggregatorLogToStdout     bool
 	delegationFee             uint16
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
@@ -95,7 +96,7 @@ Testnet or Mainnet.`,
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
-	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee to P-Chain")
+	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee on P-Chain")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -111,7 +112,8 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for Subnets, not L1s) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
@@ -126,10 +128,7 @@ Testnet or Mainnet.`,
 	return cmd
 }
 
-func preAddChecks(network models.Network, sovereign bool) error {
-	if sovereign && network.Kind == models.Mainnet {
-		return errNotSupportedOnMainnet
-	}
+func preAddChecks() error {
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
@@ -171,7 +170,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
-	if err := preAddChecks(network, sc.Sovereign); err != nil {
+	if err := preAddChecks(); err != nil {
 		return err
 	}
 
@@ -311,7 +310,7 @@ func promptValidatorBalance(availableBalance uint64) (uint64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
 	txt := "What balance would you like to assign to the validator (in AVAX)?"
-	return app.Prompt.CaptureValidatorBalance(txt, availableBalance)
+	return app.Prompt.CaptureValidatorBalance(txt, availableBalance, constants.BootstrapValidatorBalanceAVAX)
 }
 
 func CallAddValidator(
@@ -379,7 +378,7 @@ func CallAddValidator(
 			}
 		}
 		if duration == 0 {
-			duration, err = PromptDuration(time.Now(), network)
+			duration, err = PromptDuration(time.Now(), network, true) // it's pos
 			if err != nil {
 				return nil
 			}
@@ -400,18 +399,21 @@ func CallAddValidator(
 		}
 	}
 
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+
 	if balance == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
 		}
-		balance, err = promptValidatorBalance(availableBalance)
+		balance, err = promptValidatorBalance(availableBalance / units.Avax)
 		if err != nil {
 			return err
 		}
+	} else {
+		// convert to nanoAVAX
+		balance *= units.Avax
 	}
-	// convert to nanoAVAX
-	balance *= units.Avax
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
@@ -456,6 +458,17 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
+	aggregatorLogger, err := utils.NewLogger(
+		"signature-aggregator",
+		aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterNameFlagValue),
+		aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
+	)
+	if err != nil {
+		return err
+	}
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,
@@ -470,7 +483,7 @@ func CallAddValidator(
 		weight,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		pos,
 		delegationFee,
 		duration,
@@ -483,14 +496,17 @@ func CallAddValidator(
 
 	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
 	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
-
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
+		if !strings.Contains(err.Error(), "warp message already issued for validationID") {
+			return err
+		}
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
+	} else {
+		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
+		if err := UpdatePChainHeight(
+			"Waiting for P-Chain to update validator information ...",
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := validatormanager.FinishValidatorRegistration(
@@ -502,7 +518,7 @@ func CallAddValidator(
 		validationID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 	); err != nil {
 		return err
 	}
@@ -599,7 +615,7 @@ func CallAddValidatorNonSOV(
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	selectedWeight, err := getWeight()
 	if err != nil {
@@ -651,18 +667,18 @@ func CallAddValidatorNonSOV(
 	return err
 }
 
-func PromptDuration(start time.Time, network models.Network) (time.Duration, error) {
+func PromptDuration(start time.Time, network models.Network, isPos bool) (time.Duration, error) {
 	for {
 		txt := "How long should this validator be validating? Enter a duration, e.g. 8760h. Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\""
 		var d time.Duration
 		var err error
-		switch network.Kind {
-		case models.Fuji:
+		switch {
+		case network.Kind == models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
-		case models.Mainnet:
+		case network.Kind == models.Mainnet && isPos:
+			d, err = app.Prompt.CaptureMainnetL1StakingDuration(txt)
+		case network.Kind == models.Mainnet && !isPos:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
-		case models.EtnaDevnet:
-			d, err = app.Prompt.CaptureEtnaDuration(txt)
 		default:
 			d, err = app.Prompt.CaptureDuration(txt)
 		}
@@ -756,7 +772,7 @@ func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bo
 		case defaultDurationOption:
 			useDefaultDuration = true
 		default:
-			duration, err = PromptDuration(start, network)
+			duration, err = PromptDuration(start, network, false) // notSoV
 			if err != nil {
 				return time.Time{}, 0, err
 			}

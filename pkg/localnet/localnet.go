@@ -33,7 +33,13 @@ func GetEndpoint() (string, error) {
 }
 
 func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
-	cli, err := binutils.NewGRPCClient(
+	return GetClusterInfoWithEndpoint(binutils.LocalNetworkGRPCServerEndpoint)
+}
+
+func GetClusterInfoWithEndpoint(grpcServerEndpoint string) (*rpcpb.ClusterInfo, error) {
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		grpcServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
 	)
 	if err != nil {
@@ -163,4 +169,16 @@ func GetVersion() (bool, string, int, error) {
 	// index 0 should be avalanche, index 1 will be version
 	parsedVersion := "v" + splitVersion[1]
 	return true, parsedVersion, int(versionResponse.RPCProtocolVersion), nil
+}
+
+func GetBlockchainNames() ([]string, error) {
+	clusterInfo, err := GetClusterInfo()
+	if err != nil {
+		return nil, err
+	}
+	blockchainNames := []string{}
+	for _, chainInfo := range clusterInfo.CustomChains {
+		blockchainNames = append(blockchainNames, chainInfo.ChainName)
+	}
+	return blockchainNames, nil
 }

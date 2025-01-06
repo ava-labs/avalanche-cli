@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -22,11 +23,11 @@ var (
 	startNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
 		networkoptions.Cluster,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	globalNetworkFlags networkoptions.NetworkFlags
 	binPath            string
+	version            string
 )
 
 // avalanche interchain relayer start
@@ -40,6 +41,12 @@ func newStartCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startNetworkOptions)
 	cmd.Flags().StringVar(&binPath, "bin-path", "", "use the given relayer binary")
+	cmd.Flags().StringVar(
+		&version,
+		"version",
+		constants.LatestPreReleaseVersionTag,
+		"version to use",
+	)
 	return cmd
 }
 
@@ -93,7 +100,7 @@ func start(_ *cobra.Command, _ []string) error {
 		if !utils.FileExists(relayerConfigPath) {
 			return fmt.Errorf("there is no relayer configuration available")
 		} else if binPath, err := interchain.DeployRelayer(
-			"latest",
+			version,
 			binPath,
 			app.GetICMRelayerBinDir(),
 			relayerConfigPath,

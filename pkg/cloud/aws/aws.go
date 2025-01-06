@@ -635,7 +635,7 @@ func (c *AwsCloud) IsInstanceTypeSupported(instanceType string) (bool, error) {
 	return slices.Contains(supportedInstanceTypes, instanceType), nil
 }
 
-// GetRootVolume returns a volume IDs attached to the given which is used as a root volume
+// GetRootVolumeID returns a volume IDs attached to the given which is used as a root volume
 func (c *AwsCloud) GetRootVolumeID(instanceID string) (string, error) {
 	describeInstanceOutput, err := c.ec2Client.DescribeInstances(c.ctx, &ec2.DescribeInstancesInput{
 		InstanceIds: []string{instanceID},

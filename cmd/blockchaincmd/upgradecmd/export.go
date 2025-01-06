@@ -32,7 +32,7 @@ func newUpgradeExportCmd() *cobra.Command {
 func upgradeExportCmd(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
 	if !app.GenesisExists(blockchainName) {
-		ux.Logger.PrintToUser("The provided subnet name %q does not exist", blockchainName)
+		ux.Logger.PrintToUser("The provided blockchain name %q does not exist", blockchainName)
 		return nil
 	}
 

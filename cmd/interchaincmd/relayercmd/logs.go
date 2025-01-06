@@ -26,7 +26,6 @@ import (
 var (
 	logsNetworkOptions = []networkoptions.NetworkOption{
 		networkoptions.Local,
-		networkoptions.EtnaDevnet,
 		networkoptions.Fuji,
 	}
 	raw   bool
@@ -191,7 +190,7 @@ func getLogSubnet(
 }
 
 func getBlockchainIDToBlockchainNameMap(network models.Network) (map[string]string, error) {
-	blockchainNames, err := app.GetBlockchainNamesOnNetwork(network)
+	blockchainNames, err := app.GetBlockchainNamesOnNetwork(network, false)
 	if err != nil {
 		return nil, err
 	}

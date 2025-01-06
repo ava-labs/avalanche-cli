@@ -50,7 +50,7 @@ flag.`,
 
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, importPublicSupportedNetworkOptions)
 
-	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running subnet validator")
+	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running validator")
 
 	cmd.Flags().BoolVar(&useSubnetEvm, "evm", false, "import a subnet-evm")
 	cmd.Flags().BoolVar(&useCustomVM, "custom", false, "use a custom VM template")
@@ -86,7 +86,7 @@ func importPublic(*cobra.Command, []string) error {
 	var reply *info.GetNodeVersionReply
 
 	if nodeURL == "" {
-		yes, err := app.Prompt.CaptureNoYes("Have validator nodes already been deployed to this subnet?")
+		yes, err := app.Prompt.CaptureNoYes("Have validator nodes already been deployed to this blockchain?")
 		if err != nil {
 			return err
 		}
@@ -179,7 +179,7 @@ func importPublic(*cobra.Command, []string) error {
 		// no node was queried, ask the user
 		switch vmType {
 		case models.SubnetEvm:
-			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, application.All)
+			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, "", application.All)
 			if err != nil {
 				return err
 			}
@@ -213,7 +213,7 @@ func importPublic(*cobra.Command, []string) error {
 		return err
 	}
 
-	ux.Logger.PrintToUser("Subnet %q imported successfully", sc.Name)
+	ux.Logger.PrintToUser("Blockchain %q imported successfully", sc.Name)
 
 	return nil
 }

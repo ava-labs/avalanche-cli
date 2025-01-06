@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -18,6 +19,12 @@ import (
 )
 
 var (
+	localStartSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Devnet,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+	}
 	avalanchegoBinaryPath string
 
 	bootstrapIDs         []string
@@ -74,7 +81,7 @@ status by running avalanche node status local
 		RunE:              localStartNode,
 		PersistentPostRun: handlePostRun,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, localStartSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", true, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
@@ -176,14 +183,14 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	return node.StartLocalNode(
 		app,
 		clusterName,
-		globalNetworkFlags.UseEtnaDevnet,
 		avalanchegoBinaryPath,
 		numNodes,
 		nodeConfig,
 		anrSettings,
 		avaGoVersionSetting,
+		models.Network{},
 		globalNetworkFlags,
-		createSupportedNetworkOptions,
+		localStartSupportedNetworkOptions,
 	)
 }
 

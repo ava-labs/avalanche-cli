@@ -24,7 +24,6 @@ const (
 	Fuji
 	Local
 	Devnet
-	EtnaDevnet
 )
 
 const wssScheme = "wss"
@@ -39,8 +38,6 @@ func (nk NetworkKind) String() string {
 		return "Local Network"
 	case Devnet:
 		return "Devnet"
-	case EtnaDevnet:
-		return "Etna Devnet"
 	}
 	return "invalid network"
 }
@@ -93,8 +90,6 @@ func ConvertClusterToNetwork(clusterNetwork Network) Network {
 		return NewFujiNetwork()
 	case clusterNetwork.ID == avagoconstants.MainnetID:
 		return NewMainnetNetwork()
-	case clusterNetwork.ID == constants.EtnaDevnetNetworkID:
-		return NewEtnaDevnetNetwork()
 	default:
 		networkID := uint32(0)
 		if clusterNetwork.Endpoint != "" {
@@ -110,10 +105,6 @@ func ConvertClusterToNetwork(clusterNetwork Network) Network {
 		}
 		return clusterNetwork
 	}
-}
-
-func NewEtnaDevnetNetwork() Network {
-	return NewNetwork(EtnaDevnet, constants.EtnaDevnetNetworkID, constants.EtnaDevnetEndpoint, "")
 }
 
 func NewFujiNetwork() Network {
@@ -145,7 +136,7 @@ func (n Network) StandardPublicEndpoint() bool {
 }
 
 func (n Network) Name() string {
-	if n.ClusterName != "" && (n.Kind == Devnet || n.Kind == EtnaDevnet) {
+	if n.ClusterName != "" && n.Kind == Devnet {
 		return "Cluster " + n.ClusterName
 	}
 	name := n.Kind.String()
@@ -173,8 +164,6 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
 	scheme := "ws"
 	switch n.Kind {
-	case EtnaDevnet:
-		scheme = wssScheme
 	case Fuji:
 		scheme = wssScheme
 	case Mainnet:
@@ -187,8 +176,6 @@ func (n Network) NetworkIDFlagValue() string {
 	switch n.Kind {
 	case Local:
 		return fmt.Sprintf("network-%d", n.ID)
-	case EtnaDevnet:
-		return fmt.Sprintf("%d", n.ID)
 	case Devnet:
 		return fmt.Sprintf("network-%d", n.ID)
 	case Fuji:
@@ -203,8 +190,6 @@ func (n Network) GenesisParams() *genesis.Params {
 	switch n.Kind {
 	case Local:
 		return &genesis.LocalParams
-	case EtnaDevnet:
-		return &genesis.LocalParams // use LocalParams for now
 	case Devnet:
 		return &genesis.LocalParams
 	case Fuji:
@@ -232,8 +217,11 @@ func (n *Network) Equals(n2 Network) bool {
 // Context for bootstrapping a partial synced Node
 func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
 	timeout := constants.ANRRequestTimeout
-	if n.Kind == Fuji {
+	switch n.Kind {
+	case Fuji:
 		timeout = constants.FujiBootstrapTimeout
+	case Mainnet:
+		timeout = constants.MainnetBootstrapTimeout
 	}
 	return context.WithTimeout(context.Background(), timeout)
 }
@@ -248,8 +236,6 @@ func GetNetworkFromCluster(clusterConfig ClusterConfig) Network {
 		return NewFujiNetwork()
 	case network.ID == avagoconstants.MainnetID:
 		return NewMainnetNetwork()
-	case network.ID == constants.EtnaDevnetNetworkID:
-		return NewEtnaDevnetNetwork()
 	default:
 		return network
 	}

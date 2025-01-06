@@ -39,4 +39,7 @@ const (
 	basicLedgerSimScript  = "./launchAndApproveTxs.ts"
 	SubnetIDParseType     = "SubnetID"
 	BlockchainIDParseType = "BlockchainID"
+
+	SubnetName        = "e2eSubnetTest"
+	TestLocalNodeName = "e2eSubnetTest-local-node-local-network"
 )

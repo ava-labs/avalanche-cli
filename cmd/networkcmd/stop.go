@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/server"
@@ -113,6 +114,10 @@ func stopAndSaveNetwork(flags StopFlags) error {
 		if _, err = cli.SaveSnapshot(ctx, flags.snapshotName, true); err != nil {
 			return fmt.Errorf("failed to stop network: %w", err)
 		}
+	}
+
+	if err := node.StopLocalNetworkConnectedCluster(app); err != nil {
+		return err
 	}
 
 	ux.Logger.PrintToUser("Network stopped successfully.")

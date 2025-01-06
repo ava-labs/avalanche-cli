@@ -63,6 +63,7 @@ var (
 	genesisPath string
 	vmFile      string
 	useRepo     bool
+	sovereign   bool
 
 	errEmptyBlockchainName                        = errors.New("invalid empty name")
 	errIllegalNameCharacter                       = errors.New("illegal name character: only letters, no special characters allowed")
@@ -171,7 +172,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := checkInvalidSubnetNames(blockchainName); err != nil {
-		return fmt.Errorf("subnet name %q is invalid: %w", blockchainName, err)
+		return fmt.Errorf("blockchain name %q is invalid: %w", blockchainName, err)
 	}
 
 	// version flags exclusiveness

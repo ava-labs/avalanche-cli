@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
+
 	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
@@ -57,10 +59,10 @@ func NewRootCmd() *cobra.Command {
 		Use: "avalanche",
 		Long: `Avalanche-CLI is a command-line tool that gives developers access to
 everything Avalanche. This release specializes in helping developers
-build and test Subnets.
+build and test Blockchain networks.
 
 To get started, look at the documentation for the subcommands or jump right
-in with avalanche subnet create myNewSubnet.`,
+in with avalanche blockchain create myNewBlockchain.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
 		PersistentPostRun: handleTracking,
@@ -119,23 +121,10 @@ in with avalanche subnet create myNewSubnet.`,
 	subcmd.Long = "The ictt command suite provides tools to deploy and manage Interchain Token Transferrers."
 	rootCmd.AddCommand(subcmd)
 
-	// add subnet command
-	subcmd = blockchaincmd.NewCmd(app)
-	subcmd.Use = "subnet"
-	subcmd.Short = "Create and deploy blockchains (deprecation notice: use 'avalanche blockchain')"
-	subcmd.Long = `The subnet command suite provides a collection of tools for developing
-and deploying Blockchains.
-
-To get started, use the subnet create command wizard to walk through the
-configuration of your very first Blockchain. Then, go ahead and deploy it
-with the subnet deploy command. You can use the rest of the commands to
-manage your Blockchain configurations and live deployments.
-
-Deprecation notice: use 'avalanche blockchain'`
-	rootCmd.AddCommand(subcmd)
-
 	// add contract command
 	rootCmd.AddCommand(contractcmd.NewCmd(app))
+	// add validator command
+	rootCmd.AddCommand(validatorcmd.NewCmd(app))
 
 	cobrautils.ConfigureRootCmd(rootCmd)
 
@@ -286,6 +275,13 @@ func setupEnv() (string, error) {
 	keyDir := filepath.Join(baseDir, constants.KeyDir)
 	if err = os.MkdirAll(keyDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the key dir %s: %s\n", keyDir, err)
+		return "", err
+	}
+
+	// Create run dir if it doesn't exist
+	runDir := filepath.Join(baseDir, constants.RunDir)
+	if err = os.MkdirAll(runDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the run dir %s: %s\n", runDir, err)
 		return "", err
 	}
 
