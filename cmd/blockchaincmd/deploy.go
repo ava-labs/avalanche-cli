@@ -1251,7 +1251,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	if sidecar.Sovereign {
 		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
 	} else {
-		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
+		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
 	}
 
 	return nil
