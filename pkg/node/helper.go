@@ -561,7 +561,7 @@ func GetNodeData(endpoint string) (
 		nil
 }
 
-func SeedClusterData(
+func DownloadPublicArchive(
 	clusterNetwork models.Network,
 	rootDir string,
 	nodeNames []string,
@@ -572,7 +572,7 @@ func SeedClusterData(
 	}
 	network := network.FujiNetwork()
 	ux.Logger.Info("downloading public archive for network %s", clusterNetwork.Name())
-	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.Off) // off as we run inside of the spinner
+	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Off, os.Stdout, logging.JSON.ConsoleEncoder()))) // off as we run inside of the spinner
 	if err != nil {
 		return fmt.Errorf("failed to create public archive downloader for network %s: %w", clusterNetwork.Name(), err)
 	}
@@ -580,8 +580,8 @@ func SeedClusterData(
 	if err := publicArcDownloader.Download(); err != nil {
 		return fmt.Errorf("failed to download public archive: %w", err)
 	}
-	// defer publicArcDownloader.CleanUp()
-	if path, err := publicArcDownloader.GetDownloadedFilePath(); err != nil {
+	defer publicArcDownloader.CleanUp()
+	if path, err := publicArcDownloader.GetFilePath(); err != nil {
 		return fmt.Errorf("failed to get downloaded file path: %w", err)
 	} else {
 		ux.Logger.Info("public archive downloaded to %s", path)
@@ -609,7 +609,7 @@ func SeedClusterData(
 				mu.Lock()
 				if firstErr == nil {
 					firstErr = fmt.Errorf("failed to unpack public archive: %w", err)
-					_ = CleanUpClusterNodeData(rootDir, nodeNames)
+					_ = cleanUpClusterNodeData(rootDir, nodeNames)
 				}
 				mu.Unlock()
 			}
@@ -624,7 +624,7 @@ func SeedClusterData(
 	return nil
 }
 
-func CleanUpClusterNodeData(rootDir string, nodesNames []string) error {
+func cleanUpClusterNodeData(rootDir string, nodesNames []string) error {
 	for _, nodeName := range nodesNames {
 		if err := os.RemoveAll(filepath.Join(rootDir, nodeName)); err != nil {
 			return err

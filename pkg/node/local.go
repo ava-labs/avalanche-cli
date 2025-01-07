@@ -432,7 +432,7 @@ func StartLocalNode(
 		for i := 1; i <= int(numNodes); i++ {
 			nodeNames = append(nodeNames, fmt.Sprintf("node%d", i))
 		}
-		err := SeedClusterData(network, rootDir, nodeNames)
+		err := DownloadPublicArchive(network, rootDir, nodeNames)
 		ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
 
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
@@ -597,7 +597,7 @@ func UpsizeLocalNode(
 
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Creating new node with name %s on local machine", newNodeName)
-	err = SeedClusterData(network, rootDir, []string{newNodeName})
+	err = DownloadPublicArchive(network, rootDir, []string{newNodeName})
 	ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
 	// add new local node
 	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {

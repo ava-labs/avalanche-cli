@@ -13,13 +13,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/sdk/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
-	"github.com/ava-labs/avalanchego/utils/constants"
+	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/cavaliergopher/grab/v3"
 	"go.uber.org/zap"
-
-	sdkConstants "github.com/ava-labs/avalanche-cli/sdk/constants"
 )
 
 const (
@@ -59,12 +58,12 @@ func newGetter(endpoint string, target string) (Getter, error) {
 }
 
 // NewDownloader returns a new Downloader
-// network: the network to download from ( fuji or mainnet). todo: add mainnet support
+// network: the network to download from ( fuji only).
 // target: the path to download to
 // logLevel: the log level
 func NewDownloader(
 	network network.Network,
-	logLevel logging.Level,
+	logger logging.Logger,
 ) (Downloader, error) {
 	tmpFile, err := os.CreateTemp("", "avalanche-cli-public-archive-*")
 	if err != nil {
@@ -72,18 +71,18 @@ func NewDownloader(
 	}
 
 	switch network.ID {
-	case constants.FujiID:
+	case avagoConstants.FujiID:
 		if getter, err := newGetter(PChainArchiveFuji, tmpFile.Name()); err != nil {
 			return Downloader{}, err
 		} else {
 			return Downloader{
 				getter:    getter,
-				logger:    logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logLevel, os.Stdout, logging.JSON.ConsoleEncoder())),
+				logger:    logger,
 				currentOp: &sync.Mutex{},
 			}, nil
 		}
 	default:
-		return Downloader{}, fmt.Errorf("unsupported network ID: %d", network.ID)
+		return Downloader{}, fmt.Errorf("unsupported network ID: %d. Fuji only supported", network.ID)
 	}
 }
 
@@ -133,7 +132,7 @@ func (d Downloader) UnpackTo(targetDir string) error {
 	d.currentOp.Lock()
 	defer d.currentOp.Unlock()
 	// prepare destination path
-	if err := os.MkdirAll(targetDir, sdkConstants.WriteReadUserOnlyDirPerms); err != nil {
+	if err := os.MkdirAll(targetDir, constants.UserOnlyWriteReadExecPerms); err != nil {
 		d.logger.Error("Failed to create target directory", zap.Error(err))
 		return err
 	}
@@ -147,6 +146,7 @@ func (d Downloader) UnpackTo(targetDir string) error {
 	tarReader := tar.NewReader(io.LimitReader(tarFile, maxFileSize))
 	extractedSize := int64(0)
 	for {
+		// codeql [security] suppressed reason: This usage is safe in this context.
 		header, err := tarReader.Next()
 		if err == io.EOF {
 			d.logger.Debug("End of archive reached")
@@ -212,4 +212,51 @@ func (d Downloader) UnpackTo(targetDir string) error {
 	}
 	d.logger.Info("Download unpacked to", zap.String("path", targetDir))
 	return nil
+}
+
+// IsEmpty returns true if the Downloader is empty and not initialized
+func (d Downloader) IsEmpty() bool {
+	return d.getter.client == nil
+}
+
+// IsComplete returns true if the download is complete
+func (d Downloader) IsComplete() bool {
+	return d.GetBytesComplete() == d.GetDownloadSize()
+}
+
+func (d Downloader) GetFilePath() (string, error) {
+	if !d.IsComplete() {
+		return "", fmt.Errorf("download is not completed")
+	}
+	return d.getter.request.Filename, nil
+}
+
+// GetDownloadSize returns the size of the download
+func (d Downloader) GetDownloadSize() int64 {
+	d.getter.mutex.RLock()
+	defer d.getter.mutex.RUnlock()
+	return d.getter.size
+}
+
+func (d Downloader) setDownloadSize(size int64) {
+	d.getter.mutex.Lock()
+	defer d.getter.mutex.Unlock()
+	d.getter.size = size
+}
+
+// GetCurrentProgress returns the current download progress
+func (d Downloader) GetBytesComplete() int64 {
+	d.getter.mutex.RLock()
+	defer d.getter.mutex.RUnlock()
+	return d.getter.bytesComplete
+}
+
+func (d Downloader) setBytesComplete(progress int64) {
+	d.getter.mutex.Lock()
+	defer d.getter.mutex.Unlock()
+	d.getter.bytesComplete = progress
+}
+
+func (d Downloader) CleanUp() {
+	_ = os.Remove(d.getter.request.Filename)
 }
