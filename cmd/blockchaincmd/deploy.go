@@ -1153,7 +1153,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.Sovereign {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("At this point your are able to interact with your L1 (i.e. deploy smart contracts)!"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 blockchain is ready for on-chain interactions."))
 	}
 
 	var icmErr, relayerErr error
