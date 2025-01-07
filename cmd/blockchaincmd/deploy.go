@@ -1152,13 +1152,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if sidecar.Sovereign {
-		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
-	} else {
-		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed %s", network.Name())
-	}
-	if sidecar.Sovereign {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("At this point your are able to interact with your L1!"))
+		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	}
 
 	var icmErr, relayerErr error
@@ -1251,6 +1246,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("To deploy a local relayer later on, call `avalanche interchain relayer deploy`")
 		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
+	}
+
+	if sidecar.Sovereign {
+		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
+	} else {
+		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
 	}
 
 	return nil

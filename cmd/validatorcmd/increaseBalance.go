@@ -37,7 +37,7 @@ var increaseBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
 func NewIncreaseBalanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "increaseBalance",
-		Short: "Increase current balance of validator on P-Chain",
+		Short: "Increases current balance of validator on P-Chain",
 		Long:  `This command increases the validator P-Chain balance`,
 		RunE:  increaseBalance,
 		Args:  cobrautils.ExactArgs(0),
