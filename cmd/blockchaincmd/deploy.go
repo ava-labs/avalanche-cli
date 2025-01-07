@@ -969,7 +969,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		_, err = ux.TimedProgressBar(
 			30*time.Second,
-			"Waiting for L1 to be converted into sovereign blockchain ...",
+			"Waiting for the Subnet to be converted into a sovereign L1 ...",
 			0,
 		)
 		if err != nil {
