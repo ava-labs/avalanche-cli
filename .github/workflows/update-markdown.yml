@@ -28,7 +28,7 @@ jobs:
 
       - name: Generate MD
         run: |
-          python ../scripts/cli_scraper.py
+          python .github/scripts/cli_scraper.py
 
       - name: Commit changes
         run: |
