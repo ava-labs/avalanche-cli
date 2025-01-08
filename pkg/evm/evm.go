@@ -660,38 +660,17 @@ func SetupProposerVM(
 	if err != nil {
 		return err
 	}
-	return IssueTxsToActivateProposerVMFork(client, chainID, privKey)
-}
-
-func IssueTxsToActivateProposerVMFork(
-	client ethclient.Client,
-	chainID *big.Int,
-	privKey *ecdsa.PrivateKey,
-) error {
 	var errorList []error
-	var err error
 	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		err = issueTxsToActivateProposerVMFork(client, ctx, chainID, privKey)
+		err = issueTxsToActivateProposerVMFork(client, chainID, privKey)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf(
-			"failure issuing txs to activate proposer VM fork for client %#v: %w",
-			client,
-			err,
-		)
+		err = fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
 		errorList = append(errorList, err)
 		time.Sleep(sleepBetweenRepeats)
 	}
-	// this means that on the last try there is error
-	// print out all previous errors
-	if err != nil {
-		for _, indivError := range errorList {
-			ux.Logger.RedXToUser("%s", indivError)
-		}
-	}
+	utils.PrintUnreportedErrors(errorList, err, ux.Logger.RedXToUser)
 	return err
 }
 
@@ -703,7 +682,6 @@ func IssueTxsToActivateProposerVMFork(
 // BuildBlockWithContext.
 func issueTxsToActivateProposerVMFork(
 	client ethclient.Client,
-	ctx context.Context,
 	chainID *big.Int,
 	fundedKey *ecdsa.PrivateKey,
 ) error {
@@ -712,25 +690,26 @@ func issueTxsToActivateProposerVMFork(
 	gasPrice := big.NewInt(params.MinGasPrice)
 	txSigner := types.LatestSignerForChainID(chainID)
 	for i := 0; i < numTriggerTxs; i++ {
+		ctx, cancel := utils.GetTimedContext(1 * time.Minute)
+		defer cancel()
 		prevBlockNumber, err := client.BlockNumber(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("client.BlockNumber failure at step %d: %w", i, err)
 		}
 		nonce, err := client.NonceAt(ctx, addr, nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("client.NonceAt failure at step %d: %w", i, err)
 		}
-		tx := types.NewTransaction(
-			nonce, addr, common.Big1, params.TxGas, gasPrice, nil)
+		tx := types.NewTransaction(nonce, addr, common.Big1, params.TxGas, gasPrice, nil)
 		triggerTx, err := types.SignTx(tx, txSigner, fundedKey)
 		if err != nil {
-			return err
+			return fmt.Errorf("types.SignTx failure at step %d: %w", i, err)
 		}
 		if err := client.SendTransaction(ctx, triggerTx); err != nil {
-			return err
+			return fmt.Errorf("client.SendTransaction failure at step %d: %w", i, err)
 		}
 		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
-			return err
+			return fmt.Errorf("WaitForNewBlock failure at step %d: %w", i, err)
 		}
 	}
 	return nil
@@ -750,7 +729,7 @@ func WaitForNewBlock(
 		totalDuration = 10 * time.Second
 	}
 	steps := totalDuration / stepDuration
-	for seconds := 0; seconds < int(steps); seconds++ {
+	for step := 0; step < int(steps); step++ {
 		blockNumber, err := client.BlockNumber(ctx)
 		if err != nil {
 			return err
@@ -760,7 +739,7 @@ func WaitForNewBlock(
 		}
 		time.Sleep(stepDuration)
 	}
-	return fmt.Errorf("new block not produced in %f seconds", totalDuration.Seconds())
+	return fmt.Errorf("not new block produced in %f seconds", totalDuration.Seconds())
 }
 
 func ExtractWarpMessageFromReceipt(
