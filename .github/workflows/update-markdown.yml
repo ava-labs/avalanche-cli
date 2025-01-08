@@ -1,0 +1,43 @@
+name: Update Markdown
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-md:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # If you need additional dependencies, install them here
+          # pip install -r requirements.txt
+
+      - name: Generate MD
+        run: |
+          python ../scripts/cli_scraper.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: Update MD file [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
