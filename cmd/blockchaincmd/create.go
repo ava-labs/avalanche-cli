@@ -260,29 +260,8 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 	if vmType == models.SubnetEvm {
 		if sovereign {
-			// if validatorManagerOwner flag is used, we get the C Chain address of the key used
-			if createFlags.validatorManagerOwner != "" {
-				if err = validateValidatorManagerOwnerFlag(createFlags.validatorManagerOwner); err != nil {
-					return err
-				}
-			}
-			if createFlags.validatorManagerOwner == "" {
-				createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
-				if err != nil {
-					return err
-				}
-			}
-			sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
-			ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
-
-			// use the validator manager owner as the transparent proxy contract owner unless specified via cmd flag
-			if createFlags.proxyContractOwner != "" {
-				if err = validateValidatorManagerOwnerFlag(createFlags.proxyContractOwner); err != nil {
-					return err
-				}
-				sc.ProxyContractOwner = createFlags.proxyContractOwner
-			} else {
-				sc.ProxyContractOwner = sc.ValidatorManagerOwner
+			if err := setSidecarValidatorManageOwner(sc, createFlags); err != nil {
+				return err
 			}
 		}
 
@@ -385,6 +364,11 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		}
 		var tokenSymbol string
 		if evmCompatibleGenesis := utils.ByteSliceIsSubnetEvmGenesis(genesisBytes); evmCompatibleGenesis {
+			if sovereign {
+				if err := setSidecarValidatorManageOwner(sc, createFlags); err != nil {
+					return err
+				}
+			}
 			tokenSymbol, err = vm.PromptTokenSymbol(app, createFlags.tokenSymbol)
 			if err != nil {
 				return err
@@ -555,6 +539,34 @@ func checkInvalidSubnetNames(name string) error {
 		if r > unicode.MaxASCII || !(unicode.IsLetter(r) || unicode.IsNumber(r) || r == ' ') {
 			return errIllegalNameCharacter
 		}
+	}
+	return nil
+}
+
+func setSidecarValidatorManageOwner(sc *models.Sidecar, createFlags CreateFlags) error {
+	var err error
+	// if validatorManagerOwner flag is used, we get the C Chain address of the key used
+	if createFlags.validatorManagerOwner != "" {
+		if err := validateValidatorManagerOwnerFlag(createFlags.validatorManagerOwner); err != nil {
+			return err
+		}
+	}
+	if createFlags.validatorManagerOwner == "" {
+		createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
+		if err != nil {
+			return err
+		}
+	}
+	sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
+	ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
+	// use the validator manager owner as the transparent proxy contract owner unless specified via cmd flag
+	if createFlags.proxyContractOwner != "" {
+		if err = validateValidatorManagerOwnerFlag(createFlags.proxyContractOwner); err != nil {
+			return err
+		}
+		sc.ProxyContractOwner = createFlags.proxyContractOwner
+	} else {
+		sc.ProxyContractOwner = sc.ValidatorManagerOwner
 	}
 	return nil
 }
