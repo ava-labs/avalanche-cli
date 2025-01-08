@@ -93,7 +93,7 @@ func list(_ *cobra.Command, args []string) error {
 
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),
-		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance"},
+		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)"},
 	)
 
 	nodeIDs := maps.Keys(validators)
