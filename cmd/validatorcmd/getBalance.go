@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
@@ -82,7 +81,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("the specified node is not a L1 validator")
 	}
 
-	balance, err := txutils.GetValidatorPChainBalanceValidationID(network, validationID)
+	balance, err := GetL1ValidatorBalance(network, validationID)
 	if err != nil {
 		return err
 	}

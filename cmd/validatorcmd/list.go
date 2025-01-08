@@ -9,7 +9,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
@@ -111,7 +110,7 @@ func list(_ *cobra.Command, args []string) error {
 		if err != nil {
 			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
 		} else {
-			balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
+			balance, err = GetL1ValidatorBalance(network, validationID)
 			if err != nil {
 				ux.Logger.RedXToUser("could not get balance for node %s due to %s", nodeID, err)
 			}

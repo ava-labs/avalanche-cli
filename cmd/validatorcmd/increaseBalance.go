@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -112,7 +111,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	deployer.CleanCacheWallet()
-	balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
+	balance, err = GetL1ValidatorBalance(network, validationID)
 	if err != nil {
 		return err
 	}
