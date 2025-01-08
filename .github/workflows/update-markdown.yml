@@ -14,6 +14,9 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
+        with:
+        ref: ${{ github.head_ref }}
+        fetch-depth: 0
       
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -51,7 +54,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             git add .
             git commit -m "chore: Update MD file [skip ci]"
-            git push
+            git push origin HEAD
           else
             echo "No changes to commit."
           fi
