@@ -427,6 +427,14 @@ func StartLocalNode(
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
+		// preseed nodes data from public archive. ignore errors
+		nodeNames := []string{}
+		for i := 1; i <= int(numNodes); i++ {
+			nodeNames = append(nodeNames, fmt.Sprintf("node%d", i))
+		}
+		err := DownloadPublicArchive(network, rootDir, nodeNames)
+		ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
+
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			_ = DestroyLocalNode(app, clusterName)
@@ -490,6 +498,9 @@ func UpsizeLocalNode(
 		nodeConfig = map[string]interface{}{}
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
+	if network.Kind == models.Fuji {
+		nodeConfig[config.IndexEnabledKey] = false // disable index for Fuji
+	}
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
 	if err != nil {
 		return "", err
@@ -586,6 +597,8 @@ func UpsizeLocalNode(
 
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Creating new node with name %s on local machine", newNodeName)
+	err = DownloadPublicArchive(network, rootDir, []string{newNodeName})
+	ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
 	// add new local node
 	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
