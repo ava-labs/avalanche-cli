@@ -57,3 +57,4 @@ jobs:
             git push origin HEAD:${{ github.head_ref }}
           else
             echo "No changes to commit."
+
