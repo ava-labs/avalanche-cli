@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -111,7 +112,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	deployer.CleanCacheWallet()
-	balance, err = GetL1ValidatorBalance(network, validationID)
+	balance, err = validatorManagerSDK.GetValidatorBalance(network, validationID)
 	if err != nil {
 		return err
 	}

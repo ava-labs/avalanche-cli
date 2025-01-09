@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -106,11 +105,11 @@ func list(_ *cobra.Command, args []string) error {
 		}
 		validator := validators[nodeID]
 		balance := uint64(0)
-		validationID, err := validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err := validatorManagerSDK.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
 		} else {
-			balance, err = GetL1ValidatorBalance(network, validationID)
+			balance, err = validatorManagerSDK.GetValidatorBalance(network, validationID)
 			if err != nil {
 				ux.Logger.RedXToUser("could not get balance for node %s due to %s", nodeID, err)
 			}

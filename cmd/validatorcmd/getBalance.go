@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
@@ -81,7 +80,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("the specified node is not a L1 validator")
 	}
 
-	balance, err := GetL1ValidatorBalance(network, validationID)
+	balance, err := validatorManagerSDK.GetValidatorBalance(network, validationID)
 	if err != nil {
 		return err
 	}
@@ -199,7 +198,7 @@ func getNodeValidationID(
 			return ids.Empty, false, err
 		}
 		managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-		validationID, err = validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err = validatorManagerSDK.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			return ids.Empty, false, err
 		}

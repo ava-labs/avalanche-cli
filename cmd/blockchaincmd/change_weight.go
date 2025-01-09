@@ -5,7 +5,6 @@ package blockchaincmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -16,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
@@ -124,7 +124,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	isValidator, err := validatorcmd.IsL1Validator(network, subnetID, nodeID)
+	isValidator, err := validatorManagerSDK.IsValidator(network, subnetID, nodeID)
 	if err != nil {
 		// just warn the user, don't fail
 		ux.Logger.PrintToUser("failed to check if node is a validator: %s", err)
@@ -150,17 +150,17 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	validationID, err := validatorcmd.GetValidationID(rpcURL, nodeID)
+	validationID, err := validatorManagerSDK.GetValidationID(rpcURL, nodeID)
 	if err != nil {
 		return err
 	}
 
-	vdrInfo, err := validatorcmd.GetL1ValidatorInfo(network, validationID)
+	vdrInfo, err := validatorManagerSDK.GetValidatorInfo(network, validationID)
 	if err != nil {
 		return err
 	}
 
-	totalWeight, err := validatorcmd.GetTotalWeight(network, subnetID)
+	totalWeight, err := validatorManagerSDK.GetTotalWeight(network, subnetID)
 	if err != nil {
 		return err
 	}

@@ -200,7 +200,7 @@ func InitValidatorRemoval(
 		return nil, ids.Empty, err
 	}
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-	validationID, err := GetRegisteredValidator(
+	validationID, err := validatorManagerSDK.GetRegisteredValidator(
 		rpcURL,
 		managerAddress,
 		nodeID,

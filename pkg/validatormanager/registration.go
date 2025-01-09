@@ -171,7 +171,7 @@ func GetSubnetValidatorRegistrationMessage(
 		err                                    error
 	)
 	if alreadyInitialized {
-		validationID, err = GetRegisteredValidator(
+		validationID, err = validatorManagerSDK.GetRegisteredValidator(
 			rpcURL,
 			managerAddress,
 			nodeID,
@@ -233,27 +233,6 @@ func GetSubnetValidatorRegistrationMessage(
 	}
 	signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
 	return signedMessage, validationID, err
-}
-
-func GetRegisteredValidator(
-	rpcURL string,
-	managerAddress common.Address,
-	nodeID ids.NodeID,
-) (ids.ID, error) {
-	out, err := contract.CallToMethod(
-		rpcURL,
-		managerAddress,
-		"registeredValidators(bytes)->(bytes32)",
-		nodeID[:],
-	)
-	if err != nil {
-		return ids.Empty, err
-	}
-	validatorID, b := out[0].([32]byte)
-	if !b {
-		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
-	}
-	return validatorID, nil
 }
 
 func GetValidatorWeight(
@@ -434,7 +413,7 @@ func InitValidatorRegistration(
 		}
 	}
 	if initWithPos {
-		validationID, err := GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err := validatorManagerSDK.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Error getting validation ID")
 			return nil, ids.Empty, err
