@@ -405,7 +405,7 @@ func StartLocalNode(
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
 			client.WithFreshStakingIds(true),
-			client.WithZeroIP(false),
+			client.WithZeroIP(true),
 			client.WithGlobalNodeConfig(nodeConfigStr),
 		}
 		if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
@@ -562,7 +562,7 @@ func UpsizeLocalNode(
 		client.WithReassignPortsIfUsed(true),
 		client.WithPluginDir(pluginDir),
 		client.WithFreshStakingIds(true),
-		client.WithZeroIP(false),
+		client.WithZeroIP(true),
 		client.WithGlobalNodeConfig(nodeConfigStr),
 	}
 	if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
