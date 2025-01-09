@@ -7,7 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
@@ -38,7 +38,7 @@ The L1 has to be a Proof of Authority L1.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, changeWeightSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
-	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the new staking weight of the validator")
+	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
@@ -115,12 +115,48 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("node %s is not a validator for blockchain %s", nodeID, subnetID)
 	}
 
-	weight, err = app.Prompt.CaptureWeight("What weight would you like to assign to the validator?")
+	chainSpec := contract.ChainSpec{
+		BlockchainName: blockchainName,
+	}
+
+	if rpcURL == "" {
+		rpcURL, _, err = contract.GetBlockchainEndpoints(
+			app,
+			network,
+			chainSpec,
+			true,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	validationID, err := validatorcmd.GetValidationID(rpcURL, nodeID)
 	if err != nil {
 		return err
 	}
 
+	vdrInfo, err := validatorcmd.GetL1ValidatorInfo(network, validationID)
+	if err != nil {
+		return err
+	}
+
+	if weight == 0 {
+		ux.Logger.PrintToUser("Current validator weight is %d", vdrInfo.Weight)
+		weight, err = app.Prompt.CaptureWeight("What weight would you like to assign to the validator?")
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("%#v\n", vdrInfo.PublicKey)
+	*vdrInfo.PublicKey
 	deployer := subnet.NewPublicDeployer(app, kc, network)
+
+	return CallAddValidator(deployer, network, kc, blockchainName, nodeID.String(), publicKey, pop)
+
+	return nil
 
 	// first remove the validator from subnet
 	err = removeValidatorSOV(
