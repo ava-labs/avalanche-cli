@@ -14,6 +14,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -219,6 +220,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	subnetID := sc.Networks[network.Name()].SubnetID
+
 	// if user chose to upsize a local node to add another local validator
 	if createLocalValidator {
 		anrSettings := node.ANRSettings{}
@@ -240,7 +243,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 		nodeName := ""
 		blockchainID := sc.Networks[network.Name()].BlockchainID
-		subnetID := sc.Networks[network.Name()].SubnetID
 
 		if nodeName, err = node.UpsizeLocalNode(
 			app,
@@ -303,7 +305,20 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
-	return CallAddValidator(deployer, network, kc, blockchainName, nodeIDStr, publicKey, pop)
+	return CallAddValidator(
+		deployer,
+		network,
+		kc,
+		blockchainName,
+		subnetID,
+		nodeIDStr,
+		publicKey,
+		pop,
+		weight,
+		balance,
+		remainingBalanceOwnerAddr,
+		disableOwnerAddr,
+	)
 }
 
 func promptValidatorBalance(availableBalance uint64) (uint64, error) {
@@ -318,9 +333,14 @@ func CallAddValidator(
 	network models.Network,
 	kc *keychain.Keychain,
 	blockchainName string,
+	subnetID ids.ID,
 	nodeIDStr string,
 	publicKey string,
 	pop string,
+	weight uint64,
+	balance uint64,
+	remainingBalanceOwnerAddr string,
+	disableOwnerAddr string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -400,6 +420,15 @@ func CallAddValidator(
 	}
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+
+	totalWeight, err := validatorcmd.GetTotalWeight(network, subnetID)
+	if err != nil {
+		return err
+	}
+	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
+	if float64(weight) > allowedChange {
+		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
+	}
 
 	if balance == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
@@ -818,7 +847,7 @@ func getWeight() (uint64, error) {
 		case defaultWeight:
 			useDefaultWeight = true
 		default:
-			weight, err = app.Prompt.CaptureWeight(txt)
+			weight, err = app.Prompt.CaptureWeight(txt, func(uint64) error { return nil })
 			if err != nil {
 				return 0, err
 			}

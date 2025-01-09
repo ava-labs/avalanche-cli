@@ -7,22 +7,32 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/formatting"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/spf13/cobra"
 )
 
-var changeWeightSupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
+var (
+	changeWeightSupportedNetworkOptions = []networkoptions.NetworkOption{
+		networkoptions.Local,
+		networkoptions.Devnet,
+		networkoptions.Fuji,
+		networkoptions.Mainnet,
+	}
+	newWeight uint64
+)
 
 // avalanche blockchain addValidator
 func newChangeWeightCmd() *cobra.Command {
@@ -38,9 +48,10 @@ The L1 has to be a Proof of Authority L1.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, changeWeightSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
-	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the new staking weight of the validator")
+	cmd.Flags().Uint64Var(&newWeight, "weight", 0, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
+	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	return cmd
@@ -88,6 +99,13 @@ func setWeight(_ *cobra.Command, args []string) error {
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
+	}
+
+	if nodeEndpoint != "" {
+		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
+		if err != nil {
+			return err
+		}
 	}
 
 	var nodeID ids.NodeID
@@ -142,21 +160,67 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if weight == 0 {
+	totalWeight, err := validatorcmd.GetTotalWeight(network, subnetID)
+	if err != nil {
+		return err
+	}
+
+	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
+
+	if float64(vdrInfo.Weight) > allowedChange {
+		return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", vdrInfo.Weight, uint64(allowedChange))
+	}
+
+	allowedChange = float64(totalWeight-vdrInfo.Weight) * constants.MaxL1TotalWeightChange
+
+	if newWeight == 0 {
 		ux.Logger.PrintToUser("Current validator weight is %d", vdrInfo.Weight)
-		weight, err = app.Prompt.CaptureWeight("What weight would you like to assign to the validator?")
+		newWeight, err = app.Prompt.CaptureWeight(
+			"What weight would you like to assign to the validator?",
+			func(v uint64) error {
+				if v > uint64(allowedChange) {
+					return fmt.Errorf("weight exceeds max allowed weight change of %d", uint64(allowedChange))
+				}
+				return nil
+			},
+		)
 		if err != nil {
 			return err
 		}
 	}
 
-	fmt.Printf("%#v\n", vdrInfo.PublicKey)
-	*vdrInfo.PublicKey
+	if float64(newWeight) > allowedChange {
+		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
+	}
+
+	publicKey, err = formatting.Encode(formatting.HexNC, bls.PublicKeyToCompressedBytes(vdrInfo.PublicKey))
+	if err != nil {
+		return err
+	}
+
+	if pop == "" {
+		_, pop, err = promptProofOfPossession(false, true)
+		if err != nil {
+			return err
+		}
+	}
+
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	return CallAddValidator(deployer, network, kc, blockchainName, nodeID.String(), publicKey, pop)
-
-	return nil
+	var remainingBalanceOwnerAddr, disableOwnerAddr string
+	hrp := key.GetHRP(network.ID)
+	if len(vdrInfo.RemainingBalanceOwner.Addrs) > 0 {
+		remainingBalanceOwnerAddr, err = address.Format("P", hrp, vdrInfo.RemainingBalanceOwner.Addrs[0][:])
+		if err != nil {
+			return err
+		}
+	}
+	if len(vdrInfo.DeactivationOwner.Addrs) > 0 {
+		disableOwnerAddr, err = address.Format("P", hrp, vdrInfo.DeactivationOwner.Addrs[0][:])
+		if err != nil {
+			return err
+		}
+	}
 
 	// first remove the validator from subnet
 	err = removeValidatorSOV(
@@ -172,39 +236,19 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: we need to wait for the balance from the removed validator to arrive in changeAddr
-	// set arbitrary time.sleep here?
-
-	balance, err = getValidatorBalanceFromPChain()
-	if err != nil {
-		return err
-	}
-
-	publicKey, pop, err = getBLSInfoFromPChain()
-	if err != nil {
-		return err
-	}
-
-	remainingBalanceOwnerAddr, err = getChangeAddrFromPChain()
-	if err != nil {
-		return fmt.Errorf("failure parsing change owner address: %w", err)
-	}
-
 	// add back validator to subnet with updated weight
-	return CallAddValidator(deployer, network, kc, blockchainName, nodeID.String(), publicKey, pop)
-}
-
-// getValidatorBalanceFromPChain gets remaining balance of validator from p chain
-func getValidatorBalanceFromPChain() (uint64, error) {
-	return 0, nil
-}
-
-// getBLSInfoFromPChain gets BLS public key and pop from info api
-func getBLSInfoFromPChain() (string, string, error) {
-	return "", "", nil
-}
-
-// getChangeAddrFromPChain gets validator change addr from info api
-func getChangeAddrFromPChain() (string, error) {
-	return "", nil
+	return CallAddValidator(
+		deployer,
+		network,
+		kc,
+		blockchainName,
+		subnetID,
+		nodeID.String(),
+		publicKey,
+		pop,
+		newWeight,
+		vdrInfo.Balance/units.Avax,
+		remainingBalanceOwnerAddr,
+		disableOwnerAddr,
+	)
 }
