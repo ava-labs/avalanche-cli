@@ -35,7 +35,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/schollz/progressbar/v3 v3.17.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
-	github.com/spf13/afero v1.11.0
+	github.com/spf13/afero v1.12.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
@@ -173,7 +173,7 @@ require (
 	github.com/pires/go-proxyproto v0.6.2 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pkg/sftp v1.13.6 // indirect
+	github.com/pkg/sftp v1.13.7 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
