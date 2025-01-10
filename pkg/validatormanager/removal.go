@@ -325,7 +325,7 @@ func FinishValidatorRemoval(
 		rpcURL,
 		privateKey,
 	); err != nil {
-		return err
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
 	tx, _, err := CompleteValidatorRemoval(
 		rpcURL,
