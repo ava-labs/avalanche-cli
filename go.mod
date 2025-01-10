@@ -9,7 +9,7 @@ require (
 	github.com/ava-labs/coreth v0.13.9-rc.1
 	github.com/ava-labs/icm-services v1.4.1-0.20250102154147-7d1e095dc849
 	github.com/ava-labs/subnet-evm v0.6.13-0.20241205165027-6c98da796f35
-	github.com/aws/aws-sdk-go-v2 v1.32.7
+	github.com/aws/aws-sdk-go-v2 v1.32.8
 	github.com/aws/aws-sdk-go-v2/config v1.28.7
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.198.1
 	github.com/cavaliergopher/grab/v3 v3.0.1
