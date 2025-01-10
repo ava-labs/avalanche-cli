@@ -5,6 +5,8 @@ package blockchain
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -16,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-	"time"
 )
 
 func GetAggregatorExtraPeers(

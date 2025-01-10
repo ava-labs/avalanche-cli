@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
