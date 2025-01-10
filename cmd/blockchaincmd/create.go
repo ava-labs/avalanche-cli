@@ -545,17 +545,14 @@ func checkInvalidSubnetNames(name string) error {
 
 func setSidecarValidatorManageOwner(sc *models.Sidecar, createFlags CreateFlags) error {
 	var err error
-	// if validatorManagerOwner flag is used, we get the C Chain address of the key used
-	if createFlags.validatorManagerOwner != "" {
-		if err := validateValidatorManagerOwnerFlag(createFlags.validatorManagerOwner); err != nil {
-			return err
-		}
-	}
 	if createFlags.validatorManagerOwner == "" {
 		createFlags.validatorManagerOwner, err = getValidatorContractManagerAddr()
 		if err != nil {
 			return err
 		}
+	}
+	if err := validateValidatorManagerOwnerFlag(createFlags.validatorManagerOwner); err != nil {
+		return err
 	}
 	sc.ValidatorManagerOwner = createFlags.validatorManagerOwner
 	ux.Logger.GreenCheckmarkToUser("Validator Manager Contract owner address %s", createFlags.validatorManagerOwner)
