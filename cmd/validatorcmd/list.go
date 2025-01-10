@@ -109,7 +109,7 @@ func list(_ *cobra.Command, args []string) error {
 		if err != nil {
 			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
 		} else {
-			balance, err = validatorManagerSDK.GetValidatorBalance(network, validationID)
+			balance, err = validatorManagerSDK.GetValidatorBalance(network.SDKNetwork(), validationID)
 			if err != nil {
 				ux.Logger.RedXToUser("could not get balance for node %s due to %s", nodeID, err)
 			}

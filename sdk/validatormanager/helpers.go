@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
@@ -15,8 +15,8 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-func GetTotalWeight(network models.Network, subnetID ids.ID) (uint64, error) {
-	pClient := platformvm.NewClient(network.Endpoint)
+func GetTotalWeight(net network.Network, subnetID ids.ID) (uint64, error) {
+	pClient := platformvm.NewClient(net.Endpoint)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	validators, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
@@ -30,8 +30,8 @@ func GetTotalWeight(network models.Network, subnetID ids.ID) (uint64, error) {
 	return weight, nil
 }
 
-func IsValidator(network models.Network, subnetID ids.ID, nodeID ids.NodeID) (bool, error) {
-	pClient := platformvm.NewClient(network.Endpoint)
+func IsValidator(net network.Network, subnetID ids.ID, nodeID ids.NodeID) (bool, error) {
+	pClient := platformvm.NewClient(net.Endpoint)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	validators, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
@@ -42,16 +42,16 @@ func IsValidator(network models.Network, subnetID ids.ID, nodeID ids.NodeID) (bo
 	return utils.Belongs(nodeIDs, nodeID), nil
 }
 
-func GetValidatorBalance(network models.Network, validationID ids.ID) (uint64, error) {
-	vdrInfo, err := GetValidatorInfo(network, validationID)
+func GetValidatorBalance(net network.Network, validationID ids.ID) (uint64, error) {
+	vdrInfo, err := GetValidatorInfo(net, validationID)
 	if err != nil {
 		return 0, err
 	}
 	return vdrInfo.Balance, nil
 }
 
-func GetValidatorInfo(network models.Network, validationID ids.ID) (platformvm.L1Validator, error) {
-	pClient := platformvm.NewClient(network.Endpoint)
+func GetValidatorInfo(net network.Network, validationID ids.ID) (platformvm.L1Validator, error) {
+	pClient := platformvm.NewClient(net.Endpoint)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	vdrInfo, _, err := pClient.GetL1Validator(ctx, validationID)

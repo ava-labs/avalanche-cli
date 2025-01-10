@@ -426,7 +426,7 @@ func CallAddValidator(
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
-	totalWeight, err := validatorManagerSDK.GetTotalWeight(network, subnetID)
+	totalWeight, err := validatorManagerSDK.GetTotalWeight(network.SDKNetwork(), subnetID)
 	if err != nil {
 		return err
 	}
@@ -562,7 +562,7 @@ func CallAddValidator(
 	if !pos {
 		ux.Logger.PrintToUser("  Weight: %d", weight)
 	}
-	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
+	ux.Logger.PrintToUser("  Balance: %.2f", balanceAVAX)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
 
 	return nil

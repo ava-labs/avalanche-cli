@@ -125,7 +125,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	isValidator, err := validatorManagerSDK.IsValidator(network, subnetID, nodeID)
+	isValidator, err := validatorManagerSDK.IsValidator(network.SDKNetwork(), subnetID, nodeID)
 	if err != nil {
 		// just warn the user, don't fail
 		ux.Logger.PrintToUser("failed to check if node is a validator: %s", err)
@@ -156,12 +156,12 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	vdrInfo, err := validatorManagerSDK.GetValidatorInfo(network, validationID)
+	vdrInfo, err := validatorManagerSDK.GetValidatorInfo(network.SDKNetwork(), validationID)
 	if err != nil {
 		return err
 	}
 
-	totalWeight, err := validatorManagerSDK.GetTotalWeight(network, subnetID)
+	totalWeight, err := validatorManagerSDK.GetTotalWeight(network.SDKNetwork(), subnetID)
 	if err != nil {
 		return err
 	}

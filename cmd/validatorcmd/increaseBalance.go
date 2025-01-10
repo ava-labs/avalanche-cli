@@ -111,7 +111,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	deployer.CleanCacheWallet()
-	balance, err = validatorManagerSDK.GetValidatorBalance(network, validationID)
+	balance, err = validatorManagerSDK.GetValidatorBalance(network.SDKNetwork(), validationID)
 	if err != nil {
 		return err
 	}
