@@ -47,7 +47,7 @@ var (
 
 	nodeIDStr                 string
 	nodeEndpoint              string
-	balance                   uint64
+	balanceAVAX               float64
 	weight                    uint64
 	startTimeStr              string
 	duration                  time.Duration
@@ -97,7 +97,12 @@ Testnet or Mainnet.`,
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
-	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee on P-Chain")
+	cmd.Flags().Float64Var(
+		&balanceAVAX,
+		"balance",
+		0,
+		"set the AVAX balance of the validator that will be used for continuous fee on P-Chain",
+	)
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -315,13 +320,13 @@ func addValidator(_ *cobra.Command, args []string) error {
 		publicKey,
 		pop,
 		weight,
-		balance,
+		balanceAVAX,
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 	)
 }
 
-func promptValidatorBalance(availableBalance uint64) (uint64, error) {
+func promptValidatorBalanceAVAX(availableBalance float64) (float64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
 	txt := "What balance would you like to assign to the validator (in AVAX)?"
@@ -338,7 +343,7 @@ func CallAddValidator(
 	publicKey string,
 	pop string,
 	weight uint64,
-	balance uint64,
+	balanceAVAX float64,
 	remainingBalanceOwnerAddr string,
 	disableOwnerAddr string,
 ) error {
@@ -430,19 +435,18 @@ func CallAddValidator(
 		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
 	}
 
-	if balance == 0 {
+	if balanceAVAX == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
 		}
-		balance, err = promptValidatorBalance(availableBalance / units.Avax)
+		balanceAVAX, err = promptValidatorBalanceAVAX(float64(availableBalance) / float64(units.Avax))
 		if err != nil {
 			return err
 		}
-	} else {
-		// convert to nanoAVAX
-		balance *= units.Avax
 	}
+	// convert to nanoAVAX
+	balance := uint64(balanceAVAX * float64(units.Avax))
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)

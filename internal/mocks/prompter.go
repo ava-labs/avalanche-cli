@@ -989,25 +989,25 @@ func (_m *Prompter) CaptureValidatedString(promptStr string, validator func(stri
 }
 
 // CaptureValidatorBalance provides a mock function with given fields: promptStr, availableBalance, minBalance
-func (_m *Prompter) CaptureValidatorBalance(promptStr string, availableBalance uint64, minBalance float64) (uint64, error) {
+func (_m *Prompter) CaptureValidatorBalance(promptStr string, availableBalance float64, minBalance float64) (float64, error) {
 	ret := _m.Called(promptStr, availableBalance, minBalance)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CaptureValidatorBalance")
 	}
 
-	var r0 uint64
+	var r0 float64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, uint64, float64) (uint64, error)); ok {
+	if rf, ok := ret.Get(0).(func(string, float64, float64) (float64, error)); ok {
 		return rf(promptStr, availableBalance, minBalance)
 	}
-	if rf, ok := ret.Get(0).(func(string, uint64, float64) uint64); ok {
+	if rf, ok := ret.Get(0).(func(string, float64, float64) float64); ok {
 		r0 = rf(promptStr, availableBalance, minBalance)
 	} else {
-		r0 = ret.Get(0).(uint64)
+		r0 = ret.Get(0).(float64)
 	}
 
-	if rf, ok := ret.Get(1).(func(string, uint64, float64) error); ok {
+	if rf, ok := ret.Get(1).(func(string, float64, float64) error); ok {
 		r1 = rf(promptStr, availableBalance, minBalance)
 	} else {
 		r1 = ret.Error(1)

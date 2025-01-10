@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
@@ -236,6 +237,17 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	balance := vdrInfo.Balance
+	if len(vdrInfo.RemainingBalanceOwner.Addrs) > 0 {
+		availableBalance, err := utils.GetNetworkBalance([]ids.ShortID{vdrInfo.RemainingBalanceOwner.Addrs[0]}, network.Endpoint)
+		if err != nil {
+			return err
+		}
+		if availableBalance < balance {
+			balance = availableBalance
+		}
+	}
+
 	// add back validator to subnet with updated weight
 	return CallAddValidator(
 		deployer,
@@ -247,7 +259,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		publicKey,
 		pop,
 		newWeight,
-		vdrInfo.Balance/units.Avax,
+		float64(balance)/float64(units.Avax),
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 	)
