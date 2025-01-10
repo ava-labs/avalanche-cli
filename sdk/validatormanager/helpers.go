@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"

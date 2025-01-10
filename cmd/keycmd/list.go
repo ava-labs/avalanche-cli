@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -21,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/avm"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/ethclient"
+
 	"github.com/ethereum/go-ethereum/common"
 	goethereumethclient "github.com/ethereum/go-ethereum/ethclient"
 	"github.com/liyue201/erc20-go/erc20"
@@ -296,13 +298,13 @@ func listKeys(*cobra.Command, []string) error {
 	if len(subnets) == 0 {
 		subnets = []string{"p", "x", "c"}
 	}
-	if !utils.Belongs(subnets, "p") {
+	if !sdkUtils.Belongs(subnets, "p") {
 		pchain = false
 	}
-	if !utils.Belongs(subnets, "x") {
+	if !sdkUtils.Belongs(subnets, "x") {
 		xchain = false
 	}
-	if !utils.Belongs(subnets, "c") {
+	if !sdkUtils.Belongs(subnets, "c") {
 		cchain = false
 	}
 	queryLedger := len(ledgerIndices) > 0
@@ -311,7 +313,7 @@ func listKeys(*cobra.Command, []string) error {
 		cchain = false
 		xchain = false
 	}
-	if utils.Belongs(tokenAddresses, "Native") || utils.Belongs(tokenAddresses, "native") {
+	if sdkUtils.Belongs(tokenAddresses, "Native") || sdkUtils.Belongs(tokenAddresses, "native") {
 		showNativeToken = true
 	}
 	tokenAddresses = utils.RemoveFromSlice(tokenAddresses, "Native")
@@ -347,7 +349,7 @@ func getStoredKeysInfo(
 		return nil, err
 	}
 	if len(keys) != 0 {
-		keyNames = utils.Filter(keyNames, func(keyName string) bool { return utils.Belongs(keys, keyName) })
+		keyNames = utils.Filter(keyNames, func(keyName string) bool { return sdkUtils.Belongs(keys, keyName) })
 	}
 	addrInfos := []addressInfo{}
 	for _, keyName := range keyNames {

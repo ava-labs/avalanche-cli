@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -131,7 +132,7 @@ func logs(_ *cobra.Command, _ []string) error {
 			keys := maps.Keys(logMap)
 			sort.Strings(keys)
 			for _, k := range keys {
-				if !utils.Belongs([]string{"logger", "caller", "level", "timestamp", "msg"}, k) {
+				if !sdkUtils.Belongs([]string{"logger", "caller", "level", "timestamp", "msg"}, k) {
 					logMsg = addAditionalInfo(
 						logMsg,
 						logMap,

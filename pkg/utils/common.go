@@ -117,15 +117,6 @@ func Find[T any](input []T, f func(T) bool) *T {
 	return nil
 }
 
-func Belongs[T comparable](input []T, elem T) bool {
-	for _, e := range input {
-		if e == elem {
-			return true
-		}
-	}
-	return false
-}
-
 func RemoveFromSlice[T comparable](input []T, toRemove T) []T {
 	output := make([]T, 0, len(input))
 	for _, e := range input {

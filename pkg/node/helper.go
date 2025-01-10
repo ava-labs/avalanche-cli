@@ -28,6 +28,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/publicarchive"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -196,7 +197,7 @@ func getPublicEndpoints(
 		publicNodes = clusterConfig.Nodes
 	}
 	publicTrackers := utils.Filter(trackers, func(tracker *models.Host) bool {
-		return utils.Belongs(publicNodes, tracker.GetCloudID())
+		return sdkUtils.Belongs(publicNodes, tracker.GetCloudID())
 	})
 	endpoints := utils.Map(publicTrackers, func(tracker *models.Host) string {
 		return GetAvalancheGoEndpoint(tracker.IP)
