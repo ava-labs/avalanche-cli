@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -162,7 +163,7 @@ func promptBootstrapValidators(
 		generateNodeID = !setUpNodes
 	}
 	if changeOwnerAddress == "" {
-		changeOwnerAddress, err = getKeyForChangeOwner(network)
+		changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
 		if err != nil {
 			return nil, err
 		}

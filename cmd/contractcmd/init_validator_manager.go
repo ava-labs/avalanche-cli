@@ -4,6 +4,7 @@ package contractcmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
@@ -154,7 +155,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	clusterName := scNetwork.ClusterName
-	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterName, validatorManagerFlags.aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}

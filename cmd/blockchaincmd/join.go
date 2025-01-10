@@ -39,7 +39,7 @@ var (
 	printManual bool
 	// if true, doesn't ask for overwriting the config file
 	forceWrite bool
-	// for permissionless subnet only: how muchnative token will be staked in the validator
+	// for permissionless subnet only: how much native token will be staked in the validator
 	stakeAmount uint64
 )
 

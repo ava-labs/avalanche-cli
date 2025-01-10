@@ -5,6 +5,7 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"os"
 	"strings"
 
@@ -265,7 +266,7 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterName, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
@@ -342,7 +343,7 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
 	} else {
 		ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
-		if err := UpdatePChainHeight(
+		if err := blockchain.UpdatePChainHeight(
 			"Waiting for P-Chain to update validator information ...",
 		); err != nil {
 			return err

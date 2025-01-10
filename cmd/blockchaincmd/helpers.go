@@ -4,8 +4,6 @@ package blockchaincmd
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 
@@ -13,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -93,21 +90,6 @@ func UpdateKeychainWithSubnetControlKeys(
 	if err := kc.AddAddresses(controlKeys); err != nil {
 		return err
 	}
-	return nil
-}
-
-func UpdatePChainHeight(
-	title string,
-) error {
-	_, err := ux.TimedProgressBar(
-		40*time.Second,
-		title,
-		0,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println()
 	return nil
 }
 
