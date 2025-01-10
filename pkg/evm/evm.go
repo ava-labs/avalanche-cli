@@ -739,7 +739,7 @@ func WaitForNewBlock(
 		}
 		time.Sleep(stepDuration)
 	}
-	return fmt.Errorf("not new block produced in %f seconds", totalDuration.Seconds())
+	return fmt.Errorf("no new block produced in %f seconds", totalDuration.Seconds())
 }
 
 func ExtractWarpMessageFromReceipt(
