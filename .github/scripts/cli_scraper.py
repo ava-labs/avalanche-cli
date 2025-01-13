@@ -151,6 +151,13 @@ def generate_markdown(cli_structure, cli_tool, file_path):
     Generate a Markdown file from the CLI structure JSON object in a developer-friendly format.
     No top-level subcommand bullet list.
     """
+    # Define a set of known type keywords. Adjust as needed.
+    known_types = {
+        "string", "bool", "int", "uint", "float", "duration",
+        "strings", "uint16", "uint32", "uint64", "int16", "int32", "int64",
+        "float32", "float64"
+    }
+
     def write_section(structure, file, command_chain=None):
         if command_chain is None:
             command_chain = []
@@ -181,19 +188,16 @@ def generate_markdown(cli_structure, cli_tool, file_path):
             file.write("**Usage:**\n")
             file.write(f"```bash\n{full_command} [subcommand] [flags]\n```\n\n")
 
-            # If there are subcommands, list them only if we're not at the root
-            # (which we aren't, because command_chain is non-empty).
+            # Subcommands index
             subcommands = structure.get('subcommands', {})
             if subcommands:
                 file.write("**Subcommands:**\n\n")
-                # Index of subcommands
                 for subcmd in sorted(subcommands.keys()):
                     sub_desc = subcommands[subcmd].get('description', '')
                     sub_anchor = generate_anchor_id(cli_tool, command_chain + [subcmd])
                     file.write(f"- [`{subcmd}`](#{sub_anchor}): {sub_desc}\n")
                 file.write("\n")
         else:
-            # Root level: do NOT print bullet list or heading.
             subcommands = structure.get('subcommands', {})
 
         # Flags (only if we have a command chain)
@@ -202,15 +206,21 @@ def generate_markdown(cli_structure, cli_tool, file_path):
             flag_lines = []
             for flag_dict in structure['flags']:
                 flag_names = flag_dict['flag']
-                description = flag_dict['description']
+                description = flag_dict['description'].strip()
 
-                # Attempt to parse a type from the first word if present
-                desc_match = re.match(r'^(\w+)\s+(.*)', description)
-                if desc_match:
-                    flag_type = desc_match.group(1)
-                    flag_desc = desc_match.group(2)
+                # Attempt to parse a recognized "type" from the first word.
+                desc_parts = description.split(None, 1)  # Split once on whitespace
+                if len(desc_parts) == 2:
+                    first_word, rest = desc_parts
+                    # Check if the first word is in known_types
+                    if first_word.lower() in known_types:
+                        flag_type = first_word
+                        flag_desc = rest
+                    else:
+                        flag_type = ""
+                        flag_desc = description
                 else:
-                    flag_type = ''
+                    flag_type = ""
                     flag_desc = description
 
                 if flag_type:
@@ -220,13 +230,14 @@ def generate_markdown(cli_structure, cli_tool, file_path):
 
                 flag_lines.append((flag_line, flag_desc))
 
-            max_len = max(len(f[0]) for f in flag_lines) if flag_lines else 0
+            # Determine formatting width
+            max_len = max(len(fl[0]) for fl in flag_lines) if flag_lines else 0
             file.write("```bash\n")
             for fl, fd in flag_lines:
                 file.write(f"{fl.ljust(max_len)}    {fd}\n")
             file.write("```\n\n")
 
-        # Recurse into subcommands (so their headings will appear)
+        # Recurse into subcommands
         subcommands = structure.get('subcommands', {})
         for subcmd in sorted(subcommands.keys()):
             write_section(subcommands[subcmd], file, command_chain + [subcmd])
@@ -241,18 +252,11 @@ def main():
     # Build the nested command structure
     cli_structure = get_command_structure(cli_tool, max_depth=max_depth)
     if cli_structure:
-        # Save JSON
-       
-        # with open("cli_structure.json", "w", encoding="utf-8") as json_file:
-          # json.dump(cli_structure, json_file, indent=4)
-        # print("CLI structure saved to cli_structure.json")
-
         # Generate Markdown
         generate_markdown(cli_structure, cli_tool, "cmd/commands.md")
-        print("Markdown documentation saved to cli_structure.md")
+        print("Markdown documentation saved to cmd/commands.md")
     else:
         print("[ERROR] Failed to retrieve CLI structure")
 
 if __name__ == "__main__":
     main()
-
