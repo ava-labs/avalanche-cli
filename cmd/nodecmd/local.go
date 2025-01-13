@@ -273,7 +273,7 @@ func notImplementedForLocal(what string) error {
 
 func newLocalValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "status",
+		Use:   "validate",
 		Short: "(ALPHA Warning) Get status of local node",
 		Long:  `Get status of local node.`,
 		Args:  cobra.MaximumNArgs(1),
@@ -293,11 +293,11 @@ func newLocalValidateCmd() *cobra.Command {
 	return cmd
 }
 
-func localValidate(_ *cobra.Command, args []string) error {
-	clusterName := ""
-	if len(args) > 0 {
-		clusterName = args[0]
-	}
+func localValidate(_ *cobra.Command, _ []string) error {
+	//clusterName := ""
+	//if len(args) > 0 {
+	//	clusterName = args[0]
+	//}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -305,7 +305,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		[]networkoptions.NetworkOption{},
+		localStartSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
@@ -346,15 +346,18 @@ func localValidate(_ *cobra.Command, args []string) error {
 	duration = genesis.FujiParams.MinStakeDuration
 
 	//ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
-	chainSpec := contract.ChainSpec{}
+	chainSpec := contract.ChainSpec{
+		BlockchainID: "nc7fQAY6xwJAPKMk1RafDnDke5uL2BXUHUH7AiHMouRjXT7Ce",
+	}
 	if rpcURL == "" {
-		rpcURL, _, err = contract.GetBlockchainEndpoints(
-			app,
-			models.NewFujiNetwork(),
-			chainSpec,
-			true,
-			false,
-		)
+		//rpcURL, _, err = contract.GetBlockchainEndpoints(
+		//	app,
+		//	models.NewFujiNetwork(),
+		//	chainSpec,
+		//	true,
+		//	false,
+		//)
+		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
 			return err
 		}
@@ -415,7 +418,8 @@ func localValidate(_ *cobra.Command, args []string) error {
 		Addresses: disableOwnerAddrID,
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, []string{})
+	//extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, []string{})
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, []string{"http://192.168.1.39:9650", "http://127.0.0.1:9650"})
 	if err != nil {
 		return err
 	}
@@ -432,7 +436,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 	var nodeIDStr string
 	// get node data
-	nodeInfo, err := node.GetNodeInfo(clusterName)
+	nodeInfo, err := node.GetNodeInfo("node1")
 	if err != nil {
 		return err
 	}
