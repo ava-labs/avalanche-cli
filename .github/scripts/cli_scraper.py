@@ -242,12 +242,13 @@ def main():
     cli_structure = get_command_structure(cli_tool, max_depth=max_depth)
     if cli_structure:
         # Save JSON
-        with open("cli_structure.json", "w", encoding="utf-8") as json_file:
-            json.dump(cli_structure, json_file, indent=4)
-        print("CLI structure saved to cli_structure.json")
+       
+        # with open("cli_structure.json", "w", encoding="utf-8") as json_file:
+          # json.dump(cli_structure, json_file, indent=4)
+        # print("CLI structure saved to cli_structure.json")
 
         # Generate Markdown
-        generate_markdown(cli_structure, cli_tool, "cli_structure.md")
+        generate_markdown(cli_structure, cli_tool, "cmd/commands.md")
         print("Markdown documentation saved to cli_structure.md")
     else:
         print("[ERROR] Failed to retrieve CLI structure")
