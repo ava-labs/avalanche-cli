@@ -25,12 +25,7 @@ import (
 )
 
 var (
-	globalNetworkFlags                  networkoptions.NetworkFlags
-	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-		networkoptions.Devnet,
-	}
+	globalNetworkFlags           networkoptions.NetworkFlags
 	keyName                      string
 	useLedger                    bool
 	ledgerAddresses              []string
@@ -60,7 +55,7 @@ in the Primary Network`,
 		RunE: addValidator,
 		Args: cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, addValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.NonLocalSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
@@ -125,7 +120,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		addValidatorSupportedNetworkOptions,
+		networkoptions.NonLocalSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

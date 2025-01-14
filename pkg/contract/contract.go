@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -252,7 +252,7 @@ func ParseSpec(
 	}
 	if event {
 		for i := range inputsMaps {
-			if utils.Belongs(indexedFields, i) {
+			if sdkUtils.Belongs(indexedFields, i) {
 				inputsMaps[i]["indexed"] = true
 			}
 		}

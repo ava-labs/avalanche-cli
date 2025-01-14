@@ -42,14 +42,7 @@ const (
 	cChainName  = "c-chain"
 )
 
-var (
-	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-	}
-	deployFlags DeployFlags
-)
+var deployFlags DeployFlags
 
 // avalanche interchain messenger deploy
 func NewDeployCmd() *cobra.Command {
@@ -60,7 +53,7 @@ func NewDeployCmd() *cobra.Command {
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	deployFlags.PrivateKeyFlags.AddToCmd(cmd, "to fund ICM deploy")
 	deployFlags.ChainFlags.SetEnabled(true, true, false, false, true)
 	deployFlags.ChainFlags.AddToCmd(cmd, "deploy ICM into %s")
@@ -91,7 +84,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			flags.Network,
 			true,
 			false,
-			deploySupportedNetworkOptions,
+			networkoptions.DefaultSupportedNetworkOptions,
 			"",
 		)
 		if err != nil {

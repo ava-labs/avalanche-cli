@@ -336,4 +336,6 @@ const (
 
 	// Aggregator
 	DefaultAggregatorLogLevel = "Debug"
+
+	MaxL1TotalWeightChange = 0.2
 )
