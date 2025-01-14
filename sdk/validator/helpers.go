@@ -1,6 +1,6 @@
 // Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package validatormanager
+package validator
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
@@ -62,7 +63,7 @@ func GetValidatorInfo(net network.Network, validationID ids.ID) (platformvm.L1Va
 }
 
 func GetValidationID(rpcURL string, nodeID ids.NodeID) (ids.ID, error) {
-	managerAddress := common.HexToAddress(ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	return GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 }
 

@@ -15,7 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -44,7 +45,7 @@ func InitializeValidatorRemoval(
 				managerAddress,
 				big.NewInt(0),
 				"force POS validator removal",
-				validatorManagerSDK.ErrorSignatureToError,
+				validatormanager.ErrorSignatureToError,
 				"forceInitializeEndValidation(bytes32,bool,uint32)",
 				validationID,
 				false, // no uptime proof if force
@@ -59,7 +60,7 @@ func InitializeValidatorRemoval(
 			uptimeProofSignedMessage,
 			big.NewInt(0),
 			"POS validator removal with uptime proof",
-			validatorManagerSDK.ErrorSignatureToError,
+			validatormanager.ErrorSignatureToError,
 			"initializeEndValidation(bytes32,bool,uint32)",
 			validationID,
 			true, // submit uptime proof
@@ -73,7 +74,7 @@ func InitializeValidatorRemoval(
 		managerAddress,
 		big.NewInt(0),
 		"POA validator removal initialization",
-		validatorManagerSDK.ErrorSignatureToError,
+		validatormanager.ErrorSignatureToError,
 		"initializeEndValidation(bytes32)",
 		validationID,
 	)
@@ -199,8 +200,8 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-	validationID, err := validatorManagerSDK.GetRegisteredValidator(
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	validationID, err := validator.GetRegisteredValidator(
 		rpcURL,
 		managerAddress,
 		nodeID,
@@ -245,7 +246,7 @@ func InitValidatorRemoval(
 		force,
 	)
 	if err != nil {
-		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
+		if !errors.Is(err, validatormanager.ErrInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 		}
 		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
@@ -281,7 +282,7 @@ func CompleteValidatorRemoval(
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
 		"complete poa validator removal",
-		validatorManagerSDK.ErrorSignatureToError,
+		validatormanager.ErrorSignatureToError,
 		"completeEndValidation(uint32)",
 		uint32(0),
 	)
@@ -298,7 +299,7 @@ func FinishValidatorRemoval(
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 ) error {
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,

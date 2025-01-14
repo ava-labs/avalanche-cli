@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
@@ -117,7 +117,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	isValidator, err := validatorManagerSDK.IsValidator(network.SDKNetwork(), subnetID, nodeID)
+	isValidator, err := validator.IsValidator(network.SDKNetwork(), subnetID, nodeID)
 	if err != nil {
 		// just warn the user, don't fail
 		ux.Logger.PrintToUser("failed to check if node is a validator: %s", err)
@@ -143,17 +143,17 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	validationID, err := validatorManagerSDK.GetValidationID(rpcURL, nodeID)
+	validationID, err := validator.GetValidationID(rpcURL, nodeID)
 	if err != nil {
 		return err
 	}
 
-	vdrInfo, err := validatorManagerSDK.GetValidatorInfo(network.SDKNetwork(), validationID)
+	vdrInfo, err := validator.GetValidatorInfo(network.SDKNetwork(), validationID)
 	if err != nil {
 		return err
 	}
 
-	totalWeight, err := validatorManagerSDK.GetTotalWeight(network.SDKNetwork(), subnetID)
+	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
 	if err != nil {
 		return err
 	}

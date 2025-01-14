@@ -27,7 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -418,7 +418,7 @@ func CallAddValidator(
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
-	totalWeight, err := validatorManagerSDK.GetTotalWeight(network.SDKNetwork(), subnetID)
+	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
 	if err != nil {
 		return err
 	}

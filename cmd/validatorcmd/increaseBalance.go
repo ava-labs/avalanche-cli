@@ -5,15 +5,14 @@ package validatorcmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-
-	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/spf13/cobra"
@@ -104,7 +103,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	deployer.CleanCacheWallet()
-	balance, err = validatorManagerSDK.GetValidatorBalance(network.SDKNetwork(), validationID)
+	balance, err = validator.GetValidatorBalance(network.SDKNetwork(), validationID)
 	if err != nil {
 		return err
 	}

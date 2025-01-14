@@ -11,7 +11,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -87,7 +88,7 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),
@@ -103,18 +104,17 @@ func list(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		validator := validators[nodeID]
 		balance := uint64(0)
-		validationID, err := validatorManagerSDK.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err := validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
 		} else {
-			balance, err = validatorManagerSDK.GetValidatorBalance(network.SDKNetwork(), validationID)
+			balance, err = validator.GetValidatorBalance(network.SDKNetwork(), validationID)
 			if err != nil {
 				ux.Logger.RedXToUser("could not get balance for node %s due to %s", nodeID, err)
 			}
 		}
-		t.AppendRow(table.Row{nodeID, validationID, validator.Weight, float64(balance) / float64(units.Avax)})
+		t.AppendRow(table.Row{nodeID, validationID, validators[nodeID].Weight, float64(balance) / float64(units.Avax)})
 	}
 	fmt.Println(t.Render())
 	return nil
