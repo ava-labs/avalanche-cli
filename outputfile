@@ -1,14 +1,0 @@
-[?25l[2K[2mUse the arrow keys to navigate:[0m [2m↓[0m [2m↑[0m [2m→[0m [2m←[0m 
-[2K[34m?[0m Choose a network for the operation: 
-[2K  [1m▸[0m [4mLocal Network[0m
-[2K    Devnet
-[2K    Fuji Testnet
-[2K    Mainnet
-[J[2K [J[2K [J[2K [1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[1A[2K[2K
-[?25h[1A[2K[2mUse the arrow keys to navigate:[0m [2m↓[0m [2m↑[0m [2m→[0m [2m←[0m [1B[2K[34m?[0m Choose a network for the operation: 
-[2K  [1m▸[0m [4mLocal Network[0m
-[2K    Devnet
-[2K    Fuji Testnet
-[2K    Mainnet
-[J[2K [KError: ^C
-[J[2K
