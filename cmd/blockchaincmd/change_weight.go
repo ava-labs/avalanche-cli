@@ -148,7 +148,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	vdrInfo, err := validator.GetValidatorInfo(network.SDKNetwork(), validationID)
+	validatorInfo, err := validator.GetValidatorInfo(network.SDKNetwork(), validationID)
 	if err != nil {
 		return err
 	}
@@ -160,14 +160,14 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
 
-	if float64(vdrInfo.Weight) > allowedChange {
-		return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", vdrInfo.Weight, uint64(allowedChange))
+	if float64(validatorInfo.Weight) > allowedChange {
+		return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
 	}
 
-	allowedChange = float64(totalWeight-vdrInfo.Weight) * constants.MaxL1TotalWeightChange
+	allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
 
 	if newWeight == 0 {
-		ux.Logger.PrintToUser("Current validator weight is %d", vdrInfo.Weight)
+		ux.Logger.PrintToUser("Current validator weight is %d", validatorInfo.Weight)
 		newWeight, err = app.Prompt.CaptureWeight(
 			"What weight would you like to assign to the validator?",
 			func(v uint64) error {
@@ -186,7 +186,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
 	}
 
-	publicKey, err = formatting.Encode(formatting.HexNC, bls.PublicKeyToCompressedBytes(vdrInfo.PublicKey))
+	publicKey, err = formatting.Encode(formatting.HexNC, bls.PublicKeyToCompressedBytes(validatorInfo.PublicKey))
 	if err != nil {
 		return err
 	}
@@ -202,14 +202,14 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	var remainingBalanceOwnerAddr, disableOwnerAddr string
 	hrp := key.GetHRP(network.ID)
-	if len(vdrInfo.RemainingBalanceOwner.Addrs) > 0 {
-		remainingBalanceOwnerAddr, err = address.Format("P", hrp, vdrInfo.RemainingBalanceOwner.Addrs[0][:])
+	if validatorInfo.RemainingBalanceOwner != nil && len(validatorInfo.RemainingBalanceOwner.Addrs) > 0 {
+		remainingBalanceOwnerAddr, err = address.Format("P", hrp, validatorInfo.RemainingBalanceOwner.Addrs[0][:])
 		if err != nil {
 			return err
 		}
 	}
-	if len(vdrInfo.DeactivationOwner.Addrs) > 0 {
-		disableOwnerAddr, err = address.Format("P", hrp, vdrInfo.DeactivationOwner.Addrs[0][:])
+	if validatorInfo.DeactivationOwner != nil && len(validatorInfo.DeactivationOwner.Addrs) > 0 {
+		disableOwnerAddr, err = address.Format("P", hrp, validatorInfo.DeactivationOwner.Addrs[0][:])
 		if err != nil {
 			return err
 		}
@@ -229,13 +229,12 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	balance := vdrInfo.Balance
-	if len(vdrInfo.RemainingBalanceOwner.Addrs) > 0 {
-		availableBalance, err := utils.GetNetworkBalance([]ids.ShortID{vdrInfo.RemainingBalanceOwner.Addrs[0]}, network.Endpoint)
+	balance := validatorInfo.Balance
+	if validatorInfo.RemainingBalanceOwner != nil && len(validatorInfo.RemainingBalanceOwner.Addrs) > 0 {
+		availableBalance, err := utils.GetNetworkBalance([]ids.ShortID{validatorInfo.RemainingBalanceOwner.Addrs[0]}, network.Endpoint)
 		if err != nil {
-			return err
-		}
-		if availableBalance < balance {
+			ux.Logger.RedXToUser("failure checking remaining balance of validator: %s. continuing with default value", err)
+		} else if availableBalance < balance {
 			balance = availableBalance
 		}
 	}

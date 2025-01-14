@@ -81,8 +81,11 @@ func GetRegisteredValidator(
 	if err != nil {
 		return ids.Empty, err
 	}
-	validatorID, b := out[0].([32]byte)
-	if !b {
+	if len(out) == 0 {
+		return ids.Empty, fmt.Errorf("error at registeredValidators call, no value returned")
+	}
+	validatorID, typeIsOk := out[0].([32]byte)
+	if !typeIsOk {
 		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
 	}
 	return validatorID, nil
