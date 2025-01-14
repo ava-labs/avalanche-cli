@@ -460,7 +460,7 @@ func CallAddValidator(
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
-		"signature-aggregator",
+		constants.SignatureAggregatorLogName,
 		aggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterNameFlagValue),

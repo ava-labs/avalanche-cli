@@ -161,7 +161,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
-		"signature-aggregator",
+		constants.SignatureAggregatorLogName,
 		validatorManagerFlags.aggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),

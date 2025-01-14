@@ -55,7 +55,6 @@ var (
 	stakeAmount               uint64
 	rpcURL                    string
 	balance                   uint64
-	clusterNameFlagValue      string
 	remainingBalanceOwnerAddr string
 	disableOwnerAddr          string
 	aggregatorLogLevel        string
@@ -69,11 +68,9 @@ var (
 func newLocalCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "local",
-		Short: "(ALPHA Warning) Suite of commands for a local avalanche node",
-		Long: `(ALPHA Warning) This command is currently in experimental mode.
-
-The node local command suite provides a collection of commands related to local nodes`,
-		RunE: cobrautils.CommandSuiteUsage,
+		Short: "Suite of commands for a local avalanche node",
+		Long:  `The node local command suite provides a collection of commands related to local nodes`,
+		RunE:  cobrautils.CommandSuiteUsage,
 	}
 	// node local start
 	cmd.AddCommand(newLocalStartCmd())
@@ -93,17 +90,13 @@ The node local command suite provides a collection of commands related to local 
 func newLocalStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start [clusterName]",
-		Short: "(ALPHA Warning) Create a new validator on local machine",
-		Long: `(ALPHA Warning) This command is currently in experimental mode. 
-
-The node local start command sets up a validator on a local server. 
-The validator will be validating the Avalanche Primary Network and Subnet 
-of your choice. By default, the command runs an interactive wizard. It 
-walks you through all the steps you need to set up a validator.
-Once this command is completed, you will have to wait for the validator
+		Short: "Create new Avalanche nodes on local machine",
+		Long: `The node local start command creates Avalanche nodes on the local machine.
+Once this command is completed, you will have to wait for the Avalanche node
 to finish bootstrapping on the primary network before running further
-commands on it, e.g. validating a Subnet. You can check the bootstrapping
-status by running avalanche node status local 
+commands on it, e.g. validating a Subnet. 
+
+You can check the bootstrapping status by running avalanche node status local.
 `,
 		Args:              cobra.ExactArgs(1),
 		RunE:              localStartNode,
@@ -121,7 +114,7 @@ status by running avalanche node status local
 	cmd.Flags().StringVar(&stakingTLSKeyPath, "staking-tls-key-path", "", "path to provided staking tls key for node")
 	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
 	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
-	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of nodes to start")
+	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of Avalanche nodes to create on local machine")
 	cmd.Flags().StringVar(&nodeConfigPath, "node-config", "", "path to common avalanchego config settings for all nodes")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
 	return cmd
@@ -130,7 +123,7 @@ status by running avalanche node status local
 func newLocalStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop",
-		Short: "(ALPHA Warning) Stop local node",
+		Short: "Stop local node",
 		Long:  `Stop local node.`,
 		Args:  cobra.ExactArgs(0),
 		RunE:  localStopNode,
@@ -140,8 +133,8 @@ func newLocalStopCmd() *cobra.Command {
 func newLocalTrackCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "track [clusterName] [blockchainName]",
-		Short: "(ALPHA Warning) make the local node at the cluster to track given blockchain",
-		Long:  "(ALPHA Warning) make the local node at the cluster to track given blockchain",
+		Short: "Track specified blockchain with local node",
+		Long:  "Track specified blockchain with local node",
 		Args:  cobra.ExactArgs(2),
 		RunE:  localTrack,
 	}
@@ -155,7 +148,7 @@ func newLocalTrackCmd() *cobra.Command {
 func newLocalDestroyCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "destroy [clusterName]",
-		Short: "(ALPHA Warning) Cleanup local node",
+		Short: "Cleanup local node",
 		Long:  `Cleanup local node.`,
 		Args:  cobra.ExactArgs(1),
 		RunE:  localDestroyNode,
@@ -165,13 +158,13 @@ func newLocalDestroyCmd() *cobra.Command {
 func newLocalStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "(ALPHA Warning) Get status of local node",
+		Short: "Get status of local node",
 		Long:  `Get status of local node.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE:  localStatus,
 	}
 
-	cmd.Flags().StringVar(&blockchainName, "subnet", "", "specify the blockchain the node is syncing with")
+	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 
 	return cmd
@@ -273,31 +266,33 @@ func notImplementedForLocal(what string) error {
 
 func newLocalValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "validate",
-		Short: "(ALPHA Warning) Get status of local node",
+		Use:   "validate [clusterName]",
+		Short: "Validate",
 		Long:  `Get status of local node.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE:  localValidate,
 	}
 
-	cmd.Flags().StringVar(&blockchainName, "subnet", "", "specify the blockchain the node is syncing with")
+	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee on P-Chain")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
-	// TODO: do we need these below?
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 
 	return cmd
 }
 
-func localValidate(_ *cobra.Command, _ []string) error {
-	//clusterName := ""
-	//if len(args) > 0 {
-	//	clusterName = args[0]
-	//}
+func localValidate(_ *cobra.Command, args []string) error {
+	clusterName := ""
+	if len(args) > 0 {
+		clusterName = args[0]
+	}
+	if ok, err := node.CheckClusterIsLocal(app, clusterName); err != nil || !ok {
+		return fmt.Errorf("local cluster %q not found, please create it first using avalanche node local start %q", clusterName, clusterName)
+	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -343,27 +338,20 @@ func localValidate(_ *cobra.Command, _ []string) error {
 			return err
 		}
 	}
-	duration = genesis.FujiParams.MinStakeDuration
 
-	//ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
-	chainSpec := contract.ChainSpec{
-		BlockchainID: "nc7fQAY6xwJAPKMk1RafDnDke5uL2BXUHUH7AiHMouRjXT7Ce",
-	}
 	if rpcURL == "" {
-		//rpcURL, _, err = contract.GetBlockchainEndpoints(
-		//	app,
-		//	models.NewFujiNetwork(),
-		//	chainSpec,
-		//	true,
-		//	false,
-		//)
 		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
 			return err
 		}
 	}
-
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(rpcURL)
+	if err != nil {
+		return err
+	}
+	chainSpec := contract.ChainSpec{
+		BlockchainID: blockchainID,
+	}
 
 	if balance == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
@@ -418,16 +406,15 @@ func localValidate(_ *cobra.Command, _ []string) error {
 		Addresses: disableOwnerAddrID,
 	}
 
-	//extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, []string{})
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, []string{"http://192.168.1.39:9650", "http://127.0.0.1:9650"})
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, []string{})
 	if err != nil {
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
-		"signature-aggregator",
+		constants.SignatureAggregatorLogName,
 		aggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
-		app.GetAggregatorLogDir(clusterNameFlagValue),
+		app.GetAggregatorLogDir(clusterName),
 		aggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
@@ -459,9 +446,9 @@ func localValidate(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 	payerPrivateKey := ""
-	ux.Logger.PrintToUser("A private key is needed to pay for the contract deploy fees.")
-	ux.Logger.PrintToUser("It will also be considered the owner address of the contract, beign able to call")
-	ux.Logger.PrintToUser("the contract methods only available to owners.")
+	ux.Logger.PrintToUser("A private key is needed to pay for the contract deployment fees.")
+	ux.Logger.PrintToUser("The key will also be set as the owner address of the contract, which will be able to call")
+	ux.Logger.PrintToUser("the contract methods available only to owners.")
 	payerPrivateKey, err = prompts.PromptPrivateKey(
 		app.Prompt,
 		"deploy the contract",
@@ -484,13 +471,13 @@ func localValidate(_ *cobra.Command, _ []string) error {
 		expiry,
 		remainingBalanceOwners,
 		disableOwners,
-		weight,
+		0,
 		extraAggregatorPeers,
 		true,
 		aggregatorLogger,
 		true,
 		delegationFee,
-		duration,
+		genesis.FujiParams.MinStakeDuration,
 		big.NewInt(int64(stakeAmount)),
 	)
 	if err != nil {
@@ -514,7 +501,7 @@ func localValidate(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	return validatormanager.FinishValidatorRegistration(
+	if err := validatormanager.FinishValidatorRegistration(
 		app,
 		network,
 		rpcURL,
@@ -524,5 +511,13 @@ func localValidate(_ *cobra.Command, _ []string) error {
 		extraAggregatorPeers,
 		true,
 		aggregatorLogger,
-	)
+	); err != nil {
+		return err
+	}
+
+	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
+	ux.Logger.PrintToUser("  Network: %s", network.Name())
+	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
+	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
+	return nil
 }

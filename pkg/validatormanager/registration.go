@@ -390,7 +390,7 @@ func InitValidatorRegistration(
 		ux.Logger.PrintLineSeparator()
 		ux.Logger.PrintToUser("Initializing a validator registration with PoS validator manager")
 		ux.Logger.PrintToUser("Using rpcURL: %s", rpcURL)
-		ux.Logger.PrintToUser("NodeID: %s staking %s for %ds", nodeID.String(), stakeAmount, uint64(stakeDuration.Seconds()))
+		ux.Logger.PrintToUser("NodeID: %s staking %s", nodeID.String(), stakeAmount)
 		ux.Logger.PrintLineSeparator()
 		tx, _, err := InitializeValidatorRegistrationPoSNative(
 			rpcURL,
@@ -444,9 +444,11 @@ func InitValidatorRegistration(
 			ux.Logger.PrintToUser("Error getting validator weight")
 			return nil, ids.Empty, err
 		}
+	} else {
+		// Print validator weight for POA only
+		ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
 	}
 
-	ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
 	return GetSubnetValidatorRegistrationMessage(
 		rpcURL,
 		network,

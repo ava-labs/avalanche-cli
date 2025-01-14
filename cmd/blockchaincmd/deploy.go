@@ -1076,7 +1076,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				BootstrapValidators: avaGoBootstrapValidators,
 			}
 			aggregatorLogger, err := utils.NewLogger(
-				"signature-aggregator",
+				constants.SignatureAggregatorLogName,
 				aggregatorLogLevel,
 				constants.DefaultAggregatorLogLevel,
 				app.GetAggregatorLogDir(clusterName),

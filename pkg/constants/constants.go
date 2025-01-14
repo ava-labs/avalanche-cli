@@ -335,5 +335,6 @@ const (
 	ValidatorUptimeDeductible       = uint64(10) // seconds to make sure all L1 validators would agree on uptime
 
 	// Aggregator
-	DefaultAggregatorLogLevel = "Debug"
+	DefaultAggregatorLogLevel  = "Debug"
+	SignatureAggregatorLogName = "signature-aggregator"
 )
