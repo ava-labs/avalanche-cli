@@ -267,10 +267,13 @@ func notImplementedForLocal(what string) error {
 func newLocalValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate [clusterName]",
-		Short: "Validate",
-		Long:  `Get status of local node.`,
-		Args:  cobra.MaximumNArgs(1),
-		RunE:  localValidate,
+		Short: "Validate a specified L1 with an Avalanche Node set up on local machine (PoS only)",
+		Long: `Use Avalanche Node set up on local machine to set up specified L1 by providing the
+RPC URL of the L1. 
+
+This command can only be used to validate Proof of Stake L1.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: localValidate,
 	}
 
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
@@ -421,6 +424,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	var nodeIDStr string
 	// get node data
 	nodeInfo, err := node.GetNodeInfo("node1")
