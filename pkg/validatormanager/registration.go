@@ -16,7 +16,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/proto/pb/platformvm"
@@ -84,7 +85,7 @@ func InitializeValidatorRegistrationPoSNative(
 		managerAddress,
 		stakeAmount,
 		"initialize validator registration with stake",
-		validatorManagerSDK.ErrorSignatureToError,
+		validatormanager.ErrorSignatureToError,
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint16,uint64)",
 		validatorRegistrationInput,
 		delegationFeeBips,
@@ -140,7 +141,7 @@ func InitializeValidatorRegistrationPoA(
 		managerAddress,
 		big.NewInt(0),
 		"initialize validator registration",
-		validatorManagerSDK.ErrorSignatureToError,
+		validatormanager.ErrorSignatureToError,
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
 		validatorRegistrationInput,
 		weight,
@@ -150,7 +151,7 @@ func InitializeValidatorRegistrationPoA(
 func GetSubnetValidatorRegistrationMessage(
 	rpcURL string,
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -171,7 +172,7 @@ func GetSubnetValidatorRegistrationMessage(
 		err                                    error
 	)
 	if alreadyInitialized {
-		validationID, err = GetRegisteredValidator(
+		validationID, err = validator.GetRegisteredValidator(
 			rpcURL,
 			managerAddress,
 			nodeID,
@@ -222,7 +223,7 @@ func GetSubnetValidatorRegistrationMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,
@@ -233,27 +234,6 @@ func GetSubnetValidatorRegistrationMessage(
 	}
 	signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
 	return signedMessage, validationID, err
-}
-
-func GetRegisteredValidator(
-	rpcURL string,
-	managerAddress common.Address,
-	nodeID ids.NodeID,
-) (ids.ID, error) {
-	out, err := contract.CallToMethod(
-		rpcURL,
-		managerAddress,
-		"registeredValidators(bytes)->(bytes32)",
-		nodeID[:],
-	)
-	if err != nil {
-		return ids.Empty, err
-	}
-	validatorID, b := out[0].([32]byte)
-	if !b {
-		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
-	}
-	return validatorID, nil
 }
 
 func GetValidatorWeight(
@@ -280,7 +260,7 @@ func GetValidatorWeight(
 func GetPChainSubnetValidatorRegistrationWarpMessage(
 	network models.Network,
 	rpcURL string,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -309,7 +289,7 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,
@@ -342,7 +322,7 @@ func CompleteValidatorRegistration(
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
 		"complete validator registration",
-		validatorManagerSDK.ErrorSignatureToError,
+		validatormanager.ErrorSignatureToError,
 		"completeValidatorRegistration(uint32)",
 		uint32(0),
 	)
@@ -362,7 +342,7 @@ func InitValidatorRegistration(
 	weight uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 	initWithPos bool,
 	delegationFee uint16,
 	stakeDuration time.Duration,
@@ -384,7 +364,7 @@ func InitValidatorRegistration(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	alreadyInitialized := false
 	if initWithPos {
 		ux.Logger.PrintLineSeparator()
@@ -406,14 +386,14 @@ func InitValidatorRegistration(
 			stakeAmount,
 		)
 		if err != nil {
-			if !errors.Is(err, validatorManagerSDK.ErrNodeAlreadyRegistered) {
+			if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
-			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
 		}
 	} else {
-		managerAddress = common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+		managerAddress = common.HexToAddress(validatormanager.ProxyContractAddress)
 		tx, _, err := InitializeValidatorRegistrationPoA(
 			rpcURL,
 			managerAddress,
@@ -426,19 +406,15 @@ func InitValidatorRegistration(
 			weight,
 		)
 		if err != nil {
-			if !errors.Is(err, validatorManagerSDK.ErrNodeAlreadyRegistered) {
+			if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
 				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
-			ux.Logger.PrintToUser("the validator registration was already initialized. Proceeding to the next step")
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
 		}
 	}
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	if initWithPos {
-		validationID, err := GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err := validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			ux.Logger.PrintToUser("Error getting validation ID")
 			return nil, ids.Empty, err
@@ -454,7 +430,7 @@ func InitValidatorRegistration(
 	return GetSubnetValidatorRegistrationMessage(
 		rpcURL,
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -480,7 +456,7 @@ func FinishValidatorRegistration(
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 ) error {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -490,15 +466,11 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return err
 	}
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -513,7 +485,7 @@ func FinishValidatorRegistration(
 		rpcURL,
 		privateKey,
 	); err != nil {
-		return err
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
 	tx, _, err := CompleteValidatorRegistration(
 		rpcURL,
@@ -522,7 +494,11 @@ func FinishValidatorRegistration(
 		signedMessage,
 	)
 	if err != nil {
-		return evm.TransactionError(tx, err, "failure completing validator registration")
+		if !errors.Is(err, validatormanager.ErrInvalidValidationID) {
+			return evm.TransactionError(tx, err, "failure completing validator registration")
+		} else {
+			return fmt.Errorf("the Validator was already fully registered on the Manager")
+		}
 	}
 	return nil
 }

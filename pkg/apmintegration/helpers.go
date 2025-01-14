@@ -68,7 +68,7 @@ func MakeKey(alias, subnet string) string {
 func splitKey(subnetKey string) (string, string, error) {
 	splitSubnet := strings.Split(subnetKey, ":")
 	if len(splitSubnet) != 2 {
-		return "", "", fmt.Errorf("invalid subnet key: %s", subnetKey)
+		return "", "", fmt.Errorf("invalid key: %s", subnetKey)
 	}
 	repo := splitSubnet[0]
 	subnetName := splitSubnet[1]

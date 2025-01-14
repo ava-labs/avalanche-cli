@@ -59,10 +59,10 @@ func NewRootCmd() *cobra.Command {
 		Use: "avalanche",
 		Long: `Avalanche-CLI is a command-line tool that gives developers access to
 everything Avalanche. This release specializes in helping developers
-build and test Subnets.
+build and test Blockchain networks.
 
 To get started, look at the documentation for the subcommands or jump right
-in with avalanche subnet create myNewSubnet.`,
+in with avalanche blockchain create myNewBlockchain.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
 		PersistentPostRun: handleTracking,
@@ -119,21 +119,6 @@ in with avalanche subnet create myNewSubnet.`,
 	subcmd.Use = "ictt"
 	subcmd.Short = "Manage Interchain Token Transferrers (shorthand for `interchain TokenTransferrer`)"
 	subcmd.Long = "The ictt command suite provides tools to deploy and manage Interchain Token Transferrers."
-	rootCmd.AddCommand(subcmd)
-
-	// add subnet command
-	subcmd = blockchaincmd.NewCmd(app)
-	subcmd.Use = "subnet"
-	subcmd.Short = "Create and deploy blockchains (deprecation notice: use 'avalanche blockchain')"
-	subcmd.Long = `The subnet command suite provides a collection of tools for developing
-and deploying Blockchains.
-
-To get started, use the subnet create command wizard to walk through the
-configuration of your very first Blockchain. Then, go ahead and deploy it
-with the subnet deploy command. You can use the rest of the commands to
-manage your Blockchain configurations and live deployments.
-
-Deprecation notice: use 'avalanche blockchain'`
 	rootCmd.AddCommand(subcmd)
 
 	// add contract command

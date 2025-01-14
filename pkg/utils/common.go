@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/subnet-evm/core"
@@ -77,17 +78,22 @@ func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, 
 
 // Context for ANR network operations
 func GetANRContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
+	return GetTimedContext(constants.ANRRequestTimeout)
 }
 
 // Context for API requests
 func GetAPIContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.APIRequestTimeout)
+	return GetTimedContext(constants.APIRequestTimeout)
 }
 
 // Context for API requests with large timeout
 func GetAPILargeContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+	return GetTimedContext(constants.APIRequestLargeTimeout)
+}
+
+// Timed Context
+func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), timeout)
 }
 
 func GetRealFilePath(path string) string {
@@ -114,15 +120,6 @@ func Find[T any](input []T, f func(T) bool) *T {
 		}
 	}
 	return nil
-}
-
-func Belongs[T comparable](input []T, elem T) bool {
-	for _, e := range input {
-		if e == elem {
-			return true
-		}
-	}
-	return false
 }
 
 func RemoveFromSlice[T comparable](input []T, toRemove T) []T {
@@ -571,4 +568,56 @@ func IsValidSemanticVersion(version string, component string) bool {
 		return semver.IsValid(versionTail)
 	}
 	return true
+}
+
+// PrintUnreportedErrors takes a list of errors obtained by a routine, and the main error
+// it is going to report, and prints to the user the unreported errors only,
+// avoiding duplications
+func PrintUnreportedErrors(
+	errors []error,
+	returnedError error,
+	print func(string, ...interface{}),
+) {
+	if returnedError == nil {
+		return
+	}
+	errSet := set.Set[string]{}
+	errSet.Add(returnedError.Error())
+	for _, err := range errors {
+		if !errSet.Contains(err.Error()) {
+			print(err.Error())
+			errSet.Add(err.Error())
+		}
+	}
+}
+
+func NewLogger(
+	logName string,
+	logLevelStr string,
+	defaultLogLevelStr string,
+	logDir string,
+	logToStdout bool,
+	print func(string, ...interface{}),
+) (logging.Logger, error) {
+	logLevel, err := logging.ToLevel(logLevelStr)
+	if err != nil {
+		if logLevelStr != "" {
+			print("undefined logLevel %s. Setting %s log to %s", logLevelStr, logName, defaultLogLevelStr)
+		}
+		logLevel, err = logging.ToLevel(defaultLogLevelStr)
+		if err != nil {
+			return logging.NoLog{}, err
+		}
+	}
+	logConfig := logging.Config{
+		RotatingWriterConfig: logging.RotatingWriterConfig{
+			Directory: logDir,
+		},
+		LogLevel: logLevel,
+	}
+	if logToStdout {
+		logConfig.DisplayLevel = logLevel
+	}
+	logFactory := logging.NewFactory(logConfig)
+	return logFactory.Make(logName)
 }

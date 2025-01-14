@@ -182,5 +182,5 @@ func TestSplitKey_Errpr(t *testing.T) {
 	key := "ava-labs/avalanche-plugins-core_wagmi"
 
 	_, _, err := splitKey(key)
-	require.ErrorContains(err, "invalid subnet key:")
+	require.ErrorContains(err, "invalid key:")
 }

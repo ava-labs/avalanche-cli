@@ -28,7 +28,7 @@ func CreateCustomSidecar(
 	tokenSymbol string,
 	sovereign bool,
 ) (*models.Sidecar, error) {
-	ux.Logger.PrintToUser("creating custom VM subnet %s", subnetName)
+	ux.Logger.PrintToUser("creating custom VM blockchain %s", subnetName)
 
 	if sc == nil {
 		sc = &models.Sidecar{}

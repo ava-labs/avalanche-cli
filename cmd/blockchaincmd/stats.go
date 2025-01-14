@@ -22,13 +22,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var statsSupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
 // avalanche blockchain stats
 func newStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -38,7 +31,7 @@ func newStatsCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(1),
 		RunE:  stats,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, statsSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	return cmd
 }
 
@@ -49,7 +42,7 @@ func stats(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		statsSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
@@ -69,7 +62,7 @@ func stats(_ *cobra.Command, args []string) error {
 
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
-		return errors.New("no subnetID found for the provided subnet name; has this subnet actually been deployed to this network?")
+		return errors.New("no subnetID found for the provided blockchain name; has this blockchain actually been deployed to this network?")
 	}
 
 	pClient, infoClient := findAPIEndpoint(network)

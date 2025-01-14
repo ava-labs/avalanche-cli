@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -24,8 +26,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/publicarchive"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 )
 
@@ -104,7 +110,7 @@ func CheckHostsAreRPCCompatible(app *application.Avalanche, hosts []*models.Host
 		case models.SubnetEvm:
 			ux.Logger.PrintToUser("To modify your Subnet-EVM version: https://docs.avax.network/build/subnet/upgrade/upgrade-subnet-vm")
 		case models.CustomVM:
-			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche subnet upgrade vm %s --config", subnetName)
+			ux.Logger.PrintToUser("To modify your Custom VM binary: avalanche blockchain upgrade vm %s --config", subnetName)
 		}
 		ux.Logger.PrintToUser("Yoy can use \"avalanche node upgrade\" to upgrade Avalanche Go and/or Subnet-EVM to their latest versions")
 		return fmt.Errorf("the Avalanche Go version of node(s) %s is incompatible with VM RPC version of %s", incompatibleNodes, subnetName)
@@ -113,7 +119,7 @@ func CheckHostsAreRPCCompatible(app *application.Avalanche, hosts []*models.Host
 }
 
 func getRPCIncompatibleNodes(app *application.Avalanche, hosts []*models.Host, subnetName string) ([]string, error) {
-	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of subnet %s ...", subnetName)
+	ux.Logger.PrintToUser("Checking compatibility of node(s) avalanche go RPC protocol version with Subnet EVM RPC of blockchain %s ...", subnetName)
 	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return nil, err
@@ -191,7 +197,7 @@ func getPublicEndpoints(
 		publicNodes = clusterConfig.Nodes
 	}
 	publicTrackers := utils.Filter(trackers, func(tracker *models.Host) bool {
-		return utils.Belongs(publicNodes, tracker.GetCloudID())
+		return sdkUtils.Belongs(publicNodes, tracker.GetCloudID())
 	})
 	endpoints := utils.Map(publicTrackers, func(tracker *models.Host) string {
 		return GetAvalancheGoEndpoint(tracker.IP)
@@ -413,7 +419,7 @@ func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVer
 			if err == nil {
 				break
 			}
-			ux.Logger.PrintToUser(fmt.Sprintf("no subnet named %s found", useAvalanchegoVersionFromSubnet))
+			ux.Logger.PrintToUser(fmt.Sprintf("no blockchain named as %s found", useAvalanchegoVersionFromSubnet))
 		}
 		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
 	}
@@ -423,7 +429,7 @@ func GetLatestAvagoVersionForRPC(app *application.Avalanche, configuredRPCVersio
 	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
 		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
 	if errors.Is(err, vm.ErrNoAvagoVersion) {
-		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
+		ux.Logger.PrintToUser("No Avalanchego version found for blockchain. Defaulting to latest pre-release version")
 		return latestPreReleaseVersion, nil
 	}
 	if err != nil {
@@ -554,4 +560,76 @@ func GetNodeData(endpoint string) (
 		"0x" + hex.EncodeToString(proofOfPossession.PublicKey[:]),
 		"0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:]),
 		nil
+}
+
+func DownloadPublicArchive(
+	clusterNetwork models.Network,
+	rootDir string,
+	nodeNames []string,
+) error {
+	// only fuji is supported for now
+	if clusterNetwork.Kind != models.Fuji {
+		return fmt.Errorf("unsupported network: %s", clusterNetwork.Name())
+	}
+	network := network.FujiNetwork()
+	ux.Logger.Info("downloading public archive for network %s", clusterNetwork.Name())
+	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Off, os.Stdout, logging.JSON.ConsoleEncoder()))) // off as we run inside of the spinner
+	if err != nil {
+		return fmt.Errorf("failed to create public archive downloader for network %s: %w", clusterNetwork.Name(), err)
+	}
+
+	if err := publicArcDownloader.Download(); err != nil {
+		return fmt.Errorf("failed to download public archive: %w", err)
+	}
+	defer publicArcDownloader.CleanUp()
+	if path, err := publicArcDownloader.GetFilePath(); err != nil {
+		return fmt.Errorf("failed to get downloaded file path: %w", err)
+	} else {
+		ux.Logger.Info("public archive downloaded to %s", path)
+	}
+
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+	var firstErr error
+
+	for _, nodeName := range nodeNames {
+		target := filepath.Join(rootDir, nodeName, "db")
+		ux.Logger.Info("unpacking public archive to %s", target)
+
+		// Skip if target already exists
+		if _, err := os.Stat(target); err == nil {
+			ux.Logger.Info("data folder already exists at %s. Skipping...", target)
+			continue
+		}
+		wg.Add(1)
+		go func(target string) {
+			defer wg.Done()
+
+			if err := publicArcDownloader.UnpackTo(target); err != nil {
+				// Capture the first error encountered
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = fmt.Errorf("failed to unpack public archive: %w", err)
+					_ = cleanUpClusterNodeData(rootDir, nodeNames)
+				}
+				mu.Unlock()
+			}
+		}(target)
+	}
+	wg.Wait()
+
+	if firstErr != nil {
+		return firstErr
+	}
+	ux.Logger.PrintToUser("Public archive unpacked to: %s", rootDir)
+	return nil
+}
+
+func cleanUpClusterNodeData(rootDir string, nodesNames []string) error {
+	for _, nodeName := range nodesNames {
+		if err := os.RemoveAll(filepath.Join(rootDir, nodeName)); err != nil {
+			return err
+		}
+	}
+	return nil
 }

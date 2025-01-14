@@ -29,25 +29,18 @@ type MsgFlags struct {
 	DestRPCEndpoint    string
 }
 
-var (
-	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-	}
-	msgFlags MsgFlags
-)
+var msgFlags MsgFlags
 
 // avalanche interchain messenger sendMsg
 func NewSendMsgCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sendMsg [sourceBlockchainName] [destinationBlockchainName] [messageContent]",
-		Short: "Verifies exchange of ICM message between two subnets",
-		Long:  `Sends and wait reception for a ICM msg between two subnets.`,
+		Short: "Verifies exchange of ICM message between two blockchains",
+		Long:  `Sends and wait reception for a ICM msg between two blockchains.`,
 		RunE:  sendMsg,
 		Args:  cobrautils.ExactArgs(3),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	msgFlags.PrivateKeyFlags.AddToCmd(cmd, "as message originator and to pay source blockchain fees")
 	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
@@ -67,7 +60,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		msgFlags.Network,
 		true,
 		false,
-		msgSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
@@ -149,7 +142,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	}
 
 	if sourceMessengerAddress != destMessengerAddress {
-		return fmt.Errorf("different ICM messenger addresses among subnets: %s vs %s", sourceMessengerAddress, destMessengerAddress)
+		return fmt.Errorf("different ICM messenger addresses among blockchains: %s vs %s", sourceMessengerAddress, destMessengerAddress)
 	}
 
 	encodedMessage := []byte(message)
@@ -164,7 +157,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		destAddr = common.HexToAddress(msgFlags.DestinationAddress)
 	}
 	// send tx to the ICM contract at the source
-	ux.Logger.PrintToUser("Delivering message %q from source subnet %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
+	ux.Logger.PrintToUser("Delivering message %q from source blockchain %q (%s)", message, sourceBlockchainName, sourceBlockchainID)
 	tx, receipt, err := interchain.SendCrossChainMessage(
 		sourceRPCEndpoint,
 		common.HexToAddress(sourceMessengerAddress),
@@ -204,7 +197,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	}
 
 	// receive and process head from destination
-	ux.Logger.PrintToUser("Waiting for message to be delivered to destination subnet %q (%s)", destBlockchainName, destBlockchainID)
+	ux.Logger.PrintToUser("Waiting for message to be delivered to destination blockchain %q (%s)", destBlockchainName, destBlockchainID)
 
 	arrivalCheckInterval := 100 * time.Millisecond
 	arrivalCheckTimeout := 10 * time.Second

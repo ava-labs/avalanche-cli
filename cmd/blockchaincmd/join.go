@@ -23,12 +23,6 @@ import (
 )
 
 var (
-	joinSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-	}
 	// path to avalanchego config file
 	avagoConfigPath string
 	// path to avalanchego plugin dir
@@ -39,7 +33,7 @@ var (
 	printManual bool
 	// if true, doesn't ask for overwriting the config file
 	forceWrite bool
-	// for permissionless subnet only: how much subnet native token will be staked in the validator
+	// for permissionless subnet only: how muchnative token will be staked in the validator
 	stakeAmount uint64
 )
 
@@ -48,13 +42,13 @@ func newJoinCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "join [blockchainName]",
 		Short: "Configure your validator node to begin validating a new blockchain",
-		Long: `The subnet join command configures your validator node to begin validating a new Blockchain.
+		Long: `The blockchain join command configures your validator node to begin validating a new Blockchain.
 
 To complete this process, you must have access to the machine running your validator. If the
 CLI is running on the same machine as your validator, it can generate or update your node's
 config file automatically. Alternatively, the command can print the necessary instructions
-to update your node manually. To complete the validation process, the Subnet's admins must add
-the NodeID of your validator to the Subnet's allow list by calling addValidator with your
+to update your node manually. To complete the validation process, the Blockchain's admins must add
+the NodeID of your validator to the Blockchain's allow list by calling addValidator with your
 NodeID.
 
 After you update your validator's config, you need to restart your validator manually. If
@@ -65,7 +59,7 @@ This command currently only supports Blockchains deployed on the Fuji Testnet an
 		RunE: joinCmd,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, joinSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().StringVar(&dataDir, "data-dir", "", "path of avalanchego's data dir directory")
@@ -108,7 +102,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		joinSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

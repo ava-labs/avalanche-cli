@@ -5,6 +5,7 @@ package validatormanager
 import (
 	_ "embed"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -14,7 +15,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -43,7 +45,7 @@ func InitializeValidatorRemoval(
 				managerAddress,
 				big.NewInt(0),
 				"force POS validator removal",
-				validatorManagerSDK.ErrorSignatureToError,
+				validatormanager.ErrorSignatureToError,
 				"forceInitializeEndValidation(bytes32,bool,uint32)",
 				validationID,
 				false, // no uptime proof if force
@@ -58,7 +60,7 @@ func InitializeValidatorRemoval(
 			uptimeProofSignedMessage,
 			big.NewInt(0),
 			"POS validator removal with uptime proof",
-			validatorManagerSDK.ErrorSignatureToError,
+			validatormanager.ErrorSignatureToError,
 			"initializeEndValidation(bytes32,bool,uint32)",
 			validationID,
 			true, // submit uptime proof
@@ -72,7 +74,7 @@ func InitializeValidatorRemoval(
 		managerAddress,
 		big.NewInt(0),
 		"POA validator removal initialization",
-		validatorManagerSDK.ErrorSignatureToError,
+		validatormanager.ErrorSignatureToError,
 		"initializeEndValidation(bytes32)",
 		validationID,
 	)
@@ -80,7 +82,7 @@ func InitializeValidatorRemoval(
 
 func GetUptimeProofMessage(
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
@@ -106,7 +108,7 @@ func GetUptimeProofMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		true, // allow private peers
@@ -120,7 +122,7 @@ func GetUptimeProofMessage(
 
 func GetSubnetValidatorWeightMessage(
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -156,7 +158,7 @@ func GetSubnetValidatorWeightMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,
@@ -177,7 +179,7 @@ func InitValidatorRemoval(
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 	initWithPos bool,
 	uptimeSec uint64,
 	force bool,
@@ -198,8 +200,8 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-	validationID, err := GetRegisteredValidator(
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	validationID, err := validator.GetRegisteredValidator(
 		rpcURL,
 		managerAddress,
 		nodeID,
@@ -207,16 +209,12 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
+	if validationID == ids.Empty {
+		return nil, ids.Empty, fmt.Errorf("node %s is not a L1 validator", nodeID)
 	}
+
 	signedUptimeProof := &warp.Message{}
 	if initWithPos {
-		if err != nil {
-			return nil, ids.Empty, evm.TransactionError(nil, err, "failure getting uptime data")
-		}
 		if uptimeSec == 0 {
 			uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
 			if err != nil {
@@ -226,7 +224,7 @@ func InitValidatorRemoval(
 		ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
 		signedUptimeProof, err = GetUptimeProofMessage(
 			network,
-			aggregatorLogLevel,
+			aggregatorLogger,
 			0,
 			aggregatorExtraPeerEndpoints,
 			subnetID,
@@ -248,16 +246,16 @@ func InitValidatorRemoval(
 		force,
 	)
 	if err != nil {
-		if !errors.Is(err, validatorManagerSDK.ErrInvalidValidatorStatus) {
+		if !errors.Is(err, validatormanager.ErrInvalidValidatorStatus) {
 			return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator removal")
 		}
-		ux.Logger.PrintToUser("the validator removal process was already initialized. Proceeding to the next step")
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
 	}
 
 	nonce := uint64(1)
 	signedMsg, err := GetSubnetValidatorWeightMessage(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -284,7 +282,7 @@ func CompleteValidatorRemoval(
 		subnetValidatorRegistrationSignedMessage,
 		big.NewInt(0),
 		"complete poa validator removal",
-		validatorManagerSDK.ErrorSignatureToError,
+		validatormanager.ErrorSignatureToError,
 		"completeEndValidation(uint32)",
 		uint32(0),
 	)
@@ -299,9 +297,9 @@ func FinishValidatorRemoval(
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevelStr string,
+	aggregatorLogger logging.Logger,
 ) error {
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
@@ -310,14 +308,10 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return err
 	}
-	aggregatorLogLevel, err := logging.ToLevel(aggregatorLogLevelStr)
-	if err != nil {
-		aggregatorLogLevel = defaultAggregatorLogLevel
-	}
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -332,7 +326,7 @@ func FinishValidatorRemoval(
 		rpcURL,
 		privateKey,
 	); err != nil {
-		return err
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
 	tx, _, err := CompleteValidatorRemoval(
 		rpcURL,

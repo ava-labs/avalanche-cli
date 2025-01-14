@@ -346,7 +346,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 ) error {
 	if c.SubnetID == ids.Empty {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
@@ -372,7 +372,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		return err
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
 
 	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
@@ -392,7 +392,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
@@ -426,14 +426,14 @@ func (c *Subnet) InitializeProofOfStake(
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
 ) error {
 	if err := evm.SetupProposerVM(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		return err
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
 	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
@@ -451,7 +451,7 @@ func (c *Subnet) InitializeProofOfStake(
 	}
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		0,
 		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,

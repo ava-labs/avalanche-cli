@@ -59,7 +59,7 @@ func (c *Subnet) CreateBlockchainTx(wallet wallet.Wallet) (*multisig.Multisig, e
 		return nil, fmt.Errorf("vm ID is not provided")
 	}
 	if c.Name == "" {
-		return nil, fmt.Errorf("subnet name is not provided")
+		return nil, fmt.Errorf("blockchain name is not provided")
 	}
 	wallet.SetSubnetAuthMultisig(c.DeployInfo.SubnetAuthKeys)
 

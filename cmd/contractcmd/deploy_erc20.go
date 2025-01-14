@@ -26,14 +26,7 @@ type DeployERC20Flags struct {
 	rpcEndpoint     string
 }
 
-var (
-	deployERC20SupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-	}
-	deployERC20Flags DeployERC20Flags
-)
+var deployERC20Flags DeployERC20Flags
 
 // avalanche contract deploy erc20
 func newDeployERC20Cmd() *cobra.Command {
@@ -44,7 +37,7 @@ func newDeployERC20Cmd() *cobra.Command {
 		RunE:  deployERC20,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, deployERC20SupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployERC20Flags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	deployERC20Flags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	// enabling blockchain names, C-Chain and blockchain IDs
 	deployERC20Flags.chainFlags.SetEnabled(true, true, false, false, true)
@@ -63,7 +56,7 @@ func deployERC20(_ *cobra.Command, _ []string) error {
 		deployERC20Flags.Network,
 		true,
 		false,
-		deployERC20SupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

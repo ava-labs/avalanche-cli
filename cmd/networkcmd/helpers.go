@@ -148,7 +148,7 @@ func TrackSubnet(
 				}
 			}
 		}
-		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
+		ux.Logger.PrintToUser("Restarting node %s to track newly deployed network", nodeInfo.Name)
 		subnets := strings.TrimSpace(nodeInfo.WhitelistedSubnets)
 		if subnets != "" {
 			subnets += ","

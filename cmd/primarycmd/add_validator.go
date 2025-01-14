@@ -25,12 +25,7 @@ import (
 )
 
 var (
-	globalNetworkFlags                  networkoptions.NetworkFlags
-	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-		networkoptions.Devnet,
-	}
+	globalNetworkFlags           networkoptions.NetworkFlags
 	keyName                      string
 	useLedger                    bool
 	ledgerAddresses              []string
@@ -60,7 +55,7 @@ in the Primary Network`,
 		RunE: addValidator,
 		Args: cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, addValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.NonLocalSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji only]")
 	cmd.Flags().StringVar(&nodeIDStr, "nodeID", "", "set the NodeID of the validator to add")
 	cmd.Flags().Uint64Var(&weight, "weight", 0, "set the staking weight of the validator to add")
@@ -92,7 +87,7 @@ func promptProofOfPossession() (jsonProofOfPossession, error) {
 	if publicKey == "" || pop == "" {
 		ux.Logger.PrintToUser("Next, we need the public key and proof of possession of the node's BLS")
 		ux.Logger.PrintToUser("SSH into the node and call info.getNodeID API to get the node's BLS info")
-		ux.Logger.PrintToUser("Check https://docs.avax.network/apis/avalanchego/apis/info#infogetnodeid for instructions on calling info.getNodeID API")
+		ux.Logger.PrintToUser("Check https://docs.avax.network/api-reference/info-api#infogetnodeid for instructions on calling info.getNodeID API")
 	}
 	var err error
 	if publicKey == "" {
@@ -125,7 +120,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		addValidatorSupportedNetworkOptions,
+		networkoptions.NonLocalSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

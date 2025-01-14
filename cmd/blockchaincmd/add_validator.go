@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanchego/config"
@@ -26,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -36,16 +38,9 @@ import (
 )
 
 var (
-	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-	}
-
 	nodeIDStr                 string
 	nodeEndpoint              string
-	balance                   uint64
+	balanceAVAX               float64
 	weight                    uint64
 	startTimeStr              string
 	duration                  time.Duration
@@ -60,6 +55,7 @@ var (
 	disableOwnerAddr          string
 	rpcURL                    string
 	aggregatorLogLevel        string
+	aggregatorLogToStdout     bool
 	delegationFee             uint16
 
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
@@ -90,11 +86,16 @@ Testnet or Mainnet.`,
 		RunE: addValidator,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
-	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee on P-Chain")
+	cmd.Flags().Float64Var(
+		&balanceAVAX,
+		"balance",
+		0,
+		"set the AVAX balance of the validator that will be used for continuous fee on P-Chain",
+	)
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -110,7 +111,8 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for Subnets, not L1s) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
@@ -148,14 +150,13 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
 
-	networkOptionsList := networkoptions.GetNetworkFromSidecar(sc, addValidatorSupportedNetworkOptions)
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		true,
 		false,
-		networkOptionsList,
+		networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions),
 		"",
 	)
 	if err != nil {
@@ -216,6 +217,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	subnetID := sc.Networks[network.Name()].SubnetID
+
 	// if user chose to upsize a local node to add another local validator
 	if createLocalValidator {
 		anrSettings := node.ANRSettings{}
@@ -237,7 +240,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 		nodeName := ""
 		blockchainID := sc.Networks[network.Name()].BlockchainID
-		subnetID := sc.Networks[network.Name()].SubnetID
 
 		if nodeName, err = node.UpsizeLocalNode(
 			app,
@@ -300,10 +302,23 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
-	return CallAddValidator(deployer, network, kc, blockchainName, nodeIDStr, publicKey, pop)
+	return CallAddValidator(
+		deployer,
+		network,
+		kc,
+		blockchainName,
+		subnetID,
+		nodeIDStr,
+		publicKey,
+		pop,
+		weight,
+		balanceAVAX,
+		remainingBalanceOwnerAddr,
+		disableOwnerAddr,
+	)
 }
 
-func promptValidatorBalance(availableBalance uint64) (uint64, error) {
+func promptValidatorBalanceAVAX(availableBalance float64) (float64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
 	txt := "What balance would you like to assign to the validator (in AVAX)?"
@@ -315,9 +330,14 @@ func CallAddValidator(
 	network models.Network,
 	kc *keychain.Keychain,
 	blockchainName string,
+	subnetID ids.ID,
 	nodeIDStr string,
 	publicKey string,
 	pop string,
+	weight uint64,
+	balanceAVAX float64,
+	remainingBalanceOwnerAddr string,
+	disableOwnerAddr string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -398,19 +418,27 @@ func CallAddValidator(
 
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
-	if balance == 0 {
+	totalWeight, err := validator.GetTotalWeight(network.SDKNetwork(), subnetID)
+	if err != nil {
+		return err
+	}
+	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
+	if float64(weight) > allowedChange {
+		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
+	}
+
+	if balanceAVAX == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
 		}
-		balance, err = promptValidatorBalance(availableBalance / units.Avax)
+		balanceAVAX, err = promptValidatorBalanceAVAX(float64(availableBalance) / float64(units.Avax))
 		if err != nil {
 			return err
 		}
-	} else {
-		// convert to nanoAVAX
-		balance *= units.Avax
 	}
+	// convert to nanoAVAX
+	balance := uint64(balanceAVAX * float64(units.Avax))
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
@@ -455,6 +483,17 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
+	aggregatorLogger, err := utils.NewLogger(
+		"signature-aggregator",
+		aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterNameFlagValue),
+		aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
+	)
+	if err != nil {
+		return err
+	}
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,
@@ -469,7 +508,7 @@ func CallAddValidator(
 		weight,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		pos,
 		delegationFee,
 		duration,
@@ -482,14 +521,17 @@ func CallAddValidator(
 
 	txID, _, err := deployer.RegisterL1Validator(balance, blsInfo, signedMessage)
 	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
-
-	if err := UpdatePChainHeight(
-		"Waiting for P-Chain to update validator information ...",
-	); err != nil {
-		return err
+		if !strings.Contains(err.Error(), "warp message already issued for validationID") {
+			return err
+		}
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
+	} else {
+		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
+		if err := UpdatePChainHeight(
+			"Waiting for P-Chain to update validator information ...",
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := validatormanager.FinishValidatorRegistration(
@@ -501,7 +543,7 @@ func CallAddValidator(
 		validationID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
-		aggregatorLogLevel,
+		aggregatorLogger,
 	); err != nil {
 		return err
 	}
@@ -512,7 +554,7 @@ func CallAddValidator(
 	if !pos {
 		ux.Logger.PrintToUser("  Weight: %d", weight)
 	}
-	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
+	ux.Logger.PrintToUser("  Balance: %.2f", balanceAVAX)
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
 
 	return nil
@@ -598,7 +640,7 @@ func CallAddValidatorNonSOV(
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your subnet auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	selectedWeight, err := getWeight()
 	if err != nil {
@@ -801,7 +843,7 @@ func getWeight() (uint64, error) {
 		case defaultWeight:
 			useDefaultWeight = true
 		default:
-			weight, err = app.Prompt.CaptureWeight(txt)
+			weight, err = app.Prompt.CaptureWeight(txt, func(uint64) error { return nil })
 			if err != nil {
 				return 0, err
 			}

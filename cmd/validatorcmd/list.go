@@ -4,18 +4,20 @@ package validatorcmd
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
+	"golang.org/x/exp/maps"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -31,25 +33,33 @@ func NewListCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(1),
 	}
 
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	return cmd
 }
 
 func list(_ *cobra.Command, args []string) error {
+	blockchainName := args[0]
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+	if !sc.Sovereign {
+		return fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
+	}
+
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		true,
 		false,
-		getBalanceSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
 		return err
 	}
 
-	blockchainName := args[0]
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
 	}
@@ -78,25 +88,33 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),
-		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance"},
+		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)"},
 	)
 
-	for nodeID, validator := range validators {
+	nodeIDs := maps.Keys(validators)
+	nodeIDStrs := utils.Map(nodeIDs, func(nodeID ids.NodeID) string { return nodeID.String() })
+	sort.Strings(nodeIDStrs)
+
+	for _, nodeIDStr := range nodeIDStrs {
+		nodeID, err := ids.NodeIDFromString(nodeIDStr)
+		if err != nil {
+			return err
+		}
 		balance := uint64(0)
-		validationID, err := validatormanager.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err := validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
 		} else {
-			balance, err = txutils.GetValidatorPChainBalanceValidationID(network, validationID)
+			balance, err = validator.GetValidatorBalance(network.SDKNetwork(), validationID)
 			if err != nil {
 				ux.Logger.RedXToUser("could not get balance for node %s due to %s", nodeID, err)
 			}
 		}
-		t.AppendRow(table.Row{nodeID, validationID, validator.Weight, float64(balance) / float64(units.Avax)})
+		t.AppendRow(table.Row{nodeID, validationID, validators[nodeID].Weight, float64(balance) / float64(units.Avax)})
 	}
 	fmt.Println(t.Render())
 	return nil

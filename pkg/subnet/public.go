@@ -40,7 +40,7 @@ import (
 
 const showFees = true
 
-var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain subnet auth keys")
+var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain auth keys")
 
 type PublicDeployer struct {
 	LocalDeployer
@@ -81,7 +81,7 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
 	validator := &txs.SubnetValidator{
 		Validator: txs.Validator{
@@ -225,7 +225,7 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "TransferSubnetOwnership transaction")
 
@@ -326,7 +326,7 @@ func (d *PublicDeployer) RemoveValidator(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "tx hash")
@@ -396,7 +396,7 @@ func (d *PublicDeployer) DeploySubnet(
 	if err != nil {
 		return ids.Empty, err
 	}
-	ux.Logger.PrintToUser("Subnet has been created with ID: %s", subnetID.String())
+	ux.Logger.PrintToUser("Blockchain has been created with ID: %s", subnetID.String())
 	time.Sleep(2 * time.Second)
 	return subnetID, nil
 }
@@ -428,7 +428,7 @@ func (d *PublicDeployer) DeployBlockchain(
 
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "CreateChain transaction")
@@ -472,7 +472,7 @@ func (d *PublicDeployer) ConvertL1(
 
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
 
 	showLedgerSignatureMsg(d.kc.UsesLedger, d.kc.HasOnlyOneKey(), "ConvertSubnetToL1Tx")
@@ -544,7 +544,10 @@ func (d *PublicDeployer) Commit(
 		repeats             = 3
 		sleepBetweenRepeats = 2 * time.Second
 	)
-	var issueTxErr error
+	var (
+		issueTxErr error
+		errors     []error
+	)
 	wallet, err := d.loadCacheWallet()
 	if err != nil {
 		return ids.Empty, err
@@ -565,12 +568,13 @@ func (d *PublicDeployer) Commit(
 		} else {
 			issueTxErr = fmt.Errorf("error issuing tx with ID %s: %w", tx.ID(), issueTxErr)
 		}
-		ux.Logger.RedXToUser("%s", issueTxErr)
+		errors = append(errors, issueTxErr)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	if issueTxErr != nil {
 		d.CleanCacheWallet()
 	}
+	utils.PrintUnreportedErrors(errors, issueTxErr, ux.Logger.PrintToUser)
 	return tx.ID(), issueTxErr
 }
 
@@ -585,7 +589,7 @@ func (d *PublicDeployer) Sign(
 	}
 	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
 	if err != nil {
-		return fmt.Errorf("failure parsing subnet auth keys: %w", err)
+		return fmt.Errorf("failure parsing auth keys: %w", err)
 	}
 	if ok := d.checkWalletHasSubnetAuthAddresses(subnetAuthKeys); !ok {
 		return ErrNoSubnetAuthKeysInWallet
