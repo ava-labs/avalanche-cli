@@ -372,7 +372,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		return err
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
 
 	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
@@ -433,7 +433,7 @@ func (c *Subnet) InitializeProofOfStake(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		return err
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
 	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
