@@ -22,6 +22,15 @@ func Unique[T comparable](arr []T) []T {
 	return unique
 }
 
+func Belongs[T comparable](input []T, elem T) bool {
+	for _, e := range input {
+		if e == elem {
+			return true
+		}
+	}
+	return false
+}
+
 func Uint32Sort(arr []uint32) {
 	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
 }

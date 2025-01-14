@@ -18,13 +18,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var changeOwnerSupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
 // avalanche blockchain changeOwner
 func newChangeOwnerCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,7 +27,7 @@ func newChangeOwnerCmd() *cobra.Command {
 		RunE:  changeOwner,
 		Args:  cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, changeOwnerSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet]")
@@ -56,7 +49,7 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		changeOwnerSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
