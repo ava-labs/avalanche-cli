@@ -22,12 +22,6 @@ import (
 )
 
 var (
-	importPublicSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-		networkoptions.Devnet,
-		networkoptions.Local,
-	}
 	blockchainIDstr string
 	nodeURL         string
 	useSubnetEvm    bool
@@ -48,7 +42,7 @@ doesn't overwrite an existing Blockchain with the same name. To allow overwrites
 flag.`,
 	}
 
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, importPublicSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 
 	cmd.Flags().StringVar(&nodeURL, "node-url", "", "[optional] URL of an already running validator")
 
@@ -76,7 +70,7 @@ func importPublic(*cobra.Command, []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		importPublicSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

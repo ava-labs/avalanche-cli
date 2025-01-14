@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/api/info"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkNetwork "github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/genesis"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
@@ -224,6 +224,20 @@ func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
 		timeout = constants.MainnetBootstrapTimeout
 	}
 	return context.WithTimeout(context.Background(), timeout)
+}
+
+func (n Network) SDKNetwork() sdkNetwork.Network {
+	switch n.Kind {
+	case Fuji:
+		return sdkNetwork.FujiNetwork()
+	case Mainnet:
+		return sdkNetwork.MainnetNetwork()
+	case Local:
+		return sdkNetwork.NewNetwork(sdkNetwork.Devnet, n.ID, n.Endpoint)
+	case Devnet:
+		return sdkNetwork.NewNetwork(sdkNetwork.Devnet, n.ID, n.Endpoint)
+	}
+	return sdkNetwork.UndefinedNetwork
 }
 
 // GetNetworkFromCluster gets the network that a cluster is on
