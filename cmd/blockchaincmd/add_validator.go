@@ -38,13 +38,6 @@ import (
 )
 
 var (
-	addValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-	}
-
 	nodeIDStr                 string
 	nodeEndpoint              string
 	balanceAVAX               float64
@@ -93,7 +86,7 @@ Testnet or Mainnet.`,
 		RunE: addValidator,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, addValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
@@ -157,14 +150,13 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
 
-	networkOptionsList := networkoptions.GetNetworkFromSidecar(sc, addValidatorSupportedNetworkOptions)
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		true,
 		false,
-		networkOptionsList,
+		networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions),
 		"",
 	)
 	if err != nil {

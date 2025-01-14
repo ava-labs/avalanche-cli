@@ -41,25 +41,19 @@ const (
 )
 
 var (
-	globalNetworkFlags          networkoptions.NetworkFlags
-	listSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Mainnet,
-		networkoptions.Fuji,
-		networkoptions.Local,
-		networkoptions.Devnet,
-	}
-	all             bool
-	pchain          bool
-	cchain          bool
-	xchain          bool
-	useNanoAvax     bool
-	useGwei         bool
-	ledgerIndices   []uint
-	keys            []string
-	tokenAddresses  []string
-	subnetToken     string
-	subnets         []string
-	showNativeToken bool
+	globalNetworkFlags networkoptions.NetworkFlags
+	all                bool
+	pchain             bool
+	cchain             bool
+	xchain             bool
+	useNanoAvax        bool
+	useGwei            bool
+	ledgerIndices      []uint
+	keys               []string
+	tokenAddresses     []string
+	subnetToken        string
+	subnets            []string
+	showNativeToken    bool
 )
 
 // avalanche blockchain list
@@ -71,7 +65,7 @@ func newListCmd() *cobra.Command {
 keys or for the ledger addresses associated to certain indices.`,
 		RunE: listKeys,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, listSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().BoolVarP(
 		&all,
 		allFlag,
@@ -287,7 +281,7 @@ func listKeys(*cobra.Command, []string) error {
 			globalNetworkFlags,
 			true,
 			false,
-			listSupportedNetworkOptions,
+			networkoptions.DefaultSupportedNetworkOptions,
 			"",
 		)
 		if err != nil {

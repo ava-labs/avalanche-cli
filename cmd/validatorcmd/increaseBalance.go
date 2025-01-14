@@ -27,13 +27,6 @@ var (
 	balanceAVAX     float64
 )
 
-var increaseBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
 func NewIncreaseBalanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "increaseBalance",
@@ -43,7 +36,7 @@ func NewIncreaseBalanceCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(0),
 	}
 
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, increaseBalanceSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
 	cmd.Flags().StringVar(&l1, "l1", "", "name of L1 (to increase balance of bootstrap validators only)")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validationIDStr of the validator")
@@ -59,7 +52,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		getBalanceSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

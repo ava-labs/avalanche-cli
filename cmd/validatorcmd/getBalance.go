@@ -31,13 +31,6 @@ var (
 	nodeIDStr       string
 )
 
-var getBalanceSupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
 func NewGetBalanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "getBalance",
@@ -48,7 +41,7 @@ P-Chain continuous fee`,
 		Args: cobrautils.ExactArgs(0),
 	}
 
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().StringVar(&l1, "l1", "", "name of L1")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validation ID of the validator")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node ID of the validator")
@@ -62,7 +55,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		getBalanceSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

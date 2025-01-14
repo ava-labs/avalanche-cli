@@ -32,7 +32,7 @@ func NewListCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(1),
 	}
 
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	return cmd
 }
 
@@ -52,7 +52,7 @@ func list(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		getBalanceSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

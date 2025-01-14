@@ -57,13 +57,6 @@ import (
 
 const skipRelayerFlagName = "skip-relayer"
 
-var deploySupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
 var (
 	sameControlKey                  bool
 	keyName                         string
@@ -133,7 +126,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		PersistentPostRun: handlePostRun,
 		Args:              cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
 	privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
 	cmd.Flags().StringVar(
@@ -311,9 +304,8 @@ func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string
 	return nil
 }
 
-func runDeploy(cmd *cobra.Command, args []string, supportedNetworkOptions []networkoptions.NetworkOption) error {
+func runDeploy(cmd *cobra.Command, args []string) error {
 	skipCreatePrompt = true
-	deploySupportedNetworkOptions = supportedNetworkOptions
 	return deployBlockchain(cmd, args)
 }
 
@@ -449,7 +441,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		deploySupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

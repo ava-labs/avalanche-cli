@@ -40,14 +40,7 @@ type DeployFlags struct {
 	AllowPrivateIPs      bool
 }
 
-var (
-	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-	}
-	deployFlags DeployFlags
-)
+var deployFlags DeployFlags
 
 const (
 	disableDeployToRemotePrompt = true
@@ -63,7 +56,7 @@ func newDeployCmd() *cobra.Command {
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, networkoptions.NonMainnetSupportedNetworkOptions)
 	cmd.Flags().StringVar(&deployFlags.BinPath, "bin-path", "", "use the given relayer binary")
 	cmd.Flags().StringVar(
 		&deployFlags.Version,
@@ -96,7 +89,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			flags.Network,
 			true,
 			false,
-			deploySupportedNetworkOptions,
+			networkoptions.NonMainnetSupportedNetworkOptions,
 			"",
 		)
 		if err != nil {

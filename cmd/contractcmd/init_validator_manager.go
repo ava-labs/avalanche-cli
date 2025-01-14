@@ -45,12 +45,6 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	validatorManagerSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-	}
 	validatorManagerFlags ValidatorManagerFlags
 	initPOSManagerFlags   POSManagerSpecFlags
 )
@@ -64,7 +58,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 		RunE:  initValidatorManager,
 		Args:  cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &validatorManagerFlags.Network, true, validatorManagerSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &validatorManagerFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	validatorManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&validatorManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
 	cmd.Flags().StringSliceVar(&validatorManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
@@ -93,7 +87,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		validatorManagerFlags.Network,
 		true,
 		false,
-		validatorManagerSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

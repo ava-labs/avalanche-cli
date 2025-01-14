@@ -25,15 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	changeWeightSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-	}
-	newWeight uint64
-)
+var newWeight uint64
 
 // avalanche blockchain addValidator
 func newChangeWeightCmd() *cobra.Command {
@@ -46,7 +38,7 @@ The L1 has to be a Proof of Authority L1.`,
 		RunE: setWeight,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, changeWeightSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&newWeight, "weight", 0, "set the new staking weight of the validator")
@@ -66,7 +58,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
 
-	networkOptionsList := networkoptions.GetNetworkFromSidecar(sc, changeWeightSupportedNetworkOptions)
+	networkOptionsList := networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions)
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
