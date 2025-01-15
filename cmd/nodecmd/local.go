@@ -278,6 +278,8 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
+	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
+	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 
 	return cmd
 }
@@ -421,9 +423,6 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	//for i := range {
-	//
-	//}
 	var nodeIDStr string
 	// get node data
 	nodeInfo, err := node.GetNodeInfo("node1")
