@@ -1315,7 +1315,7 @@ func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		if err != nil {
 			return nil, err
 		}
-		blsInfo, err := blockchain.GetBLSInfo(validator.BLSPublicKey, validator.BLSProofOfPossession)
+		blsInfo, err := blockchain.ConvertToBLSProofOfPossession(validator.BLSPublicKey, validator.BLSProofOfPossession)
 		if err != nil {
 			return nil, fmt.Errorf("failure parsing BLS info: %w", err)
 		}

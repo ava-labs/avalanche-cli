@@ -99,7 +99,7 @@ func UrisToPeers(uris []string) ([]info.Peer, error) {
 	return peers, nil
 }
 
-func GetBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
+func ConvertToBLSProofOfPossession(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
 	type jsonProofOfPossession struct {
 		PublicKey         string
 		ProofOfPossession string

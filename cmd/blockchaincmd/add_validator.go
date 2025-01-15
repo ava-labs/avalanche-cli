@@ -327,7 +327,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	blsInfo, err := blockchain.GetBLSInfo(publicKey, pop)
+	blsInfo, err := blockchain.ConvertToBLSProofOfPossession(publicKey, pop)
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}

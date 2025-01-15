@@ -54,7 +54,7 @@ var (
 	partialSync               bool
 	stakeAmount               uint64
 	rpcURL                    string
-	balance                   uint64
+	balanceFlt                float64
 	remainingBalanceOwnerAddr string
 	disableOwnerAddr          string
 	aggregatorLogLevel        string
@@ -272,7 +272,7 @@ func newLocalValidateCmd() *cobra.Command {
 RPC URL of the L1. 
 
 This command can only be used to validate Proof of Stake L1.`,
-		Args: cobra.MaximumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: localValidate,
 	}
 
@@ -280,7 +280,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().Uint64Var(&balance, "balance", 0, "set the AVAX balance of the validator that will be used for continuous fee on P-Chain")
+	cmd.Flags().Float64Var(&balanceFlt, "balance", 0, "amount of AVAX to increase validator's balance by")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
@@ -293,6 +293,11 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		clusterName = args[0]
 	}
+
+	if clusterName == "" {
+		return fmt.Errorf("local cluster name cannot be empty")
+	}
+
 	if ok, err := node.CheckClusterIsLocal(app, clusterName); err != nil || !ok {
 		return fmt.Errorf("local cluster %q not found, please create it first using avalanche node local start %q", clusterName, clusterName)
 	}
@@ -355,8 +360,8 @@ func localValidate(_ *cobra.Command, args []string) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainID: blockchainID,
 	}
-
-	if balance == 0 {
+	var balance uint64
+	if balanceFlt == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
@@ -366,8 +371,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		// convert to nanoAVAX
-		balance *= units.Avax
+		balance = uint64(balanceFlt * float64(units.Avax))
 	}
 
 	if remainingBalanceOwnerAddr == "" {
@@ -424,7 +428,9 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	//for i := range {
+	//
+	//}
 	var nodeIDStr string
 	// get node data
 	nodeInfo, err := node.GetNodeInfo("node1")
@@ -445,7 +451,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 	expiry := uint64(blockchainTimestamp.Add(constants.DefaultValidationIDExpiryDuration).Unix())
 
-	blsInfo, err := blockchain.GetBLSInfo(publicKey, pop)
+	blsInfo, err := blockchain.ConvertToBLSProofOfPossession(publicKey, pop)
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
@@ -521,7 +527,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
-	ux.Logger.PrintToUser("  Balance: %d", balance/units.Avax)
+	ux.Logger.PrintToUser("  Balance: %.5f AVAX", float64(balance)/float64(units.Avax))
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
 	return nil
 }
