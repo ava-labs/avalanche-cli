@@ -337,5 +337,5 @@ const (
 	// Aggregator
 	DefaultAggregatorLogLevel  = "Debug"
 	SignatureAggregatorLogName = "signature-aggregator"
-	MaxL1TotalWeightChange = 0.2
+	MaxL1TotalWeightChange     = 0.2
 )

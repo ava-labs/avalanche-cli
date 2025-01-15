@@ -3,10 +3,15 @@
 package nodecmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
+	"os"
 	"path/filepath"
 	"strings"
+
+	anrnetwork "github.com/ava-labs/avalanche-network-runner/network"
+	"github.com/ava-labs/avalanchego/api/info"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -329,7 +334,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 	// should take input prior to here for stake amount, delegation fee, and min stake duration
 	if stakeAmount == 0 {
 		stakeAmount, err = app.Prompt.CaptureUint64Compare(
-			"Enter the amount of token to stake",
+			"Enter the amount of token to stake for each validator",
 			[]prompts.Comparator{
 				{
 					Label: "Positive",
@@ -362,7 +367,8 @@ func localValidate(_ *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		balanceAVAX, err = blockchain.PromptValidatorBalance(app, float64(availableBalance)/float64(units.Avax))
+		prompt := "How many AVAX do you want to each validator to start with?"
+		balanceAVAX, err = blockchain.PromptValidatorBalance(app, float64(availableBalance)/float64(units.Avax), prompt)
 		if err != nil {
 			return err
 		}
@@ -423,9 +429,44 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	rootDir := app.GetLocalDir(clusterName)
+	networkJSONPath := filepath.Join(rootDir, "network.json")
+	networkFile, err := os.ReadFile(networkJSONPath)
+	if err != nil {
+		return fmt.Errorf("could not read network config file of local cluster %s: %w", networkJSONPath, err)
+	}
+	var networkJSON anrnetwork.Config
+	if err = json.Unmarshal(networkFile, &networkJSON); err != nil {
+		return err
+	}
+	for _, node := range networkJSON.NodeConfigs {
+		if err = addAsValidator(network,
+			node.Name,
+			chainSpec,
+			remainingBalanceOwners, disableOwners,
+			extraAggregatorPeers,
+			aggregatorLogger,
+			kc,
+			balance,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func addAsValidator(network models.Network,
+	nodeName string,
+	chainSpec contract.ChainSpec,
+	remainingBalanceOwners, disableOwners warpMessage.PChainOwner,
+	extraAggregatorPeers []info.Peer,
+	aggregatorLogger logging.Logger,
+	kc *keychain.Keychain,
+	balance uint64,
+) error {
 	var nodeIDStr string
 	// get node data
-	nodeInfo, err := node.GetNodeInfo("node1")
+	nodeInfo, err := node.GetNodeInfo(nodeName)
 	if err != nil {
 		return err
 	}
@@ -448,12 +489,10 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 	payerPrivateKey := ""
-	ux.Logger.PrintToUser("A private key is needed to pay for the contract deployment fees.")
-	ux.Logger.PrintToUser("The key will also be set as the owner address of the contract, which will be able to call")
-	ux.Logger.PrintToUser("the contract methods available only to owners.")
+	ux.Logger.PrintToUser("A private key is needed to pay for initialization of the validator's registration (Blockchain gas token).")
 	payerPrivateKey, err = prompts.PromptPrivateKey(
 		app.Prompt,
-		"deploy the contract",
+		"pay the fee",
 		app.GetKeyDir(),
 		app.GetKey,
 		"",

@@ -4,6 +4,7 @@ package validatorcmd
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -92,7 +93,8 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		balanceAVAX, err = blockchain.PromptValidatorBalance(app, float64(availableBalance)/float64(units.Avax))
+		prompt := "How many AVAX do you want to increase the balance of this validator by?"
+		balanceAVAX, err = blockchain.PromptValidatorBalance(app, float64(availableBalance)/float64(units.Avax), prompt)
 		if err != nil {
 			return err
 		}
