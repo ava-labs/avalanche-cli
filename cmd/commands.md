@@ -128,7 +128,7 @@ avalanche blockchain addValidator [subcommand] [flags]
 --aggregator-extra-endpoints strings    endpoints for extra nodes that are needed in signature aggregation
 --aggregator-log-level string           log level to use with signature aggregator (default "Debug")
 --aggregator-log-to-stdout              use stdout for signature aggregator logs
---balance uint                          set the AVAX balance of the validator that will be used for continuous fee on P-Chain
+--balance float                         set the AVAX balance of the validator that will be used for continuous fee on P-Chain
 --blockchain-genesis-key                use genesis allocated key to pay fees for completing the validator's registration (blockchain gas token)
 --blockchain-key string                 CLI stored key to use to pay fees for completing the validator's registration (blockchain gas token)
 --blockchain-private-key string         private key to use to pay fees for completing the validator's registration (blockchain gas token)
@@ -230,9 +230,10 @@ avalanche blockchain changeWeight [subcommand] [flags]
 --ledger-addrs strings    use the given ledger addresses
 -l, --local               operate on a local network
 -m, --mainnet             operate on mainnet
+--node-endpoint string    gather node id/bls from publicly available avalanchego apis on the given endpoint
 --node-id string          node-id of the validator
 -t, --testnet             fuji           operate on testnet (alias to fuji)
---weight uint             set the new staking weight of the validator (default 20)
+--weight uint             set the new staking weight of the validator
 --config string           config file (default is $HOME/.avalanche-cli/config.json)
 --log-level string        log level for the application (default "ERROR")
 --skip-update-check       skip check for new versions
@@ -1191,6 +1192,7 @@ avalanche contract deploy erc20 [subcommand] [flags]
 -h, --help                help for erc20
 --key string              CLI stored key to use as contract deployer
 -l, --local               operate on a local network
+-m, --mainnet             operate on mainnet
 --private-key string      private key to use as contract deployer
 --rpc string              deploy the contract into the given rpc endpoint
 --supply uint             set the token supply
@@ -1316,6 +1318,7 @@ avalanche icm deploy [subcommand] [flags]
 --include-cchain                            deploy ICM also to C-Chain
 --key string                                CLI stored key to use to fund ICM deploy
 -l, --local                                 operate on a local network
+-m, --mainnet                               operate on mainnet
 --messenger-contract-address-path string    path to a messenger contract address file
 --messenger-deployer-address-path string    path to a messenger deployer address file
 --messenger-deployer-tx-path string         path to a messenger deployer tx file
@@ -1353,6 +1356,7 @@ avalanche icm sendMsg [subcommand] [flags]
 --hex-encoded                   given message is hex encoded
 --key string                    CLI stored key to use as message originator and to pay source blockchain fees
 -l, --local                     operate on a local network
+-m, --mainnet                   operate on mainnet
 --private-key string            private key to use as message originator and to pay source blockchain fees
 --source-rpc string             use the given source blockchain rpc endpoint
 -t, --testnet                   fuji                 operate on testnet (alias to fuji)
@@ -1413,6 +1417,7 @@ avalanche ictt deploy [subcommand] [flags]
 --home-private-key string      private key to use to deploy Transferrer Home
 --home-rpc string              use the given RPC URL to connect to the home blockchain
 -l, --local                    operate on a local network
+-m, --mainnet                  operate on mainnet
 --remote-blockchain string     set the Transferrer's Remote Chain into the given CLI blockchain
 --remote-genesis-key           use genesis allocated key to deploy Transferrer Remote
 --remote-key string            CLI stored key to use to deploy Transferrer Remote
@@ -1510,6 +1515,7 @@ avalanche interchain messenger deploy [subcommand] [flags]
 --include-cchain                            deploy ICM also to C-Chain
 --key string                                CLI stored key to use to fund ICM deploy
 -l, --local                                 operate on a local network
+-m, --mainnet                               operate on mainnet
 --messenger-contract-address-path string    path to a messenger contract address file
 --messenger-deployer-address-path string    path to a messenger deployer address file
 --messenger-deployer-tx-path string         path to a messenger deployer tx file
@@ -1547,6 +1553,7 @@ avalanche interchain messenger sendMsg [subcommand] [flags]
 --hex-encoded                   given message is hex encoded
 --key string                    CLI stored key to use as message originator and to pay source blockchain fees
 -l, --local                     operate on a local network
+-m, --mainnet                   operate on mainnet
 --private-key string            private key to use as message originator and to pay source blockchain fees
 --source-rpc string             use the given source blockchain rpc endpoint
 -t, --testnet                   fuji                 operate on testnet (alias to fuji)
@@ -1745,6 +1752,7 @@ avalanche interchain tokenTransferrer deploy [subcommand] [flags]
 --home-private-key string      private key to use to deploy Transferrer Home
 --home-rpc string              use the given RPC URL to connect to the home blockchain
 -l, --local                    operate on a local network
+-m, --mainnet                  operate on mainnet
 --remote-blockchain string     set the Transferrer's Remote Chain into the given CLI blockchain
 --remote-genesis-key           use genesis allocated key to deploy Transferrer Remote
 --remote-key string            CLI stored key to use to deploy Transferrer Remote
@@ -3362,6 +3370,7 @@ avalanche teleporter deploy [subcommand] [flags]
 --include-cchain                            deploy ICM also to C-Chain
 --key string                                CLI stored key to use to fund ICM deploy
 -l, --local                                 operate on a local network
+-m, --mainnet                               operate on mainnet
 --messenger-contract-address-path string    path to a messenger contract address file
 --messenger-deployer-address-path string    path to a messenger deployer address file
 --messenger-deployer-tx-path string         path to a messenger deployer tx file
@@ -3399,6 +3408,7 @@ avalanche teleporter sendMsg [subcommand] [flags]
 --hex-encoded                   given message is hex encoded
 --key string                    CLI stored key to use as message originator and to pay source blockchain fees
 -l, --local                     operate on a local network
+-m, --mainnet                   operate on mainnet
 --private-key string            private key to use as message originator and to pay source blockchain fees
 --source-rpc string             use the given source blockchain rpc endpoint
 -t, --testnet                   fuji                 operate on testnet (alias to fuji)
