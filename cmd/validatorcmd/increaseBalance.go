@@ -4,6 +4,7 @@ package validatorcmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -91,7 +92,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		balanceAVAX, err = promptValidatorBalanceAVAX(float64(availableBalance) / float64(units.Avax))
+		balanceAVAX, err = blockchain.PromptValidatorBalance(app, float64(availableBalance)/float64(units.Avax))
 		if err != nil {
 			return err
 		}
@@ -110,11 +111,4 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 	ux.Logger.PrintToUser("  New Validator Balance: %.5f AVAX", float64(balance)/float64(units.Avax))
 
 	return nil
-}
-
-func promptValidatorBalanceAVAX(availableBalance float64) (float64, error) {
-	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
-	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
-	txt := "How many AVAX do you want to increase the balance of this validator by?"
-	return app.Prompt.CaptureValidatorBalance(txt, availableBalance, 0)
 }

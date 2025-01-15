@@ -4,17 +4,16 @@ package blockchain
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 )
 
-func PromptValidatorBalance(app *application.Avalanche, availableBalance uint64) (uint64, error) {
+func PromptValidatorBalance(app *application.Avalanche, availableBalance float64) (float64, error) {
 	ux.Logger.PrintToUser("Validator's balance is used to pay for continuous fee to the P-Chain")
 	ux.Logger.PrintToUser("When this Balance reaches 0, the validator will be considered inactive and will no longer participate in validating the L1")
-	txt := "What balance would you like to assign to the validator (in AVAX)?"
-	return app.Prompt.CaptureValidatorBalance(txt, availableBalance, constants.BootstrapValidatorBalanceAVAX)
+	txt := "How many AVAX do you want to increase the balance of this validator by?"
+	return app.Prompt.CaptureValidatorBalance(txt, availableBalance, 0)
 }
 
 func GetKeyForChangeOwner(app *application.Avalanche, network models.Network) (string, error) {

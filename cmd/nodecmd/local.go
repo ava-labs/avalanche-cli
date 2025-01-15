@@ -48,7 +48,7 @@ var (
 	partialSync               bool
 	stakeAmount               uint64
 	rpcURL                    string
-	balanceFlt                float64
+	balanceAVAX               float64
 	remainingBalanceOwnerAddr string
 	disableOwnerAddr          string
 	aggregatorLogLevel        string
@@ -274,7 +274,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().Float64Var(&balanceFlt, "balance", 0, "amount of AVAX to increase validator's balance by")
+	cmd.Flags().Float64Var(&balanceAVAX, "balance", 0, "amount of AVAX to increase validator's balance by")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
@@ -302,7 +302,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		localStartSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
@@ -355,18 +355,17 @@ func localValidate(_ *cobra.Command, args []string) error {
 		BlockchainID: blockchainID,
 	}
 	var balance uint64
-	if balanceFlt == 0 {
+	if balanceAVAX == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
 			return err
 		}
-		balance, err = blockchain.PromptValidatorBalance(app, availableBalance/units.Avax)
+		balanceAVAX, err = blockchain.PromptValidatorBalance(app, float64(availableBalance)/float64(units.Avax))
 		if err != nil {
 			return err
 		}
-	} else {
-		balance = uint64(balanceFlt * float64(units.Avax))
 	}
+	balance = uint64(balanceAVAX * float64(units.Avax))
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = blockchain.GetKeyForChangeOwner(app, network)
