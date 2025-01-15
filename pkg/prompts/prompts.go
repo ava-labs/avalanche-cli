@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/units"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -110,8 +108,8 @@ type Prompter interface {
 	CaptureDate(promptStr string) (time.Time, error)
 	CaptureNodeID(promptStr string) (ids.NodeID, error)
 	CaptureID(promptStr string) (ids.ID, error)
-	CaptureWeight(promptStr string) (uint64, error)
-	CaptureValidatorBalance(promptStr string, availableBalance uint64, minBalance float64) (uint64, error)
+	CaptureWeight(promptStr string, validator func(uint64) error) (uint64, error)
+	CaptureValidatorBalance(promptStr string, availableBalance float64, minBalance float64) (float64, error)
 	CapturePositiveInt(promptStr string, comparators []Comparator) (int, error)
 	CaptureInt(promptStr string, validator func(int) error) (int, error)
 	CaptureUint8(promptStr string) (uint8, error)
@@ -303,12 +301,12 @@ func (*realPrompter) CaptureNodeID(promptStr string) (ids.NodeID, error) {
 	return ids.NodeIDFromString(nodeIDStr)
 }
 
-// CaptureValidatorBalance captures balance in nanoAVAX
+// CaptureValidatorBalance captures balance in AVAX
 func (*realPrompter) CaptureValidatorBalance(
 	promptStr string,
-	availableBalance uint64,
+	availableBalance float64,
 	minBalance float64,
-) (uint64, error) {
+) (float64, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
 		Validate: validateValidatorBalanceFunc(availableBalance, minBalance),
@@ -323,13 +321,22 @@ func (*realPrompter) CaptureValidatorBalance(
 		return 0, err
 	}
 
-	return uint64(amountFloat * float64(units.Avax)), nil
+	return amountFloat, nil
 }
 
-func (*realPrompter) CaptureWeight(promptStr string) (uint64, error) {
+func (*realPrompter) CaptureWeight(promptStr string, validator func(uint64) error) (uint64, error) {
 	prompt := promptui.Prompt{
-		Label:    promptStr,
-		Validate: validateWeight,
+		Label: promptStr,
+		Validate: func(input string) error {
+			if err := validateWeight(input); err != nil {
+				return err
+			}
+			val, err := strconv.ParseUint(input, 10, 64)
+			if err != nil {
+				return err
+			}
+			return validator(val)
+		},
 	}
 
 	amountStr, err := prompt.Run()

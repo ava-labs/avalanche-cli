@@ -52,14 +52,7 @@ type DeployFlags struct {
 	version     string
 }
 
-var (
-	deploySupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-	}
-	deployFlags DeployFlags
-)
+var deployFlags DeployFlags
 
 // avalanche interchain tokenTransferrer deploy
 func NewDeployCmd() *cobra.Command {
@@ -70,7 +63,7 @@ func NewDeployCmd() *cobra.Command {
 		RunE:  deploy,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, deploySupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &deployFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	deployFlags.homeFlags.chainFlags.SetFlagNames(
 		"home-blockchain",
 		"c-chain-home",
@@ -156,7 +149,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		flags.Network,
 		true,
 		false,
-		deploySupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

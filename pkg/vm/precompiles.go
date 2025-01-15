@@ -4,7 +4,7 @@
 package vm
 
 import (
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/allowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/subnet-evm/precompile/contracts/txallowlist"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/precompile/precompileconfig"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -151,19 +152,19 @@ func addAddressToAllowed(
 ) allowlist.AllowListConfig {
 	address := common.HexToAddress(addressStr)
 	allowed := false
-	if utils.Belongs(
+	if sdkUtils.Belongs(
 		allowListConfig.AdminAddresses,
 		address,
 	) {
 		allowed = true
 	}
-	if utils.Belongs(
+	if sdkUtils.Belongs(
 		allowListConfig.ManagerAddresses,
 		address,
 	) {
 		allowed = true
 	}
-	if utils.Belongs(
+	if sdkUtils.Belongs(
 		allowListConfig.EnabledAddresses,
 		address,
 	) {

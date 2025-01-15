@@ -29,14 +29,7 @@ type MsgFlags struct {
 	DestRPCEndpoint    string
 }
 
-var (
-	msgSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-	}
-	msgFlags MsgFlags
-)
+var msgFlags MsgFlags
 
 // avalanche interchain messenger sendMsg
 func NewSendMsgCmd() *cobra.Command {
@@ -47,7 +40,7 @@ func NewSendMsgCmd() *cobra.Command {
 		RunE:  sendMsg,
 		Args:  cobrautils.ExactArgs(3),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, msgSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &msgFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	msgFlags.PrivateKeyFlags.AddToCmd(cmd, "as message originator and to pay source blockchain fees")
 	cmd.Flags().BoolVar(&msgFlags.HexEncodedMessage, "hex-encoded", false, "given message is hex encoded")
 	cmd.Flags().StringVar(&msgFlags.DestinationAddress, "destination-address", "", "deliver the message to the given contract destination address")
@@ -67,7 +60,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 		msgFlags.Network,
 		true,
 		false,
-		msgSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

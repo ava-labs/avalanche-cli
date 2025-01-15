@@ -34,7 +34,7 @@ func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 	return nil
 }
 
-func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool, supportedNetworkOptions []networkoptions.NetworkOption) error {
+func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool) error {
 	var (
 		doDeploy       bool
 		msg            string
@@ -45,7 +45,7 @@ func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 		msg = fmt.Sprintf("Blockchain %s is not created yet. Do you want to create it first?", blockchainName)
 		errIfNoChoosen = fmt.Errorf("blockchain not available and not being created first")
 	} else {
-		filteredSupportedNetworkOptions, _, _, err := networkoptions.GetSupportedNetworkOptionsForSubnet(app, blockchainName, supportedNetworkOptions)
+		filteredSupportedNetworkOptions, _, _, err := networkoptions.GetSupportedNetworkOptionsForSubnet(app, blockchainName, networkoptions.DefaultSupportedNetworkOptions)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 				return errIfNoChoosen
 			}
 		}
-		return runDeploy(cmd, []string{blockchainName}, supportedNetworkOptions)
+		return runDeploy(cmd, []string{blockchainName})
 	}
 	return nil
 }

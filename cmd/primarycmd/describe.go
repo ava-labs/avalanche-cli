@@ -33,8 +33,6 @@ const art = `
   \_____|     \_____|_| |_|\__,_|_|_| |_| |_|   \__,_|_|  \__,_|_| |_| |_|___/
 `
 
-var describeSupportedNetworkOptions = []networkoptions.NetworkOption{networkoptions.Local, networkoptions.Cluster}
-
 // avalanche primary describe
 func newDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -44,7 +42,7 @@ func newDescribeCmd() *cobra.Command {
 		RunE:  describe,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, describeSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.LocalClusterSupportedNetworkOptions)
 	return cmd
 }
 
@@ -55,7 +53,7 @@ func describe(_ *cobra.Command, _ []string) error {
 		globalNetworkFlags,
 		false,
 		false,
-		describeSupportedNetworkOptions,
+		networkoptions.LocalClusterSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
