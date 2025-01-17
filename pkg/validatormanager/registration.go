@@ -368,9 +368,9 @@ func InitValidatorRegistration(
 	alreadyInitialized := false
 	if initWithPos {
 		ux.Logger.PrintLineSeparator()
-		ux.Logger.PrintToUser("Initializing a validator registration with PoS validator manager")
-		ux.Logger.PrintToUser("Using rpcURL: %s", rpcURL)
-		ux.Logger.PrintToUser("NodeID: %s staking %s", nodeID.String(), stakeAmount)
+		ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
+		ux.Logger.PrintToUser("Using RPC URL: %s", rpcURL)
+		ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount)
 		ux.Logger.PrintLineSeparator()
 		tx, _, err := InitializeValidatorRegistrationPoSNative(
 			rpcURL,

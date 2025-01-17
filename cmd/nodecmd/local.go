@@ -3,14 +3,14 @@
 package nodecmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"math/big"
-	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	anrnetwork "github.com/ava-labs/avalanche-network-runner/network"
 	"github.com/ava-labs/avalanchego/api/info"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -32,7 +32,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/spf13/cobra"
@@ -61,6 +60,7 @@ var (
 	delegationFee             uint16
 	publicKey                 string
 	pop                       string
+	minimumStakeDuration      uint64
 )
 
 // const snapshotName = "local_snapshot"
@@ -277,14 +277,15 @@ This command can only be used to validate Proof of Stake L1.`,
 
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
-	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
+	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().Float64Var(&balanceAVAX, "balance", 0, "amount of AVAX to increase validator's balance by")
-	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
+	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "delegation fee (in bips)")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
+	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
 
 	return cmd
 }
@@ -355,13 +356,18 @@ func localValidate(_ *cobra.Command, args []string) error {
 		}
 	}
 	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(rpcURL)
+	// if there is error that means RPC URL did not contain blockchain in it
+	// RPC might be in the format of something like https://etna.avax-dev.network
+	// We will prompt for blockchainID in that case
 	if err != nil {
-		return err
+		blockchainID, err = app.Prompt.CaptureString("What is the Blockchain ID of the L1?")
+		if err != nil {
+			return err
+		}
 	}
 	chainSpec := contract.ChainSpec{
 		BlockchainID: blockchainID,
 	}
-	var balance uint64
 	if balanceAVAX == 0 {
 		availableBalance, err := utils.GetNetworkBalance(kc.Addresses().List(), network.Endpoint)
 		if err != nil {
@@ -373,7 +379,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	balance = uint64(balanceAVAX * float64(units.Avax))
+	balance := uint64(balanceAVAX * float64(units.Avax))
 
 	if remainingBalanceOwnerAddr == "" {
 		remainingBalanceOwnerAddr, err = blockchain.GetKeyForChangeOwner(app, network)
@@ -414,6 +420,19 @@ func localValidate(_ *cobra.Command, args []string) error {
 		Addresses: disableOwnerAddrID,
 	}
 
+	ux.Logger.PrintToUser("A private key is needed to pay for initialization of the validator's registration (Blockchain gas token).")
+	payerPrivateKey, err := prompts.PromptPrivateKey(
+		app.Prompt,
+		"pay the fee",
+		app.GetKeyDir(),
+		app.GetKey,
+		"",
+		"",
+	)
+	if err != nil {
+		return err
+	}
+
 	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, []string{})
 	if err != nil {
 		return err
@@ -429,17 +448,19 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	rootDir := app.GetLocalDir(clusterName)
-	networkJSONPath := filepath.Join(rootDir, "network.json")
-	networkFile, err := os.ReadFile(networkJSONPath)
+
+	ctx, cancel := network.BootstrappingContext()
+	defer cancel()
+	cli, err := binutils.NewGRPCClientWithEndpoint(
+		binutils.LocalClusterGRPCServerEndpoint,
+		binutils.WithAvoidRPCVersionCheck(true),
+		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
+	)
+	status, err := cli.Status(ctx)
 	if err != nil {
-		return fmt.Errorf("could not read network config file of local cluster %s: %w", networkJSONPath, err)
-	}
-	var networkJSON anrnetwork.Config
-	if err = json.Unmarshal(networkFile, &networkJSON); err != nil {
 		return err
 	}
-	for _, node := range networkJSON.NodeConfigs {
+	for _, node := range status.ClusterInfo.NodeInfos {
 		if err = addAsValidator(network,
 			node.Name,
 			chainSpec,
@@ -448,10 +469,14 @@ func localValidate(_ *cobra.Command, args []string) error {
 			aggregatorLogger,
 			kc,
 			balance,
+			payerPrivateKey,
 		); err != nil {
 			return err
 		}
 	}
+
+	ux.Logger.PrintToUser(" ")
+	ux.Logger.GreenCheckmarkToUser("All validators are successfully added to the L1")
 	return nil
 }
 
@@ -463,6 +488,7 @@ func addAsValidator(network models.Network,
 	aggregatorLogger logging.Logger,
 	kc *keychain.Keychain,
 	balance uint64,
+	payerPrivateKey string,
 ) error {
 	var nodeIDStr string
 	// get node data
@@ -478,6 +504,11 @@ func addAsValidator(network models.Network,
 	if err != nil {
 		return err
 	}
+
+	ux.Logger.PrintToUser(" ")
+	ux.Logger.PrintToUser("Adding validator %s", nodeIDStr)
+	ux.Logger.PrintToUser(" ")
+
 	blockchainTimestamp, err := blockchain.GetBlockchainTimestamp(network)
 	if err != nil {
 		return fmt.Errorf("failed to get blockchain timestamp: %w", err)
@@ -488,19 +519,7 @@ func addAsValidator(network models.Network,
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
-	payerPrivateKey := ""
-	ux.Logger.PrintToUser("A private key is needed to pay for initialization of the validator's registration (Blockchain gas token).")
-	payerPrivateKey, err = prompts.PromptPrivateKey(
-		app.Prompt,
-		"pay the fee",
-		app.GetKeyDir(),
-		app.GetKey,
-		"",
-		"",
-	)
-	if err != nil {
-		return err
-	}
+
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
 		app,
 		network,
@@ -518,7 +537,7 @@ func addAsValidator(network models.Network,
 		aggregatorLogger,
 		true,
 		delegationFee,
-		genesis.FujiParams.MinStakeDuration,
+		time.Duration(minimumStakeDuration)*time.Second,
 		big.NewInt(int64(stakeAmount)),
 	)
 	if err != nil {
@@ -556,9 +575,34 @@ func addAsValidator(network models.Network,
 		return err
 	}
 
+	validatorWeight, err := getPoSValidatorWeight(network, chainSpec, nodeID)
+	if err != nil {
+		return err
+	}
+
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
+	ux.Logger.PrintToUser("  Weight: %s", validatorWeight)
 	ux.Logger.PrintToUser("  Balance: %.5f AVAX", float64(balance)/float64(units.Avax))
-	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
+	ux.Logger.GreenCheckmarkToUser("Validator %s successfully added to the L1", nodeIDStr)
 	return nil
+}
+
+func getPoSValidatorWeight(network models.Network, chainSpec contract.ChainSpec, nodeID ids.NodeID) (uint64, error) {
+	pClient := platformvm.NewClient(network.Endpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	subnetID, err := contract.GetSubnetID(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return 0, err
+	}
+	validatorsList, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
+	if err != nil {
+		return 0, err
+	}
+	return validatorsList[nodeID].Weight, nil
 }
