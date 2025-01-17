@@ -587,7 +587,7 @@ func addAsValidator(network models.Network,
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)
 	ux.Logger.PrintToUser("  Network: %s", network.Name())
-	ux.Logger.PrintToUser("  Weight: %s", validatorWeight)
+	ux.Logger.PrintToUser("  Weight: %d", validatorWeight)
 	ux.Logger.PrintToUser("  Balance: %.5f AVAX", float64(balance)/float64(units.Avax))
 	ux.Logger.GreenCheckmarkToUser("Validator %s successfully added to the L1", nodeIDStr)
 	return nil
