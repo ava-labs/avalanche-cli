@@ -4,12 +4,13 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 
 	"github.com/ava-labs/avalanchego/api/info"
 
@@ -456,10 +457,14 @@ func localValidate(_ *cobra.Command, args []string) error {
 		binutils.WithAvoidRPCVersionCheck(true),
 		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
 	)
+	if err != nil {
+		return err
+	}
 	status, err := cli.Status(ctx)
 	if err != nil {
 		return err
 	}
+
 	for _, node := range status.ClusterInfo.NodeInfos {
 		if err = addAsValidator(network,
 			node.Name,
