@@ -38,7 +38,7 @@ func IsExecutable(filename string) bool {
 		return false
 	}
 	info, _ := os.Stat(filename)
-	return info.Mode()&0x0100 != 0
+	return info.Mode()&0100 != 0
 }
 
 // UserHomePath returns the absolute path of a file located in the user's home directory.
@@ -75,6 +75,24 @@ func FileCopy(src string, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, constants.WriteReadReadPerms)
+}
+
+// SetupExecFile copies a file into destination and set it to have exec perms,
+// if destination either does not exists, or is not executable
+func SetupExecFile(src string, dst string) error {
+	if !IsExecutable(dst) {
+		// Either it was never installed, or it was partially done (copy or chmod
+		// failure)
+		// As the file is not executable, there is no risk of encountering text file busy
+		// error during copy, because that happens when the binary is being executed.
+		if err := FileCopy(src, dst); err != nil {
+			return err
+		}
+		if err := os.Chmod(dst, constants.DefaultPerms755); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ReadFile reads a file and returns the contents as a string

@@ -80,13 +80,8 @@ func TrackSubnetWithLocalMachine(
 	rootDir := app.GetLocalDir(clusterName)
 
 	pluginPath := filepath.Join(rootDir, "node1", "plugins", vmID.String())
-	if !utils.IsExecutable(pluginPath) {
-		if err := utils.FileCopy(vmBin, pluginPath); err != nil {
-			return err
-		}
-		if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
-			return err
-		}
+	if err := utils.SetupExecFile(vmBin, pluginPath); err != nil {
+		return err
 	}
 
 	cli, err := binutils.NewGRPCClientWithEndpoint(
