@@ -38,7 +38,7 @@ func IsExecutable(filename string) bool {
 		return false
 	}
 	info, _ := os.Stat(filename)
-	return info.Mode()&0100 != 0
+	return info.Mode()&0x0100 != 0
 }
 
 // UserHomePath returns the absolute path of a file located in the user's home directory.
