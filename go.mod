@@ -14,7 +14,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.200.0
 	github.com/cavaliergopher/grab/v3 v3.0.1
 	github.com/chelnak/ysmrr v0.5.0
-	github.com/docker/docker v27.4.1+incompatible
+	github.com/docker/docker v27.5.0+incompatible
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/fatih/color v1.18.0
 	github.com/go-git/go-git/v5 v5.13.1
@@ -165,6 +165,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
+	github.com/moby/sys/reexec v0.1.0 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354 // indirect
