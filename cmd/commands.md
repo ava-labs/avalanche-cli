@@ -407,7 +407,7 @@ avalanche blockchain deploy [subcommand] [flags]
 --pos-maximum-stake-multiplier                         uint8                  maximum stake multiplier (default 1)
 --pos-minimum-delegation-fee uint16                    minimum delegation fee (default 1)
 --pos-minimum-stake-amount uint                        minimum stake amount (default 1)
---pos-minimum-stake-duration uint                      minimum stake duration (default 100)
+--pos-minimum-stake-duration uint                      minimum stake duration (in seconds) (default 100)
 --pos-weight-to-value-factor uint                      weight to value factor (default 1)
 --relay-cchain                                         relay C-Chain as source and destination (default true)
 --relayer-allow-private-ips                            allow relayer to connec to private ips (default true)
@@ -1233,7 +1233,7 @@ avalanche contract initValidatorManager [subcommand] [flags]
 --pos-maximum-stake-multiplier            uint8     (PoS only )maximum stake multiplier (default 1)
 --pos-minimum-delegation-fee uint16       (PoS only) minimum delegation fee (default 1)
 --pos-minimum-stake-amount uint           (PoS only) minimum stake amount (default 1)
---pos-minimum-stake-duration uint         (PoS only) minimum stake duration (default 100)
+--pos-minimum-stake-duration uint         (PoS only) minimum stake duration (in seconds) (default 100)
 --pos-reward-calculator-address string    (PoS only) initialize the ValidatorManager with reward calculator address
 --pos-weight-to-value-factor uint         (PoS only) weight to value factor (default 1)
 --private-key string                      private key to use as contract deployer
@@ -2189,9 +2189,7 @@ The node list command lists all clusters together with their nodes.
 - [`loadtest`](#avalanche-node-loadtest): (ALPHA Warning) This command is currently in experimental mode. 
 
 The node loadtest command suite starts and stops a load test for an existing devnet cluster.
-- [`local`](#avalanche-node-local): (ALPHA Warning) This command is currently in experimental mode.
-
-The node local command suite provides a collection of commands related to local nodes
+- [`local`](#avalanche-node-local): The node local command suite provides a collection of commands related to local nodes
 - [`refresh-ips`](#avalanche-node-refresh-ips): (ALPHA Warning) This command is currently in experimental mode.
 
 The node refresh-ips command obtains the current IP for all nodes with dynamic IPs in the cluster,
@@ -2700,8 +2698,6 @@ avalanche node loadtest stop [subcommand] [flags]
 <a id="avalanche-node-local"></a>
 ### local
 
-(ALPHA Warning) This command is currently in experimental mode.
-
 The node local command suite provides a collection of commands related to local nodes
 
 **Usage:**
@@ -2712,19 +2708,19 @@ avalanche node local [subcommand] [flags]
 **Subcommands:**
 
 - [`destroy`](#avalanche-node-local-destroy): Cleanup local node.
-- [`start`](#avalanche-node-local-start): (ALPHA Warning) This command is currently in experimental mode. 
-
-The node local start command sets up a validator on a local server. 
-The validator will be validating the Avalanche Primary Network and Subnet 
-of your choice. By default, the command runs an interactive wizard. It 
-walks you through all the steps you need to set up a validator.
-Once this command is completed, you will have to wait for the validator
+- [`start`](#avalanche-node-local-start): The node local start command creates Avalanche nodes on the local machine.
+Once this command is completed, you will have to wait for the Avalanche node
 to finish bootstrapping on the primary network before running further
-commands on it, e.g. validating a Subnet. You can check the bootstrapping
-status by running avalanche node status local
+commands on it, e.g. validating a Subnet. 
+
+You can check the bootstrapping status by running avalanche node status local.
 - [`status`](#avalanche-node-local-status): Get status of local node.
 - [`stop`](#avalanche-node-local-stop): Stop local node.
-- [`track`](#avalanche-node-local-track): (ALPHA Warning) make the local node at the cluster to track given blockchain
+- [`track`](#avalanche-node-local-track): Track specified blockchain with local node
+- [`validate`](#avalanche-node-local-validate): Use Avalanche Node set up on local machine to set up specified L1 by providing the
+RPC URL of the L1. 
+
+This command can only be used to validate Proof of Stake L1.
 
 **Flags:**
 
@@ -2757,16 +2753,12 @@ avalanche node local destroy [subcommand] [flags]
 <a id="avalanche-node-local-start"></a>
 #### local start
 
-(ALPHA Warning) This command is currently in experimental mode. 
-
-The node local start command sets up a validator on a local server. 
-The validator will be validating the Avalanche Primary Network and Subnet 
-of your choice. By default, the command runs an interactive wizard. It 
-walks you through all the steps you need to set up a validator.
-Once this command is completed, you will have to wait for the validator
+The node local start command creates Avalanche nodes on the local machine.
+Once this command is completed, you will have to wait for the Avalanche node
 to finish bootstrapping on the primary network before running further
-commands on it, e.g. validating a Subnet. You can check the bootstrapping
-status by running avalanche node status local
+commands on it, e.g. validating a Subnet. 
+
+You can check the bootstrapping status by running avalanche node status local.
 
 **Usage:**
 ```bash
@@ -2791,7 +2783,7 @@ avalanche node local start [subcommand] [flags]
 -l, --local                                 operate on a local network
 -m, --mainnet                               operate on mainnet
 --node-config string                        path to common avalanchego config settings for all nodes
---num-nodes uint32                          number of nodes to start (default 1)
+--num-nodes uint32                          number of Avalanche nodes to create on local machine (default 1)
 --partial-sync                              primary network partial sync (default true)
 --staking-cert-key-path string              path to provided staking cert key for node
 --staking-signer-key-path string            path to provided staking signer key for node
@@ -2818,7 +2810,7 @@ avalanche node local status [subcommand] [flags]
 ```bash
 --blockchain string    specify the blockchain the node is syncing with
 -h, --help             help for status
---subnet string        specify the blockchain the node is syncing with
+--l1 string            specify the blockchain the node is syncing with
 --config string        config file (default is $HOME/.avalanche-cli/config.json)
 --log-level string     log level for the application (default "ERROR")
 --skip-update-check    skip check for new versions
@@ -2846,7 +2838,7 @@ avalanche node local stop [subcommand] [flags]
 <a id="avalanche-node-local-track"></a>
 #### local track
 
-(ALPHA Warning) make the local node at the cluster to track given blockchain
+Track specified blockchain with local node
 
 **Usage:**
 ```bash
@@ -2864,6 +2856,39 @@ avalanche node local track [subcommand] [flags]
 --config string                             config file (default is $HOME/.avalanche-cli/config.json)
 --log-level string                          log level for the application (default "ERROR")
 --skip-update-check                         skip check for new versions
+```
+
+<a id="avalanche-node-local-validate"></a>
+#### local validate
+
+Use Avalanche Node set up on local machine to set up specified L1 by providing the
+RPC URL of the L1. 
+
+This command can only be used to validate Proof of Stake L1.
+
+**Usage:**
+```bash
+avalanche node local validate [subcommand] [flags]
+```
+
+**Flags:**
+
+```bash
+--aggregator-log-level string       log level to use with signature aggregator (default "Debug")
+--aggregator-log-to-stdout          use stdout for signature aggregator logs
+--balance float                     amount of AVAX to increase validator's balance by
+--blockchain string                 specify the blockchain the node is syncing with
+--delegation-fee uint16             delegation fee (in bips) (default 100)
+--disable-owner string              P-Chain address that will able to disable the validator with a P-Chain transaction
+-h, --help                          help for validate
+--l1 string                         specify the blockchain the node is syncing with
+--minimum-stake-duration uint       minimum stake duration (in seconds) (default 100)
+--remaining-balance-owner string    P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet
+--rpc string                        connect to validator manager at the given rpc endpoint
+--stake-amount uint                 amount of tokens to stake
+--config string                     config file (default is $HOME/.avalanche-cli/config.json)
+--log-level string                  log level for the application (default "ERROR")
+--skip-update-check                 skip check for new versions
 ```
 
 <a id="avalanche-node-refresh-ips"></a>
