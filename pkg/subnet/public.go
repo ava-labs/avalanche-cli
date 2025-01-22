@@ -949,15 +949,9 @@ func (d *PublicDeployer) increaseValidatorPChainBalance(validationID ids.ID, bal
 
 func printFee(kind string, wallet *primary.Wallet, unsignedTx txs.UnsignedTx) error {
 	if showFees {
-		var pFeeCalculator avagofee.Calculator
 		pContext := wallet.P().Builder().Context()
 		calcKind := "dynamic"
-		if pContext.GasPrice != 0 {
-			pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
-		} else {
-			pFeeCalculator = avagofee.NewStaticCalculator(pContext.StaticFeeConfig)
-			calcKind = "static"
-		}
+		pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 		txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 		if err != nil {
 			if !errors.Is(err, avagofee.ErrUnsupportedTx) {

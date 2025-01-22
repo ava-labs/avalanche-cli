@@ -96,7 +96,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
+	fee := network.StaticFeeParams().TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",

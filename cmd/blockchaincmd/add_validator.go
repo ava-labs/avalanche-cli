@@ -176,7 +176,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+	fee := network.StaticFeeParams().AddSubnetValidatorFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",

@@ -69,7 +69,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("the specified node is not a L1 validator")
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
+	fee := network.StaticFeeParams().TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		constants.PayTxsFeesMsg,
