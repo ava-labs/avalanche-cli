@@ -103,11 +103,11 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	if err != nil {
 		return "", "", "", err
 	}
-	blsSignerKey, err := bls.NewSecretKey()
+	blsSigner, err := bls.NewSigner()
 	if err != nil {
 		return "", "", "", err
 	}
-	p := signer.NewProofOfPossession(blsSignerKey)
+	p := signer.NewProofOfPossession(blsSigner)
 	publicKey, err := formatting.Encode(formatting.HexNC, p.PublicKey[:])
 	if err != nil {
 		return "", "", "", err
