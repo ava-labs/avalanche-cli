@@ -340,7 +340,7 @@ func TxToMethod(
 			return tx, nil, err
 		}
 		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
-			ux.Logger.RedXToUser("failure traying to match error selector on trace: %s", err)
+			ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
 		} else if errorFromSignature != nil {
 			return tx, nil, errorFromSignature
 		} else {
@@ -460,7 +460,7 @@ func handleFailedReceiptStatus(
 	}
 	if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
 		printFailedReceiptStatusMessage(rpcURL, description, tx)
-		ux.Logger.RedXToUser("failure traying to match error selector on trace: %s", err)
+		ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
 	} else if errorFromSignature != nil {
 		return tx, receipt, errorFromSignature
 	} else {
