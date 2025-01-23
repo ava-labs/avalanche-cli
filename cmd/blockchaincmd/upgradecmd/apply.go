@@ -135,7 +135,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 	if print {
 		ux.Logger.PrintToUser("The --print flag is ignored on local networks. Continuing.")
 	}
-	precmpUpgrades, strNetUpgrades, err := validateUpgrade(blockchainName, networkKey, sc, force)
+	precmpUpgrades, _, err := validateUpgrade(blockchainName, networkKey, sc, force)
 	if err != nil {
 		return err
 	}
