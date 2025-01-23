@@ -42,7 +42,7 @@ Currently, only ubuntu-based operating system is supported.`,
 		RunE:              setupNode,
 		PersistentPostRun: handlePostRun,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.NonLocalSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
 	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
@@ -133,7 +133,7 @@ func setupNode(_ *cobra.Command, _ []string) error {
 		globalNetworkFlags,
 		false,
 		true,
-		createSupportedNetworkOptions,
+		networkoptions.NonLocalSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
