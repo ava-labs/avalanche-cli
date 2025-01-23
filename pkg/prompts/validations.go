@@ -149,7 +149,7 @@ func validateWeight(input string) error {
 	return nil
 }
 
-func validateValidatorBalanceFunc(availableBalance uint64, minBalance float64) func(string) error {
+func validateValidatorBalanceFunc(availableBalance float64, minBalance float64) func(string) error {
 	return func(input string) error {
 		val, err := strconv.ParseFloat(input, 64)
 		if err != nil {
@@ -159,10 +159,10 @@ func validateValidatorBalanceFunc(availableBalance uint64, minBalance float64) f
 			return fmt.Errorf("entered value has to be greater than 0 AVAX")
 		}
 		if val < minBalance {
-			return fmt.Errorf("validator balance must be at least %2f AVAX", minBalance)
+			return fmt.Errorf("validator balance must be at least %.2f AVAX", minBalance)
 		}
-		if val > float64(availableBalance) {
-			return fmt.Errorf("current balance of %d is not sufficient for validator balance to be %2f AVAX", availableBalance, val)
+		if val > availableBalance {
+			return fmt.Errorf("current balance of %.2f is not sufficient for validator balance to be %.2f AVAX", availableBalance, val)
 		}
 		return nil
 	}

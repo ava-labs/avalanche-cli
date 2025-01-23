@@ -31,6 +31,29 @@ const (
 	Cluster
 )
 
+var (
+	DefaultSupportedNetworkOptions = []NetworkOption{
+		Local,
+		Devnet,
+		Fuji,
+		Mainnet,
+	}
+	NonLocalSupportedNetworkOptions = []NetworkOption{
+		Devnet,
+		Fuji,
+		Mainnet,
+	}
+	NonMainnetSupportedNetworkOptions = []NetworkOption{
+		Local,
+		Devnet,
+		Fuji,
+	}
+	LocalClusterSupportedNetworkOptions = []NetworkOption{
+		Local,
+		Cluster,
+	}
+)
+
 func (n NetworkOption) String() string {
 	switch n {
 	case Mainnet:

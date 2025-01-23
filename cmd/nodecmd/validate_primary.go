@@ -160,7 +160,7 @@ func PromptWeightPrimaryNetwork(network models.Network) (uint64, error) {
 	case defaultWeight:
 		return defaultStake, nil
 	default:
-		return app.Prompt.CaptureWeight(txt)
+		return app.Prompt.CaptureWeight(txt, func(uint64) error { return nil })
 	}
 }
 

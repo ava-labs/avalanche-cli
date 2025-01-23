@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -120,11 +121,5 @@ func removeTimestamp(s string) string {
 // if an error has already been found, we should not print it again
 func alreadyFound(s string, found []string) bool {
 	log := removeTimestamp(s)
-	for _, f := range found {
-		// this is a pretty strict requirement, but probably justified
-		if f == log {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(found, log)
 }

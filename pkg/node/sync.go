@@ -140,7 +140,7 @@ func trackSubnet(
 	}
 	wg.Wait()
 	if wgResults.HasErrors() {
-		return fmt.Errorf("failed to track blockchain for node(s) %s", wgResults.GetErrorHostMap())
+		return fmt.Errorf("failed to track network for node(s) %s", wgResults.GetErrorHostMap())
 	}
 
 	// update slice of subnets synced by the cluster

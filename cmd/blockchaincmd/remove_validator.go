@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
@@ -32,13 +34,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var removeValidatorSupportedNetworkOptions = []networkoptions.NetworkOption{
-	networkoptions.Local,
-	networkoptions.Devnet,
-	networkoptions.Fuji,
-	networkoptions.Mainnet,
-}
-
 var (
 	uptimeSec uint64
 	force     bool
@@ -57,7 +52,7 @@ these prompts by providing the values with flags.`,
 		RunE: removeValidator,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, removeValidatorSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non-SOV blockchain only) file path of the removeValidator tx")
@@ -88,14 +83,13 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	networkOptionsList := networkoptions.GetNetworkFromSidecar(sc, removeValidatorSupportedNetworkOptions)
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		true,
 		false,
-		networkOptionsList,
+		networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions),
 		"",
 	)
 	if err != nil {
@@ -265,12 +259,12 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterName, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
-		"signature-aggregator",
+		constants.SignatureAggregatorLogName,
 		aggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterNameFlagValue),
@@ -342,7 +336,7 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
 	} else {
 		ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
-		if err := UpdatePChainHeight(
+		if err := blockchain.UpdatePChainHeight(
 			"Waiting for P-Chain to update validator information ...",
 		); err != nil {
 			return err

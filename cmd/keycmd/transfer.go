@@ -46,12 +46,6 @@ const (
 )
 
 var (
-	transferSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Mainnet,
-		networkoptions.Fuji,
-		networkoptions.Devnet,
-		networkoptions.Local,
-	}
 	keyName            string
 	ledgerIndex        uint32
 	destinationAddrStr string
@@ -75,7 +69,7 @@ func newTransferCmd() *cobra.Command {
 		RunE:  transferF,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, transferSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().StringVarP(
 		&keyName,
 		keyNameFlag,
@@ -164,7 +158,7 @@ func transferF(*cobra.Command, []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		transferSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

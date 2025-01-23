@@ -4,7 +4,6 @@ package blockchaincmd
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -13,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +34,7 @@ func CreateBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 	return nil
 }
 
-func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool, supportedNetworkOptions []networkoptions.NetworkOption) error {
+func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt bool) error {
 	var (
 		doDeploy       bool
 		msg            string
@@ -47,7 +45,7 @@ func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 		msg = fmt.Sprintf("Blockchain %s is not created yet. Do you want to create it first?", blockchainName)
 		errIfNoChoosen = fmt.Errorf("blockchain not available and not being created first")
 	} else {
-		filteredSupportedNetworkOptions, _, _, err := networkoptions.GetSupportedNetworkOptionsForSubnet(app, blockchainName, supportedNetworkOptions)
+		filteredSupportedNetworkOptions, _, _, err := networkoptions.GetSupportedNetworkOptionsForSubnet(app, blockchainName, networkoptions.DefaultSupportedNetworkOptions)
 		if err != nil {
 			return err
 		}
@@ -67,7 +65,7 @@ func DeployBlockchainFirst(cmd *cobra.Command, blockchainName string, skipPrompt
 				return errIfNoChoosen
 			}
 		}
-		return runDeploy(cmd, []string{blockchainName}, supportedNetworkOptions)
+		return runDeploy(cmd, []string{blockchainName})
 	}
 	return nil
 }
@@ -93,21 +91,6 @@ func UpdateKeychainWithSubnetControlKeys(
 	if err := kc.AddAddresses(controlKeys); err != nil {
 		return err
 	}
-	return nil
-}
-
-func UpdatePChainHeight(
-	title string,
-) error {
-	_, err := ux.TimedProgressBar(
-		40*time.Second,
-		title,
-		0,
-	)
-	if err != nil {
-		return err
-	}
-	fmt.Println()
 	return nil
 }
 

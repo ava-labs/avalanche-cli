@@ -23,12 +23,6 @@ import (
 )
 
 var (
-	joinSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-	}
 	// path to avalanchego config file
 	avagoConfigPath string
 	// path to avalanchego plugin dir
@@ -39,7 +33,7 @@ var (
 	printManual bool
 	// if true, doesn't ask for overwriting the config file
 	forceWrite bool
-	// for permissionless subnet only: how muchnative token will be staked in the validator
+	// for permissionless subnet only: how much native token will be staked in the validator
 	stakeAmount uint64
 )
 
@@ -65,7 +59,7 @@ This command currently only supports Blockchains deployed on the Fuji Testnet an
 		RunE: joinCmd,
 		Args: cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, joinSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().StringVar(&avagoConfigPath, "avalanchego-config", "", "file path of the avalanchego config file")
 	cmd.Flags().StringVar(&pluginDir, "plugin-dir", "", "file path of avalanchego's plugin directory")
 	cmd.Flags().StringVar(&dataDir, "data-dir", "", "path of avalanchego's data dir directory")
@@ -108,7 +102,7 @@ func joinCmd(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		joinSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {

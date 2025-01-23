@@ -78,17 +78,22 @@ func SplitKeyValueStringToMap(str string, delimiter string) (map[string]string, 
 
 // Context for ANR network operations
 func GetANRContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.ANRRequestTimeout)
+	return GetTimedContext(constants.ANRRequestTimeout)
 }
 
 // Context for API requests
 func GetAPIContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.APIRequestTimeout)
+	return GetTimedContext(constants.APIRequestTimeout)
 }
 
 // Context for API requests with large timeout
 func GetAPILargeContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+	return GetTimedContext(constants.APIRequestLargeTimeout)
+}
+
+// Timed Context
+func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), timeout)
 }
 
 func GetRealFilePath(path string) string {
@@ -115,15 +120,6 @@ func Find[T any](input []T, f func(T) bool) *T {
 		}
 	}
 	return nil
-}
-
-func Belongs[T comparable](input []T, elem T) bool {
-	for _, e := range input {
-		if e == elem {
-			return true
-		}
-	}
-	return false
 }
 
 func RemoveFromSlice[T comparable](input []T, toRemove T) []T {

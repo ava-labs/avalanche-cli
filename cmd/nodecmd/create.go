@@ -45,7 +45,6 @@ const (
 )
 
 var (
-	createSupportedNetworkOptions         = []networkoptions.NetworkOption{networkoptions.Fuji, networkoptions.Devnet, networkoptions.Mainnet}
 	globalNetworkFlags                    networkoptions.NetworkFlags
 	useAWS                                bool
 	useGCP                                bool
@@ -97,7 +96,7 @@ will apply to all nodes in the cluster`,
 		RunE:              createNodes,
 		PersistentPostRun: handlePostRun,
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, createSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.NonLocalSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&useStaticIP, "use-static-ip", true, "attach static Public IP on cloud servers")
 	cmd.Flags().BoolVar(&useAWS, "aws", false, "create node/s in AWS cloud")
 	cmd.Flags().BoolVar(&useGCP, "gcp", false, "create node/s in GCP cloud")
@@ -289,7 +288,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		false,
 		true,
-		createSupportedNetworkOptions,
+		networkoptions.NonLocalSupportedNetworkOptions,
 		"",
 	)
 	if err := preCreateChecks(clusterName); err != nil {

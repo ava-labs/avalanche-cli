@@ -280,7 +280,7 @@ func (m *SoftKey) PrivKeyHex() string {
 
 // Saves the private key to disk with hex encoding.
 func (m *SoftKey) Save(p string) error {
-	return os.WriteFile(p, []byte(m.PrivKeyHex()), constants.WriteReadUserOnlyPerms)
+	return os.WriteFile(p, []byte(m.PrivKeyHex()), constants.UserOnlyWriteReadPerms)
 }
 
 func (m *SoftKey) P(networkHRP string) (string, error) {
