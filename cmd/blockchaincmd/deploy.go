@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
@@ -39,7 +41,6 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/network/peer"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -205,7 +206,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 
 	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
 	cmd.Flags().Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
-	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", 100, "minimum stake duration")
+	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
 	cmd.Flags().Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
 	cmd.Flags().Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
 	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
@@ -742,7 +743,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		switch {
 		case len(bootstrapEndpoints) > 0:
 			if changeOwnerAddress == "" {
-				changeOwnerAddress, err = getKeyForChangeOwner(network)
+				changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
 				if err != nil {
 					return err
 				}
@@ -1038,7 +1039,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			evm.WaitForChainID(client)
-			extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterName, aggregatorExtraEndpoints)
+			extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
 			if err != nil {
 				return err
 			}
@@ -1067,7 +1068,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				BootstrapValidators: avaGoBootstrapValidators,
 			}
 			aggregatorLogger, err := utils.NewLogger(
-				"signature-aggregator",
+				constants.SignatureAggregatorLogName,
 				aggregatorLogLevel,
 				constants.DefaultAggregatorLogLevel,
 				app.GetAggregatorLogDir(clusterName),
@@ -1278,7 +1279,7 @@ func getClusterBootstrapValidators(
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse nodeID: %w", err)
 		}
-		changeAddr, err = getKeyForChangeOwner(network)
+		changeAddr, err = blockchain.GetKeyForChangeOwner(app, network)
 		if err != nil {
 			return nil, err
 		}
@@ -1298,27 +1299,6 @@ func getClusterBootstrapValidators(
 	return subnetValidators, nil
 }
 
-func getBLSInfo(publicKey, proofOfPossesion string) (signer.ProofOfPossession, error) {
-	type jsonProofOfPossession struct {
-		PublicKey         string
-		ProofOfPossession string
-	}
-	jsonPop := jsonProofOfPossession{
-		PublicKey:         publicKey,
-		ProofOfPossession: proofOfPossesion,
-	}
-	popBytes, err := json.Marshal(jsonPop)
-	if err != nil {
-		return signer.ProofOfPossession{}, err
-	}
-	pop := &signer.ProofOfPossession{}
-	err = pop.UnmarshalJSON(popBytes)
-	if err != nil {
-		return signer.ProofOfPossession{}, err
-	}
-	return *pop, nil
-}
-
 // TODO: add deactivation owner?
 func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidator) ([]*txs.ConvertSubnetToL1Validator, error) {
 	bootstrapValidators := []*txs.ConvertSubnetToL1Validator{}
@@ -1327,7 +1307,7 @@ func ConvertToAvalancheGoSubnetValidator(subnetValidators []models.SubnetValidat
 		if err != nil {
 			return nil, err
 		}
-		blsInfo, err := getBLSInfo(validator.BLSPublicKey, validator.BLSProofOfPossession)
+		blsInfo, err := blockchain.ConvertToBLSProofOfPossession(validator.BLSPublicKey, validator.BLSProofOfPossession)
 		if err != nil {
 			return nil, fmt.Errorf("failure parsing BLS info: %w", err)
 		}
@@ -1504,32 +1484,8 @@ func LoadBootstrapValidator(filepath string) ([]models.SubnetValidator, error) {
 	return subnetValidators, nil
 }
 
-func UrisToPeers(uris []string) ([]info.Peer, error) {
-	peers := []info.Peer{}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	for _, uri := range uris {
-		client := info.NewClient(uri)
-		nodeID, _, err := client.GetNodeID(ctx)
-		if err != nil {
-			return nil, err
-		}
-		ip, err := client.GetNodeIP(ctx)
-		if err != nil {
-			return nil, err
-		}
-		peers = append(peers, info.Peer{
-			Info: peer.Info{
-				ID:       nodeID,
-				PublicIP: ip,
-			},
-		})
-	}
-	return peers, nil
-}
-
 func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
-	aggregatorPeers, err := UrisToPeers(uris)
+	aggregatorPeers, err := blockchain.UrisToPeers(uris)
 	if err != nil {
 		return nil, err
 	}
@@ -1553,60 +1509,6 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 		}
 	}
 	return aggregatorPeers, nil
-}
-
-func GetAggregatorExtraPeers(
-	clusterName string,
-	extraURIs []string,
-) ([]info.Peer, error) {
-	uris, err := GetAggregatorNetworkUris(clusterName)
-	if err != nil {
-		return nil, err
-	}
-	uris = append(uris, extraURIs...)
-	urisSet := set.Of(uris...)
-	uris = urisSet.List()
-	return UrisToPeers(uris)
-}
-
-func GetAggregatorNetworkUris(clusterName string) ([]string, error) {
-	aggregatorExtraPeerEndpointsUris := []string{}
-	if clusterName != "" {
-		clustersConfig, err := app.LoadClustersConfig()
-		if err != nil {
-			return nil, err
-		}
-		clusterConfig := clustersConfig.Clusters[clusterName]
-		if clusterConfig.Local {
-			cli, err := binutils.NewGRPCClientWithEndpoint(
-				binutils.LocalClusterGRPCServerEndpoint,
-				binutils.WithAvoidRPCVersionCheck(true),
-				binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-			)
-			if err != nil {
-				return nil, err
-			}
-			ctx, cancel := utils.GetANRContext()
-			defer cancel()
-			status, err := cli.Status(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
-			}
-		} else { // remote cluster case
-			hostIDs := utils.Filter(clusterConfig.GetCloudIDs(), clusterConfig.IsAvalancheGoHost)
-			for _, hostID := range hostIDs {
-				if nodeConfig, err := app.LoadClusterNodeConfig(hostID); err != nil {
-					return nil, err
-				} else {
-					aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, fmt.Sprintf("http://%s:%d", nodeConfig.ElasticIP, constants.AvalancheGoAPIPort))
-				}
-			}
-		}
-	}
-	return aggregatorExtraPeerEndpointsUris, nil
 }
 
 func simulatedPublicNetwork() bool {

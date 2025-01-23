@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/units"
 
@@ -32,7 +34,6 @@ import (
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	"github.com/spf13/cobra"
 )
@@ -343,12 +344,12 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	blsInfo, err := getBLSInfo(publicKey, pop)
+	blsInfo, err := blockchain.ConvertToBLSProofOfPossession(publicKey, pop)
 	if err != nil {
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
-	blockchainTimestamp, err := getBlockchainTimestamp(network)
+	blockchainTimestamp, err := blockchain.GetBlockchainTimestamp(network)
 	if err != nil {
 		return fmt.Errorf("failed to get blockchain timestamp: %w", err)
 	}
@@ -441,7 +442,7 @@ func CallAddValidator(
 	balance := uint64(balanceAVAX * float64(units.Avax))
 
 	if remainingBalanceOwnerAddr == "" {
-		remainingBalanceOwnerAddr, err = getKeyForChangeOwner(network)
+		remainingBalanceOwnerAddr, err = blockchain.GetKeyForChangeOwner(app, network)
 		if err != nil {
 			return err
 		}
@@ -479,12 +480,12 @@ func CallAddValidator(
 		Addresses: disableOwnerAddrID,
 	}
 
-	extraAggregatorPeers, err := GetAggregatorExtraPeers(clusterNameFlagValue, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, aggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
-		"signature-aggregator",
+		constants.SignatureAggregatorLogName,
 		aggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterNameFlagValue),
@@ -527,7 +528,7 @@ func CallAddValidator(
 		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already registered on the P-Chain. Proceeding to the next step"))
 	} else {
 		ux.Logger.PrintToUser("RegisterL1ValidatorTx ID: %s", txID)
-		if err := UpdatePChainHeight(
+		if err := blockchain.UpdatePChainHeight(
 			"Waiting for P-Chain to update validator information ...",
 		); err != nil {
 			return err
@@ -720,13 +721,6 @@ func PromptDuration(start time.Time, network models.Network, isPos bool) (time.D
 			return d, nil
 		}
 	}
-}
-
-func getBlockchainTimestamp(network models.Network) (time.Time, error) {
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	platformCli := platformvm.NewClient(network.Endpoint)
-	return platformCli.GetTimestamp(ctx)
 }
 
 func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
