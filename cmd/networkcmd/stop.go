@@ -3,20 +3,15 @@
 package networkcmd
 
 import (
-	"errors"
-	"fmt"
-
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 type StopFlags struct {
@@ -52,24 +47,7 @@ func stop(*cobra.Command, []string) error {
 
 func Stop(flags StopFlags) error {
 	if err := stopAndSaveNetwork(flags); err != nil {
-		if errors.Is(err, binutils.ErrGRPCTimeout) {
-			// no server to kill
-			return nil
-		} else {
-			return err
-		}
-	}
-
-	var err error
-	if err = binutils.KillgRPCServerProcess(
-		app,
-		binutils.LocalNetworkGRPCServerEndpoint,
-		constants.ServerRunFileLocalNetworkPrefix,
-	); err != nil {
-		app.Log.Warn("failed killing server process", zap.Error(err))
-		fmt.Println(err)
-	} else {
-		ux.Logger.PrintToUser("Server shutdown gracefully")
+		return err
 	}
 
 	if err := interchain.RelayerCleanup(
@@ -84,41 +62,43 @@ func Stop(flags StopFlags) error {
 }
 
 func stopAndSaveNetwork(flags StopFlags) error {
-	cli, err := binutils.NewGRPCClient(
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
+	if b, err := localnet.IsBootstrapped(app); err != nil {
+		return err
+	} else if !b {
+		ux.Logger.PrintToUser("Network is not up.")
+		return nil
+	}
+
+	currentLocalNetworkDir, err := localnet.ReadInfo(app)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := utils.GetANRContext()
+	ctx, cancel := localnet.GetDefaultTimeout()
 	defer cancel()
+	if err := tmpnet.StopNetwork(ctx, currentLocalNetworkDir); err != nil {
+		return err
+	}
 
-	if _, err := cli.Status(ctx); err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser("Network already stopped.")
-			return nil
-		}
-		return fmt.Errorf("failed to get network status: %w", err)
+	if err := localnet.RemoveInfo(app); err != nil {
+		return err
 	}
 
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
+	dontSave := autoSave || flags.dontSave
 
-	if flags.dontSave || autoSave {
-		if _, err := cli.Stop(ctx); err != nil {
-			return fmt.Errorf("failed to stop network: %w", err)
-		}
-		return nil
-	} else {
-		if _, err = cli.SaveSnapshot(ctx, flags.snapshotName, true); err != nil {
-			return fmt.Errorf("failed to stop network: %w", err)
+	if !dontSave {
+		snapshotPath := app.GetSnapshotPath(flags.snapshotName)
+		if err := localnet.TmpNetMigrate(currentLocalNetworkDir, snapshotPath); err != nil {
+			return err
 		}
 	}
 
+	/*
 	if err := node.StopLocalNetworkConnectedCluster(app); err != nil {
 		return err
 	}
+	*/
 
 	ux.Logger.PrintToUser("Network stopped successfully.")
 

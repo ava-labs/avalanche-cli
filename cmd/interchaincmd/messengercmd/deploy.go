@@ -239,6 +239,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				if err := localnet.WriteExtraLocalNetworkData(
 					"",
 					"",
+					"",
 					messengerAddress,
 					registryAddress,
 				); err != nil {

@@ -509,7 +509,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return err
 		}
 		if network.Kind == models.Local {
-			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
+			if err := localnet.WriteExtraLocalNetworkData("", "", binPath, "", ""); err != nil {
 				return err
 			}
 		}

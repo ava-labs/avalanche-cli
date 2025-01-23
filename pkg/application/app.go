@@ -56,7 +56,7 @@ func (app *Avalanche) GetSnapshotsDir() string {
 }
 
 func (app *Avalanche) GetSnapshotPath(snapshotName string) string {
-	return filepath.Join(app.GetSnapshotsDir(), "anr-snapshot-"+snapshotName)
+	return filepath.Join(app.GetSnapshotsDir(), snapshotName)
 }
 
 func (app *Avalanche) GetBaseDir() string {

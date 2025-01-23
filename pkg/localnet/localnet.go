@@ -9,15 +9,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/node"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 )
 
 func GetEndpoint() (string, error) {
@@ -85,20 +91,25 @@ func GetExtraLocalNetworkData(rootDataDir string) (bool, ExtraLocalNetworkData, 
 }
 
 func WriteExtraLocalNetworkData(
+	rootDataDir string,
 	avalancheGoPath string,
 	relayerPath string,
 	cchainICMMessengerAddress string,
 	cchainICMRegistryAddress string,
 ) error {
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return err
+	if rootDataDir == "" {
+		fmt.Println("ACA NO ENTRO")
+		clusterInfo, err := GetClusterInfo()
+		if err != nil {
+			return err
+		}
+		rootDataDir = clusterInfo.GetRootDataDir()
 	}
-	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
+	extraLocalNetworkDataPath := filepath.Join(rootDataDir, constants.ExtraLocalNetworkDataFilename)
 	extraLocalNetworkData := ExtraLocalNetworkData{}
 	if utils.FileExists(extraLocalNetworkDataPath) {
 		var err error
-		_, extraLocalNetworkData, err = GetExtraLocalNetworkData("")
+		_, extraLocalNetworkData, err = GetExtraLocalNetworkData(rootDataDir)
 		if err != nil {
 			return err
 		}
@@ -133,7 +144,7 @@ func Deployed(subnetName string) (bool, error) {
 }
 
 // assumes server is up
-func IsBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
+func IsBootstrappedOld(ctx context.Context, cli client.Client) (bool, error) {
 	_, err := cli.Status(ctx)
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -142,6 +153,52 @@ func IsBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
 		return false, fmt.Errorf("failed trying to get network status: %w", err)
 	}
 	return true, nil
+}
+
+func IsBootstrapped(app *application.Avalanche) (bool, error) {
+	someNodeIsUp := false
+	if InfoExists(app) {
+		currentLocalNetworkDir, err := ReadInfo(app)
+		if err != nil {
+			return false, err
+		}
+		if sdkUtils.DirExists(currentLocalNetworkDir) {
+			someNodeIsUp, err = NetworkIsBootstrapped(currentLocalNetworkDir)
+			if err != nil {
+				return false, err
+			}
+		}
+		if !someNodeIsUp {
+			if err := RemoveInfo(app); err != nil {
+				return false, err
+			}
+		}
+	}
+	return someNodeIsUp, nil
+}
+
+func NetworkIsBootstrapped(networkDir string) (bool, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return false, err
+	}
+	for _, nod := range network.Nodes {
+		processPath := filepath.Join(networkDir, nod.NodeID.String(), config.DefaultProcessContextFilename)
+		if utils.FileExists(processPath) {
+			bs, err := os.ReadFile(processPath)
+			if err != nil {
+				return false, err
+			}
+			processContext := node.ProcessContext{}
+			if err := json.Unmarshal(bs, &processContext); err != nil {
+				return false, fmt.Errorf("failed to unmarshal node process context: %w", err)
+			}
+			if _, err := utils.GetProcess(processContext.PID); err == nil {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 // server can be up or down
@@ -181,4 +238,8 @@ func GetBlockchainNames() ([]string, error) {
 		blockchainNames = append(blockchainNames, chainInfo.ChainName)
 	}
 	return blockchainNames, nil
+}
+
+func GetDefaultTimeout() (context.Context, context.CancelFunc) {
+	return utils.GetTimedContext(2 * time.Minute)
 }

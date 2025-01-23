@@ -4,29 +4,29 @@ package networkcmd
 
 import (
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	//"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	//"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-network-runner/client"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
-	"github.com/ava-labs/avalanchego/config"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
+	"golang.org/x/exp/maps"
 )
+
+const dirTimestampFormat = "20060102_150405"
 
 //go:embed upgrade.json
 var upgradeData []byte
@@ -81,80 +81,43 @@ func start(*cobra.Command, []string) error {
 }
 
 func Start(flags StartFlags, printEndpoints bool) error {
-	sd := subnet.NewLocalDeployer(app, flags.UserProvidedAvagoVersion, flags.AvagoBinaryPath, "", false)
-
-	// this takes about 2 secs
-	if err := sd.StartServer(
-		constants.ServerRunFileLocalNetworkPrefix,
-		binutils.LocalNetworkGRPCServerPort,
-		binutils.LocalNetworkGRPCGatewayPort,
-		app.GetSnapshotsDir(),
-		"",
-	); err != nil {
+	// verify is local network is bootstrapped
+	if b, err := localnet.IsBootstrapped(app); err != nil {
 		return err
-	}
-
-	cli, err := binutils.NewGRPCClient()
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-
-	bootstrapped, err := localnet.IsBootstrapped(ctx, cli)
-	if err != nil {
-		return err
-	}
-
-	if bootstrapped {
+	} else if b {
 		ux.Logger.PrintToUser("Network has already been booted.")
 		return nil
 	}
 
-	// this takes about 1 secs
-	avalancheGoBinPath, err := sd.SetupLocalEnv()
+	// setup (install if needed) avalanchego binary
+	avalancheGoBinPath, err := localnet.SetupAvalancheGoBinary(app, flags.UserProvidedAvagoVersion, flags.AvagoBinaryPath)
 	if err != nil {
 		return err
 	}
 
+	// do we want to continuosly persist network onto snapshot
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
 
-	tmpDir, err := anrutils.MkDirWithTimestamp(filepath.Join(app.GetRunDir(), "network"))
-	if err != nil {
-		return err
-	}
-	rootDir := ""
-	logDir := ""
-	pluginDir := app.GetPluginsDir()
-	nodeConfig, err := app.Conf.LoadNodeConfig()
-	if err != nil {
-		return err
-	}
-	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.ProposerVMUseCurrentHeightKey, true)
-	if err != nil {
-		return err
-	}
-	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxSizeKey, constants.LocalNetworkAvalancheGoMaxLogSize)
-	if err != nil {
-		return err
-	}
-	nodeConfig, err = utils.SetJSONKey(nodeConfig, config.LogRotaterMaxFilesKey, constants.LocalNetworkAvalancheGoMaxLogFiles)
-	if err != nil {
-		return err
-	}
 	if flags.SnapshotName == "" {
 		flags.SnapshotName = constants.DefaultSnapshotName
 	}
-
 	snapshotPath := app.GetSnapshotPath(flags.SnapshotName)
+
+	networkDir := ""
 	if sdkutils.DirExists(snapshotPath) {
 		ux.Logger.PrintToUser("Starting previously deployed and stopped snapshot")
 
-		if !autoSave {
-			rootDir = tmpDir
+		if autoSave {
+			networkDir = snapshotPath
 		} else {
-			logDir = tmpDir
+			// create new tmp network directory on runs
+			networkDir, err = mkDirWithTimestamp(filepath.Join(app.GetRunDir(), "network"))
+			if err != nil {
+				return err
+			}
+			if err := localnet.TmpNetMigrate(snapshotPath, networkDir); err != nil {
+				return err
+			}
 		}
 
 		_, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(snapshotPath)
@@ -175,35 +138,22 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		}
 
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
-
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-		if _, err := cli.LoadSnapshot(
-			ctx,
-			flags.SnapshotName,
-			autoSave,
-			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(rootDir),
-			client.WithLogRootDir(logDir),
-			client.WithReassignPortsIfUsed(false),
-			client.WithPluginDir(pluginDir),
-			client.WithGlobalNodeConfig(nodeConfig),
-		); err != nil {
-			if sd.BackendStartedHere() {
-				if innerErr := binutils.KillgRPCServerProcess(
-					app,
-					binutils.LocalNetworkGRPCServerEndpoint,
-					constants.ServerRunFileLocalNetworkPrefix,
-				); innerErr != nil {
-					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
-				}
-			}
-			return fmt.Errorf("failed to start network with the persisted snapshot: %w", err)
-		}
 
-		if err := startLocalCluster(avalancheGoBinPath); err != nil {
+		network, err := tmpnet.ReadNetwork(networkDir)
+		if err != nil {
+			return err
+		}
+		ctx, cancel := localnet.GetDefaultTimeout()
+		defer cancel()
+		if err := network.StartNodes(ctx, app.Log, network.Nodes...); err != nil {
 			return err
 		}
 
+		/*
+		if err := startLocalCluster(avalancheGoBinPath); err != nil {
+			return err
+		}
 		if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
 			return err
 		} else if b {
@@ -222,77 +172,76 @@ func Start(flags StartFlags, printEndpoints bool) error {
 				app.GetLocalRelayerStorageDir(models.Local),
 			); err != nil {
 				return err
-			} else if err := localnet.WriteExtraLocalNetworkData("", relayerBinPath, "", ""); err != nil {
+			} else if err := localnet.WriteExtraLocalNetworkData("", "", relayerBinPath, "", ""); err != nil {
 				return err
 			}
 		}
+		*/
 	} else {
-		// starting a new network from scratch
 		if flags.SnapshotName != constants.DefaultSnapshotName {
 			return fmt.Errorf("snapshot %s does not exists", flags.SnapshotName)
 		}
+
+		// starting a new network from scratch
 		if autoSave {
-			if err := os.MkdirAll(snapshotPath, constants.DefaultPerms755); err != nil {
+			networkDir = snapshotPath
+			if err := os.MkdirAll(networkDir, constants.DefaultPerms755); err != nil {
 				return err
 			}
-			rootDir = snapshotPath
-			logDir = tmpDir
 		} else {
-			rootDir = tmpDir
-		}
-
-		upgradeFile, err := os.CreateTemp("", "upgrade")
-		if err != nil {
-			return fmt.Errorf("could not create upgrade file: %w", err)
-		}
-		if _, err := upgradeFile.Write(upgradeData); err != nil {
-			return fmt.Errorf("could not write upgrade data: %w", err)
-		}
-		upgradePath := upgradeFile.Name()
-		if err := upgradeFile.Close(); err != nil {
-			return fmt.Errorf("could not close upgrade file: %w", err)
-		}
-		defer os.Remove(upgradePath)
-
-		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
-
-		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-		if _, err := cli.Start(
-			ctx,
-			avalancheGoBinPath,
-			client.WithNumNodes(flags.NumNodes),
-			client.WithExecPath(avalancheGoBinPath),
-			client.WithRootDataDir(rootDir),
-			client.WithLogRootDir(logDir),
-			client.WithReassignPortsIfUsed(false),
-			client.WithPluginDir(pluginDir),
-			client.WithGlobalNodeConfig(nodeConfig),
-			client.WithUpgradePath(upgradePath),
-		); err != nil {
-			if sd.BackendStartedHere() {
-				if innerErr := binutils.KillgRPCServerProcess(
-					app,
-					binutils.LocalNetworkGRPCServerEndpoint,
-					constants.ServerRunFileLocalNetworkPrefix,
-				); innerErr != nil {
-					app.Log.Warn("tried to kill the gRPC server process but it failed", zap.Error(innerErr))
-				}
+			// create new tmp network directory on runs
+			networkDir, err = mkDirWithTimestamp(filepath.Join(app.GetRunDir(), "network"))
+			if err != nil {
+				return err
 			}
-			return fmt.Errorf("failed to start network: %w", err)
+		}
+
+		// get default network conf for NumNodes
+		unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := localnet.GetDefaultNetworkConf(flags.NumNodes)
+		if err != nil {
+			return err
+		}
+		// add node flags on CLI config info default network flags
+		flagsFromCLIConfigJSON, err := app.Conf.LoadNodeConfig()
+		if err != nil {
+			return err
+		}
+		var flagsFromCLIConfig map[string]interface{}
+		if err := json.Unmarshal([]byte(flagsFromCLIConfigJSON), &flagsFromCLIConfig); err != nil {
+			return fmt.Errorf("invalid common node config JSON: %w", err)
+		}
+		maps.Copy(defaultFlags, flagsFromCLIConfig)
+		// get plugins dir
+		pluginDir := app.GetPluginsDir()
+		// create local network using tmpnet
+		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
+		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
+		_, err = localnet.TmpNetCreate(
+			app.Log,
+			networkDir,
+			avalancheGoBinPath,
+			pluginDir,
+			nodes,
+			defaultFlags,
+			unparsedGenesis,
+			upgradeBytes,
+		)
+		if err != nil {
+			return err
 		}
 	}
 
-	resp, err := cli.Status(ctx)
-	if err != nil {
+	// save current network directory for cmds reference
+	if err := localnet.SaveInfo(app, networkDir); err != nil {
 		return err
 	}
 
-	if err := localnet.WriteExtraLocalNetworkData(avalancheGoBinPath, "", "", ""); err != nil {
+	if err := localnet.WriteExtraLocalNetworkData(networkDir, avalancheGoBinPath, "", "", ""); err != nil {
 		return err
 	}
 
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/node<i>/logs", resp.ClusterInfo.LogRootDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/<NodeID>/logs", networkDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
@@ -336,4 +285,10 @@ func startLocalCluster(avalancheGoBinPath string) error {
 		}
 	}
 	return nil
+}
+
+func mkDirWithTimestamp(dirPrefix string) (string, error) {
+	currentTime := time.Now().Format(dirTimestampFormat)
+	dirName := dirPrefix + "_" + currentTime
+	return dirName, os.MkdirAll(dirName, constants.DefaultPerms755)
 }

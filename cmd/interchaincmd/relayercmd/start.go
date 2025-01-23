@@ -110,7 +110,7 @@ func start(_ *cobra.Command, _ []string) error {
 		); err != nil {
 			return err
 		} else if network.Kind == models.Local {
-			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
+			if err := localnet.WriteExtraLocalNetworkData("", "", binPath, "", ""); err != nil {
 				return err
 			}
 		}

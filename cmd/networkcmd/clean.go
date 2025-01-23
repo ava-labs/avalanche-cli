@@ -7,17 +7,18 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+
 	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 var hard bool
@@ -44,16 +45,21 @@ configuration.`,
 }
 
 func clean(*cobra.Command, []string) error {
-	app.Log.Info("killing gRPC server process...")
-
-	if err := binutils.KillgRPCServerProcess(
-		app,
-		binutils.LocalNetworkGRPCServerEndpoint,
-		constants.ServerRunFileLocalNetworkPrefix,
-	); err != nil {
-		app.Log.Warn("failed killing server process", zap.Error(err))
-	} else {
-		ux.Logger.PrintToUser("Process terminated.")
+	if b, err := localnet.IsBootstrapped(app); err != nil {
+		return err
+	} else if b {
+		currentLocalNetworkDir, err := localnet.ReadInfo(app)
+		if err != nil {
+			return err
+		}
+		ctx, cancel := localnet.GetDefaultTimeout()
+		defer cancel()
+		if err := tmpnet.StopNetwork(ctx, currentLocalNetworkDir); err != nil {
+			return err
+		}
+		if err := localnet.RemoveInfo(app); err != nil {
+			return err
+		}
 	}
 
 	if err := interchain.RelayerCleanup(
