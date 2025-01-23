@@ -1,0 +1,60 @@
+name: Update Markdown
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  update-md:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build avalanche-cli
+        run: |
+          chmod +x ./scripts/build.sh
+          ./scripts/build.sh
+
+      - name: Add avalanche to PATH
+        run: echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          # If you need additional dependencies, install them here
+          # pip install -r requirements.txt
+
+      - name: Generate MD
+        id: generate_md
+        run: |
+          python .github/scripts/cli_scraper.py
+
+      - name: Commit files
+        uses: ChromeQ/commit@v2.0.0
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            cmd/commands.md
+          commit-message: "chore: Update MD file [skip ci]"
+          ref: ${{ github.head_ref }}
+
