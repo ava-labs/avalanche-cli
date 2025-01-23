@@ -44,15 +44,17 @@ jobs:
           # pip install -r requirements.txt
 
       - name: Generate MD
+        id: generate_md
         run: |
           python .github/scripts/cli_scraper.py
 
-      - name: Commit changes
-        uses: chromeq/commit@v2.x
+      - name: Commit files
+        uses: ChromeQ/commit@v2.0.0
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: "."
+          files: |
+            cmd/commands.md
           commit-message: "chore: Update MD file [skip ci]"
           ref: ${{ github.head_ref }}
 
