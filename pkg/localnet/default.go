@@ -20,9 +20,9 @@ type NodeConfig struct {
 }
 
 type NetworkConfig struct {
-	NodeConfigs []NodeConfig `json:"nodeConfigs"`
+	NodeConfigs []NodeConfig           `json:"nodeConfigs"`
 	CommonFlags map[string]interface{} `json:"commonFlags"`
-	Upgrade string `json:"upgrade"`
+	Upgrade     string                 `json:"upgrade"`
 }
 
 //go:embed default.json

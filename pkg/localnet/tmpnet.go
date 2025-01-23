@@ -6,20 +6,20 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	dircopy "github.com/otiai10/copy"
 )
 
 func TmpNetCreate(
-        log logging.Logger,
-        rootDir string,
-        avalancheGoBinPath string,
-        pluginDir string,
+	log logging.Logger,
+	rootDir string,
+	avalancheGoBinPath string,
+	pluginDir string,
 	nodes []*tmpnet.Node,
 	defaultFlags map[string]interface{},
 	genesis *genesis.UnparsedConfig,
@@ -30,7 +30,7 @@ func TmpNetCreate(
 		Nodes:        nodes,
 		Dir:          rootDir,
 		DefaultFlags: defaultFlags,
-		Genesis: genesis,
+		Genesis:      genesis,
 	}
 	if err := network.EnsureDefaultConfig(log, avalancheGoBinPath, pluginDir); err != nil {
 		return nil, err

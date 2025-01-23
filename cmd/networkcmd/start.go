@@ -12,15 +12,17 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+
 	//"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
+
 	//"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -151,31 +153,31 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		}
 
 		/*
-		if err := startLocalCluster(avalancheGoBinPath); err != nil {
-			return err
-		}
-		if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
-			return err
-		} else if b {
-			ux.Logger.PrintToUser("")
-			relayerBinPath := flags.RelayerBinaryPath
-			if relayerBinPath == "" {
-				relayerBinPath = extraLocalNetworkData.RelayerPath
-			}
-			if relayerBinPath, err := interchain.DeployRelayer(
-				flags.RelayerVersion,
-				relayerBinPath,
-				app.GetICMRelayerBinDir(),
-				relayerConfigPath,
-				app.GetLocalRelayerLogPath(models.Local),
-				app.GetLocalRelayerRunPath(models.Local),
-				app.GetLocalRelayerStorageDir(models.Local),
-			); err != nil {
-				return err
-			} else if err := localnet.WriteExtraLocalNetworkData("", "", relayerBinPath, "", ""); err != nil {
+			if err := startLocalCluster(avalancheGoBinPath); err != nil {
 				return err
 			}
-		}
+			if b, relayerConfigPath, err := subnet.GetLocalNetworkRelayerConfigPath(app); err != nil {
+				return err
+			} else if b {
+				ux.Logger.PrintToUser("")
+				relayerBinPath := flags.RelayerBinaryPath
+				if relayerBinPath == "" {
+					relayerBinPath = extraLocalNetworkData.RelayerPath
+				}
+				if relayerBinPath, err := interchain.DeployRelayer(
+					flags.RelayerVersion,
+					relayerBinPath,
+					app.GetICMRelayerBinDir(),
+					relayerConfigPath,
+					app.GetLocalRelayerLogPath(models.Local),
+					app.GetLocalRelayerRunPath(models.Local),
+					app.GetLocalRelayerStorageDir(models.Local),
+				); err != nil {
+					return err
+				} else if err := localnet.WriteExtraLocalNetworkData("", "", relayerBinPath, "", ""); err != nil {
+					return err
+				}
+			}
 		*/
 	} else {
 		if flags.SnapshotName != constants.DefaultSnapshotName {

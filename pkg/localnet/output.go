@@ -14,8 +14,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 // PrintEndpoints prints the network endpoints
