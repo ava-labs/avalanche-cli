@@ -40,10 +40,11 @@ func TmpNetCreate(
 	}
 	ctx, cancel := GetDefaultTimeout()
 	defer cancel()
-	return network, network.Bootstrap(
+	err := network.Bootstrap(
 		ctx,
 		log,
 	)
+	return network, err
 }
 
 func TmpNetMigrate(
@@ -76,4 +77,26 @@ func TmpNetMigrate(
 		}
 	}
 	return nil
+}
+
+func TmpNetLoad(
+	log logging.Logger,
+	networkDir string,
+) (*tmpnet.Network, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := GetDefaultTimeout()
+	defer cancel()
+	err = network.StartNodes(ctx, log, network.Nodes...)
+	return network, err
+}
+
+func TmpNetStop(
+	networkDir string,
+) error {
+	ctx, cancel := GetDefaultTimeout()
+	defer cancel()
+	return tmpnet.StopNetwork(ctx, networkDir)
 }

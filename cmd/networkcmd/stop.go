@@ -9,7 +9,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 
 	"github.com/spf13/cobra"
 )
@@ -74,9 +73,7 @@ func stopAndSaveNetwork(flags StopFlags) error {
 		return err
 	}
 
-	ctx, cancel := localnet.GetDefaultTimeout()
-	defer cancel()
-	if err := tmpnet.StopNetwork(ctx, currentLocalNetworkDir); err != nil {
+	if err := localnet.TmpNetStop(currentLocalNetworkDir); err != nil {
 		return err
 	}
 

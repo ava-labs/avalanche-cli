@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 
 	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
@@ -52,9 +51,7 @@ func clean(*cobra.Command, []string) error {
 		if err != nil {
 			return err
 		}
-		ctx, cancel := localnet.GetDefaultTimeout()
-		defer cancel()
-		if err := tmpnet.StopNetwork(ctx, currentLocalNetworkDir); err != nil {
+		if err := localnet.TmpNetStop(currentLocalNetworkDir); err != nil {
 			return err
 		}
 		if err := localnet.RemoveInfo(app); err != nil {

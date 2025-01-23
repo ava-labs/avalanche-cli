@@ -22,7 +22,6 @@ import (
 	//"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -142,13 +141,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 
-		network, err := tmpnet.ReadNetwork(networkDir)
-		if err != nil {
-			return err
-		}
-		ctx, cancel := localnet.GetDefaultTimeout()
-		defer cancel()
-		if err := network.StartNodes(ctx, app.Log, network.Nodes...); err != nil {
+		if _, err := localnet.TmpNetLoad(app.Log, networkDir); err != nil {
 			return err
 		}
 
