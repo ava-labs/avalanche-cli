@@ -39,6 +39,7 @@ const (
 	NodePrometheusConfigFileName = "prometheus.yml"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
 	AnsibleDir                   = "ansible"
+	StakingDir                   = "staking"
 	AnsibleHostInventoryFileName = "hosts"
 	ClustersConfigFileName       = "cluster_config.json"
 	ClustersConfigVersion        = "1"

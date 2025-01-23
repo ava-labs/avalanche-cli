@@ -113,7 +113,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 	wg.Wait()
 	spinSession.Stop()
 	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.NodeID) {
+		if wgResults.HasIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s has ERROR: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
 		}
 	}
@@ -181,7 +181,7 @@ func setupNode(_ *cobra.Command, _ []string) error {
 
 func printSetupResults(hosts []*models.Host) {
 	for _, host := range hosts {
-		nodePath := filepath.Join(app.GetNodesDir(), "staking", host.IP)
+		nodePath := app.GetNodeStakingDir(host.IP)
 		certBytes, err := os.ReadFile(filepath.Join(nodePath, constants.StakerCertFileName))
 		if err != nil {
 			continue

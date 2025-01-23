@@ -761,7 +761,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		}
 	}
 	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.IP) {
+		if wgResults.HasIDWithError(node.IP) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.IP, wgResults.GetErrorHostMap()[node.IP])
 		}
 	}
@@ -994,7 +994,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 }
 
 func provideStakingCertAndKey(host *models.Host) error {
-	keyPath := filepath.Join(app.GetNodesDir(), "staking", host.IP)
+	keyPath := filepath.Join(app.GetNodeStakingDir(host.IP))
 	nodeID, err := generateNodeCertAndKeys(
 		filepath.Join(keyPath, constants.StakerCertFileName),
 		filepath.Join(keyPath, constants.StakerKeyFileName),

@@ -68,7 +68,7 @@ func (nr *NodeResults) GetErrorHostMap() map[string]error {
 	return hostErrors
 }
 
-func (nr *NodeResults) HasNodeIDWithError(nodeID string) bool {
+func (nr *NodeResults) HasIDWithError(nodeID string) bool {
 	nr.Lock.Lock()
 	defer nr.Lock.Unlock()
 	for _, node := range nr.Results {
