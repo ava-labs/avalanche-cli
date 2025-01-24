@@ -1,6 +1,7 @@
 package localnet
 
 import (
+	"encoding/json"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -9,10 +10,20 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
+	avagonode "github.com/ava-labs/avalanchego/node"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	dircopy "github.com/otiai10/copy"
+)
+
+type BootstrappingStatus int64
+
+const (
+	UndefinedBootstrappingStatus BootstrappingStatus = iota
+	NotBootstrapped
+	PartiallyBootstrapped
+	FullyBootstrapped
 )
 
 func TmpNetCreate(
@@ -99,4 +110,38 @@ func TmpNetStop(
 	ctx, cancel := GetDefaultTimeout()
 	defer cancel()
 	return tmpnet.StopNetwork(ctx, networkDir)
+}
+
+func TmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error) {
+	status := UndefinedBootstrappingStatus
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return status, err
+	}
+	bootstrappedCount := 0
+	for _, node := range network.Nodes {
+		processPath := filepath.Join(networkDir, node.NodeID.String(), config.DefaultProcessContextFilename)
+		if utils.FileExists(processPath) {
+			bs, err := os.ReadFile(processPath)
+			if err != nil {
+				return status, fmt.Errorf("failed to read node process context at %s: %w", processPath, err)
+			}
+			processContext := avagonode.ProcessContext{}
+			if err := json.Unmarshal(bs, &processContext); err != nil {
+				return status, fmt.Errorf("failed to unmarshal node process context at %s: %w", processPath, err)
+			}
+			if _, err := utils.GetProcess(processContext.PID); err == nil {
+				status = PartiallyBootstrapped
+				bootstrappedCount++
+			}
+		}
+	}
+	switch bootstrappedCount {
+	case 0:
+		return NotBootstrapped, nil
+	case len(network.Nodes):
+		return FullyBootstrapped, nil
+	default:
+		return status, nil
+	}
 }

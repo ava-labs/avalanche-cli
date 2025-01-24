@@ -20,7 +20,7 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
-	LocalNetworksFile = "localNetorks.json"
+	ExecutingLocalnetMetaFile = "localNetworks.json"
 
 	ServerRunFile                   = "gRPCserver.run"
 	ServerRunFileLocalNetworkPrefix = ""

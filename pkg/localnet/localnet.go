@@ -21,9 +21,6 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/config"
-	"github.com/ava-labs/avalanchego/node"
-	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 )
 
 func GetEndpoint() (string, error) {
@@ -155,50 +152,26 @@ func IsBootstrappedOld(ctx context.Context, cli client.Client) (bool, error) {
 	return true, nil
 }
 
-func IsBootstrapped(app *application.Avalanche) (bool, error) {
-	someNodeIsUp := false
-	if InfoExists(app) {
-		currentLocalNetworkDir, err := ReadInfo(app)
+func LocalnetBootstrappingStatus(app *application.Avalanche) (BootstrappingStatus, error) {
+	if ExecutingLocalnetMetaExists(app) {
+		executingLocalnetMeta, err := GetExecutingLocalnetMeta(app)
 		if err != nil {
-			return false, err
+			return UndefinedBootstrappingStatus, err
 		}
-		if sdkUtils.DirExists(currentLocalNetworkDir) {
-			someNodeIsUp, err = NetworkIsBootstrapped(currentLocalNetworkDir)
+		if sdkUtils.DirExists(executingLocalnetMeta.NetworkDir) {
+			status, err := TmpNetBootstrappingStatus(executingLocalnetMeta.NetworkDir)
 			if err != nil {
-				return false, err
+				return status, err
 			}
-		}
-		if !someNodeIsUp {
-			if err := RemoveInfo(app); err != nil {
-				return false, err
+			if status == NotBootstrapped {
+				if err := RemoveExecutingLocalnetMeta(app); err != nil {
+					return NotBootstrapped, err
+				}
 			}
-		}
-	}
-	return someNodeIsUp, nil
-}
-
-func NetworkIsBootstrapped(networkDir string) (bool, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
-	if err != nil {
-		return false, err
-	}
-	for _, nod := range network.Nodes {
-		processPath := filepath.Join(networkDir, nod.NodeID.String(), config.DefaultProcessContextFilename)
-		if utils.FileExists(processPath) {
-			bs, err := os.ReadFile(processPath)
-			if err != nil {
-				return false, err
-			}
-			processContext := node.ProcessContext{}
-			if err := json.Unmarshal(bs, &processContext); err != nil {
-				return false, fmt.Errorf("failed to unmarshal node process context: %w", err)
-			}
-			if _, err := utils.GetProcess(processContext.PID); err == nil {
-				return true, nil
-			}
+			return status, nil
 		}
 	}
-	return false, nil
+	return NotBootstrapped, nil
 }
 
 // server can be up or down

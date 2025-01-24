@@ -44,17 +44,17 @@ configuration.`,
 }
 
 func clean(*cobra.Command, []string) error {
-	if b, err := localnet.IsBootstrapped(app); err != nil {
+	if bootstrappingStatus, err := localnet.LocalnetBootstrappingStatus(app); err != nil {
 		return err
-	} else if b {
-		currentLocalNetworkDir, err := localnet.ReadInfo(app)
+	} else if bootstrappingStatus != localnet.NotBootstrapped {
+		executingLocalnetMeta, err := localnet.GetExecutingLocalnetMeta(app)
 		if err != nil {
 			return err
 		}
-		if err := localnet.TmpNetStop(currentLocalNetworkDir); err != nil {
+		if err := localnet.TmpNetStop(executingLocalnetMeta.NetworkDir); err != nil {
 			return err
 		}
-		if err := localnet.RemoveInfo(app); err != nil {
+		if err := localnet.RemoveExecutingLocalnetMeta(app); err != nil {
 			return err
 		}
 	}

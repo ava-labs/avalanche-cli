@@ -61,23 +61,21 @@ func Stop(flags StopFlags) error {
 }
 
 func stopAndSaveNetwork(flags StopFlags) error {
-	if b, err := localnet.IsBootstrapped(app); err != nil {
+	if bootstrappingStatus, err := localnet.LocalnetBootstrappingStatus(app); err != nil {
 		return err
-	} else if !b {
+	} else if bootstrappingStatus == localnet.NotBootstrapped {
 		ux.Logger.PrintToUser("Network is not up.")
 		return nil
 	}
 
-	currentLocalNetworkDir, err := localnet.ReadInfo(app)
+	executingLocalnetMeta, err := localnet.GetExecutingLocalnetMeta(app)
 	if err != nil {
 		return err
 	}
-
-	if err := localnet.TmpNetStop(currentLocalNetworkDir); err != nil {
+	if err := localnet.TmpNetStop(executingLocalnetMeta.NetworkDir); err != nil {
 		return err
 	}
-
-	if err := localnet.RemoveInfo(app); err != nil {
+	if err := localnet.RemoveExecutingLocalnetMeta(app); err != nil {
 		return err
 	}
 
@@ -86,7 +84,7 @@ func stopAndSaveNetwork(flags StopFlags) error {
 
 	if !dontSave {
 		snapshotPath := app.GetSnapshotPath(flags.snapshotName)
-		if err := localnet.TmpNetMigrate(currentLocalNetworkDir, snapshotPath); err != nil {
+		if err := localnet.TmpNetMigrate(executingLocalnetMeta.NetworkDir, snapshotPath); err != nil {
 			return err
 		}
 	}

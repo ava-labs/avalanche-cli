@@ -24,12 +24,12 @@ func PrintEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	subnetName string,
 ) error {
-	if InfoExists(app) {
-		networkDir, err := ReadInfo(app)
+	if ExecutingLocalnetMetaExists(app) {
+		executingLocalnetMeta, err := GetExecutingLocalnetMeta(app)
 		if err != nil {
 			return err
 		}
-		network, err := tmpnet.ReadNetwork(networkDir)
+		network, err := tmpnet.ReadNetwork(executingLocalnetMeta.NetworkDir)
 		if err != nil {
 			return err
 		}
@@ -37,11 +37,6 @@ func PrintEndpoints(
 			return err
 		}
 	}
-	/*
-		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, clusterInfo); err != nil {
-			return err
-		}
-	*/
 	return nil
 }
 

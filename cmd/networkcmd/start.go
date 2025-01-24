@@ -83,9 +83,9 @@ func start(*cobra.Command, []string) error {
 
 func Start(flags StartFlags, printEndpoints bool) error {
 	// verify is local network is bootstrapped
-	if b, err := localnet.IsBootstrapped(app); err != nil {
+	if bootstrappingStatus, err := localnet.LocalnetBootstrappingStatus(app); err != nil {
 		return err
-	} else if b {
+	} else if bootstrappingStatus != localnet.NotBootstrapped {
 		ux.Logger.PrintToUser("Network has already been booted.")
 		return nil
 	}
@@ -227,7 +227,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	}
 
 	// save current network directory for cmds reference
-	if err := localnet.SaveInfo(app, networkDir); err != nil {
+	if err := localnet.SaveExecutingLocalnetMeta(app, networkDir); err != nil {
 		return err
 	}
 
