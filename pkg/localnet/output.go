@@ -9,7 +9,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	//"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -41,6 +41,7 @@ func PrintEndpointsOld(
 	printFunc func(msg string, args ...interface{}),
 	subnetName string,
 ) error {
+	/*
 	clusterInfo, err := GetClusterInfo()
 	if err != nil {
 		return err
@@ -63,6 +64,7 @@ func PrintEndpointsOld(
 			return err
 		}
 	}
+	*/
 	return nil
 }
 

@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package networkcmd
+package localnet
 
 import (
 	"encoding/json"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -31,6 +32,7 @@ import (
 )
 
 func TrackSubnet(
+	app *application.Avalanche,
 	blockchainName string,
 	avalancheGoBinPath string,
 	sovereign bool,
@@ -189,7 +191,7 @@ func TrackSubnet(
 		return err
 	}
 	if !sovereign {
-		if err := AddNoSovereignValidators(cli, subnetID); err != nil {
+		if err := AddNoSovereignValidators(app, cli, subnetID); err != nil {
 			return err
 		}
 		if err := WaitNoSovereignValidators(cli, subnetID); err != nil {
@@ -248,7 +250,11 @@ func SetAlias(cli client.Client, blockchainID string, alias string) error {
 	return nil
 }
 
-func AddNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
+func AddNoSovereignValidators(
+	app *application.Avalanche,
+	cli client.Client,
+	 subnetID ids.ID,
+) error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	status, err := cli.Status(ctx)
@@ -388,3 +394,16 @@ func AlreadyDeployed(blockchainName string) (bool, error) {
 	}
 	return false, nil
 }
+
+func GetLocalNetworkRelayerConfigPath(app *application.Avalanche, networkDir string) (bool, string, error) {
+	if networkDir == "" {
+		network, err := GetLocalNetworkInfo(app)
+		if err != nil {
+			return false, "", err
+		}
+		networkDir = network.Dir
+	}
+	relayerConfigPath := app.GetLocalRelayerConfigPath(models.Local, networkDir)
+	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
+}
+

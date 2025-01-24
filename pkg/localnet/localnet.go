@@ -21,22 +21,33 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 )
 
-func GetEndpoint() (string, error) {
-	clusterInfo, err := GetClusterInfo()
+func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
+	network, err := GetLocalNetworkInfo(app)
 	if err != nil {
 		return "", err
 	}
-	node1, ok := clusterInfo.NodeInfos["node1"]
-	if !ok {
-		return "", fmt.Errorf("node1 not found on local network")
+	if len(network.Nodes) == 0 {
+		return "", fmt.Errorf("no node found on local network")
 	}
-	return node1.Uri, nil
+	return network.Nodes[0].URI, nil
 }
 
-func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
-	return GetClusterInfoWithEndpoint(binutils.LocalNetworkGRPCServerEndpoint)
+func GetLocalNetworkInfo(app *application.Avalanche) (*tmpnet.Network, error) {
+	status, err := LocalnetBootstrappingStatus(app)
+	if err != nil {
+		return nil, err
+	}
+	if status != FullyBootstrapped {
+		return nil, fmt.Errorf("network is not bootstrapped")
+	}
+	meta, err := GetExecutingLocalnetMeta(app)
+	if err != nil {
+		return nil, err
+	}
+	return GetTmpNetNetwork(meta.NetworkDir)
 }
 
 func GetClusterInfoWithEndpoint(grpcServerEndpoint string) (*rpcpb.ClusterInfo, error) {
@@ -64,14 +75,14 @@ type ExtraLocalNetworkData struct {
 	CChainTeleporterRegistryAddress  string
 }
 
-func GetExtraLocalNetworkData(rootDataDir string) (bool, ExtraLocalNetworkData, error) {
+func GetExtraLocalNetworkData(app *application.Avalanche, rootDataDir string) (bool, ExtraLocalNetworkData, error) {
 	extraLocalNetworkData := ExtraLocalNetworkData{}
 	if rootDataDir == "" {
-		clusterInfo, err := GetClusterInfo()
+		network, err := GetLocalNetworkInfo(app)
 		if err != nil {
 			return false, extraLocalNetworkData, err
 		}
-		rootDataDir = clusterInfo.GetRootDataDir()
+		rootDataDir = network.Dir
 	}
 	extraLocalNetworkDataPath := filepath.Join(rootDataDir, constants.ExtraLocalNetworkDataFilename)
 	if !utils.FileExists(extraLocalNetworkDataPath) {
@@ -88,6 +99,7 @@ func GetExtraLocalNetworkData(rootDataDir string) (bool, ExtraLocalNetworkData, 
 }
 
 func WriteExtraLocalNetworkData(
+	app *application.Avalanche,
 	rootDataDir string,
 	avalancheGoPath string,
 	relayerPath string,
@@ -95,18 +107,17 @@ func WriteExtraLocalNetworkData(
 	cchainICMRegistryAddress string,
 ) error {
 	if rootDataDir == "" {
-		fmt.Println("ACA NO ENTRO")
-		clusterInfo, err := GetClusterInfo()
+		network, err := GetLocalNetworkInfo(app)
 		if err != nil {
 			return err
 		}
-		rootDataDir = clusterInfo.GetRootDataDir()
+		rootDataDir = network.Dir
 	}
-	extraLocalNetworkDataPath := filepath.Join(rootDataDir, constants.ExtraLocalNetworkDataFilename)
 	extraLocalNetworkData := ExtraLocalNetworkData{}
+	extraLocalNetworkDataPath := filepath.Join(rootDataDir, constants.ExtraLocalNetworkDataFilename)
 	if utils.FileExists(extraLocalNetworkDataPath) {
 		var err error
-		_, extraLocalNetworkData, err = GetExtraLocalNetworkData(rootDataDir)
+		_, extraLocalNetworkData, err = GetExtraLocalNetworkData(app, rootDataDir)
 		if err != nil {
 			return err
 		}
@@ -174,14 +185,13 @@ func LocalnetBootstrappingStatus(app *application.Avalanche) (BootstrappingStatu
 	return NotBootstrapped, nil
 }
 
-// server can be up or down
-func GetVersion() (bool, string, int, error) {
+func GetVersion(app *application.Avalanche) (bool, string, int, error) {
 	// not actually an error, network just not running
-	_, err := GetClusterInfo()
+	_, err := GetLocalNetworkInfo(app)
 	if err != nil {
 		return false, "", 0, nil
 	}
-	endpoint, err := GetEndpoint()
+	endpoint, err := GetLocalNetworkEndpoint(app)
 	if err != nil {
 		return true, "", 0, err
 	}
@@ -202,6 +212,8 @@ func GetVersion() (bool, string, int, error) {
 }
 
 func GetBlockchainNames() ([]string, error) {
+	return nil, nil
+	/*
 	clusterInfo, err := GetClusterInfo()
 	if err != nil {
 		return nil, err
@@ -211,6 +223,7 @@ func GetBlockchainNames() ([]string, error) {
 		blockchainNames = append(blockchainNames, chainInfo.ChainName)
 	}
 	return blockchainNames, nil
+	*/
 }
 
 func GetDefaultTimeout() (context.Context, context.CancelFunc) {

@@ -93,6 +93,7 @@ func TmpNetMigrate(
 func TmpNetLoad(
 	log logging.Logger,
 	networkDir string,
+	avalancheGoBinPath string,
 ) (*tmpnet.Network, error) {
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
@@ -100,7 +101,13 @@ func TmpNetLoad(
 	}
 	ctx, cancel := GetDefaultTimeout()
 	defer cancel()
-	err = network.StartNodes(ctx, log, network.Nodes...)
+	nodes := network.Nodes
+	for i := range nodes {
+		nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
+			AvalancheGoPath: avalancheGoBinPath,
+		}
+	}
+	err = network.StartNodes(ctx, log, nodes...)
 	return network, err
 }
 

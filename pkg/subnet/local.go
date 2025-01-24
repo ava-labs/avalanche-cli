@@ -11,8 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/localnet"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
@@ -252,15 +250,6 @@ func CheckNodeIsInSubnetValidators(subnetID ids.ID, nodeID string) (bool, error)
 		}
 	}
 	return false, nil
-}
-
-func GetLocalNetworkRelayerConfigPath(app *application.Avalanche) (bool, string, error) {
-	clusterInfo, err := localnet.GetClusterInfo()
-	if err != nil {
-		return false, "", err
-	}
-	relayerConfigPath := app.GetLocalRelayerConfigPath(models.Local, clusterInfo.GetRootDataDir())
-	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }
 
 func GetCurrentSupply(subnetID ids.ID) error {

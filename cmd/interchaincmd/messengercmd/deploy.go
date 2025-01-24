@@ -237,6 +237,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		if !alreadyDeployed {
 			if network.Kind == models.Local {
 				if err := localnet.WriteExtraLocalNetworkData(
+					app,
 					"",
 					"",
 					"",

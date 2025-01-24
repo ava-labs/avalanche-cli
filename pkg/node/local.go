@@ -337,11 +337,11 @@ func StartLocalNode(
 		case network.Kind == models.Mainnet:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
 		case network.Kind == models.Local:
-			clusterInfo, err := localnet.GetClusterInfo()
+			networkInfo, err := localnet.GetLocalNetworkInfo(app)
 			if err != nil {
 				return fmt.Errorf("failed to connect to local network: %w", err)
 			}
-			rootDataDir := clusterInfo.RootDataDir
+			rootDataDir := networkInfo.Dir
 			networkJSONPath := filepath.Join(rootDataDir, "network.json")
 			bs, err := os.ReadFile(networkJSONPath)
 			if err != nil {
@@ -509,11 +509,11 @@ func UpsizeLocalNode(
 
 	// we will remove this code soon, so it can be not DRY
 	if network.Kind == models.Local {
-		clusterInfo, err := localnet.GetClusterInfo()
+		networkInfo, err := localnet.GetLocalNetworkInfo(app)
 		if err != nil {
 			return "", fmt.Errorf("failed to connect to local network: %w", err)
 		}
-		rootDataDir := clusterInfo.RootDataDir
+		rootDataDir := networkInfo.Dir
 		networkJSONPath := filepath.Join(rootDataDir, "network.json")
 		bs, err := os.ReadFile(networkJSONPath)
 		if err != nil {
