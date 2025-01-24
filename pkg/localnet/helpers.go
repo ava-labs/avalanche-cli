@@ -367,7 +367,7 @@ func WaitNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
 	return err
 }
 
-func AlreadyDeployed(app *application.Avalanche, blockchainName string) (bool, error) {
+func BlockchainAlreadyDeployedOnLocalNetwork(app *application.Avalanche, blockchainName string) (bool, error) {
 	chainVMID, err := utils.VMID(blockchainName)
 	if err != nil {
 		return false, fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
