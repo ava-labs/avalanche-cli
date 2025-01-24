@@ -159,7 +159,7 @@ func LocalnetBootstrappingStatus(app *application.Avalanche) (BootstrappingStatu
 			return UndefinedBootstrappingStatus, err
 		}
 		if sdkUtils.DirExists(executingLocalnetMeta.NetworkDir) {
-			status, err := TmpNetBootstrappingStatus(executingLocalnetMeta.NetworkDir)
+			status, err := GetTmpNetBootstrappingStatus(executingLocalnetMeta.NetworkDir)
 			if err != nil {
 				return status, err
 			}

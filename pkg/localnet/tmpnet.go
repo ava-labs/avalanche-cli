@@ -112,7 +112,7 @@ func TmpNetStop(
 	return tmpnet.StopNetwork(ctx, networkDir)
 }
 
-func TmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error) {
+func GetTmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error) {
 	status := UndefinedBootstrappingStatus
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
@@ -144,4 +144,8 @@ func TmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error) {
 	default:
 		return status, nil
 	}
+}
+
+func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
+	return tmpnet.ReadNetwork(networkDir)
 }

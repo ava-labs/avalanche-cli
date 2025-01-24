@@ -35,11 +35,11 @@ func GetExecutingLocalnetMeta(
 	if err != nil {
 		return nil, fmt.Errorf("failed reading executing localnet meta file at %s: %w", path, err)
 	}
-	var meta *ExecutingLocalnetMeta
-	if err := json.Unmarshal(bs, meta); err != nil {
+	var meta ExecutingLocalnetMeta
+	if err := json.Unmarshal(bs, &meta); err != nil {
 		return nil, fmt.Errorf("failed unmarshalling executing localnet meta file at %s: %w", path, err)
 	}
-	return meta, nil
+	return &meta, nil
 }
 
 func SaveExecutingLocalnetMeta(

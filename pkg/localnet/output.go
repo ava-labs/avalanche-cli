@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
-	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
@@ -29,11 +28,7 @@ func PrintEndpoints(
 		if err != nil {
 			return err
 		}
-		network, err := tmpnet.ReadNetwork(executingLocalnetMeta.NetworkDir)
-		if err != nil {
-			return err
-		}
-		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, network); err != nil {
+		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, executingLocalnetMeta.NetworkDir); err != nil {
 			return err
 		}
 	}
@@ -151,8 +146,12 @@ func PrintNetworkEndpointsOld(
 func PrintNetworkEndpoints(
 	title string,
 	printFunc func(msg string, args ...interface{}),
-	network *tmpnet.Network,
+	networkDir string,
 ) error {
+ 	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
 	header := table.Row{"Node ID", "Localhost Endpoint"}
 	insideCodespace := utils.InsideCodespace()
 	if insideCodespace {

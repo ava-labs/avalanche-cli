@@ -208,7 +208,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		maps.Copy(defaultFlags, flagsFromCLIConfig)
 		// get plugins dir
 		pluginDir := app.GetPluginsDir()
-		// create local network using tmpnet
+		// create local network
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		_, err = localnet.TmpNetCreate(
