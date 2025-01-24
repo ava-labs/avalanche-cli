@@ -9,12 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
@@ -184,16 +182,6 @@ func WriteExtraLocalNetworkData(
 	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
 }
 
-func Deployed(subnetName string) (bool, error) {
-	if _, err := utils.GetChainID(models.NewLocalNetwork().Endpoint, subnetName); err != nil {
-		if !strings.Contains(err.Error(), "connection refused") && !strings.Contains(err.Error(), "there is no ID with alias") {
-			return false, err
-		}
-		return false, nil
-	}
-	return true, nil
-}
-
 // assumes server is up
 func IsBootstrappedOld(ctx context.Context, cli client.Client) (bool, error) {
 	_, err := cli.Status(ctx)
@@ -206,7 +194,7 @@ func IsBootstrappedOld(ctx context.Context, cli client.Client) (bool, error) {
 	return true, nil
 }
 
-func GetVersion(app *application.Avalanche) (bool, string, int, error) {
+func GetLocalNetworkAvalancheGoVersion(app *application.Avalanche) (bool, string, int, error) {
 	// not actually an error, network just not running
 	if isBootstrapped, err := LocalNetworkIsBootstrapped(app); err != nil {
 		return true, "", 0, err
@@ -232,10 +220,6 @@ func GetVersion(app *application.Avalanche) (bool, string, int, error) {
 	// index 0 should be avalanche, index 1 will be version
 	parsedVersion := "v" + splitVersion[1]
 	return true, parsedVersion, int(versionResponse.RPCProtocolVersion), nil
-}
-
-func GetDefaultTimeout() (context.Context, context.CancelFunc) {
-	return utils.GetTimedContext(2 * time.Minute)
 }
 
 func LocalNetworkStop(app *application.Avalanche) error {

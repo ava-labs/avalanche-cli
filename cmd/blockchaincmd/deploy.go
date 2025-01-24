@@ -517,7 +517,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		// check if blockchain rpc version matches what is currently running
 		// for the case version or binary was provided
-		_, _, networkRPCVersion, err := localnet.GetVersion(app)
+		_, _, networkRPCVersion, err := localnet.GetLocalNetworkAvalancheGoVersion(app)
 		if err != nil {
 			return err
 		}

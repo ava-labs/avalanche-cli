@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"context"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -395,3 +396,6 @@ func GetLocalNetworkRelayerConfigPath(app *application.Avalanche, networkDir str
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }
 
+func GetDefaultTimeout() (context.Context, context.CancelFunc) {
+	return utils.GetTimedContext(2 * time.Minute)
+}
