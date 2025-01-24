@@ -43,10 +43,15 @@ jobs:
           # If you need additional dependencies, install them here
           # pip install -r requirements.txt
 
-      - name: Generate MD
-        id: generate_md
+      - name: Generate CLI MD
+        id: generate_cli_md
         run: |
           python .github/scripts/cli_scraper.py
+
+      - name: Generate SDK MD
+        id: generate_sdk_md
+        run: |
+          python .github/scripts/sdk_doc.py
 
       - name: Commit files
         uses: ChromeQ/commit@v2.0.0
@@ -55,6 +60,7 @@ jobs:
         with:
           files: |
             cmd/commands.md
-          commit-message: "chore: Update MD file [skip ci]"
+            sdk/SDK.md
+          commit-message: "chore: Update MD files [skip ci]"
           ref: ${{ github.head_ref }}
 
