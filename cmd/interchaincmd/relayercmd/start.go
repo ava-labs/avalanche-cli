@@ -83,11 +83,10 @@ func start(_ *cobra.Command, _ []string) error {
 		}
 		localNetworkRootDir := ""
 		if network.Kind == models.Local {
-			networkInfo, err := localnet.GetLocalNetworkInfo(app)
+			localNetworkRootDir, err = localnet.GetLocalNetworkDir(app)
 			if err != nil {
 				return err
 			}
-			localNetworkRootDir = networkInfo.Dir
 		}
 		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
 		if network.Kind == models.Local && binPath == "" {

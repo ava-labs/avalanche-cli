@@ -23,12 +23,14 @@ func PrintEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	subnetName string,
 ) error {
-	if ExecutingLocalnetMetaExists(app) {
-		executingLocalnetMeta, err := GetExecutingLocalnetMeta(app)
+	if isBoostrapped, err := LocalNetworkIsBootstrapped(app); err != nil {
+		return err
+	} else if isBoostrapped {
+		networkDir, err := GetLocalNetworkDir(app)
 		if err != nil {
 			return err
 		}
-		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, executingLocalnetMeta.NetworkDir); err != nil {
+		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, networkDir); err != nil {
 			return err
 		}
 	}

@@ -22,18 +22,7 @@ network is running and some basic stats about the network.`,
 }
 
 func networkStatus(*cobra.Command, []string) error {
-	if bootstrappingStatus, err := localnet.LocalnetBootstrappingStatus(app); err != nil {
-		return err
-	} else if bootstrappingStatus == localnet.NotBootstrapped {
-		ux.Logger.PrintToUser("No local network running")
-		return nil
-	}
-
-	executingLocalnetMeta, err := localnet.GetExecutingLocalnetMeta(app)
-	if err != nil {
-		return err
-	}
-	network, err := localnet.GetTmpNetNetwork(executingLocalnetMeta.NetworkDir)
+	network, err := localnet.GetLocalNetwork(app)
 	if err != nil {
 		return err
 	}

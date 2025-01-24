@@ -634,3 +634,12 @@ func GetProcess(pid int) (*os.Process, error) {
 	}
 	return proc, nil
 }
+
+func VMID(vmName string) (ids.ID, error) {
+	if len(vmName) > 32 {
+		return ids.Empty, fmt.Errorf("VM name must be <= 32 bytes, found %d", len(vmName))
+	}
+	b := make([]byte, 32)
+	copy(b, []byte(vmName))
+	return ids.ToID(b)
+}

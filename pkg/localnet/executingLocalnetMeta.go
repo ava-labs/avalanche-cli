@@ -13,55 +13,56 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
-type ExecutingLocalnetMeta struct {
+type LocalNetworkMeta struct {
 	NetworkDir string `json:"networkDir"`
 }
 
-func executingLocalnetMetaPath(app *application.Avalanche) string {
-	return filepath.Join(app.GetBaseDir(), constants.ExecutingLocalnetMetaFile)
+func localNetworkMetaPath(app *application.Avalanche) string {
+	return filepath.Join(app.GetBaseDir(), constants.LocalNetworkMetaFile)
 }
 
-func ExecutingLocalnetMetaExists(
+func LocalNetworkMetaExists(
 	app *application.Avalanche,
 ) bool {
-	return utils.FileExists(executingLocalnetMetaPath(app))
+	return utils.FileExists(localNetworkMetaPath(app))
 }
 
-func GetExecutingLocalnetMeta(
+func GetLocalNetworkMeta(
 	app *application.Avalanche,
-) (*ExecutingLocalnetMeta, error) {
-	path := executingLocalnetMetaPath(app)
+) (*LocalNetworkMeta, error) {
+	path := localNetworkMetaPath(app)
 	bs, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed reading executing localnet meta file at %s: %w", path, err)
 	}
-	var meta ExecutingLocalnetMeta
+	var meta LocalNetworkMeta
 	if err := json.Unmarshal(bs, &meta); err != nil {
 		return nil, fmt.Errorf("failed unmarshalling executing localnet meta file at %s: %w", path, err)
 	}
 	return &meta, nil
 }
 
-func SaveExecutingLocalnetMeta(
+func SaveLocalNetworkMeta(
 	app *application.Avalanche,
 	networkDir string,
 ) error {
-	meta := ExecutingLocalnetMeta{
+	meta := LocalNetworkMeta{
 		NetworkDir: networkDir,
 	}
 	bs, err := json.Marshal(&meta)
 	if err != nil {
 		return err
 	}
-	path := executingLocalnetMetaPath(app)
+	path := localNetworkMetaPath(app)
 	if err := os.WriteFile(path, bs, constants.WriteReadUserOnlyPerms); err != nil {
 		return fmt.Errorf("could not write executing localnet meta file %s: %w", path, err)
 	}
 	return nil
 }
 
-func RemoveExecutingLocalnetMeta(
+func RemoveLocalNetworkMeta(
 	app *application.Avalanche,
 ) error {
-	return os.RemoveAll(executingLocalnetMetaPath(app))
+	path := localNetworkMetaPath(app)
+	return os.RemoveAll(path)
 }

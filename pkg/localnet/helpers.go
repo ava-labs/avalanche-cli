@@ -366,30 +366,18 @@ func WaitNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
 	return err
 }
 
-func AlreadyDeployed(blockchainName string) (bool, error) {
-	chainVMID, err := anrutils.VMID(blockchainName)
+func AlreadyDeployed(app *application.Avalanche, blockchainName string) (bool, error) {
+	chainVMID, err := utils.VMID(blockchainName)
 	if err != nil {
 		return false, fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 	}
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalNetworkGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
+	blockchains, err := GetLocalNetworkBlockchainInfo(app)
 	if err != nil {
 		return false, err
 	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return false, err
-	}
-	if status.ClusterInfo != nil {
-		for _, chainInfo := range status.ClusterInfo.CustomChains {
-			if chainInfo.VmId == chainVMID.String() {
-				return true, nil
-			}
+	for _, chain := range blockchains {
+		if chain.VMID == chainVMID {
+			return true, nil
 		}
 	}
 	return false, nil
@@ -397,11 +385,11 @@ func AlreadyDeployed(blockchainName string) (bool, error) {
 
 func GetLocalNetworkRelayerConfigPath(app *application.Avalanche, networkDir string) (bool, string, error) {
 	if networkDir == "" {
-		network, err := GetLocalNetworkInfo(app)
+		var err error
+		networkDir, err = GetLocalNetworkDir(app)
 		if err != nil {
 			return false, "", err
 		}
-		networkDir = network.Dir
 	}
 	relayerConfigPath := app.GetLocalRelayerConfigPath(models.Local, networkDir)
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil

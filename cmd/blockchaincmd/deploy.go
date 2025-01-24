@@ -534,7 +534,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if !sidecar.Sovereign {
 			// sovereign blockchains are deployed into new local clusters,
 			// non sovereign blockchains are deployed into the local network itself
-			if b, err := localnet.AlreadyDeployed(blockchainName); err != nil {
+			if b, err := localnet.AlreadyDeployed(app, blockchainName); err != nil {
 				return err
 			} else if b {
 				return fmt.Errorf("blockchain %s has already been deployed", blockchainName)

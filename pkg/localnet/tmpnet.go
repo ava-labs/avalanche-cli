@@ -7,7 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	avagonode "github.com/ava-labs/avalanchego/node"
@@ -155,4 +158,50 @@ func GetTmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error
 
 func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
 	return tmpnet.ReadNetwork(networkDir)
+}
+
+func GetTmpNetworkEndpoint(networkDir string) (string, error) {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return "", err
+	}
+	if len(network.Nodes) == 0 {
+		return "", fmt.Errorf("no node found on local network at %s", networkDir)
+	}
+	return network.Nodes[0].URI, nil
+}
+
+type BlockchainInfo struct{
+	Name string
+	ID ids.ID
+	SubnetID ids.ID
+	VMID ids.ID
+}
+
+func GetTmpNetworkBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
+	endpoint, err := GetTmpNetworkEndpoint(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	pClient := platformvm.NewClient(endpoint)
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	blockchains, err := pClient.GetBlockchains(ctx)
+	if err != nil {
+		return nil, err
+	}
+	blockchainsInfo := []BlockchainInfo{}
+	for _, blockchain := range blockchains {
+		if blockchain.Name == "C-Chain" || blockchain.Name == "X-Chain" {
+			continue
+		}
+		blockchainInfo := BlockchainInfo{
+			Name: blockchain.Name,
+			ID:   blockchain.ID,
+			SubnetID:  blockchain.SubnetID,
+			VMID:      blockchain.VMID,
+		}
+		blockchainsInfo = append(blockchainsInfo, blockchainInfo)
+	}
+	return blockchainsInfo, nil
 }

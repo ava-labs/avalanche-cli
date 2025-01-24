@@ -82,9 +82,9 @@ func start(*cobra.Command, []string) error {
 
 func Start(flags StartFlags, printEndpoints bool) error {
 	// verify is local network is bootstrapped
-	if bootstrappingStatus, err := localnet.LocalnetBootstrappingStatus(app); err != nil {
+	if isBootstrapped, err := localnet.LocalNetworkIsBootstrapped(app); err != nil {
 		return err
-	} else if bootstrappingStatus != localnet.NotBootstrapped {
+	} else if isBootstrapped {
 		ux.Logger.PrintToUser("Network has already been booted.")
 		return nil
 	}
@@ -141,7 +141,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 
 		// save network directory previous to execution
-		if err := localnet.SaveExecutingLocalnetMeta(app, networkDir); err != nil {
+		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
 		if _, err := localnet.TmpNetLoad(app.Log, networkDir, avalancheGoBinPath); err != nil {
@@ -213,7 +213,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 		// save network directory previous to execution
-		if err := localnet.SaveExecutingLocalnetMeta(app, networkDir); err != nil {
+		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
 		_, err = localnet.TmpNetCreate(
@@ -251,12 +251,12 @@ func Start(flags StartFlags, printEndpoints bool) error {
 }
 
 func startLocalCluster(avalancheGoBinPath string) error {
-	names, err := localnet.GetBlockchainNames()
+	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
 	if err != nil {
 		return err
 	}
-	if len(names) > 0 {
-		blockchainName := names[0]
+	if len(blockchains) > 0 {
+		blockchainName := blockchains[0].Name
 		clusterName := blockchainName + "-local-node-local-network"
 		isLocal, err := node.CheckClusterIsLocal(app, clusterName)
 		if err != nil {
