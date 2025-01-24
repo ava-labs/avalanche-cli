@@ -43,7 +43,6 @@ const showFees = true
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain auth keys")
 
 type PublicDeployer struct {
-	LocalDeployer
 	kc      *keychain.Keychain
 	network models.Network
 	app     *application.Avalanche
@@ -52,7 +51,6 @@ type PublicDeployer struct {
 
 func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
-		LocalDeployer: *NewLocalDeployer(app, "", "", "", false),
 		app:           app,
 		kc:            kc,
 		network:       network,
