@@ -994,7 +994,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 }
 
 func provideStakingCertAndKey(host *models.Host) error {
-	keyPath := filepath.Join(app.GetNodeStakingDir(host.IP))
+	keyPath := app.GetNodeStakingDir(host.IP)
 	nodeID, err := generateNodeCertAndKeys(
 		filepath.Join(keyPath, constants.StakerCertFileName),
 		filepath.Join(keyPath, constants.StakerKeyFileName),
