@@ -6,6 +6,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
@@ -28,4 +29,27 @@ func SetupAvalancheGoBinary(
 		return "", fmt.Errorf("avalancheGo binary %s does not exist", avalancheGoBinaryPath)
 	}
 	return avalancheGoBinaryPath, nil
+}
+
+func SetupVMBinary(
+	app *application.Avalanche,
+	blockchainName string,
+) (string, error) {
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return "", err
+	}
+	var binaryPath string
+	switch sc.VM {
+	case models.SubnetEvm:
+		_, binaryPath, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
+		if err != nil {
+			return "", fmt.Errorf("failed to install subnet-evm: %w", err)
+		}
+	case models.CustomVM:
+		binaryPath = binutils.SetupCustomBin(app, blockchainName)
+	default:
+		return "", fmt.Errorf("unknown vm: %s", sc.VM)
+	}
+	return binaryPath, nil
 }

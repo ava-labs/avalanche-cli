@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/admin"
-	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -31,44 +30,57 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 )
 
-func TrackSubnet(
+func LocalNetworkTrackSubnet(
+	ctx context.Context,
 	app *application.Avalanche,
 	blockchainName string,
 	avalancheGoBinPath string,
-	sovereign bool,
 ) error {
+	networkDir, err := GetLocalNetworkDir(app)
+	if err != nil {
+		return err
+	}
+	return TmpNetTrackSubnet(
+		ctx,
+		app,
+		networkDir,
+		blockchainName,
+		avalancheGoBinPath,
+	)	
+}
+
+func TmpNetTrackSubnet(
+	ctx context.Context,
+	app *application.Avalanche,
+	networkDir string,
+	blockchainName string,
+	avalancheGoBinPath string,
+) error {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
-	network := models.NewLocalNetwork()
-	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
+	sovereign := sc.Sovereign
+	networkName := models.NewLocalNetwork().Name()
+	if sc.Networks[networkName].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkName)
 	}
-	subnetID := sc.Networks[network.Name()].SubnetID
-	blockchainID := sc.Networks[network.Name()].BlockchainID
+	subnetID := sc.Networks[networkName].SubnetID
+	blockchainID := sc.Networks[networkName].BlockchainID
+
 	vmID, err := utils.VMID(blockchainName)
 	if err != nil {
-		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
-	}
-	var vmBin string
-	switch sc.VM {
-	case models.SubnetEvm:
-		_, vmBin, err = binutils.SetupSubnetEVM(app, sc.VMVersion)
-		if err != nil {
-			return fmt.Errorf("failed to install subnet-evm: %w", err)
-		}
-	case models.CustomVM:
-		vmBin = binutils.SetupCustomBin(app, blockchainName)
-	default:
-		return fmt.Errorf("unknown vm: %s", sc.VM)
-	}
-
-	pluginPath := filepath.Join(app.GetPluginsDir(), vmID.String())
-	if err := utils.FileCopy(vmBin, pluginPath); err != nil {
 		return err
 	}
-	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
+	binaryPath, err := SetupVMBinary(app, blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to setup VM binary: %w", err)
+	}
+	if err := TmpNetInstallVM(network, binaryPath, vmID); err != nil {
 		return err
 	}
 
@@ -163,7 +175,7 @@ func TrackSubnet(
 		}
 		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
 	}
-	networkInfo := sc.Networks[network.Name()]
+	networkInfo := sc.Networks[networkName]
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
 	for _, publicEndpoint := range publicEndpoints {
@@ -178,10 +190,10 @@ func TrackSubnet(
 			return err
 		}
 	}
-	if err := BlockchainIsBootstrapped(cli, blockchainID.String()); err != nil {
+	if err := IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID.String()); err != nil {
 		return err
 	}
-	if err := BlockchainIsBootstrapped(cli, "P"); err != nil {
+	if err := IsTmpNetBlockchainBootstrapped(ctx, network, "P"); err != nil {
 		return err
 	}
 	if _, err := cli.UpdateStatus(ctx); err != nil {
@@ -198,40 +210,12 @@ func TrackSubnet(
 			return err
 		}
 	}
-	sc.Networks[network.Name()] = networkInfo
+	sc.Networks[networkName] = networkInfo
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err
 	}
-	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", network.Name(), blockchainName)
+	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkName, blockchainName)
 	return nil
-}
-
-func BlockchainIsBootstrapped(cli client.Client, blockchainID string) error {
-	blockchainBootstrapCheckFrequency := time.Second
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return err
-	}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		for {
-			infoClient := info.NewClient(nodeInfo.GetUri())
-			boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
-			if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
-				return err
-			}
-			if boostrapped {
-				break
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(blockchainBootstrapCheckFrequency):
-			}
-		}
-	}
-	return err
 }
 
 func SetAlias(cli client.Client, blockchainID string, alias string) error {
@@ -395,6 +379,6 @@ func GetLocalNetworkRelayerConfigPath(app *application.Avalanche, networkDir str
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }
 
-func GetDefaultTimeout() (context.Context, context.CancelFunc) {
+func GetDefaultContext() (context.Context, context.CancelFunc) {
 	return utils.GetTimedContext(2 * time.Minute)
 }

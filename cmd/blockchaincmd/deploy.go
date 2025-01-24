@@ -1134,11 +1134,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
 			fmt.Println("ANTES DE JORDERSE")
-			if err := localnet.TrackSubnet(
+			ctx, cancel := localnet.GetDefaultContext()
+			defer cancel()
+			if err := localnet.LocalNetworkTrackSubnet(
+				ctx,
 				app,
 				blockchainName,
 				avagoBinaryPath,
-				sidecar.Sovereign,
 			); err != nil {
 				return err
 			}

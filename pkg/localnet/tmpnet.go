@@ -1,17 +1,22 @@
 package localnet
 
 import (
+	"context"
+	"time"
 	"encoding/json"
 	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/genesis"
 	avagonode "github.com/ava-labs/avalanchego/node"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
@@ -52,7 +57,7 @@ func TmpNetCreate(
 	if err := network.Write(); err != nil {
 		return nil, err
 	}
-	ctx, cancel := GetDefaultTimeout()
+	ctx, cancel := GetDefaultContext()
 	defer cancel()
 	err := network.Bootstrap(
 		ctx,
@@ -102,7 +107,7 @@ func TmpNetLoad(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := GetDefaultTimeout()
+	ctx, cancel := GetDefaultContext()
 	defer cancel()
 	nodes := network.Nodes
 	for i := range nodes {
@@ -117,7 +122,7 @@ func TmpNetLoad(
 func TmpNetStop(
 	networkDir string,
 ) error {
-	ctx, cancel := GetDefaultTimeout()
+	ctx, cancel := GetDefaultContext()
 	defer cancel()
 	return tmpnet.StopNetwork(ctx, networkDir)
 }
@@ -204,4 +209,45 @@ func GetTmpNetworkBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
 		blockchainsInfo = append(blockchainsInfo, blockchainInfo)
 	}
 	return blockchainsInfo, nil
+}
+
+func IsTmpNetBlockchainBootstrapped(ctx context.Context, network *tmpnet.Network, blockchainID string) error {
+	blockchainBootstrapCheckFrequency := time.Second
+	for _, node := range network.Nodes {
+		for {
+			infoClient := info.NewClient(node.URI)
+			boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
+			if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
+				return err
+			}
+			if boostrapped {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(blockchainBootstrapCheckFrequency):
+			}
+		}
+	}
+	return nil
+}
+
+func TmpNetInstallVM(network *tmpnet.Network, binaryPath string, vmID ids.ID) error {
+	pluginDirI, ok := network.DefaultFlags[config.PluginDirKey]
+	if !ok {
+		return fmt.Errorf("flag %s not found on network default flags", config.PluginDirKey)
+	}
+	pluginDir, ok := pluginDirI.(string)
+	if !ok {
+		return fmt.Errorf("flag %s has incorrect type, expected string, got %T", pluginDirI)
+	}
+	pluginPath := filepath.Join(pluginDir, vmID.String())
+	if err := utils.FileCopy(binaryPath, pluginPath); err != nil {
+		return err
+	}
+	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
+		return err
+	}
+	return nil
 }
