@@ -3,23 +3,20 @@
 package localnet
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
-	"context"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
-	"github.com/ava-labs/avalanchego/api/admin"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/set"
@@ -40,13 +37,36 @@ func LocalNetworkTrackSubnet(
 	if err != nil {
 		return err
 	}
+	var (
+		blockchainConfig []byte
+		subnetConfig     []byte
+	)
+	if app.ChainConfigExists(blockchainName) {
+		blockchainConfig, err = os.ReadFile(app.GetChainConfigPath(blockchainName))
+		if err != nil {
+			return err
+		}
+	}
+	if app.AvagoSubnetConfigExists(blockchainName) {
+		subnetConfig, err = os.ReadFile(app.GetAvagoSubnetConfigPath(blockchainName))
+		if err != nil {
+			return err
+		}
+	}
+	perNodeBlockchainConfig, err := GetPerNodeBlockchainConfig(app, blockchainName)
+	if err != nil {
+		return err
+	}
 	return TmpNetTrackSubnet(
 		ctx,
 		app,
 		networkDir,
 		blockchainName,
 		avalancheGoBinPath,
-	)	
+		blockchainConfig,
+		subnetConfig,
+		perNodeBlockchainConfig,
+	)
 }
 
 func TmpNetTrackSubnet(
@@ -55,11 +75,10 @@ func TmpNetTrackSubnet(
 	networkDir string,
 	blockchainName string,
 	avalancheGoBinPath string,
+	blockchainConfig []byte,
+	subnetConfig []byte,
+	perNodeBlockchainConfig map[ids.NodeID][]byte,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
@@ -72,6 +91,7 @@ func TmpNetTrackSubnet(
 	subnetID := sc.Networks[networkName].SubnetID
 	blockchainID := sc.Networks[networkName].BlockchainID
 
+	// VM binary setup
 	vmID, err := utils.VMID(blockchainName)
 	if err != nil {
 		return err
@@ -80,8 +100,38 @@ func TmpNetTrackSubnet(
 	if err != nil {
 		return fmt.Errorf("failed to setup VM binary: %w", err)
 	}
-	if err := TmpNetInstallVM(network, binaryPath, vmID); err != nil {
+	if err := TmpNetInstallVM(networkDir, binaryPath, vmID); err != nil {
 		return err
+	}
+
+	// Configs
+	if blockchainConfig != nil {
+		if err := TmpNetSetBlockchainConfig(
+			networkDir,
+			blockchainID,
+			blockchainConfig,
+		); err != nil {
+			return err
+		}
+	}
+	if subnetConfig != nil {
+		if err := TmpNetSetSubnetConfig(
+			networkDir,
+			subnetID,
+			subnetConfig,
+		); err != nil {
+			return err
+		}
+	}
+	for nodeID, blockchainConfig := range perNodeBlockchainConfig {
+		if err := TmpNetSetNodeBlockchainConfig(
+			networkDir,
+			nodeID,
+			blockchainID,
+			blockchainConfig,
+		); err != nil {
+			return err
+		}
 	}
 
 	cli, err := binutils.NewGRPCClientWithEndpoint(
@@ -98,68 +148,9 @@ func TmpNetTrackSubnet(
 	if err != nil {
 		return err
 	}
+
 	publicEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		if app.ChainConfigExists(blockchainName) {
-			inputChainConfigPath := app.GetChainConfigPath(blockchainName)
-			outputChainConfigPath := filepath.Join(
-				status.ClusterInfo.RootDataDir,
-				nodeInfo.Name,
-				"configs",
-				"chains",
-				blockchainID.String(),
-				"config.json",
-			)
-			if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-				return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-			}
-			if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
-				return err
-			}
-		}
-		if app.AvagoSubnetConfigExists(blockchainName) {
-			inputSubnetConfigPath := app.GetAvagoSubnetConfigPath(blockchainName)
-			outputSubnetConfigPath := filepath.Join(
-				status.ClusterInfo.RootDataDir,
-				nodeInfo.Name,
-				"configs",
-				"subnets",
-				subnetID.String()+".json",
-			)
-			if err := os.MkdirAll(filepath.Dir(outputSubnetConfigPath), 0o700); err != nil {
-				return fmt.Errorf("could not create subnet conf directory %s: %w", filepath.Dir(outputSubnetConfigPath), err)
-			}
-			if err := utils.FileCopy(inputSubnetConfigPath, outputSubnetConfigPath); err != nil {
-				return err
-			}
-		}
-		perNodeChainConfigPath := filepath.Join(app.GetSubnetDir(), blockchainName, constants.PerNodeChainConfigFileName)
-		if utils.FileExists(perNodeChainConfigPath) {
-			perNodeChainConfig, err := utils.ReadJSON(perNodeChainConfigPath)
-			if err != nil {
-				return err
-			}
-			for nodeName, cfg := range perNodeChainConfig {
-				cfgBytes, err := json.Marshal(cfg)
-				if err != nil {
-					return err
-				}
-				outputChainConfigPath := filepath.Join(
-					status.ClusterInfo.RootDataDir,
-					nodeName,
-					"configs",
-					"chains",
-					blockchainID.String(),
-					"config.json",
-				)
-				if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-					return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-				}
-				if err := os.WriteFile(outputChainConfigPath, cfgBytes, constants.WriteReadReadPerms); err != nil {
-					return err
-				}
-			}
-		}
 		ux.Logger.PrintToUser("Restarting node %s to track newly deployed network", nodeInfo.Name)
 		subnets := strings.TrimSpace(nodeInfo.WhitelistedSubnets)
 		if subnets != "" {
@@ -175,6 +166,7 @@ func TmpNetTrackSubnet(
 		}
 		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
 	}
+
 	networkInfo := sc.Networks[networkName]
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
@@ -190,16 +182,16 @@ func TmpNetTrackSubnet(
 			return err
 		}
 	}
-	if err := IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID.String()); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String()); err != nil {
 		return err
 	}
-	if err := IsTmpNetBlockchainBootstrapped(ctx, network, "P"); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P"); err != nil {
 		return err
 	}
 	if _, err := cli.UpdateStatus(ctx); err != nil {
 		return err
 	}
-	if err := SetAlias(cli, blockchainID.String(), blockchainName); err != nil {
+	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName); err != nil {
 		return err
 	}
 	if !sovereign {
@@ -218,26 +210,10 @@ func TmpNetTrackSubnet(
 	return nil
 }
 
-func SetAlias(cli client.Client, blockchainID string, alias string) error {
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return err
-	}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		adminClient := admin.NewClient(nodeInfo.GetUri())
-		if err := adminClient.AliasChain(ctx, blockchainID, alias); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func AddNoSovereignValidators(
 	app *application.Avalanche,
 	cli client.Client,
-	 subnetID ids.ID,
+	subnetID ids.ID,
 ) error {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()

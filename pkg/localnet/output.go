@@ -44,28 +44,28 @@ func PrintEndpointsOld(
 	subnetName string,
 ) error {
 	/*
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return err
-	}
-	for _, chainInfo := range clusterInfo.CustomChains {
-		if subnetName == "" || chainInfo.ChainName == subnetName {
-			if err := PrintSubnetEndpoints(app, printFunc, clusterInfo, chainInfo); err != nil {
-				return err
-			}
-			printFunc("")
-		}
-	}
-	if err := PrintNetworkEndpointsOld("Primary Nodes", printFunc, clusterInfo); err != nil {
-		return err
-	}
-	clusterInfo, err = GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err == nil {
-		printFunc("")
-		if err := PrintNetworkEndpointsOld("L1 Nodes", printFunc, clusterInfo); err != nil {
+		clusterInfo, err := GetClusterInfo()
+		if err != nil {
 			return err
 		}
-	}
+		for _, chainInfo := range clusterInfo.CustomChains {
+			if subnetName == "" || chainInfo.ChainName == subnetName {
+				if err := PrintSubnetEndpoints(app, printFunc, clusterInfo, chainInfo); err != nil {
+					return err
+				}
+				printFunc("")
+			}
+		}
+		if err := PrintNetworkEndpointsOld("Primary Nodes", printFunc, clusterInfo); err != nil {
+			return err
+		}
+		clusterInfo, err = GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+		if err == nil {
+			printFunc("")
+			if err := PrintNetworkEndpointsOld("L1 Nodes", printFunc, clusterInfo); err != nil {
+				return err
+			}
+		}
 	*/
 	return nil
 }
@@ -152,7 +152,7 @@ func PrintNetworkEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	networkDir string,
 ) error {
- 	network, err := GetTmpNetNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}

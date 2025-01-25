@@ -151,6 +151,9 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err := startLocalCluster(avalancheGoBinPath); err != nil {
 			return err
 		}
+		if err := localnet.TmpNetSetDefaultAliases(networkDir); err != nil {
+			return err
+		}
 		if b, relayerConfigPath, err := localnet.GetLocalNetworkRelayerConfigPath(app, networkDir); err != nil {
 			return err
 		} else if b {

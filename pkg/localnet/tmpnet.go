@@ -2,25 +2,26 @@ package localnet
 
 import (
 	"context"
-	"time"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/api/admin"
+	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/ids"
 	avagonode "github.com/ava-labs/avalanchego/node"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	dircopy "github.com/otiai10/copy"
 )
@@ -176,11 +177,11 @@ func GetTmpNetworkEndpoint(networkDir string) (string, error) {
 	return network.Nodes[0].URI, nil
 }
 
-type BlockchainInfo struct{
-	Name string
-	ID ids.ID
+type BlockchainInfo struct {
+	Name     string
+	ID       ids.ID
 	SubnetID ids.ID
-	VMID ids.ID
+	VMID     ids.ID
 }
 
 func GetTmpNetworkBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
@@ -201,17 +202,21 @@ func GetTmpNetworkBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
 			continue
 		}
 		blockchainInfo := BlockchainInfo{
-			Name: blockchain.Name,
-			ID:   blockchain.ID,
-			SubnetID:  blockchain.SubnetID,
-			VMID:      blockchain.VMID,
+			Name:     blockchain.Name,
+			ID:       blockchain.ID,
+			SubnetID: blockchain.SubnetID,
+			VMID:     blockchain.VMID,
 		}
 		blockchainsInfo = append(blockchainsInfo, blockchainInfo)
 	}
 	return blockchainsInfo, nil
 }
 
-func IsTmpNetBlockchainBootstrapped(ctx context.Context, network *tmpnet.Network, blockchainID string) error {
+func WaitTmpNetBlockchainBootstrapped(ctx context.Context, networkDir string, blockchainID string) error {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return err
+	}
 	blockchainBootstrapCheckFrequency := time.Second
 	for _, node := range network.Nodes {
 		for {
@@ -233,7 +238,11 @@ func IsTmpNetBlockchainBootstrapped(ctx context.Context, network *tmpnet.Network
 	return nil
 }
 
-func TmpNetInstallVM(network *tmpnet.Network, binaryPath string, vmID ids.ID) error {
+func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return err
+	}
 	pluginDirI, ok := network.DefaultFlags[config.PluginDirKey]
 	if !ok {
 		return fmt.Errorf("flag %s not found on network default flags", config.PluginDirKey)
@@ -250,4 +259,118 @@ func TmpNetInstallVM(network *tmpnet.Network, binaryPath string, vmID ids.ID) er
 		return err
 	}
 	return nil
+}
+
+func TmpNetSetAlias(networkDir string, blockchainID string, alias string) error {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := GetDefaultContext()
+	defer cancel()
+	for _, node := range network.Nodes {
+		adminClient := admin.NewClient(node.URI)
+		if err := adminClient.AliasChain(ctx, blockchainID, alias); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TmpNetSetDefaultAliases(networkDir string) error {
+	blockchains, err := GetTmpNetworkBlockchainInfo(networkDir)
+	if err != nil {
+		return err
+	}
+	for _, blockchain := range blockchains {
+		if err := TmpNetSetAlias(networkDir, blockchain.ID.String(), blockchain.Name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TmpNetSetBlockchainConfig(
+	networkDir string,
+	blockchainID ids.ID,
+	blockchainConfig []byte,
+) error {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	for _, node := range network.Nodes {
+		if err := TmpNetSetNodeBlockchainConfig(
+			networkDir,
+			node.NodeID,
+			blockchainID,
+			blockchainConfig,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Note: this is the same operation for every node
+// keep it here to support reintroducing per node chain config
+func TmpNetSetNodeBlockchainConfig(
+	networkDir string,
+	nodeID ids.NodeID,
+	blockchainID ids.ID,
+	blockchainConfig []byte,
+) error {
+	configPath := filepath.Join(
+		networkDir,
+		"chains",
+		blockchainID.String(),
+		"config.json",
+	)
+	configDir := filepath.Dir(configPath)
+	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
+		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+	}
+	return os.WriteFile(configPath, blockchainConfig, constants.WriteReadReadPerms)
+}
+
+func TmpNetSetSubnetConfig(
+	networkDir string,
+	subnetID ids.ID,
+	subnetConfig []byte,
+) error {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	for _, node := range network.Nodes {
+		if err := TmpNetSetNodeSubnetConfig(
+			networkDir,
+			node.NodeID,
+			subnetID,
+			subnetConfig,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func TmpNetSetNodeSubnetConfig(
+	networkDir string,
+	nodeID ids.NodeID,
+	subnetID ids.ID,
+	subnetConfig []byte,
+) error {
+	configPath := filepath.Join(
+		networkDir,
+		nodeID.String(),
+		"configs",
+		"subnets",
+		subnetID.String()+".json",
+	)
+	configDir := filepath.Dir(configPath)
+	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
+		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+	}
+	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms)
 }
