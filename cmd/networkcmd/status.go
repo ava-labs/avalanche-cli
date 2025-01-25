@@ -26,13 +26,19 @@ func networkStatus(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-
+	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+	if err != nil {
+		return err
+	}
+	pChainBootstrapped, blockchainsBootstrapped, err := localnet.LocalNetworkHealth(app)
+	if err != nil {
+		return err
+	}
 	ux.Logger.PrintToUser("Network is Up:")
 	ux.Logger.PrintToUser("  Number of Nodes: %d", len(network.Nodes))
-	// TODO
-	// ux.Logger.PrintToUser("  Number of Custom VMs: %d", len(network.Subnets))
-	// ux.Logger.PrintToUser("  Network Healthy: %t", clusterInfo.Healthy)
-	// ux.Logger.PrintToUser("  Custom VMs Healthy: %t", clusterInfo.CustomChainsHealthy)
+	ux.Logger.PrintToUser("  Number of Custom VMs: %d", len(blockchains))
+	ux.Logger.PrintToUser("  Network Healthy: %t", pChainBootstrapped)
+	ux.Logger.PrintToUser("  Custom VMs Healthy: %t", blockchainsBootstrapped)
 	ux.Logger.PrintToUser("")
 	if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, ""); err != nil {
 		return err

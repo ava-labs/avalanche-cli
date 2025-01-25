@@ -237,3 +237,37 @@ func LocalNetworkStop(app *application.Avalanche) error {
 func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
 	return sdkutils.GetTimedContext(2 * time.Minute)
 }	
+
+func IsLocalNetworkBlockchainBootstrapped(
+	app *application.Avalanche,
+	blockchainID string,
+) (bool, error) {
+	networkDir, err := GetLocalNetworkDir(app)
+	if err != nil {
+		return false, err
+	}
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	return IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID)
+}
+
+func LocalNetworkHealth(app *application.Avalanche) (bool, bool, error) {
+	pChainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, "P")
+	if err != nil {
+		return false, false, err
+	}
+	blockchains, err := GetLocalNetworkBlockchainInfo(app)
+	if err != nil {
+		return pChainBootstrapped, false, err
+	}
+	for _, blockchain := range blockchains {
+		blockchainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, blockchain.ID.String())
+		if err != nil {
+			return pChainBootstrapped, false, err
+		}
+		if !blockchainBootstrapped {
+			return pChainBootstrapped, false, nil
+		}
+	}
+	return pChainBootstrapped, true, nil
+}

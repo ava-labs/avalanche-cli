@@ -211,30 +211,42 @@ func GetTmpNetworkBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
 }
 
 func WaitTmpNetBlockchainBootstrapped(ctx context.Context, networkDir string, blockchainID string) error {
-	network, err := tmpnet.ReadNetwork(networkDir)
-	if err != nil {
-		return err
-	}
 	blockchainBootstrapCheckFrequency := time.Second
-	for _, node := range network.Nodes {
-		for {
-			infoClient := info.NewClient(node.URI)
-			boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
-			if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
-				return err
-			}
-			if boostrapped {
-				break
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(blockchainBootstrapCheckFrequency):
-			}
+	for {
+		boostrapped, err := IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID)
+		if err != nil {
+			return err
+		}
+		if boostrapped {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(blockchainBootstrapCheckFrequency):
 		}
 	}
 	return nil
 }
+
+func IsTmpNetBlockchainBootstrapped(ctx context.Context, networkDir string, blockchainID string) (bool, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return false, err
+	}
+	for _, node := range network.Nodes {
+		infoClient := info.NewClient(node.URI)
+		boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
+		if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
+			return false, err
+		}
+		if !boostrapped {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 
 func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
 	network, err := tmpnet.ReadNetwork(networkDir)
@@ -407,4 +419,40 @@ func TmpNetRestartNodesToTrackSubnet(
 		}
 	}
 	return nil
+}
+
+func GetTmpNetBootstrappers(
+	networkDir string,
+) ([]string, []string, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return  nil, nil, err
+	}
+	bootstrapIPs := []string{}
+	bootstrapIDs := []string{}
+	for _, node := range network.Nodes {
+		bootstrapIPs = append(bootstrapIPs, node.StakingAddress.String())
+		bootstrapIDs = append(bootstrapIDs, node.NodeID.String())
+	}
+	return bootstrapIPs, bootstrapIDs, nil
+}
+
+func GetTmpNetGenesis(
+	networkDir string,
+) ([]byte, error) {
+	return os.ReadFile(filepath.Join(networkDir, "genesis.json"))
+}
+
+func GetTmpNetUpgrade(
+	networkDir string,
+) ([]byte, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return  nil, err
+	}
+	encodedUpgrade, err := network.DefaultFlags.GetStringVal(config.UpgradeFileContentKey)
+	if err != nil {
+		return  nil, err
+	}
+	return base64.StdEncoding.DecodeString(encodedUpgrade)
 }
