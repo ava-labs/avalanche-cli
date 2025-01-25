@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -33,6 +32,7 @@ func LocalNetworkTrackSubnet(
 	blockchainName string,
 	avalancheGoBinPath string,
 ) error {
+	network := models.NewLocalNetwork()
 	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
 		return err
@@ -57,21 +57,35 @@ func LocalNetworkTrackSubnet(
 	if err != nil {
 		return err
 	}
-	return TmpNetTrackSubnet(
+	if err := TmpNetTrackSubnet(
 		ctx,
 		app,
+		network,
 		networkDir,
 		blockchainName,
 		avalancheGoBinPath,
 		blockchainConfig,
 		subnetConfig,
 		perNodeBlockchainConfig,
+	); err != nil {
+		return err
+	}
+	nodeURIs, err := GetTmpNetNodeURIs(networkDir)
+	if err != nil {
+		return err
+	}
+	return PersistDefaultBlockchainEndpoints(
+		app,
+		network,
+		nodeURIs,
+		blockchainName,
 	)
 }
 
 func TmpNetTrackSubnet(
 	ctx context.Context,
 	app *application.Avalanche,
+	network models.Network,
 	networkDir string,
 	blockchainName string,
 	avalancheGoBinPath string,
@@ -84,12 +98,11 @@ func TmpNetTrackSubnet(
 		return err
 	}
 	sovereign := sc.Sovereign
-	networkName := models.NewLocalNetwork().Name()
-	if sc.Networks[networkName].BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkName)
+	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
 	}
-	subnetID := sc.Networks[networkName].SubnetID
-	blockchainID := sc.Networks[networkName].BlockchainID
+	blockchainID := sc.Networks[network.Name()].BlockchainID
+	subnetID := sc.Networks[network.Name()].SubnetID
 
 	// VM binary setup
 	vmID, err := utils.VMID(blockchainName)
@@ -149,7 +162,6 @@ func TmpNetTrackSubnet(
 		return err
 	}
 
-	publicEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 		ux.Logger.PrintToUser("Restarting node %s to track newly deployed network", nodeInfo.Name)
 		subnets := strings.TrimSpace(nodeInfo.WhitelistedSubnets)
@@ -164,31 +176,11 @@ func TmpNetTrackSubnet(
 		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
 			return err
 		}
-		publicEndpoints = append(publicEndpoints, nodeInfo.Uri)
-	}
-
-	networkInfo := sc.Networks[networkName]
-	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
-	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	for _, publicEndpoint := range publicEndpoints {
-		rpcEndpoints.Add(models.GetRPCEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(models.GetWSEndpoint(publicEndpoint, networkInfo.BlockchainID.String()))
-	}
-	networkInfo.RPCEndpoints = rpcEndpoints.List()
-	networkInfo.WSEndpoints = wsEndpoints.List()
-	for _, rpcURL := range networkInfo.RPCEndpoints {
-		ux.Logger.PrintToUser("Waiting for %s to be available", rpcURL)
-		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
-			return err
-		}
 	}
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String()); err != nil {
 		return err
 	}
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P"); err != nil {
-		return err
-	}
-	if _, err := cli.UpdateStatus(ctx); err != nil {
 		return err
 	}
 	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName); err != nil {
@@ -202,11 +194,7 @@ func TmpNetTrackSubnet(
 			return err
 		}
 	}
-	sc.Networks[networkName] = networkInfo
-	if err := app.UpdateSidecar(&sc); err != nil {
-		return err
-	}
-	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkName, blockchainName)
+	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", network.Name(), blockchainName)
 	return nil
 }
 

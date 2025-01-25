@@ -374,3 +374,13 @@ func TmpNetSetNodeSubnetConfig(
 	}
 	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms)
 }
+
+func GetTmpNetNodeURIs(
+	networkDir string,
+) ([]string, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	return utils.Map(network.GetNodeURIs(), func (nodeURI tmpnet.NodeURI) string {return nodeURI.URI}), nil
+}
