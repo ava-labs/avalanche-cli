@@ -144,7 +144,10 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
-		if _, err := localnet.TmpNetLoad(app.Log, networkDir, avalancheGoBinPath); err != nil {
+		// local network
+		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
+		defer cancel()
+		if _, err := localnet.TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinPath); err != nil {
 			return err
 		}
 
@@ -219,7 +222,11 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
+		// create network
+		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
+		defer cancel()
 		_, err = localnet.TmpNetCreate(
+			ctx,
 			app.Log,
 			networkDir,
 			avalancheGoBinPath,

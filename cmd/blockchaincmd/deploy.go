@@ -1133,8 +1133,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
-			fmt.Println("ANTES DE JORDERSE")
-			ctx, cancel := localnet.GetDefaultContext()
+			ctx, cancel := localnet.GetLocalNetworkDefaultContext()
 			defer cancel()
 			if err := localnet.LocalNetworkTrackSubnet(
 				ctx,
@@ -1144,7 +1143,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			); err != nil {
 				return err
 			}
-			fmt.Println("DESPUES DE JORDERSE")
 			tracked = true
 		}
 	}

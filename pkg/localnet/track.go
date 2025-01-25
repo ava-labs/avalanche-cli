@@ -6,18 +6,15 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -30,9 +27,9 @@ func LocalNetworkTrackSubnet(
 	ctx context.Context,
 	app *application.Avalanche,
 	blockchainName string,
-	avalancheGoBinPath string,
+	avalancheGoBinaryPath string,
 ) error {
-	network := models.NewLocalNetwork()
+	networkModel := models.NewLocalNetwork()
 	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
 		return err
@@ -41,6 +38,10 @@ func LocalNetworkTrackSubnet(
 		blockchainConfig []byte
 		subnetConfig     []byte
 	)
+	vmBinaryPath, err := SetupVMBinary(app, blockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to setup VM binary: %w", err)
+	}
 	if app.ChainConfigExists(blockchainName) {
 		blockchainConfig, err = os.ReadFile(app.GetChainConfigPath(blockchainName))
 		if err != nil {
@@ -57,16 +58,27 @@ func LocalNetworkTrackSubnet(
 	if err != nil {
 		return err
 	}
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	subnetID := sc.Networks[networkModel.Name()].SubnetID
+	wallet, err := GetLocalNetworkWallet(ctx, app, []ids.ID{subnetID})
+	if err != nil {
+		return err
+	}
 	if err := TmpNetTrackSubnet(
 		ctx,
 		app,
-		network,
+		networkModel,
 		networkDir,
 		blockchainName,
-		avalancheGoBinPath,
+		avalancheGoBinaryPath,
+		vmBinaryPath,
 		blockchainConfig,
 		subnetConfig,
 		perNodeBlockchainConfig,
+		wallet,
 	); err != nil {
 		return err
 	}
@@ -76,7 +88,7 @@ func LocalNetworkTrackSubnet(
 	}
 	return PersistDefaultBlockchainEndpoints(
 		app,
-		network,
+		networkModel,
 		nodeURIs,
 		blockchainName,
 	)
@@ -85,35 +97,33 @@ func LocalNetworkTrackSubnet(
 func TmpNetTrackSubnet(
 	ctx context.Context,
 	app *application.Avalanche,
-	network models.Network,
+	networkModel models.Network,
 	networkDir string,
 	blockchainName string,
-	avalancheGoBinPath string,
+	avalancheGoBinaryPath string,
+	vmBinaryPath string,
 	blockchainConfig []byte,
 	subnetConfig []byte,
 	perNodeBlockchainConfig map[ids.NodeID][]byte,
+	wallet *primary.Wallet,
 ) error {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
 	sovereign := sc.Sovereign
-	if sc.Networks[network.Name()].BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, network.Name())
+	if sc.Networks[networkModel.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
 	}
-	blockchainID := sc.Networks[network.Name()].BlockchainID
-	subnetID := sc.Networks[network.Name()].SubnetID
+	blockchainID := sc.Networks[networkModel.Name()].BlockchainID
+	subnetID := sc.Networks[networkModel.Name()].SubnetID
 
-	// VM binary setup
+	// VM Binary setup
 	vmID, err := utils.VMID(blockchainName)
 	if err != nil {
 		return err
 	}
-	binaryPath, err := SetupVMBinary(app, blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to setup VM binary: %w", err)
-	}
-	if err := TmpNetInstallVM(networkDir, binaryPath, vmID); err != nil {
+	if err := TmpNetInstallVM(networkDir, vmBinaryPath, vmID); err != nil {
 		return err
 	}
 
@@ -147,36 +157,17 @@ func TmpNetTrackSubnet(
 		}
 	}
 
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalNetworkGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return err
-	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return err
+	// Add subnet to tracked and restart nodes
+	if err := TmpNetRestartNodesToTrackSubnet(
+		ctx,
+		app.Log,
+		ux.Logger.PrintToUser,
+		networkDir,
+		subnetID,
+	); err != nil {
+		return nil
 	}
 
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		ux.Logger.PrintToUser("Restarting node %s to track newly deployed network", nodeInfo.Name)
-		subnets := strings.TrimSpace(nodeInfo.WhitelistedSubnets)
-		if subnets != "" {
-			subnets += ","
-		}
-		subnets += subnetID.String()
-		opts := []client.OpOption{
-			client.WithWhitelistedSubnets(subnets),
-			client.WithExecPath(avalancheGoBinPath),
-		}
-		if _, err := cli.RestartNode(ctx, nodeInfo.Name, opts...); err != nil {
-			return err
-		}
-	}
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String()); err != nil {
 		return err
 	}
@@ -187,33 +178,29 @@ func TmpNetTrackSubnet(
 		return err
 	}
 	if !sovereign {
-		if err := AddNoSovereignValidators(app, cli, subnetID); err != nil {
+		if err := TmpNetAddNonSovereignValidators(ctx, app, networkDir, subnetID, wallet); err != nil {
 			return err
 		}
-		if err := WaitNoSovereignValidators(cli, subnetID); err != nil {
+		if err := TmpNetWaitNonSovereignValidators(ctx, networkDir, subnetID); err != nil {
 			return err
 		}
 	}
-	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", network.Name(), blockchainName)
+	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
 	return nil
 }
 
-func AddNoSovereignValidators(
+func TmpNetAddNonSovereignValidators(
+	ctx context.Context,
 	app *application.Avalanche,
-	cli client.Client,
+	networkDir string,
 	subnetID ids.ID,
+	wallet *primary.Wallet,
 ) error {
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
+	endpoint, err := GetTmpNetworkEndpoint(networkDir)
 	if err != nil {
 		return err
 	}
-	nodeInfo, ok := status.ClusterInfo.NodeInfos["node1"]
-	if !ok {
-		return fmt.Errorf("node1 not found on local network")
-	}
-	pClient := platformvm.NewClient(nodeInfo.GetUri())
+	pClient := platformvm.NewClient(endpoint)
 	vs, err := pClient.GetCurrentValidators(ctx, avagoConstants.PrimaryNetworkID, nil)
 	if err != nil {
 		return err
@@ -230,36 +217,19 @@ func AddNoSovereignValidators(
 	for _, v := range vs {
 		subnetValidators.Add(v.NodeID)
 	}
-	k, err := app.GetKey("ewoq", models.NewLocalNetwork(), false)
+	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
 		return err
 	}
-	wallet, err := primary.MakeWallet(
-		ctx,
-		constants.LocalAPIEndpoint,
-		k.KeyChain(),
-		secp256k1fx.NewKeychain(),
-		primary.WalletConfig{
-			SubnetIDs: []ids.ID{subnetID},
-		},
-	)
-	if err != nil {
-		return err
-	}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		nodeIDStr := nodeInfo.GetId()
-		nodeID, err := ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			return err
-		}
-		if isValidator := subnetValidators.Contains(nodeID); isValidator {
+	for _, node := range network.Nodes {
+		if isValidator := subnetValidators.Contains(node.NodeID); isValidator {
 			continue
 		}
 		if _, err := wallet.P().IssueAddSubnetValidatorTx(
 			&txs.SubnetValidator{
 				Validator: txs.Validator{
-					NodeID: nodeID,
-					End:    uint64(primaryValidatorsEndtime[nodeID].Unix()),
+					NodeID: node.NodeID,
+					End:    uint64(primaryValidatorsEndtime[node.NodeID].Unix()),
 					Wght:   1000,
 				},
 				Subnet: subnetID,
@@ -273,20 +243,18 @@ func AddNoSovereignValidators(
 	return nil
 }
 
-func WaitNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
+func TmpNetWaitNonSovereignValidators(ctx context.Context, networkDir string, subnetID ids.ID) error {
 	checkFrequency := time.Second
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
+	endpoint, err := GetTmpNetworkEndpoint(networkDir)
 	if err != nil {
 		return err
 	}
-	nodeInfo, ok := status.ClusterInfo.NodeInfos["node1"]
-	if !ok {
-		return fmt.Errorf("node1 not found on local network")
+	pClient := platformvm.NewClient(endpoint)
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return err
 	}
-	pClient := platformvm.NewClient(nodeInfo.GetUri())
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
+	for _, node := range network.Nodes {
 		for {
 			vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
 			if err != nil {
@@ -296,12 +264,7 @@ func WaitNoSovereignValidators(cli client.Client, subnetID ids.ID) error {
 			for _, v := range vs {
 				subnetValidators.Add(v.NodeID)
 			}
-			nodeIDStr := nodeInfo.GetId()
-			nodeID, err := ids.NodeIDFromString(nodeIDStr)
-			if err != nil {
-				return err
-			}
-			if subnetValidators.Contains(nodeID) {
+			if subnetValidators.Contains(node.NodeID) {
 				break
 			}
 			select {
@@ -343,6 +306,26 @@ func GetLocalNetworkRelayerConfigPath(app *application.Avalanche, networkDir str
 	return utils.FileExists(relayerConfigPath), relayerConfigPath, nil
 }
 
-func GetDefaultContext() (context.Context, context.CancelFunc) {
-	return utils.GetTimedContext(2 * time.Minute)
+func GetLocalNetworkWallet(
+	ctx context.Context,
+	app *application.Avalanche,
+	subnetIDs []ids.ID,
+) (*primary.Wallet, error) {
+	endpoint, err := GetLocalNetworkEndpoint(app)
+	if err != nil {
+		return nil, err
+	}
+	ewoqKey, err := app.GetKey("ewoq", models.NewLocalNetwork(), false)
+	if err != nil {
+		return nil, err
+	}
+	return primary.MakeWallet(
+		ctx,
+		endpoint,
+		ewoqKey.KeyChain(),
+		secp256k1fx.NewKeychain(),
+		primary.WalletConfig{
+			SubnetIDs: subnetIDs,
+		},
+	)
 }

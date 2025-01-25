@@ -36,6 +36,7 @@ const (
 )
 
 func TmpNetCreate(
+	ctx context.Context,
 	log logging.Logger,
 	rootDir string,
 	avalancheGoBinPath string,
@@ -58,8 +59,6 @@ func TmpNetCreate(
 	if err := network.Write(); err != nil {
 		return nil, err
 	}
-	ctx, cancel := GetDefaultContext()
-	defer cancel()
 	err := network.Bootstrap(
 		ctx,
 		log,
@@ -100,6 +99,7 @@ func TmpNetMigrate(
 }
 
 func TmpNetLoad(
+	ctx context.Context,
 	log logging.Logger,
 	networkDir string,
 	avalancheGoBinPath string,
@@ -108,8 +108,6 @@ func TmpNetLoad(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := GetDefaultContext()
-	defer cancel()
 	nodes := network.Nodes
 	for i := range nodes {
 		nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
@@ -123,7 +121,7 @@ func TmpNetLoad(
 func TmpNetStop(
 	networkDir string,
 ) error {
-	ctx, cancel := GetDefaultContext()
+	ctx, cancel := sdkutils.GetTimedContext(2 * time.Minute)
 	defer cancel()
 	return tmpnet.StopNetwork(ctx, networkDir)
 }
@@ -243,13 +241,9 @@ func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
 	if err != nil {
 		return err
 	}
-	pluginDirI, ok := network.DefaultFlags[config.PluginDirKey]
-	if !ok {
-		return fmt.Errorf("flag %s not found on network default flags", config.PluginDirKey)
-	}
-	pluginDir, ok := pluginDirI.(string)
-	if !ok {
-		return fmt.Errorf("flag %s has incorrect type, expected string, got %T", pluginDirI)
+	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
+	if err != nil {
+		return err
 	}
 	pluginPath := filepath.Join(pluginDir, vmID.String())
 	if err := utils.FileCopy(binaryPath, pluginPath); err != nil {
@@ -266,10 +260,10 @@ func TmpNetSetAlias(networkDir string, blockchainID string, alias string) error 
 	if err != nil {
 		return err
 	}
-	ctx, cancel := GetDefaultContext()
-	defer cancel()
 	for _, node := range network.Nodes {
 		adminClient := admin.NewClient(node.URI)
+		ctx, cancel := sdkutils.GetAPIContext()
+		defer cancel()
 		if err := adminClient.AliasChain(ctx, blockchainID, alias); err != nil {
 			return err
 		}
@@ -383,4 +377,34 @@ func GetTmpNetNodeURIs(
 		return nil, err
 	}
 	return utils.Map(network.GetNodeURIs(), func (nodeURI tmpnet.NodeURI) string {return nodeURI.URI}), nil
+}
+
+func TmpNetRestartNodesToTrackSubnet(
+	ctx context.Context,
+	log logging.Logger,
+	printFunc func(msg string, args ...interface{}),
+	networkDir string,
+	subnetID ids.ID,
+) error {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	for _, node := range network.Nodes {
+		printFunc("Restarting node %s to track newly deployed subnet", node.NodeID)
+		subnets, err := node.Flags.GetStringVal(config.TrackSubnetsKey)
+		if err != nil {
+			return err
+		}
+		subnets = strings.TrimSpace(subnets)
+		if subnets != "" {
+			subnets += ","
+		}
+		subnets += subnetID.String()
+		node.Flags[config.TrackSubnetsKey] = subnets
+		if err := network.RestartNode(ctx, log, node); err != nil {
+			return err
+		}
+	}
+	return nil
 }

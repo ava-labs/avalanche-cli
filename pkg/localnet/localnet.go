@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
@@ -232,3 +233,7 @@ func LocalNetworkStop(app *application.Avalanche) error {
 	}
 	return RemoveLocalNetworkMeta(app)
 }
+
+func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
+	return sdkutils.GetTimedContext(2 * time.Minute)
+}	
