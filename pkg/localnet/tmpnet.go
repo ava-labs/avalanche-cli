@@ -164,15 +164,23 @@ func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
 	return tmpnet.ReadNetwork(networkDir)
 }
 
-func GetTmpNetworkEndpoint(networkDir string) (string, error) {
+func GetTmpNetFirstNode(networkDir string) (*tmpnet.Node, error) {
 	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	if len(network.Nodes) == 0 {
+		return nil, fmt.Errorf("no node found on local network at %s", networkDir)
+	}
+	return network.Nodes[0], nil
+}
+
+func GetTmpNetworkEndpoint(networkDir string) (string, error) {
+	node, err := GetTmpNetFirstNode(networkDir)
 	if err != nil {
 		return "", err
 	}
-	if len(network.Nodes) == 0 {
-		return "", fmt.Errorf("no node found on local network at %s", networkDir)
-	}
-	return network.Nodes[0].URI, nil
+	return node.URI, nil
 }
 
 type BlockchainInfo struct {

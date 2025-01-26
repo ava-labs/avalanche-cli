@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"sort"
 
-	"golang.org/x/exp/maps"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	//"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -21,7 +20,7 @@ import (
 func PrintEndpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
-	subnetName string,
+	blockchainName string,
 ) error {
 	if isBoostrapped, err := LocalNetworkIsBootstrapped(app); err != nil {
 		return err
@@ -30,69 +29,48 @@ func PrintEndpoints(
 		if err != nil {
 			return err
 		}
-		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, networkDir); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// PrintEndpoints prints the network endpoints
-func PrintEndpointsOld(
-	app *application.Avalanche,
-	printFunc func(msg string, args ...interface{}),
-	subnetName string,
-) error {
-	/*
-		clusterInfo, err := GetClusterInfo()
+		blockchains, err := GetLocalNetworkBlockchainInfo(app)
 		if err != nil {
 			return err
 		}
-		for _, chainInfo := range clusterInfo.CustomChains {
-			if subnetName == "" || chainInfo.ChainName == subnetName {
-				if err := PrintSubnetEndpoints(app, printFunc, clusterInfo, chainInfo); err != nil {
+		for _, blockchain := range blockchains {
+			if blockchainName == "" || blockchain.Name == blockchainName {
+				if err := PrintSubnetEndpoints(app, printFunc, networkDir, blockchain); err != nil {
 					return err
 				}
 				printFunc("")
 			}
 		}
-		if err := PrintNetworkEndpointsOld("Primary Nodes", printFunc, clusterInfo); err != nil {
+		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, networkDir); err != nil {
 			return err
 		}
-		clusterInfo, err = GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+		clusterInfo, err := GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 		if err == nil {
 			printFunc("")
-			if err := PrintNetworkEndpointsOld("L1 Nodes", printFunc, clusterInfo); err != nil {
+			if err := PrintNetworkEndpointsFromClusterInfo("L1 Nodes", printFunc, clusterInfo); err != nil {
 				return err
 			}
 		}
-	*/
+	}
 	return nil
 }
 
 func PrintSubnetEndpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
-	clusterInfo *rpcpb.ClusterInfo,
-	chainInfo *rpcpb.CustomChainInfo,
+	networkDir string,
+	blockchain BlockchainInfo,
 ) error {
-	nodeInfos := maps.Values(clusterInfo.NodeInfos)
-	nodeUris := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
-	if len(nodeUris) == 0 {
-		return fmt.Errorf("network has no nodes")
+	node, err := GetTmpNetFirstNode(networkDir)
+	if err != nil {
+		return err
 	}
-	sort.Strings(nodeUris)
-	refNodeURI := nodeUris[0]
-	nodeInfo := utils.Find(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) bool { return nodeInfo.GetUri() == refNodeURI })
-	if nodeInfo == nil {
-		return fmt.Errorf("unexpected nil nodeInfo")
-	}
-	t := ux.DefaultTable(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName), nil)
+	t := ux.DefaultTable(fmt.Sprintf("%s RPC URLs", blockchain.Name), nil)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
-	sc, err := app.LoadSidecar(chainInfo.ChainName)
+	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", node.URI, blockchain.ID)
+	sc, err := app.LoadSidecar(blockchain.Name)
 	if err == nil {
 		rpcEndpoints := sc.Networks[models.NewLocalNetwork().Name()].RPCEndpoints
 		if len(rpcEndpoints) > 0 {
@@ -101,23 +79,22 @@ func PrintSubnetEndpoints(
 	}
 	t.AppendRow(table.Row{"Localhost", blockchainIDURL})
 	if utils.InsideCodespace() {
-		var err error
-		blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
+		codespaceURL, err := utils.GetCodespaceURL(blockchainIDURL)
 		if err != nil {
 			return err
 		}
-		t.AppendRow(table.Row{"Codespace", blockchainIDURL})
+		t.AppendRow(table.Row{"Codespace", codespaceURL})
 	}
 	printFunc(t.Render())
 	return nil
 }
 
-func PrintNetworkEndpointsOld(
+func PrintNetworkEndpointsFromClusterInfo(
 	title string,
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
 ) error {
-	header := table.Row{"Name", "Node ID", "Localhost Endpoint"}
+	header := table.Row{"Node ID", "Localhost Endpoint"}
 	insideCodespace := utils.InsideCodespace()
 	if insideCodespace {
 		header = append(header, "Codespace Endpoint")
@@ -133,7 +110,7 @@ func PrintNetworkEndpointsOld(
 	for _, nodeName := range nodeNames {
 		nodeInfo := nodeInfos[nodeName]
 		nodeURL := nodeInfo.GetUri()
-		row := table.Row{nodeInfo.Name, nodeInfo.Id, nodeURL}
+		row := table.Row{nodeInfo.Id, nodeURL}
 		if insideCodespace {
 			nodeURL, err = utils.GetCodespaceURL(nodeURL)
 			if err != nil {
