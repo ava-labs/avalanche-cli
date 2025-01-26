@@ -164,14 +164,7 @@ func TmpNetTrackSubnet(
 	); err != nil {
 		return nil
 	}
-
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String(), nil); err != nil {
-		return err
-	}
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", nil); err != nil {
-		return err
-	}
-	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName, nil); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty); err != nil {
 		return err
 	}
 	if !sovereign {
@@ -181,6 +174,12 @@ func TmpNetTrackSubnet(
 		if err := TmpNetWaitNonSovereignValidators(ctx, networkDir, subnetID); err != nil {
 			return err
 		}
+	}
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String(), subnetID); err != nil {
+		return err
+	}
+	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName, subnetID); err != nil {
+		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
 	return nil

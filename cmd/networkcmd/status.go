@@ -30,7 +30,7 @@ func networkStatus(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-	pChainBootstrapped, blockchainsBootstrapped, err := localnet.LocalNetworkHealth(app)
+	pChainBootstrapped, blockchainsBootstrapped, err := localnet.LocalNetworkHealth(app, ux.Logger.PrintToUser)
 	if err != nil {
 		return err
 	}
