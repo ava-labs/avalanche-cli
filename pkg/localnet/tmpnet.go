@@ -388,7 +388,6 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 		if !hasValidators {
 			return nil
 		}
-		fmt.Println("HAS VALIDATORS HAHA")
 		if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchain.ID.String(), blockchain.SubnetID); err != nil {
 			return err
 		}
