@@ -236,7 +236,7 @@ func LocalNetworkStop(app *application.Avalanche) error {
 
 func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
 	return sdkutils.GetTimedContext(2 * time.Minute)
-}	
+}
 
 func IsLocalNetworkBlockchainBootstrapped(
 	app *application.Avalanche,

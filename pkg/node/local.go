@@ -948,7 +948,7 @@ func GetLocalNetworkConnectionInfo(
 	if err != nil {
 		return nil, nil, "", "", fmt.Errorf("could not create local network genesis file: %w", err)
 	}
-	if _, err := genesisFile.Write([]byte(genesisBytes)); err != nil {
+	if _, err := genesisFile.Write(genesisBytes); err != nil {
 		return nil, nil, "", "", fmt.Errorf("could not write local network genesis file: %w", err)
 	}
 	genesisPath := genesisFile.Name()
@@ -971,5 +971,5 @@ func GetLocalNetworkConnectionInfo(
 	if err := upgradeFile.Close(); err != nil {
 		return nil, nil, "", "", fmt.Errorf("could not close local network upgrade file: %w", err)
 	}
-	return bootstrapIPs, bootstrapIDs, genesisPath, upgradePath, nil 
+	return bootstrapIPs, bootstrapIDs, genesisPath, upgradePath, nil
 }

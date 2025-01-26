@@ -28,9 +28,6 @@ import (
 
 const dirTimestampFormat = "20060102_150405"
 
-//go:embed upgrade.json
-var upgradeData []byte
-
 type StartFlags struct {
 	UserProvidedAvagoVersion string
 	SnapshotName             string
@@ -95,7 +92,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		return err
 	}
 
-	// do we want to continuosly persist network onto snapshot
+	// do we want to continuously persist network onto snapshot
 	autoSave := app.Conf.GetConfigBoolValue(constants.ConfigSnapshotsAutoSaveKey)
 
 	if flags.SnapshotName == "" {

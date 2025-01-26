@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"

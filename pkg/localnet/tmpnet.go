@@ -255,7 +255,6 @@ func IsTmpNetBlockchainBootstrapped(ctx context.Context, networkDir string, bloc
 	return true, nil
 }
 
-
 func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
@@ -330,7 +329,7 @@ func TmpNetSetBlockchainConfig(
 // keep it here to support reintroducing per node chain config
 func TmpNetSetNodeBlockchainConfig(
 	networkDir string,
-	nodeID ids.NodeID,
+	_ ids.NodeID,
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
@@ -396,7 +395,7 @@ func GetTmpNetNodeURIs(
 	if err != nil {
 		return nil, err
 	}
-	return utils.Map(network.GetNodeURIs(), func (nodeURI tmpnet.NodeURI) string {return nodeURI.URI}), nil
+	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
 
 func TmpNetRestartNodesToTrackSubnet(
@@ -434,7 +433,7 @@ func GetTmpNetBootstrappers(
 ) ([]string, []string, error) {
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
-		return  nil, nil, err
+		return nil, nil, err
 	}
 	bootstrapIPs := []string{}
 	bootstrapIDs := []string{}
@@ -456,11 +455,11 @@ func GetTmpNetUpgrade(
 ) ([]byte, error) {
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 	encodedUpgrade, err := network.DefaultFlags.GetStringVal(config.UpgradeFileContentKey)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 	return base64.StdEncoding.DecodeString(encodedUpgrade)
 }

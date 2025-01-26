@@ -1139,7 +1139,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				ctx,
 				app,
 				blockchainName,
-				avagoBinaryPath,
 			); err != nil {
 				return err
 			}

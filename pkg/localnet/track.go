@@ -13,8 +13,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -27,7 +27,6 @@ func LocalNetworkTrackSubnet(
 	ctx context.Context,
 	app *application.Avalanche,
 	blockchainName string,
-	avalancheGoBinaryPath string,
 ) error {
 	networkModel := models.NewLocalNetwork()
 	networkDir, err := GetLocalNetworkDir(app)
@@ -73,7 +72,6 @@ func LocalNetworkTrackSubnet(
 		networkModel,
 		networkDir,
 		blockchainName,
-		avalancheGoBinaryPath,
 		vmBinaryPath,
 		blockchainConfig,
 		subnetConfig,
@@ -100,7 +98,6 @@ func TmpNetTrackSubnet(
 	networkModel models.Network,
 	networkDir string,
 	blockchainName string,
-	avalancheGoBinaryPath string,
 	vmBinaryPath string,
 	blockchainConfig []byte,
 	subnetConfig []byte,
@@ -178,7 +175,7 @@ func TmpNetTrackSubnet(
 		return err
 	}
 	if !sovereign {
-		if err := TmpNetAddNonSovereignValidators(ctx, app, networkDir, subnetID, wallet); err != nil {
+		if err := TmpNetAddNonSovereignValidators(ctx, networkDir, subnetID, wallet); err != nil {
 			return err
 		}
 		if err := TmpNetWaitNonSovereignValidators(ctx, networkDir, subnetID); err != nil {
@@ -191,7 +188,6 @@ func TmpNetTrackSubnet(
 
 func TmpNetAddNonSovereignValidators(
 	ctx context.Context,
-	app *application.Avalanche,
 	networkDir string,
 	subnetID ids.ID,
 	wallet *primary.Wallet,
