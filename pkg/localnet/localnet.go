@@ -5,6 +5,7 @@ package localnet
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +23,8 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 )
+
+var ErrNetworkNotBootstrapped = errors.New("network is not bootstrapped")
 
 func LocalNetworkBootstrappingStatus(app *application.Avalanche) (BootstrappingStatus, error) {
 	if LocalNetworkMetaExists(app) {
@@ -59,7 +62,7 @@ func GetLocalNetworkDir(app *application.Avalanche) (string, error) {
 		return "", err
 	}
 	if !isBootstrapped {
-		return "", fmt.Errorf("network is not bootstrapped")
+		return "", ErrNetworkNotBootstrapped
 	}
 	meta, err := GetLocalNetworkMeta(app)
 	if err != nil {

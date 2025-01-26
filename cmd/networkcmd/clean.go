@@ -3,6 +3,7 @@
 package networkcmd
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -42,7 +43,7 @@ configuration.`,
 }
 
 func clean(*cobra.Command, []string) error {
-	if err := localnet.LocalNetworkStop(app); err != nil {
+	if err := localnet.LocalNetworkStop(app); err != nil && !errors.Is(err, localnet.ErrNetworkNotBootstrapped) {
 		return err
 	}
 
