@@ -24,8 +24,10 @@ import (
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 
 	dircopy "github.com/otiai10/copy"
+	"golang.org/x/exp/maps"
 )
 
 type BootstrappingStatus int64
@@ -220,10 +222,15 @@ func GetTmpNetworkBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
 	return blockchainsInfo, nil
 }
 
-func WaitTmpNetBlockchainBootstrapped(ctx context.Context, networkDir string, blockchainID string) error {
+func WaitTmpNetBlockchainBootstrapped(
+	ctx context.Context,
+	networkDir string,
+	blockchainID string,
+	nodeIDs []ids.NodeID,
+) error {
 	blockchainBootstrapCheckFrequency := time.Second
 	for {
-		boostrapped, err := IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID)
+		boostrapped, err := IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, nodeIDs)
 		if err != nil {
 			return err
 		}
@@ -239,12 +246,20 @@ func WaitTmpNetBlockchainBootstrapped(ctx context.Context, networkDir string, bl
 	return nil
 }
 
-func IsTmpNetBlockchainBootstrapped(ctx context.Context, networkDir string, blockchainID string) (bool, error) {
+func IsTmpNetBlockchainBootstrapped(
+	ctx context.Context,
+	networkDir string,
+	blockchainID string,
+	nodeIDs []ids.NodeID,
+) (bool, error) {
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
 		return false, err
 	}
 	for _, node := range network.Nodes {
+		if nodeIDs != nil && !sdkutils.Belongs(nodeIDs, node.NodeID) {
+			continue
+		}
 		infoClient := info.NewClient(node.URI)
 		boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
 		if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
@@ -276,12 +291,15 @@ func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
 	return nil
 }
 
-func TmpNetSetAlias(networkDir string, blockchainID string, alias string) error {
+func TmpNetSetAlias(networkDir string, blockchainID string, alias string, nodeIDs []ids.NodeID) error {
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
 		return err
 	}
 	for _, node := range network.Nodes {
+		if nodeIDs != nil && !sdkutils.Belongs(nodeIDs, node.NodeID) {
+			continue
+		}
 		adminClient := admin.NewClient(node.URI)
 		ctx, cancel := sdkutils.GetAPIContext()
 		defer cancel()
@@ -293,18 +311,28 @@ func TmpNetSetAlias(networkDir string, blockchainID string, alias string) error 
 }
 
 func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P"); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", nil); err != nil {
 		return err
 	}
 	blockchains, err := GetTmpNetworkBlockchainInfo(networkDir)
 	if err != nil {
 		return err
 	}
+	endpoint, err := GetTmpNetworkEndpoint(networkDir)
+	if err != nil {
+		return err
+	}
+	pClient := platformvm.NewClient(endpoint)
 	for _, blockchain := range blockchains {
-		if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchain.ID.String()); err != nil {
+		validators, err := pClient.GetValidatorsAt(ctx, blockchain.SubnetID, api.ProposedHeight)
+		if err != nil {
 			return err
 		}
-		if err := TmpNetSetAlias(networkDir, blockchain.ID.String(), blockchain.Name); err != nil {
+		validatorIDs := maps.Keys(validators)
+		if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchain.ID.String(), validatorIDs); err != nil {
+			return err
+		}
+		if err := TmpNetSetAlias(networkDir, blockchain.ID.String(), blockchain.Name, validatorIDs); err != nil {
 			return err
 		}
 	}

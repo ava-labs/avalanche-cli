@@ -251,7 +251,7 @@ func IsLocalNetworkBlockchainBootstrapped(
 	}
 	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
-	return IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID)
+	return IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, nil)
 }
 
 func LocalNetworkHealth(app *application.Avalanche) (bool, bool, error) {

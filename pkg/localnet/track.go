@@ -165,13 +165,13 @@ func TmpNetTrackSubnet(
 		return nil
 	}
 
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String()); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String(), nil); err != nil {
 		return err
 	}
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P"); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", nil); err != nil {
 		return err
 	}
-	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName); err != nil {
+	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName, nil); err != nil {
 		return err
 	}
 	if !sovereign {
