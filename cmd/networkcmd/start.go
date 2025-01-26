@@ -147,11 +147,10 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if _, err := localnet.TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinPath); err != nil {
 			return err
 		}
-
 		if err := startLocalCluster(avalancheGoBinPath); err != nil {
 			return err
 		}
-		if err := localnet.TmpNetSetDefaultAliases(networkDir); err != nil {
+		if err := localnet.TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
 			return err
 		}
 		if b, relayerConfigPath, err := localnet.GetLocalNetworkRelayerConfigPath(app, networkDir); err != nil {

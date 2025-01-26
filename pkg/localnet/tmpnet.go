@@ -292,12 +292,18 @@ func TmpNetSetAlias(networkDir string, blockchainID string, alias string) error 
 	return nil
 }
 
-func TmpNetSetDefaultAliases(networkDir string) error {
+func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P"); err != nil {
+		return err
+	}
 	blockchains, err := GetTmpNetworkBlockchainInfo(networkDir)
 	if err != nil {
 		return err
 	}
 	for _, blockchain := range blockchains {
+		if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchain.ID.String()); err != nil {
+			return err
+		}
 		if err := TmpNetSetAlias(networkDir, blockchain.ID.String(), blockchain.Name); err != nil {
 			return err
 		}
