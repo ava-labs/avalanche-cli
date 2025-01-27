@@ -102,7 +102,6 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 	ginkgo.It("can load viper config and setup node properties for local deploy non SOV", func() {
 		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
 		deployOutput := commands.DeploySubnetLocallyWithViperConfNonSOV(subnetName, confPath)
-		fmt.Println(deployOutput)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -221,6 +220,7 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy with custom per chain config node non SOV", func() {
+		ginkgo.Skip("yet to be implemented on tmpnet migration")
 		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
 
 		// create per node chain config
