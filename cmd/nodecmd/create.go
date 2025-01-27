@@ -375,7 +375,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		cloudConfigMap = models.CloudConfig{
-			"docker": {
+			"docker": models.RegionConfig{
 				InstanceIDs:       dockerHostIDs,
 				PublicIPs:         dockerNodesPublicIPs,
 				KeyPair:           keyPairName,
@@ -406,7 +406,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 			monitoringDockerHostID := utils.GenerateDockerHostIDs(1)
 			dockerHostIDs = append(dockerHostIDs, monitoringDockerHostID[0])
 			monitoringCloudConfig := models.CloudConfig{
-				"monitoringDocker": {
+				"monitoringDocker": models.RegionConfig{
 					InstanceIDs:       monitoringDockerHostID,
 					PublicIPs:         []string{monitoringHostIP},
 					KeyPair:           keyPairName,

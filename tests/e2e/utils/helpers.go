@@ -28,7 +28,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -1079,7 +1078,7 @@ func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected
 }
 
 func GetKeyTransferFee(output string) (uint64, error) {
-	feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
+	feeNAvax := models.LocalParams.StaticConfig.TxFee * 1
 	for _, line := range strings.Split(output, "\n") {
 		if strings.Contains(line, "Paid fee") {
 			lineFields := strings.Fields(line)

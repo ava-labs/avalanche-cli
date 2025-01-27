@@ -21,11 +21,11 @@ import (
 )
 
 func NewBlsSecretKeyBytes() ([]byte, error) {
-	blsSignerKey, err := bls.NewSecretKey()
+	blsSigner, err := bls.NewSigner()
 	if err != nil {
 		return nil, err
 	}
-	return bls.SecretKeyToBytes(blsSignerKey), nil
+	return blsSigner.ToBytes(), nil
 }
 
 func ToNodeID(certBytes []byte) (ids.NodeID, error) {

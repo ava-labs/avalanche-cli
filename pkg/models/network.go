@@ -200,6 +200,21 @@ func (n Network) GenesisParams() *genesis.Params {
 	return nil
 }
 
+// temporary solution
+func (n Network) StaticFeeParams() StaticFeeConfig {
+	switch n.Kind {
+	case Local:
+		return LocalParams.StaticConfig
+	case Devnet:
+		return LocalParams.StaticConfig
+	case Fuji:
+		return FujiParams.StaticConfig
+	case Mainnet:
+		return MainnetParams.StaticConfig
+	}
+	return StaticFeeConfig{}
+}
+
 func (n *Network) HandlePublicNetworkSimulation() {
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {

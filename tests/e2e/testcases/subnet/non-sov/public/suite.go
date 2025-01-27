@@ -15,7 +15,6 @@ import (
 	cliutils "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -105,8 +104,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(4, ledger1Seed, true)
 		}
 		// fund ledger address
-		genesisParams := genesis.MainnetParams
-		err := utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
+		err := utils.FundLedgerAddress(models.MainnetParams.StaticConfig.CreateSubnetTxFee + models.MainnetParams.StaticConfig.CreateBlockchainTxFee + models.MainnetParams.StaticConfig.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
@@ -263,8 +261,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
 		// let's fund the ledger
-		genesisParams := genesis.MainnetParams
-		err = utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
+		err = utils.FundLedgerAddress(models.MainnetParams.StaticConfig.CreateSubnetTxFee + models.MainnetParams.StaticConfig.CreateBlockchainTxFee + models.MainnetParams.StaticConfig.TxFee)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,

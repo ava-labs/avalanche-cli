@@ -72,7 +72,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
+	fee := network.StaticFeeParams().TxFee
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
