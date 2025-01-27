@@ -26,8 +26,9 @@ import (
 )
 
 var (
-	nodeIPs     []string
-	sshKeyPaths []string
+	nodeIPs          []string
+	sshKeyPaths      []string
+	overrideExisting bool
 )
 
 func newSetupCmd() *cobra.Command {
@@ -37,7 +38,7 @@ func newSetupCmd() *cobra.Command {
 		Long: `The node setup command installs Avalanche Go on specified remote servers. 
 To run the command, the remote servers' IP addresses and SSH private keys are required. 
 
-Currently, only ubuntu-based operating system is supported.`,
+Currently, only Ubuntu operating system is supported.`,
 		Args:              cobrautils.ExactArgs(0),
 		RunE:              setupNode,
 		PersistentPostRun: handlePostRun,
@@ -54,6 +55,7 @@ Currently, only ubuntu-based operating system is supported.`,
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
+	cmd.Flags().BoolVar(&overrideExisting, "override-existing", true, "override existing staking files")
 	return cmd
 }
 
@@ -62,7 +64,7 @@ func setup(hosts []*models.Host, avalancheGoVersion string, network models.Netwo
 		partialSync = false
 		ux.Logger.PrintToUser("disabling partial sync default for devnet")
 	}
-	ux.Logger.PrintToUser("Starting bootstrap process on the newly created Avalanche node(s)...")
+	ux.Logger.PrintToUser("Setting up Avalanche node(s)...")
 	wg := sync.WaitGroup{}
 	wgResults := models.NodeResults{}
 	spinSession := ux.NewUserSpinner()
@@ -199,7 +201,7 @@ func printSetupResults(hosts []*models.Host) {
 func promptSetupNodes() error {
 	var err error
 	var numNodes int
-	ux.Logger.PrintToUser("Note that currently we only support Ubuntu operating system")
+	ux.Logger.PrintToUser("Only Ubuntu operating system is supported")
 	if len(nodeIPs) == 0 && len(sshKeyPaths) == 0 {
 		numNodes, err = app.Prompt.CaptureInt(
 			"How many Avalanche nodes do you want to setup?",

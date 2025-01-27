@@ -31,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -995,11 +996,27 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 
 func provideStakingCertAndKey(host *models.Host) error {
 	keyPath := app.GetNodeStakingDir(host.IP)
+	if sdkUtils.DirExists(keyPath) && !overrideExisting {
+		yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Directory %s alreday exists. Do you want to override it?", keyPath))
+		if err != nil {
+			return err
+		}
+		if !yes {
+			return nil
+		}
+
+	}
 	nodeID, err := generateNodeCertAndKeys(
 		filepath.Join(keyPath, constants.StakerCertFileName),
 		filepath.Join(keyPath, constants.StakerKeyFileName),
 		filepath.Join(keyPath, constants.BLSKeyFileName),
 	)
+	if err != nil {
+		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", host.IP)
+		return err
+	} else {
+		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", host.IP, nodeID.String())
+	}
 	instanceID := host.GetCloudID()
 	if instanceID != "" {
 		if err := utils.FileCopy(filepath.Join(keyPath, constants.StakerCertFileName), filepath.Join(app.GetNodesDir(), instanceID, constants.StakerCertFileName)); err != nil {
@@ -1011,12 +1028,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 		if err := utils.FileCopy(filepath.Join(keyPath, constants.BLSKeyFileName), filepath.Join(app.GetNodesDir(), instanceID, constants.BLSKeyFileName)); err != nil {
 			return err
 		}
-	}
-	if err != nil {
-		ux.Logger.PrintToUser("Failed to generate staking keys for host %s", host.IP)
-		return err
-	} else {
-		ux.Logger.GreenCheckmarkToUser("Generated staking keys for host %s[%s] ", host.IP, nodeID.String())
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
 }
