@@ -58,8 +58,8 @@ func PersistDefaultBlockchainEndpoints(
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
 	for _, nodeURI := range nodeURIs {
-		rpcEndpoints.Add(models.GetRPCEndpoint(nodeURI, networkInfo.BlockchainID.String()))
-		wsEndpoints.Add(models.GetWSEndpoint(nodeURI, networkInfo.BlockchainID.String()))
+		rpcEndpoints.Add(models.GetRPCEndpoint(FixTmpNetURI(nodeURI), networkInfo.BlockchainID.String()))
+		wsEndpoints.Add(models.GetWSEndpoint(FixTmpNetURI(nodeURI), networkInfo.BlockchainID.String()))
 	}
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()

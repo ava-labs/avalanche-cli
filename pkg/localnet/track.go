@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -212,7 +211,7 @@ func TmpNetAddNonSovereignValidators(
 	for _, v := range vs {
 		subnetValidators.Add(v.NodeID)
 	}
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}
@@ -245,7 +244,7 @@ func TmpNetWaitNonSovereignValidators(ctx context.Context, networkDir string, su
 		return err
 	}
 	pClient := platformvm.NewClient(endpoint)
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}

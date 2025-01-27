@@ -145,7 +145,9 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	cf := config.New()
 	app.Setup(baseDir, log, cf, prompts.NewPrompter(), application.NewDownloader())
 
-	initConfig()
+	if err := initConfig(); err != nil {
+		return err
+	}
 
 	if err := migrations.RunMigrations(app); err != nil {
 		return err
@@ -355,18 +357,21 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 }
 
 // initConfig reads in config file and ENV variables if set.
-func initConfig() {
+func initConfig() error {
 	oldMetricsConfig := utils.UserHomePath(constants.OldMetricsConfigFileName)
 	if cfgFile == "" {
 		cfgFile = utils.UserHomePath(constants.DefaultConfigFileName)
 	}
-	app.Conf.SetConfig(app.Log, cfgFile)
+	if err := app.Conf.SetConfig(cfgFile); err != nil {
+		return err
+	}
 	// check if metrics setting is available, and if not load metricConfig
 	if !app.Conf.ConfigValueIsSet(constants.ConfigMetricsEnabledKey) {
 		if utils.FileExists(oldMetricsConfig) {
 			app.Conf.MergeConfig(app.Log, oldMetricsConfig)
 		}
 	}
+	return nil
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

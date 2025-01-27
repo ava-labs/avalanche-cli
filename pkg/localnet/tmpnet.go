@@ -558,3 +558,7 @@ func GetTmpNetUpgrade(
 	}
 	return base64.StdEncoding.DecodeString(encodedUpgrade)
 }
+
+func FixTmpNetURI(uri string) string {
+	return strings.Replace(uri, "[::]", "127.0.0.1", 1)
+}
