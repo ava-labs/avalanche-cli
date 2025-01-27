@@ -1004,7 +1004,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 		if !yes {
 			return nil
 		}
-
 	}
 	nodeID, err := generateNodeCertAndKeys(
 		filepath.Join(keyPath, constants.StakerCertFileName),
