@@ -403,15 +403,14 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 			_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
 		}
 		// get and check whitelisted subnets from config file
-		var whitelistedSubnets string
 		for _, nodeInfo := range nodeInfos {
-			whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			whitelistedSubnets, err := utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
 			gomega.Expect(err).Should(gomega.BeNil())
 			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
 			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
 		}
-		// update nodes whitelisted subnets
-		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
+		// restart nodes
+		err = utils.RestartNodes()
 		gomega.Expect(err).Should(gomega.BeNil())
 		// wait for subnet walidators to be up
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)

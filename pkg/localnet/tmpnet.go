@@ -23,6 +23,7 @@ import (
 	avagonode "github.com/ava-labs/avalanchego/node"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 
@@ -493,29 +494,32 @@ func GetTmpNetNodeURIs(
 	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
 
-func TmpNetRestartNodesToTrackSubnet(
+func TmpNetRestartNodes(
 	ctx context.Context,
 	log logging.Logger,
 	printFunc func(msg string, args ...interface{}),
 	networkDir string,
-	subnetID ids.ID,
+	subnetIDs []ids.ID,
 ) error {
 	network, err := tmpnet.ReadNetwork(networkDir)
 	if err != nil {
 		return err
 	}
 	for _, node := range network.Nodes {
-		printFunc("Restarting node %s to track newly deployed subnet", node.NodeID)
-		subnets, err := node.Flags.GetStringVal(config.TrackSubnetsKey)
-		if err != nil {
-			return err
+		if len(subnetIDs) > 0 {
+			printFunc("Restarting node %s to track newly deployed subnet/s", node.NodeID)
+			subnets, err := node.Flags.GetStringVal(config.TrackSubnetsKey)
+			if err != nil {
+				return err
+			}
+			subnets = strings.TrimSpace(subnets)
+			subnetsSet := set.Of(strings.Split(subnets, ",")...)
+			for _, subnetID := range subnetIDs {
+				subnetsSet.Add(subnetID.String())
+			}
+			subnets = strings.Join(subnetsSet.List(), ",")
+			node.Flags[config.TrackSubnetsKey] = subnets
 		}
-		subnets = strings.TrimSpace(subnets)
-		if subnets != "" {
-			subnets += ","
-		}
-		subnets += subnetID.String()
-		node.Flags[config.TrackSubnetsKey] = subnets
 		if err := network.RestartNode(ctx, log, node); err != nil {
 			return err
 		}

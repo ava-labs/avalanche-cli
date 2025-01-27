@@ -28,11 +28,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -646,29 +646,20 @@ func ParsePublicDeployOutput(output string, parseType string) (string, error) {
 	return targetID, nil
 }
 
-func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
-	cli, err := binutils.NewGRPCClient()
+func RestartNodes() error {
+	network, err := GetLocalNetwork()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	resp, err := cli.Status(ctx)
-	cancel()
-	if err != nil {
-		return err
-	}
-	for _, nodeName := range resp.ClusterInfo.NodeNames {
-		ctx, cancel := utils.GetAPIContext()
-		_, err := cli.RestartNode(ctx, nodeName, client.WithWhitelistedSubnets(whitelistedSubnets))
-		cancel()
-		if err != nil {
-			return err
-		}
-	}
-	ctx, cancel = utils.GetANRContext()
-	_, err = cli.Health(ctx)
-	cancel()
-	if err != nil {
+	ctx, cancel := localnet.GetLocalNetworkDefaultContext()
+	defer cancel()
+	if err := localnet.TmpNetRestartNodes(
+		ctx,
+		logging.NoLog{},
+		func(string, ...interface{}) {},
+		network.Dir,
+		nil,
+	); err != nil {
 		return err
 	}
 	return nil
@@ -700,9 +691,19 @@ func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
 	return "", errors.New("vmid not found")
 }
 
-func GetNodesInfo() (map[string]NodeInfo, error) {
+func GetApp() *application.Avalanche {
 	app := application.New()
-	network, err := localnet.GetLocalNetwork(app)
+	app.Setup(GetBaseDir(), logging.NoLog{}, nil, nil, nil)
+	return app
+}
+
+func GetLocalNetwork() (*tmpnet.Network, error) {
+	app := GetApp()
+	return localnet.GetLocalNetwork(app)
+}
+
+func GetNodesInfo() (map[string]NodeInfo, error) {
+	network, err := GetLocalNetwork()
 	if err != nil {
 		return nil, err
 	}

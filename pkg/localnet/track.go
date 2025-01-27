@@ -154,12 +154,12 @@ func TmpNetTrackSubnet(
 	}
 
 	// Add subnet to tracked and restart nodes
-	if err := TmpNetRestartNodesToTrackSubnet(
+	if err := TmpNetRestartNodes(
 		ctx,
 		app.Log,
 		ux.Logger.PrintToUser,
 		networkDir,
-		subnetID,
+		[]ids.ID{subnetID},
 	); err != nil {
 		return nil
 	}
