@@ -20,14 +20,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
@@ -698,24 +701,24 @@ func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
 }
 
 func GetNodesInfo() (map[string]NodeInfo, error) {
-	cli, err := binutils.NewGRPCClient()
+	app := application.New()
+	network, err := localnet.GetLocalNetwork(app)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	resp, err := cli.Status(ctx)
-	cancel()
+	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
 	if err != nil {
 		return nil, err
 	}
 	nodesInfo := map[string]NodeInfo{}
-	for nodeName, nodeInfo := range resp.ClusterInfo.NodeInfos {
-		nodesInfo[nodeName] = NodeInfo{
-			ID:         nodeInfo.Id,
-			PluginDir:  nodeInfo.PluginDir,
-			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
-			URI:        nodeInfo.Uri,
-			LogDir:     nodeInfo.LogDir,
+	for _, node := range network.Nodes {
+		nodeID := node.NodeID.String()
+		nodesInfo[nodeID] = NodeInfo{
+			ID:         nodeID,
+			PluginDir:  pluginDir,
+			ConfigFile: path.Join(network.Dir, nodeID, "config.json"),
+			URI:        node.URI,
+			LogDir:     path.Join(network.Dir, nodeID, "log"),
 		}
 	}
 	return nodesInfo, nil
