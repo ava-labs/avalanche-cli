@@ -719,7 +719,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 			PluginDir:  pluginDir,
 			ConfigFile: path.Join(network.Dir, nodeID, "config.json"),
 			URI:        node.URI,
-			LogDir:     path.Join(network.Dir, nodeID, "log"),
+			LogDir:     path.Join(network.Dir, nodeID, "logs"),
 		}
 	}
 	return nodesInfo, nil

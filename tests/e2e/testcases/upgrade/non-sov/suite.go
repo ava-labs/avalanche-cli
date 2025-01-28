@@ -13,7 +13,6 @@ import (
 	"unicode"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd/upgradecmd"
-	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -21,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/params"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
@@ -68,8 +66,7 @@ var _ = ginkgo.Describe("[Upgrade expect network failure non SOV]", ginkgo.Order
 		// but the network is stopped
 		// the code would detect it hasn't been deployed yet so report that error first
 		// therefore we can just manually edit the file to fake it had been deployed
-		app := application.New()
-		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
+		app := utils.GetApp()
 		sc := models.Sidecar{
 			Name:     subnetName,
 			Subnet:   subnetName,
@@ -104,8 +101,7 @@ var _ = ginkgo.Describe("[Upgrade public network non SOV]", ginkgo.Ordered, func
 
 		// simulate as if this had already been deployed to fuji
 		// by just entering fake data into the struct
-		app := application.New()
-		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
+		app := utils.GetApp()
 
 		sc, err := app.LoadSidecar(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -209,8 +205,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		err = utils.CheckUpgradeIsDeployed(rpcs[0], precmpUpgrades)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		app := application.New()
-		app.Setup(utils.GetBaseDir(), logging.NoLog{}, nil, nil, nil)
+		app := utils.GetApp()
 
 		stripped := stripWhitespaces(string(upgradeBytes))
 		lockUpgradeBytes, err := app.ReadLockUpgradeFile(subnetName)
