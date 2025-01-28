@@ -20,6 +20,7 @@ import (
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/subnet-evm/core"
 
 	"golang.org/x/exp/maps"
@@ -204,6 +205,31 @@ func (app *Avalanche) GetAvagoNodeConfigPath(blockchainName string) string {
 
 func (app *Avalanche) GetChainConfigPath(blockchainName string) string {
 	return filepath.Join(app.GetSubnetDir(), blockchainName, constants.ChainConfigFileName)
+}
+
+// GetPerNodeBlockchainConfig returns map NodeID-> blockchainConfig generated from the configured
+// blockchain's per-node blockchain config file
+func (app *Avalanche) GetPerNodeBlockchainConfig(blockchainName string) (map[ids.NodeID][]byte, error) {
+	perNodeBlockchainConfig := map[ids.NodeID][]byte{}
+	path := filepath.Join(app.GetSubnetDir(), blockchainName, constants.PerNodeChainConfigFileName)
+	if utils.FileExists(path) {
+		config, err := utils.ReadJSON(path)
+		if err != nil {
+			return nil, err
+		}
+		for nodeIDStr, nodeBlockchainConfig := range config {
+			bs, err := json.Marshal(nodeBlockchainConfig)
+			if err != nil {
+				return nil, err
+			}
+			nodeID, err := ids.NodeIDFromString(nodeIDStr)
+			if err != nil {
+				return nil, err
+			}
+			perNodeBlockchainConfig[nodeID] = bs
+		}
+	}
+	return perNodeBlockchainConfig, nil
 }
 
 func (app *Avalanche) GetAvagoSubnetConfigPath(blockchainName string) string {
@@ -575,6 +601,34 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		return fmt.Errorf("creation of blockchain was successful, but failed to update sidecar: %w", err)
 	}
 	return nil
+}
+
+// AddDefaultBlockchainRPCsToSidecar, given a list of (public) node URIs, it generates
+// the default blockchain RPC and WS endpoints for those URIs, and adds them
+// to the blockchain's sidecar as blockchain URLs
+func (app *Avalanche) AddDefaultBlockchainRPCsToSidecar(
+	blockchainName string,
+	networkModel models.Network,
+	nodeURIs []string,
+) error {
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	networkInfo := sc.Networks[networkModel.Name()]
+	if networkInfo.BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
+	}
+	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
+	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
+	for _, nodeURI := range nodeURIs {
+		rpcEndpoints.Add(models.GetRPCEndpoint(nodeURI, networkInfo.BlockchainID.String()))
+		wsEndpoints.Add(models.GetWSEndpoint(nodeURI, networkInfo.BlockchainID.String()))
+	}
+	networkInfo.RPCEndpoints = rpcEndpoints.List()
+	networkInfo.WSEndpoints = wsEndpoints.List()
+	sc.Networks[networkModel.Name()] = networkInfo
+	return app.UpdateSidecar(&sc)
 }
 
 func (app *Avalanche) GetTokenName(blockchainName string) string {

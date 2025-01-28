@@ -52,7 +52,7 @@ func LocalNetworkTrackSubnet(
 			return err
 		}
 	}
-	perNodeBlockchainConfig, err := GetPerNodeBlockchainConfig(app, blockchainName)
+	perNodeBlockchainConfig, err := app.GetPerNodeBlockchainConfig(blockchainName)
 	if err != nil {
 		return err
 	}
@@ -83,11 +83,10 @@ func LocalNetworkTrackSubnet(
 	if err != nil {
 		return err
 	}
-	return PersistDefaultBlockchainEndpoints(
-		app,
+	return app.AddDefaultBlockchainRPCsToSidecar(
+		blockchainName,
 		networkModel,
 		nodeURIs,
-		blockchainName,
 	)
 }
 

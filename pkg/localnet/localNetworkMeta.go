@@ -13,20 +13,25 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
+// Local network metadata keeps reference to the tmpnet directory
+// of the currently executing local network
 type LocalNetworkMeta struct {
 	NetworkDir string `json:"networkDir"`
 }
 
+// localNetworkMetaPath returns the path of the metadata file
 func localNetworkMetaPath(app *application.Avalanche) string {
 	return filepath.Join(app.GetBaseDir(), constants.LocalNetworkMetaFile)
 }
 
+// LocalNetworkMetaExists indicates if the metadata file exists
 func LocalNetworkMetaExists(
 	app *application.Avalanche,
 ) bool {
 	return utils.FileExists(localNetworkMetaPath(app))
 }
 
+// GetLocalNetworkMeta returns the metadata contents
 func GetLocalNetworkMeta(
 	app *application.Avalanche,
 ) (*LocalNetworkMeta, error) {
@@ -42,6 +47,8 @@ func GetLocalNetworkMeta(
 	return &meta, nil
 }
 
+// SaveLocalNetworkMeta saves the tmpnet directory of the currently executing local network
+// to the metadata file
 func SaveLocalNetworkMeta(
 	app *application.Avalanche,
 	networkDir string,
@@ -60,6 +67,7 @@ func SaveLocalNetworkMeta(
 	return nil
 }
 
+// RemoveLocalNetworkMeta removes the metadata file
 func RemoveLocalNetworkMeta(
 	app *application.Avalanche,
 ) error {
