@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package localnet
 
@@ -15,7 +15,10 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
-// PrintEndpoints prints the network endpoints
+// PrintEndpoints prints the endpoint information for the executing local network,
+// including primary nodes, l1 nodes, and blockchain URLs for all blockchains in the
+// network
+// If [blockchainName] is given, it only prints information for that only
 func PrintEndpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -34,7 +37,7 @@ func PrintEndpoints(
 		}
 		for _, blockchain := range blockchains {
 			if blockchainName == "" || blockchain.Name == blockchainName {
-				if err := PrintSubnetEndpoints(app, printFunc, networkDir, blockchain); err != nil {
+				if err := PrintBlockchainEndpoints(app, printFunc, networkDir, blockchain); err != nil {
 					return err
 				}
 				printFunc("")
@@ -54,7 +57,11 @@ func PrintEndpoints(
 	return nil
 }
 
-func PrintSubnetEndpoints(
+// PrintBlockchainEndpoints prints out a table of (RPC Kind, RPC) for the given
+// [blockchain] associated to the the given tmpnet [networkDir]
+// RPC Kind to be in [Localhost, Codespace] where the latest
+// is used only if inside a codespace environment
+func PrintBlockchainEndpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	networkDir string,
@@ -123,6 +130,9 @@ func PrintNetworkEndpointsFromClusterInfo(
 	return nil
 }
 
+// PrintNetworkEndpoints prints out a table of (Node ID, Node URI) for a given
+// tmpnet [networkDir], with a given [title]
+// If the environment is codespace based, It also adds a node codespace URI
 func PrintNetworkEndpoints(
 	title string,
 	printFunc func(msg string, args ...interface{}),
