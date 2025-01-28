@@ -28,10 +28,16 @@ func LocalNetworkTrackSubnet(
 	blockchainName string,
 ) error {
 	networkModel := models.NewLocalNetwork()
-	networkDir, err := GetLocalNetworkDir(app)
+	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
 	}
+	if sc.Networks[networkModel.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
+	}
+	sovereign := sc.Sovereign
+	blockchainID := sc.Networks[networkModel.Name()].BlockchainID
+	subnetID := sc.Networks[networkModel.Name()].SubnetID
 	var (
 		blockchainConfig []byte
 		subnetConfig     []byte
@@ -56,27 +62,33 @@ func LocalNetworkTrackSubnet(
 	if err != nil {
 		return err
 	}
-	sc, err := app.LoadSidecar(blockchainName)
+	wallet, err := GetLocalNetworkWallet(ctx, app, []ids.ID{subnetID})
 	if err != nil {
 		return err
 	}
-	subnetID := sc.Networks[networkModel.Name()].SubnetID
-	wallet, err := GetLocalNetworkWallet(ctx, app, []ids.ID{subnetID})
+	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
 		return err
 	}
 	if err := TmpNetTrackSubnet(
 		ctx,
+		ux.Logger.GreenCheckmarkToUser,
 		app,
 		networkModel,
 		networkDir,
 		blockchainName,
+		sovereign,
+		blockchainID,
+		subnetID,
 		vmBinaryPath,
 		blockchainConfig,
 		subnetConfig,
 		perNodeBlockchainConfig,
 		wallet,
 	); err != nil {
+		return err
+	}
+	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName, subnetID); err != nil {
 		return err
 	}
 	nodeURIs, err := GetTmpNetNodeURIs(networkDir)
@@ -92,27 +104,20 @@ func LocalNetworkTrackSubnet(
 
 func TmpNetTrackSubnet(
 	ctx context.Context,
+	printFunc func(msg string, args ...interface{}),
 	app *application.Avalanche,
 	networkModel models.Network,
 	networkDir string,
 	blockchainName string,
+	sovereign bool,
+	blockchainID ids.ID,
+	subnetID ids.ID,
 	vmBinaryPath string,
 	blockchainConfig []byte,
 	subnetConfig []byte,
 	perNodeBlockchainConfig map[ids.NodeID][]byte,
 	wallet *primary.Wallet,
 ) error {
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
-	sovereign := sc.Sovereign
-	if sc.Networks[networkModel.Name()].BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
-	}
-	blockchainID := sc.Networks[networkModel.Name()].BlockchainID
-	subnetID := sc.Networks[networkModel.Name()].SubnetID
-
 	// VM Binary setup
 	vmID, err := utils.VMID(blockchainName)
 	if err != nil {
@@ -121,7 +126,6 @@ func TmpNetTrackSubnet(
 	if err := TmpNetInstallVM(networkDir, vmBinaryPath, vmID); err != nil {
 		return err
 	}
-
 	// Configs
 	if blockchainConfig != nil {
 		if err := TmpNetSetBlockchainConfig(
@@ -151,7 +155,6 @@ func TmpNetTrackSubnet(
 			return err
 		}
 	}
-
 	// Add subnet to tracked and restart nodes
 	if err := TmpNetRestartNodes(
 		ctx,
@@ -176,10 +179,7 @@ func TmpNetTrackSubnet(
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String(), subnetID); err != nil {
 		return err
 	}
-	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName, subnetID); err != nil {
-		return err
-	}
-	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
+	printFunc("%s successfully tracking %s", networkModel.Name(), blockchainName)
 	return nil
 }
 
