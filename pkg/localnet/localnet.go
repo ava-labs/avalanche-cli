@@ -86,7 +86,7 @@ func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return GetTmpNetworkEndpoint(networkDir)
+	return GetTmpNetEndpoint(networkDir)
 }
 
 func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo, error) {
@@ -94,7 +94,7 @@ func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo
 	if err != nil {
 		return nil, err
 	}
-	return GetTmpNetworkBlockchainInfo(networkDir)
+	return GetTmpNetBlockchainInfo(networkDir)
 }
 
 func GetClusterInfoWithEndpoint(grpcServerEndpoint string) (*rpcpb.ClusterInfo, error) {

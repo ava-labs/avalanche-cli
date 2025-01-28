@@ -189,7 +189,7 @@ func TmpNetAddNonSovereignValidators(
 	subnetID ids.ID,
 	wallet *primary.Wallet,
 ) error {
-	endpoint, err := GetTmpNetworkEndpoint(networkDir)
+	endpoint, err := GetTmpNetEndpoint(networkDir)
 	if err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func TmpNetAddNonSovereignValidators(
 
 func TmpNetWaitNonSovereignValidators(ctx context.Context, networkDir string, subnetID ids.ID) error {
 	checkFrequency := time.Second
-	endpoint, err := GetTmpNetworkEndpoint(networkDir)
+	endpoint, err := GetTmpNetEndpoint(networkDir)
 	if err != nil {
 		return err
 	}

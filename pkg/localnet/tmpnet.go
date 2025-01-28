@@ -109,7 +109,7 @@ func TmpNetLoad(
 	networkDir string,
 	avalancheGoBinPath string,
 ) (*tmpnet.Network, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func TmpNetStop(
 
 func GetTmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error) {
 	status := UndefinedBootstrappingStatus
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return status, err
 	}
@@ -165,8 +165,34 @@ func GetTmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error
 	}
 }
 
+// when host is public, we avoid [::] but use public IP
+func fixURI(uri string, ip string) string {
+	return strings.Replace(uri, "[::]", ip, 1)
+}
+
 func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
-	return tmpnet.ReadNetwork(networkDir)
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return network, err
+	}
+	for _, node := range network.Nodes {
+		nodeIP, err := node.Flags.GetStringVal(config.PublicIPKey)
+		if err != nil {
+			return network, err
+		}
+		node.URI = fixURI(node.URI, nodeIP)
+	}
+	return network, nil
+}
+
+func GetTmpNetNodeURIs(
+	networkDir string,
+) ([]string, error) {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
 
 func GetTmpNetFirstNode(networkDir string) (*tmpnet.Node, error) {
@@ -180,7 +206,7 @@ func GetTmpNetFirstNode(networkDir string) (*tmpnet.Node, error) {
 	return network.Nodes[0], nil
 }
 
-func GetTmpNetworkEndpoint(networkDir string) (string, error) {
+func GetTmpNetEndpoint(networkDir string) (string, error) {
 	node, err := GetTmpNetFirstNode(networkDir)
 	if err != nil {
 		return "", err
@@ -195,8 +221,8 @@ type BlockchainInfo struct {
 	VMID     ids.ID
 }
 
-func GetTmpNetworkBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
-	endpoint, err := GetTmpNetworkEndpoint(networkDir)
+func GetTmpNetBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
+	endpoint, err := GetTmpNetEndpoint(networkDir)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +281,7 @@ func TmpNetHasValidatorsForSubnet(
 	if err != nil {
 		return false, err
 	}
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return false, err
 	}
@@ -271,7 +297,7 @@ func GetTmpNetSubnetValidatorIDs(
 	networkDir string,
 	subnetID ids.ID,
 ) ([]ids.NodeID, error) {
-	endpoint, err := GetTmpNetworkEndpoint(networkDir)
+	endpoint, err := GetTmpNetEndpoint(networkDir)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +317,7 @@ func IsTmpNetBlockchainBootstrapped(
 	blockchainID string,
 	subnetID ids.ID,
 ) (bool, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return false, err
 	}
@@ -324,7 +350,7 @@ func IsTmpNetBlockchainBootstrapped(
 }
 
 func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}
@@ -348,7 +374,7 @@ func TmpNetSetAlias(
 	alias string,
 	subnetID ids.ID,
 ) error {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}
@@ -377,7 +403,7 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty); err != nil {
 		return err
 	}
-	blockchains, err := GetTmpNetworkBlockchainInfo(networkDir)
+	blockchains, err := GetTmpNetBlockchainInfo(networkDir)
 	if err != nil {
 		return err
 	}
@@ -404,7 +430,7 @@ func TmpNetSetBlockchainConfig(
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}
@@ -447,7 +473,7 @@ func TmpNetSetSubnetConfig(
 	subnetID ids.ID,
 	subnetConfig []byte,
 ) error {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}
@@ -484,16 +510,6 @@ func TmpNetSetNodeSubnetConfig(
 	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms)
 }
 
-func GetTmpNetNodeURIs(
-	networkDir string,
-) ([]string, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
-	if err != nil {
-		return nil, err
-	}
-	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
-}
-
 func TmpNetRestartNodes(
 	ctx context.Context,
 	log logging.Logger,
@@ -501,7 +517,7 @@ func TmpNetRestartNodes(
 	networkDir string,
 	subnetIDs []ids.ID,
 ) error {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}
@@ -530,7 +546,7 @@ func TmpNetRestartNodes(
 func GetTmpNetBootstrappers(
 	networkDir string,
 ) ([]string, []string, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -552,7 +568,7 @@ func GetTmpNetGenesis(
 func GetTmpNetUpgrade(
 	networkDir string,
 ) ([]byte, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return nil, err
 	}
@@ -561,8 +577,4 @@ func GetTmpNetUpgrade(
 		return nil, err
 	}
 	return base64.StdEncoding.DecodeString(encodedUpgrade)
-}
-
-func FixTmpNetURI(uri string) string {
-	return strings.Replace(uri, "[::]", "127.0.0.1", 1)
 }

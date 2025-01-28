@@ -68,7 +68,7 @@ func PrintSubnetEndpoints(
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", FixTmpNetURI(node.URI), blockchain.ID)
+	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", node.URI, blockchain.ID)
 	sc, err := app.LoadSidecar(blockchain.Name)
 	if err == nil {
 		rpcEndpoints := sc.Networks[models.NewLocalNetwork().Name()].RPCEndpoints
@@ -139,9 +139,9 @@ func PrintNetworkEndpoints(
 	}
 	t := ux.DefaultTable(title, header)
 	for _, node := range network.Nodes {
-		row := table.Row{node.NodeID, FixTmpNetURI(node.URI)}
+		row := table.Row{node.NodeID, node.URI}
 		if insideCodespace {
-			if codespaceURL, err := utils.GetCodespaceURL(FixTmpNetURI(node.URI)); err != nil {
+			if codespaceURL, err := utils.GetCodespaceURL(node.URI); err != nil {
 				return err
 			} else {
 				row = append(row, codespaceURL)
