@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
+// SetupAvalancheGoBinary:
 // * checks if avalanchego is installed in the local binary path
 // * if not, it downloads and installs it (os - and archive dependent)
 // * returns the location of the avalanchego path
@@ -33,6 +34,8 @@ func SetupAvalancheGoBinary(
 	return avalancheGoBinaryPath, nil
 }
 
+// SetupVMBinary ensures a binary for [blockchainName]'s VM is locally available,
+// and provides a path to it
 func SetupVMBinary(
 	app *application.Avalanche,
 	blockchainName string,

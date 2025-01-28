@@ -15,12 +15,12 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type NodeConfig struct {
+type nodeConfig struct {
 	Flags map[string]interface{} `json:"flags"`
 }
 
-type NetworkConfig struct {
-	NodeConfigs []NodeConfig           `json:"nodeConfigs"`
+type networkConfig struct {
+	NodeConfigs []nodeConfig           `json:"nodeConfigs"`
 	CommonFlags map[string]interface{} `json:"commonFlags"`
 	Upgrade     string                 `json:"upgrade"`
 }
@@ -28,6 +28,15 @@ type NetworkConfig struct {
 //go:embed default.json
 var defaultNetworkData []byte
 
+// GetDefaultNetworkConf creates a default network configuration of [numNodes]
+// compatible with TmpNet usage, where the first len(networkConf.NodeConfigs) /== 5/
+// will have default local network NodeID/BLSInfo/Ports, and the remaining
+// ones will be dynamically generated.
+// It returns the local network's:
+// - genesis
+// - upgrade
+// - common flags
+// - node confs
 func GetDefaultNetworkConf(numNodes uint32) (
 	*genesis.UnparsedConfig,
 	[]byte,
@@ -35,16 +44,15 @@ func GetDefaultNetworkConf(numNodes uint32) (
 	[]*tmpnet.Node,
 	error,
 ) {
-	networkConfig := NetworkConfig{}
-	if err := json.Unmarshal(defaultNetworkData, &networkConfig); err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("failure unmarshaling network config from snapshot: %w", err)
+	networkConf := networkConfig{}
+	if err := json.Unmarshal(defaultNetworkData, &networkConf); err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failure unmarshaling default local network config: %w", err)
 	}
 	nodes := []*tmpnet.Node{}
 	for i := range numNodes {
 		node := tmpnet.NewNode("")
-		if int(i) < len(networkConfig.NodeConfigs) {
-			nodeConfig := networkConfig.NodeConfigs[i]
-			maps.Copy(node.Flags, nodeConfig.Flags)
+		if int(i) < len(networkConf.NodeConfigs) {
+			maps.Copy(node.Flags, networkConf.NodeConfigs[i].Flags)
 		}
 		if err := node.EnsureKeys(); err != nil {
 			return nil, nil, nil, nil, err
@@ -57,5 +65,5 @@ func GetDefaultNetworkConf(numNodes uint32) (
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	return unparsedGenesis, []byte(networkConfig.Upgrade), networkConfig.CommonFlags, nodes, nil
+	return unparsedGenesis, []byte(networkConf.Upgrade), networkConf.CommonFlags, nodes, nil
 }

@@ -137,14 +137,14 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
 
-		// save network directory previous to execution
-		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
-			return err
-		}
 		// local network
 		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
 		defer cancel()
 		if _, err := localnet.TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinPath); err != nil {
+			return err
+		}
+		// save network directory
+		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
 		if err := startLocalCluster(avalancheGoBinPath); err != nil {
@@ -214,10 +214,6 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		// create local network
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
 		ux.Logger.PrintToUser("Booting Network. Wait until healthy...")
-		// save network directory previous to execution
-		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
-			return err
-		}
 		// create network
 		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
 		defer cancel()
@@ -233,6 +229,10 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			upgradeBytes,
 		)
 		if err != nil {
+			return err
+		}
+		// save network directory
+		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
 	}
