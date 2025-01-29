@@ -55,7 +55,7 @@ Currently, only Ubuntu operating system is supported.`,
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
-	cmd.Flags().BoolVar(&overrideExisting, "override-existing", true, "override existing staking files")
+	cmd.Flags().BoolVar(&overrideExisting, "override-existing", false, "override existing staking files")
 	return cmd
 }
 
