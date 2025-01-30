@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -675,29 +674,25 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				_ = node.StopLocalNode(app)
 				anrSettings := node.ANRSettings{}
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
-				if avagoBinaryPath == "" {
-					useLatestAvalanchegoPreReleaseVersion := true
-					useLatestAvalanchegoReleaseVersion := false
-					if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
-						useLatestAvalanchegoReleaseVersion = false
-						useLatestAvalanchegoPreReleaseVersion = false
-					} else {
-						userProvidedAvagoVersion = ""
-					}
-					avaGoVersionSetting := node.AvalancheGoVersionSettings{
-						UseCustomAvalanchegoVersion:           userProvidedAvagoVersion,
-						UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-						UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
-					}
-					avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+				// setup (install if needed) avalanchego binary
+				avagoVersion := userProvidedAvagoVersion
+				if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
+					// nothing given: get avago version from RPC compat
+					avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
+						app,
+						sidecar.RPCVersion,
+						constants.AvalancheGoCompatibilityURL,
+					)
 					if err != nil {
-						return err
+						if err != vm.ErrNoAvagoVersion {
+							return err
+						}
+						avagoVersion = constants.LatestPreReleaseVersionTag
 					}
-					_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
-					if err != nil {
-						return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
-					}
-					avagoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+				}
+				avagoBinaryPath, err := localnet.SetupAvalancheGoBinary(app, avagoVersion, avagoBinaryPath)
+				if err != nil {
+					return err
 				}
 				nodeConfig := map[string]interface{}{}
 				if app.AvagoNodeConfigExists(blockchainName) {
