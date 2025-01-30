@@ -53,14 +53,16 @@ jobs:
         run: |
           python .github/scripts/sdk_doc.py
 
-      - name: Commit files
-        uses: ChromeQ/commit@v2.0.0
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: |
-            cmd/commands.md
-            sdk/SDK.md
-          commit-message: "chore: Update MD files [skip ci]"
-          ref: ${{ github.head_ref }}
+      - name: Check for changes
+        id: check_changes
+        run: |
+          git diff --exit-code || echo "changes=true" >> $GITHUB_ENV
 
+      - name: Commit changes to PR branch
+        if: env.changes == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add cmd/commands.md sdk/SDK.md
+          git commit --amend --no-edit || echo "No changes to amend"
+          git push --force
