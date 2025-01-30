@@ -1,15 +1,13 @@
 name: Update Markdown
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  pull_request_review:
+    types:
+      - submitted
 
 jobs:
   update-md:
+    if: github.event.review.state == 'approved'
     runs-on: ubuntu-latest
 
     steps:
@@ -40,8 +38,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          # If you need additional dependencies, install them here
-          # pip install -r requirements.txt
 
       - name: Generate CLI MD
         id: generate_cli_md
