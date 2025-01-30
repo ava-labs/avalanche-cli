@@ -379,6 +379,12 @@ func GetAPIContext() (context.Context, context.CancelFunc)
 func GetAPILargeContext() (context.Context, context.CancelFunc)
 ```
 
+#### GetTimedContext
+
+```go
+func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc)
+```
+
 #### TestAppendSlices
 
 ```go
