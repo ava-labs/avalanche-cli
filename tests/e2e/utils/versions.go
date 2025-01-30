@@ -227,7 +227,6 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			break
 		}
 	}
-
 	// when running Avago only, always use latest
 	binaryToVersion[OnlyAvagoKey] = OnlyAvagoValue
 
