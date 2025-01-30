@@ -1225,7 +1225,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("")
 		_ = PrintSubnetInfo(blockchainName, true)
 	}
-
 	if icmErr != nil {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Interchain Messaging is not deployed due to: %v", icmErr)
