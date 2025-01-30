@@ -241,11 +241,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	for i, ver := range subnetEVMversions {
 		// safety check, should not happen, as we already know
 		// compatible versions exist
-		if i+1 == len(subnetEVMversions) {
-			return nil, errors.New("no compatible versions for subsequent SubnetEVM found")
-		}
 		first := ver
-		second := subnetEVMversions[i+1]
 		// we should be able to safely assume that for a given subnet-evm RPC version,
 		// there exists at least one compatible Avalanchego.
 		// This means we can in any case use this to set the **latest** compatibility
@@ -258,12 +254,21 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			binaryToVersion[LatestEVM2AvagoKey] = first
 			binaryToVersion[LatestAvago2EVMKey] = soloAvago
 		}
-		// first and second are compatible
-		if subnetEVMmapping[first] == subnetEVMmapping[second] {
+		if i+1 == len(subnetEVMversions) {
+			// no compatible versions for subsequent SubnetEVM found, but we have no options anyway
 			binaryToVersion[SoloSubnetEVMKey1] = first
-			binaryToVersion[SoloSubnetEVMKey2] = second
+			binaryToVersion[SoloSubnetEVMKey2] = first
 			binaryToVersion[SoloAvagoKey] = soloAvago
 			break
+		} else {
+			second := subnetEVMversions[i+1]
+			// first and second are compatible
+			if subnetEVMmapping[first] == subnetEVMmapping[second] {
+				binaryToVersion[SoloSubnetEVMKey1] = first
+				binaryToVersion[SoloSubnetEVMKey2] = second
+				binaryToVersion[SoloAvagoKey] = soloAvago
+				break
+			}
 		}
 	}
 
