@@ -27,20 +27,20 @@ if [ "$current_user" = "runner" ] && [[ "$OSTYPE" == "linux-gnu"* ]]; then
     sudo docker system prune -f || echo "failed to cleanup docker"
 fi
 
-if [ ! -d "tests/e2e/hardhat/node_modules" ]
-then
-    pushd tests/e2e/hardhat
-    yarn
-    popd
-fi
+#if [ ! -d "tests/e2e/hardhat/node_modules" ]
+#then
+#    pushd tests/e2e/hardhat
+#    yarn
+#    popd
+#fi
 
-if [ ! -d "tests/e2e/ledgerSim/node_modules" ]
-then
-    pushd tests/e2e/ledgerSim
-    yarn
-    cp node_modules/@zondax/zemu/dist/src/grpc/zemu.proto node_modules/@zondax/zemu/dist/grpc/zemu.proto
-    popd
-fi
+#if [ ! -d "tests/e2e/ledgerSim/node_modules" ]
+#then
+#    pushd tests/e2e/ledgerSim
+#    yarn
+#    cp node_modules/@zondax/zemu/dist/src/grpc/zemu.proto node_modules/@zondax/zemu/dist/grpc/zemu.proto
+#    popd
+#fi
 
 # Set the CGO flags to use the portable version of BLST
 #
