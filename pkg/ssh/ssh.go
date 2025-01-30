@@ -824,7 +824,7 @@ func RunSSHCheckAvalancheGoVersion(host *models.Host) ([]byte, error) {
 // RunSSHCheckBootstrapped checks if node is bootstrapped to primary network
 func RunSSHCheckBootstrapped(host *models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
-	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.isBootstrapped\", \"params\": {\"chain\":\"X\"}}"
+	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.isBootstrapped\", \"params\": {\"chain\":\"P\"}}"
 	return PostOverSSH(host, "", requestBody)
 }
 
