@@ -1,17 +1,15 @@
 name: Update Markdown
 
 on:
-  pull_request_review:
-    types:
-      - submitted
+  pull_request:
+    types: [approved] # Runs only when the PR is approved
 
 jobs:
   update-md:
-    if: github.event.review.state == 'approved'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out the repo
+      - name: Check out the repo on the PR branch
         uses: actions/checkout@v3
         with:
           ref: ${{ github.head_ref }}
@@ -38,6 +36,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
+          # Add any other dependencies if required
+          # pip install -r requirements.txt
 
       - name: Generate CLI MD
         id: generate_cli_md
@@ -49,22 +49,14 @@ jobs:
         run: |
           python .github/scripts/sdk_doc.py
 
-      - name: Check if there are changes
-        id: check_changes
-        run: |
-          if git diff --quiet; then
-            echo "No changes detected."
-            echo "changes=false" >> $GITHUB_ENV
-          else
-            echo "Changes detected."
-            echo "changes=true" >> $GITHUB_ENV
-          fi
-
-      - name: Commit changes directly to PR branch
-        if: env.changes == 'true'
+      - name: Commit and push changes to the PR branch
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git checkout ${{ github.head_ref }}  # Ensure we're on the PR branch
+          
           git add cmd/commands.md sdk/SDK.md
-          git commit -m "chore: Update MD files"
-          git push
+          git commit -m "chore: Update MD files" || echo "No changes to commit"
+
+          git push origin ${{ github.head_ref }}
