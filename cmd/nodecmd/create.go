@@ -292,6 +292,7 @@ func setGlobalNetworkFlags(network models.Network) {
 		globalNetworkFlags.UseMainnet = true
 	}
 }
+
 func createNodes(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
