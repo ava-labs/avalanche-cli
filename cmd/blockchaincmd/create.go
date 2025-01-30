@@ -110,7 +110,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().StringVar(&customVMRepoURL, "custom-vm-repo-url", "", "custom vm repository url")
 	cmd.Flags().StringVar(&customVMBranch, "custom-vm-branch", "", "custom vm branch or commit")
 	cmd.Flags().StringVar(&customVMBuildScript, "custom-vm-build-script", "", "custom vm build-script")
-	cmd.Flags().BoolVar(&useRepo, "from-github-repos", false, "generate custom VM binary from github repository")
+	cmd.Flags().BoolVar(&useRepo, "from-github-repo", false, "generate custom VM binary from github repository")
 	cmd.Flags().BoolVar(&createFlags.useWarp, "warp", true, "generate a vm with warp support (needed for ICM)")
 	cmd.Flags().BoolVar(&createFlags.useICM, "teleporter", false, "interoperate with other blockchains using ICM")
 	cmd.Flags().BoolVar(&createFlags.useICM, "icm", false, "interoperate with other blockchains using ICM")
