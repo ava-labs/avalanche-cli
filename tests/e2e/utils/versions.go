@@ -6,6 +6,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"sync"
@@ -166,6 +167,8 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		return nil, err
 	}
 
+	fmt.Printf("obtained subnetEVMversions %s \n", subnetEVMversions)
+
 	// subnet-evm publishes its upcoming new version in the compatibility json
 	// before the new version is actually a downloadable release
 	subnetEVMversions, err = mapper.GetEligibleVersions(subnetEVMversions, constants.SubnetEVMRepoName, mapper.GetApp())
@@ -173,13 +176,19 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		return nil, err
 	}
 
+	fmt.Printf("obtained subnetEVMversions 2 %s \n", subnetEVMversions)
+
 	subnetEVMversions = mapper.FilterAvailableVersions(subnetEVMversions)
+
+	fmt.Printf("obtained subnetEVMversions 3 %s \n", subnetEVMversions)
 
 	// now get the avalanchego compatibility object
 	avagoCompat, err := getAvagoCompatibility(mapper)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("obtained avagoCompat %s \n", avagoCompat)
 
 	// create the global mapping variable
 	binaryToVersion = make(map[string]string)
@@ -196,6 +205,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		rpcs = append(rpcs, kint)
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(rpcs)))
+	fmt.Printf("rpcs %s \n", rpcs)
 
 	// iterate the rpc versions
 	// evaluate two avalanchego versions which are consecutive
@@ -215,6 +225,8 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			// The above-mentioned test runs with this as well.
 			for _, evmVer := range subnetEVMversions {
 				if subnetEVMmapping[evmVer] == rpcVersion {
+					fmt.Printf("we breaking %s \n", subnetEVMmapping[evmVer])
+
 					// we know there already exists at least one such combination.
 					// unless the compatibility JSON will start to be shortened in some way,
 					// we should always be able to find a matching subnet-evm
@@ -223,10 +235,14 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 					break
 				}
 			}
+			fmt.Printf("we breaking 2%s \n", binaryToVersion)
+
 			// all good, don't need to look more
 			break
 		}
 	}
+	fmt.Printf("binaryToVersion %s \n", binaryToVersion)
+	fmt.Printf("subnetEVMversions final %s \n", subnetEVMversions)
 
 	// when running Avago only, always use latest
 	binaryToVersion[OnlyAvagoKey] = OnlyAvagoValue
@@ -239,13 +255,15 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	// To avoid having to iterate again, we'll also fill the values
 	// for the **latest** compatible Avalanchego and Subnet-EVM
 	for i, ver := range subnetEVMversions {
+		fmt.Printf("range i %s, ver %s \n", i, ver)
 		// safety check, should not happen, as we already know
 		// compatible versions exist
-		if i+1 == len(subnetEVMversions) {
-			return nil, errors.New("no compatible versions for subsequent SubnetEVM found")
+		secondIndex := i + 1
+		if secondIndex == len(subnetEVMversions) {
+			secondIndex = i
 		}
 		first := ver
-		second := subnetEVMversions[i+1]
+		second := subnetEVMversions[secondIndex]
 		// we should be able to safely assume that for a given subnet-evm RPC version,
 		// there exists at least one compatible Avalanchego.
 		// This means we can in any case use this to set the **latest** compatibility
@@ -266,7 +284,7 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			break
 		}
 	}
-
+	fmt.Printf("binaryToVersion %s \n", binaryToVersion)
 	return binaryToVersion, nil
 }
 
