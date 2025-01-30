@@ -318,12 +318,9 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can deploy a subnet-evm with old version SOV", func() {
-		// TODO: use a previous subnet evm release once available
-		// TODO: also remove hardocding
-		subnetEVMVersion := utils.EtnaSubnetEvmVersion
+		subnetEVMVersion := mapping[utils.SoloSubnetEVMKey1]
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion)
-		// TODO: use commands.DeploySubnetLocallySOV once having etna release
-		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -342,15 +339,13 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can't deploy conflicting vm versions SOV", func() {
-		// TODO: These shouldn't be hardcoded either
-		subnetEVMVersion1 := utils.EtnaSubnetEvmVersion
+		subnetEVMVersion1 := mapping[utils.SoloSubnetEVMKey1]
 		subnetEVMVersion2 := "v0.6.12"
 
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
-		// TODO: use commands.DeploySubnetLocallySOV once having etna release
-		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
