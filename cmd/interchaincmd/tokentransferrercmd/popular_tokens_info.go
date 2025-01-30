@@ -36,5 +36,5 @@ func GetPopularTokensInfo(network models.Network, blockchainAlias string) ([]Pop
 	if err := json.Unmarshal(popularTokensInfoByteSlice, &popularTokensInfo); err != nil {
 		return nil, fmt.Errorf("unabled to get popular tokens info from file: %w", err)
 	}
-	return popularTokensInfo[network.Kind.String()][blockchainAlias], nil
+	return popularTokensInfo[network.Type.String()][blockchainAlias], nil
 }

@@ -288,8 +288,8 @@ func getChainsInSubnet(blockchainName string) ([]string, error) {
 }
 
 func checkSubnetEVMDefaultAddressNotInAlloc(network models.Network, chain string) error {
-	if network.Kind != models.Local &&
-		network.Kind != models.Devnet &&
+	if network.Type != models.Local &&
+		network.Type != models.Devnet &&
 		!simulatedPublicNetwork() {
 		genesis, err := app.LoadEvmGenesis(chain)
 		if err != nil {
@@ -465,7 +465,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if isEVMGenesis {
 		// is is a subnet evm or a custom vm based on subnet evm
-		if network.Kind == models.Mainnet {
+		if network.Type == models.Mainnet {
 			err = getSubnetEVMMainnetChainID(&sidecar, chain)
 			if err != nil {
 				return err
@@ -483,7 +483,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
-	if network.Kind == models.Local {
+	if network.Type == models.Local {
 		app.Log.Debug("Deploy local")
 
 		avagoVersion := userProvidedAvagoVersion
@@ -598,7 +598,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if network.Kind == models.Local {
+			if network.Type == models.Local {
 				useLocalMachine = true
 			}
 			networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
@@ -709,10 +709,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				if partialSync {
 					nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 				}
-				if network.Kind == models.Fuji {
+				if network.Type == models.Fuji {
 					globalNetworkFlags.UseFuji = true
 				}
-				if network.Kind == models.Mainnet {
+				if network.Type == models.Mainnet {
 					globalNetworkFlags.UseMainnet = true
 				}
 				// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
@@ -787,7 +787,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		}
-	} else if network.Kind == models.Local {
+	} else if network.Type == models.Local {
 		sameControlKey = true
 	}
 
@@ -985,7 +985,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		if !convertOnly && !generateNodeID {
 			clusterName := clusterNameFlagValue
-			if network.Kind != models.Local {
+			if network.Type != models.Local {
 				if clusterName == "" {
 					clusterName, err = node.GetClusterNameFromList(app)
 					if err != nil {
@@ -1131,7 +1131,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
-		if network.Kind == models.Local && !simulatedPublicNetwork() {
+		if network.Type == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
 			if err := networkcmd.TrackSubnet(
 				blockchainName,
@@ -1176,7 +1176,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.RedXToUser("Interchain Messaging is not deployed due to: %v", icmErr)
 		} else {
 			ux.Logger.GreenCheckmarkToUser("ICM is successfully deployed")
-			if network.Kind != models.Local && !useLocalMachine {
+			if network.Type != models.Local && !useLocalMachine {
 				if flag := cmd.Flags().Lookup(skipRelayerFlagName); flag != nil && !flag.Changed {
 					ux.Logger.PrintToUser("")
 					yes, err := app.Prompt.CaptureYesNo("Do you want to setup local relayer for the messages to be interchanged, as Interchain Messaging was deployed to your blockchain?")
@@ -1186,7 +1186,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					icmSpec.SkipRelayerDeploy = !yes
 				}
 			}
-			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+			if !icmSpec.SkipRelayerDeploy && network.Type != models.Mainnet {
 				deployRelayerFlags := relayercmd.DeployFlags{
 					Version:            icmSpec.RelayerVersion,
 					BinPath:            icmSpec.RelayerBinPath,
@@ -1198,12 +1198,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					Amount:             relayerAmount,
 					AllowPrivateIPs:    relayerAllowPrivateIPs,
 				}
-				if network.Kind == models.Local || useLocalMachine {
+				if network.Type == models.Local || useLocalMachine {
 					deployRelayerFlags.Key = constants.ICMRelayerKeyName
 					deployRelayerFlags.Amount = constants.DefaultRelayerAmount
 					deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
 				}
-				if network.Kind == models.Local {
+				if network.Type == models.Local {
 					deployRelayerFlags.CChainFundingKey = "ewoq"
 					deployRelayerFlags.CChainAmount = constants.DefaultRelayerAmount
 				}
@@ -1221,7 +1221,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	flags[constants.MetricsNetwork] = network.Name()
 	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
 
-	if network.Kind == models.Local && !simulatedPublicNetwork() {
+	if network.Type == models.Local && !simulatedPublicNetwork() {
 		ux.Logger.PrintToUser("")
 		_ = PrintSubnetInfo(blockchainName, true)
 	}

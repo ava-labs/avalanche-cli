@@ -135,7 +135,7 @@ func addValidator(_ *cobra.Command, _ []string) error {
 		return ErrMutuallyExlusiveKeyLedger
 	}
 
-	switch network.Kind {
+	switch network.Type {
 	case models.Fuji:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, constants.PayTxsFeesMsg, app.GetKeyDir(), false)

@@ -215,7 +215,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		}
 	}
 	// automatic deploy to cchain for local
-	if !flags.ChainFlags.CChain && (network.Kind == models.Local || flags.IncludeCChain) {
+	if !flags.ChainFlags.CChain && (network.Type == models.Local || flags.IncludeCChain) {
 		if flags.CChainKeyName == "" {
 			flags.CChainKeyName = "ewoq"
 		}
@@ -235,7 +235,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return err
 		}
 		if !alreadyDeployed {
-			if network.Kind == models.Local {
+			if network.Type == models.Local {
 				if err := localnet.WriteExtraLocalNetworkData(
 					"",
 					"",

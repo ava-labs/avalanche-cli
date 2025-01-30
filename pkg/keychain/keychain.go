@@ -125,7 +125,7 @@ func GetKeychainFromCmdLineFlags(
 		return nil, ErrMutuallyExlusiveKeySource
 	}
 	switch {
-	case network.Kind == models.Local:
+	case network.Type == models.Local:
 		// prompt the user if no key source was provided
 		if !useEwoq && !useLedger && keyName == "" {
 			var err error
@@ -134,7 +134,7 @@ func GetKeychainFromCmdLineFlags(
 				return nil, err
 			}
 		}
-	case network.Kind == models.Devnet:
+	case network.Type == models.Devnet:
 		// prompt the user if no key source was provided
 		if !useEwoq && !useLedger && keyName == "" {
 			var err error
@@ -143,7 +143,7 @@ func GetKeychainFromCmdLineFlags(
 				return nil, err
 			}
 		}
-	case network.Kind == models.Fuji:
+	case network.Type == models.Fuji:
 		if useEwoq {
 			return nil, ErrEwoqKeyOnFuji
 		}
@@ -155,7 +155,7 @@ func GetKeychainFromCmdLineFlags(
 				return nil, err
 			}
 		}
-	case network.Kind == models.Mainnet:
+	case network.Type == models.Mainnet:
 		// mainnet requires ledger usage
 		if keyName != "" || useEwoq {
 			return nil, ErrStoredKeyOrEwoqOnMainnet

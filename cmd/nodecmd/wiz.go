@@ -799,7 +799,7 @@ func checkClusterIsADevnet(clusterName string) error {
 	if err != nil {
 		return err
 	}
-	if clustersConfig.Clusters[clusterName].Network.Kind != models.Devnet {
+	if clustersConfig.Clusters[clusterName].Network.Type != models.Devnet {
 		return fmt.Errorf("cluster %q is not a Devnet", clusterName)
 	}
 	return nil

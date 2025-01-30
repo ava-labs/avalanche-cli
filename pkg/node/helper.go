@@ -193,7 +193,7 @@ func getPublicEndpoints(
 		return nil, err
 	}
 	publicNodes := clusterConfig.APINodes
-	if clusterConfig.Network.Kind == models.Devnet {
+	if clusterConfig.Network.Type == models.Devnet {
 		publicNodes = clusterConfig.Nodes
 	}
 	publicTrackers := utils.Filter(trackers, func(tracker *models.Host) bool {
@@ -568,7 +568,7 @@ func DownloadPublicArchive(
 	nodeNames []string,
 ) error {
 	// only fuji is supported for now
-	if clusterNetwork.Kind != models.Fuji {
+	if clusterNetwork.Type != models.Fuji {
 		return fmt.Errorf("unsupported network: %s", clusterNetwork.Name())
 	}
 	network := network.FujiNetwork()

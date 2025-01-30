@@ -59,22 +59,22 @@ func stop(_ *cobra.Command, _ []string) error {
 		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())
 	default:
 		b, _, _, err := interchain.RelayerIsUp(
-			app.GetLocalRelayerRunPath(network.Kind),
+			app.GetLocalRelayerRunPath(network.Type),
 		)
 		if err != nil {
 			return err
 		}
 		if !b {
-			return fmt.Errorf("there is no CLI-managed local AWM relayer running for %s", network.Kind)
+			return fmt.Errorf("there is no CLI-managed local AWM relayer running for %s", network.Type)
 		}
 		if err := interchain.RelayerCleanup(
-			app.GetLocalRelayerRunPath(network.Kind),
-			app.GetLocalRelayerLogPath(network.Kind),
-			app.GetLocalRelayerStorageDir(network.Kind),
+			app.GetLocalRelayerRunPath(network.Type),
+			app.GetLocalRelayerLogPath(network.Type),
+			app.GetLocalRelayerStorageDir(network.Type),
 		); err != nil {
 			return err
 		}
-		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully stopped for %s", network.Kind)
+		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully stopped for %s", network.Type)
 	}
 	return nil
 }

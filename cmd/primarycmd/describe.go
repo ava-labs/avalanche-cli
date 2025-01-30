@@ -67,7 +67,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		if strings.Contains(err.Error(), "connection refused") {
 			networkUpMsg := ""
-			if network.Kind != models.Fuji && network.Kind != models.Mainnet {
+			if network.Type != models.Fuji && network.Type != models.Mainnet {
 				networkUpMsg = fmt.Sprintf(" Is the %s up?", network.Name())
 			}
 			ux.Logger.RedXToUser("Could not connect to Primary Network at %s.%s", network.Endpoint, networkUpMsg)
@@ -75,7 +75,7 @@ func describe(_ *cobra.Command, _ []string) error {
 		}
 		return err
 	}
-	if network.Kind == models.Local {
+	if network.Type == models.Local {
 		if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(""); err != nil {
 			return err
 		} else if b {

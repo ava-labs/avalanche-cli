@@ -139,27 +139,27 @@ func (app *Avalanche) GetICMRelayerBinDir() string {
 	return filepath.Join(app.baseDir, constants.AvalancheCliBinDir, constants.ICMRelayerInstallDir)
 }
 
-func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkKind) string {
+func (app *Avalanche) GetLocalRelayerDir(networkKind models.NetworkType) string {
 	networkDirName := strings.ReplaceAll(networkKind.String(), " ", "")
 	return filepath.Join(app.GetRunDir(), networkDirName, constants.LocalRelayerDir)
 }
 
-func (app *Avalanche) GetLocalRelayerStorageDir(networkKind models.NetworkKind) string {
+func (app *Avalanche) GetLocalRelayerStorageDir(networkKind models.NetworkType) string {
 	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerStorageDir)
 }
 
-func (app *Avalanche) GetLocalRelayerConfigPath(networkKind models.NetworkKind, localNetworkRootDir string) string {
+func (app *Avalanche) GetLocalRelayerConfigPath(networkKind models.NetworkType, localNetworkRootDir string) string {
 	if localNetworkRootDir != "" {
 		return filepath.Join(localNetworkRootDir, constants.ICMRelayerConfigFilename)
 	}
 	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerConfigFilename)
 }
 
-func (app *Avalanche) GetLocalRelayerLogPath(networkKind models.NetworkKind) string {
+func (app *Avalanche) GetLocalRelayerLogPath(networkKind models.NetworkType) string {
 	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerLogFilename)
 }
 
-func (app *Avalanche) GetLocalRelayerRunPath(networkKind models.NetworkKind) string {
+func (app *Avalanche) GetLocalRelayerRunPath(networkKind models.NetworkType) string {
 	return filepath.Join(app.GetLocalRelayerDir(networkKind), constants.ICMRelayerRunFilename)
 }
 
@@ -631,7 +631,7 @@ func (app *Avalanche) GetBlockchainNamesOnNetwork(
 			for k := range sc.Networks {
 				sidecarNetwork, err := app.GetNetworkFromSidecarNetworkName(k)
 				if err == nil {
-					if sidecarNetwork.Kind == network.Kind && sidecarNetwork.Endpoint == network.Endpoint {
+					if sidecarNetwork.Type == network.Type && sidecarNetwork.Endpoint == network.Endpoint {
 						networkName = sidecarNetwork.Name()
 					}
 				}

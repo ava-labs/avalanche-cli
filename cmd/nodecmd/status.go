@@ -240,7 +240,7 @@ func printOutput(
 	nodeConfigs []models.NodeConfig,
 ) {
 	if clusterConf.External {
-		ux.Logger.PrintToUser("Cluster %s (%s) is EXTERNAL", logging.LightBlue.Wrap(clusterName), clusterConf.Network.Kind.String())
+		ux.Logger.PrintToUser("Cluster %s (%s) is EXTERNAL", logging.LightBlue.Wrap(clusterName), clusterConf.Network.Type.String())
 	}
 	if blockchainName == "" && len(notBootstrappedHosts) == 0 {
 		ux.Logger.PrintToUser("All nodes in cluster %s are bootstrapped to Primary Network!", clusterName)
@@ -287,7 +287,7 @@ func printOutput(
 			cloudID,
 			logging.Green.Wrap(nodeIDStr),
 			nodeConfigs[i].ElasticIP,
-			clusterConf.Network.Kind.String(),
+			clusterConf.Network.Type.String(),
 			strings.Join(roles, ","),
 			avagoVersion,
 			boostrappedStatus,

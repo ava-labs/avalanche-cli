@@ -91,7 +91,7 @@ func addNodeAsSubnetValidator(
 	// devnet criteria: as per tests with RD env
 	waitForTxAcceptance := false
 	waitForValidatorInCurrentList := true
-	if network.Kind != models.Devnet {
+	if network.Type != models.Devnet {
 		// fuji criteria: current validators seems to be pretty slow to update in fuji
 		waitForTxAcceptance = true
 		waitForValidatorInCurrentList = false

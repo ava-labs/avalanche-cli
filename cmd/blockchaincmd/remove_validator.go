@@ -151,7 +151,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if network.Kind == models.Local && !sc.Sovereign {
+	if network.Type == models.Local && !sc.Sovereign {
 		return removeFromLocalNonSOV(blockchainName, nodeID)
 	}
 

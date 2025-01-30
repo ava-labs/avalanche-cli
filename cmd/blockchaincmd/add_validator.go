@@ -699,11 +699,11 @@ func PromptDuration(start time.Time, network models.Network, isPos bool) (time.D
 		var d time.Duration
 		var err error
 		switch {
-		case network.Kind == models.Fuji:
+		case network.Type == models.Fuji:
 			d, err = app.Prompt.CaptureFujiDuration(txt)
-		case network.Kind == models.Mainnet && isPos:
+		case network.Type == models.Mainnet && isPos:
 			d, err = app.Prompt.CaptureMainnetL1StakingDuration(txt)
-		case network.Kind == models.Mainnet && !isPos:
+		case network.Type == models.Mainnet && !isPos:
 			d, err = app.Prompt.CaptureMainnetDuration(txt)
 		default:
 			d, err = app.Prompt.CaptureDuration(txt)
@@ -725,7 +725,7 @@ func PromptDuration(start time.Time, network models.Network, isPos bool) (time.D
 
 func getTimeParameters(network models.Network, nodeID ids.NodeID, isValidator bool) (time.Time, time.Duration, error) {
 	defaultStakingStartLeadTime := constants.StakingStartLeadTime
-	if network.Kind == models.Devnet {
+	if network.Type == models.Devnet {
 		defaultStakingStartLeadTime = constants.DevnetStakingStartLeadTime
 	}
 

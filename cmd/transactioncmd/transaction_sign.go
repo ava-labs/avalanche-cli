@@ -72,7 +72,7 @@ func signTx(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	switch network.Kind {
+	switch network.Type {
 	case models.Local:
 		if !useLedger && keyName == "" {
 			useLedger, keyName, err = prompts.GetKeyOrLedger(app.Prompt, "sign transaction", app.GetKeyDir(), true)

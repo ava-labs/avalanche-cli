@@ -311,7 +311,7 @@ func StartLocalNode(
 		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
-		if network.Kind == models.Undefined {
+		if network.Type == models.Undefined {
 			network, err = networkoptions.GetNetworkFromCmdLineFlags(
 				app,
 				"",
@@ -332,11 +332,11 @@ func StartLocalNode(
 		}
 
 		switch {
-		case network.Kind == models.Fuji:
+		case network.Type == models.Fuji:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
-		case network.Kind == models.Mainnet:
+		case network.Type == models.Mainnet:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
-		case network.Kind == models.Local:
+		case network.Type == models.Local:
 			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
 				return fmt.Errorf("failed to connect to local network: %w", err)
@@ -498,7 +498,7 @@ func UpsizeLocalNode(
 		nodeConfig = map[string]interface{}{}
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
-	if network.Kind == models.Fuji {
+	if network.Type == models.Fuji {
 		nodeConfig[config.IndexEnabledKey] = false // disable index for Fuji
 	}
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
@@ -508,7 +508,7 @@ func UpsizeLocalNode(
 	nodeConfigStr := string(nodeConfigBytes)
 
 	// we will remove this code soon, so it can be not DRY
-	if network.Kind == models.Local {
+	if network.Type == models.Local {
 		clusterInfo, err := localnet.GetClusterInfo()
 		if err != nil {
 			return "", fmt.Errorf("failed to connect to local network: %w", err)
@@ -804,7 +804,7 @@ func ConnectedToLocalNetwork(app *application.Avalanche) (bool, string, error) {
 			return false, "", fmt.Errorf("failed to get cluster config: %w", err)
 		}
 		network := models.ConvertClusterToNetwork(clusterConf.Network)
-		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
+		if rootDir == currentlyRunningRootDir && network.Type == models.Local {
 			return true, clusterName, nil
 		}
 	}

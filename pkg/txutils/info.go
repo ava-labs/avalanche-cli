@@ -37,7 +37,7 @@ func GetNetwork(tx *txs.Tx) (models.Network, error) {
 		return models.UndefinedNetwork, fmt.Errorf("unexpected unsigned tx type %T", unsignedTx)
 	}
 	network := models.NetworkFromNetworkID(networkID)
-	if network.Kind == models.Undefined {
+	if network.Type == models.Undefined {
 		return models.UndefinedNetwork, fmt.Errorf("undefined network model for tx")
 	}
 	return network, nil

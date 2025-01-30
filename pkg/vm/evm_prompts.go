@@ -200,7 +200,7 @@ func PromptSubnetEVMGenesisParams(
 		}
 	}
 
-	// Gas Kind
+	// Gas Type
 	params, err = promptGasTokenKind(app, defaultsKind, useExternalGasToken, params)
 	if err != nil {
 		return SubnetEVMGenesisParams{}, "", err

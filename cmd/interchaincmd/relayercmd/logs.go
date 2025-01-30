@@ -64,7 +64,7 @@ func logs(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	var logLines []string
-	logsPath := app.GetLocalRelayerLogPath(network.Kind)
+	logsPath := app.GetLocalRelayerLogPath(network.Type)
 	bs, err := os.ReadFile(logsPath)
 	if err != nil {
 		return err

@@ -98,7 +98,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	}
 
 	deployToRemote := false
-	if !disableDeployToRemotePrompt && network.Kind != models.Local {
+	if !disableDeployToRemotePrompt && network.Type != models.Local {
 		prompt := "Do you want to deploy the relayer to a remote or a local host?"
 		remoteHostOption := "I want to deploy the relayer into a remote node in the cloud"
 		localHostOption := "I prefer to deploy into a localhost process"
@@ -127,10 +127,10 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	}
 
 	if !deployToRemote {
-		if isUP, _, _, err := interchain.RelayerIsUp(app.GetLocalRelayerRunPath(network.Kind)); err != nil {
+		if isUP, _, _, err := interchain.RelayerIsUp(app.GetLocalRelayerRunPath(network.Type)); err != nil {
 			return err
 		} else if isUP {
-			return fmt.Errorf("there is already a local relayer deployed for %s", network.Kind.String())
+			return fmt.Errorf("there is already a local relayer deployed for %s", network.Type.String())
 		}
 	}
 
@@ -426,22 +426,22 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		return nil
 	}
 
-	runFilePath := app.GetLocalRelayerRunPath(network.Kind)
-	storageDir := app.GetLocalRelayerStorageDir(network.Kind)
+	runFilePath := app.GetLocalRelayerRunPath(network.Type)
+	storageDir := app.GetLocalRelayerStorageDir(network.Type)
 	localNetworkRootDir := ""
-	if network.Kind == models.Local {
+	if network.Type == models.Local {
 		clusterInfo, err := localnet.GetClusterInfo()
 		if err != nil {
 			return err
 		}
 		localNetworkRootDir = clusterInfo.GetRootDataDir()
 	}
-	configPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
-	logPath := app.GetLocalRelayerLogPath(network.Kind)
+	configPath := app.GetLocalRelayerConfigPath(network.Type, localNetworkRootDir)
+	logPath := app.GetLocalRelayerLogPath(network.Type)
 
 	metricsPort := constants.RemoteICMRelayerMetricsPort
 	if !deployToRemote {
-		switch network.Kind {
+		switch network.Type {
 		case models.Local:
 			metricsPort = constants.LocalNetworkLocalICMRelayerMetricsPort
 		case models.Devnet:
@@ -508,7 +508,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			}
 			return err
 		}
-		if network.Kind == models.Local {
+		if network.Type == models.Local {
 			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
 				return err
 			}

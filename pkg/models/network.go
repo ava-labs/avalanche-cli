@@ -16,10 +16,10 @@ import (
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 )
 
-type NetworkKind int64
+type NetworkType int64
 
 const (
-	Undefined NetworkKind = iota
+	Undefined NetworkType = iota
 	Mainnet
 	Fuji
 	Local
@@ -28,7 +28,7 @@ const (
 
 const wssScheme = "wss"
 
-func (nk NetworkKind) String() string {
+func (nk NetworkType) String() string {
 	switch nk {
 	case Mainnet:
 		return "Mainnet"
@@ -43,7 +43,7 @@ func (nk NetworkKind) String() string {
 }
 
 type Network struct {
-	Kind        NetworkKind
+	Type        NetworkType
 	ID          uint32
 	Endpoint    string
 	ClusterName string
@@ -51,9 +51,9 @@ type Network struct {
 
 var UndefinedNetwork = Network{}
 
-func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string) Network {
+func NewNetwork(networkType NetworkType, id uint32, endpoint string, clusterName string) Network {
 	return Network{
-		Kind:        kind,
+		Type:        networkType,
 		ID:          id,
 		Endpoint:    endpoint,
 		ClusterName: clusterName,
@@ -61,7 +61,7 @@ func NewNetwork(kind NetworkKind, id uint32, endpoint string, clusterName string
 }
 
 func (n Network) IsUndefined() bool {
-	return n.Kind == Undefined
+	return n.Type == Undefined
 }
 
 func NewLocalNetwork() Network {
@@ -116,7 +116,7 @@ func NewMainnetNetwork() Network {
 }
 
 func NewNetworkFromCluster(n Network, clusterName string) Network {
-	return NewNetwork(n.Kind, n.ID, n.Endpoint, clusterName)
+	return NewNetwork(n.Type, n.ID, n.Endpoint, clusterName)
 }
 
 func NetworkFromNetworkID(networkID uint32) Network {
@@ -136,11 +136,11 @@ func (n Network) StandardPublicEndpoint() bool {
 }
 
 func (n Network) Name() string {
-	if n.ClusterName != "" && n.Kind == Devnet {
+	if n.ClusterName != "" && n.Type == Devnet {
 		return "Cluster " + n.ClusterName
 	}
-	name := n.Kind.String()
-	if n.Kind == Devnet {
+	name := n.Type.String()
+	if n.Type == Devnet {
 		name += " " + n.Endpoint
 	}
 	return name
@@ -163,7 +163,7 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 	trimmedURI = strings.TrimPrefix(trimmedURI, "http://")
 	trimmedURI = strings.TrimPrefix(trimmedURI, "https://")
 	scheme := "ws"
-	switch n.Kind {
+	switch n.Type {
 	case Fuji:
 		scheme = wssScheme
 	case Mainnet:
@@ -173,7 +173,7 @@ func (n Network) BlockchainWSEndpoint(blockchainID string) string {
 }
 
 func (n Network) NetworkIDFlagValue() string {
-	switch n.Kind {
+	switch n.Type {
 	case Local:
 		return fmt.Sprintf("network-%d", n.ID)
 	case Devnet:
@@ -187,7 +187,7 @@ func (n Network) NetworkIDFlagValue() string {
 }
 
 func (n Network) GenesisParams() *genesis.Params {
-	switch n.Kind {
+	switch n.Type {
 	case Local:
 		return &genesis.LocalParams
 	case Devnet:
@@ -203,21 +203,21 @@ func (n Network) GenesisParams() *genesis.Params {
 func (n *Network) HandlePublicNetworkSimulation() {
 	// used in E2E to simulate public network execution paths on a local network
 	if os.Getenv(constants.SimulatePublicNetwork) != "" {
-		n.Kind = Local
+		n.Type = Local
 		n.ID = constants.LocalNetworkID
 		n.Endpoint = constants.LocalAPIEndpoint
 	}
 }
 
-// Equals checks the underlying fields Kind and Endpoint
+// Equals checks the underlying fields Type and Endpoint
 func (n *Network) Equals(n2 Network) bool {
-	return n.Kind == n2.Kind && n.Endpoint == n2.Endpoint
+	return n.Type == n2.Type && n.Endpoint == n2.Endpoint
 }
 
 // Context for bootstrapping a partial synced Node
 func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
 	timeout := constants.ANRRequestTimeout
-	switch n.Kind {
+	switch n.Type {
 	case Fuji:
 		timeout = constants.FujiBootstrapTimeout
 	case Mainnet:
@@ -227,7 +227,7 @@ func (n *Network) BootstrappingContext() (context.Context, context.CancelFunc) {
 }
 
 func (n Network) SDKNetwork() sdkNetwork.Network {
-	switch n.Kind {
+	switch n.Type {
 	case Fuji:
 		return sdkNetwork.FujiNetwork()
 	case Mainnet:

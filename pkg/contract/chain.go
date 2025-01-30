@@ -434,7 +434,7 @@ func GetCChainICMInfo(
 	messengerAddress := ""
 	registryAddress := ""
 	switch {
-	case network.Kind == models.Local:
+	case network.Type == models.Local:
 		b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData("")
 		if err != nil {
 			return "", "", err
@@ -451,10 +451,10 @@ func GetCChainICMInfo(
 		}
 		messengerAddress = clusterConfig.ExtraNetworkData.CChainTeleporterMessengerAddress
 		registryAddress = clusterConfig.ExtraNetworkData.CChainTeleporterRegistryAddress
-	case network.Kind == models.Fuji:
+	case network.Type == models.Fuji:
 		messengerAddress = constants.DefaultICMMessengerAddress
 		registryAddress = constants.FujiCChainICMRegistryAddress
-	case network.Kind == models.Mainnet:
+	case network.Type == models.Mainnet:
 		messengerAddress = constants.DefaultICMMessengerAddress
 		registryAddress = constants.MainnetCChainICMRegistryAddress
 	}

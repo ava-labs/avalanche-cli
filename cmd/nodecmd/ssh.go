@@ -65,7 +65,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 			if clusterConfig.Local {
 				continue
 			}
-			err := printClusterConnectionString(clusterName, clusterConfig.Network.Kind.String())
+			err := printClusterConnectionString(clusterName, clusterConfig.Network.Type.String())
 			if err != nil {
 				return err
 			}
@@ -77,7 +77,7 @@ func sshNode(_ *cobra.Command, args []string) error {
 		if err := node.CheckCluster(app, clusterNameOrNodeID); err == nil {
 			// clusterName detected
 			if len(args[1:]) == 0 {
-				return printClusterConnectionString(clusterNameOrNodeID, clustersConfig.Clusters[clusterNameOrNodeID].Network.Kind.String())
+				return printClusterConnectionString(clusterNameOrNodeID, clustersConfig.Clusters[clusterNameOrNodeID].Network.Type.String())
 			} else {
 				if clustersConfig.Clusters[clusterNameOrNodeID].Local {
 					return notImplementedForLocal("ssh")

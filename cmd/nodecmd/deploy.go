@@ -56,7 +56,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	if clusterConfig.Local {
 		return notImplementedForLocal("deploy")
 	}
-	if clusterConfig.Network.Kind != models.Devnet {
+	if clusterConfig.Network.Type != models.Devnet {
 		return fmt.Errorf("node deploy command must be applied to devnet clusters")
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))

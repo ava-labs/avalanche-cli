@@ -115,7 +115,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			ux.Logger.PrintToUser("")
 			continue
 		}
-		if network.Kind != models.Local && onlyLocalnetInfo {
+		if network.Type != models.Local && onlyLocalnetInfo {
 			continue
 		}
 		genesisBytes, err := contract.GetBlockchainGenesis(
@@ -126,7 +126,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			},
 		)
 		if err != nil {
-			if network.Kind != models.Local {
+			if network.Type != models.Local {
 				return err
 			}
 			// ignore local network errors for cases
@@ -134,7 +134,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 			// local network metadata
 			// (eg host restarts)
 			continue
-		} else if network.Kind == models.Local {
+		} else if network.Type == models.Local {
 			locallyDeployed = true
 		}
 		if utils.ByteSliceIsSubnetEvmGenesis(genesisBytes) {
@@ -143,7 +143,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 				return err
 			}
 			t.AppendRow(table.Row{net, "ChainID", genesis.Config.ChainID.String()})
-			if network.Kind == models.Local {
+			if network.Type == models.Local {
 				localChainID = genesis.Config.ChainID.String()
 			}
 		}
@@ -174,7 +174,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		if err != nil {
 			return err
 		}
-		if network.Kind == models.Local {
+		if network.Type == models.Local {
 			localEndpoint = endpoint
 		}
 		t.AppendRow(table.Row{net, "RPC Endpoint", endpoint})
@@ -192,10 +192,10 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		if err != nil {
 			continue
 		}
-		if network.Kind == models.Local && !locallyDeployed {
+		if network.Type == models.Local && !locallyDeployed {
 			continue
 		}
-		if network.Kind != models.Local && onlyLocalnetInfo {
+		if network.Type != models.Local && onlyLocalnetInfo {
 			continue
 		}
 		if data.TeleporterMessengerAddress != "" {

@@ -216,7 +216,7 @@ func GetTimeParametersPrimaryNetwork(network models.Network, nodeIndex int, vali
 
 func getDefaultValidationTime(start time.Time, network models.Network, nodeIndex int) (time.Duration, error) {
 	durationStr := constants.DefaultFujiStakeDuration
-	if network.Kind == models.Mainnet {
+	if network.Type == models.Mainnet {
 		durationStr = constants.DefaultMainnetStakeDuration
 	}
 	durationInt, err := strconv.Atoi(durationStr[:len(durationStr)-1])

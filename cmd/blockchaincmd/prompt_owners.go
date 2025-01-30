@@ -98,7 +98,7 @@ func getControlKeysForDeploy(kc *keychain.Keychain) ([]string, bool, error) {
 	} else {
 		feePaying = "Use fee-paying key"
 	}
-	if kc.Network.Kind == models.Mainnet {
+	if kc.Network.Type == models.Mainnet {
 		listOptions = []string{feePaying, custom}
 	} else {
 		listOptions = []string{feePaying, useAll, custom}

@@ -63,7 +63,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(1))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].External).To(gomega.BeFalse())
-		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
+		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Type.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
 	})
 	ginkgo.It("creates node config", func() {
@@ -216,7 +216,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(clustersConfig.Clusters).To(gomega.HaveLen(2))
 		gomega.Expect(clustersConfig.Clusters[importClusterName].External).To(gomega.BeTrue())
-		gomega.Expect(clustersConfig.Clusters[importClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
+		gomega.Expect(clustersConfig.Clusters[importClusterName].Network.Type.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[importClusterName].Nodes).To(gomega.HaveLen(numNodes))
 	})
 	ginkgo.It("imported node config", func() {

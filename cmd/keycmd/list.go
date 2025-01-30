@@ -488,7 +488,7 @@ func getPChainAddrInfo(
 	balance, err := getPChainBalanceStr(pClients[network], pChainAddr)
 	if err != nil {
 		// just ignore local network errors
-		if network.Kind != models.Local {
+		if network.Type != models.Local {
 			return addressInfo{}, err
 		}
 	}
@@ -513,7 +513,7 @@ func getXChainAddrInfo(
 	balance, err := getXChainBalanceStr(xClients[network], xChainAddr)
 	if err != nil {
 		// just ignore local network errors
-		if network.Kind != models.Local {
+		if network.Type != models.Local {
 			return addressInfo{}, err
 		}
 	}
@@ -543,7 +543,7 @@ func getEvmBasedChainAddrInfo(
 		cChainBalance, err := getCChainBalanceStr(cClient, cChainAddr)
 		if err != nil {
 			// just ignore local network errors
-			if network.Kind != models.Local {
+			if network.Type != models.Local {
 				return nil, err
 			}
 		}
@@ -612,7 +612,7 @@ func getEvmBasedChainAddrInfo(
 }
 
 func printAddrInfos(addrInfos []addressInfo) {
-	header := []string{"Kind", "Name", "Subnet", "Address", "Token", "Balance", "Network"}
+	header := []string{"Type", "Name", "Subnet", "Address", "Token", "Balance", "Network"}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetRowLine(true)

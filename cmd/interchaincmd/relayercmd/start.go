@@ -75,22 +75,22 @@ func start(_ *cobra.Command, _ []string) error {
 		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
 	default:
 		if relayerIsUp, _, _, err := interchain.RelayerIsUp(
-			app.GetLocalRelayerRunPath(network.Kind),
+			app.GetLocalRelayerRunPath(network.Type),
 		); err != nil {
 			return err
 		} else if relayerIsUp {
-			return fmt.Errorf("local AWM relayer is already running for %s", network.Kind)
+			return fmt.Errorf("local AWM relayer is already running for %s", network.Type)
 		}
 		localNetworkRootDir := ""
-		if network.Kind == models.Local {
+		if network.Type == models.Local {
 			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
 				return err
 			}
 			localNetworkRootDir = clusterInfo.GetRootDataDir()
 		}
-		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
-		if network.Kind == models.Local && binPath == "" {
+		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Type, localNetworkRootDir)
+		if network.Type == models.Local && binPath == "" {
 			if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(""); err != nil {
 				return err
 			} else if b {
@@ -104,18 +104,18 @@ func start(_ *cobra.Command, _ []string) error {
 			binPath,
 			app.GetICMRelayerBinDir(),
 			relayerConfigPath,
-			app.GetLocalRelayerLogPath(network.Kind),
-			app.GetLocalRelayerRunPath(network.Kind),
-			app.GetLocalRelayerStorageDir(network.Kind),
+			app.GetLocalRelayerLogPath(network.Type),
+			app.GetLocalRelayerRunPath(network.Type),
+			app.GetLocalRelayerStorageDir(network.Type),
 		); err != nil {
 			return err
-		} else if network.Kind == models.Local {
+		} else if network.Type == models.Local {
 			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
 				return err
 			}
 		}
-		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started for %s", network.Kind)
-		ux.Logger.PrintToUser("Logs can be found at %s", app.GetLocalRelayerLogPath(network.Kind))
+		ux.Logger.GreenCheckmarkToUser("Local AWM Relayer successfully started for %s", network.Type)
+		ux.Logger.PrintToUser("Logs can be found at %s", app.GetLocalRelayerLogPath(network.Type))
 	}
 	return nil
 }

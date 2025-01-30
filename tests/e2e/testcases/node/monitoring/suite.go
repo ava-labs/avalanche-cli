@@ -62,7 +62,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)
 		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Kind.String()).To(gomega.Equal(networkCapitalized))
+		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Network.Type.String()).To(gomega.Equal(networkCapitalized))
 		gomega.Expect(clustersConfig.Clusters[constants.E2EClusterName].Nodes).To(gomega.HaveLen(numNodes))
 		monitoringHostID = clustersConfig.Clusters[constants.E2EClusterName].MonitoringInstance
 		createdHostsFormatted = append(createdHostsFormatted, clustersConfig.Clusters[constants.E2EClusterName].Nodes...)

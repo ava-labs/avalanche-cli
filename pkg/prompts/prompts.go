@@ -1182,7 +1182,7 @@ func CaptureKeyAddress(
 	format AddressFormat,
 ) (string, error) {
 	includeEwoq := true
-	if network.Kind == models.Fuji {
+	if network.Type == models.Fuji {
 		includeEwoq = false
 	}
 	keyName, err := CaptureKeyName(prompter, goal, keyDir, includeEwoq)
