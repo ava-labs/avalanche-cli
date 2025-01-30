@@ -14,7 +14,7 @@ SHELL = /usr/bin/env bash -o pipefail
 #.SHELLFLAGS = -ec
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
-#Detect OS
+#Detect OS params
 UNAME := $(shell uname -s | tr A-Z a-z)
 ARCH :=$(shell uname -m | tr A-Z a-z)
 DOCKER:= $(shell command -v docker 2> /dev/null)
