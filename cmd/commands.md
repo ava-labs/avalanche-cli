@@ -299,7 +299,7 @@ avalanche blockchain create [subcommand] [flags]
 --evm-token string                  token symbol to use with Subnet-EVM
 --external-gas-token                use a gas token from another blockchain
 -f, --force                         overwrite the existing configuration if one exists
---from-github-repo                  generate custom VM binary from github repository
+--from-github-repos                 generate custom VM binary from github repository
 --genesis string                    file path of genesis to use
 -h, --help                          help for create
 --icm                               interoperate with other blockchains using ICM
