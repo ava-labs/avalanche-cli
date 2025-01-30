@@ -215,7 +215,6 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 			// The above-mentioned test runs with this as well.
 			for _, evmVer := range subnetEVMversions {
 				if subnetEVMmapping[evmVer] == rpcVersion {
-
 					// we know there already exists at least one such combination.
 					// unless the compatibility JSON will start to be shortened in some way,
 					// we should always be able to find a matching subnet-evm
@@ -224,7 +223,6 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 					break
 				}
 			}
-
 			// all good, don't need to look more
 			break
 		}
