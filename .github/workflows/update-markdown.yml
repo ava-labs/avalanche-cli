@@ -53,16 +53,22 @@ jobs:
         run: |
           python .github/scripts/sdk_doc.py
 
-      - name: Check for changes
+      - name: Check if there are changes
         id: check_changes
         run: |
-          git diff --exit-code || echo "changes=true" >> $GITHUB_ENV
+          if git diff --quiet; then
+            echo "No changes detected."
+            echo "changes=false" >> $GITHUB_ENV
+          else
+            echo "Changes detected."
+            echo "changes=true" >> $GITHUB_ENV
+          fi
 
-      - name: Commit changes to PR branch
+      - name: Commit changes directly to PR branch
         if: env.changes == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add cmd/commands.md sdk/SDK.md
-          git commit --amend --no-edit || echo "No changes to amend"
-          git push --force
+          git commit -m "chore: Update MD files"
+          git push
