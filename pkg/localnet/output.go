@@ -46,7 +46,7 @@ func PrintEndpoints(
 		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, networkDir); err != nil {
 			return err
 		}
-		clusterInfo, err := GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+		clusterInfo, err := GetANRNetworkInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 		if err == nil {
 			printFunc("")
 			if err := PrintNetworkEndpointsFromClusterInfo("L1 Nodes", printFunc, clusterInfo); err != nil {

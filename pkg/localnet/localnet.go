@@ -4,22 +4,13 @@ package localnet
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-network-runner/client"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
-	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
@@ -28,6 +19,7 @@ import (
 
 var ErrNetworkNotBootstrapped = errors.New("network is not bootstrapped")
 
+// Indicates if all, some or none of the local network nodes are alive
 func LocalNetworkBootstrappingStatus(app *application.Avalanche) (BootstrappingStatus, error) {
 	if LocalNetworkMetaExists(app) {
 		meta, err := GetLocalNetworkMeta(app)
@@ -50,6 +42,7 @@ func LocalNetworkBootstrappingStatus(app *application.Avalanche) (BootstrappingS
 	return NotBootstrapped, nil
 }
 
+// Returns true if all local network nodes are alive
 func LocalNetworkIsBootstrapped(app *application.Avalanche) (bool, error) {
 	status, err := LocalNetworkBootstrappingStatus(app)
 	if err != nil {
@@ -58,6 +51,8 @@ func LocalNetworkIsBootstrapped(app *application.Avalanche) (bool, error) {
 	return status == FullyBootstrapped, nil
 }
 
+// Returns the tmpnet directory associated to the local network
+// If the network is not alive it errors
 func GetLocalNetworkDir(app *application.Avalanche) (string, error) {
 	isBootstrapped, err := LocalNetworkIsBootstrapped(app)
 	if err != nil {
@@ -73,6 +68,8 @@ func GetLocalNetworkDir(app *application.Avalanche) (string, error) {
 	return meta.NetworkDir, nil
 }
 
+// Returns the tmpnet associated to the local network
+// If the network is not alive it errors
 func GetLocalNetwork(app *application.Avalanche) (*tmpnet.Network, error) {
 	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
@@ -81,6 +78,8 @@ func GetLocalNetwork(app *application.Avalanche) (*tmpnet.Network, error) {
 	return GetTmpNetNetwork(networkDir)
 }
 
+// Returns the endpoint associated to the local network
+// If the network is not alive it errors
 func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
 	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
@@ -89,6 +88,7 @@ func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
 	return GetTmpNetEndpoint(networkDir)
 }
 
+// Returns blockchain info for all non standard blockchains deployed into the local network
 func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo, error) {
 	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
@@ -97,109 +97,7 @@ func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo
 	return GetTmpNetBlockchainInfo(networkDir)
 }
 
-func GetClusterInfoWithEndpoint(grpcServerEndpoint string) (*rpcpb.ClusterInfo, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		grpcServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := sdkutils.GetAPIContext()
-	defer cancel()
-	resp, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return resp.GetClusterInfo(), nil
-}
-
-type ExtraLocalNetworkData struct {
-	AvalancheGoPath                  string
-	RelayerPath                      string
-	CChainTeleporterMessengerAddress string
-	CChainTeleporterRegistryAddress  string
-}
-
-func GetExtraLocalNetworkData(app *application.Avalanche, rootDataDir string) (bool, ExtraLocalNetworkData, error) {
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	if rootDataDir == "" {
-		var err error
-		rootDataDir, err = GetLocalNetworkDir(app)
-		if err != nil {
-			return false, extraLocalNetworkData, err
-		}
-	}
-	extraLocalNetworkDataPath := filepath.Join(rootDataDir, constants.ExtraLocalNetworkDataFilename)
-	if !utils.FileExists(extraLocalNetworkDataPath) {
-		return false, extraLocalNetworkData, nil
-	}
-	bs, err := os.ReadFile(extraLocalNetworkDataPath)
-	if err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	return true, extraLocalNetworkData, nil
-}
-
-func WriteExtraLocalNetworkData(
-	app *application.Avalanche,
-	rootDataDir string,
-	avalancheGoPath string,
-	relayerPath string,
-	cchainICMMessengerAddress string,
-	cchainICMRegistryAddress string,
-) error {
-	if rootDataDir == "" {
-		var err error
-		rootDataDir, err = GetLocalNetworkDir(app)
-		if err != nil {
-			return err
-		}
-	}
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	extraLocalNetworkDataPath := filepath.Join(rootDataDir, constants.ExtraLocalNetworkDataFilename)
-	if utils.FileExists(extraLocalNetworkDataPath) {
-		var err error
-		_, extraLocalNetworkData, err = GetExtraLocalNetworkData(app, rootDataDir)
-		if err != nil {
-			return err
-		}
-	}
-	if avalancheGoPath != "" {
-		extraLocalNetworkData.AvalancheGoPath = utils.ExpandHome(avalancheGoPath)
-	}
-	if relayerPath != "" {
-		extraLocalNetworkData.RelayerPath = utils.ExpandHome(relayerPath)
-	}
-	if cchainICMMessengerAddress != "" {
-		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainICMMessengerAddress
-	}
-	if cchainICMRegistryAddress != "" {
-		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainICMRegistryAddress
-	}
-	bs, err := json.Marshal(&extraLocalNetworkData)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
-}
-
-// assumes server is up
-func IsBootstrappedOld(ctx context.Context, cli client.Client) (bool, error) {
-	_, err := cli.Status(ctx)
-	if err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			return false, nil
-		}
-		return false, fmt.Errorf("failed trying to get network status: %w", err)
-	}
-	return true, nil
-}
-
+// Returns avalanchego version and RPC version for the local network
 func GetLocalNetworkAvalancheGoVersion(app *application.Avalanche) (bool, string, int, error) {
 	// not actually an error, network just not running
 	if isBootstrapped, err := LocalNetworkIsBootstrapped(app); err != nil {
@@ -228,6 +126,7 @@ func GetLocalNetworkAvalancheGoVersion(app *application.Avalanche) (bool, string
 	return true, parsedVersion, int(versionResponse.RPCProtocolVersion), nil
 }
 
+// Stops the local network
 func LocalNetworkStop(app *application.Avalanche) error {
 	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
@@ -239,10 +138,12 @@ func LocalNetworkStop(app *application.Avalanche) error {
 	return RemoveLocalNetworkMeta(app)
 }
 
+// Returns a context large enough to support all local network operations
 func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
 	return sdkutils.GetTimedContext(2 * time.Minute)
 }
 
+// Indicates if the local network validates a subnet at all
 func LocalNetworkHasValidatorsForSubnet(
 	app *application.Avalanche,
 	subnetID ids.ID,
@@ -254,6 +155,8 @@ func LocalNetworkHasValidatorsForSubnet(
 	return TmpNetHasValidatorsForSubnet(networkDir, subnetID)
 }
 
+// Indicates if a blockchain is bootstrapped on the local network
+// If the network has no validators for the blockchain, it fails
 func IsLocalNetworkBlockchainBootstrapped(
 	app *application.Avalanche,
 	blockchainID string,
@@ -268,6 +171,8 @@ func IsLocalNetworkBlockchainBootstrapped(
 	return IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, subnetID)
 }
 
+// Indicates if P-Chain is bootstrapped on the network, and also if
+// all blockchain that have validators on the network, are bootstrapped
 func LocalNetworkHealth(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
