@@ -71,9 +71,9 @@ func promptOwners(
 }
 
 func getControlKeys(kc *keychain.Keychain, creatingBlockchain bool) ([]string, bool, error) {
-	controlKeysInitialPrompt := "Configure which addresses may make changes to the subnet.\n" +
+	controlKeysInitialPrompt := "Configure which addresses may make changes to the blockchain.\n" +
 		"These addresses are known as your control keys. You will also\n" +
-		"set how many control keys are required to make a subnet change (the threshold)."
+		"set how many control keys are required to make a blockchain change (the threshold)."
 	ux.Logger.PrintToUser(controlKeysInitialPrompt)
 
 	if creatingBlockchain {
@@ -140,7 +140,7 @@ func getControlKeysForDeploy(kc *keychain.Keychain) ([]string, bool, error) {
 }
 
 func getControlKeysForChangeOwner(network models.Network) ([]string, bool, error) {
-	moreKeysPrompt := "Which control keys would you like to set as the new subnet owners?"
+	moreKeysPrompt := "Which control keys would you like to set as the new blockchain owners?"
 
 	const (
 		getFromStored = "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
@@ -163,7 +163,7 @@ func getControlKeysForChangeOwner(network models.Network) ([]string, bool, error
 	case getFromStored:
 		key, err := prompts.CaptureKeyAddress(
 			app.Prompt,
-			"be set as a subnet control key",
+			"be set as a control key",
 			app.GetKeyDir(),
 			app.GetKey,
 			network,
@@ -246,7 +246,7 @@ func controlKeysLoop(controlKeysPrompt string, network models.Network) ([]string
 		func(_ string) (string, error) {
 			return prompts.PromptAddress(
 				app.Prompt,
-				"be set as a subnet control key",
+				"be set as a control key",
 				app.GetKeyDir(),
 				app.GetKey,
 				"",
@@ -275,7 +275,7 @@ func getThreshold(maxLen int) (uint32, error) {
 	for i := 0; i < maxLen; i++ {
 		indexList[i] = strconv.Itoa(i + 1)
 	}
-	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to make a subnet change", indexList)
+	threshold, err := app.Prompt.CaptureList("Select required number of control key signatures to make a blockchain change", indexList)
 	if err != nil {
 		return 0, err
 	}
@@ -288,47 +288,4 @@ func getThreshold(maxLen int) (uint32, error) {
 		return 0, fmt.Errorf("the threshold can't be bigger than the number of control keys")
 	}
 	return uint32(intTh), err
-}
-
-func getKeyForChangeOwner(network models.Network) (string, error) {
-	changeAddrPrompt := "Which key would you like to set as change owner for leftover AVAX if the node is removed from validator set?"
-
-	const (
-		getFromStored = "Get address from an existing stored key (created from avalanche key create or avalanche key import)"
-		custom        = "Custom"
-	)
-
-	listOptions := []string{getFromStored, custom}
-	listDecision, err := app.Prompt.CaptureList(changeAddrPrompt, listOptions)
-	if err != nil {
-		return "", err
-	}
-
-	var key string
-
-	switch listDecision {
-	case getFromStored:
-		key, err = prompts.CaptureKeyAddress(
-			app.Prompt,
-			"be set as a change owner for leftover AVAX",
-			app.GetKeyDir(),
-			app.GetKey,
-			network,
-			prompts.PChainFormat,
-		)
-		if err != nil {
-			return "", err
-		}
-	case custom:
-		addrPrompt := "Enter change address (P-chain format)"
-		changeAddr, err := app.Prompt.CaptureAddress(addrPrompt)
-		if err != nil {
-			return "", err
-		}
-		key = changeAddr.String()
-	}
-	if err != nil {
-		return "", err
-	}
-	return key, nil
 }

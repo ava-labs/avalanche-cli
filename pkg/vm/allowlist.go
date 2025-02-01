@@ -11,8 +11,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-
+	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/olekukonko/tablewriter"
 	"golang.org/x/mod/semver"
@@ -59,11 +60,11 @@ func getNewAddresses(
 	}
 	for _, address := range addresses {
 		switch {
-		case utils.Belongs(allowList.AdminAddresses, address):
+		case sdkUtils.Belongs(allowList.AdminAddresses, address):
 			ux.Logger.RedXToUser(address.Hex() + " is already allowed as admin role")
-		case utils.Belongs(allowList.ManagerAddresses, address):
+		case sdkUtils.Belongs(allowList.ManagerAddresses, address):
 			ux.Logger.RedXToUser(address.Hex() + " is already allowed as manager role")
-		case utils.Belongs(allowList.EnabledAddresses, address):
+		case sdkUtils.Belongs(allowList.EnabledAddresses, address):
 			ux.Logger.RedXToUser(address.Hex() + " is already allowed as enabled role")
 		default:
 			newAddresses = append(newAddresses, address)

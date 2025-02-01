@@ -12,7 +12,7 @@ func getTokenSymbol(app *application.Avalanche, subnetEVMTokenSymbol string) (st
 	if subnetEVMTokenSymbol != "" {
 		return subnetEVMTokenSymbol, nil
 	}
-	ux.Logger.PrintToUser("Select a symbol for your subnet's native token")
+	ux.Logger.PrintToUser("Select a symbol for your blockchain native token")
 	tokenSymbol, err := app.Prompt.CaptureString("Token symbol")
 	if err != nil {
 		return "", err

@@ -94,6 +94,7 @@ var (
 	ErrValidatorIneligibleForRewards       = fmt.Errorf("validator ineligible for rewards")
 	ErrValidatorNotPoS                     = fmt.Errorf("validator not PoS")
 	ErrZeroWeightToValueFactor             = fmt.Errorf("zero weight to value factor")
+	ErrInvalidOwner                        = fmt.Errorf("invalid proxy or validator owner")
 	ErrorSignatureToError                  = map[string]error{
 		"InvalidInitialization()":                      ErrAlreadyInitialized,
 		"InvalidMaximumChurnPercentage(uint8)":         ErrInvalidMaximumChurnPercentage,
@@ -135,6 +136,8 @@ var (
 		"ValidatorIneligibleForRewards(bytes32)":       ErrValidatorIneligibleForRewards,
 		"ValidatorNotPoS(bytes32)":                     ErrValidatorNotPoS,
 		"ZeroWeightToValueFactor()":                    ErrZeroWeightToValueFactor,
+		"OwnableInvalidOwner(address)":                 ErrInvalidOwner,
+		"OwnableUnauthorizedAccount(address)":          ErrUnauthorizedOwner,
 	}
 )
 
@@ -175,7 +178,7 @@ func (p PoSParams) Verify() error {
 // [managerAddress], and the initial list of [validators]
 func GetPChainSubnetConversionWarpMessage(
 	network models.Network,
-	aggregatorLogLevel logging.Level,
+	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -223,7 +226,7 @@ func GetPChainSubnetConversionWarpMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		network,
-		aggregatorLogLevel,
+		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
 		aggregatorAllowPrivateIPs,

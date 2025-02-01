@@ -116,7 +116,7 @@ func stopAndSaveNetwork(flags StopFlags) error {
 		}
 	}
 
-	if err := node.StopCurrentIfLocalNetwork(app); err != nil {
+	if err := node.StopLocalNetworkConnectedCluster(app); err != nil {
 		return err
 	}
 

@@ -103,7 +103,7 @@ func TrackSubnetWithLocalMachine(
 	networkInfo := sc.Networks[network.Name()]
 	rpcEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		ux.Logger.PrintToUser("Restarting node %s to track subnet", nodeInfo.Name)
+		ux.Logger.PrintToUser("Restarting node %s to track newly deployed network", nodeInfo.Name)
 		if err := LocalNodeTrackSubnet(
 			ctx,
 			cli,
@@ -124,7 +124,7 @@ func TrackSubnetWithLocalMachine(
 	}
 	ux.Logger.PrintToUser("Waiting for blockchain %s to be bootstrapped", blockchainName)
 	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
-		return fmt.Errorf("failure waiting for local cluster %s bootstrapping", blockchainName)
+		return fmt.Errorf("failure waiting for local cluster %s bootstrapping: %w", blockchainName, err)
 	}
 	for _, rpcURL := range rpcEndpoints {
 		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
@@ -284,6 +284,7 @@ func StartLocalNode(
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
 	nodeConfig[config.IndexEnabledKey] = false
+	nodeConfig[config.IndexAllowIncompleteKey] = true
 
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
 	if err != nil {
@@ -338,7 +339,7 @@ func StartLocalNode(
 		case network.Kind == models.Local:
 			clusterInfo, err := localnet.GetClusterInfo()
 			if err != nil {
-				return fmt.Errorf("failure trying to connect to local network: %w", err)
+				return fmt.Errorf("failed to connect to local network: %w", err)
 			}
 			rootDataDir := clusterInfo.RootDataDir
 			networkJSONPath := filepath.Join(rootDataDir, "network.json")
@@ -426,6 +427,14 @@ func StartLocalNode(
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
+		// preseed nodes data from public archive. ignore errors
+		nodeNames := []string{}
+		for i := 1; i <= int(numNodes); i++ {
+			nodeNames = append(nodeNames, fmt.Sprintf("node%d", i))
+		}
+		err := DownloadPublicArchive(network, rootDir, nodeNames)
+		ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
+
 		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			_ = DestroyLocalNode(app, clusterName)
@@ -441,7 +450,7 @@ func StartLocalNode(
 
 	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
 	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
-		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
@@ -489,6 +498,9 @@ func UpsizeLocalNode(
 		nodeConfig = map[string]interface{}{}
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
+	if network.Kind == models.Fuji {
+		nodeConfig[config.IndexEnabledKey] = false // disable index for Fuji
+	}
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
 	if err != nil {
 		return "", err
@@ -499,7 +511,7 @@ func UpsizeLocalNode(
 	if network.Kind == models.Local {
 		clusterInfo, err := localnet.GetClusterInfo()
 		if err != nil {
-			return "", fmt.Errorf("failure trying to connect to local network: %w", err)
+			return "", fmt.Errorf("failed to connect to local network: %w", err)
 		}
 		rootDataDir := clusterInfo.RootDataDir
 		networkJSONPath := filepath.Join(rootDataDir, "network.json")
@@ -585,6 +597,8 @@ func UpsizeLocalNode(
 
 	spinSession := ux.NewUserSpinner()
 	spinner := spinSession.SpinToUser("Creating new node with name %s on local machine", newNodeName)
+	err = DownloadPublicArchive(network, rootDir, []string{newNodeName})
+	ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
 	// add new local node
 	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
@@ -592,7 +606,7 @@ func UpsizeLocalNode(
 	}
 	ux.Logger.Info("Waiting for node: %s to be bootstrapping P-Chain", newNodeName)
 	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
-		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping")
+		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
 	}
 	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
 	_, err = subnet.WaitForHealthy(ctx, cli)
@@ -617,7 +631,7 @@ func UpsizeLocalNode(
 	// wait until cluster is healthy
 	ux.Logger.Info("Waiting for node: %s to be bootstrapping %s", newNodeName, blockchainName)
 	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
-		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping")
+		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping: %w", err)
 	}
 	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
 	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
@@ -757,7 +771,10 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	return localClusters, nil
 }
 
-func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
+// ConnectedToLocalNetwork returns true if a local cluster is running
+// and it is connected to a local network.
+// It also returns the name of the cluster that is connected to the local network
+func ConnectedToLocalNetwork(app *application.Avalanche) (bool, string, error) {
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	currentlyRunningRootDir := ""
@@ -775,58 +792,43 @@ func DestroyCurrentIfLocalNetwork(app *application.Avalanche) error {
 		}
 	}
 	if currentlyRunningRootDir == "" {
-		return nil
+		return false, "", nil
 	}
 	localClusters, err := listLocalClusters(app, nil)
 	if err != nil {
-		return fmt.Errorf("failed to list local clusters: %w", err)
+		return false, "", fmt.Errorf("failed to list local clusters: %w", err)
 	}
 	for clusterName, rootDir := range localClusters {
 		clusterConf, err := app.GetClusterConfig(clusterName)
 		if err != nil {
-			return fmt.Errorf("failed to get cluster config: %w", err)
+			return false, "", fmt.Errorf("failed to get cluster config: %w", err)
 		}
 		network := models.ConvertClusterToNetwork(clusterConf.Network)
 		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
-			_ = DestroyLocalNode(app, clusterName)
+			return true, clusterName, nil
 		}
+	}
+	return false, "", nil
+}
+
+func DestroyLocalNetworkConnectedCluster(app *application.Avalanche) error {
+	isLocal, clusterName, err := ConnectedToLocalNetwork(app)
+	if err != nil {
+		return err
+	}
+	if isLocal {
+		_ = DestroyLocalNode(app, clusterName)
 	}
 	return nil
 }
 
-func StopCurrentIfLocalNetwork(app *application.Avalanche) error {
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	currentlyRunningRootDir := ""
-	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if cli != nil {
-		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
-		if status != nil && status.ClusterInfo != nil {
-			if status.ClusterInfo.RootDataDir != "" {
-				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
-			}
-		}
-	}
-	if currentlyRunningRootDir == "" {
-		return nil
-	}
-	localClusters, err := listLocalClusters(app, nil)
+func StopLocalNetworkConnectedCluster(app *application.Avalanche) error {
+	isLocal, _, err := ConnectedToLocalNetwork(app)
 	if err != nil {
-		return fmt.Errorf("failed to list local clusters: %w", err)
+		return err
 	}
-	for clusterName, rootDir := range localClusters {
-		clusterConf, err := app.GetClusterConfig(clusterName)
-		if err != nil {
-			return fmt.Errorf("failed to get cluster config: %w", err)
-		}
-		network := models.ConvertClusterToNetwork(clusterConf.Network)
-		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
-			return StopLocalNode(app)
-		}
+	if isLocal {
+		return StopLocalNode(app)
 	}
 	return nil
 }

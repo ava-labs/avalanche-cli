@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
@@ -27,6 +31,7 @@ type ValidatorManagerFlags struct {
 	PrivateKeyFlags             contract.PrivateKeyFlags
 	rpcEndpoint                 string
 	aggregatorLogLevel          string
+	aggregatorLogToStdout       bool
 	aggregatorExtraEndpoints    []string
 	aggregatorAllowPrivatePeers bool
 }
@@ -42,12 +47,6 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	validatorManagerSupportedNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Devnet,
-		networkoptions.Fuji,
-		networkoptions.Mainnet,
-	}
 	validatorManagerFlags ValidatorManagerFlags
 	initPOSManagerFlags   POSManagerSpecFlags
 )
@@ -61,17 +60,18 @@ func newInitValidatorManagerCmd() *cobra.Command {
 		RunE:  initValidatorManager,
 		Args:  cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &validatorManagerFlags.Network, true, validatorManagerSupportedNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &validatorManagerFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	validatorManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	cmd.Flags().StringVar(&validatorManagerFlags.rpcEndpoint, "rpc", "", "deploy the contract into the given rpc endpoint")
 	cmd.Flags().StringSliceVar(&validatorManagerFlags.aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&validatorManagerFlags.aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
-	cmd.Flags().StringVar(&validatorManagerFlags.aggregatorLogLevel, "aggregator-log-level", "Off", "log level to use with signature aggregator")
+	cmd.Flags().StringVar(&validatorManagerFlags.aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&validatorManagerFlags.aggregatorLogToStdout, "aggregator-log-to-stdout", false, "dump signature aggregator logs to stdout")
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.maximumStakeAmount, "pos-maximum-stake-amount", 1000, "(PoS only) maximum stake amount")
-	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", 100, "(PoS only) minimum stake duration")
+	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "(PoS only) minimum stake duration (in seconds)")
 	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "(PoS only) minimum delegation fee")
 	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only )maximum stake multiplier")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
@@ -89,7 +89,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		validatorManagerFlags.Network,
 		true,
 		false,
-		validatorManagerSupportedNetworkOptions,
+		networkoptions.DefaultSupportedNetworkOptions,
 		"",
 	)
 	if err != nil {
@@ -150,7 +150,18 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	clusterName := scNetwork.ClusterName
-	extraAggregatorPeers, err := blockchaincmd.GetAggregatorExtraPeers(clusterName, validatorManagerFlags.aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.aggregatorExtraEndpoints)
+	if err != nil {
+		return err
+	}
+	aggregatorLogger, err := utils.NewLogger(
+		constants.SignatureAggregatorLogName,
+		validatorManagerFlags.aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterName),
+		validatorManagerFlags.aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
+	)
 	if err != nil {
 		return err
 	}
@@ -187,7 +198,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			privateKey,
 			extraAggregatorPeers,
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
-			validatorManagerFlags.aggregatorLogLevel,
+			aggregatorLogger,
 		); err != nil {
 			return err
 		}
@@ -203,7 +214,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			privateKey,
 			extraAggregatorPeers,
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
-			validatorManagerFlags.aggregatorLogLevel,
+			aggregatorLogger,
 			validatorManagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),
 				MaximumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.maximumStakeAmount)),

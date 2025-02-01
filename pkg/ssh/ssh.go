@@ -672,7 +672,7 @@ func RunSSHCreatePlugin(host *models.Host, sc models.Sidecar) error {
 // RunSSHMergeSubnetNodeConfig merges subnet node config to the node config on the remote host
 func mergeSubnetNodeConfig(host *models.Host, subnetNodeConfigPath string) error {
 	if subnetNodeConfigPath == "" {
-		return fmt.Errorf("subnet node config path is empty")
+		return fmt.Errorf("node config path is empty")
 	}
 	remoteNodeConfigBytes, err := host.ReadFileBytes(remoteconfig.GetRemoteAvalancheNodeConfig(), constants.SSHFileOpsTimeout)
 	if err != nil {
@@ -684,11 +684,11 @@ func mergeSubnetNodeConfig(host *models.Host, subnetNodeConfigPath string) error
 	}
 	subnetNodeConfigBytes, err := os.ReadFile(subnetNodeConfigPath)
 	if err != nil {
-		return fmt.Errorf("error reading subnet node config: %w", err)
+		return fmt.Errorf("error reading node config: %w", err)
 	}
 	var subnetNodeConfig map[string]interface{}
 	if err := json.Unmarshal(subnetNodeConfigBytes, &subnetNodeConfig); err != nil {
-		return fmt.Errorf("error unmarshalling subnet node config: %w", err)
+		return fmt.Errorf("error unmarshalling node config: %w", err)
 	}
 	maps.Copy(remoteNodeConfig, subnetNodeConfig) // merge remote config into local subnet config. subnetNodeConfig takes precedence
 	mergedNodeConfigBytes, err := json.MarshalIndent(remoteNodeConfig, "", " ")
@@ -729,14 +729,14 @@ func RunSSHSyncSubnetData(app *application.Avalanche, host *models.Host, network
 	if app.AvagoSubnetConfigExists(subnetName) {
 		subnetConfig, err := app.LoadRawAvagoSubnetConfig(subnetName)
 		if err != nil {
-			return fmt.Errorf("error loading subnet config: %w", err)
+			return fmt.Errorf("error loading blockchain config: %w", err)
 		}
 		subnetConfigPath := filepath.Join(constants.CloudNodeConfigPath, "subnets", subnetIDStr+".json")
 		if err := host.MkdirAll(filepath.Dir(subnetConfigPath), constants.SSHDirOpsTimeout); err != nil {
 			return err
 		}
 		if err := host.UploadBytes(subnetConfig, subnetConfigPath, constants.SSHFileOpsTimeout); err != nil {
-			return fmt.Errorf("error uploading subnet config to %s: %w", subnetConfigPath, err)
+			return fmt.Errorf("error uploading blockchain config to %s: %w", subnetConfigPath, err)
 		}
 	}
 	// end subnet config
@@ -824,7 +824,7 @@ func RunSSHCheckAvalancheGoVersion(host *models.Host) ([]byte, error) {
 // RunSSHCheckBootstrapped checks if node is bootstrapped to primary network
 func RunSSHCheckBootstrapped(host *models.Host) ([]byte, error) {
 	// Craft and send the HTTP POST request
-	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.isBootstrapped\", \"params\": {\"chain\":\"X\"}}"
+	requestBody := "{\"jsonrpc\":\"2.0\", \"id\":1,\"method\" :\"info.isBootstrapped\", \"params\": {\"chain\":\"P\"}}"
 	return PostOverSSH(host, "", requestBody)
 }
 

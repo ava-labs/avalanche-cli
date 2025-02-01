@@ -98,6 +98,20 @@ func (app *Avalanche) GetLocalDir(clusterName string) string {
 	return filepath.Join(app.baseDir, constants.LocalDir, clusterName)
 }
 
+func (app *Avalanche) GetLogDir() string {
+	return filepath.Join(app.baseDir, constants.LogDir)
+}
+
+func (app *Avalanche) GetAggregatorLogDir(clusterName string) string {
+	if clusterName != "" {
+		conf, err := app.GetClusterConfig(clusterName)
+		if err == nil && conf.Local {
+			return app.GetLocalDir(clusterName)
+		}
+	}
+	return app.GetLogDir()
+}
+
 // Remove all plugins from plugin dir
 func (app *Avalanche) ResetPluginsDir() error {
 	pluginDir := app.GetPluginsDir()
@@ -271,7 +285,7 @@ func (app *Avalanche) GetAPMBaseDir() string {
 }
 
 func (app *Avalanche) GetAPMLog() string {
-	return filepath.Join(app.baseDir, constants.LogDir, constants.APMLogName)
+	return filepath.Join(app.GetLogDir(), constants.APMLogName)
 }
 
 func (app *Avalanche) GetAPMPluginDir() string {
@@ -558,7 +572,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		ClusterName:                clusterName,
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
-		return fmt.Errorf("creation of chains and subnet was successful, but failed to update sidecar: %w", err)
+		return fmt.Errorf("creation of blockchain was successful, but failed to update sidecar: %w", err)
 	}
 	return nil
 }
@@ -598,7 +612,10 @@ func (app *Avalanche) GetBlockchainNames() ([]string, error) {
 	return names, nil
 }
 
-func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]string, error) {
+func (app *Avalanche) GetBlockchainNamesOnNetwork(
+	network models.Network,
+	onlySOV bool,
+) ([]string, error) {
 	blockchainNames, err := app.GetBlockchainNames()
 	if err != nil {
 		return nil, err
@@ -620,7 +637,8 @@ func (app *Avalanche) GetBlockchainNamesOnNetwork(network models.Network) ([]str
 				}
 			}
 		}
-		if sc.Networks[networkName].BlockchainID != ids.Empty {
+		sovKindCriteria := !onlySOV || onlySOV && sc.Sovereign
+		if sc.Networks[networkName].BlockchainID != ids.Empty && sovKindCriteria {
 			filtered = append(filtered, blockchainName)
 		}
 	}
