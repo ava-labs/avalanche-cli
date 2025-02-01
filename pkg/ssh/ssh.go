@@ -594,13 +594,10 @@ func RunSSHRenderAvalancheNodeConfig(
 		} else {
 			partialSync, _ := partialSyncI.(string)
 			if partialSync == "true" {
-				fmt.Printf("setting partial sync to true")
 				avagoConf.PartialSync = true
 			} else {
-				fmt.Printf("setting partial sync to false")
 				avagoConf.PartialSync = false
 			}
-			avagoConf.PartialSync = true
 		}
 	}
 	// ready to render node config
