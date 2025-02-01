@@ -486,6 +486,18 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 	ux.Logger.PrintToUser("Your blockchain auth keys for chain creation: %s", subnetAuthKeys)
 
+	controlKeys, threshold, err = promptOwners(
+		kc,
+		controlKeys,
+		sameControlKey,
+		threshold,
+		subnetAuthKeys,
+		true,
+	)
+	if err != nil {
+		return err
+	}
+
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 

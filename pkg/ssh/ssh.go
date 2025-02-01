@@ -588,22 +588,17 @@ func RunSSHRenderAvalancheNodeConfig(
 		bootstrapIPs, _ := utils.StringValue(remoteAvagoConf, "bootstrap-ips")
 		avagoConf.BootstrapIDs = bootstrapIDs
 		avagoConf.BootstrapIPs = bootstrapIPs
-		//partialSyncI, ok := remoteAvagoConf[config.PartialSyncPrimaryNetworkKey]
-		//if ok {
-		//	partialSync, ok := partialSyncI.(bool)
-		//	if ok {
-		//		avagoConf.PartialSync = partialSync
-		//	}
-		//}
 		partialSyncI, ok := remoteAvagoConf[config.PartialSyncPrimaryNetworkKey]
 		if !ok {
 			fmt.Println("Key not found in remoteAvagoConf:", config.PartialSyncPrimaryNetworkKey)
 		} else {
-			partialSync, ok := partialSyncI.(bool)
-			if !ok {
-				fmt.Printf("Type assertion failed: expected bool but got %T\n", partialSyncI)
+			partialSync, _ := partialSyncI.(string)
+			if partialSync == "true" {
+				fmt.Printf("setting partial sync to true")
+				avagoConf.PartialSync = true
 			} else {
-				avagoConf.PartialSync = partialSync
+				fmt.Printf("setting partial sync to false")
+				avagoConf.PartialSync = false
 			}
 			avagoConf.PartialSync = true
 		}
