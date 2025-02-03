@@ -12,15 +12,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -29,10 +33,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ethereum/go-ethereum/common"
@@ -138,8 +140,262 @@ func newConvertCmd() *cobra.Command {
 	return cmd
 }
 
-func HandleUsingLocalMachine() {
+func HandleUsingLocalMachine(network models.Network, blockchainName string, deployBalance, availableBalance uint64) error {
+	var err error
+	if network.Kind == models.Local {
+		useLocalMachine = true
+	}
+	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
+	clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
+	if clusterNameFlagValue != "" {
+		clusterName = clusterNameFlagValue
+		clusterConfig, err := app.GetClusterConfig(clusterName)
+		if err != nil {
+			return err
+		}
+		// check if cluster is local
+		if clusterConfig.Local {
+			useLocalMachine = true
+			if len(bootstrapEndpoints) == 0 {
+				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+				if err != nil {
+					return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+						"please create your local node again and call blockchain deploy command again", err)
+				}
+			}
+			network = models.ConvertClusterToNetwork(network)
+		}
+	}
+	if numLocalNodes > 0 {
+		useLocalMachine = true
+	}
+	// ask user if we want to use local machine if cluster is not provided
+	if !useLocalMachine && clusterNameFlagValue == "" {
+		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
+		ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
+		useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
+		if err != nil {
+			return err
+		}
+	}
+	// default number of local machine nodes to be 1
+	// we set it here instead of at flag level so that we don't prompt if user wants to use local machine when they set numLocalNodes flag value
+	if useLocalMachine && numLocalNodes == 0 {
+		numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
+	}
+	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
+	if useLocalMachine && clusterNameFlagValue == "" {
+		if clusterExists, err := node.CheckClusterIsLocal(app, clusterName); err != nil {
+			return err
+		} else if clusterExists {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser(
+				logging.Red.Wrap("A local machine L1 deploy already exists for %s L1 and network %s"),
+				blockchainName,
+				network.Name(),
+			)
+			yes, err := app.Prompt.CaptureNoYes(
+				fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
+			)
+			if err != nil {
+				return err
+			}
+			if !yes {
+				return nil
+			}
+			_ = node.DestroyLocalNode(app, clusterName)
+		}
+		requiredBalance := deployBalance * uint64(numLocalNodes)
+		if availableBalance < requiredBalance {
+			return fmt.Errorf(
+				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
+				numLocalNodes,
+				requiredBalance,
+				availableBalance,
+			)
+		}
+		// stop local avalanchego process so that we can generate new local cluster
+		_ = node.StopLocalNode(app)
+		anrSettings := node.ANRSettings{}
+		avagoVersionSettings := node.AvalancheGoVersionSettings{}
+		if avagoBinaryPath == "" {
+			useLatestAvalanchegoPreReleaseVersion := true
+			useLatestAvalanchegoReleaseVersion := false
+			if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
+				useLatestAvalanchegoReleaseVersion = false
+				useLatestAvalanchegoPreReleaseVersion = false
+			} else {
+				userProvidedAvagoVersion = ""
+			}
+			avaGoVersionSetting := node.AvalancheGoVersionSettings{
+				UseCustomAvalanchegoVersion:           userProvidedAvagoVersion,
+				UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
+				UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+			}
+			avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+			if err != nil {
+				return err
+			}
+			_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
+			if err != nil {
+				return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
+			}
+			avagoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+		}
+		nodeConfig := map[string]interface{}{}
+		if app.AvagoNodeConfigExists(blockchainName) {
+			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
+			if err != nil {
+				return err
+			}
+		}
+		if partialSync {
+			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
+		}
+		if network.Kind == models.Fuji {
+			globalNetworkFlags.UseFuji = true
+		}
+		if network.Kind == models.Mainnet {
+			globalNetworkFlags.UseMainnet = true
+		}
+		// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
+		if err = node.StartLocalNode(
+			app,
+			clusterName,
+			avagoBinaryPath,
+			uint32(numLocalNodes),
+			nodeConfig,
+			anrSettings,
+			avagoVersionSettings,
+			network,
+			networkoptions.NetworkFlags{},
+			nil,
+		); err != nil {
+			return err
+		}
+		clusterNameFlagValue = clusterName
+		if len(bootstrapEndpoints) == 0 {
+			bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+			if err != nil {
+				return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+					"please create your local node again and call blockchain deploy command again", err)
+			}
+		}
+	}
+	return nil
+}
+
+func InitializeValidatorManager(blockchainName, validatorManagerOwner string, subnetID, blockchainID ids.ID, network models.Network, avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator, pos bool) (bool, error) {
+	var err error
+	clusterName := clusterNameFlagValue
+	switch {
+	case useLocalMachine:
+		if err := node.TrackSubnetWithLocalMachine(
+			app,
+			clusterName,
+			blockchainName,
+			avagoBinaryPath,
+		); err != nil {
+			return false, err
+		}
+	default:
+		if clusterName != "" {
+			if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
+				return false, err
+			}
+
+			if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
+				return false, err
+			}
+		}
+	}
+	tracked := true
+	chainSpec := contract.ChainSpec{
+		BlockchainName: blockchainName,
+	}
+	_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
+		app,
+		network,
+		chainSpec,
+	)
+	if err != nil {
+		return tracked, err
+	}
+	rpcURL, _, err := contract.GetBlockchainEndpoints(
+		app,
+		network,
+		chainSpec,
+		true,
+		false,
+	)
+	if err != nil {
+		return tracked, err
+	}
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return tracked, err
+	}
+	evm.WaitForChainID(client)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
+	if err != nil {
+		return tracked, err
+	}
+
+	ownerAddress := common.HexToAddress(validatorManagerOwner)
+	subnetSDK := blockchainSDK.Subnet{
+		SubnetID:            subnetID,
+		BlockchainID:        blockchainID,
+		OwnerAddress:        &ownerAddress,
+		RPC:                 rpcURL,
+		BootstrapValidators: avaGoBootstrapValidators,
+	}
+	aggregatorLogger, err := utils.NewLogger(
+		constants.SignatureAggregatorLogName,
+		aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterName),
+		aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
+	)
+	if err != nil {
+		return tracked, err
+	}
+	if pos {
+		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+		if err := subnetSDK.InitializeProofOfStake(
+			network,
+			genesisPrivateKey,
+			extraAggregatorPeers,
+			aggregatorAllowPrivatePeers,
+			aggregatorLogger,
+			validatorManagerSDK.PoSParams{
+				MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
+				MaximumStakeAmount:      big.NewInt(int64(poSMaximumStakeAmount)),
+				MinimumStakeDuration:    poSMinimumStakeDuration,
+				MinimumDelegationFee:    poSMinimumDelegationFee,
+				MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
+				WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
+				RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
+			},
+		); err != nil {
+			return tracked, err
+		}
+		ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
+	} else {
+		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
+		if err := subnetSDK.InitializeProofOfAuthority(
+			network,
+			genesisPrivateKey,
+			extraAggregatorPeers,
+			aggregatorAllowPrivatePeers,
+			aggregatorLogger,
+		); err != nil {
+			return tracked, err
+		}
+		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
+	}
+	return tracked, nil
 }
 
 // convertBlockchain is the cobra command run for converting subnets into sovereign L1
@@ -261,146 +517,8 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if !generateNodeID {
-		if network.Kind == models.Local {
-			useLocalMachine = true
-		}
-		networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
-		clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
-		if clusterNameFlagValue != "" {
-			clusterName = clusterNameFlagValue
-			clusterConfig, err := app.GetClusterConfig(clusterName)
-			if err != nil {
-				return err
-			}
-			// check if cluster is local
-			if clusterConfig.Local {
-				useLocalMachine = true
-				if len(bootstrapEndpoints) == 0 {
-					bootstrapEndpoints, err = getLocalBootstrapEndpoints()
-					if err != nil {
-						return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-							"please create your local node again and call blockchain deploy command again", err)
-					}
-				}
-				network = models.ConvertClusterToNetwork(network)
-			}
-		}
-		if numLocalNodes > 0 {
-			useLocalMachine = true
-		}
-		// ask user if we want to use local machine if cluster is not provided
-		if !useLocalMachine && clusterNameFlagValue == "" {
-			ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
-			ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
-
-			useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
-			if err != nil {
-				return err
-			}
-		}
-		// default number of local machine nodes to be 1
-		// we set it here instead of at flag level so that we don't prompt if user wants to use local machine when they set numLocalNodes flag value
-		if useLocalMachine && numLocalNodes == 0 {
-			numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
-		}
-		// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
-		if useLocalMachine && clusterNameFlagValue == "" {
-			if clusterExists, err := node.CheckClusterIsLocal(app, clusterName); err != nil {
-				return err
-			} else if clusterExists {
-				ux.Logger.PrintToUser("")
-				ux.Logger.PrintToUser(
-					logging.Red.Wrap("A local machine L1 deploy already exists for %s L1 and network %s"),
-					blockchainName,
-					network.Name(),
-				)
-				yes, err := app.Prompt.CaptureNoYes(
-					fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
-				)
-				if err != nil {
-					return err
-				}
-				if !yes {
-					return nil
-				}
-				_ = node.DestroyLocalNode(app, clusterName)
-			}
-			requiredBalance := deployBalance * uint64(numLocalNodes)
-			if availableBalance < requiredBalance {
-				return fmt.Errorf(
-					"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
-					numLocalNodes,
-					requiredBalance,
-					availableBalance,
-				)
-			}
-			// stop local avalanchego process so that we can generate new local cluster
-			_ = node.StopLocalNode(app)
-			anrSettings := node.ANRSettings{}
-			avagoVersionSettings := node.AvalancheGoVersionSettings{}
-			if avagoBinaryPath == "" {
-				useLatestAvalanchegoPreReleaseVersion := true
-				useLatestAvalanchegoReleaseVersion := false
-				if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
-					useLatestAvalanchegoReleaseVersion = false
-					useLatestAvalanchegoPreReleaseVersion = false
-				} else {
-					userProvidedAvagoVersion = ""
-				}
-				avaGoVersionSetting := node.AvalancheGoVersionSettings{
-					UseCustomAvalanchegoVersion:           userProvidedAvagoVersion,
-					UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-					UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
-				}
-				avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
-				if err != nil {
-					return err
-				}
-				_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
-				if err != nil {
-					return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
-				}
-				avagoBinaryPath = filepath.Join(avagoDir, "avalanchego")
-			}
-			nodeConfig := map[string]interface{}{}
-			if app.AvagoNodeConfigExists(blockchainName) {
-				nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
-				if err != nil {
-					return err
-				}
-			}
-			if partialSync {
-				nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
-			}
-			if network.Kind == models.Fuji {
-				globalNetworkFlags.UseFuji = true
-			}
-			if network.Kind == models.Mainnet {
-				globalNetworkFlags.UseMainnet = true
-			}
-			// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
-			if err = node.StartLocalNode(
-				app,
-				clusterName,
-				avagoBinaryPath,
-				uint32(numLocalNodes),
-				nodeConfig,
-				anrSettings,
-				avagoVersionSettings,
-				network,
-				networkoptions.NetworkFlags{},
-				nil,
-			); err != nil {
-				return err
-			}
-			clusterNameFlagValue = clusterName
-			if len(bootstrapEndpoints) == 0 {
-				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
-				if err != nil {
-					return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
-						"please create your local node again and call blockchain deploy command again", err)
-				}
-			}
+		if err = HandleUsingLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
+			return err
 		}
 	}
 	switch {
@@ -572,111 +690,8 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	if !convertOnly && !generateNodeID {
-		clusterName := clusterNameFlagValue
-		switch {
-		case useLocalMachine:
-			if err := node.TrackSubnetWithLocalMachine(
-				app,
-				clusterName,
-				blockchainName,
-				avagoBinaryPath,
-			); err != nil {
-				return err
-			}
-		default:
-			if clusterName != "" {
-				if err = node.SyncSubnet(app, clusterName, blockchainName, true, nil); err != nil {
-					return err
-				}
-
-				if err := node.WaitForHealthyCluster(app, clusterName, node.HealthCheckTimeout, node.HealthCheckPoolTime); err != nil {
-					return err
-				}
-			}
-		}
-		chainSpec := contract.ChainSpec{
-			BlockchainName: blockchainName,
-		}
-		_, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
-			app,
-			network,
-			chainSpec,
-		)
-		if err != nil {
+		if _, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake); err != nil {
 			return err
-		}
-		rpcURL, _, err := contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-		client, err := evm.GetClient(rpcURL)
-		if err != nil {
-			return err
-		}
-		evm.WaitForChainID(client)
-		extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
-		if err != nil {
-			return err
-		}
-
-		ownerAddress := common.HexToAddress(sidecar.ValidatorManagerOwner)
-		subnetSDK := blockchainSDK.Subnet{
-			SubnetID:            subnetID,
-			BlockchainID:        blockchainID,
-			OwnerAddress:        &ownerAddress,
-			RPC:                 rpcURL,
-			BootstrapValidators: avaGoBootstrapValidators,
-		}
-		aggregatorLogger, err := utils.NewLogger(
-			constants.SignatureAggregatorLogName,
-			aggregatorLogLevel,
-			constants.DefaultAggregatorLogLevel,
-			app.GetAggregatorLogDir(clusterName),
-			aggregatorLogToStdout,
-			ux.Logger.PrintToUser,
-		)
-		if err != nil {
-			return err
-		}
-		if sidecar.ValidatorManagement == models.ProofOfStake {
-			ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-			if err := subnetSDK.InitializeProofOfStake(
-				network,
-				genesisPrivateKey,
-				extraAggregatorPeers,
-				aggregatorAllowPrivatePeers,
-				aggregatorLogger,
-				validatorManagerSDK.PoSParams{
-					MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
-					MaximumStakeAmount:      big.NewInt(int64(poSMaximumStakeAmount)),
-					MinimumStakeDuration:    poSMinimumStakeDuration,
-					MinimumDelegationFee:    poSMinimumDelegationFee,
-					MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
-					WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
-					RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
-				},
-			); err != nil {
-				return err
-			}
-			ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-		} else {
-			ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-			if err := subnetSDK.InitializeProofOfAuthority(
-				network,
-				genesisPrivateKey,
-				extraAggregatorPeers,
-				aggregatorAllowPrivatePeers,
-				aggregatorLogger,
-			); err != nil {
-				return err
-			}
-			ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
