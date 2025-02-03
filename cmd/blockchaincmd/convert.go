@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
@@ -656,6 +658,12 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	// get keys for blockchain tx signing
+	_, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("obtained control keys, threshold %s , %s \n", controlKeys, threshold)
+	// get keys for add validator tx signing
 	if subnetAuthKeys != nil {
 		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
@@ -665,20 +673,9 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		fmt.Printf("obtained subnetauthkeys %s \n", subnetAuthKeys)
 	}
-	ux.Logger.PrintToUser("Your blockchain auth keys for chain creation: %s", subnetAuthKeys)
-
-	controlKeys, threshold, err = promptOwners(
-		kc,
-		controlKeys,
-		sameControlKey,
-		threshold,
-		subnetAuthKeys,
-		true,
-	)
-	if err != nil {
-		return err
-	}
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
