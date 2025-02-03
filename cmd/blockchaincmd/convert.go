@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"math/big"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
@@ -135,6 +136,10 @@ func newConvertCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
 	return cmd
+}
+
+func HandleUsingLocalMachine() {
+
 }
 
 // convertBlockchain is the cobra command run for converting subnets into sovereign L1

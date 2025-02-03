@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/config"
 	"maps"
 	"net/url"
 	"os"
@@ -17,6 +16,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/ava-labs/avalanchego/config"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
