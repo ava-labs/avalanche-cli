@@ -38,7 +38,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche blockchain deploy
+// avalanche blockchain convertToL1
 func newConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "convert [blockchainName]",
