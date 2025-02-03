@@ -398,6 +398,65 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 	return tracked, nil
 }
 
+func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar) ([]*txs.ConvertSubnetToL1Validator, error) {
+	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
+	if err != nil {
+		return avaGoBootstrapValidators, err
+	}
+	deployer.CleanCacheWallet()
+	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
+		controlKeys,
+		subnetAuthKeys,
+		subnetID,
+		blockchainID,
+		managerAddress,
+		avaGoBootstrapValidators,
+	)
+	if err != nil {
+		ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
+		return avaGoBootstrapValidators, err
+	}
+
+	savePartialTx := !isFullySigned && err == nil
+	ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
+
+	if savePartialTx {
+		if err := SaveNotFullySignedTx(
+			"ConvertSubnetToL1Tx",
+			tx,
+			chain,
+			subnetAuthKeys,
+			remainingSubnetAuthKeys,
+			outputTxPath,
+			false,
+		); err != nil {
+			return avaGoBootstrapValidators, err
+		}
+	}
+
+	_, err = ux.TimedProgressBar(
+		30*time.Second,
+		"Waiting for the Subnet to be converted into a sovereign L1 ...",
+		0,
+	)
+	if err != nil {
+		return avaGoBootstrapValidators, err
+	}
+	ux.Logger.PrintToUser("")
+	setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
+	return avaGoBootstrapValidators, app.UpdateSidecarNetworks(
+		&sidecar,
+		network,
+		subnetID,
+		blockchainID,
+		"",
+		"",
+		bootstrapValidators,
+		clusterNameFlagValue,
+	)
+}
+
 // convertBlockchain is the cobra command run for converting subnets into sovereign L1
 func convertBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
@@ -624,68 +683,8 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	var (
-		savePartialTx           bool
-		tx                      *txs.Tx
-		remainingSubnetAuthKeys []string
-		isFullySigned           bool
-	)
-	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
+	avaGoBootstrapValidators, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar)
 	if err != nil {
-		return err
-	}
-	deployer.CleanCacheWallet()
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
-	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
-		controlKeys,
-		subnetAuthKeys,
-		subnetID,
-		blockchainID,
-		managerAddress,
-		avaGoBootstrapValidators,
-	)
-	if err != nil {
-		ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
-		return err
-	}
-
-	savePartialTx = !isFullySigned && err == nil
-	ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
-
-	if savePartialTx {
-		if err := SaveNotFullySignedTx(
-			"ConvertSubnetToL1Tx",
-			tx,
-			chain,
-			subnetAuthKeys,
-			remainingSubnetAuthKeys,
-			outputTxPath,
-			false,
-		); err != nil {
-			return err
-		}
-	}
-
-	_, err = ux.TimedProgressBar(
-		30*time.Second,
-		"Waiting for the Subnet to be converted into a sovereign L1 ...",
-		0,
-	)
-	if err != nil {
-		return err
-	}
-	ux.Logger.PrintToUser("")
-	setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
-	if err := app.UpdateSidecarNetworks(
-		&sidecar,
-		network,
-		subnetID,
-		blockchainID,
-		"",
-		"",
-		bootstrapValidators,
-		clusterNameFlagValue,
-	); err != nil {
 		return err
 	}
 
