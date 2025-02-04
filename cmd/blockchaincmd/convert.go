@@ -358,13 +358,13 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 	return tracked, nil
 }
 
-func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar, controlKeysList, subnetAuthKeysList []string, managerAddressStr string) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
+func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar, controlKeysList, subnetAuthKeysList []string, validatorManagerAddressStr string) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
 		return avaGoBootstrapValidators, false, err
 	}
 	deployer.CleanCacheWallet()
-	managerAddress := common.HexToAddress(managerAddressStr)
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 		controlKeysList,
 		subnetAuthKeysList,

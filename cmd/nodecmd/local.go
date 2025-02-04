@@ -4,11 +4,12 @@ package nodecmd
 
 import (
 	"fmt"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
+
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
