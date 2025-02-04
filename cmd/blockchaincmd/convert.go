@@ -4,7 +4,6 @@ package blockchaincmd
 
 import (
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -417,18 +416,12 @@ func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *s
 }
 
 // convertBlockchain is the cobra command run for converting subnets into sovereign L1
-func convertBlockchain(cmd *cobra.Command, args []string) error {
+func convertBlockchain(_ *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
 	chains, err := ValidateSubnetNameAndGetChains(args)
 	if err != nil {
 		return err
-	}
-
-	if icmSpec.MessengerContractAddressPath != "" || icmSpec.MessengerDeployerAddressPath != "" || icmSpec.MessengerDeployerTxPath != "" || icmSpec.RegistryBydecodePath != "" {
-		if icmSpec.MessengerContractAddressPath == "" || icmSpec.MessengerDeployerAddressPath == "" || icmSpec.MessengerDeployerTxPath == "" || icmSpec.RegistryBydecodePath == "" {
-			return fmt.Errorf("if setting any ICM asset path, you must set all ICM asset paths")
-		}
 	}
 
 	var bootstrapValidators []models.SubnetValidator
@@ -444,10 +437,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	sidecar, err := app.LoadSidecar(chain)
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar for later update: %w", err)
-	}
-
-	if sidecar.ImportedFromAPM {
-		return errors.New("unable to deploy blockchains imported from a repo")
 	}
 
 	if outputTxPath != "" {
@@ -472,37 +461,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
-
-	isEVMGenesis, validationErr, err := app.HasSubnetEVMGenesis(chain)
-	if err != nil {
-		return err
-	}
-	if sidecar.VM == models.SubnetEvm && !isEVMGenesis {
-		return fmt.Errorf("failed to validate SubnetEVM genesis format: %w", validationErr)
-	}
-
-	chainGenesis, err := app.LoadRawGenesis(chain)
-	if err != nil {
-		return err
-	}
-
-	if isEVMGenesis {
-		// is is a subnet evm or a custom vm based on subnet evm
-		if network.Kind == models.Mainnet {
-			err = getSubnetEVMMainnetChainID(&sidecar, chain)
-			if err != nil {
-				return err
-			}
-			chainGenesis, err = updateSubnetEVMGenesisChainID(chainGenesis, sidecar.SubnetEVMMainnetChainID)
-			if err != nil {
-				return err
-			}
-		}
-		err = checkSubnetEVMDefaultAddressNotInAlloc(network, chain)
-		if err != nil {
-			return err
-		}
-	}
 
 	fee := uint64(0)
 
@@ -596,8 +554,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 			availableBalance,
 		)
 	}
-
-	network.HandlePublicNetworkSimulation()
 
 	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {

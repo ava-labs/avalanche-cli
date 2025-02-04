@@ -146,6 +146,9 @@ func commitTx(_ *cobra.Command, args []string) error {
 			"Waiting for the Subnet to be converted into a sovereign L1 ...",
 			0,
 		)
+		if err != nil {
+			return err
+		}
 		ux.Logger.PrintToUser("To finish conversion to sovereign L1, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
 	}
 
