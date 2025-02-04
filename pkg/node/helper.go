@@ -468,7 +468,7 @@ func GetRunnningLocalNodeClusterName(app *application.Avalanche) (string, error)
 		return "", err
 	}
 
-	pattern := fmt.Sprintf("%s/%s/([^/]+)", app.GetBaseDir(), constants.LocalDir)
+	pattern := fmt.Sprintf("%s/([^/]+)", app.GetLocalClustersDir())
 	re := regexp.MustCompile(pattern)
 	matches := re.FindStringSubmatch(status.ClusterInfo.GetRootDataDir())
 	if len(matches) < 2 {

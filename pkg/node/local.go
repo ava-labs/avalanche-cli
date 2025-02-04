@@ -76,7 +76,7 @@ func TrackSubnetWithLocalMachine(
 	default:
 		return fmt.Errorf("unknown vm: %s", sc.VM)
 	}
-	rootDir := app.GetLocalDir(clusterName)
+	rootDir := app.GetLocalClusterDir(clusterName)
 	pluginPath := filepath.Join(rootDir, "node1", "plugins", vmID.String())
 	if err := utils.FileCopy(vmBin, pluginPath); err != nil {
 		return err
@@ -219,7 +219,7 @@ func StartLocalNode(
 	}
 
 	// check if this is existing cluster
-	rootDir := app.GetLocalDir(clusterName)
+	rootDir := app.GetLocalClusterDir(clusterName)
 	pluginDir := filepath.Join(rootDir, "node1", "plugins")
 	// make sure rootDir exists
 	if err := os.MkdirAll(rootDir, 0o700); err != nil {
@@ -247,6 +247,7 @@ func StartLocalNode(
 		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
 		ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 	}
+	return fmt.Errorf("PEPE")
 	serverLogPath := filepath.Join(rootDir, "server.log")
 	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "", true)
 	if err := sd.StartServer(
@@ -453,7 +454,7 @@ func UpsizeLocalNode(
 	if err != nil {
 		return "", err
 	}
-	rootDir := app.GetLocalDir(clusterName)
+	rootDir := app.GetLocalClusterDir(clusterName)
 	pluginDir := filepath.Join(rootDir, "node1", "plugins")
 
 	if nodeConfig == nil {
@@ -579,7 +580,7 @@ func UpsizeLocalNode(
 }
 
 func localClusterDataExists(app *application.Avalanche, clusterName string) bool {
-	rootDir := app.GetLocalDir(clusterName)
+	rootDir := app.GetLocalClusterDir(clusterName)
 	return utils.FileExists(filepath.Join(rootDir, "state.json"))
 }
 
@@ -627,7 +628,7 @@ func addLocalClusterConfig(app *application.Avalanche, network models.Network) e
 func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
 	_ = StopLocalNode(app)
 
-	rootDir := app.GetLocalDir(clusterName)
+	rootDir := app.GetLocalClusterDir(clusterName)
 	if err := os.RemoveAll(rootDir); err != nil {
 		return err
 	}
@@ -689,7 +690,7 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 	for clusterName := range clustersConfig.Clusters {
 		if len(clusterNamesToInclude) == 0 || slices.Contains(clusterNamesToInclude, clusterName) {
 			if ok, err := CheckClusterIsLocal(app, clusterName); err == nil && ok {
-				localClusters[clusterName] = app.GetLocalDir(clusterName)
+				localClusters[clusterName] = app.GetLocalClusterDir(clusterName)
 			}
 		}
 	}
