@@ -47,8 +47,9 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	validatorManagerFlags ValidatorManagerFlags
-	initPOSManagerFlags   POSManagerSpecFlags
+	validatorManagerFlags   ValidatorManagerFlags
+	initPOSManagerFlags     POSManagerSpecFlags
+	validatorManagerAddress string
 )
 
 // avalanche contract initValidatorManager
@@ -75,6 +76,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "(PoS only) minimum delegation fee")
 	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only )maximum stake multiplier")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -199,6 +201,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			extraAggregatorPeers,
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
 			aggregatorLogger,
+			validatorManagerAddress,
 		); err != nil {
 			return err
 		}
@@ -224,6 +227,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				WeightToValueFactor:     big.NewInt(int64(initPOSManagerFlags.weightToValueFactor)),
 				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
 			},
+			validatorManagerAddress,
 		); err != nil {
 			return err
 		}

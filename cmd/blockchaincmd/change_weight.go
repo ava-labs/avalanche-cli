@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -47,6 +48,7 @@ The L1 has to be a Proof of Authority L1.`,
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -143,7 +145,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	validationID, err := validator.GetValidationID(rpcURL, nodeID)
+	validationID, err := validator.GetValidationID(rpcURL, nodeID, validatorManagerAddress)
 	if err != nil {
 		return err
 	}

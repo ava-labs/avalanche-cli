@@ -68,6 +68,7 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatormanagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -296,6 +297,7 @@ func removeValidatorSOV(
 		sc.PoS(),
 		uptimeSec,
 		isBootstrapValidator || force,
+		validatorManagerAddress,
 	)
 	if err != nil && errors.Is(err, validatormanagerSDK.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Calculated rewards is zero. Validator %s is not eligible for rewards", nodeID)
@@ -319,6 +321,7 @@ func removeValidatorSOV(
 			sc.PoS(),
 			uptimeSec,
 			true, // force
+			validatorManagerAddress,
 		)
 		if err != nil {
 			return err
@@ -353,6 +356,7 @@ func removeValidatorSOV(
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
+		validatorManagerAddress,
 	); err != nil {
 		return err
 	}

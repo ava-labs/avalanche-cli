@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"os"
 	"path/filepath"
 
@@ -84,14 +85,14 @@ var (
 	cchainIcmKeyName                string
 	relayerAllowPrivateIPs          bool
 
-	poSMinimumStakeAmount     uint64
-	poSMaximumStakeAmount     uint64
-	poSMinimumStakeDuration   uint64
-	poSMinimumDelegationFee   uint16
-	poSMaximumStakeMultiplier uint8
-	poSWeightToValueFactor    uint64
-	deployBalanceAVAX         float64
-
+	poSMinimumStakeAmount          uint64
+	poSMaximumStakeAmount          uint64
+	poSMinimumStakeDuration        uint64
+	poSMinimumDelegationFee        uint16
+	poSMaximumStakeMultiplier      uint8
+	poSWeightToValueFactor         uint64
+	deployBalanceAVAX              float64
+	validatorManagerAddress        string
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
@@ -203,6 +204,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -776,7 +778,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys)
+		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerAddress)
 		if err != nil {
 			return err
 		}

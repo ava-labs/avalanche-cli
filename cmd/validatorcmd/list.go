@@ -12,13 +12,13 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"golang.org/x/exp/maps"
 
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -32,7 +32,7 @@ func NewListCmd() *cobra.Command {
 		RunE:  list,
 		Args:  cobrautils.ExactArgs(1),
 	}
-
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	return cmd
 }
@@ -88,7 +88,7 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerAddress)
 
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),

@@ -109,6 +109,7 @@ func SetupPoA(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
+	validatorManagerAddressStr string,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		network,
@@ -116,6 +117,7 @@ func SetupPoA(
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
+		validatorManagerAddressStr,
 	)
 }
 
@@ -132,6 +134,7 @@ func SetupPoS(
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	posParams validatorManagerSDK.PoSParams,
+	validatorManagerAddressStr string,
 ) error {
 	return subnet.InitializeProofOfStake(network,
 		privateKey,
@@ -139,5 +142,6 @@ func SetupPoS(
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		posParams,
+		validatorManagerAddressStr,
 	)
 }

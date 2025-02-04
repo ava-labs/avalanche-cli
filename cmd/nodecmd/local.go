@@ -4,6 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"math/big"
 	"path/filepath"
 	"strings"
@@ -62,6 +63,7 @@ var (
 	publicKey                 string
 	pop                       string
 	minimumStakeDuration      uint64
+	validatorManagerAddress   string
 )
 
 // const snapshotName = "local_snapshot"
@@ -287,6 +289,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 
 	return cmd
 }
@@ -475,6 +478,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 			kc,
 			balance,
 			payerPrivateKey,
+			validatorManagerAddress,
 		); err != nil {
 			return err
 		}
@@ -494,6 +498,7 @@ func addAsValidator(network models.Network,
 	kc *keychain.Keychain,
 	balance uint64,
 	payerPrivateKey string,
+	validatorManagerAddressStr string,
 ) error {
 	var nodeIDStr string
 	// get node data
@@ -544,6 +549,7 @@ func addAsValidator(network models.Network,
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		big.NewInt(int64(stakeAmount)),
+		validatorManagerAddressStr,
 	)
 	if err != nil {
 		return err
@@ -576,6 +582,7 @@ func addAsValidator(network models.Network,
 		extraAggregatorPeers,
 		true,
 		aggregatorLogger,
+		validatorManagerAddress,
 	); err != nil {
 		return err
 	}

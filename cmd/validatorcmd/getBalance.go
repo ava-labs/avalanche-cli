@@ -13,7 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -27,9 +27,10 @@ import (
 var globalNetworkFlags networkoptions.NetworkFlags
 
 var (
-	l1              string
-	validationIDStr string
-	nodeIDStr       string
+	l1                      string
+	validationIDStr         string
+	nodeIDStr               string
+	validatorManagerAddress string
 )
 
 func NewGetBalanceCmd() *cobra.Command {
@@ -46,6 +47,7 @@ P-Chain continuous fee`,
 	cmd.Flags().StringVar(&l1, "l1", "", "name of L1")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validation ID of the validator")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node ID of the validator")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -63,7 +65,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	validationID, cancel, err := getNodeValidationID(network, l1, nodeIDStr, validationIDStr)
+	validationID, cancel, err := getNodeValidationID(network, l1, nodeIDStr, validationIDStr, validatorManagerAddress)
 	if err != nil {
 		return err
 	}
@@ -90,8 +92,9 @@ func getBalance(_ *cobra.Command, _ []string) error {
 func getNodeValidationID(
 	network models.Network,
 	l1 string,
-	nodeIDStr string,
-	validationIDStr string,
+	nodeIDStr,
+	validationIDStr,
+	validatorManagerAddressStr string,
 ) (ids.ID, bool, error) {
 	var (
 		validationID ids.ID
@@ -191,7 +194,7 @@ func getNodeValidationID(
 		if err != nil {
 			return ids.Empty, false, err
 		}
-		managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+		managerAddress := common.HexToAddress(validatorManagerAddressStr)
 		validationID, err = validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			return ids.Empty, false, err

@@ -94,6 +94,7 @@ func newConvertCmd() *cobra.Command {
 	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -335,6 +336,7 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 				WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
 				RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
 			},
+			validatorManagerAddress,
 		); err != nil {
 			return tracked, err
 		}
@@ -347,6 +349,7 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 			extraAggregatorPeers,
 			aggregatorAllowPrivatePeers,
 			aggregatorLogger,
+			validatorManagerAddress,
 		); err != nil {
 			return tracked, err
 		}
@@ -355,13 +358,13 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 	return tracked, nil
 }
 
-func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar, controlKeysList, subnetAuthKeysList []string) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
+func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar, controlKeysList, subnetAuthKeysList []string, managerAddressStr string) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
 		return avaGoBootstrapValidators, false, err
 	}
 	deployer.CleanCacheWallet()
-	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
+	managerAddress := common.HexToAddress(managerAddressStr)
 	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 		controlKeysList,
 		subnetAuthKeysList,
@@ -581,7 +584,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys)
+	avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerAddress)
 	if err != nil {
 		return err
 	}

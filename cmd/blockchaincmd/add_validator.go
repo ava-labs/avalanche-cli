@@ -514,6 +514,7 @@ func CallAddValidator(
 		delegationFee,
 		duration,
 		big.NewInt(int64(stakeAmount)),
+		validatorManagerAddress,
 	)
 	if err != nil {
 		return err
@@ -545,6 +546,7 @@ func CallAddValidator(
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
+		validatorManagerAddress,
 	); err != nil {
 		return err
 	}
