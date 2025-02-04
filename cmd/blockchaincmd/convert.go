@@ -609,8 +609,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("obtained control keys, threshold %s , %s \n", controlKeys, threshold)
-	fmt.Printf("kc keys %s \n", kcKeys)
 	// get keys for convertL1 tx signing
 	if subnetAuthKeys != nil {
 		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
@@ -621,7 +619,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("obtained subnetauthkeys %s \n", subnetAuthKeys)
 	}
 	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
 
