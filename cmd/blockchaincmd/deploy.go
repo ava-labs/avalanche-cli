@@ -776,9 +776,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		avaGoBootstrapValidators, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar)
+		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys)
 		if err != nil {
 			return err
+		}
+
+		if savePartialTx {
+			return nil
 		}
 
 		if !convertOnly && !generateNodeID {

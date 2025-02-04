@@ -56,61 +56,12 @@ func newConvertCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
 	privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
-	cmd.Flags().StringVar(
-		&userProvidedAvagoVersion,
-		"avalanchego-version",
-		constants.DefaultAvalancheGoVersion,
-		"use this version of avalanchego (ex: v1.17.12)",
-	)
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
-	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make blockchain changes")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate chain creation")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
-	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet deploy only]")
+	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
+	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
+	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
-	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "do not create a subnet, deploy the blockchain into the given subnet id")
-	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
-	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "noicm", false, "skip automatic ICM deploy")
-	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
-	cmd.Flags().StringVar(
-		&icmSpec.ICMVersion,
-		"teleporter-version",
-		constants.LatestReleaseVersionTag,
-		"ICM version to deploy",
-	)
-	cmd.Flags().StringVar(
-		&icmSpec.ICMVersion,
-		"icm-version",
-		constants.LatestReleaseVersionTag,
-		"ICM version to deploy",
-	)
-	cmd.Flags().StringVar(
-		&icmSpec.RelayerVersion,
-		"relayer-version",
-		constants.LatestPreReleaseVersionTag,
-		"relayer version to deploy",
-	)
-	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
-	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
-	cmd.Flags().Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
-	cmd.Flags().StringVar(&relayerKeyName, "relayer-key", "", "key to be used by default both for rewards and to pay fees")
-	cmd.Flags().StringVar(&icmKeyName, "icm-key", constants.ICMKeyName, "key to be used to pay for ICM deploys")
-	cmd.Flags().StringVar(&cchainIcmKeyName, "cchain-icm-key", "", "key to be used to pay for ICM deploys on C-Chain")
-	cmd.Flags().BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
-	cmd.Flags().StringVar(&cChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
-	cmd.Flags().BoolVar(&relayerAllowPrivateIPs, "relayer-allow-private-ips", true, "allow relayer to connec to private ips")
-	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
-	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an ICM Messenger deployer address file")
-	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an ICM Messenger deployer tx file")
-	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
+
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
@@ -138,7 +89,12 @@ func newConvertCmd() *cobra.Command {
 	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
-	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
+
+	cmd.Flags().BoolVar(&createFlags.proofOfAuthority, "proof-of-authority", false, "use proof of authority(PoA) for validator management")
+	cmd.Flags().BoolVar(&createFlags.proofOfStake, "proof-of-stake", false, "use proof of stake(PoS) for validator management")
+	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
+	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
+	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	return cmd
 }
 
@@ -400,16 +356,16 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 	return tracked, nil
 }
 
-func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar) ([]*txs.ConvertSubnetToL1Validator, error) {
+func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar, controlKeysList, subnetAuthKeysList []string) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
-		return avaGoBootstrapValidators, err
+		return avaGoBootstrapValidators, false, err
 	}
 	deployer.CleanCacheWallet()
 	managerAddress := common.HexToAddress(validatorManagerSDK.ProxyContractAddress)
 	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
-		controlKeys,
-		subnetAuthKeys,
+		controlKeysList,
+		subnetAuthKeysList,
 		subnetID,
 		blockchainID,
 		managerAddress,
@@ -417,11 +373,10 @@ func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *s
 	)
 	if err != nil {
 		ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
-		return avaGoBootstrapValidators, err
+		return avaGoBootstrapValidators, false, err
 	}
 
 	savePartialTx := !isFullySigned && err == nil
-	ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
 
 	if savePartialTx {
 		if err := SaveNotFullySignedTx(
@@ -433,21 +388,23 @@ func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *s
 			outputTxPath,
 			false,
 		); err != nil {
-			return avaGoBootstrapValidators, err
+			return avaGoBootstrapValidators, savePartialTx, err
+		}
+	} else {
+		ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
+		_, err = ux.TimedProgressBar(
+			30*time.Second,
+			"Waiting for the Subnet to be converted into a sovereign L1 ...",
+			0,
+		)
+		if err != nil {
+			return avaGoBootstrapValidators, savePartialTx, err
 		}
 	}
 
-	_, err = ux.TimedProgressBar(
-		30*time.Second,
-		"Waiting for the Subnet to be converted into a sovereign L1 ...",
-		0,
-	)
-	if err != nil {
-		return avaGoBootstrapValidators, err
-	}
 	ux.Logger.PrintToUser("")
 	setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
-	return avaGoBootstrapValidators, app.UpdateSidecarNetworks(
+	return avaGoBootstrapValidators, savePartialTx, app.UpdateSidecarNetworks(
 		&sidecar,
 		network,
 		subnetID,
@@ -630,11 +587,6 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// from here on we are assuming a public deploy
-	if subnetOnly && subnetIDStr != "" {
-		return errMutuallyExlusiveSubnetFlags
-	}
-
 	requiredBalance := deployBalance * uint64(len(bootstrapValidators))
 	if availableBalance < requiredBalance {
 		return fmt.Errorf(
@@ -647,23 +599,19 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 
 	network.HandlePublicNetworkSimulation()
 
-	// add control keys to the keychain whenever possible
-	if err := kc.AddAddresses(controlKeys); err != nil {
-		return err
-	}
-
 	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
 		return err
 	}
 
 	// get keys for blockchain tx signing
-	_, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("obtained control keys, threshold %s , %s \n", controlKeys, threshold)
-	// get keys for add validator tx signing
+	fmt.Printf("kc keys %s \n", kcKeys)
+	// get keys for convertL1 tx signing
 	if subnetAuthKeys != nil {
 		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
 			return err
@@ -680,9 +628,13 @@ func convertBlockchain(cmd *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	avaGoBootstrapValidators, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar)
+	avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys)
 	if err != nil {
 		return err
+	}
+
+	if savePartialTx {
+		return nil
 	}
 
 	if !convertOnly && !generateNodeID {
