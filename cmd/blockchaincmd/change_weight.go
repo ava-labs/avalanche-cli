@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"

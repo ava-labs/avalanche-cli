@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"os"
 	"path/filepath"
+
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
