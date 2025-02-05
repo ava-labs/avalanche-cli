@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -47,7 +46,6 @@ P-Chain continuous fee`,
 	cmd.Flags().StringVar(&l1, "l1", "", "name of L1")
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validation ID of the validator")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node ID of the validator")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -65,7 +63,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	validationID, cancel, err := getNodeValidationID(network, l1, nodeIDStr, validationIDStr, validatorManagerAddress)
+	validationID, cancel, err := getNodeValidationID(network, l1, nodeIDStr, validationIDStr)
 	if err != nil {
 		return err
 	}
@@ -93,8 +91,7 @@ func getNodeValidationID(
 	network models.Network,
 	l1 string,
 	nodeIDStr,
-	validationIDStr,
-	validatorManagerAddressStr string,
+	validationIDStr string,
 ) (ids.ID, bool, error) {
 	var (
 		validationID ids.ID
@@ -148,16 +145,22 @@ func getNodeValidationID(
 			}
 			l1 = chainSpec.BlockchainName
 		}
-		if nodeIDStr == "" {
-			if l1 != "" {
-				sc, err := app.LoadSidecar(l1)
-				if err != nil {
-					return ids.Empty, false, fmt.Errorf("failed to load sidecar: %w", err)
-				}
-				if !sc.Sovereign {
-					return ids.Empty, false, fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
-				}
+		sc, err := app.LoadSidecar(l1)
+		if err != nil {
+			return ids.Empty, false, fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		if !sc.Sovereign {
+			return ids.Empty, false, fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
+		}
+		if sc.ValidatorManagerAddress == "" {
+			validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
+			if err != nil {
+				return ids.Empty, false, err
 			}
+		} else {
+			validatorManagerAddress = sc.ValidatorManagerOwner
+		}
+		if nodeIDStr == "" {
 			subnetID, err := contract.GetSubnetID(app, network, chainSpec)
 			if err != nil {
 				return ids.Empty, false, err
@@ -194,7 +197,7 @@ func getNodeValidationID(
 		if err != nil {
 			return ids.Empty, false, err
 		}
-		managerAddress := common.HexToAddress(validatorManagerAddressStr)
+		managerAddress := common.HexToAddress(validatorManagerAddress)
 		validationID, err = validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			return ids.Empty, false, err

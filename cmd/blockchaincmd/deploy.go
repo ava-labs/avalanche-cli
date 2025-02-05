@@ -10,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
@@ -205,7 +203,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -778,6 +775,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	tracked := false
 
+	validatorManagerAddress = sidecar.ValidatorManagerAddress
 	if sidecar.Sovereign {
 		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerAddress)
 		if err != nil {

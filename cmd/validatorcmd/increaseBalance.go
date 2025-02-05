@@ -5,8 +5,6 @@ package validatorcmd
 import (
 	"fmt"
 
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -45,7 +43,6 @@ func NewIncreaseBalanceCmd() *cobra.Command {
 	cmd.Flags().StringVar(&validationIDStr, "validation-id", "", "validationIDStr of the validator")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node ID of the validator")
 	cmd.Flags().Float64Var(&balanceAVAX, "balance", 0, "amount of AVAX to increase validator's balance by")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -63,7 +60,7 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	validationID, cancel, err := getNodeValidationID(network, l1, nodeIDStr, validationIDStr, validatorManagerAddress)
+	validationID, cancel, err := getNodeValidationID(network, l1, nodeIDStr, validationIDStr)
 	if err != nil {
 		return err
 	}

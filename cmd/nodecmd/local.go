@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 
@@ -290,7 +288,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 
 	return cmd
 }
@@ -370,6 +368,14 @@ func localValidate(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	if validatorManagerAddress == "" {
+		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
+		if err != nil {
+			return err
+		}
+	}
+
 	chainSpec := contract.ChainSpec{
 		BlockchainID: blockchainID,
 	}

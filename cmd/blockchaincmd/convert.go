@@ -99,7 +99,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringVar(&createFlags.validatorManagerOwner, "validator-manager-owner", "", "EVM address that controls Validator Manager Owner")
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatorManagerSDK.ProxyContractAddress, "validator manager address")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 	return cmd
 }
 
@@ -470,12 +470,20 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
 
+	if validatorManagerAddress == "" {
+		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
+		if err != nil {
+			return err
+		}
+	}
+
 	if err = promptValidatorManagementType(app, &sidecar); err != nil {
 		return err
 	}
 	if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
 		return err
 	}
+	sidecar.ValidatorManagerAddress = validatorManagerAddress
 	sidecar.Sovereign = true
 	fee := uint64(0)
 

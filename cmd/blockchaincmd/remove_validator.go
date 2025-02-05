@@ -68,7 +68,6 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", validatormanagerSDK.ProxyContractAddress, "validator manager address")
 	return cmd
 }
 
@@ -246,6 +245,15 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), sc.ValidatorManagerOwner)
 
+	if sc.ValidatorManagerAddress == "" {
+		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
+		if err != nil {
+			return err
+		}
+	} else {
+		validatorManagerAddress = sc.ValidatorManagerOwner
+	}
+	
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
