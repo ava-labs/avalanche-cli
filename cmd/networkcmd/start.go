@@ -78,7 +78,7 @@ func start(*cobra.Command, []string) error {
 }
 
 func Start(flags StartFlags, printEndpoints bool) error {
-	// verify is local network is bootstrapped
+	// verify local network is bootstrapped
 	if isBootstrapped, err := localnet.LocalNetworkIsBootstrapped(app); err != nil {
 		return err
 	} else if isBootstrapped {
