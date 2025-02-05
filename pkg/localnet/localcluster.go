@@ -5,7 +5,9 @@ package localnet
 import (
 	"fmt"
 	"os"
+	"context"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
@@ -88,4 +90,15 @@ func GetLocalNetworkClusters(app *application.Avalanche) ([]string, error) {
 
 func GetRunningClusters(app *application.Avalanche) ([]string, error) {
 	return nil, fmt.Errorf("unimplemented")
+}
+
+func WaitLocalClusterBlockchainBootstrapped(
+	app *application.Avalanche,
+	ctx context.Context,
+	clusterName string,
+	blockchainID string,
+	subnetID ids.ID,
+) error {
+	networkDir := GetLocalClusterDir(app, clusterName)
+	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, subnetID)
 }

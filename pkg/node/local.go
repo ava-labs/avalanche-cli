@@ -188,7 +188,7 @@ func CheckClusterIsLocal(app *application.Avalanche, clusterName string) (bool, 
 func StartLocalNode(
 	app *application.Avalanche,
 	clusterName string,
-	avalanchegoBinaryPath string,
+	avalancheGoBinaryPath string,
 	numNodes uint32,
 	nodeConfig map[string]interface{},
 	anrSettings ANRSettings,
@@ -206,70 +206,75 @@ func StartLocalNode(
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
 	}
-	return fmt.Errorf("PEPE")
-
-	// starts server
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
+	// setup avalanchego
 	var err error
-	avalancheGoVersion := "latest"
-	if avalanchegoBinaryPath == "" {
+	avalancheGoVersion := ""
+	if avalancheGoBinaryPath == "" {
 		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
 		if err != nil {
 			return err
 		}
-		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
-		if err != nil {
-			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
-		}
-		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
 		ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
 	}
-	serverLogPath := filepath.Join(rootDir, "server.log")
-	sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalanchegoBinaryPath, "", true)
-	if err := sd.StartServer(
-		constants.ServerRunFileLocalClusterPrefix,
-		binutils.LocalClusterGRPCServerPort,
-		binutils.LocalClusterGRPCGatewayPort,
-		rootDir,
-		serverLogPath,
-	); err != nil {
-		return err
-	}
-	avalancheGoBinPath, err := sd.SetupLocalEnv()
+	avalancheGoBinaryPath, err = localnet.SetupAvalancheGoBinary(app, avalancheGoVersion, avalancheGoBinaryPath)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err != nil {
-		return err
-	}
-	alreadyBootstrapped, err := localnet.IsANRNetworkBootstrapped(ctx, cli)
-	if err != nil {
-		return err
-	}
-	if alreadyBootstrapped {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("A local cluster is already executing")
-		ux.Logger.PrintToUser("please stop it by calling 'node local stop'")
-		return nil
-	}
+	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinaryPath)
 
+	// node config setup
 	if nodeConfig == nil {
 		nodeConfig = map[string]interface{}{}
 	}
 	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
 	nodeConfig[config.IndexEnabledKey] = false
 	nodeConfig[config.IndexAllowIncompleteKey] = true
-
 	nodeConfigBytes, err := json.Marshal(nodeConfig)
 	if err != nil {
 		return err
 	}
 	nodeConfigStr := string(nodeConfigBytes)
+
+	return fmt.Errorf("PEPE")
+
+	var (
+		ctx context.Context
+		cancel context.CancelFunc
+	)
 	if localnet.LocalClusterExists(app, clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
+		ctx, cancel = utils.GetANRContext()
+		defer cancel()
+		serverLogPath := filepath.Join(rootDir, "server.log")
+		sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalancheGoBinaryPath, "", true)
+		if err := sd.StartServer(
+			constants.ServerRunFileLocalClusterPrefix,
+			binutils.LocalClusterGRPCServerPort,
+			binutils.LocalClusterGRPCGatewayPort,
+			rootDir,
+			serverLogPath,
+		); err != nil {
+			return err
+		}
+		avalancheGoBinPath, err := sd.SetupLocalEnv()
+		if err != nil {
+			return err
+		}
+		cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+		if err != nil {
+			return err
+		}
+		alreadyBootstrapped, err := localnet.IsANRNetworkBootstrapped(ctx, cli)
+		if err != nil {
+			return err
+		}
+		if alreadyBootstrapped {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser("A local cluster is already executing")
+			ux.Logger.PrintToUser("please stop it by calling 'node local stop'")
+			return nil
+		}
+
 		loadSnapshotOpts := []client.OpOption{
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithReassignPortsIfUsed(true),
@@ -340,7 +345,7 @@ func StartLocalNode(
 		anrOpts := []client.OpOption{
 			client.WithNumNodes(numNodes),
 			client.WithNetworkID(network.ID),
-			client.WithExecPath(avalancheGoBinPath),
+			client.WithExecPath(avalancheGoBinaryPath),
 			client.WithRootDataDir(rootDir),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
@@ -375,21 +380,20 @@ func StartLocalNode(
 		err := DownloadPublicArchive(network, rootDir, nodeNames)
 		ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
 
-		if _, err := cli.Start(ctx, avalancheGoBinPath, anrOpts...); err != nil {
+		/*
+		if _, err := cli.Start(ctx, avalancheGoBinaryPath, anrOpts...); err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			_ = localnet.LocalClusterRemove(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
+		*/
+
 		ux.SpinComplete(spinner)
 		spinSession.Stop()
-		// save cluster config for the new local cluster
-		if err := addLocalClusterConfig(app, network); err != nil {
-			return err
-		}
 	}
 
 	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
-	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
+	if err := localnet.WaitLocalClusterBlockchainBootstrapped(app, ctx, clusterName, "P", ids.Empty); err != nil {
 		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
 	}
 
@@ -400,13 +404,13 @@ func StartLocalNode(
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
 
-	status, err := cli.Status(ctx)
+	cluster, err := localnet.GetLocalCluster(app, clusterName)
 	if err != nil {
 		return err
 	}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		ux.Logger.PrintToUser("URI: %s", nodeInfo.Uri)
-		ux.Logger.PrintToUser("NodeID: %s", nodeInfo.Id)
+	for _, node := range cluster.Nodes {
+		ux.Logger.PrintToUser("URI: %s", node.URI)
+		ux.Logger.PrintToUser("NodeID: %s", node.NodeID)
 		ux.Logger.PrintToUser("")
 	}
 
@@ -584,19 +588,6 @@ func preLocalChecks(
 	return nil
 }
 
-func addLocalClusterConfig(app *application.Avalanche, network models.Network) error {
-	clusterName := network.ClusterName
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	clusterConfig := clustersConfig.Clusters[clusterName]
-	clusterConfig.Local = true
-	clusterConfig.Network = network
-	clustersConfig.Clusters[clusterName] = clusterConfig
-	return app.WriteClustersConfigFile(&clustersConfig)
-}
-
 func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
 	_ = localnet.LocalClusterStop(app, clusterName)
 
@@ -634,46 +625,6 @@ func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []strin
 		}
 	}
 	return localClusters, nil
-}
-
-// ConnectedToLocalNetwork returns true if a local cluster is running
-// and it is connected to a local network.
-// It also returns the name of the cluster that is connected to the local network
-func ConnectedToLocalNetwork(app *application.Avalanche) (bool, string, error) {
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	currentlyRunningRootDir := ""
-	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if cli != nil {
-		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
-		if status != nil && status.ClusterInfo != nil {
-			if status.ClusterInfo.RootDataDir != "" {
-				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
-			}
-		}
-	}
-	if currentlyRunningRootDir == "" {
-		return false, "", nil
-	}
-	localClusters, err := listLocalClusters(app, nil)
-	if err != nil {
-		return false, "", fmt.Errorf("failed to list local clusters: %w", err)
-	}
-	for clusterName, rootDir := range localClusters {
-		clusterConf, err := app.GetClusterConfig(clusterName)
-		if err != nil {
-			return false, "", fmt.Errorf("failed to get cluster config: %w", err)
-		}
-		network := models.ConvertClusterToNetwork(clusterConf.Network)
-		if rootDir == currentlyRunningRootDir && network.Kind == models.Local {
-			return true, clusterName, nil
-		}
-	}
-	return false, "", nil
 }
 
 func LocalStatus(app *application.Avalanche, clusterName string, blockchainName string) error {
