@@ -18,6 +18,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -222,7 +223,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 
 	// if user chose to upsize a local node to add another local validator
 	if createLocalValidator {
-		anrSettings := node.ANRSettings{}
+		connectionSettings := localnet.ConnectionSettings{}
 		nodeConfig := map[string]interface{}{}
 		ux.Logger.PrintToUser("Creating a new Avalanche node on local machine to add as a new validator to blockchain %s", blockchainName)
 		if app.AvagoNodeConfigExists(blockchainName) {
@@ -250,7 +251,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 			subnetID,
 			avalancheGoBinPath,
 			nodeConfig,
-			anrSettings,
+			connectionSettings,
 		); err != nil {
 			return err
 		}

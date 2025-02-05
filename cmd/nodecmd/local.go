@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -171,14 +172,54 @@ func newLocalStatusCmd() *cobra.Command {
 
 func localStartNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	anrSettings := node.ANRSettings{
-		GenesisPath:          genesisPath,
-		UpgradePath:          upgradePath,
+	var (
+		err error
+		genesis []byte
+		upgrade []byte
+		stakingSignerKey []byte
+		stakingCertKey []byte
+		stakingTLSKey []byte
+	)
+	if genesisPath != "" {
+		genesis, err = os.ReadFile(genesisPath)
+		if err != nil {
+			return fmt.Errorf("could not read genesis at %s: %w", genesisPath, err)
+		}
+	}
+	if upgradePath != "" {
+		upgrade, err = os.ReadFile(upgradePath)
+		if err != nil {
+			return fmt.Errorf("could not read upgrade at %s: %w", upgradePath, err)
+		}
+	}
+	connectionSettings := localnet.ConnectionSettings{
+		Genesis:          genesis,
+		Upgrade:          upgrade,
 		BootstrapIDs:         bootstrapIDs,
 		BootstrapIPs:         bootstrapIPs,
-		StakingSignerKeyPath: stakingTLSKeyPath,
-		StakingCertKeyPath:   stakingCertKeyPath,
-		StakingTLSKeyPath:    stakingTLSKeyPath,
+	}
+	if stakingSignerKeyPath != "" {
+		stakingSignerKey, err = os.ReadFile(stakingSignerKeyPath)
+		if err != nil {
+			return fmt.Errorf("could not read staking signer key at %s: %w", stakingSignerKeyPath, err)
+		}
+	}
+	if stakingCertKeyPath != "" {
+		stakingCertKey, err = os.ReadFile(stakingCertKeyPath)
+		if err != nil {
+			return fmt.Errorf("could not read staking cert key at %s: %w", stakingCertKeyPath, err)
+		}
+	}
+	if stakingTLSKeyPath != "" {
+		stakingTLSKey, err = os.ReadFile(stakingTLSKeyPath)
+		if err != nil {
+			return fmt.Errorf("could not read staking TLS key at %s: %w", stakingTLSKeyPath, err)
+		}
+	}
+	nodeSettings := localnet.NodeSettings{
+		StakingSignerKey: stakingSignerKey,
+		StakingCertKey:   stakingCertKey,
+		StakingTLSKey:    stakingTLSKey,
 	}
 	if useCustomAvalanchegoVersion != "" {
 		useLatestAvalanchegoReleaseVersion = false
@@ -206,7 +247,8 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		avalanchegoBinaryPath,
 		numNodes,
 		nodeConfig,
-		anrSettings,
+		connectionSettings,
+		nodeSettings,
 		avaGoVersionSetting,
 		models.Network{},
 		globalNetworkFlags,

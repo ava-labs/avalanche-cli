@@ -670,8 +670,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						availableBalance,
 					)
 				}
-				// stop local avalanchego process so that we can generate new local cluster
-				anrSettings := node.ANRSettings{}
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
 				// setup (install if needed) avalanchego binary
 				avagoVersion := userProvidedAvagoVersion
@@ -716,7 +714,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					avagoBinaryPath,
 					uint32(numLocalNodes),
 					nodeConfig,
-					anrSettings,
+					localnet.ConnectionSettings{},
+					localnet.NodeSettings{},
 					avagoVersionSettings,
 					network,
 					networkoptions.NetworkFlags{},

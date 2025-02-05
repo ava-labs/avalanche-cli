@@ -51,6 +51,12 @@ type BlockchainInfo struct {
 	VMID     ids.ID
 }
 
+type NodeSettings struct {
+	StakingTLSKey    []byte
+	StakingCertKey   []byte
+	StakingSignerKey []byte
+}
+
 // Creates a new tmpnet with the given parameters
 // accepts:
 // - settint specific[rootDir] for the network,

@@ -205,3 +205,26 @@ func LocalNetworkHealth(
 	}
 	return pChainBootstrapped, true, nil
 }
+
+func GetLocalNetworkConnectionInfo(
+	app *application.Avalanche,
+) (ConnectionSettings, error) {
+	connectionSettings := ConnectionSettings{}
+	rootDataDir, err := GetLocalNetworkDir(app)
+	if err != nil {
+		return ConnectionSettings{}, fmt.Errorf("failed to connect to local network: %w", err)
+	}
+	connectionSettings.BootstrapIPs, connectionSettings.BootstrapIDs, err = GetTmpNetBootstrappers(rootDataDir)
+	if err != nil {
+		return ConnectionSettings{}, err
+	}
+	connectionSettings.Genesis, err = GetTmpNetGenesis(rootDataDir)
+	if err != nil {
+		return ConnectionSettings{}, err
+	}
+	connectionSettings.Upgrade, err = GetTmpNetUpgrade(rootDataDir)
+	if err != nil {
+		return ConnectionSettings{}, err
+	}
+	return connectionSettings, nil
+}

@@ -13,6 +13,13 @@ import (
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 )
 
+type ConnectionSettings struct {
+	Genesis []byte
+	Upgrade []byte
+	BootstrapIDs         []string
+	BootstrapIPs         []string
+}
+
 // Returns the directory associated to the local cluster
 func GetLocalClusterDir(
 	app *application.Avalanche,

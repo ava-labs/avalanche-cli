@@ -47,16 +47,6 @@ type AvalancheGoVersionSettings struct {
 	UseAvalanchegoVersionFromSubnet       string
 }
 
-type ANRSettings struct {
-	GenesisPath          string
-	UpgradePath          string
-	BootstrapIDs         []string
-	BootstrapIPs         []string
-	StakingTLSKeyPath    string
-	StakingCertKeyPath   string
-	StakingSignerKeyPath string
-}
-
 func AuthorizedAccessFromSettings(app *application.Avalanche) bool {
 	return app.Conf.GetConfigBoolValue(constants.ConfigAuthorizeCloudAccessKey)
 }

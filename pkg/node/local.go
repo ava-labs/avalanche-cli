@@ -191,7 +191,8 @@ func StartLocalNode(
 	avalancheGoBinaryPath string,
 	numNodes uint32,
 	nodeConfig map[string]interface{},
-	anrSettings ANRSettings,
+	connectionSettings localnet.ConnectionSettings,
+	nodeSettings localnet.NodeSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 	network models.Network,
 	networkFlags networkoptions.NetworkFlags,
@@ -234,8 +235,6 @@ func StartLocalNode(
 		return err
 	}
 	nodeConfigStr := string(nodeConfigBytes)
-
-	return fmt.Errorf("PEPE")
 
 	var (
 		ctx context.Context
@@ -309,8 +308,9 @@ func StartLocalNode(
 		}
 		network.ClusterName = clusterName
 
-		if err := preLocalChecks(anrSettings, avaGoVersionSetting); err != nil {
-			return err
+		// TODO: move this to localnet.localcluster
+		if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
+			return fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
 		}
 
 		switch {
@@ -319,52 +319,28 @@ func StartLocalNode(
 		case network.Kind == models.Mainnet:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
 		case network.Kind == models.Local:
-			anrSettings.BootstrapIPs, anrSettings.BootstrapIDs, anrSettings.GenesisPath, anrSettings.UpgradePath, err = GetLocalNetworkConnectionInfo(app)
+			connectionSettings, err = localnet.GetLocalNetworkConnectionInfo(app)
 			if err != nil {
 				return err
 			}
-			defer os.Remove(anrSettings.GenesisPath)
-			defer os.Remove(anrSettings.UpgradePath)
 		}
 
-		if anrSettings.StakingTLSKeyPath != "" && anrSettings.StakingCertKeyPath != "" && anrSettings.StakingSignerKeyPath != "" {
-			if err := os.MkdirAll(filepath.Join(rootDir, "node1", "staking"), 0o700); err != nil {
-				return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
-			}
-			if err := utils.FileCopy(anrSettings.StakingTLSKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.key")); err != nil {
-				return err
-			}
-			if err := utils.FileCopy(anrSettings.StakingCertKeyPath, filepath.Join(rootDir, "node1", "staking", "staker.crt")); err != nil {
-				return err
-			}
-			if err := utils.FileCopy(anrSettings.StakingSignerKeyPath, filepath.Join(rootDir, "node1", "staking", "signer.key")); err != nil {
-				return err
-			}
-		}
+		return fmt.Errorf("PEPE")
 
-		anrOpts := []client.OpOption{
-			client.WithNumNodes(numNodes),
-			client.WithNetworkID(network.ID),
-			client.WithExecPath(avalancheGoBinaryPath),
-			client.WithRootDataDir(rootDir),
-			client.WithReassignPortsIfUsed(true),
-			client.WithPluginDir(pluginDir),
-			client.WithFreshStakingIds(true),
-			client.WithZeroIP(false),
-			client.WithGlobalNodeConfig(nodeConfigStr),
-		}
-		if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
-			anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
-		}
-		if anrSettings.UpgradePath != "" && utils.FileExists(anrSettings.UpgradePath) {
-			anrOpts = append(anrOpts, client.WithUpgradePath(anrSettings.UpgradePath))
-		}
-		if anrSettings.BootstrapIDs != nil {
-			anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(anrSettings.BootstrapIDs))
-		}
-		if anrSettings.BootstrapIPs != nil {
-			anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
-		}
+		// TODO: do something with node settings
+
+		/*
+		client.WithRootDataDir(rootDir),
+		client.WithNumNodes(numNodes),
+		client.WithNetworkID(network.ID),
+		client.WithExecPath(avalancheGoBinaryPath),
+		client.WithPluginDir(pluginDir),
+		client.WithGlobalNodeConfig(nodeConfigStr),
+		anrOpts = append(anrOpts, client.WithGenesisPath(connectionSettings.GenesisPath))
+		anrOpts = append(anrOpts, client.WithUpgradePath(connectionSettings.UpgradePath))
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(connectionSettings.BootstrapIDs))
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(connectionSettings.BootstrapIPs))
+		*/
 
 		ctx, cancel = network.BootstrappingContext()
 		defer cancel()
@@ -372,6 +348,7 @@ func StartLocalNode(
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
+
 		// preseed nodes data from public archive. ignore errors
 		nodeNames := []string{}
 		for i := 1; i <= int(numNodes); i++ {
@@ -426,7 +403,7 @@ func UpsizeLocalNode(
 	subnetID ids.ID,
 	avalancheGoBinPath string,
 	nodeConfig map[string]interface{},
-	anrSettings ANRSettings,
+	connectionSettings localnet.ConnectionSettings,
 ) (
 	string, // added nodeName
 	error,
@@ -453,12 +430,10 @@ func UpsizeLocalNode(
 
 	// we will remove this code soon, so it can be not DRY
 	if network.Kind == models.Local {
-		anrSettings.BootstrapIPs, anrSettings.BootstrapIDs, anrSettings.GenesisPath, anrSettings.UpgradePath, err = GetLocalNetworkConnectionInfo(app)
+		connectionSettings, err = localnet.GetLocalNetworkConnectionInfo(app)
 		if err != nil {
 			return "", err
 		}
-		defer os.Remove(anrSettings.GenesisPath)
-		defer os.Remove(anrSettings.UpgradePath)
 	}
 	// end of code to be removed
 	anrOpts := []client.OpOption{
@@ -472,17 +447,19 @@ func UpsizeLocalNode(
 		client.WithZeroIP(false),
 		client.WithGlobalNodeConfig(nodeConfigStr),
 	}
-	if anrSettings.GenesisPath != "" && utils.FileExists(anrSettings.GenesisPath) {
-		anrOpts = append(anrOpts, client.WithGenesisPath(anrSettings.GenesisPath))
+	/*
+	if connectionSettings.GenesisPath != "" && utils.FileExists(connectionSettings.GenesisPath) {
+		anrOpts = append(anrOpts, client.WithGenesisPath(connectionSettings.GenesisPath))
 	}
-	if anrSettings.UpgradePath != "" && utils.FileExists(anrSettings.UpgradePath) {
-		anrOpts = append(anrOpts, client.WithUpgradePath(anrSettings.UpgradePath))
+	if connectionSettings.UpgradePath != "" && utils.FileExists(connectionSettings.UpgradePath) {
+		anrOpts = append(anrOpts, client.WithUpgradePath(connectionSettings.UpgradePath))
 	}
-	if anrSettings.BootstrapIDs != nil {
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(anrSettings.BootstrapIDs))
+	*/
+	if connectionSettings.BootstrapIDs != nil {
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(connectionSettings.BootstrapIDs))
 	}
-	if anrSettings.BootstrapIPs != nil {
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(anrSettings.BootstrapIPs))
+	if connectionSettings.BootstrapIPs != nil {
+		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(connectionSettings.BootstrapIPs))
 	}
 
 	cli, err := binutils.NewGRPCClientWithEndpoint(
@@ -558,34 +535,6 @@ func UpsizeLocalNode(
 	ux.Logger.PrintToUser("Node-ID: %s", nodeInfo.Id)
 	ux.Logger.PrintToUser("")
 	return newNodeName, nil
-}
-
-// stub for now
-func preLocalChecks(
-	anrSettings ANRSettings,
-	avaGoVersionSettings AvalancheGoVersionSettings,
-) error {
-	// expand passed paths
-	if anrSettings.GenesisPath != "" {
-		anrSettings.GenesisPath = utils.ExpandHome(anrSettings.GenesisPath)
-	}
-	if anrSettings.UpgradePath != "" {
-		anrSettings.UpgradePath = utils.ExpandHome(anrSettings.UpgradePath)
-	}
-	// checks
-	if avaGoVersionSettings.UseCustomAvalanchegoVersion != "" && (avaGoVersionSettings.UseLatestAvalanchegoReleaseVersion || avaGoVersionSettings.UseLatestAvalanchegoPreReleaseVersion) {
-		return fmt.Errorf("specify either --custom-avalanchego-version or --latest-avalanchego-version")
-	}
-	if len(anrSettings.BootstrapIDs) != len(anrSettings.BootstrapIPs) {
-		return fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
-	}
-	if anrSettings.GenesisPath != "" && !utils.FileExists(anrSettings.GenesisPath) {
-		return fmt.Errorf("genesis file %s does not exist", anrSettings.GenesisPath)
-	}
-	if anrSettings.UpgradePath != "" && !utils.FileExists(anrSettings.UpgradePath) {
-		return fmt.Errorf("upgrade file %s does not exist", anrSettings.UpgradePath)
-	}
-	return nil
 }
 
 func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
@@ -795,50 +744,4 @@ func WaitBootstrapped(ctx context.Context, cli client.Client, blockchainID strin
 		}
 	}
 	return err
-}
-
-func GetLocalNetworkConnectionInfo(
-	app *application.Avalanche,
-) ([]string, []string, string, string, error) {
-	rootDataDir, err := localnet.GetLocalNetworkDir(app)
-	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("failed to connect to local network: %w", err)
-	}
-	bootstrapIPs, bootstrapIDs, err := localnet.GetTmpNetBootstrappers(rootDataDir)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	// prepare genesis file for anr
-	genesisBytes, err := localnet.GetTmpNetGenesis(rootDataDir)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	genesisFile, err := os.CreateTemp("", "local_network_genesis")
-	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not create local network genesis file: %w", err)
-	}
-	if _, err := genesisFile.Write(genesisBytes); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not write local network genesis file: %w", err)
-	}
-	genesisPath := genesisFile.Name()
-	if err := genesisFile.Close(); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not close local network genesis file: %w", err)
-	}
-	// prepare upgrade file for anr
-	upgradeBytes, err := localnet.GetTmpNetUpgrade(rootDataDir)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
-	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not create local network upgrade file: %w", err)
-	}
-	if _, err := upgradeFile.Write(upgradeBytes); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not write local network upgrade file: %w", err)
-	}
-	upgradePath := upgradeFile.Name()
-	if err := upgradeFile.Close(); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not close local network upgrade file: %w", err)
-	}
-	return bootstrapIPs, bootstrapIDs, genesisPath, upgradePath, nil
 }
