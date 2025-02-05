@@ -9,32 +9,31 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
-
-	"github.com/ava-labs/avalanchego/api/info"
-
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/api"
+	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+
 	"github.com/spf13/cobra"
 )
 
@@ -125,7 +124,7 @@ func newLocalStopCmd() *cobra.Command {
 		Use:   "stop",
 		Short: "Stop local node",
 		Long:  `Stop local node.`,
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.MaximumNArgs(1),
 		RunE:  localStopNode,
 	}
 }
@@ -215,13 +214,27 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	)
 }
 
-func localStopNode(_ *cobra.Command, _ []string) error {
-	return node.StopLocalNode(app)
+func localStopNode(_ *cobra.Command, args []string) error {
+	if len(args) == 1 {
+		clusterName := args[0]
+		return localnet.LocalClusterStop(app, clusterName)
+	}
+	clusterNames, err := localnet.GetRunningClusters(app)
+	if err != nil {
+		return err
+	}
+	for _, clusterName := range clusterNames {
+		if err := localnet.LocalClusterStop(app, clusterName); err != nil {
+			return err
+		}
+	}
+	ux.Logger.GreenCheckmarkToUser("avalanchego stopped")
+	return nil
 }
 
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	return node.DestroyLocalNode(app, clusterName)
+	return localnet.LocalClusterRemove(app, clusterName)
 }
 
 func localTrack(_ *cobra.Command, args []string) error {

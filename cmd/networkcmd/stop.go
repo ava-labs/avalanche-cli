@@ -8,7 +8,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
@@ -81,8 +80,14 @@ func stopAndSaveNetwork(flags StopFlags) error {
 		}
 	}
 
-	if err := node.StopLocalNetworkConnectedCluster(app); err != nil {
+	clusterNames, err := localnet.GetLocalNetworkClusters(app)
+	if err != nil {
 		return err
+	}
+	for _, clusterName := range clusterNames {
+		if err := localnet.LocalClusterStop(app, clusterName); err != nil {
+			return err
+		}
 	}
 
 	ux.Logger.PrintToUser("Network stopped successfully.")

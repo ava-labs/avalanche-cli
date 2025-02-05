@@ -3,7 +3,11 @@
 package localnet
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 )
 
@@ -24,8 +28,8 @@ func GetLocalCluster(
 	return GetTmpNetNetwork(networkDir)
 }
 
-// Indicates if the local cluster has valid data on its expected directory
-func LocalClusterDataIsValid(
+// Indicates if the local cluster exists and has valid data on its directory
+func LocalClusterExists(
 	app *application.Avalanche,
 	clusterName string,
 ) bool {
@@ -39,8 +43,49 @@ func LocalClusterStop(
 	clusterName string,
 ) error {
 	networkDir := GetLocalClusterDir(app, clusterName)
-	if err := TmpNetStop(networkDir); err != nil {
-		return err
+	return TmpNetStop(networkDir)
+}
+
+// Removes a local cluster
+func LocalClusterRemove(
+	app *application.Avalanche,
+	clusterName string,
+) error {
+	if clusterName == "" {
+		return fmt.Errorf("invalid cluster '%s'", clusterName)
 	}
-	return RemoveClusterFromLocalClusterMeta(app, clusterName)
+	networkDir := GetLocalClusterDir(app, clusterName)
+	if !sdkutils.DirExists(networkDir) {
+		return fmt.Errorf("cluster directory %s does not exist", networkDir)
+	}
+	_ = LocalClusterStop(app, clusterName)
+	return os.RemoveAll(networkDir)
+}
+
+func IsLocalNetworkCluster(clusterName string) (bool, error) {
+	return false, fmt.Errorf("unimplemented")
+}
+
+func GetLocalNetworkClusters(app *application.Avalanche) ([]string, error) {
+	localNetworkClusters := []string{}
+	clustersDir := app.GetLocalClustersDir()
+	entries, err := os.ReadDir(clustersDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read local clusters dir %s: %w", clustersDir, err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if b, err := IsLocalNetworkCluster(entry.Name()); err != nil {
+			return nil, err
+		} else if b {
+			localNetworkClusters = append(localNetworkClusters, entry.Name())
+		}
+	}
+	return localNetworkClusters, nil
+}
+
+func GetRunningClusters(app *application.Avalanche) ([]string, error) {
+	return nil, fmt.Errorf("unimplemented")
 }

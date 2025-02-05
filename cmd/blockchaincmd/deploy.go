@@ -659,7 +659,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					if !yes {
 						return nil
 					}
-					_ = node.DestroyLocalNode(app, clusterName)
+					_ = localnet.LocalClusterRemove(app, clusterName)
 				}
 				requiredBalance := deployBalance * uint64(numLocalNodes)
 				if availableBalance < requiredBalance {
@@ -671,7 +671,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					)
 				}
 				// stop local avalanchego process so that we can generate new local cluster
-				_ = node.StopLocalNode(app)
 				anrSettings := node.ANRSettings{}
 				avagoVersionSettings := node.AvalancheGoVersionSettings{}
 				// setup (install if needed) avalanchego binary

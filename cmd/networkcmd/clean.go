@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
@@ -74,7 +73,16 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	return node.DestroyLocalNetworkConnectedCluster(app)
+	clusterNames, err := localnet.GetLocalNetworkClusters(app)
+	if err != nil {
+		return err
+	}
+	for _, clusterName := range clusterNames {
+		if err := localnet.LocalClusterRemove(app, clusterName); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func removeLocalDeployInfoFromSidecars() error {
