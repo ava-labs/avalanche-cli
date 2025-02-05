@@ -327,8 +327,6 @@ func StartLocalNode(
 
 		return fmt.Errorf("PEPE")
 
-		// TODO: do something with node settings
-
 		/*
 		client.WithRootDataDir(rootDir),
 		client.WithNumNodes(numNodes),

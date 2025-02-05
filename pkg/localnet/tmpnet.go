@@ -55,6 +55,8 @@ type NodeSettings struct {
 	StakingTLSKey    []byte
 	StakingCertKey   []byte
 	StakingSignerKey []byte
+	HTTPPort         uint64
+	P2PPort          uint64
 }
 
 // Creates a new tmpnet with the given parameters
@@ -68,10 +70,12 @@ func TmpNetCreate(
 	rootDir string,
 	avalancheGoBinPath string,
 	pluginDir string,
-	nodes []*tmpnet.Node,
-	defaultFlags map[string]interface{},
+	networkID uint32,
 	genesis *genesis.UnparsedConfig,
 	upgradeBytes []byte,
+	defaultFlags map[string]interface{},
+	nodes []*tmpnet.Node,
+	bootstrap bool,
 ) (*tmpnet.Network, error) {
 	defaultFlags[config.UpgradeFileContentKey] = base64.StdEncoding.EncodeToString(upgradeBytes)
 	network := &tmpnet.Network{
@@ -79,6 +83,7 @@ func TmpNetCreate(
 		Dir:          rootDir,
 		DefaultFlags: defaultFlags,
 		Genesis:      genesis,
+		NetworkID:    networkID,
 	}
 	if err := network.EnsureDefaultConfig(log, avalancheGoBinPath, pluginDir); err != nil {
 		return nil, err
@@ -86,10 +91,13 @@ func TmpNetCreate(
 	if err := network.Write(); err != nil {
 		return nil, err
 	}
-	err := network.Bootstrap(
-		ctx,
-		log,
-	)
+	var err error
+	if bootstrap {
+		err = network.Bootstrap(
+			ctx,
+			log,
+		)
+	}
 	return network, err
 }
 
@@ -804,4 +812,36 @@ func TmpNetWaitNonSovereignValidators(ctx context.Context, networkDir string, su
 		}
 	}
 	return nil
+}
+
+func GetNewTmpNetNodes(
+	numNodes uint32,
+	nodeSettings []NodeSettings,
+) ([]*tmpnet.Node, error) {
+	nodes := []*tmpnet.Node{}
+	for i := range numNodes {
+		node := tmpnet.NewNode("")
+		if int(i) < len(nodeSettings) {
+			if len(nodeSettings[i].StakingCertKey) > 0 {
+				node.Flags[config.StakingCertContentKey] = base64.StdEncoding.EncodeToString(nodeSettings[i].StakingCertKey)
+			}
+			if len(nodeSettings[i].StakingTLSKey) > 0 {
+				node.Flags[config.StakingTLSKeyContentKey] = base64.StdEncoding.EncodeToString(nodeSettings[i].StakingTLSKey)
+			}
+			if len(nodeSettings[i].StakingSignerKey) > 0 {
+				node.Flags[config.StakingSignerKeyContentKey] = base64.StdEncoding.EncodeToString(nodeSettings[i].StakingSignerKey)
+			}
+			if nodeSettings[i].HTTPPort != 0 {
+				node.Flags[config.HTTPPortKey] = nodeSettings[i].HTTPPort
+			}
+			if nodeSettings[i].P2PPort != 0 {
+				node.Flags[config.StakingPortKey] = nodeSettings[i].P2PPort
+			}
+		}
+		if err := node.EnsureKeys(); err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, node)
+	}
+	return nodes, nil
 }

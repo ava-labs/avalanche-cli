@@ -195,7 +195,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		}
 
 		// get default network conf for NumNodes
-		unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := localnet.GetDefaultNetworkConf(flags.NumNodes)
+		networkID, unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := localnet.GetDefaultNetworkConf(flags.NumNodes)
 		if err != nil {
 			return err
 		}
@@ -223,10 +223,12 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			networkDir,
 			avalancheGoBinPath,
 			pluginDir,
-			nodes,
-			defaultFlags,
+			networkID,
 			unparsedGenesis,
 			upgradeBytes,
+			defaultFlags,
+			nodes,
+			true,
 		)
 		if err != nil {
 			return err

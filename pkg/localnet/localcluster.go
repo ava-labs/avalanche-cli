@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"context"
+	"encoding/json"
 
+	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -14,10 +16,55 @@ import (
 )
 
 type ConnectionSettings struct {
+	NetworkID uint32
 	Genesis []byte
 	Upgrade []byte
 	BootstrapIDs         []string
 	BootstrapIPs         []string
+}
+
+func CreateLocalCluster(
+	app *application.Avalanche,
+	ctx context.Context,
+	clusterName string,
+	avalancheGoBinPath string,
+	pluginDir string,
+	defaultFlags map[string]interface{},
+	connectionSettings ConnectionSettings,
+	numNodes uint32,
+	nodeSettings []NodeSettings,
+) (*tmpnet.Network, error) {
+	nodes, err := GetNewTmpNetNodes(numNodes, nodeSettings)
+	if err != nil {
+		return nil, err
+	}
+        genesis := genesis.UnparsedConfig{}
+	if len(connectionSettings.Genesis) > 0 {
+		if err := json.Unmarshal(connectionSettings.Genesis, &genesis); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal genesis: %w", err)
+		}
+	}
+	networkDir := GetLocalClusterDir(app, clusterName)
+	network, err := TmpNetCreate(
+		ctx,
+		app.Log,
+		networkDir,
+		avalancheGoBinPath,
+		pluginDir,
+		connectionSettings.NetworkID,
+		&genesis,
+		connectionSettings.Upgrade,
+		defaultFlags,
+		nodes,
+		false,
+	)
+	if err != nil {
+		return network, err
+	}
+	if err := network.Bootstrap(ctx, app.Log); err != nil {
+		return network, err
+	}
+	return network, nil
 }
 
 // Returns the directory associated to the local cluster
