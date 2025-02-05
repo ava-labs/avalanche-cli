@@ -210,7 +210,7 @@ func StartLocalNode(
 			return fmt.Errorf("cluster %s is not a local one", clusterName)
 		}
 	}
-	localDataExists := localClusterDataExists(app, clusterName)
+	localDataExists := localnet.LocalClusterDataIsValid(app, clusterName)
 	if (localClusterExists && !localDataExists) || (!localClusterExists && localDataExists) {
 		ux.Logger.RedXToUser("Inconsistent state for cluster: Cleaning up")
 		_ = DestroyLocalNode(app, clusterName)
@@ -650,7 +650,7 @@ func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
 	return nil
 }
 
-func StopLocalNode(app *application.Avalanche) error {
+func StopLocalNode(app *application.Avalanche, clusterName string) error {
 	cli, err := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),

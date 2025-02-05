@@ -297,8 +297,8 @@ const (
 	SubnetIDLabel     = "SubnetID: "
 	BlockchainIDLabel = "BlockchainID: "
 
-	PluginDir = "plugins"
-	LocalClustersDir  = "local"
+	PluginDir        = "plugins"
+	LocalClustersDir = "local"
 
 	DefaultNumberOfLocalMachineNodes = 1
 	MetricsNetwork                   = "network"
