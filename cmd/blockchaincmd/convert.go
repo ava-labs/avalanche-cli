@@ -42,12 +42,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// avalanche blockchain convertToL1
+// avalanche blockchain convert
 func newConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "convert [blockchainName]",
-		Short:             "Converts a Subnet into a sovereign L1",
-		Long:              `The blockchain converts command converts a Subnet into sovereign L1.`,
+		Use:   "convert [blockchainName]",
+		Short: "Converts a Subnet into a sovereign L1",
+		Long: `The blockchain convert command converts a Subnet into sovereign L1.
+
+Sovereign L1s require bootstrap validators. avalanche blockchain convert command gives the option of: 
+- either using local machine as bootstrap validators (set the number of bootstrap validators using 
+--num-local-nodes flag, default is set to 1)
+- or using remote nodes (we require the node's Node-ID and BLS info)`,
 		RunE:              convertBlockchain,
 		PersistentPostRun: handlePostRun,
 		Args:              cobrautils.ExactArgs(1),
@@ -464,6 +469,13 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
+
+	if err = promptValidatorManagementType(app, &sidecar); err != nil {
+		return err
+	}
+	if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
+		return err
+	}
 
 	fee := uint64(0)
 
