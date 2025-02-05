@@ -473,7 +473,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
 		return err
 	}
-
+	sidecar.Sovereign = true
 	fee := uint64(0)
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
