@@ -590,7 +590,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if err = HandleUsingLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
+			if err = StartLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
 				return err
 			}
 		}
@@ -779,7 +779,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.Sovereign {
 		validatorManagerStr := validatorManagerSDK.ProxyContractAddress
-		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerStr)
+		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(
+			bootstrapValidators,
+			deployer,
+			subnetID,
+			blockchainID,
+			network,
+			chain,
+			sidecar,
+			controlKeys,
+			subnetAuthKeys,
+			validatorManagerStr,
+		)
 		if err != nil {
 			return err
 		}

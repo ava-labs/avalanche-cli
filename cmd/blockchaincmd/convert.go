@@ -103,7 +103,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	return cmd
 }
 
-func HandleUsingLocalMachine(network models.Network, blockchainName string, deployBalance, availableBalance uint64) error {
+func StartLocalMachine(network models.Network, blockchainName string, deployBalance, availableBalance uint64) error {
 	var err error
 	if network.Kind == models.Local {
 		useLocalMachine = true
@@ -535,7 +535,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		}
 	}
 	if !generateNodeID {
-		if err = HandleUsingLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
+		if err = StartLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
 			return err
 		}
 	}
@@ -623,7 +623,18 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerAddress)
+	avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(
+		bootstrapValidators,
+		deployer,
+		subnetID,
+		blockchainID,
+		network,
+		chain,
+		sidecar,
+		controlKeys,
+		subnetAuthKeys,
+		validatorManagerAddress,
+	)
 	if err != nil {
 		return err
 	}
@@ -633,7 +644,16 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	}
 
 	if !convertOnly && !generateNodeID {
-		if _, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerAddress); err != nil {
+		if _, err = InitializeValidatorManager(
+			blockchainName,
+			sidecar.ValidatorManagerOwner,
+			subnetID,
+			blockchainID,
+			network,
+			avaGoBootstrapValidators,
+			sidecar.ValidatorManagement == models.ProofOfStake,
+			validatorManagerAddress,
+		); err != nil {
 			return err
 		}
 	} else {
