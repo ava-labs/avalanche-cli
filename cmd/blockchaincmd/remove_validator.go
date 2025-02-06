@@ -245,15 +245,11 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), sc.ValidatorManagerOwner)
 
-	if sc.ValidatorManagerAddress == "" {
-		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
-		if err != nil {
-			return err
-		}
-	} else {
-		validatorManagerAddress = sc.ValidatorManagerOwner
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
 	}
-	
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,

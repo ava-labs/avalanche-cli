@@ -363,7 +363,17 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 	return tracked, nil
 }
 
-func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *subnet.PublicDeployer, subnetID, blockchainID ids.ID, network models.Network, chain string, sidecar models.Sidecar, controlKeysList, subnetAuthKeysList []string, validatorManagerAddressStr string) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
+func convertSubnetToL1(
+	bootstrapValidators []models.SubnetValidator,
+	deployer *subnet.PublicDeployer,
+	subnetID, blockchainID ids.ID,
+	network models.Network,
+	chain string,
+	sidecar models.Sidecar,
+	controlKeysList,
+	subnetAuthKeysList []string,
+	validatorManagerAddressStr string,
+) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
 		return avaGoBootstrapValidators, false, err
@@ -420,6 +430,7 @@ func convertSubnetToL1(bootstrapValidators []models.SubnetValidator, deployer *s
 		"",
 		bootstrapValidators,
 		clusterNameFlagValue,
+		validatorManagerAddressStr,
 	)
 }
 
@@ -471,10 +482,11 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
 
 	if validatorManagerAddress == "" {
-		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
+		validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
 		if err != nil {
 			return err
 		}
+		validatorManagerAddress = validatorManagerAddressAddrFmt.String()
 	}
 
 	if err = promptValidatorManagementType(app, &sidecar); err != nil {
@@ -483,7 +495,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
 		return err
 	}
-	sidecar.ValidatorManagerAddress = validatorManagerAddress
+	sidecar.UpdateValidatorManagerAddress(network.Name(), validatorManagerAddress)
 	sidecar.Sovereign = true
 	fee := uint64(0)
 

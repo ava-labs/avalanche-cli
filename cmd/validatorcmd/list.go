@@ -44,14 +44,6 @@ func list(_ *cobra.Command, args []string) error {
 	if !sc.Sovereign {
 		return fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
 	}
-	if sc.ValidatorManagerAddress == "" {
-		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
-		if err != nil {
-			return err
-		}
-	} else {
-		validatorManagerAddress = sc.ValidatorManagerOwner
-	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -65,6 +57,11 @@ func list(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,

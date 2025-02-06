@@ -370,10 +370,11 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 
 	if validatorManagerAddress == "" {
-		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
+		validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
 		if err != nil {
 			return err
 		}
+		validatorManagerAddress = validatorManagerAddressAddrFmt.String()
 	}
 
 	chainSpec := contract.ChainSpec{

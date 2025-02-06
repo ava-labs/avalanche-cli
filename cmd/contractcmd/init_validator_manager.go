@@ -141,14 +141,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
-	if sc.ValidatorManagerAddress == "" {
-		validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
-		if err != nil {
-			return err
-		}
-	} else {
-		validatorManagerAddress = sc.ValidatorManagerOwner
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
 	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 	scNetwork := sc.Networks[network.Name()]
 	if scNetwork.BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain has not been deployed to %s", network.Name())

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"os"
 	"path/filepath"
 
@@ -775,9 +776,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	tracked := false
 
-	validatorManagerAddress = sidecar.ValidatorManagerAddress
 	if sidecar.Sovereign {
-		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerAddress)
+		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerSDK.ProxyContractAddress)
 		if err != nil {
 			return err
 		}
@@ -807,6 +807,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			"",
 			nil,
 			clusterNameFlagValue,
+			"",
 		); err != nil {
 			return err
 		}

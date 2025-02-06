@@ -375,7 +375,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 	); err != nil {
 		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
 	}
-	fmt.Printf("obtained validatorManagerAddressStr %s \n", validatorManagerAddressStr)
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
 		c.RPC,

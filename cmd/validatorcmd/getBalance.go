@@ -152,14 +152,10 @@ func getNodeValidationID(
 		if !sc.Sovereign {
 			return ids.Empty, false, fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
 		}
-		if sc.ValidatorManagerAddress == "" {
-			validatorManagerAddress, err = app.Prompt.CaptureString("What is the address of the Validator Manager?")
-			if err != nil {
-				return ids.Empty, false, err
-			}
-		} else {
-			validatorManagerAddress = sc.ValidatorManagerOwner
+		if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+			return ids.Empty, false, fmt.Errorf("unable to find Validator Manager address")
 		}
+		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 		if nodeIDStr == "" {
 			subnetID, err := contract.GetSubnetID(app, network, chainSpec)
 			if err != nil {

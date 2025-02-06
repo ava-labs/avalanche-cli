@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"os"
 	"sort"
 	"strconv"
@@ -257,7 +256,6 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		if err = promptValidatorManagementType(app, sc); err != nil {
 			return err
 		}
-		sc.ValidatorManagerAddress = validatorManagerSDK.ProxyContractAddress
 	}
 
 	if vmType == models.SubnetEvm {

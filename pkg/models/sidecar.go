@@ -17,6 +17,7 @@ type NetworkData struct {
 	WSEndpoints                []string
 	BootstrapValidators        []SubnetValidator
 	ClusterName                string
+	ValidatorManagerAddress    string
 }
 
 type Sidecar struct {
@@ -44,10 +45,9 @@ type Sidecar struct {
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
 	// TODO: remove if not needed for subnet acp 77 create flow once avalnache go releases etna
-	ValidatorManagement     ValidatorManagementType
-	ValidatorManagerOwner   string
-	ValidatorManagerAddress string
-	ProxyContractOwner      string
+	ValidatorManagement   ValidatorManagementType
+	ValidatorManagerOwner string
+	ProxyContractOwner    string
 	// Subnet defaults to Sovereign post ACP-77
 	Sovereign bool
 }
@@ -78,4 +78,10 @@ func (sc Sidecar) PoA() bool {
 
 func (sc Sidecar) PoS() bool {
 	return sc.ValidatorManagement == ProofOfStake
+}
+
+func (sc Sidecar) UpdateValidatorManagerAddress(network string, managerAddr string) {
+	temp := sc.Networks[network]
+	temp.ValidatorManagerAddress = managerAddr
+	sc.Networks[network] = temp
 }
