@@ -259,11 +259,25 @@ func localStartNode(_ *cobra.Command, args []string) error {
 func localStopNode(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		clusterName := args[0]
-		return localnet.LocalClusterStop(app, clusterName)
+		if running, err := localnet.ClusterIsRunning(app, clusterName); err != nil {
+			return err
+		} else if !running {
+			ux.Logger.PrintToUser("cluster is not running")
+		} else {
+			if err := localnet.LocalClusterStop(app, clusterName); err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("avalanchego stopped")
+		}
+		return nil
 	}
 	clusterNames, err := localnet.GetRunningClusters(app)
 	if err != nil {
 		return err
+	}
+	if len(clusterNames) == 0 {
+		ux.Logger.PrintToUser("no clusters to stop")
+		return nil
 	}
 	for _, clusterName := range clusterNames {
 		if err := localnet.LocalClusterStop(app, clusterName); err != nil {
