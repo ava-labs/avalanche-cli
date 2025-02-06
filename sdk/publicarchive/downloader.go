@@ -25,7 +25,7 @@ const (
 	updateInterval = 500 * time.Millisecond
 	maxFileSize    = 10 * 1024 * 1024 * 1024 // 10GB per file
 	// public archive
-	PChainArchiveFuji = "https://avalanchego-public-database.avax-test.network/testnet/p-chain/avalanchego/data-tar/latest.tar"
+	PChainArchiveFuji = "https://avalanchego-public-shared-database.avax-test.network/testnet/p-chain/avalanchego/data-tar/latest.tar"
 )
 
 type Getter struct {
