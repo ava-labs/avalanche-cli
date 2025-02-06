@@ -64,6 +64,7 @@ var (
 	minimumStakeDuration         uint64
 	latestAvagoReleaseVersion    bool
 	latestAvagoPreReleaseVersion bool
+	validatorManagerAddress      string
 )
 
 // const snapshotName = "local_snapshot"
