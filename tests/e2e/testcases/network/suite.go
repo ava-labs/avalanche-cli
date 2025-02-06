@@ -83,7 +83,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 	ginkgo.It("can stop and restart a deployed subnet SOV", func() {
 		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
 		// TODO: use commands.DeploySubnetLocallySOV once having etna release
-		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
+		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, "")
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
