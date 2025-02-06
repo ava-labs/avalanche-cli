@@ -47,9 +47,10 @@ func CreateLocalCluster(
 	if err != nil {
 		return nil, err
 	}
-	genesis := genesis.UnparsedConfig{}
+	var unparsedGenesis *genesis.UnparsedConfig
 	if len(connectionSettings.Genesis) > 0 {
-		if err := json.Unmarshal(connectionSettings.Genesis, &genesis); err != nil {
+		unparsedGenesis := &genesis.UnparsedConfig{}
+		if err := json.Unmarshal(connectionSettings.Genesis, unparsedGenesis); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal genesis: %w", err)
 		}
 	}
@@ -63,14 +64,17 @@ func CreateLocalCluster(
 		connectionSettings.NetworkID,
 		connectionSettings.BootstrapIPs,
 		connectionSettings.BootstrapIDs,
-		&genesis,
+		unparsedGenesis,
 		connectionSettings.Upgrade,
 		defaultFlags,
 		nodes,
 		false,
 	)
 	if err != nil {
-		return network, err
+		return nil, err
+	}
+	if err := TmpNetEnableSybilProtection(networkDir); err != nil {
+		return nil, err
 	}
 	// preseed nodes db from public archive. ignore errors
 	nodeIDs := []string{}
@@ -216,7 +220,7 @@ func GetLocalNetworkConnectionInfo(
 	if err != nil {
 		return ConnectionSettings{}, err
 	}
-	connectionSettings.BootstrapIPs, connectionSettings.BootstrapIDs, err = GetTmpNetBootstrappers(networkDir)
+	connectionSettings.BootstrapIPs, connectionSettings.BootstrapIDs, err = GetTmpNetBootstrappers(networkDir, ids.EmptyNodeID)
 	if err != nil {
 		return ConnectionSettings{}, err
 	}

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"net/netip"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -80,7 +81,9 @@ func TmpNetCreate(
 	nodes []*tmpnet.Node,
 	bootstrap bool,
 ) (*tmpnet.Network, error) {
-	defaultFlags[config.UpgradeFileContentKey] = base64.StdEncoding.EncodeToString(upgradeBytes)
+	if len(upgradeBytes) > 0 {
+		defaultFlags[config.UpgradeFileContentKey] = base64.StdEncoding.EncodeToString(upgradeBytes)
+	}
 	network := &tmpnet.Network{
 		Nodes:        nodes,
 		Dir:          networkDir,
@@ -131,7 +134,10 @@ func TmpNetMigrate(
 			}
 			data[config.ChainConfigDirKey] = filepath.Join(newDir, "chains")
 			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
-			data[config.GenesisFileKey] = filepath.Join(newDir, "genesis.json")
+			_, ok := data[config.GenesisFileKey]
+			if ok {
+				data[config.GenesisFileKey] = filepath.Join(newDir, "genesis.json")
+			}
 			if err := utils.WriteJSON(flagsFile, data); err != nil {
 				return err
 			}
@@ -609,6 +615,7 @@ func TmpNetRestartNodes(
 // Get network bootstrappers to use to connect to the network
 func GetTmpNetBootstrappers(
 	networkDir string,
+	skipNodeID ids.NodeID,
 ) ([]string, []string, error) {
 	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
@@ -617,6 +624,12 @@ func GetTmpNetBootstrappers(
 	bootstrapIPs := []string{}
 	bootstrapIDs := []string{}
 	for _, node := range network.Nodes {
+		if node.NodeID == skipNodeID {
+			continue
+		}
+		if node.StakingAddress == (netip.AddrPort{}) {
+			continue
+		}
 		bootstrapIPs = append(bootstrapIPs, node.StakingAddress.String())
 		bootstrapIDs = append(bootstrapIDs, node.NodeID.String())
 	}
@@ -882,6 +895,20 @@ func TmpNetBootstrap(
 	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty)
 }
 
+func TmpNetEnableSybilProtection(
+	networkDir string,
+) error {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	network.DefaultFlags[config.SybilProtectionEnabledKey] = true
+	for i := range network.Nodes {
+		network.Nodes[i].Flags[config.SybilProtectionEnabledKey] = true
+	}
+	return network.Write()
+}
+
 func TmpNetRestartNode(
 	ctx context.Context,
 	log logging.Logger,
@@ -906,13 +933,16 @@ func TmpNetStartNode(
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
-	if err := node.Write(); err != nil {
-		return err
-	}
 	_, ok := node.Flags[config.BootstrapIPsKey]
 	if !ok {
-		// no bootstrappers set. go for default to create them.
-		return network.StartNode(ctx, log, node)
+		bootstrapIPs, bootstrapIDs, err := GetTmpNetBootstrappers(network.Dir, node.NodeID)
+		if err != nil {
+			return err
+		}
+		node.SetNetworkingConfig(bootstrapIDs, bootstrapIPs)
+	}
+	if err := node.Write(); err != nil {
+		return err
 	}
 	if err := node.Start(log); err != nil {
 		// Attempt to stop an unhealthy node to provide some assurance to the caller
