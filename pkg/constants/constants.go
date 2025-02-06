@@ -274,10 +274,9 @@ const (
 	ChainConfigFileName         = "chain.json"
 	PerNodeChainConfigFileName  = "per-node-chain.json"
 	NodeConfigFileName          = "node-config.json"
-
-	GitRepoCommitName  = "Avalanche-CLI"
-	GitRepoCommitEmail = "info@avax.network"
-	AvaLabsMaintainers = "ava-labs"
+	GitRepoCommitName           = "Avalanche-CLI"
+	GitRepoCommitEmail          = "info@avax.network"
+	AvaLabsMaintainers          = "ava-labs"
 
 	AvalancheGoDockerImage = "avaplatform/avalanchego"
 	AvalancheGoGitRepo     = "https://github.com/ava-labs/avalanchego"

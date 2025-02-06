@@ -1,4 +1,4 @@
-# ============= Compilation Stage ================
+# ============= Build Stage ================
 FROM golang:1.22.10-bookworm AS builder
 
 WORKDIR /build
@@ -11,7 +11,7 @@ COPY . .
 # Build avalanchego
 RUN ./scripts/build.sh
 
-# ============= Cleanup Stage ================
+# ============= Release Stage ================
 FROM debian:12-slim
 WORKDIR /
 
