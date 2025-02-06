@@ -34,6 +34,9 @@ func CreateLocalCluster(
 	numNodes uint32,
 	nodeSettings []NodeSettings,
 ) (*tmpnet.Network, error) {
+	if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
+		return nil, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
+	}
 	nodes, err := GetNewTmpNetNodes(numNodes, nodeSettings)
 	if err != nil {
 		return nil, err
@@ -61,9 +64,11 @@ func CreateLocalCluster(
 	if err != nil {
 		return network, err
 	}
+	/*
 	if err := network.Bootstrap(ctx, app.Log); err != nil {
 		return network, err
 	}
+	*/
 	return network, nil
 }
 
@@ -155,4 +160,31 @@ func WaitLocalClusterBlockchainBootstrapped(
 ) error {
 	networkDir := GetLocalClusterDir(app, clusterName)
 	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, subnetID)
+}
+
+func GetLocalNetworkConnectionInfo(
+	app *application.Avalanche,
+) (ConnectionSettings, error) {
+	connectionSettings := ConnectionSettings{}
+	networkDir, err := GetLocalNetworkDir(app)
+	if err != nil {
+		return ConnectionSettings{}, fmt.Errorf("failed to connect to local network: %w", err)
+	}
+	connectionSettings.NetworkID, err = GetTmpNetNetworkID(networkDir)
+	if err != nil {
+		return ConnectionSettings{}, err
+	}
+	connectionSettings.BootstrapIPs, connectionSettings.BootstrapIDs, err = GetTmpNetBootstrappers(networkDir)
+	if err != nil {
+		return ConnectionSettings{}, err
+	}
+	connectionSettings.Genesis, err = GetTmpNetGenesis(networkDir)
+	if err != nil {
+		return ConnectionSettings{}, err
+	}
+	connectionSettings.Upgrade, err = GetTmpNetUpgrade(networkDir)
+	if err != nil {
+		return ConnectionSettings{}, err
+	}
+	return connectionSettings, nil
 }

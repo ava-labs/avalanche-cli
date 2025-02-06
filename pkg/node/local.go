@@ -190,7 +190,7 @@ func StartLocalNode(
 	clusterName string,
 	avalancheGoBinaryPath string,
 	numNodes uint32,
-	nodeConfig map[string]interface{},
+	defaultFlags map[string]interface{},
 	connectionSettings localnet.ConnectionSettings,
 	nodeSettings localnet.NodeSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
@@ -199,10 +199,10 @@ func StartLocalNode(
 	supportedNetworkOptions []networkoptions.NetworkOption,
 ) error {
 	// initializes directories
-	rootDir := localnet.GetLocalClusterDir(app, clusterName)
-	pluginDir := filepath.Join(rootDir, "plugins")
-	if err := os.MkdirAll(rootDir, constants.DefaultPerms755); err != nil {
-		return fmt.Errorf("could not create root directory %s: %w", rootDir, err)
+	networkDir := localnet.GetLocalClusterDir(app, clusterName)
+	pluginDir := filepath.Join(networkDir, "plugins")
+	if err := os.MkdirAll(networkDir, constants.DefaultPerms755); err != nil {
+		return fmt.Errorf("could not create network directory %s: %w", networkDir, err)
 	}
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
@@ -224,13 +224,13 @@ func StartLocalNode(
 	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinaryPath)
 
 	// node config setup
-	if nodeConfig == nil {
-		nodeConfig = map[string]interface{}{}
+	if defaultFlags == nil {
+		defaultFlags = map[string]interface{}{}
 	}
-	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
-	nodeConfig[config.IndexEnabledKey] = false
-	nodeConfig[config.IndexAllowIncompleteKey] = true
-	nodeConfigBytes, err := json.Marshal(nodeConfig)
+	defaultFlags[config.NetworkAllowPrivateIPsKey] = true
+	defaultFlags[config.IndexEnabledKey] = false
+	defaultFlags[config.IndexAllowIncompleteKey] = true
+	nodeConfigBytes, err := json.Marshal(defaultFlags)
 	if err != nil {
 		return err
 	}
@@ -244,13 +244,13 @@ func StartLocalNode(
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
 		ctx, cancel = utils.GetANRContext()
 		defer cancel()
-		serverLogPath := filepath.Join(rootDir, "server.log")
+		serverLogPath := filepath.Join(networkDir, "server.log")
 		sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalancheGoBinaryPath, "", true)
 		if err := sd.StartServer(
 			constants.ServerRunFileLocalClusterPrefix,
 			binutils.LocalClusterGRPCServerPort,
 			binutils.LocalClusterGRPCGatewayPort,
-			rootDir,
+			networkDir,
 			serverLogPath,
 		); err != nil {
 			return err
@@ -278,7 +278,7 @@ func StartLocalNode(
 			client.WithExecPath(avalancheGoBinPath),
 			client.WithReassignPortsIfUsed(true),
 			client.WithPluginDir(pluginDir),
-			client.WithSnapshotPath(rootDir),
+			client.WithSnapshotPath(networkDir),
 			client.WithGlobalNodeConfig(nodeConfigStr),
 		}
 		// load snapshot for existing network
@@ -308,16 +308,13 @@ func StartLocalNode(
 		}
 		network.ClusterName = clusterName
 
-		// TODO: move this to localnet.localcluster
-		if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
-			return fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
-		}
-
 		switch {
 		case network.Kind == models.Fuji:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Fuji Bootstrapping can take several minutes"))
+			connectionSettings.NetworkID = network.ID
 		case network.Kind == models.Mainnet:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
+			connectionSettings.NetworkID = network.ID
 		case network.Kind == models.Local:
 			connectionSettings, err = localnet.GetLocalNetworkConnectionInfo(app)
 			if err != nil {
@@ -325,46 +322,43 @@ func StartLocalNode(
 			}
 		}
 
-		return fmt.Errorf("PEPE")
-
-		/*
-		client.WithRootDataDir(rootDir),
-		client.WithNumNodes(numNodes),
-		client.WithNetworkID(network.ID),
-		client.WithExecPath(avalancheGoBinaryPath),
-		client.WithPluginDir(pluginDir),
-		client.WithGlobalNodeConfig(nodeConfigStr),
-		anrOpts = append(anrOpts, client.WithGenesisPath(connectionSettings.GenesisPath))
-		anrOpts = append(anrOpts, client.WithUpgradePath(connectionSettings.UpgradePath))
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(connectionSettings.BootstrapIDs))
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(connectionSettings.BootstrapIPs))
-		*/
-
 		ctx, cancel = network.BootstrappingContext()
 		defer cancel()
 
-		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", rootDir)
+		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", networkDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 
-		// preseed nodes data from public archive. ignore errors
-		nodeNames := []string{}
-		for i := 1; i <= int(numNodes); i++ {
-			nodeNames = append(nodeNames, fmt.Sprintf("node%d", i))
-		}
-		err := DownloadPublicArchive(network, rootDir, nodeNames)
-		ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
-
-		/*
-		if _, err := cli.Start(ctx, avalancheGoBinaryPath, anrOpts...); err != nil {
+		cluster, err := localnet.CreateLocalCluster(
+			app,
+			ctx,
+			clusterName,
+			avalancheGoBinaryPath,
+			pluginDir,
+			defaultFlags,
+			connectionSettings,
+			numNodes,
+			[]localnet.NodeSettings{nodeSettings},
+		)
+		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
 			_ = localnet.LocalClusterRemove(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
-		*/
+
+
+		// preseed nodes data from public archive. ignore errors
+		nodeIDs := []string{}
+		for _, node := range cluster.Nodes {
+			nodeIDs = append(nodeIDs, node.NodeID.String())
+		}
+		if err := DownloadPublicArchive(network, networkDir, nodeIDs); err != nil {
+			ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
+		}
 
 		ux.SpinComplete(spinner)
 		spinSession.Stop()
+		return fmt.Errorf("PEPE")
 	}
 
 	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
@@ -372,9 +366,9 @@ func StartLocalNode(
 		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
 	}
 
-	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", rootDir)
+	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", networkDir)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", rootDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", networkDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")

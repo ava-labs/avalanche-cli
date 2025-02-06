@@ -616,6 +616,16 @@ func GetTmpNetBootstrappers(
 	return bootstrapIPs, bootstrapIDs, nil
 }
 
+func GetTmpNetNetworkID(
+	networkDir string,
+) (uint32, error) {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return 0, err
+	}
+	return network.GetNetworkID(), nil
+}
+
 // Get network genesis
 func GetTmpNetGenesis(
 	networkDir string,
@@ -778,8 +788,7 @@ func TmpNetAddNonSovereignValidators(
 }
 
 // Waits until all the network nodes on [networkDir] are included as validators of [subnetID] as verified
-//
-//	on GetCurrentValidators P-Chain API call
+// on GetCurrentValidators P-Chain API call
 func TmpNetWaitNonSovereignValidators(ctx context.Context, networkDir string, subnetID ids.ID) error {
 	checkFrequency := time.Second
 	endpoint, err := GetTmpNetEndpoint(networkDir)
@@ -818,6 +827,9 @@ func GetNewTmpNetNodes(
 	numNodes uint32,
 	nodeSettings []NodeSettings,
 ) ([]*tmpnet.Node, error) {
+	if len(nodeSettings) > int(numNodes) {
+		return nil, fmt.Errorf("node settings length is bigger than the number of nodes")
+	}
 	nodes := []*tmpnet.Node{}
 	for i := range numNodes {
 		node := tmpnet.NewNode("")
