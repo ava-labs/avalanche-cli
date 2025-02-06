@@ -62,6 +62,7 @@ var (
 	publicKey                 string
 	pop                       string
 	minimumStakeDuration      uint64
+	validatorManagerAddress   string
 )
 
 // const snapshotName = "local_snapshot"
@@ -287,6 +288,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
 
 	return cmd
 }
@@ -366,6 +368,15 @@ func localValidate(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
+	if validatorManagerAddress == "" {
+		validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
+		if err != nil {
+			return err
+		}
+		validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+	}
+
 	chainSpec := contract.ChainSpec{
 		BlockchainID: blockchainID,
 	}
@@ -475,6 +486,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 			kc,
 			balance,
 			payerPrivateKey,
+			validatorManagerAddress,
 		); err != nil {
 			return err
 		}
@@ -494,6 +506,7 @@ func addAsValidator(network models.Network,
 	kc *keychain.Keychain,
 	balance uint64,
 	payerPrivateKey string,
+	validatorManagerAddressStr string,
 ) error {
 	var nodeIDStr string
 	// get node data
@@ -544,6 +557,7 @@ func addAsValidator(network models.Network,
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		big.NewInt(int64(stakeAmount)),
+		validatorManagerAddressStr,
 	)
 	if err != nil {
 		return err
@@ -576,6 +590,7 @@ func addAsValidator(network models.Network,
 		extraAggregatorPeers,
 		true,
 		aggregatorLogger,
+		validatorManagerAddress,
 	); err != nil {
 		return err
 	}

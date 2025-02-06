@@ -17,6 +17,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ava-labs/avalanchego/config"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -27,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 )
 
@@ -589,10 +590,14 @@ func RunSSHRenderAvalancheNodeConfig(
 		avagoConf.BootstrapIDs = bootstrapIDs
 		avagoConf.BootstrapIPs = bootstrapIPs
 		partialSyncI, ok := remoteAvagoConf[config.PartialSyncPrimaryNetworkKey]
-		if ok {
-			partialSync, ok := partialSyncI.(bool)
-			if ok {
-				avagoConf.PartialSync = partialSync
+		if !ok {
+			fmt.Println("Key not found in remoteAvagoConf:", config.PartialSyncPrimaryNetworkKey)
+		} else {
+			partialSync, _ := partialSyncI.(string)
+			if partialSync == "true" {
+				avagoConf.PartialSync = true
+			} else {
+				avagoConf.PartialSync = false
 			}
 		}
 	}
