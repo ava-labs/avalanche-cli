@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
@@ -84,14 +86,14 @@ var (
 	cchainIcmKeyName                string
 	relayerAllowPrivateIPs          bool
 
-	poSMinimumStakeAmount     uint64
-	poSMaximumStakeAmount     uint64
-	poSMinimumStakeDuration   uint64
-	poSMinimumDelegationFee   uint16
-	poSMaximumStakeMultiplier uint8
-	poSWeightToValueFactor    uint64
-	deployBalanceAVAX         float64
-
+	poSMinimumStakeAmount          uint64
+	poSMaximumStakeAmount          uint64
+	poSMinimumStakeDuration        uint64
+	poSMinimumDelegationFee        uint16
+	poSMaximumStakeMultiplier      uint8
+	poSWeightToValueFactor         uint64
+	deployBalanceAVAX              float64
+	validatorManagerAddress        string
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
@@ -776,7 +778,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	tracked := false
 
 	if sidecar.Sovereign {
-		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys)
+		validatorManagerStr := validatorManagerSDK.ProxyContractAddress
+		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(bootstrapValidators, deployer, subnetID, blockchainID, network, chain, sidecar, controlKeys, subnetAuthKeys, validatorManagerStr)
 		if err != nil {
 			return err
 		}
@@ -786,7 +789,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 
 		if !convertOnly && !generateNodeID {
-			tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake)
+			tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerStr)
 			if err != nil {
 				return err
 			}
@@ -806,6 +809,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			"",
 			nil,
 			clusterNameFlagValue,
+			"",
 		); err != nil {
 			return err
 		}

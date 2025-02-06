@@ -347,6 +347,7 @@ func InitValidatorRegistration(
 	delegationFee uint16,
 	stakeDuration time.Duration,
 	stakeAmount *big.Int,
+	validatorManagerAddressStr string,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -364,7 +365,7 @@ func InitValidatorRegistration(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	alreadyInitialized := false
 	if initWithPos {
 		ux.Logger.PrintLineSeparator()
@@ -393,7 +394,7 @@ func InitValidatorRegistration(
 			alreadyInitialized = true
 		}
 	} else {
-		managerAddress = common.HexToAddress(validatormanager.ProxyContractAddress)
+		managerAddress = common.HexToAddress(validatorManagerAddressStr)
 		tx, _, err := InitializeValidatorRegistrationPoA(
 			rpcURL,
 			managerAddress,
@@ -459,6 +460,7 @@ func FinishValidatorRegistration(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
+	validatorManagerAddressStr string,
 ) error {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -468,7 +470,7 @@ func FinishValidatorRegistration(
 	if err != nil {
 		return err
 	}
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
 		network,
 		rpcURL,

@@ -28,11 +28,11 @@ import (
 )
 
 const (
-	CLIBinary         = "./bin/avalanche"
-	keyName           = "ewoq"
-	avalancheGoPath   = "--avalanchego-path"
-	ewoqEVMAddress    = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
-	ewoqPChainAddress = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
+	CLIBinary            = "./bin/avalanche"
+	keyName              = "ewoq"
+	ewoqEVMAddress       = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
+	ewoqPChainAddress    = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
+	ProxyContractAddress = "0xFEEDC0DE0000000000000000000000000000000"
 )
 
 var err error
@@ -213,7 +213,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 			BootstrapValidators: avaGoBootstrapValidators,
 		}
 
-		err = subnetSDK.InitializeProofOfAuthority(network, k.PrivKeyHex(), extraAggregatorPeers, true, logging.NoLog{})
+		err = subnetSDK.InitializeProofOfAuthority(network, k.PrivKeyHex(), extraAggregatorPeers, true, logging.NoLog{}, ProxyContractAddress)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })

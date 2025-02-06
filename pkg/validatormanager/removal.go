@@ -183,6 +183,7 @@ func InitValidatorRemoval(
 	initWithPos bool,
 	uptimeSec uint64,
 	force bool,
+	validatorManagerAddressStr string,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -200,7 +201,7 @@ func InitValidatorRemoval(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	validationID, err := validator.GetRegisteredValidator(
 		rpcURL,
 		managerAddress,
@@ -298,8 +299,9 @@ func FinishValidatorRemoval(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
+	validatorManagerAddressStr string,
 ) error {
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
