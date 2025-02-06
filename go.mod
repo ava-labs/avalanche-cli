@@ -33,7 +33,7 @@ require (
 	github.com/pingcap/errors v0.11.4
 	github.com/posthog/posthog-go v1.2.24
 	github.com/prometheus/client_golang v1.20.5
-	github.com/schollz/progressbar/v3 v3.17.1
+	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.12.0
 	github.com/spf13/cobra v1.8.1
