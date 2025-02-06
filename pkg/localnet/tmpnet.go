@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -67,10 +68,12 @@ type NodeSettings struct {
 func TmpNetCreate(
 	ctx context.Context,
 	log logging.Logger,
-	rootDir string,
+	networkDir string,
 	avalancheGoBinPath string,
 	pluginDir string,
 	networkID uint32,
+	bootstrapIPs []string,
+	bootstrapIDs []string,
 	genesis *genesis.UnparsedConfig,
 	upgradeBytes []byte,
 	defaultFlags map[string]interface{},
@@ -80,7 +83,7 @@ func TmpNetCreate(
 	defaultFlags[config.UpgradeFileContentKey] = base64.StdEncoding.EncodeToString(upgradeBytes)
 	network := &tmpnet.Network{
 		Nodes:        nodes,
-		Dir:          rootDir,
+		Dir:          networkDir,
 		DefaultFlags: defaultFlags,
 		Genesis:      genesis,
 		NetworkID:    networkID,
@@ -88,15 +91,17 @@ func TmpNetCreate(
 	if err := network.EnsureDefaultConfig(log, avalancheGoBinPath, pluginDir); err != nil {
 		return nil, err
 	}
+	if len(bootstrapIPs) > 0 {
+		for _, node := range network.Nodes {
+			node.SetNetworkingConfig(bootstrapIDs, bootstrapIPs)
+		}
+	}
 	if err := network.Write(); err != nil {
 		return nil, err
 	}
 	var err error
 	if bootstrap {
-		err = network.Bootstrap(
-			ctx,
-			log,
-		)
+		err = TmpNetBootstrap(ctx, log, networkDir)
 	}
 	return network, err
 }
@@ -148,13 +153,15 @@ func TmpNetLoad(
 	if err != nil {
 		return nil, err
 	}
-	nodes := network.Nodes
-	for i := range nodes {
-		nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
+	for i := range network.Nodes {
+		network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
 			AvalancheGoPath: avalancheGoBinPath,
 		}
 	}
-	err = network.StartNodes(ctx, log, nodes...)
+	if err := network.Write(); err != nil {
+		return nil, err
+	}
+	err = TmpNetBootstrap(ctx, log, networkDir)
 	return network, err
 }
 
@@ -592,11 +599,11 @@ func TmpNetRestartNodes(
 			subnets = strings.Join(subnetsSet.List(), ",")
 			node.Flags[config.TrackSubnetsKey] = subnets
 		}
-		if err := network.RestartNode(ctx, log, node); err != nil {
+		if err := TmpNetRestartNode(ctx, log, network, node); err != nil {
 			return err
 		}
 	}
-	return nil
+	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty)
 }
 
 // Get network bootstrappers to use to connect to the network
@@ -856,4 +863,58 @@ func GetNewTmpNetNodes(
 		nodes = append(nodes, node)
 	}
 	return nodes, nil
+}
+
+func TmpNetBootstrap(
+	ctx context.Context,
+	log logging.Logger,
+	networkDir string,
+) error {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	for _, node := range network.Nodes {
+		if err := TmpNetStartNode(ctx, log, network, node); err != nil {
+			return err
+		}
+	}
+	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty)
+}
+
+func TmpNetRestartNode(
+	ctx context.Context,
+	log logging.Logger,
+	network *tmpnet.Network,
+	node *tmpnet.Node,
+) error {
+	if err := node.SaveAPIPort(); err != nil {
+		return err
+	}
+	if err := node.Stop(ctx); err != nil {
+		return fmt.Errorf("failed to stop node %s: %w", node.NodeID, err)
+	}
+	if err := TmpNetStartNode(ctx, log, network, node); err != nil {
+		return fmt.Errorf("failed to start node %s: %w", node.NodeID, err)
+	}
+	return nil
+}
+
+func TmpNetStartNode(
+	ctx context.Context,
+	log logging.Logger,
+	network *tmpnet.Network,
+	node *tmpnet.Node,
+) error {
+	_, ok := node.Flags[config.BootstrapIPsKey]
+	if !ok {
+		// no bootstrappers set. go for default to create them.
+		return network.StartNode(ctx, log, node)
+	}
+	if err := node.Start(log); err != nil {
+		// Attempt to stop an unhealthy node to provide some assurance to the caller
+		// that an error condition will not result in a lingering process.
+		return errors.Join(err, node.Stop(ctx))
+	}
+	return nil
 }

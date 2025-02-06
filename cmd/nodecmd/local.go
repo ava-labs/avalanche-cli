@@ -5,10 +5,10 @@ package nodecmd
 import (
 	"fmt"
 	"math/big"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -173,12 +173,12 @@ func newLocalStatusCmd() *cobra.Command {
 func localStartNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	var (
-		err error
-		genesis []byte
-		upgrade []byte
+		err              error
+		genesis          []byte
+		upgrade          []byte
 		stakingSignerKey []byte
-		stakingCertKey []byte
-		stakingTLSKey []byte
+		stakingCertKey   []byte
+		stakingTLSKey    []byte
 	)
 	if genesisPath != "" {
 		genesis, err = os.ReadFile(genesisPath)
@@ -193,10 +193,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		}
 	}
 	connectionSettings := localnet.ConnectionSettings{
-		Genesis:          genesis,
-		Upgrade:          upgrade,
-		BootstrapIDs:         bootstrapIDs,
-		BootstrapIPs:         bootstrapIPs,
+		Genesis:      genesis,
+		Upgrade:      upgrade,
+		BootstrapIDs: bootstrapIDs,
+		BootstrapIPs: bootstrapIPs,
 	}
 	if stakingSignerKeyPath != "" {
 		stakingSignerKey, err = os.ReadFile(stakingSignerKeyPath)

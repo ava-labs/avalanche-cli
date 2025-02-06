@@ -237,7 +237,7 @@ func StartLocalNode(
 	nodeConfigStr := string(nodeConfigBytes)
 
 	var (
-		ctx context.Context
+		ctx    context.Context
 		cancel context.CancelFunc
 	)
 	if localnet.LocalClusterExists(app, clusterName) {
@@ -329,7 +329,7 @@ func StartLocalNode(
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 
-		cluster, err := localnet.CreateLocalCluster(
+		_, err := localnet.CreateLocalCluster(
 			app,
 			ctx,
 			clusterName,
@@ -339,6 +339,7 @@ func StartLocalNode(
 			connectionSettings,
 			numNodes,
 			[]localnet.NodeSettings{nodeSettings},
+			network,
 		)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
@@ -346,19 +347,8 @@ func StartLocalNode(
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 
-
-		// preseed nodes data from public archive. ignore errors
-		nodeIDs := []string{}
-		for _, node := range cluster.Nodes {
-			nodeIDs = append(nodeIDs, node.NodeID.String())
-		}
-		if err := DownloadPublicArchive(network, networkDir, nodeIDs); err != nil {
-			ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
-		}
-
 		ux.SpinComplete(spinner)
 		spinSession.Stop()
-		return fmt.Errorf("PEPE")
 	}
 
 	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
@@ -368,7 +358,7 @@ func StartLocalNode(
 
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", networkDir)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/node1/logs", networkDir)
+	ux.Logger.PrintToUser("Node logs directory: %s/<NodeID>/logs", networkDir)
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Network ready to use.")
 	ux.Logger.PrintToUser("")
@@ -440,12 +430,12 @@ func UpsizeLocalNode(
 		client.WithGlobalNodeConfig(nodeConfigStr),
 	}
 	/*
-	if connectionSettings.GenesisPath != "" && utils.FileExists(connectionSettings.GenesisPath) {
-		anrOpts = append(anrOpts, client.WithGenesisPath(connectionSettings.GenesisPath))
-	}
-	if connectionSettings.UpgradePath != "" && utils.FileExists(connectionSettings.UpgradePath) {
-		anrOpts = append(anrOpts, client.WithUpgradePath(connectionSettings.UpgradePath))
-	}
+		if connectionSettings.GenesisPath != "" && utils.FileExists(connectionSettings.GenesisPath) {
+			anrOpts = append(anrOpts, client.WithGenesisPath(connectionSettings.GenesisPath))
+		}
+		if connectionSettings.UpgradePath != "" && utils.FileExists(connectionSettings.UpgradePath) {
+			anrOpts = append(anrOpts, client.WithUpgradePath(connectionSettings.UpgradePath))
+		}
 	*/
 	if connectionSettings.BootstrapIDs != nil {
 		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(connectionSettings.BootstrapIDs))

@@ -224,6 +224,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			avalancheGoBinPath,
 			pluginDir,
 			networkID,
+			nil,
+			nil,
 			unparsedGenesis,
 			upgradeBytes,
 			defaultFlags,

@@ -3,24 +3,28 @@
 package localnet
 
 import (
-	"fmt"
-	"os"
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanche-cli/pkg/application"
-	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+
+	"go.uber.org/zap"
 )
 
 type ConnectionSettings struct {
-	NetworkID uint32
-	Genesis []byte
-	Upgrade []byte
-	BootstrapIDs         []string
-	BootstrapIPs         []string
+	NetworkID    uint32
+	Genesis      []byte
+	Upgrade      []byte
+	BootstrapIDs []string
+	BootstrapIPs []string
 }
 
 func CreateLocalCluster(
@@ -33,6 +37,7 @@ func CreateLocalCluster(
 	connectionSettings ConnectionSettings,
 	numNodes uint32,
 	nodeSettings []NodeSettings,
+	networkKind models.Network,
 ) (*tmpnet.Network, error) {
 	if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
 		return nil, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
@@ -41,7 +46,7 @@ func CreateLocalCluster(
 	if err != nil {
 		return nil, err
 	}
-        genesis := genesis.UnparsedConfig{}
+	genesis := genesis.UnparsedConfig{}
 	if len(connectionSettings.Genesis) > 0 {
 		if err := json.Unmarshal(connectionSettings.Genesis, &genesis); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal genesis: %w", err)
@@ -55,6 +60,8 @@ func CreateLocalCluster(
 		avalancheGoBinPath,
 		pluginDir,
 		connectionSettings.NetworkID,
+		connectionSettings.BootstrapIPs,
+		connectionSettings.BootstrapIDs,
 		&genesis,
 		connectionSettings.Upgrade,
 		defaultFlags,
@@ -64,11 +71,17 @@ func CreateLocalCluster(
 	if err != nil {
 		return network, err
 	}
-	/*
-	if err := network.Bootstrap(ctx, app.Log); err != nil {
-		return network, err
+	// preseed nodes db from public archive. ignore errors
+	nodeIDs := []string{}
+	for _, node := range network.Nodes {
+		nodeIDs = append(nodeIDs, node.NodeID.String())
 	}
-	*/
+	if err := DownloadAvalancheGoDb(networkKind, networkDir, nodeIDs); err != nil {
+		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
+	}
+	if err := TmpNetBootstrap(ctx, app.Log, networkDir); err != nil {
+		return nil, err
+	}
 	return network, nil
 }
 
@@ -123,12 +136,42 @@ func LocalClusterRemove(
 	return os.RemoveAll(networkDir)
 }
 
-func IsLocalNetworkCluster(clusterName string) (bool, error) {
-	return false, fmt.Errorf("unimplemented")
+func ClusterIsRunning(app *application.Avalanche, clusterName string) (bool, error) {
+	networkDir := GetLocalClusterDir(app, clusterName)
+	status, err := GetTmpNetBootstrappingStatus(networkDir)
+	if err != nil {
+		return false, err
+	}
+	return status == FullyBootstrapped, nil
+}
+
+func IsLocalNetworkCluster(app *application.Avalanche, clusterName string) (bool, error) {
+	network, err := GetLocalCluster(app, clusterName)
+	if err != nil {
+		return false, err
+	}
+	return network.GetNetworkID() == constants.LocalNetworkID, nil
 }
 
 func GetLocalNetworkClusters(app *application.Avalanche) ([]string, error) {
+	runningClusters, err := GetRunningClusters(app)
+	if err != nil {
+		return nil, err
+	}
 	localNetworkClusters := []string{}
+	for _, clusterName := range runningClusters {
+		if local, err := IsLocalNetworkCluster(app, clusterName); err != nil {
+			return nil, err
+		} else if !local {
+			continue
+		}
+		localNetworkClusters = append(localNetworkClusters, clusterName)
+	}
+	return localNetworkClusters, nil
+}
+
+func GetRunningClusters(app *application.Avalanche) ([]string, error) {
+	clusters := []string{}
 	clustersDir := app.GetLocalClustersDir()
 	entries, err := os.ReadDir(clustersDir)
 	if err != nil {
@@ -138,17 +181,15 @@ func GetLocalNetworkClusters(app *application.Avalanche) ([]string, error) {
 		if !entry.IsDir() {
 			continue
 		}
-		if b, err := IsLocalNetworkCluster(entry.Name()); err != nil {
+		clusterName := entry.Name()
+		if running, err := ClusterIsRunning(app, clusterName); err != nil {
 			return nil, err
-		} else if b {
-			localNetworkClusters = append(localNetworkClusters, entry.Name())
+		} else if !running {
+			continue
 		}
+		clusters = append(clusters, clusterName)
 	}
-	return localNetworkClusters, nil
-}
-
-func GetRunningClusters(app *application.Avalanche) ([]string, error) {
-	return nil, fmt.Errorf("unimplemented")
+	return clusters, nil
 }
 
 func WaitLocalClusterBlockchainBootstrapped(
