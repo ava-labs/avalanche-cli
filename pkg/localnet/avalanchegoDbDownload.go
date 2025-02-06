@@ -9,23 +9,26 @@ import (
 	"sync"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/publicarchive"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
+	"go.uber.org/zap"
 )
 
 func DownloadAvalancheGoDb(
 	clusterNetwork models.Network,
 	rootDir string,
 	nodeNames []string,
+	log logging.Logger,
+	printFunc func(msg string, args ...interface{}),
 ) error {
 	// only for fuji
 	if clusterNetwork.Kind != models.Fuji {
 		return nil
 	}
 	network := network.FujiNetwork()
-	ux.Logger.Info("downloading public archive for network %s", clusterNetwork.Name())
+	log.Info("downloading public archive for network", zap.String("clustername", clusterNetwork.Name()))
 	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Off, os.Stdout, logging.JSON.ConsoleEncoder()))) // off as we run inside of the spinner
 	if err != nil {
 		return fmt.Errorf("failed to create public archive downloader for network %s: %w", clusterNetwork.Name(), err)
@@ -38,7 +41,7 @@ func DownloadAvalancheGoDb(
 	if path, err := publicArcDownloader.GetFilePath(); err != nil {
 		return fmt.Errorf("failed to get downloaded file path: %w", err)
 	} else {
-		ux.Logger.Info("public archive downloaded to %s", path)
+		log.Info("public archive downloaded into", zap.String("path", path))
 	}
 
 	wg := sync.WaitGroup{}
@@ -47,11 +50,11 @@ func DownloadAvalancheGoDb(
 
 	for _, nodeName := range nodeNames {
 		target := filepath.Join(rootDir, nodeName, "db")
-		ux.Logger.Info("unpacking public archive to %s", target)
+		log.Info("unpacking public archive into", zap.String("target", target))
 
 		// Skip if target already exists
 		if _, err := os.Stat(target); err == nil {
-			ux.Logger.Info("data folder already exists at %s. Skipping...", target)
+			log.Info("data folder already exists. Skipping...", zap.String("target", target))
 			continue
 		}
 		wg.Add(1)
@@ -74,7 +77,7 @@ func DownloadAvalancheGoDb(
 	if firstErr != nil {
 		return firstErr
 	}
-	ux.Logger.PrintToUser("Public archive unpacked to: %s", rootDir)
+	printFunc("Public archive unpacked to: %s", rootDir)
 	return nil
 }
 

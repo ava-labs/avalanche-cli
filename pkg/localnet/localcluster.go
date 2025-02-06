@@ -30,6 +30,7 @@ type ConnectionSettings struct {
 func CreateLocalCluster(
 	app *application.Avalanche,
 	ctx context.Context,
+	printFunc func(msg string, args ...interface{}),
 	clusterName string,
 	avalancheGoBinPath string,
 	pluginDir string,
@@ -76,7 +77,7 @@ func CreateLocalCluster(
 	for _, node := range network.Nodes {
 		nodeIDs = append(nodeIDs, node.NodeID.String())
 	}
-	if err := DownloadAvalancheGoDb(networkKind, networkDir, nodeIDs); err != nil {
+	if err := DownloadAvalancheGoDb(networkKind, networkDir, nodeIDs, app.Log, printFunc); err != nil {
 		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
 	}
 	if err := TmpNetBootstrap(ctx, app.Log, networkDir); err != nil {

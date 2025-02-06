@@ -332,6 +332,7 @@ func StartLocalNode(
 		_, err := localnet.CreateLocalCluster(
 			app,
 			ctx,
+			ux.Logger.PrintToUser,
 			clusterName,
 			avalancheGoBinaryPath,
 			pluginDir,
