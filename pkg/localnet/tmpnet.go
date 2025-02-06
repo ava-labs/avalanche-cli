@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 	"net/netip"
+	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -636,16 +637,6 @@ func GetTmpNetBootstrappers(
 	return bootstrapIPs, bootstrapIDs, nil
 }
 
-func GetTmpNetNetworkID(
-	networkDir string,
-) (uint32, error) {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return 0, err
-	}
-	return network.GetNetworkID(), nil
-}
-
 // Get network genesis
 func GetTmpNetGenesis(
 	networkDir string,
@@ -950,4 +941,20 @@ func TmpNetStartNode(
 		return errors.Join(err, node.Stop(ctx))
 	}
 	return nil
+}
+
+func GetTmpNetNetworkID(networkDir string) (uint32, error) {
+	node, err := GetTmpNetFirstNode(networkDir)
+	if err != nil {
+		return 0, err
+	}
+	networkIDStr, err := node.Flags.GetStringVal(config.NetworkNameKey)
+	if err != nil {
+		return 0, err
+	}
+	networkID, err := strconv.Atoi(networkIDStr)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(networkID), nil
 }

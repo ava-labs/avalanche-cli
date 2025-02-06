@@ -230,11 +230,6 @@ func StartLocalNode(
 	defaultFlags[config.NetworkAllowPrivateIPsKey] = true
 	defaultFlags[config.IndexEnabledKey] = false
 	defaultFlags[config.IndexAllowIncompleteKey] = true
-	nodeConfigBytes, err := json.Marshal(defaultFlags)
-	if err != nil {
-		return err
-	}
-	nodeConfigStr := string(nodeConfigBytes)
 
 	var (
 		ctx    context.Context
@@ -242,53 +237,14 @@ func StartLocalNode(
 	)
 	if localnet.LocalClusterExists(app, clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
-		ctx, cancel = utils.GetANRContext()
+		network, err := localnet.GetClusterNetworkKind(app, clusterName)
+		if err != nil {
+			return err
+		}
+		ctx, cancel = network.BootstrappingContext()
 		defer cancel()
-		serverLogPath := filepath.Join(networkDir, "server.log")
-		sd := subnet.NewLocalDeployer(app, avalancheGoVersion, avalancheGoBinaryPath, "", true)
-		if err := sd.StartServer(
-			constants.ServerRunFileLocalClusterPrefix,
-			binutils.LocalClusterGRPCServerPort,
-			binutils.LocalClusterGRPCGatewayPort,
-			networkDir,
-			serverLogPath,
-		); err != nil {
+		if _, err := localnet.TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinaryPath); err != nil {
 			return err
-		}
-		avalancheGoBinPath, err := sd.SetupLocalEnv()
-		if err != nil {
-			return err
-		}
-		cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-		if err != nil {
-			return err
-		}
-		alreadyBootstrapped, err := localnet.IsANRNetworkBootstrapped(ctx, cli)
-		if err != nil {
-			return err
-		}
-		if alreadyBootstrapped {
-			ux.Logger.PrintToUser("")
-			ux.Logger.PrintToUser("A local cluster is already executing")
-			ux.Logger.PrintToUser("please stop it by calling 'node local stop'")
-			return nil
-		}
-
-		loadSnapshotOpts := []client.OpOption{
-			client.WithExecPath(avalancheGoBinPath),
-			client.WithReassignPortsIfUsed(true),
-			client.WithPluginDir(pluginDir),
-			client.WithSnapshotPath(networkDir),
-			client.WithGlobalNodeConfig(nodeConfigStr),
-		}
-		// load snapshot for existing network
-		if _, err := cli.LoadSnapshot(
-			ctx,
-			clusterName,
-			true, // in-place
-			loadSnapshotOpts...,
-		); err != nil {
-			return fmt.Errorf("failed to load snapshot: %w", err)
 		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)

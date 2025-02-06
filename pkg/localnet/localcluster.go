@@ -158,6 +158,15 @@ func IsLocalNetworkCluster(app *application.Avalanche, clusterName string) (bool
 	return network.GetNetworkID() == constants.LocalNetworkID, nil
 }
 
+func GetClusterNetworkKind(app *application.Avalanche, clusterName string) (models.Network, error) {
+	networkDir := GetLocalClusterDir(app, clusterName)
+	networkID, err := GetTmpNetNetworkID(networkDir)
+	if err != nil {
+		return models.UndefinedNetwork, err
+	}
+	return models.NetworkFromNetworkID(networkID), nil
+}
+
 func GetLocalNetworkClusters(app *application.Avalanche) ([]string, error) {
 	runningClusters, err := GetRunningClusters(app)
 	if err != nil {
