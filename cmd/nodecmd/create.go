@@ -281,6 +281,19 @@ func stringToAWSVolumeType(input string) types.VolumeType {
 	}
 }
 
+func setGlobalNetworkFlags(network models.Network) {
+	switch network.Kind {
+	case models.Fuji:
+		globalNetworkFlags.UseFuji = true
+	case models.Devnet:
+		globalNetworkFlags.UseDevnet = true
+	case models.Local:
+		globalNetworkFlags.UseLocal = true
+	case models.Mainnet:
+		globalNetworkFlags.UseMainnet = true
+	}
+}
+
 func createNodes(cmd *cobra.Command, args []string) error {
 	clusterName := args[0]
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -292,6 +305,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		networkoptions.NonLocalSupportedNetworkOptions,
 		"",
 	)
+	setGlobalNetworkFlags(network)
 	if err := preCreateChecks(clusterName); err != nil {
 		return err
 	}

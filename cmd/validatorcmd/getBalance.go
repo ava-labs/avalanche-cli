@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -27,9 +26,10 @@ import (
 var globalNetworkFlags networkoptions.NetworkFlags
 
 var (
-	l1              string
-	validationIDStr string
-	nodeIDStr       string
+	l1                      string
+	validationIDStr         string
+	nodeIDStr               string
+	validatorManagerAddress string
 )
 
 func NewGetBalanceCmd() *cobra.Command {
@@ -90,7 +90,7 @@ func getBalance(_ *cobra.Command, _ []string) error {
 func getNodeValidationID(
 	network models.Network,
 	l1 string,
-	nodeIDStr string,
+	nodeIDStr,
 	validationIDStr string,
 ) (ids.ID, bool, error) {
 	var (
@@ -145,16 +145,18 @@ func getNodeValidationID(
 			}
 			l1 = chainSpec.BlockchainName
 		}
+		sc, err := app.LoadSidecar(l1)
+		if err != nil {
+			return ids.Empty, false, fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		if !sc.Sovereign {
+			return ids.Empty, false, fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
+		}
+		if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+			return ids.Empty, false, fmt.Errorf("unable to find Validator Manager address")
+		}
+		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 		if nodeIDStr == "" {
-			if l1 != "" {
-				sc, err := app.LoadSidecar(l1)
-				if err != nil {
-					return ids.Empty, false, fmt.Errorf("failed to load sidecar: %w", err)
-				}
-				if !sc.Sovereign {
-					return ids.Empty, false, fmt.Errorf("avalanche validator commands are only applicable to sovereign L1s")
-				}
-			}
 			subnetID, err := contract.GetSubnetID(app, network, chainSpec)
 			if err != nil {
 				return ids.Empty, false, err
@@ -191,7 +193,7 @@ func getNodeValidationID(
 		if err != nil {
 			return ids.Empty, false, err
 		}
-		managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+		managerAddress := common.HexToAddress(validatorManagerAddress)
 		validationID, err = validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			return ids.Empty, false, err

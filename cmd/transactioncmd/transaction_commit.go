@@ -4,6 +4,7 @@ package transactioncmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -46,6 +47,8 @@ func commitTx(_ *cobra.Command, args []string) error {
 
 	isCreateChainTx := txutils.IsCreateChainTx(tx)
 
+	isConvertToL1Tx := txutils.IsConvertToL1Tx(tx)
+
 	network, err := txutils.GetNetwork(tx)
 	if err != nil {
 		return err
@@ -85,7 +88,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("In case of continuing without preserving the metadata, please keep a manual record of")
 		ux.Logger.PrintToUser("the subnet ID and the new blockchain ID")
 		ux.Logger.PrintToUser("")
-		yes, err := app.Prompt.CaptureYesNo("Do you want to continue execution without locally presenving metadata?")
+		yes, err := app.Prompt.CaptureYesNo("Do you want to continue execution without locally preserving metadata?")
 		if err != nil {
 			return err
 		}
@@ -133,10 +136,20 @@ func commitTx(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if blockchainName != "" {
-			return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "")
+			return app.UpdateSidecarNetworks(&sc, network, subnetID, txID, "", "", sc.Networks[network.Name()].BootstrapValidators, "", "")
 		}
 		ux.Logger.PrintToUser("This CLI instance will not locally preserve blockchain metadata.")
 		ux.Logger.PrintToUser("Please keep a manual record of the subnet ID and blockchain ID information.")
+	} else if isConvertToL1Tx {
+		_, err = ux.TimedProgressBar(
+			30*time.Second,
+			"Waiting for the Subnet to be converted into a sovereign L1 ...",
+			0,
+		)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("To finish conversion to sovereign L1, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
 	}
 
 	return nil

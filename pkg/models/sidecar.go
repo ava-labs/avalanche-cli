@@ -17,6 +17,7 @@ type NetworkData struct {
 	WSEndpoints                []string
 	BootstrapValidators        []SubnetValidator
 	ClusterName                string
+	ValidatorManagerAddress    string
 }
 
 type Sidecar struct {
@@ -77,4 +78,10 @@ func (sc Sidecar) PoA() bool {
 
 func (sc Sidecar) PoS() bool {
 	return sc.ValidatorManagement == ProofOfStake
+}
+
+func (sc Sidecar) UpdateValidatorManagerAddress(network string, managerAddr string) {
+	temp := sc.Networks[network]
+	temp.ValidatorManagerAddress = managerAddr
+	sc.Networks[network] = temp
 }
