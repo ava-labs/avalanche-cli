@@ -249,7 +249,14 @@ func HandleUsingLocalMachine(network models.Network, blockchainName string, depl
 	return nil
 }
 
-func InitializeValidatorManager(blockchainName, validatorManagerOwner string, subnetID, blockchainID ids.ID, network models.Network, avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator, pos bool) (bool, error) {
+func InitializeValidatorManager(blockchainName,
+	validatorManagerOwner string,
+	subnetID, blockchainID ids.ID,
+	network models.Network,
+	avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator,
+	pos bool,
+	validatorManagerAddrStr string,
+) (bool, error) {
 	var err error
 	clusterName := clusterNameFlagValue
 	switch {
@@ -341,7 +348,7 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 				WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
 				RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
 			},
-			validatorManagerAddress,
+			validatorManagerAddrStr,
 		); err != nil {
 			return tracked, err
 		}
@@ -354,7 +361,7 @@ func InitializeValidatorManager(blockchainName, validatorManagerOwner string, su
 			extraAggregatorPeers,
 			aggregatorAllowPrivatePeers,
 			aggregatorLogger,
-			validatorManagerAddress,
+			validatorManagerAddrStr,
 		); err != nil {
 			return tracked, err
 		}
@@ -626,7 +633,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	}
 
 	if !convertOnly && !generateNodeID {
-		if _, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake); err != nil {
+		if _, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerAddress); err != nil {
 			return err
 		}
 	} else {
