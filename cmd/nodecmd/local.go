@@ -41,28 +41,30 @@ import (
 var (
 	avalanchegoBinaryPath string
 
-	bootstrapIDs              []string
-	bootstrapIPs              []string
-	genesisPath               string
-	upgradePath               string
-	stakingTLSKeyPath         string
-	stakingCertKeyPath        string
-	stakingSignerKeyPath      string
-	numNodes                  uint32
-	nodeConfigPath            string
-	partialSync               bool
-	stakeAmount               uint64
-	rpcURL                    string
-	balanceAVAX               float64
-	remainingBalanceOwnerAddr string
-	disableOwnerAddr          string
-	aggregatorLogLevel        string
-	aggregatorLogToStdout     bool
-	delegationFee             uint16
-	publicKey                 string
-	pop                       string
-	minimumStakeDuration      uint64
-	validatorManagerAddress   string
+	bootstrapIDs                 []string
+	bootstrapIPs                 []string
+	genesisPath                  string
+	upgradePath                  string
+	stakingTLSKeyPath            string
+	stakingCertKeyPath           string
+	stakingSignerKeyPath         string
+	numNodes                     uint32
+	nodeConfigPath               string
+	partialSync                  bool
+	stakeAmount                  uint64
+	rpcURL                       string
+	balanceAVAX                  float64
+	remainingBalanceOwnerAddr    string
+	disableOwnerAddr             string
+	aggregatorLogLevel           string
+	aggregatorLogToStdout        bool
+	delegationFee                uint16
+	publicKey                    string
+	pop                          string
+	minimumStakeDuration         uint64
+	latestAvagoReleaseVersion    bool
+	latestAvagoPreReleaseVersion bool
+	validatorManagerAddress      string
 )
 
 // const snapshotName = "local_snapshot"
@@ -104,8 +106,8 @@ You can check the bootstrapping status by running avalanche node status local.
 		PersistentPostRun: handlePostRun,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
-	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
-	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", true, "install latest avalanchego pre-release version on node/s")
+	cmd.Flags().BoolVar(&latestAvagoReleaseVersion, "latest-avalanchego-version", true, "install latest avalanchego release version on node/s")
+	cmd.Flags().BoolVar(&latestAvagoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringArrayVar(&bootstrapIDs, "bootstrap-id", []string{}, "nodeIDs of bootstrap nodes")
@@ -140,8 +142,8 @@ func newLocalTrackCmd() *cobra.Command {
 		RunE:  localTrack,
 	}
 	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().BoolVar(&useLatestAvalanchegoReleaseVersion, "latest-avalanchego-version", false, "install latest avalanchego release version on node/s")
-	cmd.Flags().BoolVar(&useLatestAvalanchegoPreReleaseVersion, "latest-avalanchego-pre-release-version", true, "install latest avalanchego pre-release version on node/s")
+	cmd.Flags().BoolVar(&latestAvagoReleaseVersion, "latest-avalanchego-version", true, "install latest avalanchego release version on node/s")
+	cmd.Flags().BoolVar(&latestAvagoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
 	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	return cmd
 }
@@ -183,13 +185,13 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		StakingTLSKeyPath:    stakingTLSKeyPath,
 	}
 	if useCustomAvalanchegoVersion != "" {
-		useLatestAvalanchegoReleaseVersion = false
-		useLatestAvalanchegoPreReleaseVersion = false
+		latestAvagoPreReleaseVersion = false
+		latestAvagoReleaseVersion = false
 	}
 	avaGoVersionSetting := node.AvalancheGoVersionSettings{
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+		UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
+		UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
 	}
 	nodeConfig := make(map[string]interface{})
 	if nodeConfigPath != "" {
@@ -228,13 +230,13 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 func localTrack(_ *cobra.Command, args []string) error {
 	if avalanchegoBinaryPath == "" {
 		if useCustomAvalanchegoVersion != "" {
-			useLatestAvalanchegoReleaseVersion = false
-			useLatestAvalanchegoPreReleaseVersion = false
+			latestAvagoReleaseVersion = false
+			latestAvagoPreReleaseVersion = false
 		}
 		avaGoVersionSetting := node.AvalancheGoVersionSettings{
 			UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-			UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-			UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
+			UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
+			UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
 		}
 		avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
 		if err != nil {
