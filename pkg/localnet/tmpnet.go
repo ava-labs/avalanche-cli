@@ -906,6 +906,9 @@ func TmpNetStartNode(
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
+	if err := node.Write(); err != nil {
+		return err
+	}
 	_, ok := node.Flags[config.BootstrapIPsKey]
 	if !ok {
 		// no bootstrappers set. go for default to create them.
