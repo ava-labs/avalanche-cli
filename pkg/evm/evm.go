@@ -804,21 +804,3 @@ func TransactionError(tx *types.Transaction, err error, msg string, args ...inte
 	args = append(args, err)
 	return fmt.Errorf(msg+msgSuffix, args...)
 }
-
-func WaitForRPC(ctx context.Context, rpcURL string) error {
-	client, err := GetClient(rpcURL)
-	if err != nil {
-		return err
-	}
-	for {
-		_, err := client.ChainID(ctx)
-		if err == nil {
-			return nil
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(1 * time.Second):
-		}
-	}
-}
