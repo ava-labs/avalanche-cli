@@ -261,7 +261,7 @@ func Unique(slice []string) []string {
 	return uniqueSlice
 }
 
-// containsIgnoreCase checks if the given string contains the specified substring, ignoring case.
+// ContainsIgnoreCase checks if the given string contains the specified substring, ignoring case.
 func ContainsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
