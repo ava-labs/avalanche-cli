@@ -16,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -100,8 +99,6 @@ func TrackSubnetWithLocalMachine(
 	if err != nil {
 		return err
 	}
-	networkInfo := sc.Networks[network.Name()]
-	rpcEndpoints := []string{}
 	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
 		ux.Logger.PrintToUser("Restarting node %s to track newly deployed network", nodeInfo.Name)
 		if err := LocalNodeTrackSubnet(
@@ -120,17 +117,10 @@ func TrackSubnetWithLocalMachine(
 		if err := AddNodeInfoToSidecar(&sc, nodeInfo, network); err != nil {
 			return fmt.Errorf("failed to update sidecar with new node info: %w", err)
 		}
-		rpcEndpoints = append(rpcEndpoints, models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
 	}
 	ux.Logger.PrintToUser("Waiting for blockchain %s to be bootstrapped", blockchainName)
 	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
 		return fmt.Errorf("failure waiting for local cluster %s bootstrapping: %w", blockchainName, err)
-	}
-	for _, rpcURL := range rpcEndpoints {
-		ux.Logger.PrintToUser("Waiting for rpc %s to be available", rpcURL)
-		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
-			return err
-		}
 	}
 	if err := app.UpdateSidecar(&sc); err != nil {
 		return err

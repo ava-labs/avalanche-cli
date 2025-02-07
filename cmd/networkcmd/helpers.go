@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -170,16 +169,10 @@ func TrackSubnet(
 	}
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()
-	for _, rpcURL := range networkInfo.RPCEndpoints {
-		ux.Logger.PrintToUser("Waiting for %s to be available", rpcURL)
-		if err := evm.WaitForRPC(ctx, rpcURL); err != nil {
-			return err
-		}
-	}
-	if err := IsBootstrapped(cli, blockchainID.String()); err != nil {
+	if err := WaitBootstrapped(cli, blockchainID.String()); err != nil {
 		return err
 	}
-	if err := IsBootstrapped(cli, "P"); err != nil {
+	if err := WaitBootstrapped(cli, "P"); err != nil {
 		return err
 	}
 	if _, err := cli.UpdateStatus(ctx); err != nil {
@@ -204,7 +197,7 @@ func TrackSubnet(
 	return nil
 }
 
-func IsBootstrapped(cli client.Client, blockchainID string) error {
+func WaitBootstrapped(cli client.Client, blockchainID string) error {
 	blockchainBootstrapCheckFrequency := time.Second
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
