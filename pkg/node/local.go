@@ -118,7 +118,7 @@ func TrackSubnetWithLocalMachine(
 			return fmt.Errorf("failed to update sidecar with new node info: %w", err)
 		}
 	}
-	ux.Logger.PrintToUser("Waiting for blockchain %s to be bootstrapped", blockchainName)
+	ux.Logger.PrintToUser("Waiting for blockchain %s ID %s to be bootstrapped", blockchainName, blockchainID.String())
 	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
 		return fmt.Errorf("failure waiting for local cluster %s bootstrapping: %w", blockchainName, err)
 	}

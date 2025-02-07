@@ -74,7 +74,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println(output)
 		// parse blockchainID from output
-		re := regexp.MustCompile(`Waiting for rpc http://.*?/bc/([A-Za-z0-9]+)/rpc`)
+		re := regexp.MustCompile(`Waiting for blockchain .* ID ([A-Za-z0-9]+) to be bootstrapped`)
 		// Find the first match
 		match := re.FindStringSubmatch(output)
 		gomega.Expect(match).ToNot(gomega.BeEmpty())
