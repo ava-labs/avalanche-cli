@@ -21,21 +21,19 @@ permissions:
 
 jobs:
   update_md:
-    # Run if:
-    # 1. PR event with cmd/** or sdk/** changes (automatic)
-    # 2. Comment with /update-md on any PR (manual)
-    if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/update-md') && github.event.issue.pull_request)
-    name: Update MD Files
+    # For pull_request event, always run
+    # For issue_comment event, only run if comment contains /update-md
+    if: >
+      github.event_name == 'pull_request' || 
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/update-md'))
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.event.pull_request.head.ref }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -70,4 +68,3 @@ jobs:
             cmd/commands.md
             sdk/SDK.md
           commit-message: "chore: Update MD files [skip ci]"
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.event.pull_request.head.ref }}
