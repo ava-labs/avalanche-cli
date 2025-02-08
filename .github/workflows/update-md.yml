@@ -1,34 +1,24 @@
 name: Update Markdown
 
 on:
-  push:
-    branches:
-      - main
-    # Only run when certain files change
-    paths:
-      - "cmd/**"
-      - "sdk/**"
-
+  # Only run on PRs when cmd/** or sdk/** files change
   pull_request:
     branches:
       - main
-    # Only run when certain files change
     paths:
       - "cmd/**"
       - "sdk/**"
 
-  # Monitor PR comments
+  # Monitor PR comments for /update-md command
   issue_comment:
     types: [created]
 
 jobs:
   update-md:
-    # Evaluate whether to run:
-    # 1. If this is a push to main with relevant file changes.
-    # 2. If this is a PR with relevant file changes.
-    # 3. If it's a PR comment containing '/update-md'.
+    # Run if:
+    # 1. It's a PR with relevant file changes in cmd/** or sdk/**
+    # 2. It's a PR comment containing '/update-md'
     if: >
-      (github.event_name == 'push') ||
       (github.event_name == 'pull_request') ||
       (
         github.event_name == 'issue_comment' &&
@@ -41,7 +31,6 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v3
         with:
-          # For pull requests, check out the head ref to commit back to it
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
