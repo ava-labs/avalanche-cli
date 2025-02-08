@@ -1,8 +1,7 @@
 name: Update Markdown
 
 on:
-  # Split into two separate triggers
-  # 1. PR with path filters
+  # Trigger on PR when cmd/** or sdk/** files change
   pull_request:
     branches:
       - main
@@ -10,7 +9,7 @@ on:
       - "cmd/**"
       - "sdk/**"
   
-  # 2. Comments without path filters
+  # Trigger on comment for manual updates
   issue_comment:
     types: [created]
 
@@ -19,33 +18,24 @@ permissions:
   contents: write
   pull-requests: write
   issues: read
-  statuses: write
 
 jobs:
-  update-md:
-    # Only run on PRs or on /update-md comments on PRs
+  update_md:
+    # Run if:
+    # 1. PR event with cmd/** or sdk/** changes (automatic)
+    # 2. Comment with /update-md on any PR (manual)
     if: |
-      (github.event_name == 'pull_request') ||
+      github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/update-md') && github.event.issue.pull_request)
+    name: Update MD Files
     runs-on: ubuntu-latest
 
     steps:
-      # Add this step to debug the event context
-      - name: Dump GitHub context
-        env:
-          GITHUB_CONTEXT: ${{ toJSON(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
-      - uses: xt0rted/pull-request-comment-branch@v2
-        id: comment-branch
-        if: github.event_name == 'issue_comment'
-
-      - name: Check out the repo
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event_name == 'issue_comment' && steps.comment-branch.outputs.head_ref || github.head_ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.event.pull_request.head.ref }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -65,21 +55,11 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip
-          # If you need additional dependencies, install them here
-          # pip install -r requirements.txt
-
       - name: Generate CLI MD
-        id: generate_cli_md
-        run: |
-          python .github/scripts/cli_scraper.py
+        run: python .github/scripts/cli_scraper.py
 
       - name: Generate SDK MD
-        id: generate_sdk_md
-        run: |
-          python .github/scripts/sdk_doc.py
+        run: python .github/scripts/sdk_doc.py
 
       - name: Commit files
         uses: ChromeQ/commit@v2.0.0
@@ -90,5 +70,4 @@ jobs:
             cmd/commands.md
             sdk/SDK.md
           commit-message: "chore: Update MD files [skip ci]"
-          # Commit back to the head branch so changes stay in the PR
-          ref: ${{ github.head_ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.event.pull_request.head.ref }}
