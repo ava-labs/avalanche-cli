@@ -13,6 +13,12 @@ on:
   issue_comment:
     types: [created]
 
+# Add permissions block to allow reading PR comments
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
 jobs:
   update-md:
     # Run if:
