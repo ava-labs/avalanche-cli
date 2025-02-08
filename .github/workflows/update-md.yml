@@ -28,17 +28,24 @@ jobs:
       (github.event_name == 'pull_request') ||
       (
         github.event_name == 'issue_comment' &&
-        github.event.issue.pull_request != null &&
         contains(github.event.comment.body, '/update-md')
       )
     runs-on: ubuntu-latest
 
     steps:
+      # Add this step to debug the event context
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJSON(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
       - name: Check out the repo
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.head_ref }}
+          # For issue_comment events, we need to checkout the PR branch
+          ref: ${{ github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || github.head_ref }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Go
         uses: actions/setup-go@v4
