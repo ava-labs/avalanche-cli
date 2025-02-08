@@ -1,15 +1,16 @@
 name: Update Markdown
 
 on:
-  # Only run on PRs when cmd/** or sdk/** files change
+  # Split into two separate triggers
+  # 1. PR with path filters
   pull_request:
     branches:
       - main
     paths:
       - "cmd/**"
       - "sdk/**"
-
-  # Monitor PR comments for /update-md command
+  
+  # 2. Comments without path filters
   issue_comment:
     types: [created]
 
@@ -22,6 +23,7 @@ permissions:
 
 jobs:
   update-md:
+    # Only run on PRs or on /update-md comments on PRs
     if: |
       (github.event_name == 'pull_request') ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/update-md') && github.event.issue.pull_request)
