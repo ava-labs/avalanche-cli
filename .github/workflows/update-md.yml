@@ -18,18 +18,13 @@ permissions:
   contents: write
   pull-requests: write
   issues: read
+  statuses: write
 
 jobs:
   update-md:
-    # Run if:
-    # 1. It's a PR with relevant file changes in cmd/** or sdk/**
-    # 2. It's a PR comment containing '/update-md'
-    if: >
+    if: |
       (github.event_name == 'pull_request') ||
-      (
-        github.event_name == 'issue_comment' &&
-        contains(github.event.comment.body, '/update-md')
-      )
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '/update-md') && github.event.issue.pull_request)
     runs-on: ubuntu-latest
 
     steps:
@@ -39,11 +34,14 @@ jobs:
           GITHUB_CONTEXT: ${{ toJSON(github) }}
         run: echo "$GITHUB_CONTEXT"
 
+      - uses: xt0rted/pull-request-comment-branch@v2
+        id: comment-branch
+        if: github.event_name == 'issue_comment'
+
       - name: Check out the repo
         uses: actions/checkout@v3
         with:
-          # For issue_comment events, we need to checkout the PR branch
-          ref: ${{ github.event.issue.pull_request && format('refs/pull/{0}/head', github.event.issue.number) || github.head_ref }}
+          ref: ${{ github.event_name == 'issue_comment' && steps.comment-branch.outputs.head_ref || github.head_ref }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
