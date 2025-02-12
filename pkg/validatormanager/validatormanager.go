@@ -16,7 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//go:embed deployed_poa_validator_manager_bytecode.txt
+//go:embed deployed_poa_validator_manager_v1.0.0_bytecode.txt
 var deployedPoAValidatorManagerBytecode []byte
 
 func AddPoAValidatorManagerContractToAllocations(
