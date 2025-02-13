@@ -85,7 +85,7 @@ staking token. Both processes will issue a RegisterL1ValidatorTx on the P-Chain.
 This command currently only works on Blockchains deployed to either the Fuji
 Testnet or Mainnet.`,
 		RunE: addValidator,
-		Args: cobrautils.ExactArgs(1),
+		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 
@@ -146,9 +146,11 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
+	if len(args) == 1 {
+		sc, err := app.LoadSidecar(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
 	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -173,8 +175,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if sc.Networks[network.Name()].ClusterName != "" {
-		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
+	if len(args) == 1 {
+		if sc.Networks[network.Name()].ClusterName != "" {
+			clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
+		}
 	}
 
 	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
@@ -192,7 +196,10 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	sovereign := sc.Sovereign
+	sovereign = true
+	if len(args) == 1 {
+		sovereign = sc.Sovereign
+	}
 
 	if nodeEndpoint != "" {
 		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
@@ -201,7 +208,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add a aditional local node
+	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add additional local node
 	if (!sovereign && nodeIDStr == "") || (sovereign && !createLocalValidator && nodeIDStr == "" && publicKey == "" && pop == "") {
 		for {
 			local := "Use my local machine to spin up an additional validator"
@@ -339,6 +346,7 @@ func CallAddValidator(
 	balanceAVAX float64,
 	remainingBalanceOwnerAddr string,
 	disableOwnerAddr string,
+	remoteL1 bool,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -359,16 +367,32 @@ func CallAddValidator(
 		BlockchainName: blockchainName,
 	}
 
-	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
+	if !remoteL1 {
+		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
+
+		if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+			return fmt.Errorf("unable to find Validator Manager address")
+		}
+		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	} else {
+		// get from chain
+		// TODO:
+		if validatorManagerAddress == "" {
+			validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
+			if err != nil {
+				return err
+			}
+			validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+		}
 	}
 
-	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
-		return fmt.Errorf("unable to find Validator Manager address")
-	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	validatorManagerOwner := sc.ValidatorManagerOwner
+	if !remoteL1 {
 
+	}
 	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
