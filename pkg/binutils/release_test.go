@@ -37,7 +37,7 @@ func setupInstallDir(require *require.Assertions) *application.Avalanche {
 	defer os.RemoveAll(rootDir)
 
 	app := application.New()
-	app.Setup(rootDir, logging.NoLog{}, &config.Config{}, prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(rootDir, logging.NoLog{}, &config.Config{}, "", prompts.NewPrompter(), application.NewDownloader())
 	return app
 }
 
