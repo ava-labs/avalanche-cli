@@ -22,7 +22,8 @@ import (
 )
 
 var (
-	blockchainIDstr string
+	blockchainIDStr string
+	subnetIDstr     string
 	nodeURL         string
 	useSubnetEvm    bool
 	useCustomVM     bool
@@ -55,7 +56,7 @@ flag.`,
 		"overwrite the existing configuration if one exists",
 	)
 	cmd.Flags().StringVar(
-		&blockchainIDstr,
+		&blockchainIDStr,
 		"blockchain-id",
 		"",
 		"the blockchain ID",
@@ -102,13 +103,13 @@ func importPublic(*cobra.Command, []string) error {
 	}
 
 	var blockchainID ids.ID
-	if blockchainIDstr == "" {
+	if blockchainIDStr == "" {
 		blockchainID, err = app.Prompt.CaptureID("What is the ID of the blockchain?")
 		if err != nil {
 			return err
 		}
 	} else {
-		blockchainID, err = ids.FromString(blockchainIDstr)
+		blockchainID, err = ids.FromString(blockchainIDStr)
 		if err != nil {
 			return err
 		}
