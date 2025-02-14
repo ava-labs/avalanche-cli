@@ -124,6 +124,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
+	cmd.Flags().StringVar(&blockchainIDStr, "blockchain-id", "", "blockchain ID (only if blockchain name is not provided)")
+	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
+	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address (only if blockchain name is not provided)")
+	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
 
 	return cmd
 }
@@ -146,20 +150,22 @@ func addValidator(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	var sc models.Sidecar
+	networkOption := []networkoptions.NetworkOption{}
 	if len(args) == 1 {
-		sc, err := app.LoadSidecar(blockchainName)
+		sc, err = app.LoadSidecar(blockchainName)
 		if err != nil {
 			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
+		networkOption = networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions)
 	}
-
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		true,
 		false,
-		networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions),
+		networkOption,
 		"",
 	)
 	if err != nil {
@@ -169,6 +175,65 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		clusterNameFlagValue = network.ClusterName
 		network = models.ConvertClusterToNetwork(network)
+	}
+
+	if len(args) == 0 {
+		var blockchainID ids.ID
+		var subnetID ids.ID
+		if blockchainIDStr == "" {
+			blockchainID, err = app.Prompt.CaptureID("What is the Blockchain ID?")
+			if err != nil {
+				return err
+			}
+		} else {
+			blockchainID, err = ids.FromString(blockchainIDStr)
+			if err != nil {
+				return err
+			}
+		}
+		if subnetIDstr == "" {
+			subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
+			if err != nil {
+				return err
+			}
+		} else {
+			subnetID, err = ids.FromString(subnetIDstr)
+			if err != nil {
+				return err
+			}
+		}
+		if validatorManagerAddress == "" {
+			validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
+			if err != nil {
+				return err
+			}
+			validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+		}
+
+		sc = models.Sidecar{
+			Sovereign: true,
+		}
+		if err = promptValidatorManagementType(app, &sc); err != nil {
+			return err
+		}
+		if sc.ValidatorManagement == models.ProofOfAuthority {
+			if validatorManagerOwnerAddress == "" {
+				validatorManagerOwnerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the owner of the Validator Manager?")
+				if err != nil {
+					return err
+				}
+				validatorManagerOwnerAddress = validatorManagerOwnerAddressAddrFmt.String()
+			}
+			sc.ValidatorManagerOwner = validatorManagerOwnerAddress
+		}
+
+		sc.Networks = make(map[string]models.NetworkData)
+
+		sc.Networks[network.Name()] = models.NetworkData{
+			SubnetID:                subnetID,
+			BlockchainID:            blockchainID,
+			ValidatorManagerAddress: validatorManagerAddress,
+		}
 	}
 
 	if err := preAddChecks(); err != nil {
@@ -323,6 +388,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		balanceAVAX,
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
+		sc,
 	)
 }
 
@@ -346,7 +412,7 @@ func CallAddValidator(
 	balanceAVAX float64,
 	remainingBalanceOwnerAddr string,
 	disableOwnerAddr string,
-	remoteL1 bool,
+	sc models.Sidecar,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -367,32 +433,11 @@ func CallAddValidator(
 		BlockchainName: blockchainName,
 	}
 
-	if !remoteL1 {
-		sc, err := app.LoadSidecar(chainSpec.BlockchainName)
-		if err != nil {
-			return fmt.Errorf("failed to load sidecar: %w", err)
-		}
-
-		if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
-			return fmt.Errorf("unable to find Validator Manager address")
-		}
-		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-	} else {
-		// get from chain
-		// TODO:
-		if validatorManagerAddress == "" {
-			validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
-			if err != nil {
-				return err
-			}
-			validatorManagerAddress = validatorManagerAddressAddrFmt.String()
-		}
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
 	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	validatorManagerOwner := sc.ValidatorManagerOwner
-	if !remoteL1 {
-
-	}
 	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
@@ -411,8 +456,12 @@ func CallAddValidator(
 	if pos {
 		// should take input prior to here for stake amount, delegation fee, and min stake duration
 		if stakeAmount == 0 {
+			tokenName := sc.TokenName
+			if tokenName == "" {
+				tokenName = "tokens"
+			}
 			stakeAmount, err = app.Prompt.CaptureUint64Compare(
-				fmt.Sprintf("Enter the amount of %s to stake ", sc.TokenName),
+				fmt.Sprintf("Enter the amount of %s to stake ", tokenName),
 				[]prompts.Comparator{
 					{
 						Label: "Positive",
