@@ -245,6 +245,11 @@ func removeValidatorSOV(
 	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), sc.ValidatorManagerOwner)
 
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
@@ -296,6 +301,7 @@ func removeValidatorSOV(
 		sc.PoS(),
 		uptimeSec,
 		isBootstrapValidator || force,
+		validatorManagerAddress,
 	)
 	if err != nil && errors.Is(err, validatormanagerSDK.ErrValidatorIneligibleForRewards) {
 		ux.Logger.PrintToUser("Calculated rewards is zero. Validator %s is not eligible for rewards", nodeID)
@@ -319,6 +325,7 @@ func removeValidatorSOV(
 			sc.PoS(),
 			uptimeSec,
 			true, // force
+			validatorManagerAddress,
 		)
 		if err != nil {
 			return err
@@ -353,6 +360,7 @@ func removeValidatorSOV(
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
+		validatorManagerAddress,
 	); err != nil {
 		return err
 	}

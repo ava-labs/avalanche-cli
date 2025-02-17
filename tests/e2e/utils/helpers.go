@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -42,6 +43,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/subnet-evm/ethclient"
+
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -1104,4 +1106,13 @@ func GetKeyTransferFee(output string) (uint64, error) {
 
 func GetAPILargeContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+}
+
+func GetE2EHostInstanceID() (string, error) {
+	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(path.Join(GetBaseDir(), constants.NodesDir, constants.AnsibleInventoryDir, constants.E2EClusterName))
+	if err != nil {
+		return "", err
+	}
+	_, cloudHostID, _ := models.HostAnsibleIDToCloudID(hosts[0].NodeID)
+	return cloudHostID, nil
 }

@@ -85,6 +85,11 @@ func IsCreateChainTx(tx *txs.Tx) bool {
 	return ok
 }
 
+func IsConvertToL1Tx(tx *txs.Tx) bool {
+	_, ok := tx.Unsigned.(*txs.ConvertSubnetToL1Tx)
+	return ok
+}
+
 func IsTransferSubnetOwnershipTx(tx *txs.Tx) bool {
 	_, ok := tx.Unsigned.(*txs.TransferSubnetOwnershipTx)
 	return ok

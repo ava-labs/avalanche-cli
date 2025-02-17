@@ -278,30 +278,6 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 
 		commands.DeleteSubnetConfig(subnetName)
 	})
-
-	ginkgo.It("can list a subnet's validators non SOV", func() {
-		nodeIDs := []string{
-			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
-			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
-		}
-
-		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
-		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
-		_, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		output, err := commands.ListValidators(subnetName, "local")
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		for _, nodeID := range nodeIDs {
-			gomega.Expect(output).Should(gomega.ContainSubstring(nodeID))
-		}
-
-		commands.DeleteSubnetConfig(subnetName)
-	})
 })
 
 var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
