@@ -31,8 +31,6 @@ const (
 	SubnetEvmAllowFeeRecpPath = "tests/e2e/assets/test_subnet_evm_allowFeeRecps_genesis.json"
 	SubnetEvmGenesisBadPath   = "tests/e2e/assets/test_subnet_evm_genesis_bad.json"
 	BootstrapValidatorPath    = "tests/e2e/assets/test_bootstrap_validator.json"
-	EtnaAvalancheGoVersion    = "v1.12.0-fuji"
-	EtnaSubnetEvmVersion      = "v0.6.12"
 	PluginDirExt              = "plugins"
 
 	ledgerSimDir          = "./tests/e2e/ledgerSim"

@@ -7,37 +7,34 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
-	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
-	"github.com/ava-labs/avalanchego/config"
-	"github.com/ava-labs/avalanchego/ids"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -103,7 +100,13 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	return cmd
 }
 
-func StartLocalMachine(network models.Network, blockchainName string, deployBalance, availableBalance uint64) error {
+func StartLocalMachine(
+	network models.Network,
+	sidecar models.Sidecar,
+	blockchainName string,
+	deployBalance,
+	availableBalance uint64,
+) error {
 	var err error
 	if network.Kind == models.Local {
 		useLocalMachine = true
@@ -182,29 +185,25 @@ func StartLocalMachine(network models.Network, blockchainName string, deployBala
 		_ = node.StopLocalNode(app)
 		anrSettings := node.ANRSettings{}
 		avagoVersionSettings := node.AvalancheGoVersionSettings{}
-		if avagoBinaryPath == "" {
-			useLatestAvalanchegoPreReleaseVersion := true
-			useLatestAvalanchegoReleaseVersion := false
-			if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
-				useLatestAvalanchegoReleaseVersion = false
-				useLatestAvalanchegoPreReleaseVersion = false
-			} else {
-				userProvidedAvagoVersion = ""
-			}
-			avaGoVersionSetting := node.AvalancheGoVersionSettings{
-				UseCustomAvalanchegoVersion:           userProvidedAvagoVersion,
-				UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
-				UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
-			}
-			avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+		// setup (install if needed) avalanchego binary
+		avagoVersion := userProvidedAvagoVersion
+		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
+			// nothing given: get avago version from RPC compat
+			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
+				app,
+				sidecar.RPCVersion,
+				constants.AvalancheGoCompatibilityURL,
+			)
 			if err != nil {
-				return err
+				if err != vm.ErrNoAvagoVersion {
+					return err
+				}
+				avagoVersion = constants.LatestPreReleaseVersionTag
 			}
-			_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
-			if err != nil {
-				return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
-			}
-			avagoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+		}
+		avagoBinaryPath, err := localnet.SetupAvalancheGoBinary(app, avagoVersion, avagoBinaryPath)
+		if err != nil {
+			return err
 		}
 		nodeConfig := map[string]interface{}{}
 		if app.AvagoNodeConfigExists(blockchainName) {
@@ -535,7 +534,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		}
 	}
 	if !generateNodeID {
-		if err = StartLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
+		if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
 			return err
 		}
 	}

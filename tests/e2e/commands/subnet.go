@@ -325,11 +325,7 @@ func DeploySubnetLocallyExpectErrorSOV(subnetName string) {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyWithViperConfNonSOV(subnetName string, confPath string) string {
-	mapper := utils.NewVersionMapper()
-	mapping, err := utils.GetVersionMapping(mapper)
-	gomega.Expect(err).Should(gomega.BeNil())
-
-	return DeploySubnetLocallyWithArgsNonSOV(subnetName, mapping[utils.OnlyAvagoKey], confPath)
+	return DeploySubnetLocallyWithArgsNonSOV(subnetName, "", confPath)
 }
 
 func DeploySubnetLocallyWithViperConfSOV(subnetName string, confPath string) string {
@@ -372,6 +368,7 @@ func DeploySubnetLocallyWithArgsNonSOV(subnetName string, version string, confPa
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (
@@ -410,6 +407,7 @@ func DeploySubnetLocallyWithArgsSOV(subnetName string, version string, confPath 
 		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var (

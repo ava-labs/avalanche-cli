@@ -76,7 +76,7 @@ func describe(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	if network.Kind == models.Local {
-		if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(""); err != nil {
+		if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
 			return err
 		} else if b {
 			icmMessengerAddress = extraLocalNetworkData.CChainTeleporterMessengerAddress

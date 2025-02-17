@@ -6,7 +6,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/server"
 	"github.com/spf13/cobra"
 )
 
@@ -23,30 +22,27 @@ network is running and some basic stats about the network.`,
 }
 
 func networkStatus(*cobra.Command, []string) error {
-	clusterInfo, err := localnet.GetClusterInfo()
+	network, err := localnet.GetLocalNetwork(app)
 	if err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			ux.Logger.PrintToUser("No local network running")
-			return nil
-		}
 		return err
 	}
-	if clusterInfo != nil {
-		ux.Logger.PrintToUser("Network is Up:")
-		ux.Logger.PrintToUser("  Number of Nodes: %d", len(clusterInfo.NodeNames))
-		ux.Logger.PrintToUser("  Number of Custom VMs: %d", len(clusterInfo.CustomChains))
-		ux.Logger.PrintToUser("  Network Healthy: %t", clusterInfo.Healthy)
-		ux.Logger.PrintToUser("  Custom VMs Healthy: %t", clusterInfo.CustomChainsHealthy)
-		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, ""); err != nil {
-			return err
-		}
-	} else {
-		ux.Logger.PrintToUser("No local network running")
+	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+	if err != nil {
+		return err
 	}
-
-	// TODO: verbose output?
-	// ux.Logger.PrintToUser(status.String())
+	pChainBootstrapped, blockchainsBootstrapped, err := localnet.LocalNetworkHealth(app, ux.Logger.PrintToUser)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("Network is Up:")
+	ux.Logger.PrintToUser("  Number of Nodes: %d", len(network.Nodes))
+	ux.Logger.PrintToUser("  Number of Custom VMs: %d", len(blockchains))
+	ux.Logger.PrintToUser("  Network Healthy: %t", pChainBootstrapped)
+	ux.Logger.PrintToUser("  Custom VMs Healthy: %t", blockchainsBootstrapped)
+	ux.Logger.PrintToUser("")
+	if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, ""); err != nil {
+		return err
+	}
 
 	return nil
 }

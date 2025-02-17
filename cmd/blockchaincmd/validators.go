@@ -106,7 +106,7 @@ func printValidatorsFromList(validators []platformvm.ClientPermissionlessValidat
 
 		table.Append([]string{
 			validator.NodeID.String(),
-			strconv.FormatUint(*validator.StakeAmount, 10),
+			strconv.FormatUint(validator.Weight, 10),
 			strconv.FormatUint(delegatorWeight, 10),
 			formatUnixTime(validator.StartTime),
 			formatUnixTime(validator.EndTime),
