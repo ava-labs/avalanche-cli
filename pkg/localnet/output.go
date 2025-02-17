@@ -24,9 +24,9 @@ func PrintEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	blockchainName string,
 ) error {
-	if isBoostrapped, err := LocalNetworkIsBootstrapped(app); err != nil {
+	if isRunning, err := IsLocalNetworkRunning(app); err != nil {
 		return err
-	} else if isBoostrapped {
+	} else if isRunning {
 		networkDir, err := GetLocalNetworkDir(app)
 		if err != nil {
 			return err

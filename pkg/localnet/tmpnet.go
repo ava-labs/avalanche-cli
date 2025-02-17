@@ -35,13 +35,13 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type BootstrappingStatus int64
+type RunningStatus int64
 
 const (
-	UndefinedBootstrappingStatus BootstrappingStatus = iota
-	NotBootstrapped                                  // no network node is bootstrapped
-	PartiallyBootstrapped                            // only part of the network nodes are bootstrapped
-	FullyBootstrapped                                // all network nodes are bootstrapped
+	UndefinedRunningStatus RunningStatus = iota
+	NotRunning                           // no network node is running
+	PartiallyRunning                     // only part of the network nodes are running
+	Running                              // all network nodes are running
 )
 
 type BlockchainInfo struct {
@@ -153,9 +153,9 @@ func TmpNetStop(
 	return tmpnet.StopNetwork(ctx, networkDir)
 }
 
-// Indicates wether the given network has all of its nodes alive, part of them, or none
-func GetTmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error) {
-	status := UndefinedBootstrappingStatus
+// Indicates wether the given network has all of its nodes running, part of them, or none
+func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
+	status := UndefinedRunningStatus
 	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return status, err
@@ -173,16 +173,16 @@ func GetTmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error
 				return status, fmt.Errorf("failed to unmarshal node process context at %s: %w", processPath, err)
 			}
 			if _, err := utils.GetProcess(processContext.PID); err == nil {
-				status = PartiallyBootstrapped
+				status = PartiallyRunning
 				bootstrappedCount++
 			}
 		}
 	}
 	switch bootstrappedCount {
 	case 0:
-		return NotBootstrapped, nil
+		return NotRunning, nil
 	case len(network.Nodes):
-		return FullyBootstrapped, nil
+		return Running, nil
 	default:
 		return status, nil
 	}

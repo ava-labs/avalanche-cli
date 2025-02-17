@@ -17,49 +17,49 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
-var ErrNetworkNotBootstrapped = errors.New("network is not bootstrapped")
+var ErrNetworkNotRunning = errors.New("network is not running")
 
-// Indicates if all, some or none of the local network nodes are alive
-func LocalNetworkBootstrappingStatus(app *application.Avalanche) (BootstrappingStatus, error) {
+// Indicates if all, some or none of the local network nodes are running
+func LocalNetworkRunningStatus(app *application.Avalanche) (RunningStatus, error) {
 	if LocalNetworkMetaExists(app) {
 		meta, err := GetLocalNetworkMeta(app)
 		if err != nil {
-			return UndefinedBootstrappingStatus, err
+			return UndefinedRunningStatus, err
 		}
 		if sdkutils.DirExists(meta.NetworkDir) {
-			status, err := GetTmpNetBootstrappingStatus(meta.NetworkDir)
+			status, err := GetTmpNetRunningStatus(meta.NetworkDir)
 			if err != nil {
 				return status, err
 			}
-			if status == NotBootstrapped {
+			if status == NotRunning {
 				if err := RemoveLocalNetworkMeta(app); err != nil {
-					return NotBootstrapped, err
+					return NotRunning, err
 				}
 			}
 			return status, nil
 		}
 	}
-	return NotBootstrapped, nil
+	return NotRunning, nil
 }
 
-// Returns true if all local network nodes are alive
-func LocalNetworkIsBootstrapped(app *application.Avalanche) (bool, error) {
-	status, err := LocalNetworkBootstrappingStatus(app)
+// Returns true if all local network nodes are running
+func IsLocalNetworkRunning(app *application.Avalanche) (bool, error) {
+	status, err := LocalNetworkRunningStatus(app)
 	if err != nil {
 		return false, err
 	}
-	return status == FullyBootstrapped, nil
+	return status == Running, nil
 }
 
 // Returns the tmpnet directory associated to the local network
 // If the network is not alive it errors
 func GetLocalNetworkDir(app *application.Avalanche) (string, error) {
-	isBootstrapped, err := LocalNetworkIsBootstrapped(app)
+	isRunning, err := IsLocalNetworkRunning(app)
 	if err != nil {
 		return "", err
 	}
-	if !isBootstrapped {
-		return "", ErrNetworkNotBootstrapped
+	if !isRunning {
+		return "", ErrNetworkNotRunning
 	}
 	meta, err := GetLocalNetworkMeta(app)
 	if err != nil {
@@ -100,9 +100,9 @@ func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo
 // Returns avalanchego version and RPC version for the local network
 func GetLocalNetworkAvalancheGoVersion(app *application.Avalanche) (bool, string, int, error) {
 	// not actually an error, network just not running
-	if isBootstrapped, err := LocalNetworkIsBootstrapped(app); err != nil {
+	if isRunning, err := IsLocalNetworkRunning(app); err != nil {
 		return true, "", 0, err
-	} else if !isBootstrapped {
+	} else if !isRunning {
 		return false, "", 0, nil
 	}
 	endpoint, err := GetLocalNetworkEndpoint(app)
