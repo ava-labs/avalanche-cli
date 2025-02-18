@@ -799,16 +799,18 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		if !convertOnly && !generateNodeID {
-			tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerStr)
-			if err != nil {
-				return err
-			}
-		} else {
+		if convertOnly || generateNodeID || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+			ux.Logger.PrintToUser(logging.Green.Wrap("Double check the nodes expose P2P port and have a correct setting for 'public-ip' config value"))
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
+			return nil
+		}
+
+		tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerStr)
+		if err != nil {
+			return err
 		}
 	} else {
 		if err := app.UpdateSidecarNetworks(
@@ -837,7 +839,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sidecar.Sovereign {
+	if sidecar.Sovereign && tracked {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	}
