@@ -802,7 +802,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if convertOnly || generateNodeID || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
-			ux.Logger.PrintToUser(logging.Green.Wrap("Double check the nodes expose P2P port and have a correct setting for 'public-ip' config value"))
+			ux.Logger.PrintToUser(logging.Green.Wrap("Double check the nodes expose the P2P port and have a correct setting for 'public-ip' config value"))
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
 			return nil
@@ -935,10 +935,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
 	}
 
-	if sidecar.Sovereign {
-		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
-	} else {
-		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
+	if tracked {
+		if sidecar.Sovereign {
+			ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
+		} else {
+			ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
+		}
 	}
 
 	return nil
