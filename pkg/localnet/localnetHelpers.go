@@ -21,7 +21,6 @@ import (
 
 // information that is persisted alongside the local network
 type ExtraLocalNetworkData struct {
-	AvalancheGoPath                  string
 	RelayerPath                      string
 	CChainTeleporterMessengerAddress string
 	CChainTeleporterRegistryAddress  string
@@ -201,7 +200,6 @@ func GetExtraLocalNetworkData(app *application.Avalanche, rootDataDir string) (b
 func WriteExtraLocalNetworkData(
 	app *application.Avalanche,
 	rootDataDir string,
-	avalancheGoPath string,
 	relayerPath string,
 	cchainICMMessengerAddress string,
 	cchainICMRegistryAddress string,
@@ -221,9 +219,6 @@ func WriteExtraLocalNetworkData(
 		if err != nil {
 			return err
 		}
-	}
-	if avalancheGoPath != "" {
-		extraLocalNetworkData.AvalancheGoPath = utils.ExpandHome(avalancheGoPath)
 	}
 	if relayerPath != "" {
 		extraLocalNetworkData.RelayerPath = utils.ExpandHome(relayerPath)

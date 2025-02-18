@@ -243,11 +243,11 @@ func WaitTmpNetBlockchainBootstrapped(
 ) error {
 	blockchainBootstrapCheckFrequency := time.Second
 	for {
-		boostrapped, err := IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
+		bootstrapped, err := IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
 		if err != nil {
 			return err
 		}
-		if boostrapped {
+		if bootstrapped {
 			break
 		}
 		select {
@@ -284,11 +284,11 @@ func IsTmpNetBlockchainBootstrapped(
 			continue
 		}
 		infoClient := info.NewClient(node.URI)
-		boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
+		bootstrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
 		if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
 			return false, err
 		}
-		if !boostrapped {
+		if !bootstrapped {
 			return false, nil
 		}
 		queried++
@@ -741,4 +741,12 @@ func TmpNetWaitNonSovereignValidators(ctx context.Context, network *tmpnet.Netwo
 		}
 	}
 	return nil
+}
+
+func GetTmpNetAvalancheGoBinaryPath(networkDir string) (string, error) {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return "", err
+	}
+	return network.DefaultRuntimeConfig.AvalancheGoPath, nil
 }
