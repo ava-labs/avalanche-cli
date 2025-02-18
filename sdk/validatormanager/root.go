@@ -40,10 +40,11 @@ type NativeTokenValidatorManagerSettings struct {
 }
 
 const (
-	ValidatorContractAddress  = "0xC0DEBA5E0000000000000000000000000000000"
-	ProxyContractAddress      = "0xFEEDC0DE0000000000000000000000000000000"
-	ProxyAdminContractAddress = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
-	RewardCalculatorAddress   = "0xDEADC0DE0000000000000000000000000000000"
+	ValidatorMessagesContractAddress = "0x9C00629cE712B0255b17A4a657171Acd15720B8C"
+	ValidatorContractAddress         = "0xC0DEBA5E0000000000000000000000000000000"
+	ProxyContractAddress             = "0xFEEDC0DE0000000000000000000000000000000"
+	ProxyAdminContractAddress        = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
+	RewardCalculatorAddress          = "0xDEADC0DE0000000000000000000000000000000"
 
 	DefaultPoSMinimumStakeAmount     = 1
 	DefaultPoSMaximumStakeAmount     = 1000
