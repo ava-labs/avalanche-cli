@@ -29,6 +29,7 @@ type Avalanche struct {
 	Log        logging.Logger
 	baseDir    string
 	Conf       *config.Config
+	Version    string
 	Prompt     prompts.Prompter
 	Apm        *apm.APM
 	ApmDir     string
@@ -39,10 +40,18 @@ func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter, downloader Downloader) {
+func (app *Avalanche) Setup(
+	baseDir string,
+	log logging.Logger,
+	conf *config.Config,
+	version string,
+	prompt prompts.Prompter,
+	downloader Downloader,
+) {
 	app.baseDir = baseDir
 	app.Log = log
 	app.Conf = conf
+	app.Version = version
 	app.Prompt = prompt
 	app.Downloader = downloader
 }
