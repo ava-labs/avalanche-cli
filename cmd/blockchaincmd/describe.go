@@ -346,6 +346,8 @@ func printSmartContracts(sc models.Sidecar, genesis core.Genesis) {
 		case address == common.HexToAddress(icmgenesis.MessengerContractAddress):
 			description = "ICM Messenger"
 			deployer = icmgenesis.MessengerDeployerAddress
+		case address == common.HexToAddress(validatorManagerSDK.ValidatorMessagesContractAddress):
+			description = "Validator Messages Lib"
 		case address == common.HexToAddress(validatorManagerSDK.ValidatorContractAddress):
 			if sc.PoA() {
 				description = "PoA Validator Manager"

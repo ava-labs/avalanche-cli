@@ -243,6 +243,8 @@ const (
 	// #nosec G101
 	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
 
+	MetricsAPITokenEnvVarName = "AVALANCHE_CLI_METRICS_TOKEN"
+
 	ReposDir                    = "repos"
 	SubnetDir                   = "subnets"
 	NodesDir                    = "nodes"
