@@ -436,12 +436,14 @@ func TmpNetSetBlockchainConfig(
 // blockchain supporting different confs for different nodes
 func TmpNetSetNodeBlockchainConfig(
 	network *tmpnet.Network,
-	_ ids.NodeID,
+	nodeID ids.NodeID,
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
 	configPath := filepath.Join(
 		network.Dir,
+		nodeID.String(),
+		"configs",
 		"chains",
 		blockchainID.String(),
 		"config.json",
@@ -449,6 +451,19 @@ func TmpNetSetNodeBlockchainConfig(
 	configDir := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+	}
+	found := false
+	for _, node := range network.Nodes {
+		if node.NodeID == nodeID {
+			node.Flags[config.ChainConfigDirKey] = configDir
+			if err := node.Write(); err != nil {
+				return err
+			}
+			found = true
+		}
+	}
+	if !found {
+		return fmt.Errorf("failure writing chain config file: node %s not found on network", nodeID)
 	}
 	return os.WriteFile(configPath, blockchainConfig, constants.WriteReadReadPerms)
 }

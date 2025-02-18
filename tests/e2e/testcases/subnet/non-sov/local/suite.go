@@ -220,7 +220,6 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy with custom per chain config node non SOV", func() {
-		ginkgo.Skip("yet to be implemented on tmpnet migration")
 		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
 
 		// create per node chain config
