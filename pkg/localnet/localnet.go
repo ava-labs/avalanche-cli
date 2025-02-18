@@ -90,11 +90,11 @@ func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
 
 // Returns blockchain info for all non standard blockchains deployed into the local network
 func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo, error) {
-	network, err := GetLocalNetwork(app)
+	endpoint, err := GetLocalNetworkEndpoint(app)
 	if err != nil {
 		return nil, err
 	}
-	return GetTmpNetBlockchainInfo(network)
+	return GetBlockchainInfo(endpoint)
 }
 
 // Returns avalanchego version and RPC version for the local network

@@ -44,13 +44,6 @@ const (
 	Running                              // all network nodes are running
 )
 
-type BlockchainInfo struct {
-	Name     string
-	ID       ids.ID
-	SubnetID ids.ID
-	VMID     ids.ID
-}
-
 // Creates a new tmpnet with the given parameters
 // accepts:
 // - settint specific[rootDir] for the network,
@@ -239,35 +232,6 @@ func GetTmpNetEndpoint(network *tmpnet.Network) (string, error) {
 	return node.URI, nil
 }
 
-// Gathers blockchain info for all non standard blockchains
-func GetTmpNetBlockchainInfo(network *tmpnet.Network) ([]BlockchainInfo, error) {
-	endpoint, err := GetTmpNetEndpoint(network)
-	if err != nil {
-		return nil, err
-	}
-	pClient := platformvm.NewClient(endpoint)
-	ctx, cancel := sdkutils.GetAPIContext()
-	defer cancel()
-	blockchains, err := pClient.GetBlockchains(ctx)
-	if err != nil {
-		return nil, err
-	}
-	blockchainsInfo := []BlockchainInfo{}
-	for _, blockchain := range blockchains {
-		if blockchain.Name == "C-Chain" || blockchain.Name == "X-Chain" {
-			continue
-		}
-		blockchainInfo := BlockchainInfo{
-			Name:     blockchain.Name,
-			ID:       blockchain.ID,
-			SubnetID: blockchain.SubnetID,
-			VMID:     blockchain.VMID,
-		}
-		blockchainsInfo = append(blockchainsInfo, blockchainInfo)
-	}
-	return blockchainsInfo, nil
-}
-
 // Waits for the given blockchain to be bootstrapped on network
 // Check this for all network nodes that are also validators of the subnet
 // If the network does not validate the blockchain at all, it errors
@@ -414,7 +378,11 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
 		return err
 	}
-	blockchains, err := GetTmpNetBlockchainInfo(network)
+	endpoint, err := GetTmpNetEndpoint(network)
+	if err != nil {
+		return err
+	}
+	blockchains, err := GetBlockchainInfo(endpoint)
 	if err != nil {
 		return err
 	}
