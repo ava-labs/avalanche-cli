@@ -81,11 +81,11 @@ func GetLocalNetwork(app *application.Avalanche) (*tmpnet.Network, error) {
 // Returns the endpoint associated to the local network
 // If the network is not alive it errors
 func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
-	networkDir, err := GetLocalNetworkDir(app)
+	network, err := GetLocalNetwork(app)
 	if err != nil {
 		return "", err
 	}
-	return GetTmpNetEndpoint(networkDir)
+	return GetTmpNetEndpoint(network)
 }
 
 // Returns blockchain info for all non standard blockchains deployed into the local network

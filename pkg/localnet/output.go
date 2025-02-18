@@ -67,7 +67,11 @@ func PrintBlockchainEndpoints(
 	networkDir string,
 	blockchain BlockchainInfo,
 ) error {
-	node, err := GetTmpNetFirstNode(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	node, err := GetTmpNetFirstNode(network)
 	if err != nil {
 		return err
 	}
