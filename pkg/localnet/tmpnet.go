@@ -5,7 +5,6 @@ package localnet
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,7 +19,6 @@ import (
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
-	avagonode "github.com/ava-labs/avalanchego/node"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -157,20 +155,10 @@ func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
 	}
 	bootstrappedCount := 0
 	for _, node := range network.Nodes {
-		processPath := filepath.Join(networkDir, node.NodeID.String(), config.DefaultProcessContextFilename)
-		if utils.FileExists(processPath) {
-			bs, err := os.ReadFile(processPath)
-			if err != nil {
-				return status, fmt.Errorf("failed to read node process context at %s: %w", processPath, err)
-			}
-			processContext := avagonode.ProcessContext{}
-			if err := json.Unmarshal(bs, &processContext); err != nil {
-				return status, fmt.Errorf("failed to unmarshal node process context at %s: %w", processPath, err)
-			}
-			if _, err := utils.GetProcess(processContext.PID); err == nil {
-				status = PartiallyRunning
-				bootstrappedCount++
-			}
+		// tmpnet.ReadNetwork reads the process state of the nodes and ensures the
+		// node.URI field is populated only if the node is running
+		if len(node.URI) > 0 {
+			bootstrappedCount++
 		}
 	}
 	switch bootstrappedCount {
