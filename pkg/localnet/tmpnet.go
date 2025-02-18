@@ -452,10 +452,11 @@ func TmpNetSetNodeBlockchainConfig(
 	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
 	}
+	chainConfigsDir := filepath.Dir(configDir)
 	found := false
 	for _, node := range network.Nodes {
 		if node.NodeID == nodeID {
-			node.Flags[config.ChainConfigDirKey] = configDir
+			node.Flags[config.ChainConfigDirKey] = chainConfigsDir
 			if err := node.Write(); err != nil {
 				return err
 			}
