@@ -124,7 +124,7 @@ func UpdatePChainHeight(
 	title string,
 ) error {
 	_, err := ux.TimedProgressBar(
-		40*time.Second,
+		60*time.Second,
 		title,
 		0,
 	)
