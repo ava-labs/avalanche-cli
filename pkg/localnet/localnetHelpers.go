@@ -97,7 +97,11 @@ func LocalNetworkTrackSubnet(
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
-	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName, subnetID); err != nil {
+	network, err := GetLocalNetwork(app)
+	if err != nil {
+		return err
+	}
+	if err := TmpNetSetAlias(network, blockchainID.String(), blockchainName, subnetID); err != nil {
 		return err
 	}
 	nodeURIs, err := GetTmpNetNodeURIs(networkDir)

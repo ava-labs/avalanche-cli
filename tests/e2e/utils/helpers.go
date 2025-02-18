@@ -659,7 +659,7 @@ func RestartNodes() error {
 		ctx,
 		logging.NoLog{},
 		func(string, ...interface{}) {},
-		network.Dir,
+		network,
 		nil,
 	); err != nil {
 		return err

@@ -90,11 +90,11 @@ func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
 
 // Returns blockchain info for all non standard blockchains deployed into the local network
 func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo, error) {
-	networkDir, err := GetLocalNetworkDir(app)
+	network, err := GetLocalNetwork(app)
 	if err != nil {
 		return nil, err
 	}
-	return GetTmpNetBlockchainInfo(networkDir)
+	return GetTmpNetBlockchainInfo(network)
 }
 
 // Returns avalanchego version and RPC version for the local network
@@ -148,11 +148,11 @@ func LocalNetworkHasValidatorsForSubnet(
 	app *application.Avalanche,
 	subnetID ids.ID,
 ) (bool, error) {
-	networkDir, err := GetLocalNetworkDir(app)
+	network, err := GetLocalNetwork(app)
 	if err != nil {
 		return false, err
 	}
-	return TmpNetHasValidatorsForSubnet(networkDir, subnetID)
+	return TmpNetHasValidatorsForSubnet(network, subnetID)
 }
 
 // Indicates if a blockchain is bootstrapped on the local network
@@ -162,13 +162,13 @@ func IsLocalNetworkBlockchainBootstrapped(
 	blockchainID string,
 	subnetID ids.ID,
 ) (bool, error) {
-	networkDir, err := GetLocalNetworkDir(app)
+	network, err := GetLocalNetwork(app)
 	if err != nil {
 		return false, err
 	}
 	ctx, cancel := sdkutils.GetAPIContext()
 	defer cancel()
-	return IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, subnetID)
+	return IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
 }
 
 // Indicates if P-Chain is bootstrapped on the network, and also if
