@@ -229,6 +229,9 @@ func WaitTmpNetBlockchainBootstrapped(
 	blockchainID string,
 	subnetID ids.ID,
 ) error {
+	if _, ok := ctx.Deadline(); !ok {
+		return fmt.Errorf("no deadline given to a blockchain bootstrapping busy wait. endless loop is possible")
+	}
 	blockchainBootstrapCheckFrequency := time.Second
 	for {
 		bootstrapped, err := IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
