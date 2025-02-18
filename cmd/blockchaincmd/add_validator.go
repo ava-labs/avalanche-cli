@@ -225,7 +225,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 			return fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets \n")
 		}
 		blockchainID = subnetInfo.ManagerChainID
-		common.HexToAddress(subnetInfo.ManagerAddress)
 		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
 		fmt.Printf("obtained validatorManagerAddress %s \n", validatorManagerAddress)
 
@@ -436,7 +435,6 @@ func CallAddValidator(
 	disableOwnerAddr string,
 	sc models.Sidecar,
 ) error {
-	fmt.Printf("obtained second %s \n", sc.Networks[network.Name()].ValidatorManagerAddress)
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
 		return err
@@ -458,7 +456,6 @@ func CallAddValidator(
 	if sc.Networks[network.Name()].BlockchainID.String() != "" {
 		chainSpec.BlockchainID = sc.Networks[network.Name()].BlockchainID.String()
 	}
-	fmt.Printf("chainSpec.BlockchainID %s \n", chainSpec.BlockchainID)
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
