@@ -42,6 +42,7 @@ const (
 	NodePrometheusConfigFileName = "prometheus.yml"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
 	AnsibleDir                   = "ansible"
+	StakingDir                   = "staking"
 	AnsibleHostInventoryFileName = "hosts"
 	ClustersConfigFileName       = "cluster_config.json"
 	ClustersConfigVersion        = "1"
@@ -177,7 +178,7 @@ const (
 	GCPCloudService               = "Google Cloud Platform"
 	AWSDefaultInstanceType        = "c5.2xlarge"
 	GCPDefaultInstanceType        = "e2-standard-8"
-	AnsibleSSHUser                = "ubuntu"
+	RemoteSSHUser                 = "ubuntu"
 	AWSNodeAnsiblePrefix          = "aws_node"
 	GCPNodeAnsiblePrefix          = "gcp_node"
 	CustomVMDir                   = "vms"
@@ -242,6 +243,8 @@ const (
 
 	// #nosec G101
 	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
+
+	MetricsAPITokenEnvVarName = "AVALANCHE_CLI_METRICS_TOKEN"
 
 	ReposDir                    = "repos"
 	SubnetDir                   = "subnets"

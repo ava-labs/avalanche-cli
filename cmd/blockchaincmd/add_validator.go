@@ -364,6 +364,12 @@ func CallAddValidator(
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
+
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+
 	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,
@@ -515,6 +521,7 @@ func CallAddValidator(
 		delegationFee,
 		duration,
 		big.NewInt(int64(stakeAmount)),
+		validatorManagerAddress,
 	)
 	if err != nil {
 		return err
@@ -546,6 +553,7 @@ func CallAddValidator(
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
+		validatorManagerAddress,
 	); err != nil {
 		return err
 	}

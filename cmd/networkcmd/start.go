@@ -12,13 +12,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 
@@ -78,10 +76,10 @@ func start(*cobra.Command, []string) error {
 }
 
 func Start(flags StartFlags, printEndpoints bool) error {
-	// verify is local network is bootstrapped
-	if isBootstrapped, err := localnet.LocalNetworkIsBootstrapped(app); err != nil {
+	// verify local network is bootstrapped
+	if isRunning, err := localnet.IsLocalNetworkRunning(app); err != nil {
 		return err
-	} else if isBootstrapped {
+	} else if isRunning {
 		ux.Logger.PrintToUser("Network has already been booted.")
 		return nil
 	}
@@ -117,21 +115,18 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			}
 		}
 
+		snapshotAvalancheGoBinaryPath, err := localnet.GetTmpNetAvalancheGoBinaryPath(networkDir)
+		if err != nil {
+			return err
+		}
 		_, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, snapshotPath)
 		if err != nil {
 			return err
 		}
-		if extraLocalNetworkData.AvalancheGoPath == "" {
-			if flags.SnapshotName == constants.DefaultSnapshotName {
-				return fmt.Errorf("incompatible snapshot version. please cleanup with 'avalanche network clean'")
-			} else {
-				return fmt.Errorf("incompatible snapshot version. please cleanup dir under '%s'", snapshotPath)
-			}
-		}
 		if flags.AvagoBinaryPath == "" &&
 			flags.UserProvidedAvagoVersion == constants.DefaultAvalancheGoVersion &&
-			extraLocalNetworkData.AvalancheGoPath != "" {
-			avalancheGoBinPath = extraLocalNetworkData.AvalancheGoPath
+			snapshotAvalancheGoBinaryPath != "" {
+			avalancheGoBinPath = snapshotAvalancheGoBinaryPath
 		}
 
 		ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinPath)
@@ -171,7 +166,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 				app.GetLocalRelayerStorageDir(models.Local),
 			); err != nil {
 				return err
-			} else if err := localnet.WriteExtraLocalNetworkData(app, "", "", relayerBinPath, "", ""); err != nil {
+			} else if err := localnet.WriteExtraLocalNetworkData(app, "", relayerBinPath, "", ""); err != nil {
 				return err
 			}
 		}
@@ -241,7 +236,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		}
 	}
 
-	if err := localnet.WriteExtraLocalNetworkData(app, networkDir, avalancheGoBinPath, "", "", ""); err != nil {
+	if err := localnet.WriteExtraLocalNetworkData(app, networkDir, "", "", ""); err != nil {
 		return err
 	}
 

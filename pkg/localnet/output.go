@@ -24,9 +24,9 @@ func PrintEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	blockchainName string,
 ) error {
-	if isBoostrapped, err := LocalNetworkIsBootstrapped(app); err != nil {
+	if isRunning, err := IsLocalNetworkRunning(app); err != nil {
 		return err
-	} else if isBoostrapped {
+	} else if isRunning {
 		networkDir, err := GetLocalNetworkDir(app)
 		if err != nil {
 			return err
@@ -67,7 +67,11 @@ func PrintBlockchainEndpoints(
 	networkDir string,
 	blockchain BlockchainInfo,
 ) error {
-	node, err := GetTmpNetFirstNode(networkDir)
+	network, err := GetTmpNetNetworkWithURIFix(networkDir)
+	if err != nil {
+		return err
+	}
+	node, err := GetTmpNetFirstRunningNode(network)
 	if err != nil {
 		return err
 	}
@@ -138,7 +142,7 @@ func PrintNetworkEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	networkDir string,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
+	network, err := GetTmpNetNetworkWithURIFix(networkDir)
 	if err != nil {
 		return err
 	}

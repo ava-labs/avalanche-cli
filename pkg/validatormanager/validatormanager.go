@@ -16,13 +16,37 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//go:embed deployed_poa_validator_manager_bytecode.txt
+//go:embed deployed_validator_messages_bytecode_v1.0.0.txt
+var deployedValidatorMessagesBytecode []byte
+
+func AddValidatorMessagesContractToAllocations(
+	allocs core.GenesisAlloc,
+) {
+	deployedValidatorMessagesBytes := common.FromHex(strings.TrimSpace(string(deployedValidatorMessagesBytecode)))
+	allocs[common.HexToAddress(validatorManagerSDK.ValidatorMessagesContractAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedValidatorMessagesBytes,
+		Nonce:   1,
+	}
+}
+
+func fillValidatorMessagesAddressPlaceholder(contract string) string {
+	return strings.ReplaceAll(
+		contract,
+		"__$fd0c147b4031eef6079b0498cbafa865f0$__",
+		validatorManagerSDK.ValidatorMessagesContractAddress[2:],
+	)
+}
+
+//go:embed deployed_poa_validator_manager_bytecode_v1.0.0.txt
 var deployedPoAValidatorManagerBytecode []byte
 
 func AddPoAValidatorManagerContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
-	deployedPoaValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoAValidatorManagerBytecode)))
+	deployedPoaValidatorManagerString := strings.TrimSpace(string(deployedPoAValidatorManagerBytecode))
+	deployedPoaValidatorManagerString = fillValidatorMessagesAddressPlaceholder(deployedPoaValidatorManagerString)
+	deployedPoaValidatorManagerBytes := common.FromHex(deployedPoaValidatorManagerString)
 	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedPoaValidatorManagerBytes,
@@ -109,6 +133,7 @@ func SetupPoA(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
+	validatorManagerAddressStr string,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		network,
@@ -116,6 +141,7 @@ func SetupPoA(
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
+		validatorManagerAddressStr,
 	)
 }
 
@@ -132,6 +158,7 @@ func SetupPoS(
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	posParams validatorManagerSDK.PoSParams,
+	validatorManagerAddressStr string,
 ) error {
 	return subnet.InitializeProofOfStake(network,
 		privateKey,
@@ -139,5 +166,6 @@ func SetupPoS(
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		posParams,
+		validatorManagerAddressStr,
 	)
 }

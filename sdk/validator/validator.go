@@ -8,7 +8,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
@@ -62,8 +61,8 @@ func GetValidatorInfo(net network.Network, validationID ids.ID) (platformvm.L1Va
 	return vdrInfo, nil
 }
 
-func GetValidationID(rpcURL string, nodeID ids.NodeID) (ids.ID, error) {
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+func GetValidationID(rpcURL string, nodeID ids.NodeID, validatorManagerAddressStr string) (ids.ID, error) {
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	return GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 }
 

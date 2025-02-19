@@ -240,7 +240,6 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 					app,
 					"",
 					"",
-					"",
 					messengerAddress,
 					registryAddress,
 				); err != nil {

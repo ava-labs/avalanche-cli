@@ -21,7 +21,6 @@ import (
 
 // information that is persisted alongside the local network
 type ExtraLocalNetworkData struct {
-	AvalancheGoPath                  string
 	RelayerPath                      string
 	CChainTeleporterMessengerAddress string
 	CChainTeleporterRegistryAddress  string
@@ -97,10 +96,14 @@ func LocalNetworkTrackSubnet(
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
-	if err := TmpNetSetAlias(networkDir, blockchainID.String(), blockchainName, subnetID); err != nil {
+	network, err := GetLocalNetwork(app)
+	if err != nil {
 		return err
 	}
-	nodeURIs, err := GetTmpNetNodeURIs(networkDir)
+	if err := TmpNetSetAlias(network, blockchainID.String(), blockchainName, subnetID); err != nil {
+		return err
+	}
+	nodeURIs, err := GetTmpNetNodeURIsWithFix(networkDir)
 	if err != nil {
 		return err
 	}
@@ -197,7 +200,6 @@ func GetExtraLocalNetworkData(app *application.Avalanche, rootDataDir string) (b
 func WriteExtraLocalNetworkData(
 	app *application.Avalanche,
 	rootDataDir string,
-	avalancheGoPath string,
 	relayerPath string,
 	cchainICMMessengerAddress string,
 	cchainICMRegistryAddress string,
@@ -217,9 +219,6 @@ func WriteExtraLocalNetworkData(
 		if err != nil {
 			return err
 		}
-	}
-	if avalancheGoPath != "" {
-		extraLocalNetworkData.AvalancheGoPath = utils.ExpandHome(avalancheGoPath)
 	}
 	if relayerPath != "" {
 		extraLocalNetworkData.RelayerPath = utils.ExpandHome(relayerPath)

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
-	avagonode "github.com/ava-labs/avalanchego/node"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -38,21 +38,14 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-type BootstrappingStatus int64
+type RunningStatus int64
 
 const (
-	UndefinedBootstrappingStatus BootstrappingStatus = iota
-	NotBootstrapped                                  // no network node is bootstrapped
-	PartiallyBootstrapped                            // only part of the network nodes are bootstrapped
-	FullyBootstrapped                                // all network nodes are bootstrapped
+	UndefinedRunningStatus RunningStatus = iota
+	NotRunning                           // no network node is running
+	PartiallyRunning                     // only part of the network nodes are running
+	Running                              // all network nodes are running
 )
-
-type BlockchainInfo struct {
-	Name     string
-	ID       ids.ID
-	SubnetID ids.ID
-	VMID     ids.ID
-}
 
 type NodeSettings struct {
 	StakingTLSKey    []byte
@@ -133,7 +126,10 @@ func TmpNetMigrate(
 			if err != nil {
 				return err
 			}
-			data[config.ChainConfigDirKey] = filepath.Join(newDir, "chains")
+			data[config.ChainConfigDirKey], err = tmpNetGetNodeBlockchainConfigsDir(newDir, entry.Name())
+			if err != nil {
+				return err
+			}
 			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
 			_, ok := data[config.GenesisFileKey]
 			if ok {
@@ -145,6 +141,11 @@ func TmpNetMigrate(
 		}
 	}
 	return nil
+}
+
+// reads in tmpnet
+func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
+	return tmpnet.ReadNetwork(networkDir)
 }
 
 // Bootstrap a previously generated network
@@ -160,9 +161,11 @@ func TmpNetLoad(
 	if err != nil {
 		return nil, err
 	}
-	for i := range network.Nodes {
-		network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
-			AvalancheGoPath: avalancheGoBinPath,
+	if avalancheGoBinPath != "" {
+		for i := range nodes {
+			network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
+				AvalancheGoPath: avalancheGoBinPath,
+			}
 		}
 	}
 	if err := network.Write(); err != nil {
@@ -181,121 +184,48 @@ func TmpNetStop(
 	return tmpnet.StopNetwork(ctx, networkDir)
 }
 
-// Indicates wether the given network has all of its nodes alive, part of them, or none
-func GetTmpNetBootstrappingStatus(networkDir string) (BootstrappingStatus, error) {
-	status := UndefinedBootstrappingStatus
+// Indicates whether the given network has all of its nodes running, part of them, or none
+func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
+	status := UndefinedRunningStatus
 	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return status, err
 	}
 	bootstrappedCount := 0
 	for _, node := range network.Nodes {
-		processPath := filepath.Join(networkDir, node.NodeID.String(), config.DefaultProcessContextFilename)
-		if utils.FileExists(processPath) {
-			bs, err := os.ReadFile(processPath)
-			if err != nil {
-				return status, fmt.Errorf("failed to read node process context at %s: %w", processPath, err)
-			}
-			processContext := avagonode.ProcessContext{}
-			if err := json.Unmarshal(bs, &processContext); err != nil {
-				return status, fmt.Errorf("failed to unmarshal node process context at %s: %w", processPath, err)
-			}
-			if _, err := utils.GetProcess(processContext.PID); err == nil {
-				status = PartiallyBootstrapped
-				bootstrappedCount++
-			}
+		// tmpnet.ReadNetwork reads the process state of the nodes and ensures the
+		// node.URI field is populated only if the node is running
+		if len(node.URI) > 0 {
+			bootstrappedCount++
 		}
 	}
 	switch bootstrappedCount {
 	case 0:
-		return NotBootstrapped, nil
+		return NotRunning, nil
 	case len(network.Nodes):
-		return FullyBootstrapped, nil
+		return Running, nil
 	default:
 		return status, nil
 	}
 }
 
-// when host is public, we avoid [::] but use public IP
-func fixURI(uri string, ip string) string {
-	return strings.Replace(uri, "[::]", ip, 1)
-}
-
-// reads in tmpnet. preferred over tmpnet version due to URI transformation
-func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
-	if err != nil {
-		return network, err
-	}
+// Get first running node of the network
+func GetTmpNetFirstRunningNode(network *tmpnet.Network) (*tmpnet.Node, error) {
 	for _, node := range network.Nodes {
-		nodeIP, err := node.Flags.GetStringVal(config.PublicIPKey)
-		if err != nil {
-			return network, err
+		if node.StakingAddress != (netip.AddrPort{}) {
+			return node, nil
 		}
-		node.URI = fixURI(node.URI, nodeIP)
 	}
-	return network, nil
-}
-
-// Get all node URIs of the network
-func GetTmpNetNodeURIs(
-	networkDir string,
-) ([]string, error) {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return nil, err
-	}
-	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
-}
-
-// Get first node of the network
-func GetTmpNetFirstNode(networkDir string) (*tmpnet.Node, error) {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return nil, err
-	}
-	if len(network.Nodes) == 0 {
-		return nil, fmt.Errorf("no node found on local network at %s", networkDir)
-	}
-	return network.Nodes[0], nil
+	return nil, fmt.Errorf("no running node found on local network at %s", network.Dir)
 }
 
 // Get a endpoint to operate with the network
-func GetTmpNetEndpoint(networkDir string) (string, error) {
-	node, err := GetTmpNetFirstNode(networkDir)
+func GetTmpNetEndpoint(network *tmpnet.Network) (string, error) {
+	node, err := GetTmpNetFirstRunningNode(network)
 	if err != nil {
 		return "", err
 	}
 	return node.URI, nil
-}
-
-// Gathers blockchain info for all non standard blockchains
-func GetTmpNetBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
-	endpoint, err := GetTmpNetEndpoint(networkDir)
-	if err != nil {
-		return nil, err
-	}
-	pClient := platformvm.NewClient(endpoint)
-	ctx, cancel := sdkutils.GetAPIContext()
-	defer cancel()
-	blockchains, err := pClient.GetBlockchains(ctx)
-	if err != nil {
-		return nil, err
-	}
-	blockchainsInfo := []BlockchainInfo{}
-	for _, blockchain := range blockchains {
-		if blockchain.Name == "C-Chain" || blockchain.Name == "X-Chain" {
-			continue
-		}
-		blockchainInfo := BlockchainInfo{
-			Name:     blockchain.Name,
-			ID:       blockchain.ID,
-			SubnetID: blockchain.SubnetID,
-			VMID:     blockchain.VMID,
-		}
-		blockchainsInfo = append(blockchainsInfo, blockchainInfo)
-	}
-	return blockchainsInfo, nil
 }
 
 // Waits for the given blockchain to be bootstrapped on network
@@ -303,17 +233,20 @@ func GetTmpNetBlockchainInfo(networkDir string) ([]BlockchainInfo, error) {
 // If the network does not validate the blockchain at all, it errors
 func WaitTmpNetBlockchainBootstrapped(
 	ctx context.Context,
-	networkDir string,
+	network *tmpnet.Network,
 	blockchainID string,
 	subnetID ids.ID,
 ) error {
+	if _, ok := ctx.Deadline(); !ok {
+		return fmt.Errorf("no deadline given to a blockchain bootstrapping busy wait. endless loop is possible")
+	}
 	blockchainBootstrapCheckFrequency := time.Second
 	for {
-		boostrapped, err := IsTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, subnetID)
+		bootstrapped, err := IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
 		if err != nil {
 			return err
 		}
-		if boostrapped {
+		if bootstrapped {
 			break
 		}
 		select {
@@ -330,17 +263,16 @@ func WaitTmpNetBlockchainBootstrapped(
 // If the network does not validate the blockchain at all, it errors
 func IsTmpNetBlockchainBootstrapped(
 	ctx context.Context,
-	networkDir string,
+	network *tmpnet.Network,
 	blockchainID string,
 	subnetID ids.ID,
 ) (bool, error) {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return false, err
-	}
-	var validatorIDs []ids.NodeID
+	var (
+		err          error
+		validatorIDs []ids.NodeID
+	)
 	if subnetID != ids.Empty {
-		validatorIDs, err = GetTmpNetSubnetValidatorIDs(networkDir, subnetID)
+		validatorIDs, err = GetTmpNetSubnetValidatorIDs(network, subnetID)
 		if err != nil {
 			return false, err
 		}
@@ -351,27 +283,27 @@ func IsTmpNetBlockchainBootstrapped(
 			continue
 		}
 		infoClient := info.NewClient(node.URI)
-		boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
+		bootstrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
 		if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
 			return false, err
 		}
-		if !boostrapped {
+		if !bootstrapped {
 			return false, nil
 		}
 		queried++
 	}
 	if queried == 0 {
-		return false, fmt.Errorf("no validators of %s present on network at %s", blockchainID, networkDir)
+		return false, fmt.Errorf("no validators of %s present on network at %s", blockchainID, network.Dir)
 	}
 	return true, nil
 }
 
 // Returns the subnet validator IDs as per P-Chain [GetValidatorsAt]
 func GetTmpNetSubnetValidatorIDs(
-	networkDir string,
+	network *tmpnet.Network,
 	subnetID ids.ID,
 ) ([]ids.NodeID, error) {
-	endpoint, err := GetTmpNetEndpoint(networkDir)
+	endpoint, err := GetTmpNetEndpoint(network)
 	if err != nil {
 		return nil, err
 	}
@@ -387,14 +319,10 @@ func GetTmpNetSubnetValidatorIDs(
 
 // Verifies if the network validates the subnet at all
 func TmpNetHasValidatorsForSubnet(
-	networkDir string,
+	network *tmpnet.Network,
 	subnetID ids.ID,
 ) (bool, error) {
-	validatorIDs, err := GetTmpNetSubnetValidatorIDs(networkDir, subnetID)
-	if err != nil {
-		return false, err
-	}
-	network, err := GetTmpNetNetwork(networkDir)
+	validatorIDs, err := GetTmpNetSubnetValidatorIDs(network, subnetID)
 	if err != nil {
 		return false, err
 	}
@@ -409,18 +337,17 @@ func TmpNetHasValidatorsForSubnet(
 // Assign alias [alias]->[blockchainID] on network
 // if the network does not validate the blockchain, it errors
 func TmpNetSetAlias(
-	networkDir string,
+	network *tmpnet.Network,
 	blockchainID string,
 	alias string,
 	subnetID ids.ID,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
-	var validatorIDs []ids.NodeID
+	var (
+		err          error
+		validatorIDs []ids.NodeID
+	)
 	if subnetID != ids.Empty {
-		validatorIDs, err = GetTmpNetSubnetValidatorIDs(networkDir, subnetID)
+		validatorIDs, err = GetTmpNetSubnetValidatorIDs(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -443,25 +370,33 @@ func TmpNetSetAlias(
 // blockchains on the network
 // if the blockchain is not validated by the network, skips it
 func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty); err != nil {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
 		return err
 	}
-	blockchains, err := GetTmpNetBlockchainInfo(networkDir)
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
+		return err
+	}
+	endpoint, err := GetTmpNetEndpoint(network)
+	if err != nil {
+		return err
+	}
+	blockchains, err := GetBlockchainInfo(endpoint)
 	if err != nil {
 		return err
 	}
 	for _, blockchain := range blockchains {
-		hasValidators, err := TmpNetHasValidatorsForSubnet(networkDir, blockchain.SubnetID)
+		hasValidators, err := TmpNetHasValidatorsForSubnet(network, blockchain.SubnetID)
 		if err != nil {
 			return err
 		}
 		if !hasValidators {
 			continue
 		}
-		if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchain.ID.String(), blockchain.SubnetID); err != nil {
+		if err := WaitTmpNetBlockchainBootstrapped(ctx, network, blockchain.ID.String(), blockchain.SubnetID); err != nil {
 			return err
 		}
-		if err := TmpNetSetAlias(networkDir, blockchain.ID.String(), blockchain.Name, blockchain.SubnetID); err != nil {
+		if err := TmpNetSetAlias(network, blockchain.ID.String(), blockchain.Name, blockchain.SubnetID); err != nil {
 			return err
 		}
 	}
@@ -470,11 +405,7 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 
 // Install the given VM binary into the appropriate location with the
 // appropriate name
-func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
+func TmpNetInstallVM(network *tmpnet.Network, binaryPath string, vmID ids.ID) error {
 	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
 	if err != nil {
 		return err
@@ -491,17 +422,16 @@ func TmpNetInstallVM(networkDir string, binaryPath string, vmID ids.ID) error {
 
 // Set up blockchain config for all nodes in the network
 func TmpNetSetBlockchainConfig(
-	networkDir string,
+	network *tmpnet.Network,
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
+	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
 		return err
 	}
 	for _, node := range network.Nodes {
 		if err := TmpNetSetNodeBlockchainConfig(
-			networkDir,
+			network,
 			node.NodeID,
 			blockchainID,
 			blockchainConfig,
@@ -516,64 +446,73 @@ func TmpNetSetBlockchainConfig(
 // To be implemented after aligning with tmpnet on
 // blockchain supporting different confs for different nodes
 func TmpNetSetNodeBlockchainConfig(
-	networkDir string,
-	_ ids.NodeID,
+	network *tmpnet.Network,
+	nodeID ids.NodeID,
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
-	configPath := filepath.Join(
-		networkDir,
-		"chains",
-		blockchainID.String(),
-		"config.json",
-	)
-	configDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
-		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+	configPath := ""
+	for _, node := range network.Nodes {
+		if node.NodeID == nodeID {
+			continue
+		}
+		blockchainsConfigDir, err := node.Flags.GetStringVal(config.ChainConfigDirKey)
+		if err != nil {
+			return err
+		}
+		configPath = filepath.Join(
+			blockchainsConfigDir,
+			blockchainID.String(),
+			"config.json",
+		)
+		configDir := filepath.Dir(configPath)
+		if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
+			return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+		}
 	}
+	if configPath == "" {
+		return fmt.Errorf("failure writing chain config file: node %s not found on network", nodeID)
+	}
+
 	return os.WriteFile(configPath, blockchainConfig, constants.WriteReadReadPerms)
 }
 
-// Set up subnet config for all nodes in the network
-func TmpNetSetSubnetConfig(
-	networkDir string,
-	subnetID ids.ID,
-	subnetConfig []byte,
-) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
+func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) (string, error) {
+	nodeBlockchainConfigsDir := filepath.Join(networkDir, nodeID, "configs", "chains")
+	if err := os.MkdirAll(nodeBlockchainConfigsDir, constants.DefaultPerms755); err != nil {
+		return "", fmt.Errorf("could not create node blockchains config directory %s: %w", nodeBlockchainConfigsDir, err)
 	}
+	return nodeBlockchainConfigsDir, nil
+}
+
+func tmpNetSetBlockchainsConfigDir(network *tmpnet.Network) error {
 	for _, node := range network.Nodes {
-		if err := TmpNetSetNodeSubnetConfig(
-			networkDir,
-			node.NodeID,
-			subnetID,
-			subnetConfig,
-		); err != nil {
+		nodeBlockchainConfigsDir, err := tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
+		if err != nil {
+			return err
+		}
+		node.Flags[config.ChainConfigDirKey] = nodeBlockchainConfigsDir
+		if err := node.Write(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// Set up subnet config for a particular node in the network
-func TmpNetSetNodeSubnetConfig(
-	networkDir string,
-	nodeID ids.NodeID,
+// Set up subnet config for all nodes in the network
+func TmpNetSetSubnetConfig(
+	network *tmpnet.Network,
 	subnetID ids.ID,
 	subnetConfig []byte,
 ) error {
 	configPath := filepath.Join(
-		networkDir,
-		nodeID.String(),
-		"configs",
+		network.Dir,
 		"subnets",
 		subnetID.String()+".json",
 	)
 	configDir := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
-		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+		return fmt.Errorf("could not create subnets config directory %s: %w", configDir, err)
 	}
 	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms)
 }
@@ -584,13 +523,9 @@ func TmpNetRestartNodes(
 	ctx context.Context,
 	log logging.Logger,
 	printFunc func(msg string, args ...interface{}),
-	networkDir string,
+	network *tmpnet.Network,
 	subnetIDs []ids.ID,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
 	for _, node := range network.Nodes {
 		if len(subnetIDs) > 0 {
 			printFunc("Restarting node %s to track newly deployed subnet/s", node.NodeID)
@@ -679,18 +614,22 @@ func TmpNetTrackSubnet(
 	perNodeBlockchainConfig map[ids.NodeID][]byte,
 	wallet *primary.Wallet,
 ) error {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
 	// VM Binary setup
 	vmID, err := utils.VMID(blockchainName)
 	if err != nil {
 		return err
 	}
-	if err := TmpNetInstallVM(networkDir, vmBinaryPath, vmID); err != nil {
+	if err := TmpNetInstallVM(network, vmBinaryPath, vmID); err != nil {
 		return err
 	}
 	// Configs
 	if blockchainConfig != nil {
 		if err := TmpNetSetBlockchainConfig(
-			networkDir,
+			network,
 			blockchainID,
 			blockchainConfig,
 		); err != nil {
@@ -699,7 +638,7 @@ func TmpNetTrackSubnet(
 	}
 	if subnetConfig != nil {
 		if err := TmpNetSetSubnetConfig(
-			networkDir,
+			network,
 			subnetID,
 			subnetConfig,
 		); err != nil {
@@ -708,7 +647,7 @@ func TmpNetTrackSubnet(
 	}
 	for nodeID, blockchainConfig := range perNodeBlockchainConfig {
 		if err := TmpNetSetNodeBlockchainConfig(
-			networkDir,
+			network,
 			nodeID,
 			blockchainID,
 			blockchainConfig,
@@ -721,23 +660,23 @@ func TmpNetTrackSubnet(
 		ctx,
 		log,
 		printFunc,
-		networkDir,
+		network,
 		[]ids.ID{subnetID},
 	); err != nil {
 		return nil
 	}
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
 		return err
 	}
 	if !sovereign {
-		if err := TmpNetAddNonSovereignValidators(ctx, networkDir, subnetID, wallet); err != nil {
+		if err := TmpNetAddNonSovereignValidators(ctx, network, subnetID, wallet); err != nil {
 			return err
 		}
-		if err := TmpNetWaitNonSovereignValidators(ctx, networkDir, subnetID); err != nil {
+		if err := TmpNetWaitNonSovereignValidators(ctx, network, subnetID); err != nil {
 			return err
 		}
 	}
-	if err := WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID.String(), subnetID); err != nil {
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, blockchainID.String(), subnetID); err != nil {
 		return err
 	}
 	return nil
@@ -747,11 +686,11 @@ func TmpNetTrackSubnet(
 // If a node is already validator for the subnet, does nothing with it
 func TmpNetAddNonSovereignValidators(
 	ctx context.Context,
-	networkDir string,
+	network *tmpnet.Network,
 	subnetID ids.ID,
 	wallet *primary.Wallet,
 ) error {
-	endpoint, err := GetTmpNetEndpoint(networkDir)
+	endpoint, err := GetTmpNetEndpoint(network)
 	if err != nil {
 		return err
 	}
@@ -771,10 +710,6 @@ func TmpNetAddNonSovereignValidators(
 	subnetValidators := set.Set[ids.NodeID]{}
 	for _, v := range vs {
 		subnetValidators.Add(v.NodeID)
-	}
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
 	}
 	for _, node := range network.Nodes {
 		if isValidator := subnetValidators.Contains(node.NodeID); isValidator {
@@ -800,17 +735,13 @@ func TmpNetAddNonSovereignValidators(
 
 // Waits until all the network nodes on [networkDir] are included as validators of [subnetID] as verified
 // on GetCurrentValidators P-Chain API call
-func TmpNetWaitNonSovereignValidators(ctx context.Context, networkDir string, subnetID ids.ID) error {
+func TmpNetWaitNonSovereignValidators(ctx context.Context, network *tmpnet.Network, subnetID ids.ID) error {
 	checkFrequency := time.Second
-	endpoint, err := GetTmpNetEndpoint(networkDir)
+	endpoint, err := GetTmpNetEndpoint(network)
 	if err != nil {
 		return err
 	}
 	pClient := platformvm.NewClient(endpoint)
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
 	for _, node := range network.Nodes {
 		for {
 			vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
@@ -957,4 +888,44 @@ func GetTmpNetNetworkID(networkDir string) (uint32, error) {
 		return 0, err
 	}
 	return uint32(networkID), nil
+}
+
+func GetTmpNetAvalancheGoBinaryPath(networkDir string) (string, error) {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return "", err
+	}
+	return network.DefaultRuntimeConfig.AvalancheGoPath, nil
+}
+
+// when host is public, we avoid [::] but use public IP
+func fixURI(uri string, ip string) string {
+	return strings.Replace(uri, "[::]", ip, 1)
+}
+
+// reads in tmpnet for external reference. preferred over tmpnet version due to URI transformation
+func GetTmpNetNetworkWithURIFix(networkDir string) (*tmpnet.Network, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return network, err
+	}
+	for _, node := range network.Nodes {
+		nodeIP, err := node.Flags.GetStringVal(config.PublicIPKey)
+		if err != nil {
+			return network, err
+		}
+		node.URI = fixURI(node.URI, nodeIP)
+	}
+	return network, nil
+}
+
+// Get all node URIs of the network. transformates URIs
+func GetTmpNetNodeURIsWithFix(
+	networkDir string,
+) ([]string, error) {
+	network, err := GetTmpNetNetworkWithURIFix(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }

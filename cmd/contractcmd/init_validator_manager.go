@@ -47,8 +47,9 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	validatorManagerFlags ValidatorManagerFlags
-	initPOSManagerFlags   POSManagerSpecFlags
+	validatorManagerFlags   ValidatorManagerFlags
+	initPOSManagerFlags     POSManagerSpecFlags
+	validatorManagerAddress string
 )
 
 // avalanche contract initValidatorManager
@@ -140,6 +141,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 	scNetwork := sc.Networks[network.Name()]
 	if scNetwork.BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain has not been deployed to %s", network.Name())
@@ -199,6 +204,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			extraAggregatorPeers,
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
 			aggregatorLogger,
+			validatorManagerAddress,
 		); err != nil {
 			return err
 		}
@@ -224,6 +230,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				WeightToValueFactor:     big.NewInt(int64(initPOSManagerFlags.weightToValueFactor)),
 				RewardCalculatorAddress: initPOSManagerFlags.rewardCalculatorAddress,
 			},
+			validatorManagerAddress,
 		); err != nil {
 			return err
 		}

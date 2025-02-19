@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/spf13/cobra"
 )
@@ -42,8 +43,12 @@ configuration.`,
 }
 
 func clean(*cobra.Command, []string) error {
-	if err := localnet.LocalNetworkStop(app); err != nil && !errors.Is(err, localnet.ErrNetworkNotBootstrapped) {
+	if err := localnet.LocalNetworkStop(app); err != nil && !errors.Is(err, localnet.ErrNetworkNotRunning) {
 		return err
+	} else if err == nil {
+		ux.Logger.PrintToUser("Process terminated.")
+	} else {
+		ux.Logger.PrintToUser(logging.Red.Wrap("No network is running."))
 	}
 
 	if err := interchain.RelayerCleanup(

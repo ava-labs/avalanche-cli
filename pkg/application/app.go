@@ -30,6 +30,7 @@ type Avalanche struct {
 	Log        logging.Logger
 	baseDir    string
 	Conf       *config.Config
+	Version    string
 	Prompt     prompts.Prompter
 	Apm        *apm.APM
 	ApmDir     string
@@ -40,10 +41,18 @@ func New() *Avalanche {
 	return &Avalanche{}
 }
 
-func (app *Avalanche) Setup(baseDir string, log logging.Logger, conf *config.Config, prompt prompts.Prompter, downloader Downloader) {
+func (app *Avalanche) Setup(
+	baseDir string,
+	log logging.Logger,
+	conf *config.Config,
+	version string,
+	prompt prompts.Prompter,
+	downloader Downloader,
+) {
 	app.baseDir = baseDir
 	app.Log = log
 	app.Conf = conf
+	app.Version = version
 	app.Prompt = prompt
 	app.Downloader = downloader
 }
@@ -250,6 +259,10 @@ func (app *Avalanche) GetNodeConfigPath(nodeName string) string {
 
 func (app *Avalanche) GetNodeInstanceDirPath(nodeName string) string {
 	return filepath.Join(app.GetNodesDir(), nodeName)
+}
+
+func (app *Avalanche) GetNodeStakingDir(nodeIP string) string {
+	return filepath.Join(app.GetNodesDir(), constants.StakingDir, nodeIP)
 }
 
 func (app *Avalanche) GetNodeInstanceAvaGoConfigDirPath(nodeName string) string {
@@ -588,6 +601,7 @@ func (app *Avalanche) UpdateSidecarNetworks(
 	icmRegistryAddress string,
 	bootstrapValidators []models.SubnetValidator,
 	clusterName string,
+	validatorManagerAddressStr string,
 ) error {
 	if sc.Networks == nil {
 		sc.Networks = make(map[string]models.NetworkData)
@@ -600,6 +614,9 @@ func (app *Avalanche) UpdateSidecarNetworks(
 		TeleporterRegistryAddress:  icmRegistryAddress,
 		BootstrapValidators:        bootstrapValidators,
 		ClusterName:                clusterName,
+	}
+	if sc.Sovereign {
+		sc.UpdateValidatorManagerAddress(network.Name(), validatorManagerAddressStr)
 	}
 	if err := app.UpdateSidecar(sc); err != nil {
 		return fmt.Errorf("creation of blockchain was successful, but failed to update sidecar: %w", err)
