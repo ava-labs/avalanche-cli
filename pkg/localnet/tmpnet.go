@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -172,11 +173,6 @@ func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
 	default:
 		return status, nil
 	}
-}
-
-// when host is public, we avoid [::] but use public IP
-func fixURI(uri string, ip string) string {
-	return strings.Replace(uri, "[::]", ip, 1)
 }
 
 // reads in tmpnet. preferred over tmpnet version due to URI transformation
@@ -575,8 +571,10 @@ func GetTmpNetBootstrappers(
 	bootstrapIPs := []string{}
 	bootstrapIDs := []string{}
 	for _, node := range network.Nodes {
-		bootstrapIPs = append(bootstrapIPs, node.StakingAddress.String())
-		bootstrapIDs = append(bootstrapIDs, node.NodeID.String())
+		if node.StakingAddress != (netip.AddrPort{}) {
+			bootstrapIPs = append(bootstrapIPs, node.StakingAddress.String())
+			bootstrapIDs = append(bootstrapIDs, node.NodeID.String())
+		}
 	}
 	return bootstrapIPs, bootstrapIDs, nil
 }
@@ -780,4 +778,9 @@ func GetTmpNetAvalancheGoBinaryPath(networkDir string) (string, error) {
 		return "", err
 	}
 	return network.DefaultRuntimeConfig.AvalancheGoPath, nil
+}
+
+// when host is public, we avoid [::] but use public IP
+func fixURI(uri string, ip string) string {
+	return strings.Replace(uri, "[::]", ip, 1)
 }
