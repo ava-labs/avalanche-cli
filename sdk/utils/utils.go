@@ -5,6 +5,7 @@ package utils
 import (
 	"context"
 	"sort"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/sdk/constants"
 )
@@ -37,10 +38,15 @@ func Uint32Sort(arr []uint32) {
 
 // Context for API requests
 func GetAPIContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.APIRequestTimeout)
+	return GetTimedContext(constants.APIRequestTimeout)
 }
 
 // Context for API requests with large timeout
 func GetAPILargeContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+	return GetTimedContext(constants.APIRequestLargeTimeout)
+}
+
+// Timed Context
+func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), timeout)
 }

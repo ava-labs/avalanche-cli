@@ -224,20 +224,17 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 
 		// create per node chain config
 		nodesRPCTxFeeCap := map[string]string{
-			"node1": "101",
-			"node2": "102",
-			"node3": "103",
-			"node4": "104",
-			"node5": "105",
+			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg": "101",
+			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ": "102",
 		}
 		perNodeChainConfig := "{\n"
 		i := 0
-		for nodeName, rpcTxFeeCap := range nodesRPCTxFeeCap {
+		for nodeID, rpcTxFeeCap := range nodesRPCTxFeeCap {
 			commaStr := ","
 			if i == len(nodesRPCTxFeeCap)-1 {
 				commaStr = ""
 			}
-			perNodeChainConfig += fmt.Sprintf("  \"%s\": {\"rpc-tx-fee-cap\": %s}%s\n", nodeName, rpcTxFeeCap, commaStr)
+			perNodeChainConfig += fmt.Sprintf("  \"%s\": {\"rpc-tx-fee-cap\": %s}%s\n", nodeID, rpcTxFeeCap, commaStr)
 			i++
 		}
 		perNodeChainConfig += "}\n"
@@ -266,11 +263,11 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 		// verify that plugin logs reflect per node configuration
 		nodesInfo, err := utils.GetNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
-		for nodeName, nodeInfo := range nodesInfo {
+		for nodeID, nodeInfo := range nodesInfo {
 			logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
 			fileBytes, err := os.ReadFile(logFile)
 			gomega.Expect(err).Should(gomega.BeNil())
-			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeName]
+			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeID]
 			gomega.Expect(ok).Should(gomega.BeTrue())
 			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("RPCTxFeeCap:%s", rpcTxFeeCap))
 		}
@@ -317,13 +314,10 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		}
 	})
 
-	ginkgo.It("can deploy a subnet-evm with old version", func() {
-		// TODO: use a previous subnet evm release once available
-		// TODO: also remove hardocding
-		subnetEVMVersion := utils.EtnaSubnetEvmVersion
+	ginkgo.It("can deploy a subnet-evm with old version SOV", func() {
+		subnetEVMVersion := mapping[utils.SoloSubnetEVMKey1]
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion)
-		// TODO: use commands.DeploySubnetLocallySOV once having etna release
-		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -341,16 +335,14 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can't deploy conflicting vm versions", func() {
-		// TODO: These shouldn't be hardcoded either
-		subnetEVMVersion1 := utils.EtnaSubnetEvmVersion
-		subnetEVMVersion2 := "v0.6.8"
+	ginkgo.It("can't deploy conflicting vm versions SOV", func() {
+		subnetEVMVersion1 := mapping[utils.SoloSubnetEVMKey1]
+		subnetEVMVersion2 := "v0.6.12"
 
 		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
 
-		// TODO: use commands.DeploySubnetLocallySOV once having etna release
-		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, utils.EtnaAvalancheGoVersion)
+		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)

@@ -509,7 +509,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		// check if blockchain rpc version matches what is currently running
 		// for the case version or binary was provided
-		_, _, networkRPCVersion, err := localnet.GetVersion()
+		_, _, networkRPCVersion, err := localnet.GetLocalNetworkAvalancheGoVersion(app)
 		if err != nil {
 			return err
 		}
@@ -526,7 +526,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if !sidecar.Sovereign {
 			// sovereign blockchains are deployed into new local clusters,
 			// non sovereign blockchains are deployed into the local network itself
-			if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {
+			if b, err := localnet.BlockchainAlreadyDeployedOnLocalNetwork(app, blockchainName); err != nil {
 				return err
 			} else if b {
 				return fmt.Errorf("blockchain %s has already been deployed", blockchainName)
@@ -587,7 +587,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if err = StartLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
+			if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
 				return err
 			}
 		}
@@ -826,10 +826,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
-			if err := networkcmd.TrackSubnet(
+			ctx, cancel := localnet.GetLocalNetworkDefaultContext()
+			defer cancel()
+			if err := localnet.LocalNetworkTrackSubnet(
+				ctx,
+				app,
 				blockchainName,
-				avagoBinaryPath,
-				sidecar.Sovereign,
 			); err != nil {
 				return err
 			}

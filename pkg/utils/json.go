@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
 // ValidateJSON takes a json string and returns it's byte representation
@@ -38,6 +40,14 @@ func ReadJSON(path string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("this looks like invalid JSON: %w", err)
 	}
 	return content, nil
+}
+
+func WriteJSON(path string, data map[string]interface{}) error {
+	bs, err := json.MarshalIndent(&data, "", "    ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, bs, constants.WriteReadReadPerms)
 }
 
 // Set k=v in JSON string

@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -620,4 +621,25 @@ func NewLogger(
 	}
 	logFactory := logging.NewFactory(logConfig)
 	return logFactory.Make(logName)
+}
+
+func GetProcess(pid int) (*os.Process, error) {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return nil, err
+	}
+	if err := proc.Signal(syscall.Signal(0)); err != nil {
+		// sometimes FindProcess returns without error, but Signal 0 will surely fail if the process doesn't exist
+		return nil, err
+	}
+	return proc, nil
+}
+
+func VMID(vmName string) (ids.ID, error) {
+	if len(vmName) > 32 {
+		return ids.Empty, fmt.Errorf("VM name must be <= 32 bytes, found %d", len(vmName))
+	}
+	b := make([]byte, 32)
+	copy(b, []byte(vmName))
+	return ids.ToID(b)
 }
