@@ -56,7 +56,8 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"pay fees",

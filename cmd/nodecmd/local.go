@@ -322,7 +322,8 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",

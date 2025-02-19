@@ -309,7 +309,9 @@ func validatePrimaryNetwork(_ *cobra.Command, args []string) error {
 	hosts := clusterConfig.GetValidatorHosts(allHosts) // exlude api nodes
 	defer node.DisconnectHosts(hosts)
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddPrimaryNetworkValidatorFee * uint64(len(hosts))
+	// TODO: will estimate fee in subsecuent PR
+	// AddPrimaryNetworkValidatorFee * uint64(len(hosts))
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		constants.PayTxsFeesMsg,
