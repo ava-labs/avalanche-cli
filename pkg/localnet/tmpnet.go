@@ -424,7 +424,7 @@ func TmpNetSetNodeBlockchainConfig(
 ) error {
 	configPath := ""
 	for _, node := range network.Nodes {
-		if node.NodeID == nodeID {
+		if node.NodeID != nodeID {
 			continue
 		}
 		blockchainsConfigDir, err := node.Flags.GetStringVal(config.ChainConfigDirKey)
