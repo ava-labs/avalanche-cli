@@ -15,6 +15,7 @@ import (
 	cliutils "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -101,7 +102,7 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		// fund ledger address
 		// TODO: will estimate fee in subsecuent PR
 		// CreateSubnetTxFee + CreateBlockchainTxFee + TxFee
-		fee := uint64(3)
+		fee := uint64(3*units.Avax)
 		err := utils.FundLedgerAddress(fee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
@@ -260,7 +261,7 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		// let's fund the ledger
 		// TODO: will estimate fee in subsecuent PR
 		// CreateSubnetTxFee + CreateBlockchainTxFee + TxFee
-		fee := uint64(3)
+		fee := uint64(3*units.Avax)
 		err = utils.FundLedgerAddress(fee)
 		gomega.Expect(err).Should(gomega.BeNil())
 
