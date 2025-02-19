@@ -101,7 +101,7 @@ func TmpNetMigrate(
 			if err != nil {
 				return err
 			}
-			data[config.ChainConfigDirKey] = filepath.Join(newDir, "chains")
+			data[config.ChainConfigDirKey] = tmpNetGetNodeBlockchainConfigsDir(newDir, entry.Name())
 			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
 			data[config.GenesisFileKey] = filepath.Join(newDir, "genesis.json")
 			if err := utils.WriteJSON(flagsFile, data); err != nil {
@@ -418,6 +418,9 @@ func TmpNetSetBlockchainConfig(
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
+	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
+		return err
+	}
 	for _, node := range network.Nodes {
 		if err := TmpNetSetNodeBlockchainConfig(
 			network,
@@ -440,33 +443,43 @@ func TmpNetSetNodeBlockchainConfig(
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
-	configPath := filepath.Join(
-		network.Dir,
-		nodeID.String(),
-		"configs",
-		"chains",
-		blockchainID.String(),
-		"config.json",
-	)
-	configDir := filepath.Dir(configPath)
-	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
-		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
-	}
-	chainConfigsDir := filepath.Dir(configDir)
-	found := false
+	configPath := ""
 	for _, node := range network.Nodes {
 		if node.NodeID == nodeID {
-			node.Flags[config.ChainConfigDirKey] = chainConfigsDir
-			if err := node.Write(); err != nil {
+			blockchainsConfigDir, err := node.Flags.GetStringVal(config.ChainConfigDirKey)
+			if err != nil {
 				return err
 			}
-			found = true
+			configPath = filepath.Join(
+				blockchainsConfigDir,
+				blockchainID.String(),
+				"config.json",
+			)
+			configDir := filepath.Dir(configPath)
+			if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
+				return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+			}
 		}
 	}
-	if !found {
+	if configPath == "" {
 		return fmt.Errorf("failure writing chain config file: node %s not found on network", nodeID)
 	}
+
 	return os.WriteFile(configPath, blockchainConfig, constants.WriteReadReadPerms)
+}
+
+func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) string {
+	return filepath.Join(networkDir, nodeID, "configs", "chains")
+}
+
+func tmpNetSetBlockchainsConfigDir(network *tmpnet.Network) error {
+	for _, node := range network.Nodes {
+		node.Flags[config.ChainConfigDirKey] = tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
+		if err := node.Write(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Set up subnet config for all nodes in the network
