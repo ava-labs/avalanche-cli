@@ -67,7 +67,7 @@ func PrintBlockchainEndpoints(
 	networkDir string,
 	blockchain BlockchainInfo,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
+	network, err := GetTmpNetNetworkWithURIFix(networkDir)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func PrintNetworkEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	networkDir string,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
+	network, err := GetTmpNetNetworkWithURIFix(networkDir)
 	if err != nil {
 		return err
 	}

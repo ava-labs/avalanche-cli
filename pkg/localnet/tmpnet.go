@@ -116,6 +116,11 @@ func TmpNetMigrate(
 	return nil
 }
 
+// reads in tmpnet
+func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
+	return tmpnet.ReadNetwork(networkDir)
+}
+
 // Bootstrap a previously generated network
 // If [avalancheGoBinPath] is given, uses it instead of the previously
 // one used
@@ -175,39 +180,14 @@ func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
 	}
 }
 
-// reads in tmpnet. preferred over tmpnet version due to URI transformation
-func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
-	if err != nil {
-		return network, err
-	}
-	for _, node := range network.Nodes {
-		nodeIP, err := node.Flags.GetStringVal(config.PublicIPKey)
-		if err != nil {
-			return network, err
-		}
-		node.URI = fixURI(node.URI, nodeIP)
-	}
-	return network, nil
-}
-
-// Get all node URIs of the network
-func GetTmpNetNodeURIs(
-	networkDir string,
-) ([]string, error) {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return nil, err
-	}
-	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
-}
-
 // Get first node of the network
 func GetTmpNetFirstNode(network *tmpnet.Network) (*tmpnet.Node, error) {
-	if len(network.Nodes) == 0 {
-		return nil, fmt.Errorf("no node found on local network at %s", network.Dir)
+	for _, node := range network.Nodes {
+		if node.StakingAddress != (netip.AddrPort{}) {
+			return node, nil
+		}
 	}
-	return network.Nodes[0], nil
+	return nil, fmt.Errorf("no running node found on local network at %s", network.Dir)
 }
 
 // Get a endpoint to operate with the network
@@ -783,4 +763,31 @@ func GetTmpNetAvalancheGoBinaryPath(networkDir string) (string, error) {
 // when host is public, we avoid [::] but use public IP
 func fixURI(uri string, ip string) string {
 	return strings.Replace(uri, "[::]", ip, 1)
+}
+
+// reads in tmpnet for external reference. preferred over tmpnet version due to URI transformation
+func GetTmpNetNetworkWithURIFix(networkDir string) (*tmpnet.Network, error) {
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return network, err
+	}
+	for _, node := range network.Nodes {
+		nodeIP, err := node.Flags.GetStringVal(config.PublicIPKey)
+		if err != nil {
+			return network, err
+		}
+		node.URI = fixURI(node.URI, nodeIP)
+	}
+	return network, nil
+}
+
+// Get all node URIs of the network. transformates URIs
+func GetTmpNetNodeURIsWithFix(
+	networkDir string,
+) ([]string, error) {
+	network, err := GetTmpNetNetworkWithURIFix(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }

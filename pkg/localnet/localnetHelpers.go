@@ -103,7 +103,7 @@ func LocalNetworkTrackSubnet(
 	if err := TmpNetSetAlias(network, blockchainID.String(), blockchainName, subnetID); err != nil {
 		return err
 	}
-	nodeURIs, err := GetTmpNetNodeURIs(networkDir)
+	nodeURIs, err := GetTmpNetNodeURIsWithFix(networkDir)
 	if err != nil {
 		return err
 	}
