@@ -261,9 +261,9 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		}
 		if i+1 == len(subnetEVMversions) {
 			// no compatible versions for subsequent SubnetEVM found, but we have no options anyway
-			binaryToVersion[SoloSubnetEVMKey1] = first
-			binaryToVersion[SoloSubnetEVMKey2] = first
-			binaryToVersion[SoloAvagoKey] = soloAvago
+			binaryToVersion[SoloSubnetEVMKey1] = binaryToVersion[LatestEVM2AvagoKey] 
+			binaryToVersion[SoloSubnetEVMKey2] = binaryToVersion[LatestEVM2AvagoKey] 
+			binaryToVersion[SoloAvagoKey] = binaryToVersion[LatestAvago2EVMKey]
 			break
 		}
 		// first and second are compatible
