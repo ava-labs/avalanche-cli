@@ -20,6 +20,8 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
+	LocalNetworkMetaFile = "localNetworks.json"
+
 	ServerRunFile                   = "gRPCserver.run"
 	ServerRunFileLocalNetworkPrefix = ""
 	ServerRunFileLocalClusterPrefix = "localcluster_"
@@ -102,7 +104,7 @@ const (
 	// but let's add some more entropy
 	SnapshotsDirName = "snapshots"
 
-	DefaultSnapshotName = "default-1654102509"
+	DefaultSnapshotName = "default"
 
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
