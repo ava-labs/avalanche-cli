@@ -155,7 +155,7 @@ func TmpNetStop(
 	return tmpnet.StopNetwork(ctx, networkDir)
 }
 
-// Indicates wether the given network has all of its nodes running, part of them, or none
+// Indicates whether the given network has all of its nodes running, part of them, or none
 func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
 	status := UndefinedRunningStatus
 	network, err := GetTmpNetNetwork(networkDir)
@@ -180,8 +180,8 @@ func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
 	}
 }
 
-// Get first node of the network
-func GetTmpNetFirstNode(network *tmpnet.Network) (*tmpnet.Node, error) {
+// Get first running node of the network
+func GetTmpNetFirstRunningNode(network *tmpnet.Network) (*tmpnet.Node, error) {
 	for _, node := range network.Nodes {
 		if node.StakingAddress != (netip.AddrPort{}) {
 			return node, nil
@@ -192,7 +192,7 @@ func GetTmpNetFirstNode(network *tmpnet.Network) (*tmpnet.Node, error) {
 
 // Get a endpoint to operate with the network
 func GetTmpNetEndpoint(network *tmpnet.Network) (string, error) {
-	node, err := GetTmpNetFirstNode(network)
+	node, err := GetTmpNetFirstRunningNode(network)
 	if err != nil {
 		return "", err
 	}
@@ -425,19 +425,20 @@ func TmpNetSetNodeBlockchainConfig(
 	configPath := ""
 	for _, node := range network.Nodes {
 		if node.NodeID == nodeID {
-			blockchainsConfigDir, err := node.Flags.GetStringVal(config.ChainConfigDirKey)
-			if err != nil {
-				return err
-			}
-			configPath = filepath.Join(
-				blockchainsConfigDir,
-				blockchainID.String(),
-				"config.json",
-			)
-			configDir := filepath.Dir(configPath)
-			if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
-				return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
-			}
+			continue
+		}
+		blockchainsConfigDir, err := node.Flags.GetStringVal(config.ChainConfigDirKey)
+		if err != nil {
+			return err
+		}
+		configPath = filepath.Join(
+			blockchainsConfigDir,
+			blockchainID.String(),
+			"config.json",
+		)
+		configDir := filepath.Dir(configPath)
+		if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
+			return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
 		}
 	}
 	if configPath == "" {
@@ -456,12 +457,12 @@ func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) (string
 }
 
 func tmpNetSetBlockchainsConfigDir(network *tmpnet.Network) error {
-	var err error
 	for _, node := range network.Nodes {
-		node.Flags[config.ChainConfigDirKey], err = tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
+		nodeBlockchainConfigsDir, err := tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
 		if err != nil {
 			return err
 		}
+		node.Flags[config.ChainConfigDirKey] = nodeBlockchainConfigsDir
 		if err := node.Write(); err != nil {
 			return err
 		}
@@ -475,36 +476,14 @@ func TmpNetSetSubnetConfig(
 	subnetID ids.ID,
 	subnetConfig []byte,
 ) error {
-	for _, node := range network.Nodes {
-		if err := TmpNetSetNodeSubnetConfig(
-			network,
-			node.NodeID,
-			subnetID,
-			subnetConfig,
-		); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Set up subnet config for a particular node in the network
-func TmpNetSetNodeSubnetConfig(
-	network *tmpnet.Network,
-	nodeID ids.NodeID,
-	subnetID ids.ID,
-	subnetConfig []byte,
-) error {
 	configPath := filepath.Join(
 		network.Dir,
-		nodeID.String(),
-		"configs",
 		"subnets",
 		subnetID.String()+".json",
 	)
 	configDir := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDir, constants.DefaultPerms755); err != nil {
-		return fmt.Errorf("could not create blockchain config directory %s: %w", configDir, err)
+		return fmt.Errorf("could not create subnets config directory %s: %w", configDir, err)
 	}
 	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms)
 }

@@ -71,7 +71,7 @@ func PrintBlockchainEndpoints(
 	if err != nil {
 		return err
 	}
-	node, err := GetTmpNetFirstNode(network)
+	node, err := GetTmpNetFirstRunningNode(network)
 	if err != nil {
 		return err
 	}
