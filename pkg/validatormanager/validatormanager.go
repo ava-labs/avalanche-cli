@@ -4,6 +4,8 @@ package validatormanager
 
 import (
 	_ "embed"
+	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"math/big"
 	"strings"
 
@@ -28,6 +30,26 @@ func AddValidatorMessagesContractToAllocations(
 		Code:    deployedValidatorMessagesBytes,
 		Nonce:   1,
 	}
+}
+
+func GetValidatorManagerOwner(
+	rpcURL string,
+	managerAddress common.Address,
+) (common.Address, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"owner()->(address)",
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	ownerAddr, ok := out[0].(common.Address)
+	if !ok {
+		return common.Address{}, fmt.Errorf("error at owner() call, expected common.Address, got %T", out[0])
+	}
+	return ownerAddr, nil
 }
 
 func fillValidatorMessagesAddressPlaceholder(contract string) string {

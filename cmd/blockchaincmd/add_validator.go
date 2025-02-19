@@ -69,8 +69,12 @@ var (
 	aggregatorExtraEndpoints            []string
 	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
+	validatorWeight                     uint64
+	createLocalValidator                bool
+)
 
-	createLocalValidator bool
+const (
+	validatorWeightFlag = "weight"
 )
 
 // avalanche blockchain addValidator
@@ -126,10 +130,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
-	cmd.Flags().StringVar(&blockchainIDStr, "blockchain-id", "", "blockchain ID (only if blockchain name is not provided)")
 	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
-	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address (only if blockchain name is not provided)")
 	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
+	//cmd.Flags().Uint64Var(&validatorWeight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
+
 	return cmd
 }
 
@@ -155,7 +159,7 @@ func GetSubnet(subnetID ids.ID, network models.Network) (platformvm.GetSubnetCli
 	return pClient.GetSubnet(ctx, subnetID)
 }
 
-func addValidator(_ *cobra.Command, args []string) error {
+func addValidator(cmd *cobra.Command, args []string) error {
 	var sc models.Sidecar
 	blockchainName := ""
 	networkOption := networkoptions.DefaultSupportedNetworkOptions
@@ -193,17 +197,6 @@ func addValidator(_ *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		var blockchainID ids.ID
 		var subnetID ids.ID
-		//if blockchainIDStr == "" {
-		//	blockchainID, err = app.Prompt.CaptureID("What is the Blockchain ID?")
-		//	if err != nil {
-		//		return err
-		//	}
-		//} else {
-		//	blockchainID, err = ids.FromString(blockchainIDStr)
-		//	if err != nil {
-		//		return err
-		//	}
-		//}
 		if subnetIDstr == "" {
 			subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
 			if err != nil {
@@ -226,31 +219,20 @@ func addValidator(_ *cobra.Command, args []string) error {
 		}
 		blockchainID = subnetInfo.ManagerChainID
 		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
-		fmt.Printf("obtained validatorManagerAddress %s \n", validatorManagerAddress)
-
-		//if validatorManagerAddress == "" {
-		//	validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
-		//	if err != nil {
-		//		return err
-		//	}
-		//	validatorManagerAddress = validatorManagerAddressAddrFmt.String()
-		//}
 
 		sc = models.Sidecar{
 			Sovereign: true,
 		}
+		owner, err := validatormanager.GetValidatorManagerOwner("http://3.101.151.47:9650/ext/bc/E4dd53sFMyw854DNXjidPF3Si31HgP2b8JwQ8UdtrNczoVw6E/rpc", common.HexToAddress(validatorManagerAddress))
+		if err != nil {
+			return err
+		}
+		fmt.Printf("owner obtained contract %s \n", owner.String())
 		if err = promptValidatorManagementType(app, &sc); err != nil {
 			return err
 		}
 		if sc.ValidatorManagement == models.ProofOfAuthority {
-			if validatorManagerOwnerAddress == "" {
-				validatorManagerOwnerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the owner of the Validator Manager?")
-				if err != nil {
-					return err
-				}
-				validatorManagerOwnerAddress = validatorManagerOwnerAddressAddrFmt.String()
-			}
-			sc.ValidatorManagerOwner = validatorManagerOwnerAddress
+			sc.ValidatorManagerOwner = owner.String()
 		}
 
 		sc.Networks = make(map[string]models.NetworkData)
@@ -291,6 +273,18 @@ func addValidator(_ *cobra.Command, args []string) error {
 		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
 		if err != nil {
 			return err
+		}
+	}
+
+	if sovereign {
+		if !cmd.Flags().Changed(validatorWeightFlag) {
+			validatorWeight, err = app.Prompt.CaptureWeight(
+				"What weight would you like to assign to the validator?",
+				nil,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -405,7 +399,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		nodeIDStr,
 		publicKey,
 		pop,
-		weight,
+		validatorWeight,
 		balanceAVAX,
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
