@@ -204,11 +204,15 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	for _, rpcVersion := range rpcs {
 		versionAsString := strconv.Itoa(rpcVersion)
 		versionsForRPC := avagoCompat[versionAsString]
-		// we need at least 2 versions for the same RPC version
-		if len(versionsForRPC) > 1 {
+		// we will take either the same, or two consecutive versions for the same RPC version
+		if len(versionsForRPC) > 0 {
 			versionsForRPC = reverseSemverSort(versionsForRPC)
 			binaryToVersion[MultiAvago1Key] = versionsForRPC[0]
-			binaryToVersion[MultiAvago2Key] = versionsForRPC[1]
+			if len(versionsForRPC) == 1 {
+				binaryToVersion[MultiAvago2Key] = versionsForRPC[0]
+			} else {
+				binaryToVersion[MultiAvago2Key] = versionsForRPC[1]
+			}
 
 			// now iterate the subnetEVMversions and find a
 			// subnet-evm version which is compatible with that RPC version.
