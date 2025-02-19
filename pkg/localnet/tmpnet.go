@@ -101,7 +101,10 @@ func TmpNetMigrate(
 			if err != nil {
 				return err
 			}
-			data[config.ChainConfigDirKey] = tmpNetGetNodeBlockchainConfigsDir(newDir, entry.Name())
+			data[config.ChainConfigDirKey], err = tmpNetGetNodeBlockchainConfigsDir(newDir, entry.Name())
+			if err != nil {
+				return err
+			}
 			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
 			data[config.GenesisFileKey] = filepath.Join(newDir, "genesis.json")
 			if err := utils.WriteJSON(flagsFile, data); err != nil {
@@ -468,13 +471,21 @@ func TmpNetSetNodeBlockchainConfig(
 	return os.WriteFile(configPath, blockchainConfig, constants.WriteReadReadPerms)
 }
 
-func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) string {
-	return filepath.Join(networkDir, nodeID, "configs", "chains")
+func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) (string, error) {
+	nodeBlockchainConfigsDir := filepath.Join(networkDir, nodeID, "configs", "chains")
+	if err := os.MkdirAll(nodeBlockchainConfigsDir, constants.DefaultPerms755); err != nil {
+		return "", fmt.Errorf("could not create node blockchains config directory %s: %w", nodeBlockchainConfigsDir, err)
+	}
+	return nodeBlockchainConfigsDir, nil
 }
 
 func tmpNetSetBlockchainsConfigDir(network *tmpnet.Network) error {
+	var err error
 	for _, node := range network.Nodes {
-		node.Flags[config.ChainConfigDirKey] = tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
+		node.Flags[config.ChainConfigDirKey], err = tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
+		if err != nil {
+			return err
+		}
 		if err := node.Write(); err != nil {
 			return err
 		}
