@@ -243,7 +243,7 @@ func (s *SignatureAggregator) Sign(
 	); err == nil {
 		return signed, nil
 	}
-	// many times first attemp just fails for connection timeouts (<= 10 secs spent there)
+	// many times first attempt just fails for connection timeouts (<= 10 secs spent there)
 	return s.aggregator.CreateSignedMessage(
 		msg,
 		justification,
