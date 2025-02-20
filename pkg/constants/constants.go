@@ -133,7 +133,7 @@ const (
 	AVAXSymbol                        = "AVAX"
 	DefaultFujiStakeDuration          = "48h"
 	DefaultMainnetStakeDuration       = "336h"
-	DefaultValidationIDExpiryDuration = 25 * time.Hour
+	DefaultValidationIDExpiryDuration = 24 * time.Hour
 	// The absolute minimum is 25 seconds, but set to 1 minute to allow for
 	// time to go through the command
 	DevnetStakingStartLeadTime                   = 30 * time.Second
