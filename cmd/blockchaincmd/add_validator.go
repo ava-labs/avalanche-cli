@@ -192,7 +192,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	if len(args) == 0 {
 		if createLocalValidator {
-			return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator \n")
+			return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator")
 		}
 		sc, err = importL1()
 		if err != nil {
