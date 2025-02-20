@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -196,67 +195,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if createLocalValidator {
 			return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator \n")
 		}
-		var blockchainID ids.ID
-		var subnetID ids.ID
-		if subnetIDstr == "" {
-			subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
-			if err != nil {
-				return err
-			}
-		} else {
-			subnetID, err = ids.FromString(subnetIDstr)
-			if err != nil {
-				return err
-			}
-		}
-		if rpcURL == "" {
-			rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
-			if err != nil {
-				return err
-			}
-
-		}
-
-		subnetInfo, err := GetSubnet(subnetID, network)
+		sc, err = importL1()
 		if err != nil {
 			return err
-		}
-
-		if subnetInfo.IsPermissioned {
-			return fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets \n")
-		}
-		blockchainID = subnetInfo.ManagerChainID
-		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
-
-		// add validator without blockchain arg is only for l1s
-		sc = models.Sidecar{
-			Sovereign: true,
-		}
-
-		isPoA := validatormanager.IsValidatorManagerPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
-		if err != nil {
-			return err
-		}
-
-		if isPoA {
-			sc.ValidatorManagement = models.ProofOfAuthority
-			owner, err := validatormanager.GetValidatorManagerOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
-			if err != nil {
-				return err
-			}
-			fmt.Printf("owner obtained contract %s \n", owner.String())
-			sc.ValidatorManagerOwner = owner.String()
-		} else {
-			sc.ValidatorManagement = models.ProofOfStake
-		}
-
-		sc.Networks = make(map[string]models.NetworkData)
-
-		sc.Networks[network.Name()] = models.NetworkData{
-			SubnetID:                subnetID,
-			BlockchainID:            blockchainID,
-			ValidatorManagerAddress: validatorManagerAddress,
-			RPCEndpoints:            []string{rpcURL},
 		}
 	}
 
@@ -463,7 +404,6 @@ func CallAddValidator(
 		return fmt.Errorf("failed to get blockchain timestamp: %w", err)
 	}
 	expiry := uint64(blockchainTimestamp.Add(constants.DefaultValidationIDExpiryDuration).Unix())
-
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
 	}

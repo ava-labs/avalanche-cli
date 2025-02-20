@@ -3,8 +3,11 @@
 package blockchaincmd
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -211,4 +214,73 @@ func importPublic(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("Blockchain %q imported successfully", sc.Name)
 
 	return nil
+}
+
+func importL1() (models.Sidecar, error) {
+	var blockchainID ids.ID
+	var subnetID ids.ID
+	var sc models.Sidecar
+	var err error
+	var network models.Network
+	if subnetIDstr == "" {
+		subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
+		if err != nil {
+			return models.Sidecar{}, err
+		}
+	} else {
+		subnetID, err = ids.FromString(subnetIDstr)
+		if err != nil {
+			return models.Sidecar{}, err
+		}
+	}
+	if rpcURL == "" {
+		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+		if err != nil {
+			return models.Sidecar{}, err
+		}
+
+	}
+
+	subnetInfo, err := GetSubnet(subnetID, network)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	if subnetInfo.IsPermissioned {
+		return models.Sidecar{}, fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets \n")
+	}
+	blockchainID = subnetInfo.ManagerChainID
+	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
+
+	// add validator without blockchain arg is only for l1s
+	sc = models.Sidecar{
+		Sovereign: true,
+	}
+
+	isPoA := validatormanager.IsValidatorManagerPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	if isPoA {
+		sc.ValidatorManagement = models.ProofOfAuthority
+		owner, err := validatormanager.GetValidatorManagerOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+		if err != nil {
+			return models.Sidecar{}, err
+		}
+		fmt.Printf("owner obtained contract %s \n", owner.String())
+		sc.ValidatorManagerOwner = owner.String()
+	} else {
+		sc.ValidatorManagement = models.ProofOfStake
+	}
+
+	sc.Networks = make(map[string]models.NetworkData)
+
+	sc.Networks[network.Name()] = models.NetworkData{
+		SubnetID:                subnetID,
+		BlockchainID:            blockchainID,
+		ValidatorManagerAddress: validatorManagerAddress,
+		RPCEndpoints:            []string{rpcURL},
+	}
+	return sc, err
 }
