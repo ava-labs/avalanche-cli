@@ -32,6 +32,27 @@ func AddValidatorMessagesContractToAllocations(
 	}
 }
 
+func IsValidatorManagerPoA(
+	rpcURL string,
+	managerAddress common.Address,
+) bool {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"weightToValue(uint64)->(uint256)",
+		uint64(1),
+	)
+	// if it is PoA it will return Error: execution reverted
+	if err != nil {
+		return true
+	}
+	_, ok := out[0].(*big.Int)
+	if ok {
+		return false
+	}
+	return true
+}
+
 func GetValidatorManagerOwner(
 	rpcURL string,
 	managerAddress common.Address,
