@@ -12,12 +12,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
-	"github.com/ava-labs/avalanchego/config"
-	"github.com/ava-labs/avalanchego/utils/units"
-
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -31,12 +25,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -210,7 +208,8 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
@@ -551,7 +550,10 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -593,6 +595,7 @@ func CallAddValidator(
 	}
 
 	if err := validatormanager.FinishValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,

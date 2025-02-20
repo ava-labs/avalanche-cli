@@ -430,11 +430,10 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	storageDir := app.GetLocalRelayerStorageDir(network.Kind)
 	localNetworkRootDir := ""
 	if network.Kind == models.Local {
-		clusterInfo, err := localnet.GetClusterInfo()
+		localNetworkRootDir, err = localnet.GetLocalNetworkDir(app)
 		if err != nil {
 			return err
 		}
-		localNetworkRootDir = clusterInfo.GetRootDataDir()
 	}
 	configPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
 	logPath := app.GetLocalRelayerLogPath(network.Kind)
@@ -509,7 +508,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			return err
 		}
 		if network.Kind == models.Local {
-			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
+			if err := localnet.WriteExtraLocalNetworkData(app, "", binPath, "", ""); err != nil {
 				return err
 			}
 		}

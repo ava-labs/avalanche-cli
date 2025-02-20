@@ -21,17 +21,18 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -41,6 +42,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/subnet-evm/ethclient"
+
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -645,29 +647,20 @@ func ParsePublicDeployOutput(output string, parseType string) (string, error) {
 	return targetID, nil
 }
 
-func RestartNodesWithWhitelistedSubnets(whitelistedSubnets string) error {
-	cli, err := binutils.NewGRPCClient()
+func RestartNodes() error {
+	network, err := GetLocalNetwork()
 	if err != nil {
 		return err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	resp, err := cli.Status(ctx)
-	cancel()
-	if err != nil {
-		return err
-	}
-	for _, nodeName := range resp.ClusterInfo.NodeNames {
-		ctx, cancel := utils.GetAPIContext()
-		_, err := cli.RestartNode(ctx, nodeName, client.WithWhitelistedSubnets(whitelistedSubnets))
-		cancel()
-		if err != nil {
-			return err
-		}
-	}
-	ctx, cancel = utils.GetANRContext()
-	_, err = cli.Health(ctx)
-	cancel()
-	if err != nil {
+	ctx, cancel := localnet.GetLocalNetworkDefaultContext()
+	defer cancel()
+	if err := localnet.TmpNetRestartNodes(
+		ctx,
+		logging.NoLog{},
+		func(string, ...interface{}) {},
+		network,
+		nil,
+	); err != nil {
 		return err
 	}
 	return nil
@@ -699,25 +692,35 @@ func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
 	return "", errors.New("vmid not found")
 }
 
+func GetApp() *application.Avalanche {
+	app := application.New()
+	app.Setup(GetBaseDir(), logging.NoLog{}, nil, "", nil, nil)
+	return app
+}
+
+func GetLocalNetwork() (*tmpnet.Network, error) {
+	app := GetApp()
+	return localnet.GetLocalNetwork(app)
+}
+
 func GetNodesInfo() (map[string]NodeInfo, error) {
-	cli, err := binutils.NewGRPCClient()
+	network, err := GetLocalNetwork()
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	resp, err := cli.Status(ctx)
-	cancel()
+	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
 	if err != nil {
 		return nil, err
 	}
 	nodesInfo := map[string]NodeInfo{}
-	for nodeName, nodeInfo := range resp.ClusterInfo.NodeInfos {
-		nodesInfo[nodeName] = NodeInfo{
-			ID:         nodeInfo.Id,
-			PluginDir:  nodeInfo.PluginDir,
-			ConfigFile: path.Join(path.Dir(nodeInfo.LogDir), "config.json"),
-			URI:        nodeInfo.Uri,
-			LogDir:     nodeInfo.LogDir,
+	for _, node := range network.Nodes {
+		nodeID := node.NodeID.String()
+		nodesInfo[nodeID] = NodeInfo{
+			ID:         nodeID,
+			PluginDir:  pluginDir,
+			ConfigFile: path.Join(network.Dir, nodeID, "config.json"),
+			URI:        node.URI,
+			LogDir:     path.Join(network.Dir, nodeID, "logs"),
 		}
 	}
 	return nodesInfo, nil
@@ -1081,7 +1084,7 @@ func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected
 }
 
 func GetKeyTransferFee(output string) (uint64, error) {
-	feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
+	feeNAvax := uint64(1)
 	for _, line := range strings.Split(output, "\n") {
 		if strings.Contains(line, "Paid fee") {
 			lineFields := strings.Fields(line)
@@ -1102,6 +1105,10 @@ func GetKeyTransferFee(output string) (uint64, error) {
 
 func GetAPILargeContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+}
+
+func GetSignatureAggregatorContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.SignatureAggregatorTimeout)
 }
 
 func GetE2EHostInstanceID() (string, error) {

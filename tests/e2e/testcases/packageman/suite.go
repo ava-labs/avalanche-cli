@@ -69,11 +69,8 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy a subnet with subnet-evm version SOV", func() {
-		// TODO: use this two once having etna avago release on latest
-		// evmVersion := binaryToVersion[utils.SoloSubnetEVMKey1]
-		// avagoVersion := binaryToVersion[utils.SoloAvagoKey]
-		evmVersion := utils.EtnaSubnetEvmVersion
-		avagoVersion := utils.EtnaAvalancheGoVersion
+		evmVersion := binaryToVersion[utils.SoloSubnetEVMKey1]
+		avagoVersion := binaryToVersion[utils.SoloAvagoKey]
 
 		// check subnet-evm install precondition
 		gomega.Expect(utils.CheckSubnetEVMExists(evmVersion)).Should(gomega.BeFalse())
@@ -207,13 +204,9 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy with multiple avalanchego versions SOV", func() {
-		// TODO: use this once having two etna avago releases
-		// evmVersion := binaryToVersion[utils.MultiAvagoSubnetEVMKey]
-		// avagoVersion1 := binaryToVersion[utils.MultiAvago1Key]
-		// avagoVersion2 := binaryToVersion[utils.MultiAvago2Key]
-		evmVersion := utils.EtnaSubnetEvmVersion
-		avagoVersion1 := utils.EtnaAvalancheGoVersion
-		avagoVersion2 := utils.EtnaAvalancheGoVersion
+		evmVersion := binaryToVersion[utils.MultiAvagoSubnetEVMKey]
+		avagoVersion1 := binaryToVersion[utils.MultiAvago1Key]
+		avagoVersion2 := binaryToVersion[utils.MultiAvago2Key]
 
 		// check avago install precondition
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
@@ -247,8 +240,9 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 
 		// check avago install
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeTrue())
-		// TODO: change this to False once having two etna avago releases
-		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeTrue())
+		if avagoVersion2 != avagoVersion1 {
+			gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
+		}
 
 		commands.CleanNetwork()
 

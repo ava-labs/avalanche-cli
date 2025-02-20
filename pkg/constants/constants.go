@@ -20,6 +20,8 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
+	LocalNetworkMetaFile = "localNetworks.json"
+
 	ServerRunFile                   = "gRPCserver.run"
 	ServerRunFileLocalNetworkPrefix = ""
 	ServerRunFileLocalClusterPrefix = "localcluster_"
@@ -102,7 +104,7 @@ const (
 	// but let's add some more entropy
 	SnapshotsDirName = "snapshots"
 
-	DefaultSnapshotName = "default-1654102509"
+	DefaultSnapshotName = "default"
 
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
@@ -241,6 +243,8 @@ const (
 	// #nosec G101
 	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
 
+	MetricsAPITokenEnvVarName = "AVALANCHE_CLI_METRICS_TOKEN"
+
 	ReposDir                    = "repos"
 	SubnetDir                   = "subnets"
 	NodesDir                    = "nodes"
@@ -340,4 +344,5 @@ const (
 	DefaultAggregatorLogLevel  = "Debug"
 	SignatureAggregatorLogName = "signature-aggregator"
 	MaxL1TotalWeightChange     = 0.2
+	SignatureAggregatorTimeout = 60 * time.Second
 )

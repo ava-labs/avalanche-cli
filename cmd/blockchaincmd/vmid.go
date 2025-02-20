@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/spf13/cobra"
 )
 

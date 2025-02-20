@@ -43,7 +43,6 @@ const showFees = true
 var ErrNoSubnetAuthKeysInWallet = errors.New("auth wallet does not contain auth keys")
 
 type PublicDeployer struct {
-	LocalDeployer
 	kc      *keychain.Keychain
 	network models.Network
 	app     *application.Avalanche
@@ -52,10 +51,9 @@ type PublicDeployer struct {
 
 func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, network models.Network) *PublicDeployer {
 	return &PublicDeployer{
-		LocalDeployer: *NewLocalDeployer(app, "", "", "", false),
-		app:           app,
-		kc:            kc,
-		network:       network,
+		app:     app,
+		kc:      kc,
+		network: network,
 	}
 }
 
@@ -952,12 +950,7 @@ func printFee(kind string, wallet *primary.Wallet, unsignedTx txs.UnsignedTx) er
 		var pFeeCalculator avagofee.Calculator
 		pContext := wallet.P().Builder().Context()
 		calcKind := "dynamic"
-		if pContext.GasPrice != 0 {
-			pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
-		} else {
-			pFeeCalculator = avagofee.NewStaticCalculator(pContext.StaticFeeConfig)
-			calcKind = "static"
-		}
+		pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 		txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 		if err != nil {
 			if !errors.Is(err, avagofee.ErrUnsupportedTx) {

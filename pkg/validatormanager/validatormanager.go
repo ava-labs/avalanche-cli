@@ -3,6 +3,7 @@
 package validatormanager
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -167,6 +168,7 @@ func AddRewardCalculatorToAllocations(
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func SetupPoA(
+	ctx context.Context,
 	subnet blockchainSDK.Subnet,
 	network models.Network,
 	privateKey string,
@@ -176,6 +178,7 @@ func SetupPoA(
 	validatorManagerAddressStr string,
 ) error {
 	return subnet.InitializeProofOfAuthority(
+		ctx,
 		network,
 		privateKey,
 		aggregatorExtraPeerEndpoints,
@@ -191,6 +194,7 @@ func SetupPoA(
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func SetupPoS(
+	ctx context.Context,
 	subnet blockchainSDK.Subnet,
 	network models.Network,
 	privateKey string,
@@ -200,7 +204,9 @@ func SetupPoS(
 	posParams validatorManagerSDK.PoSParams,
 	validatorManagerAddressStr string,
 ) error {
-	return subnet.InitializeProofOfStake(network,
+	return subnet.InitializeProofOfStake(
+		ctx,
+		network,
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,

@@ -510,7 +510,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		// check if blockchain rpc version matches what is currently running
 		// for the case version or binary was provided
-		_, _, networkRPCVersion, err := localnet.GetVersion()
+		_, _, networkRPCVersion, err := localnet.GetLocalNetworkAvalancheGoVersion(app)
 		if err != nil {
 			return err
 		}
@@ -527,7 +527,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if !sidecar.Sovereign {
 			// sovereign blockchains are deployed into new local clusters,
 			// non sovereign blockchains are deployed into the local network itself
-			if b, err := networkcmd.AlreadyDeployed(blockchainName); err != nil {
+			if b, err := localnet.BlockchainAlreadyDeployedOnLocalNetwork(app, blockchainName); err != nil {
 				return err
 			} else if b {
 				return fmt.Errorf("blockchain %s has already been deployed", blockchainName)
@@ -553,13 +553,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// TODO: will estimate fee in subsecuent PR
+	// !subnetonly: add blockchain fee
+	// createSubnet: add subnet fee
 	fee := uint64(0)
-	if !subnetOnly {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
-	}
-	if createSubnet {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
-	}
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -591,7 +588,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if err = StartLocalMachine(network, blockchainName, deployBalance, availableBalance); err != nil {
+			if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
 				return err
 			}
 		}
@@ -800,16 +797,19 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		if !convertOnly && !generateNodeID {
-			tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerStr)
-			if err != nil {
-				return err
-			}
-		} else {
+		if convertOnly || generateNodeID || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
+			ux.Logger.PrintToUser("and setup them to track subnet ID %s with 'track-subnets' config setting", subnetID)
+			ux.Logger.PrintToUser(logging.Green.Wrap("Double check the nodes expose the P2P port and have a correct setting for 'public-ip' config value"))
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
+			return nil
+		}
+
+		tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerStr)
+		if err != nil {
+			return err
 		}
 	} else {
 		if err := app.UpdateSidecarNetworks(
@@ -827,10 +827,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
-			if err := networkcmd.TrackSubnet(
+			ctx, cancel := localnet.GetLocalNetworkDefaultContext()
+			defer cancel()
+			if err := localnet.LocalNetworkTrackSubnet(
+				ctx,
+				app,
 				blockchainName,
-				avagoBinaryPath,
-				sidecar.Sovereign,
 			); err != nil {
 				return err
 			}
@@ -838,7 +840,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if sidecar.Sovereign {
+	if sidecar.Sovereign && tracked {
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser(logging.Green.Wrap("Your L1 is ready for on-chain interactions."))
 	}
@@ -934,10 +936,12 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
 	}
 
-	if sidecar.Sovereign {
-		ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
-	} else {
-		ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
+	if tracked {
+		if sidecar.Sovereign {
+			ux.Logger.GreenCheckmarkToUser("L1 is successfully deployed on %s", network.Name())
+		} else {
+			ux.Logger.GreenCheckmarkToUser("Subnet is successfully deployed on %s", network.Name())
+		}
 	}
 
 	return nil
