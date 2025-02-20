@@ -194,7 +194,26 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if createLocalValidator {
 			return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator")
 		}
-		sc, err = importL1()
+		var subnetID ids.ID
+		if subnetIDstr == "" {
+			subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
+			if err != nil {
+				return err
+			}
+		} else {
+			subnetID, err = ids.FromString(subnetIDstr)
+			if err != nil {
+				return err
+			}
+		}
+
+		if rpcURL == "" {
+			rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+			if err != nil {
+				return err
+			}
+		}
+		sc, err = importL1(subnetID, rpcURL, network)
 		if err != nil {
 			return err
 		}

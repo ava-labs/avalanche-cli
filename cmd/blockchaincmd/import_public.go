@@ -217,41 +217,17 @@ func importPublic(*cobra.Command, []string) error {
 	return nil
 }
 
-func importL1() (models.Sidecar, error) {
-	var blockchainID ids.ID
-	var subnetID ids.ID
+func importL1(subnetID ids.ID, rpcURL string, network models.Network) (models.Sidecar, error) {
 	var sc models.Sidecar
-	var err error
-	var network models.Network
-	if subnetIDstr == "" {
-		subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
-		if err != nil {
-			return models.Sidecar{}, err
-		}
-	} else {
-		subnetID, err = ids.FromString(subnetIDstr)
-		if err != nil {
-			return models.Sidecar{}, err
-		}
-	}
-
-	if rpcURL == "" {
-		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
-		if err != nil {
-			return models.Sidecar{}, err
-		}
-	}
 
 	subnetInfo, err := GetSubnet(subnetID, network)
 	if err != nil {
 		return models.Sidecar{}, err
 	}
-
 	if subnetInfo.IsPermissioned {
 		return models.Sidecar{}, fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets")
 	}
-
-	blockchainID = subnetInfo.ManagerChainID
+	blockchainID := subnetInfo.ManagerChainID
 	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
 
 	// add validator without blockchain arg is only for l1s
