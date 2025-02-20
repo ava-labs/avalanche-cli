@@ -27,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
@@ -330,9 +331,12 @@ func InitializeValidatorManager(blockchainName,
 	if err != nil {
 		return tracked, err
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfStake(
+			aggregatorCtx,
 			network,
 			genesisPrivateKey,
 			extraAggregatorPeers,
@@ -355,6 +359,7 @@ func InitializeValidatorManager(blockchainName,
 	} else {
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
+			aggregatorCtx,
 			network,
 			genesisPrivateKey,
 			extraAggregatorPeers,

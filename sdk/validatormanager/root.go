@@ -4,6 +4,7 @@
 package validatormanager
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -178,6 +179,7 @@ func (p PoSParams) Verify() error {
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
 func GetPChainSubnetConversionWarpMessage(
+	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
@@ -226,6 +228,7 @@ func GetPChainSubnetConversionWarpMessage(
 		return nil, err
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,
