@@ -26,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -98,7 +99,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
@@ -287,8 +289,11 @@ func removeValidatorSOV(
 		signedMessage *warp.Message
 		validationID  ids.ID
 	)
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	// try to remove the validator. If err is "delegator ineligible for rewards" confirm with user and force remove
 	signedMessage, validationID, err = validatormanager.InitValidatorRemoval(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -313,6 +318,7 @@ func removeValidatorSOV(
 			return fmt.Errorf("validator %s is not eligible for rewards. Use --force flag to force removal", nodeID)
 		}
 		signedMessage, validationID, err = validatormanager.InitValidatorRemoval(
+			aggregatorCtx,
 			app,
 			network,
 			rpcURL,
@@ -351,6 +357,7 @@ func removeValidatorSOV(
 	}
 
 	if err := validatormanager.FinishValidatorRemoval(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,

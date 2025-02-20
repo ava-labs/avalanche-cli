@@ -216,7 +216,9 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 			nonPrimaryValidators++
 		}
 	}
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddPrimaryNetworkValidatorFee*uint64(nonPrimaryValidators) + network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee*uint64(len(hosts))
+	// TODO: will estimate fee in subsecuent PR
+	// AddPrimaryNetworkValidatorFee*uint64(nonPrimaryValidators) + AddSubnetValidatorFee*uint64(len(hosts))
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		constants.PayTxsFeesMsg,

@@ -17,15 +17,15 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 
-	"github.com/ava-labs/subnet-evm/plugin/evm"
+	evmclient "github.com/ava-labs/subnet-evm/plugin/evm/client"
 )
 
 func NewBlsSecretKeyBytes() ([]byte, error) {
-	blsSignerKey, err := bls.NewSecretKey()
+	blsSignerKey, err := bls.NewSigner()
 	if err != nil {
 		return nil, err
 	}
-	return bls.SecretKeyToBytes(blsSignerKey), nil
+	return blsSignerKey.ToBytes(), nil
 }
 
 func ToNodeID(certBytes []byte) (ids.NodeID, error) {
@@ -104,7 +104,7 @@ func GetL1ValidatorUptimeSeconds(rpcURL string, nodeID ids.NodeID) (uint64, erro
 	if err != nil {
 		return 0, err
 	}
-	evmCli := evm.NewClient(networkEndpoint, blockchainID)
+	evmCli := evmclient.NewClient(networkEndpoint, blockchainID)
 	validators, err := evmCli.GetCurrentValidators(ctx, []ids.NodeID{nodeID})
 	if err != nil {
 		return 0, err

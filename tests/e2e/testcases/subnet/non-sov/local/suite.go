@@ -291,7 +291,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 	})
 
 	ginkgo.It("can deploy a subnet-evm with old version non SOV", func() {
-		subnetEVMVersion := "v0.6.12"
+		subnetEVMVersion := "v0.7.1"
 
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
 		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
@@ -314,8 +314,8 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 
 	ginkgo.It("can't deploy conflicting vm versions non SOV", func() {
 		// TODO: These shouldn't be hardcoded either
-		subnetEVMVersion1 := "v0.6.12"
-		subnetEVMVersion2 := "v0.6.11"
+		subnetEVMVersion1 := "v0.7.1"
+		subnetEVMVersion2 := "v0.7.0"
 
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)

@@ -552,13 +552,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// TODO: will estimate fee in subsecuent PR
+	// !subnetonly: add blockchain fee
+	// createSubnet: add subnet fee
 	fee := uint64(0)
-	if !subnetOnly {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
-	}
-	if createSubnet {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
-	}
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,

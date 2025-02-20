@@ -3,6 +3,7 @@
 package validatormanager
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -149,6 +150,7 @@ func InitializeValidatorRegistrationPoA(
 }
 
 func GetSubnetValidatorRegistrationMessage(
+	ctx context.Context,
 	rpcURL string,
 	network models.Network,
 	aggregatorLogger logging.Logger,
@@ -222,6 +224,7 @@ func GetSubnetValidatorRegistrationMessage(
 		}
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,
@@ -258,6 +261,7 @@ func GetValidatorWeight(
 }
 
 func GetPChainSubnetValidatorRegistrationWarpMessage(
+	ctx context.Context,
 	network models.Network,
 	rpcURL string,
 	aggregatorLogger logging.Logger,
@@ -288,6 +292,7 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 		return nil, err
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,
@@ -329,6 +334,7 @@ func CompleteValidatorRegistration(
 }
 
 func InitValidatorRegistration(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -431,6 +437,7 @@ func InitValidatorRegistration(
 	}
 
 	return GetSubnetValidatorRegistrationMessage(
+		ctx,
 		rpcURL,
 		network,
 		aggregatorLogger,
@@ -451,6 +458,7 @@ func InitValidatorRegistration(
 }
 
 func FinishValidatorRegistration(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -472,6 +480,7 @@ func FinishValidatorRegistration(
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
+		ctx,
 		network,
 		rpcURL,
 		aggregatorLogger,

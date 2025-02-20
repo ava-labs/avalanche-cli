@@ -31,7 +31,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 	ledger "github.com/ava-labs/avalanchego/utils/crypto/ledger"
@@ -1085,7 +1084,7 @@ func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected
 }
 
 func GetKeyTransferFee(output string) (uint64, error) {
-	feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
+	feeNAvax := uint64(1)
 	for _, line := range strings.Split(output, "\n") {
 		if strings.Contains(line, "Paid fee") {
 			lineFields := strings.Fields(line)
@@ -1106,6 +1105,10 @@ func GetKeyTransferFee(output string) (uint64, error) {
 
 func GetAPILargeContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+}
+
+func GetSignatureAggregatorContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.SignatureAggregatorTimeout)
 }
 
 func GetE2EHostInstanceID() (string, error) {
