@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ethereum/go-ethereum/common"
 
