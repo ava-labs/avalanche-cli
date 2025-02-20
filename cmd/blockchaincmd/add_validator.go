@@ -420,7 +420,6 @@ func CallAddValidator(
 		common.HexToAddress(sc.ValidatorManagerOwner),
 		true,
 	)
-	fmt.Printf("ownerPrivateKey %s \n", ownerPrivateKey)
 	if err != nil {
 		return err
 	}
@@ -591,9 +590,6 @@ func CallAddValidator(
 			return err
 		}
 	}
-	fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)
-	fmt.Printf("aggregatorAllowPrivatePeers %s \n", aggregatorAllowPrivatePeers)
-	fmt.Printf("validatorManagerAddress %s \n", validatorManagerAddress)
 
 	if err := validatormanager.FinishValidatorRegistration(
 		app,

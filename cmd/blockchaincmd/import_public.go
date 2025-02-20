@@ -268,7 +268,6 @@ func importL1() (models.Sidecar, error) {
 		if err != nil {
 			return models.Sidecar{}, err
 		}
-		fmt.Printf("owner obtained contract %s \n", owner.String())
 		sc.ValidatorManagerOwner = owner.String()
 	} else {
 		sc.ValidatorManagement = models.ProofOfStake
