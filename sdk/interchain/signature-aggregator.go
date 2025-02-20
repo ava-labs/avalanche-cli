@@ -235,6 +235,15 @@ func (s *SignatureAggregator) Sign(
 	msg *warp.UnsignedMessage,
 	justification []byte,
 ) (*warp.Message, error) {
+	if signed, err := s.aggregator.CreateSignedMessage(
+		msg,
+		justification,
+		s.subnetID,
+		s.quorumPercentage,
+	); err == nil {
+		return signed, nil
+	}
+	// many times first attemp just fails for connection timeouts (<= 10 secs spent there)
 	return s.aggregator.CreateSignedMessage(
 		msg,
 		justification,
