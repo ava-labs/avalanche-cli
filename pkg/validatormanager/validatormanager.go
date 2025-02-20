@@ -47,10 +47,7 @@ func IsValidatorManagerPoA(
 		return true
 	}
 	_, ok := out[0].(*big.Int)
-	if ok {
-		return false
-	}
-	return true
+	return !ok
 }
 
 func GetValidatorManagerOwner(

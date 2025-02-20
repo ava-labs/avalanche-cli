@@ -234,12 +234,12 @@ func importL1() (models.Sidecar, error) {
 			return models.Sidecar{}, err
 		}
 	}
+
 	if rpcURL == "" {
 		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
 			return models.Sidecar{}, err
 		}
-
 	}
 
 	subnetInfo, err := GetSubnet(subnetID, network)
@@ -248,8 +248,9 @@ func importL1() (models.Sidecar, error) {
 	}
 
 	if subnetInfo.IsPermissioned {
-		return models.Sidecar{}, fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets \n")
+		return models.Sidecar{}, fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets")
 	}
+
 	blockchainID = subnetInfo.ManagerChainID
 	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
 
