@@ -15,9 +15,9 @@ import (
 	cliutils "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -106,7 +106,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		// fund ledger address
 		// TODO: will estimate fee in subsecuent PR
 		// CreateSubnetTxFee + CreateBlockchainTxFee + TxFee
-		fee := uint64(3*units.Avax)
+		fee := 3 * units.Avax
 		err := utils.FundLedgerAddress(fee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
@@ -257,7 +257,8 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 			txPath,
 			true,
 		)
-		toMatch := "(?s).+Not enough funds in the first (?s).+ indices of Ledger(?s).+Error: not enough funds on ledger(?s).+"
+		toMatch := "(?s).+error building tx: insufficient funds: provided UTXOs needed(?s).+"
+
 		matched, err := regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
@@ -265,7 +266,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		// let's fund the ledger
 		// TODO: will estimate fee in subsecuent PR
 		// CreateSubnetTxFee + CreateBlockchainTxFee + TxFee
-		fee := uint64(3*units.Avax)
+		fee := 3 * units.Avax
 		err = utils.FundLedgerAddress(fee)
 		gomega.Expect(err).Should(gomega.BeNil())
 
