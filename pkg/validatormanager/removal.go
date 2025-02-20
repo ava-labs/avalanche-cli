@@ -3,6 +3,7 @@
 package validatormanager
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -81,6 +82,7 @@ func InitializeValidatorRemoval(
 }
 
 func GetUptimeProofMessage(
+	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
@@ -107,6 +109,7 @@ func GetUptimeProofMessage(
 		return nil, err
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,
@@ -121,6 +124,7 @@ func GetUptimeProofMessage(
 }
 
 func GetSubnetValidatorWeightMessage(
+	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
@@ -157,6 +161,7 @@ func GetSubnetValidatorWeightMessage(
 		return nil, err
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,
@@ -171,6 +176,7 @@ func GetSubnetValidatorWeightMessage(
 }
 
 func InitValidatorRemoval(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -224,6 +230,7 @@ func InitValidatorRemoval(
 		}
 		ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
 		signedUptimeProof, err = GetUptimeProofMessage(
+			ctx,
 			network,
 			aggregatorLogger,
 			0,
@@ -255,6 +262,7 @@ func InitValidatorRemoval(
 
 	nonce := uint64(1)
 	signedMsg, err := GetSubnetValidatorWeightMessage(
+		ctx,
 		network,
 		aggregatorLogger,
 		0,
@@ -290,6 +298,7 @@ func CompleteValidatorRemoval(
 }
 
 func FinishValidatorRemoval(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -311,6 +320,7 @@ func FinishValidatorRemoval(
 		return err
 	}
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
+		ctx,
 		network,
 		rpcURL,
 		aggregatorLogger,
