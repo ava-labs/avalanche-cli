@@ -6,9 +6,10 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"math/big"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
