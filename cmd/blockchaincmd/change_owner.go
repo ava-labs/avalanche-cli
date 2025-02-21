@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -15,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/spf13/cobra"
 )
 
@@ -90,21 +90,14 @@ func changeOwner(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if sc.Sovereign {
-		return errors.New("avalanche blockchain changeOwner is not applicable to sovereign blockchains")
-	}
-
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return errNoSubnetID
 	}
 
-	isPermissioned, currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
+	_, currentControlKeys, currentThreshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
-	}
-	if !isPermissioned {
-		return ErrNotPermissionedSubnet
 	}
 
 	// add control keys to the keychain whenever possible
