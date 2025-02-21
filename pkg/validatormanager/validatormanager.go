@@ -8,12 +8,15 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
+	"github.com/ava-labs/subnet-evm/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -69,6 +72,41 @@ func AddPoSValidatorManagerContractToAllocations(
 	}
 }
 
+//go:embed native_token_staking_manager_bytecode_v1.0.0.txt
+var posValidatorManagerBytecode []byte
+
+func DeployPoSValidatorManagerContract(
+	rpcURL string,
+	privateKey string,
+	proxyManagerPrivateKey string,
+) (*types.Transaction, *types.Receipt, error) {
+	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerBytecode))
+	posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString)
+	posValidatorManagerBytes := common.FromHex(posValidatorManagerString)
+	posValidatorManagerAddress, err := contract.DeployContract(
+		rpcURL,
+		privateKey,
+		posValidatorManagerBytes,
+		"(uint8)",
+		0,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	proxyAdminAddress := common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress)
+	return contract.TxToMethod(
+		rpcURL,
+		proxyManagerPrivateKey,
+		proxyAdminAddress,
+		big.NewInt(0),
+		"set proxy to PoS",
+		validatorManagerSDK.ErrorSignatureToError,
+		"upgrade(address,address)",
+		validatorManagerSDK.ProxyContractAddress,
+		posValidatorManagerAddress,
+	)
+}
+
 //go:embed deployed_transparent_proxy_bytecode.txt
 var deployedTransparentProxyBytecode []byte
 
@@ -104,7 +142,7 @@ func AddTransparentProxyContractToAllocations(
 	}
 }
 
-//go:embed deployed_reward_calculator_bytecode.txt
+//go:embed deployed_example_reward_calculator_bytecode_v1.0.0.txt
 var deployedRewardCalculatorBytecode []byte
 
 func AddRewardCalculatorToAllocations(
