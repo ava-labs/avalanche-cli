@@ -280,7 +280,9 @@ func InitializeValidatorManager(blockchainName,
 			}
 		}
 	}
+
 	tracked := true
+
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
 	}
@@ -302,11 +304,24 @@ func InitializeValidatorManager(blockchainName,
 	if err != nil {
 		return tracked, err
 	}
+
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return tracked, err
 	}
 	evm.WaitForChainID(client)
+
+	if pos {
+		ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+		if _, _, err := validatormanager.DeployPoSValidatorManagerContract(
+			rpcURL,
+			genesisPrivateKey,
+			sc.ProxyContractOwner,
+		); err != nil {
+			return tracked, err
+		}
+	}
+
 	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
 	if err != nil {
 		return tracked, err

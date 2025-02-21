@@ -806,7 +806,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerStr)
+		tracked, err = InitializeValidatorManager(
+			blockchainName,
+			sidecar.ValidatorManagerOwner,
+			subnetID,
+			blockchainID,
+			network,
+			avaGoBootstrapValidators,
+			sidecar.ValidatorManagement == models.ProofOfStake,
+			validatorManagerStr,
+		)
 		if err != nil {
 			return err
 		}
