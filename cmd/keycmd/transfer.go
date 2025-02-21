@@ -213,7 +213,7 @@ func transferF(*cobra.Command, []string) error {
 		return err
 	}
 	if senderChainFlags.BlockchainName != "" || receiverChainFlags.BlockchainName != "" || senderChainFlags.XChain {
-		return fmt.Errorf("tranfer from %s to %s is not supported", senderDesc, receiverDesc)
+		return fmt.Errorf("transfer from %s to %s is not supported", senderDesc, receiverDesc)
 	}
 
 	if keyName == "" && ledgerIndex == wrongLedgerIndexVal {

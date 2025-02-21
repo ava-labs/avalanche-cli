@@ -579,7 +579,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		}
 
 	default:
-		bootstrapValidators, err = promptBootstrapValidators(
+		bootstrapValidators, _, err = promptBootstrapValidators(
 			network,
 			changeOwnerAddress,
 			numBootstrapValidators,

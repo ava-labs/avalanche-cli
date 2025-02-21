@@ -215,13 +215,13 @@ func GetBlockchainEndpoints(
 		return "", "", err
 	}
 	if rpcEndpoint == "" && promptForRPCEndpoint {
-		rpcEndpoint, err = app.Prompt.CaptureURL("Which is the RPC endpoint for "+blockchainDesc, false)
+		rpcEndpoint, err = app.Prompt.CaptureURL("What is the RPC endpoint for "+blockchainDesc, false)
 		if err != nil {
 			return "", "", err
 		}
 	}
 	if wsEndpoint == "" && promptForWSEndpoint {
-		wsEndpoint, err = app.Prompt.CaptureURL("Which is the WS endpoint for "+blockchainDesc, false)
+		wsEndpoint, err = app.Prompt.CaptureURL("What is the WS endpoint for "+blockchainDesc, false)
 		if err != nil {
 			return "", "", err
 		}

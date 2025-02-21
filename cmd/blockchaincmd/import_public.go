@@ -3,8 +3,12 @@
 package blockchaincmd
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -22,7 +26,8 @@ import (
 )
 
 var (
-	blockchainIDstr string
+	blockchainIDStr string
+	subnetIDstr     string
 	nodeURL         string
 	useSubnetEvm    bool
 	useCustomVM     bool
@@ -55,7 +60,7 @@ flag.`,
 		"overwrite the existing configuration if one exists",
 	)
 	cmd.Flags().StringVar(
-		&blockchainIDstr,
+		&blockchainIDStr,
 		"blockchain-id",
 		"",
 		"the blockchain ID",
@@ -102,13 +107,13 @@ func importPublic(*cobra.Command, []string) error {
 	}
 
 	var blockchainID ids.ID
-	if blockchainIDstr == "" {
+	if blockchainIDStr == "" {
 		blockchainID, err = app.Prompt.CaptureID("What is the ID of the blockchain?")
 		if err != nil {
 			return err
 		}
 	} else {
-		blockchainID, err = ids.FromString(blockchainIDstr)
+		blockchainID, err = ids.FromString(blockchainIDStr)
 		if err != nil {
 			return err
 		}
@@ -210,4 +215,49 @@ func importPublic(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("Blockchain %q imported successfully", sc.Name)
 
 	return nil
+}
+
+func importL1(subnetID ids.ID, rpcURL string, network models.Network) (models.Sidecar, error) {
+	var sc models.Sidecar
+
+	subnetInfo, err := GetSubnet(subnetID, network)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+	if subnetInfo.IsPermissioned {
+		return models.Sidecar{}, fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets")
+	}
+	blockchainID := subnetInfo.ManagerChainID
+	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
+
+	// add validator without blockchain arg is only for l1s
+	sc = models.Sidecar{
+		Sovereign: true,
+	}
+
+	isPoA := validatormanager.IsValidatorManagerPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	if isPoA {
+		sc.ValidatorManagement = models.ProofOfAuthority
+		owner, err := validatormanager.GetValidatorManagerOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+		if err != nil {
+			return models.Sidecar{}, err
+		}
+		sc.ValidatorManagerOwner = owner.String()
+	} else {
+		sc.ValidatorManagement = models.ProofOfStake
+	}
+
+	sc.Networks = make(map[string]models.NetworkData)
+
+	sc.Networks[network.Name()] = models.NetworkData{
+		SubnetID:                subnetID,
+		BlockchainID:            blockchainID,
+		ValidatorManagerAddress: validatorManagerAddress,
+		RPCEndpoints:            []string{rpcURL},
+	}
+	return sc, err
 }
