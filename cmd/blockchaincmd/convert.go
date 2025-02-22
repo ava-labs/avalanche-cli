@@ -406,6 +406,7 @@ func InitializeValidatorManager(
 				MaximumStakeMultiplier:  poSMaximumStakeMultiplier,
 				WeightToValueFactor:     big.NewInt(int64(poSWeightToValueFactor)),
 				RewardCalculatorAddress: validatorManagerSDK.RewardCalculatorAddress,
+				UptimeBlockchainID:      blockchainID,
 			},
 			validatorManagerAddrStr,
 		); err != nil {
