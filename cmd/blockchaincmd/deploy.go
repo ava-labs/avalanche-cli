@@ -74,7 +74,6 @@ var (
 	icmSpec                         subnet.ICMSpec
 	generateNodeID                  bool
 	bootstrapValidatorsJSONFilePath string
-	//privateKeyFlags                 contract.PrivateKeyFlags
 	bootstrapEndpoints              []string
 	convertOnly                     bool
 	numNodes                        uint32
@@ -120,8 +119,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	//privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
-	//privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
 		"avalanchego-version",
