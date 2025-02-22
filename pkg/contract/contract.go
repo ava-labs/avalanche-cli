@@ -341,6 +341,8 @@ func TxToMethod(
 		}
 		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
 			ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
+			ux.Logger.PrintToUser("error trace for %s error:", description)
+			ux.Logger.PrintToUser("%#v", trace)
 		} else if errorFromSignature != nil {
 			return tx, nil, errorFromSignature
 		} else {

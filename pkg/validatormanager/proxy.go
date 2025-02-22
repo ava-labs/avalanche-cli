@@ -20,11 +20,6 @@ func SetupValidatorManagerAtProxy(
 	proxyManagerPrivateKey string,
 	validatorManager common.Address,
 ) (*types.Transaction, *types.Receipt, error) {
-	client, err := evm.GetClient(rpcURL)
-	if err != nil {
-		return nil, nil, err
-	}
-	fmt.Println(evm.ContractAlreadyDeployed(client, validatorManager.Hex()))
 	return contract.TxToMethod(
 		rpcURL,
 		proxyManagerPrivateKey,
