@@ -28,6 +28,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
@@ -56,8 +57,8 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
-	privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
+	//privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
+	//privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
@@ -249,13 +250,16 @@ func StartLocalMachine(
 	return nil
 }
 
-func InitializeValidatorManager(blockchainName,
+func InitializeValidatorManager(
+	blockchainName,
 	validatorManagerOwner string,
-	subnetID, blockchainID ids.ID,
+	subnetID ids.ID,
+ 	blockchainID ids.ID,
 	network models.Network,
 	avaGoBootstrapValidators []*txs.ConvertSubnetToL1Validator,
 	pos bool,
 	validatorManagerAddrStr string,
+	proxyContractOwner string,
 ) (bool, error) {
 	var err error
 	clusterName := clusterNameFlagValue
@@ -312,13 +316,50 @@ func InitializeValidatorManager(blockchainName,
 	evm.WaitForChainID(client)
 
 	if pos {
-		ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-		if _, _, err := validatormanager.DeployPoSValidatorManagerContract(
-			rpcURL,
-			genesisPrivateKey,
-			sc.ProxyContractOwner,
-		); err != nil {
+		deployed, err := validatormanager.ProxyHasValidatorManagerSet(rpcURL)
+		if err != nil {
 			return tracked, err
+		}
+		if !deployed {
+			// it is not in genesis
+			ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
+			found, _, _, proxyOwnerPrivateKey, err := contract.SearchForManagedKey(
+				app,
+				network,
+				common.HexToAddress(proxyContractOwner),
+				true,
+			)
+			if err != nil {
+				return tracked, err
+			}
+			if !found {
+				ux.Logger.PrintToUser("Private key for proxy owner address %s was not found", proxyContractOwner)
+				proxyOwnerPrivateKey, err = prompts.PromptPrivateKey(
+					app.Prompt,
+					"configure validator manager proxy for PoS",
+					app.GetKeyDir(),
+					app.GetKey,
+					"",
+					"",
+				)
+				if err != nil {
+					return tracked, err
+				}
+			}
+			posValidatorManagerAddress, err := validatormanager.DeployPoSValidatorManagerContract(
+				rpcURL,
+				genesisPrivateKey,
+			)
+			if err != nil {
+				return tracked, err
+			}
+			if _, _, err := validatormanager.SetupValidatorManagerAtProxy(
+				rpcURL,
+				proxyOwnerPrivateKey,
+				posValidatorManagerAddress,
+			); err != nil {
+				return tracked, err
+			}
 		}
 	}
 
@@ -672,6 +713,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			avaGoBootstrapValidators,
 			sidecar.ValidatorManagement == models.ProofOfStake,
 			validatorManagerAddress,
+			sidecar.ProxyContractOwner,
 		); err != nil {
 			return err
 		}

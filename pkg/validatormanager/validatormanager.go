@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
-	"github.com/ava-labs/subnet-evm/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -78,32 +77,16 @@ var posValidatorManagerBytecode []byte
 func DeployPoSValidatorManagerContract(
 	rpcURL string,
 	privateKey string,
-	proxyManagerPrivateKey string,
-) (*types.Transaction, *types.Receipt, error) {
+) (common.Address, error) {
 	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerBytecode))
 	posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString)
-	posValidatorManagerBytes := common.FromHex(posValidatorManagerString)
-	posValidatorManagerAddress, err := contract.DeployContract(
+	posValidatorManagerBytes := []byte(posValidatorManagerString)
+	return contract.DeployContract(
 		rpcURL,
 		privateKey,
 		posValidatorManagerBytes,
 		"(uint8)",
-		0,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-	proxyAdminAddress := common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress)
-	return contract.TxToMethod(
-		rpcURL,
-		proxyManagerPrivateKey,
-		proxyAdminAddress,
-		big.NewInt(0),
-		"set proxy to PoS",
-		validatorManagerSDK.ErrorSignatureToError,
-		"upgrade(address,address)",
-		validatorManagerSDK.ProxyContractAddress,
-		posValidatorManagerAddress,
+		uint8(0),
 	)
 }
 

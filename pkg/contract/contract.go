@@ -584,6 +584,9 @@ func DeployContract(
 		return common.Address{}, err
 	}
 	bin := common.FromHex(metadata.Bin)
+	if len(bin) == 0 {
+		return common.Address{}, fmt.Errorf("failure on given binary for smart contract: zero len")
+	}
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return common.Address{}, err
