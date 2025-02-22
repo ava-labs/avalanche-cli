@@ -6,13 +6,17 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanchego/ids"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -111,4 +115,36 @@ func getLocalBootstrapEndpoints() ([]string, error) {
 		localBootstrapEndpoints = append(localBootstrapEndpoints, nodeInfo.Uri)
 	}
 	return localBootstrapEndpoints, nil
+}
+
+func GetProxyOwnerPrivateKey(
+	app *application.Avalanche,
+	network models.Network,
+	proxyContractOwner string,
+	printFunc func(msg string, args ...interface{}),
+) (string, error) {
+	found, _, _, proxyOwnerPrivateKey, err := contract.SearchForManagedKey(
+		app,
+		network,
+		common.HexToAddress(proxyContractOwner),
+		true,
+	)
+	if err != nil {
+		return "", err
+	}
+	if !found {
+		printFunc("Private key for proxy owner address %s was not found", proxyContractOwner)
+		proxyOwnerPrivateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"configure validator manager proxy for PoS",
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			"",
+		)
+		if err != nil {
+			return "", err
+		}
+	}
+	return proxyOwnerPrivateKey, nil
 }

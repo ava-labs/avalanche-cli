@@ -23,6 +23,7 @@ import (
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -219,43 +220,21 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 		if !deployed {
-			proxyContractOwner := sc.ProxyContractOwner
 			// it is not in genesis
 			ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-			found, _, _, proxyOwnerPrivateKey, err := contract.SearchForManagedKey(
+			proxyOwnerPrivateKey, err := blockchaincmd.GetProxyOwnerPrivateKey(
 				app,
 				network,
-				common.HexToAddress(proxyContractOwner),
-				true,
+				sc.ProxyContractOwner,
+				ux.Logger.PrintToUser,
 			)
 			if err != nil {
 				return err
 			}
-			if !found {
-				ux.Logger.PrintToUser("Private key for proxy owner address %s was not found", proxyContractOwner)
-				proxyOwnerPrivateKey, err = prompts.PromptPrivateKey(
-					app.Prompt,
-					"configure validator manager proxy for PoS",
-					app.GetKeyDir(),
-					app.GetKey,
-					"",
-					"",
-				)
-				if err != nil {
-					return err
-				}
-			}
-			posValidatorManagerAddress, err := validatormanager.DeployPoSValidatorManagerContract(
+			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
 				validatorManagerFlags.rpcEndpoint,
 				genesisPrivateKey,
-			)
-			if err != nil {
-				return err
-			}
-			if _, _, err := validatormanager.SetupValidatorManagerAtProxy(
-				validatorManagerFlags.rpcEndpoint,
 				proxyOwnerPrivateKey,
-				posValidatorManagerAddress,
 			); err != nil {
 				return err
 			}

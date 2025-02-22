@@ -90,6 +90,28 @@ func DeployPoSValidatorManagerContract(
 	)
 }
 
+func DeployAndRegisterPoSValidatorManagerContrac(
+	rpcURL string,
+	privateKey string,
+	proxyOwnerPrivateKey string,
+) (common.Address, error) {
+	posValidatorManagerAddress, err := DeployPoSValidatorManagerContract(
+		rpcURL,
+		privateKey,
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, _, err := SetupValidatorManagerAtProxy(
+		rpcURL,
+		proxyOwnerPrivateKey,
+		posValidatorManagerAddress,
+	); err != nil {
+		return common.Address{}, err
+	}
+	return posValidatorManagerAddress, nil
+}
+
 //go:embed deployed_transparent_proxy_bytecode.txt
 var deployedTransparentProxyBytecode []byte
 

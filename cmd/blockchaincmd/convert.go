@@ -323,40 +323,19 @@ func InitializeValidatorManager(
 		if !deployed {
 			// it is not in genesis
 			ux.Logger.PrintToUser("Deploying Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
-			found, _, _, proxyOwnerPrivateKey, err := contract.SearchForManagedKey(
+			proxyOwnerPrivateKey, err := GetProxyOwnerPrivateKey(
 				app,
 				network,
-				common.HexToAddress(proxyContractOwner),
-				true,
+				proxyContractOwner,
+				ux.Logger.PrintToUser,
 			)
 			if err != nil {
 				return tracked, err
 			}
-			if !found {
-				ux.Logger.PrintToUser("Private key for proxy owner address %s was not found", proxyContractOwner)
-				proxyOwnerPrivateKey, err = prompts.PromptPrivateKey(
-					app.Prompt,
-					"configure validator manager proxy for PoS",
-					app.GetKeyDir(),
-					app.GetKey,
-					"",
-					"",
-				)
-				if err != nil {
-					return tracked, err
-				}
-			}
-			posValidatorManagerAddress, err := validatormanager.DeployPoSValidatorManagerContract(
+			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
 				rpcURL,
 				genesisPrivateKey,
-			)
-			if err != nil {
-				return tracked, err
-			}
-			if _, _, err := validatormanager.SetupValidatorManagerAtProxy(
-				rpcURL,
 				proxyOwnerPrivateKey,
-				posValidatorManagerAddress,
 			); err != nil {
 				return tracked, err
 			}
