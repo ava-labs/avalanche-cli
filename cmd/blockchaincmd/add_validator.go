@@ -5,7 +5,6 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -119,7 +118,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for Subnets, not L1s) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
-	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 
 	return cmd
@@ -383,22 +381,7 @@ func CallAddValidator(
 	pos := sc.PoS()
 
 	if pos {
-		// should take input prior to here for stake amount, delegation fee, and min stake duration
-		if stakeAmount == 0 {
-			stakeAmount, err = app.Prompt.CaptureUint64Compare(
-				fmt.Sprintf("Enter the amount of %s to stake ", sc.TokenName),
-				[]prompts.Comparator{
-					{
-						Label: "Positive",
-						Type:  prompts.MoreThan,
-						Value: 0,
-					},
-				},
-			)
-			if err != nil {
-				return err
-			}
-		}
+		// should take input prior to here for delegation fee, and min stake duration
 		if duration == 0 {
 			duration, err = PromptDuration(time.Now(), network, true) // it's pos
 			if err != nil {
@@ -520,7 +503,6 @@ func CallAddValidator(
 		pos,
 		delegationFee,
 		duration,
-		big.NewInt(int64(stakeAmount)),
 		validatorManagerAddress,
 	)
 	if err != nil {
