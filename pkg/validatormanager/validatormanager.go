@@ -122,6 +122,12 @@ func AddTransparentProxyContractToAllocations(
 	allocs core.GenesisAlloc,
 	proxyManager string,
 ) {
+	if _, found := allocs[common.HexToAddress(proxyManager)]; !found {
+		ownerBalance := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1))
+		allocs[common.HexToAddress(proxyManager)] = core.GenesisAccount{
+			Balance: ownerBalance,
+		}
+	}
 	// proxy admin
 	deployedProxyAdmin := common.FromHex(strings.TrimSpace(string(deployedProxyAdminBytecode)))
 	allocs[common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress)] = core.GenesisAccount{
