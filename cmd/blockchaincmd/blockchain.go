@@ -62,5 +62,7 @@ manage your Blockchain configurations and live deployments.`,
 	cmd.AddCommand(newChangeOwnerCmd())
 	// blockchain changeWeight
 	cmd.AddCommand(newChangeWeightCmd())
+	// blockchain convert
+	cmd.AddCommand(newConvertCmd())
 	return cmd
 }

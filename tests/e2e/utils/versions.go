@@ -204,11 +204,15 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	for _, rpcVersion := range rpcs {
 		versionAsString := strconv.Itoa(rpcVersion)
 		versionsForRPC := avagoCompat[versionAsString]
-		// we need at least 2 versions for the same RPC version
-		if len(versionsForRPC) > 1 {
+		// we will take either the same, or two consecutive versions for the same RPC version
+		if len(versionsForRPC) > 0 {
 			versionsForRPC = reverseSemverSort(versionsForRPC)
 			binaryToVersion[MultiAvago1Key] = versionsForRPC[0]
-			binaryToVersion[MultiAvago2Key] = versionsForRPC[1]
+			if len(versionsForRPC) == 1 {
+				binaryToVersion[MultiAvago2Key] = versionsForRPC[0]
+			} else {
+				binaryToVersion[MultiAvago2Key] = versionsForRPC[1]
+			}
 
 			// now iterate the subnetEVMversions and find a
 			// subnet-evm version which is compatible with that RPC version.
@@ -241,11 +245,12 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 	for i, ver := range subnetEVMversions {
 		// safety check, should not happen, as we already know
 		// compatible versions exist
-		if i+1 == len(subnetEVMversions) {
-			return nil, errors.New("no compatible versions for subsequent SubnetEVM found")
+		secondIndex := i + 1
+		if secondIndex == len(subnetEVMversions) {
+			secondIndex = i
 		}
 		first := ver
-		second := subnetEVMversions[i+1]
+		second := subnetEVMversions[secondIndex]
 		// we should be able to safely assume that for a given subnet-evm RPC version,
 		// there exists at least one compatible Avalanchego.
 		// This means we can in any case use this to set the **latest** compatibility
@@ -257,6 +262,13 @@ func GetVersionMapping(mapper VersionMapper) (map[string]string, error) {
 		if binaryToVersion[LatestEVM2AvagoKey] == "" {
 			binaryToVersion[LatestEVM2AvagoKey] = first
 			binaryToVersion[LatestAvago2EVMKey] = soloAvago
+		}
+		if i+1 == len(subnetEVMversions) {
+			// no compatible versions for subsequent SubnetEVM found, but we have no options anyway
+			binaryToVersion[SoloSubnetEVMKey1] = binaryToVersion[LatestEVM2AvagoKey]
+			binaryToVersion[SoloSubnetEVMKey2] = binaryToVersion[LatestEVM2AvagoKey]
+			binaryToVersion[SoloAvagoKey] = binaryToVersion[LatestAvago2EVMKey]
+			break
 		}
 		// first and second are compatible
 		if subnetEVMmapping[first] == subnetEVMmapping[second] {

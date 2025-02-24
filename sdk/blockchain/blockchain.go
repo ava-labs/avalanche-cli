@@ -5,6 +5,7 @@ package blockchain
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -342,11 +343,13 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func (c *Subnet) InitializeProofOfAuthority(
+	ctx context.Context,
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
+	validatorManagerAddressStr string,
 ) error {
 	if c.SubnetID == ids.Empty {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
@@ -372,10 +375,9 @@ func (c *Subnet) InitializeProofOfAuthority(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
 	}
-
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
 		c.RPC,
 		managerAddress,
@@ -391,6 +393,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		ctx,
 		network,
 		aggregatorLogger,
 		0,
@@ -422,20 +425,22 @@ func (c *Subnet) InitializeProofOfAuthority(
 }
 
 func (c *Subnet) InitializeProofOfStake(
+	ctx context.Context,
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
+	validatorManagerAddressStr string,
 ) error {
 	if err := evm.SetupProposerVM(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
 	}
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
 		c.RPC,
 		managerAddress,
@@ -450,6 +455,7 @@ func (c *Subnet) InitializeProofOfStake(
 		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
 	}
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		ctx,
 		network,
 		aggregatorLogger,
 		0,

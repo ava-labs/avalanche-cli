@@ -1,161 +1,116 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package localnet
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-network-runner/client"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
-	"github.com/ava-labs/avalanche-network-runner/server"
+	"github.com/ava-labs/avalanche-cli/pkg/application"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
-func GetEndpoint() (string, error) {
-	clusterInfo, err := GetClusterInfo()
+var ErrNetworkNotRunning = errors.New("network is not running")
+
+// Indicates if all, some or none of the local network nodes are running
+func LocalNetworkRunningStatus(app *application.Avalanche) (RunningStatus, error) {
+	if LocalNetworkMetaExists(app) {
+		meta, err := GetLocalNetworkMeta(app)
+		if err != nil {
+			return UndefinedRunningStatus, err
+		}
+		if sdkutils.DirExists(meta.NetworkDir) {
+			status, err := GetTmpNetRunningStatus(meta.NetworkDir)
+			if err != nil {
+				return status, err
+			}
+			if status == NotRunning {
+				if err := RemoveLocalNetworkMeta(app); err != nil {
+					return NotRunning, err
+				}
+			}
+			return status, nil
+		}
+	}
+	return NotRunning, nil
+}
+
+// Returns true if all local network nodes are running
+func IsLocalNetworkRunning(app *application.Avalanche) (bool, error) {
+	status, err := LocalNetworkRunningStatus(app)
+	if err != nil {
+		return false, err
+	}
+	return status == Running, nil
+}
+
+// Returns the tmpnet directory associated to the local network
+// If the network is not alive it errors
+func GetLocalNetworkDir(app *application.Avalanche) (string, error) {
+	isRunning, err := IsLocalNetworkRunning(app)
 	if err != nil {
 		return "", err
 	}
-	node1, ok := clusterInfo.NodeInfos["node1"]
-	if !ok {
-		return "", fmt.Errorf("node1 not found on local network")
+	if !isRunning {
+		return "", ErrNetworkNotRunning
 	}
-	return node1.Uri, nil
+	meta, err := GetLocalNetworkMeta(app)
+	if err != nil {
+		return "", err
+	}
+	return meta.NetworkDir, nil
 }
 
-func GetClusterInfo() (*rpcpb.ClusterInfo, error) {
-	return GetClusterInfoWithEndpoint(binutils.LocalNetworkGRPCServerEndpoint)
-}
-
-func GetClusterInfoWithEndpoint(grpcServerEndpoint string) (*rpcpb.ClusterInfo, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		grpcServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
+// Returns the tmpnet associated to the local network
+// If the network is not alive it errors
+func GetLocalNetwork(app *application.Avalanche) (*tmpnet.Network, error) {
+	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	resp, err := cli.Status(ctx)
+	return GetTmpNetNetwork(networkDir)
+}
+
+// Returns the endpoint associated to the local network
+// If the network is not alive it errors
+func GetLocalNetworkEndpoint(app *application.Avalanche) (string, error) {
+	network, err := GetLocalNetwork(app)
+	if err != nil {
+		return "", err
+	}
+	return GetTmpNetEndpoint(network)
+}
+
+// Returns blockchain info for all non standard blockchains deployed into the local network
+func GetLocalNetworkBlockchainInfo(app *application.Avalanche) ([]BlockchainInfo, error) {
+	endpoint, err := GetLocalNetworkEndpoint(app)
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetClusterInfo(), nil
+	return GetBlockchainInfo(endpoint)
 }
 
-type ExtraLocalNetworkData struct {
-	AvalancheGoPath                  string
-	RelayerPath                      string
-	CChainTeleporterMessengerAddress string
-	CChainTeleporterRegistryAddress  string
-}
-
-func GetExtraLocalNetworkData(rootDataDir string) (bool, ExtraLocalNetworkData, error) {
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	if rootDataDir == "" {
-		clusterInfo, err := GetClusterInfo()
-		if err != nil {
-			return false, extraLocalNetworkData, err
-		}
-		rootDataDir = clusterInfo.GetRootDataDir()
-	}
-	extraLocalNetworkDataPath := filepath.Join(rootDataDir, constants.ExtraLocalNetworkDataFilename)
-	if !utils.FileExists(extraLocalNetworkDataPath) {
-		return false, extraLocalNetworkData, nil
-	}
-	bs, err := os.ReadFile(extraLocalNetworkDataPath)
-	if err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	if err := json.Unmarshal(bs, &extraLocalNetworkData); err != nil {
-		return false, extraLocalNetworkData, err
-	}
-	return true, extraLocalNetworkData, nil
-}
-
-func WriteExtraLocalNetworkData(
-	avalancheGoPath string,
-	relayerPath string,
-	cchainICMMessengerAddress string,
-	cchainICMRegistryAddress string,
-) error {
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return err
-	}
-	extraLocalNetworkDataPath := filepath.Join(clusterInfo.GetRootDataDir(), constants.ExtraLocalNetworkDataFilename)
-	extraLocalNetworkData := ExtraLocalNetworkData{}
-	if utils.FileExists(extraLocalNetworkDataPath) {
-		var err error
-		_, extraLocalNetworkData, err = GetExtraLocalNetworkData("")
-		if err != nil {
-			return err
-		}
-	}
-	if avalancheGoPath != "" {
-		extraLocalNetworkData.AvalancheGoPath = utils.ExpandHome(avalancheGoPath)
-	}
-	if relayerPath != "" {
-		extraLocalNetworkData.RelayerPath = utils.ExpandHome(relayerPath)
-	}
-	if cchainICMMessengerAddress != "" {
-		extraLocalNetworkData.CChainTeleporterMessengerAddress = cchainICMMessengerAddress
-	}
-	if cchainICMRegistryAddress != "" {
-		extraLocalNetworkData.CChainTeleporterRegistryAddress = cchainICMRegistryAddress
-	}
-	bs, err := json.Marshal(&extraLocalNetworkData)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(extraLocalNetworkDataPath, bs, constants.WriteReadReadPerms)
-}
-
-func Deployed(subnetName string) (bool, error) {
-	if _, err := utils.GetChainID(models.NewLocalNetwork().Endpoint, subnetName); err != nil {
-		if !strings.Contains(err.Error(), "connection refused") && !strings.Contains(err.Error(), "there is no ID with alias") {
-			return false, err
-		}
-		return false, nil
-	}
-	return true, nil
-}
-
-// assumes server is up
-func IsBootstrapped(ctx context.Context, cli client.Client) (bool, error) {
-	_, err := cli.Status(ctx)
-	if err != nil {
-		if server.IsServerError(err, server.ErrNotBootstrapped) {
-			return false, nil
-		}
-		return false, fmt.Errorf("failed trying to get network status: %w", err)
-	}
-	return true, nil
-}
-
-// server can be up or down
-func GetVersion() (bool, string, int, error) {
+// Returns avalanchego version and RPC version for the local network
+func GetLocalNetworkAvalancheGoVersion(app *application.Avalanche) (bool, string, int, error) {
 	// not actually an error, network just not running
-	_, err := GetClusterInfo()
-	if err != nil {
+	if isRunning, err := IsLocalNetworkRunning(app); err != nil {
+		return true, "", 0, err
+	} else if !isRunning {
 		return false, "", 0, nil
 	}
-	endpoint, err := GetEndpoint()
+	endpoint, err := GetLocalNetworkEndpoint(app)
 	if err != nil {
 		return true, "", 0, err
 	}
-	ctx := context.Background()
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
 	infoClient := info.NewClient(endpoint)
 	versionResponse, err := infoClient.GetNodeVersion(ctx)
 	if err != nil {
@@ -171,14 +126,82 @@ func GetVersion() (bool, string, int, error) {
 	return true, parsedVersion, int(versionResponse.RPCProtocolVersion), nil
 }
 
-func GetBlockchainNames() ([]string, error) {
-	clusterInfo, err := GetClusterInfo()
+// Stops the local network
+func LocalNetworkStop(app *application.Avalanche) error {
+	networkDir, err := GetLocalNetworkDir(app)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	blockchainNames := []string{}
-	for _, chainInfo := range clusterInfo.CustomChains {
-		blockchainNames = append(blockchainNames, chainInfo.ChainName)
+	if err := TmpNetStop(networkDir); err != nil {
+		return err
 	}
-	return blockchainNames, nil
+	return RemoveLocalNetworkMeta(app)
+}
+
+// Returns a context large enough to support all local network operations
+func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
+	return sdkutils.GetTimedContext(2 * time.Minute)
+}
+
+// Indicates if the local network validates a subnet at all
+func LocalNetworkHasValidatorsForSubnet(
+	app *application.Avalanche,
+	subnetID ids.ID,
+) (bool, error) {
+	network, err := GetLocalNetwork(app)
+	if err != nil {
+		return false, err
+	}
+	return TmpNetHasValidatorsForSubnet(network, subnetID)
+}
+
+// Indicates if a blockchain is bootstrapped on the local network
+// If the network has no validators for the blockchain, it fails
+func IsLocalNetworkBlockchainBootstrapped(
+	app *application.Avalanche,
+	blockchainID string,
+	subnetID ids.ID,
+) (bool, error) {
+	network, err := GetLocalNetwork(app)
+	if err != nil {
+		return false, err
+	}
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	return IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
+}
+
+// Indicates if P-Chain is bootstrapped on the network, and also if
+// all blockchain that have validators on the network, are bootstrapped
+func LocalNetworkHealth(
+	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
+) (bool, bool, error) {
+	pChainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, "P", ids.Empty)
+	if err != nil {
+		return false, false, err
+	}
+	blockchains, err := GetLocalNetworkBlockchainInfo(app)
+	if err != nil {
+		return pChainBootstrapped, false, err
+	}
+	for _, blockchain := range blockchains {
+		hasValidators, err := LocalNetworkHasValidatorsForSubnet(app, blockchain.SubnetID)
+		if err != nil {
+			return pChainBootstrapped, false, err
+		}
+		if !hasValidators {
+			printFunc(logging.Red.Wrap("local network has no validators for subnet %s. l1 check is not implemented yet"), blockchain.SubnetID)
+			printFunc("")
+			return pChainBootstrapped, false, err
+		}
+		blockchainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, blockchain.ID.String(), blockchain.SubnetID)
+		if err != nil {
+			return pChainBootstrapped, false, err
+		}
+		if !blockchainBootstrapped {
+			return pChainBootstrapped, false, nil
+		}
+	}
+	return pChainBootstrapped, true, nil
 }

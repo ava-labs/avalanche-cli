@@ -20,6 +20,8 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
+	LocalNetworkMetaFile = "localNetworks.json"
+
 	ServerRunFile                   = "gRPCserver.run"
 	ServerRunFileLocalNetworkPrefix = ""
 	ServerRunFileLocalClusterPrefix = "localcluster_"
@@ -39,6 +41,7 @@ const (
 	NodePrometheusConfigFileName = "prometheus.yml"
 	NodeCloudConfigFileName      = "node_cloud_config.json"
 	AnsibleDir                   = "ansible"
+	StakingDir                   = "staking"
 	AnsibleHostInventoryFileName = "hosts"
 	ClustersConfigFileName       = "cluster_config.json"
 	ClustersConfigVersion        = "1"
@@ -101,7 +104,7 @@ const (
 	// but let's add some more entropy
 	SnapshotsDirName = "snapshots"
 
-	DefaultSnapshotName = "default-1654102509"
+	DefaultSnapshotName = "default"
 
 	ExtraLocalNetworkDataFilename = "extra-local-network-data.json"
 
@@ -174,7 +177,7 @@ const (
 	GCPCloudService               = "Google Cloud Platform"
 	AWSDefaultInstanceType        = "c5.2xlarge"
 	GCPDefaultInstanceType        = "e2-standard-8"
-	AnsibleSSHUser                = "ubuntu"
+	RemoteSSHUser                 = "ubuntu"
 	AWSNodeAnsiblePrefix          = "aws_node"
 	GCPNodeAnsiblePrefix          = "gcp_node"
 	CustomVMDir                   = "vms"
@@ -239,6 +242,8 @@ const (
 
 	// #nosec G101
 	GithubAPITokenEnvVarName = "AVALANCHE_CLI_GITHUB_TOKEN"
+
+	MetricsAPITokenEnvVarName = "AVALANCHE_CLI_METRICS_TOKEN"
 
 	ReposDir                    = "repos"
 	SubnetDir                   = "subnets"
@@ -339,4 +344,5 @@ const (
 	DefaultAggregatorLogLevel  = "Debug"
 	SignatureAggregatorLogName = "signature-aggregator"
 	MaxL1TotalWeightChange     = 0.2
+	SignatureAggregatorTimeout = 60 * time.Second
 )

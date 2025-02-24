@@ -8,12 +8,20 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/exp/maps"
+)
+
+type ValidatorKind int64
+
+const (
+	UndefinedValidatorKind ValidatorKind = iota
+	NonValidator
+	SovereignValidator
+	NonSovereignValidator
 )
 
 func GetTotalWeight(net network.Network, subnetID ids.ID) (uint64, error) {
@@ -62,8 +70,8 @@ func GetValidatorInfo(net network.Network, validationID ids.ID) (platformvm.L1Va
 	return vdrInfo, nil
 }
 
-func GetValidationID(rpcURL string, nodeID ids.NodeID) (ids.ID, error) {
-	managerAddress := common.HexToAddress(validatormanager.ProxyContractAddress)
+func GetValidationID(rpcURL string, nodeID ids.NodeID, validatorManagerAddressStr string) (ids.ID, error) {
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	return GetRegisteredValidator(rpcURL, managerAddress, nodeID)
 }
 
@@ -89,4 +97,27 @@ func GetRegisteredValidator(
 		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
 	}
 	return validatorID, nil
+}
+
+func IsSovereignValidator(
+	network network.Network,
+	subnetID ids.ID,
+	nodeID ids.NodeID,
+) (ValidatorKind, error) {
+	pClient := platformvm.NewClient(network.Endpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return UndefinedValidatorKind, err
+	}
+	for _, v := range vs {
+		if v.NodeID == nodeID {
+			if v.TxID == ids.Empty {
+				return SovereignValidator, nil
+			}
+			return NonSovereignValidator, nil
+		}
+	}
+	return NonValidator, nil
 }

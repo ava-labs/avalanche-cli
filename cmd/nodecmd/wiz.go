@@ -958,7 +958,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 	}
 	wg.Wait()
 	for _, node := range hosts {
-		if wgResults.HasNodeIDWithError(node.NodeID) {
+		if wgResults.HasIDWithError(node.NodeID) {
 			ux.Logger.RedXToUser("Node %s is ERROR with error: %s", node.NodeID, wgResults.GetErrorHostMap()[node.NodeID])
 		}
 	}

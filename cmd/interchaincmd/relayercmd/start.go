@@ -83,15 +83,14 @@ func start(_ *cobra.Command, _ []string) error {
 		}
 		localNetworkRootDir := ""
 		if network.Kind == models.Local {
-			clusterInfo, err := localnet.GetClusterInfo()
+			localNetworkRootDir, err = localnet.GetLocalNetworkDir(app)
 			if err != nil {
 				return err
 			}
-			localNetworkRootDir = clusterInfo.GetRootDataDir()
 		}
 		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
 		if network.Kind == models.Local && binPath == "" {
-			if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(""); err != nil {
+			if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
 				return err
 			} else if b {
 				binPath = extraLocalNetworkData.RelayerPath
@@ -110,7 +109,7 @@ func start(_ *cobra.Command, _ []string) error {
 		); err != nil {
 			return err
 		} else if network.Kind == models.Local {
-			if err := localnet.WriteExtraLocalNetworkData("", binPath, "", ""); err != nil {
+			if err := localnet.WriteExtraLocalNetworkData(app, "", binPath, "", ""); err != nil {
 				return err
 			}
 		}

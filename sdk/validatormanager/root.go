@@ -4,6 +4,7 @@
 package validatormanager
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -37,13 +38,15 @@ type NativeTokenValidatorManagerSettings struct {
 	MaximumStakeMultiplier   uint8
 	WeightToValueFactor      *big.Int
 	RewardCalculator         common.Address
+	UptimeBlockchainID       [32]byte
 }
 
 const (
-	ValidatorContractAddress  = "0xC0DEBA5E0000000000000000000000000000000"
-	ProxyContractAddress      = "0xFEEDC0DE0000000000000000000000000000000"
-	ProxyAdminContractAddress = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
-	RewardCalculatorAddress   = "0xDEADC0DE0000000000000000000000000000000"
+	ValidatorMessagesContractAddress = "0x9C00629cE712B0255b17A4a657171Acd15720B8C"
+	ValidatorContractAddress         = "0xC0DEBA5E0000000000000000000000000000000"
+	ProxyContractAddress             = "0xFEEDC0DE0000000000000000000000000000000"
+	ProxyAdminContractAddress        = "0xC0FFEE1234567890aBcDEF1234567890AbCdEf34"
+	RewardCalculatorAddress          = "0xDEADC0DE0000000000000000000000000000000"
 
 	DefaultPoSMinimumStakeAmount     = 1
 	DefaultPoSMaximumStakeAmount     = 1000
@@ -149,6 +152,7 @@ type PoSParams struct {
 	MaximumStakeMultiplier  uint8
 	WeightToValueFactor     *big.Int
 	RewardCalculatorAddress string
+	UptimeBlockchainID      ids.ID
 }
 
 func (p PoSParams) Verify() error {
@@ -177,6 +181,7 @@ func (p PoSParams) Verify() error {
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
 func GetPChainSubnetConversionWarpMessage(
+	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
@@ -225,6 +230,7 @@ func GetPChainSubnetConversionWarpMessage(
 		return nil, err
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,

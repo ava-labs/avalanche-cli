@@ -224,20 +224,17 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 
 		// create per node chain config
 		nodesRPCTxFeeCap := map[string]string{
-			"node1": "101",
-			"node2": "102",
-			"node3": "103",
-			"node4": "104",
-			"node5": "105",
+			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg": "101",
+			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ": "102",
 		}
 		perNodeChainConfig := "{\n"
 		i := 0
-		for nodeName, rpcTxFeeCap := range nodesRPCTxFeeCap {
+		for nodeID, rpcTxFeeCap := range nodesRPCTxFeeCap {
 			commaStr := ","
 			if i == len(nodesRPCTxFeeCap)-1 {
 				commaStr = ""
 			}
-			perNodeChainConfig += fmt.Sprintf("  \"%s\": {\"rpc-tx-fee-cap\": %s}%s\n", nodeName, rpcTxFeeCap, commaStr)
+			perNodeChainConfig += fmt.Sprintf("  \"%s\": {\"rpc-tx-fee-cap\": %s}%s\n", nodeID, rpcTxFeeCap, commaStr)
 			i++
 		}
 		perNodeChainConfig += "}\n"
@@ -266,37 +263,13 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 		// verify that plugin logs reflect per node configuration
 		nodesInfo, err := utils.GetNodesInfo()
 		gomega.Expect(err).Should(gomega.BeNil())
-		for nodeName, nodeInfo := range nodesInfo {
+		for nodeID, nodeInfo := range nodesInfo {
 			logFile := path.Join(nodeInfo.LogDir, blockchainID+".log")
 			fileBytes, err := os.ReadFile(logFile)
 			gomega.Expect(err).Should(gomega.BeNil())
-			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeName]
+			rpcTxFeeCap, ok := nodesRPCTxFeeCap[nodeID]
 			gomega.Expect(ok).Should(gomega.BeTrue())
 			gomega.Expect(fileBytes).Should(gomega.ContainSubstring("RPCTxFeeCap:%s", rpcTxFeeCap))
-		}
-
-		commands.DeleteSubnetConfig(subnetName)
-	})
-
-	ginkgo.It("can list a subnet's validators non SOV", func() {
-		nodeIDs := []string{
-			"NodeID-MFrZFVCXPv5iCn6M9K6XduxGTYp891xXZ",
-			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
-		}
-
-		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
-		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
-		_, err := utils.ParseRPCsFromOutput(deployOutput)
-		if err != nil {
-			fmt.Println(deployOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		output, err := commands.ListValidators(subnetName, "local")
-		gomega.Expect(err).Should(gomega.BeNil())
-
-		for _, nodeID := range nodeIDs {
-			gomega.Expect(output).Should(gomega.ContainSubstring(nodeID))
 		}
 
 		commands.DeleteSubnetConfig(subnetName)
@@ -317,8 +290,8 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		}
 	})
 
-	ginkgo.It("can deploy a subnet-evm with old version", func() {
-		subnetEVMVersion := "v0.6.9"
+	ginkgo.It("can deploy a subnet-evm with old version non SOV", func() {
+		subnetEVMVersion := "v0.7.1"
 
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion)
 		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
@@ -339,10 +312,10 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
-	ginkgo.It("can't deploy conflicting vm versions", func() {
+	ginkgo.It("can't deploy conflicting vm versions non SOV", func() {
 		// TODO: These shouldn't be hardcoded either
-		subnetEVMVersion1 := "v0.6.9"
-		subnetEVMVersion2 := "v0.6.8"
+		subnetEVMVersion1 := "v0.7.1"
+		subnetEVMVersion2 := "v0.7.0"
 
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1)
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)

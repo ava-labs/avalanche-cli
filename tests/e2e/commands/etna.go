@@ -240,7 +240,6 @@ func AddEtnaSubnetValidatorToCluster(
 	nodeEndpoint string,
 	ewoqPChainAddress string,
 	balance int,
-	stakeAmount int,
 	createLocalValidator bool,
 ) (string, error) {
 	cmd := exec.Command(
@@ -255,8 +254,6 @@ func AddEtnaSubnetValidatorToCluster(
 		ewoqPChainAddress,
 		"--disable-owner",
 		ewoqPChainAddress,
-		"--stake-amount",
-		strconv.Itoa(stakeAmount),
 		"--delegation-fee",
 		"100",
 		"--staking-period",
@@ -301,9 +298,6 @@ func RemoveEtnaSubnetValidatorFromCluster(
 		clusterName,
 		"--node-endpoint",
 		nodeEndpoint,
-		"--blockchain-genesis-key",
-		"--blockchain-key",
-		keyName,
 		"--key",
 		keyName,
 		"--uptime",

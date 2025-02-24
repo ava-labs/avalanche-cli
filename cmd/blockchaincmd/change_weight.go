@@ -72,7 +72,8 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.TxFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
@@ -142,8 +143,11 @@ func setWeight(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
-	validationID, err := validator.GetValidationID(rpcURL, nodeID)
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+	validationID, err := validator.GetValidationID(rpcURL, nodeID, validatorManagerAddress)
 	if err != nil {
 		return err
 	}

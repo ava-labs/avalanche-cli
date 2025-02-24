@@ -5,6 +5,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -21,16 +22,20 @@ func New() *Config {
 	return &Config{}
 }
 
-func (*Config) SetConfig(log logging.Logger, s string) {
+func (*Config) SetConfig(s string) error {
 	viper.SetConfigType("json")
 	d := filepath.Dir(s)
 	viper.AddConfigPath(d)
 	viper.SetConfigFile(s)
 	viper.AutomaticEnv() // read in environment variables that match
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err != nil {
-		log.Info("No config file found", zap.Error(err))
+	confPath := viper.ConfigFileUsed()
+	if utils.FileExists(confPath) {
+		if err := viper.ReadInConfig(); err != nil {
+			return fmt.Errorf("error on config file at %s: %w", confPath, err)
+		}
 	}
+	return nil
 }
 
 func (*Config) MergeConfig(log logging.Logger, s string) {

@@ -275,7 +275,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 
 		// get vm version
 		vmVersion := createFlags.vmVersion
-		if createFlags.useLatestReleasedVMVersion || defaultsKind != vm.NoDefaults {
+		if vmVersion == "" && (createFlags.useLatestReleasedVMVersion || defaultsKind != vm.NoDefaults) {
 			vmVersion = latest
 		}
 		if createFlags.useLatestPreReleasedVMVersion {

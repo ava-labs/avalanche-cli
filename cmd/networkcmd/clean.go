@@ -3,21 +3,21 @@
 package networkcmd
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/shirou/gopsutil/process"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 var hard bool
@@ -44,16 +44,12 @@ configuration.`,
 }
 
 func clean(*cobra.Command, []string) error {
-	app.Log.Info("killing gRPC server process...")
-
-	if err := binutils.KillgRPCServerProcess(
-		app,
-		binutils.LocalNetworkGRPCServerEndpoint,
-		constants.ServerRunFileLocalNetworkPrefix,
-	); err != nil {
-		app.Log.Warn("failed killing server process", zap.Error(err))
-	} else {
+	if err := localnet.LocalNetworkStop(app); err != nil && !errors.Is(err, localnet.ErrNetworkNotRunning) {
+		return err
+	} else if err == nil {
 		ux.Logger.PrintToUser("Process terminated.")
+	} else {
+		ux.Logger.PrintToUser(logging.Red.Wrap("No network is running."))
 	}
 
 	if err := interchain.RelayerCleanup(
@@ -68,7 +64,6 @@ func clean(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("hard clean requested via flag, removing all downloaded avalanchego and plugin binaries")
 		binDir := filepath.Join(app.GetBaseDir(), constants.AvalancheCliBinDir)
 		cleanBins(binDir)
-		_ = killAllBackendsByName()
 	}
 
 	if err := app.ResetPluginsDir(); err != nil {
@@ -111,27 +106,7 @@ func removeLocalDeployInfoFromSidecars() error {
 func cleanBins(dir string) {
 	if err := os.RemoveAll(dir); err != nil {
 		ux.Logger.PrintToUser("Removal failed: %s", err)
+	} else {
+		ux.Logger.PrintToUser("All existing binaries removed.")
 	}
-	ux.Logger.PrintToUser("All existing binaries removed.")
-}
-
-func killAllBackendsByName() error {
-	procs, err := process.Processes()
-	if err != nil {
-		return err
-	}
-	regex := regexp.MustCompile(".* " + constants.BackendCmd + ".*")
-	for _, p := range procs {
-		name, err := p.Cmdline()
-		if err != nil {
-			// ignore errors for processes that just died (macos implementation)
-			continue
-		}
-		if regex.MatchString(name) {
-			if err := p.Terminate(); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
