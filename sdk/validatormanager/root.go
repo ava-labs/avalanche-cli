@@ -38,6 +38,7 @@ type NativeTokenValidatorManagerSettings struct {
 	MaximumStakeMultiplier   uint8
 	WeightToValueFactor      *big.Int
 	RewardCalculator         common.Address
+	UptimeBlockchainID       [32]byte
 }
 
 const (
@@ -151,6 +152,7 @@ type PoSParams struct {
 	MaximumStakeMultiplier  uint8
 	WeightToValueFactor     *big.Int
 	RewardCalculatorAddress string
+	UptimeBlockchainID      ids.ID
 }
 
 func (p PoSParams) Verify() error {

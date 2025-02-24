@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
@@ -561,7 +560,6 @@ func addAsValidator(network models.Network,
 		true,
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
-		big.NewInt(int64(stakeAmount)),
 		validatorManagerAddressStr,
 	)
 	if err != nil {

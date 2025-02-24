@@ -41,6 +41,7 @@ func PoSValidatorManagerInitialize(
 		MaximumStakeMultiplier:   posParams.MaximumStakeMultiplier,
 		WeightToValueFactor:      posParams.WeightToValueFactor,
 		RewardCalculator:         common.HexToAddress(posParams.RewardCalculatorAddress),
+		UptimeBlockchainID:       posParams.UptimeBlockchainID,
 	}
 
 	return contract.TxToMethod(
@@ -50,7 +51,7 @@ func PoSValidatorManagerInitialize(
 		nil,
 		"initialize Native Token PoS manager",
 		ErrorSignatureToError,
-		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address))",
+		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32))",
 		params,
 	)
 }
