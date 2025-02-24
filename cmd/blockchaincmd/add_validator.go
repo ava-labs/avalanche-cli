@@ -5,7 +5,6 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
@@ -112,7 +111,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
-	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
@@ -124,7 +122,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for Subnets, not L1s) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
-	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
 	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
@@ -449,26 +446,7 @@ func CallAddValidator(
 	pos := sc.PoS()
 
 	if pos {
-		// should take input prior to here for stake amount, delegation fee, and min stake duration
-		if stakeAmount == 0 {
-			tokenName := sc.TokenName
-			if tokenName == "" {
-				tokenName = "tokens"
-			}
-			stakeAmount, err = app.Prompt.CaptureUint64Compare(
-				fmt.Sprintf("Enter the amount of %s to stake ", tokenName),
-				[]prompts.Comparator{
-					{
-						Label: "Positive",
-						Type:  prompts.MoreThan,
-						Value: 0,
-					},
-				},
-			)
-			if err != nil {
-				return err
-			}
-		}
+		// should take input prior to here for delegation fee, and min stake duration
 		if duration == 0 {
 			duration, err = PromptDuration(time.Now(), network, true) // it's pos
 			if err != nil {
@@ -590,7 +568,6 @@ func CallAddValidator(
 		pos,
 		delegationFee,
 		duration,
-		big.NewInt(int64(stakeAmount)),
 		validatorManagerAddress,
 	)
 	if err != nil {

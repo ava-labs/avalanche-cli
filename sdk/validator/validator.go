@@ -15,6 +15,15 @@ import (
 	"golang.org/x/exp/maps"
 )
 
+type ValidatorKind int64
+
+const (
+	UndefinedValidatorKind ValidatorKind = iota
+	NonValidator
+	SovereignValidator
+	NonSovereignValidator
+)
+
 func GetTotalWeight(net network.Network, subnetID ids.ID) (uint64, error) {
 	pClient := platformvm.NewClient(net.Endpoint)
 	ctx, cancel := utils.GetAPIContext()
@@ -88,4 +97,27 @@ func GetRegisteredValidator(
 		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
 	}
 	return validatorID, nil
+}
+
+func IsSovereignValidator(
+	network network.Network,
+	subnetID ids.ID,
+	nodeID ids.NodeID,
+) (ValidatorKind, error) {
+	pClient := platformvm.NewClient(network.Endpoint)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	vs, err := pClient.GetCurrentValidators(ctx, subnetID, nil)
+	if err != nil {
+		return UndefinedValidatorKind, err
+	}
+	for _, v := range vs {
+		if v.NodeID == nodeID {
+			if v.TxID == ids.Empty {
+				return SovereignValidator, nil
+			}
+			return NonSovereignValidator, nil
+		}
+	}
+	return NonValidator, nil
 }

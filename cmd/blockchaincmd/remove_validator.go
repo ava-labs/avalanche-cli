@@ -9,11 +9,6 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
-	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -27,11 +22,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/genesis"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/spf13/cobra"
 )
 
@@ -63,7 +61,6 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "remove validator that responds to the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
-	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's removal (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
@@ -99,6 +96,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
+
 	// TODO: will estimate fee in subsecuent PR
 	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
@@ -116,19 +114,10 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 	network.HandlePublicNetworkSimulation()
 
-	if !sc.Sovereign {
-		if outputTxPath != "" {
-			return errors.New("--output-tx-path flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")
-		}
-
-		if len(subnetAuthKeys) > 0 {
-			return errors.New("--subnetAuthKeys flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")
-		}
-	}
-	if outputTxPath != "" {
-		if _, err := os.Stat(outputTxPath); err == nil {
-			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
-		}
+	scNetwork := sc.Networks[network.Name()]
+	subnetID := scNetwork.SubnetID
+	if subnetID == ids.Empty {
+		return errNoSubnetID
 	}
 
 	var nodeID ids.NodeID
@@ -153,19 +142,31 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if network.Kind == models.Local && !sc.Sovereign {
-		return removeFromLocalNonSOV(blockchainName, nodeID)
+	validatorKind, err := validatorsdk.IsSovereignValidator(network.SDKNetwork(), subnetID, nodeID)
+	if err != nil {
+		return err
+	}
+	if validatorKind == validatorsdk.NonValidator {
+		return fmt.Errorf("node %s is not a validator of subnet %s on %s", nodeID, subnetID, network.Name())
 	}
 
-	scNetwork := sc.Networks[network.Name()]
-	subnetID := scNetwork.SubnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
+	if validatorKind == validatorsdk.SovereignValidator {
+		if outputTxPath != "" {
+			return errors.New("--output-tx-path flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")
+		}
+
+		if len(subnetAuthKeys) > 0 {
+			return errors.New("--subnetAuthKeys flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")
+		}
+	}
+	if outputTxPath != "" {
+		if _, err := os.Stat(outputTxPath); err == nil {
+			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
+		}
 	}
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
-	// check that this guy actually is a validator on the subnet
-	if !sc.Sovereign {
+	if validatorKind == validatorsdk.NonSovereignValidator {
 		isValidator, err := subnet.IsSubnetValidator(subnetID, nodeID, network)
 		if err != nil {
 			// just warn the user, don't fail
@@ -432,42 +433,4 @@ func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Netwo
 		}
 	}
 	return err
-}
-
-func removeFromLocalNonSOV(
-	blockchainName string,
-	nodeID ids.NodeID,
-) error {
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
-
-	subnetID := sc.Networks[models.Local.String()].SubnetID
-	if subnetID == ids.Empty {
-		return errNoSubnetID
-	}
-
-	// Get NodeIDs of all validators on the subnet
-	validators, err := subnet.GetSubnetValidators(subnetID)
-	if err != nil {
-		return err
-	}
-
-	// construct list of validators to choose from
-	validatorList := make([]string, len(validators))
-	for i, v := range validators {
-		validatorList[i] = v.NodeID.String()
-	}
-
-	testKey := genesis.EWOQKey
-	keyChain := secp256k1fx.NewKeychain(testKey)
-	_, err = subnet.IssueRemoveSubnetValidatorTx(keyChain, subnetID, nodeID)
-	if err != nil {
-		return err
-	}
-
-	ux.Logger.PrintToUser("Validator removed")
-
-	return nil
 }
