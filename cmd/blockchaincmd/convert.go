@@ -582,17 +582,17 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
 			}
 
-
-	default:
-		bootstrapValidators, _, err = promptBootstrapValidators(
-			network,
-			changeOwnerAddress,
-			numBootstrapValidators,
-			deployBalance,
-			availableBalance,
-		)
-		if err != nil {
-			return err
+		default:
+			bootstrapValidators, _, err = promptBootstrapValidators(
+				network,
+				changeOwnerAddress,
+				numBootstrapValidators,
+				deployBalance,
+				availableBalance,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
