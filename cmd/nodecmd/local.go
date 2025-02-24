@@ -583,6 +583,8 @@ func addAsValidator(network models.Network,
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	if err := validatormanager.FinishValidatorRegistration(
 		aggregatorCtx,
 		app,
