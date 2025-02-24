@@ -431,9 +431,17 @@ func interEvmSend(
 	if err != nil {
 		return err
 	}
+	senderDesc, err := contract.GetBlockchainDesc(senderChainFlags)
+	if err != nil {
+		return err
+	}
+	receiverDesc, err := contract.GetBlockchainDesc(receiverChainFlags)
+	if err != nil {
+		return err
+	}
 	if originTransferrerAddress == "" {
 		addr, err := app.Prompt.CaptureAddress(
-			fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
+			fmt.Sprintf("Enter the address of the Token Transferrer on %s", senderDesc),
 		)
 		if err != nil {
 			return err
@@ -446,7 +454,7 @@ func interEvmSend(
 	}
 	if destinationTransferrerAddress == "" {
 		addr, err := app.Prompt.CaptureAddress(
-			fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
+			fmt.Sprintf("Enter the address of the Token Transferrer on %s", receiverDesc),
 		)
 		if err != nil {
 			return err
