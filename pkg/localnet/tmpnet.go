@@ -382,13 +382,7 @@ func TmpNetInstallVM(network *tmpnet.Network, binaryPath string, vmID ids.ID) er
 		return err
 	}
 	pluginPath := filepath.Join(pluginDir, vmID.String())
-	if err := utils.FileCopy(binaryPath, pluginPath); err != nil {
-		return err
-	}
-	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
-		return err
-	}
-	return nil
+	return utils.SetupExecFile(binaryPath, pluginPath)
 }
 
 // Set up blockchain config for all nodes in the network
