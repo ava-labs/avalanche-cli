@@ -481,7 +481,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		networkoptions.DefaultSupportedNetworkOptions,
+		networkoptions.GetNetworkFromSidecar(sidecar, networkoptions.DefaultSupportedNetworkOptions),
 		"",
 	)
 	if err != nil {
@@ -492,21 +492,24 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
 
-	if validatorManagerAddress == "" {
-		validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
-		if err != nil {
+	if !convertOnly {
+		if validatorManagerAddress == "" {
+			validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
+			if err != nil {
+				return err
+			}
+			validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+		}
+
+		if err = promptValidatorManagementType(app, &sidecar); err != nil {
 			return err
 		}
-		validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+		if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
+			return err
+		}
+		sidecar.UpdateValidatorManagerAddress(network.Name(), validatorManagerAddress)
 	}
 
-	if err = promptValidatorManagementType(app, &sidecar); err != nil {
-		return err
-	}
-	if err := setSidecarValidatorManageOwner(&sidecar, createFlags); err != nil {
-		return err
-	}
-	sidecar.UpdateValidatorManagerAddress(network.Name(), validatorManagerAddress)
 	sidecar.Sovereign = true
 	fee := uint64(0)
 
@@ -531,52 +534,54 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 
-	if changeOwnerAddress == "" {
-		// use provided key as change owner unless already set
-		if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-			changeOwnerAddress = pAddr[0]
-			ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
-		}
-	}
-	if !generateNodeID {
-		if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
-			return err
-		}
-	}
-	switch {
-	case len(bootstrapEndpoints) > 0:
+	if len(bootstrapValidators) == 0 {
 		if changeOwnerAddress == "" {
-			changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
-			if err != nil {
+			// use provided key as change owner unless already set
+			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
+				changeOwnerAddress = pAddr[0]
+				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
+			}
+		}
+		if !generateNodeID {
+			if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
 				return err
 			}
 		}
-		for _, endpoint := range bootstrapEndpoints {
-			infoClient := info.NewClient(endpoint)
-			ctx, cancel := utils.GetAPILargeContext()
-			defer cancel()
-			nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
-			if err != nil {
-				return err
+		switch {
+		case len(bootstrapEndpoints) > 0:
+			if changeOwnerAddress == "" {
+				changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
+				if err != nil {
+					return err
+				}
 			}
-			publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-			pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
+			for _, endpoint := range bootstrapEndpoints {
+				infoClient := info.NewClient(endpoint)
+				ctx, cancel := utils.GetAPILargeContext()
+				defer cancel()
+				nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+				if err != nil {
+					return err
+				}
+				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
+				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
 
-			bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
-				NodeID:               nodeID.String(),
-				Weight:               constants.BootstrapValidatorWeight,
-				Balance:              deployBalance,
-				BLSPublicKey:         publicKey,
-				BLSProofOfPossession: pop,
-				ChangeOwnerAddr:      changeOwnerAddress,
-			})
-		}
-	case clusterNameFlagValue != "":
-		// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-		bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
-		if err != nil {
-			return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
-		}
+				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
+					NodeID:               nodeID.String(),
+					Weight:               constants.BootstrapValidatorWeight,
+					Balance:              deployBalance,
+					BLSPublicKey:         publicKey,
+					BLSProofOfPossession: pop,
+					ChangeOwnerAddr:      changeOwnerAddress,
+				})
+			}
+		case clusterNameFlagValue != "":
+			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
+			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
+			if err != nil {
+				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
+			}
+
 
 	default:
 		bootstrapValidators, _, err = promptBootstrapValidators(

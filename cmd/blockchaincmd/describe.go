@@ -149,13 +149,11 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 		}
 		if data.SubnetID != ids.Empty {
 			t.AppendRow(table.Row{net, "SubnetID", data.SubnetID.String()})
-			isPermissioned, owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
+			_, owners, threshold, err := txutils.GetOwners(network, data.SubnetID)
 			if err != nil {
 				return err
 			}
-			if isPermissioned {
-				t.AppendRow(table.Row{net, fmt.Sprintf("Owners (Threhold=%d)", threshold), strings.Join(owners, "\n")})
-			}
+			t.AppendRow(table.Row{net, fmt.Sprintf("Owners (Threhold=%d)", threshold), strings.Join(owners, "\n")})
 		}
 		if data.BlockchainID != ids.Empty {
 			hexEncoding := "0x" + hex.EncodeToString(data.BlockchainID[:])
