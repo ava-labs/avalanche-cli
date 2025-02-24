@@ -317,6 +317,8 @@ func removeValidatorSOV(
 		if !force {
 			return fmt.Errorf("validator %s is not eligible for rewards. Use --force flag to force removal", nodeID)
 		}
+		aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+		defer aggregatorCancel()
 		signedMessage, validationID, err = validatormanager.InitValidatorRemoval(
 			aggregatorCtx,
 			app,
@@ -356,6 +358,8 @@ func removeValidatorSOV(
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	if err := validatormanager.FinishValidatorRemoval(
 		aggregatorCtx,
 		app,
