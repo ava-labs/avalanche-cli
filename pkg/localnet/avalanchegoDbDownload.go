@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func DownloadAvalancheGoDb(
+func DownloadAvalancheGoDB(
 	clusterNetwork models.Network,
 	rootDir string,
 	nodeNames []string,

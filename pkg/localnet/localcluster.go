@@ -81,7 +81,7 @@ func CreateLocalCluster(
 	for _, node := range network.Nodes {
 		nodeIDs = append(nodeIDs, node.NodeID.String())
 	}
-	if err := DownloadAvalancheGoDb(networkKind, networkDir, nodeIDs, app.Log, printFunc); err != nil {
+	if err := DownloadAvalancheGoDB(networkKind, networkDir, nodeIDs, app.Log, printFunc); err != nil {
 		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
 	}
 	if err := TmpNetBootstrap(ctx, app.Log, networkDir); err != nil {

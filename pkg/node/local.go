@@ -300,7 +300,6 @@ func StartLocalNode(
 		)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
-			//_ = localnet.LocalClusterRemove(app, clusterName)
 			return fmt.Errorf("failed to start local avalanchego: %w", err)
 		}
 
