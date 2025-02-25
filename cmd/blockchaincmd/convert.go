@@ -169,6 +169,7 @@ func StartLocalMachine(
 				return nil
 			}
 			_ = localnet.LocalClusterRemove(app, clusterName)
+			ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 		}
 		requiredBalance := deployBalance * uint64(numLocalNodes)
 		if availableBalance < requiredBalance {
