@@ -486,7 +486,9 @@ func LocalStatus(
 	if clusterName != "" {
 		ux.Logger.PrintToUser("%s %s", logging.Blue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
 	} else {
-		ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:"))
+		if len(localClusters) > 0 {
+			ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:"))
+		}
 	}
 	for _, clusterName := range localClusters {
 		currenlyRunning := ""
@@ -555,7 +557,7 @@ func LocalStatus(
 				)
 			}
 		} else {
-			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
+			currenlyRunning = fmt.Sprintf(" [%s]", logging.LightGray.Wrap("Stopped"))
 		}
 		networkDir := localnet.GetLocalClusterDir(app, clusterName)
 		ux.Logger.PrintToUser("- %s: %s %s %s %s", clusterName, networkDir, networkKind, currenlyRunning, healthStatus)

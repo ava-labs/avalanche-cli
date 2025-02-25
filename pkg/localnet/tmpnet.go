@@ -206,6 +206,14 @@ func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
 	}
 }
 
+// Get first node of the network
+func GetTmpNetFirstNode(network *tmpnet.Network) (*tmpnet.Node, error) {
+	for _, node := range network.Nodes {
+		return node, nil
+	}
+	return nil, fmt.Errorf("no node found on local network at %s", network.Dir)
+}
+
 // Get first running node of the network
 func GetTmpNetFirstRunningNode(network *tmpnet.Network) (*tmpnet.Node, error) {
 	for _, node := range network.Nodes {
@@ -873,7 +881,7 @@ func GetTmpNetNetworkID(networkDir string) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	node, err := GetTmpNetFirstRunningNode(network)
+	node, err := GetTmpNetFirstNode(network)
 	if err != nil {
 		return 0, err
 	}
