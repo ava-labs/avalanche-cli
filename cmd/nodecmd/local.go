@@ -4,7 +4,6 @@ package nodecmd
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"strings"

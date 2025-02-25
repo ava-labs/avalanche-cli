@@ -222,21 +222,6 @@ func StartLocalNode(
 		return err
 	}
 	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinaryPath)
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err != nil {
-		return err
-	}
-	alreadyBootstrapped, err := localnet.IsANRNetworkBootstrapped(ctx, cli)
-	if err != nil {
-		return err
-	}
-	if alreadyBootstrapped {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("A local cluster is already executing")
-		ux.Logger.PrintToUser("please stop it by calling 'node local stop'")
-		return nil
-	}
->>>>>>> main
 
 	// node config setup
 	if defaultFlags == nil {
@@ -707,7 +692,7 @@ func GetLocalNetworkConnectionInfo(
 	if err != nil {
 		return nil, nil, "", "", fmt.Errorf("failed to connect to local network: %w", err)
 	}
-	bootstrapIPs, bootstrapIDs, err := localnet.GetTmpNetBootstrappers(rootDataDir)
+	bootstrapIPs, bootstrapIDs, err := localnet.GetTmpNetBootstrappers(rootDataDir, ids.EmptyNodeID)
 	if err != nil {
 		return nil, nil, "", "", err
 	}

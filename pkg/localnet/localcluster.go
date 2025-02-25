@@ -143,11 +143,11 @@ func LocalClusterRemove(
 
 func ClusterIsRunning(app *application.Avalanche, clusterName string) (bool, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
-	status, err := GetTmpNetBootstrappingStatus(networkDir)
+	status, err := GetTmpNetRunningStatus(networkDir)
 	if err != nil {
 		return false, err
 	}
-	return status == FullyBootstrapped, nil
+	return status == Running, nil
 }
 
 func IsLocalNetworkCluster(app *application.Avalanche, clusterName string) (bool, error) {
@@ -213,8 +213,11 @@ func WaitLocalClusterBlockchainBootstrapped(
 	blockchainID string,
 	subnetID ids.ID,
 ) error {
-	networkDir := GetLocalClusterDir(app, clusterName)
-	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, blockchainID, subnetID)
+	network, err := GetLocalCluster(app, clusterName)
+	if err != nil {
+		return err
+	}
+	return WaitTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
 }
 
 func GetLocalNetworkConnectionInfo(

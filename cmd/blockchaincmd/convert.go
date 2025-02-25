@@ -25,11 +25,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -183,9 +181,6 @@ func StartLocalMachine(
 				availableBalance,
 			)
 		}
-		// stop local avalanchego process so that we can generate new local cluster
-		_ = node.StopLocalNode(app)
-		anrSettings := node.ANRSettings{}
 		avagoVersionSettings := node.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion

@@ -5,7 +5,6 @@ package localnet
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -13,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"net/netip"
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -161,7 +159,7 @@ func TmpNetLoad(
 		return nil, err
 	}
 	if avalancheGoBinPath != "" {
-		for i := range nodes {
+		for i := range network.Nodes {
 			network.Nodes[i].RuntimeConfig = &tmpnet.NodeRuntimeConfig{
 				AvalancheGoPath: avalancheGoBinPath,
 			}
@@ -544,7 +542,7 @@ func TmpNetRestartNodes(
 			return err
 		}
 	}
-	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty)
+	return WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty)
 }
 
 // Get network bootstrappers to use to connect to the network
@@ -813,7 +811,7 @@ func TmpNetBootstrap(
 			return err
 		}
 	}
-	return WaitTmpNetBlockchainBootstrapped(ctx, networkDir, "P", ids.Empty)
+	return WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty)
 }
 
 func TmpNetEnableSybilProtection(
@@ -836,9 +834,6 @@ func TmpNetRestartNode(
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
-	if err := node.SaveAPIPort(); err != nil {
-		return err
-	}
 	if err := node.Stop(ctx); err != nil {
 		return fmt.Errorf("failed to stop node %s: %w", node.NodeID, err)
 	}
@@ -874,7 +869,11 @@ func TmpNetStartNode(
 }
 
 func GetTmpNetNetworkID(networkDir string) (uint32, error) {
-	node, err := GetTmpNetFirstNode(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return 0, err
+	}
+	node, err := GetTmpNetFirstRunningNode(network)
 	if err != nil {
 		return 0, err
 	}
