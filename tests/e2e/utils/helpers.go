@@ -1085,7 +1085,7 @@ func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected
 }
 
 func GetKeyTransferFee(output string) (uint64, error) {
-	feeNAvax := genesis.LocalParams.TxFeeConfig.StaticFeeConfig.TxFee * 1
+	feeNAvax := uint64(1)
 	for _, line := range strings.Split(output, "\n") {
 		if strings.Contains(line, "Paid fee") {
 			lineFields := strings.Fields(line)
@@ -1106,6 +1106,10 @@ func GetKeyTransferFee(output string) (uint64, error) {
 
 func GetAPILargeContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), constants.APIRequestLargeTimeout)
+}
+
+func GetSignatureAggregatorContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), constants.SignatureAggregatorTimeout)
 }
 
 func GetE2EHostInstanceID() (string, error) {

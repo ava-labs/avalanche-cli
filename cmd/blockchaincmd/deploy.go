@@ -74,7 +74,6 @@ var (
 	icmSpec                         subnet.ICMSpec
 	generateNodeID                  bool
 	bootstrapValidatorsJSONFilePath string
-	privateKeyFlags                 contract.PrivateKeyFlags
 	bootstrapEndpoints              []string
 	convertOnly                     bool
 	numNodes                        uint32
@@ -120,8 +119,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	privateKeyFlags.SetFlagNames("blockchain-private-key", "blockchain-key", "blockchain-genesis-key")
-	privateKeyFlags.AddToCmd(cmd, "to fund validator manager initialization")
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
 		"avalanchego-version",
@@ -552,13 +549,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// TODO: will estimate fee in subsecuent PR
+	// !subnetonly: add blockchain fee
+	// createSubnet: add subnet fee
 	fee := uint64(0)
-	if !subnetOnly {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee
-	}
-	if createSubnet {
-		fee += network.GenesisParams().TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee
-	}
 
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
@@ -809,7 +803,17 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 
-		tracked, err = InitializeValidatorManager(blockchainName, sidecar.ValidatorManagerOwner, subnetID, blockchainID, network, avaGoBootstrapValidators, sidecar.ValidatorManagement == models.ProofOfStake, validatorManagerStr)
+		tracked, err = InitializeValidatorManager(
+			blockchainName,
+			sidecar.ValidatorManagerOwner,
+			subnetID,
+			blockchainID,
+			network,
+			avaGoBootstrapValidators,
+			sidecar.ValidatorManagement == models.ProofOfStake,
+			validatorManagerStr,
+			sidecar.ProxyContractOwner,
+		)
 		if err != nil {
 			return err
 		}

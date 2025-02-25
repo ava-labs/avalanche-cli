@@ -131,8 +131,7 @@ func TmpNetMigrate(
 				return err
 			}
 			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
-			_, ok := data[config.GenesisFileKey]
-			if ok {
+			if _, ok := data[config.GenesisFileKey]; ok {
 				data[config.GenesisFileKey] = filepath.Join(newDir, "genesis.json")
 			}
 			if err := utils.WriteJSON(flagsFile, data); err != nil {
@@ -453,7 +452,7 @@ func TmpNetSetNodeBlockchainConfig(
 ) error {
 	configPath := ""
 	for _, node := range network.Nodes {
-		if node.NodeID == nodeID {
+		if node.NodeID != nodeID {
 			continue
 		}
 		blockchainsConfigDir, err := node.Flags.GetStringVal(config.ChainConfigDirKey)

@@ -80,7 +80,7 @@ func CombineSCPPath(host, path string) string {
 	return path
 }
 
-// isSSHAgentAvailable checks if the SSH agent is available.
+// IsSSHAgentAvailable checks if the SSH agent is available.
 func IsSSHAgentAvailable() bool {
 	return os.Getenv("SSH_AUTH_SOCK") != ""
 }
@@ -98,7 +98,7 @@ func getSSHAgent() (agent.ExtendedAgent, error) {
 	return sshAgent, nil
 }
 
-// ListSSHAgentIdentity returns a list of SSH identities from ssh-agent.
+// ListSSHAgentIdentities returns a list of SSH identities from ssh-agent.
 func ListSSHAgentIdentities() ([]string, error) {
 	sshAgent, err := getSSHAgent()
 	if err != nil {

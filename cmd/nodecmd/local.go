@@ -25,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -391,7 +392,8 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
@@ -609,7 +611,10 @@ func addAsValidator(network models.Network,
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -627,7 +632,6 @@ func addAsValidator(network models.Network,
 		true,
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
-		big.NewInt(int64(stakeAmount)),
 		validatorManagerAddressStr,
 	)
 	if err != nil {
@@ -651,7 +655,10 @@ func addAsValidator(network models.Network,
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	if err := validatormanager.FinishValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,

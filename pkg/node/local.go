@@ -222,6 +222,21 @@ func StartLocalNode(
 		return err
 	}
 	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinaryPath)
+	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
+	if err != nil {
+		return err
+	}
+	alreadyBootstrapped, err := localnet.IsANRNetworkBootstrapped(ctx, cli)
+	if err != nil {
+		return err
+	}
+	if alreadyBootstrapped {
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("A local cluster is already executing")
+		ux.Logger.PrintToUser("please stop it by calling 'node local stop'")
+		return nil
+	}
+>>>>>>> main
 
 	// node config setup
 	if defaultFlags == nil {
@@ -683,4 +698,50 @@ func WaitBootstrapped(ctx context.Context, cli client.Client, blockchainID strin
 		}
 	}
 	return err
+}
+
+func GetLocalNetworkConnectionInfo(
+	app *application.Avalanche,
+) ([]string, []string, string, string, error) {
+	rootDataDir, err := localnet.GetLocalNetworkDir(app)
+	if err != nil {
+		return nil, nil, "", "", fmt.Errorf("failed to connect to local network: %w", err)
+	}
+	bootstrapIPs, bootstrapIDs, err := localnet.GetTmpNetBootstrappers(rootDataDir)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	// prepare genesis file for anr
+	genesisBytes, err := localnet.GetTmpNetGenesis(rootDataDir)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	genesisFile, err := os.CreateTemp("", "local_network_genesis")
+	if err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not create local network genesis file: %w", err)
+	}
+	if _, err := genesisFile.Write(genesisBytes); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not write local network genesis file: %w", err)
+	}
+	genesisPath := genesisFile.Name()
+	if err := genesisFile.Close(); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not close local network genesis file: %w", err)
+	}
+	// prepare upgrade file for anr
+	upgradeBytes, err := localnet.GetTmpNetUpgrade(rootDataDir)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
+	if err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not create local network upgrade file: %w", err)
+	}
+	if _, err := upgradeFile.Write(upgradeBytes); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not write local network upgrade file: %w", err)
+	}
+	upgradePath := upgradeFile.Name()
+	if err := upgradeFile.Close(); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not close local network upgrade file: %w", err)
+	}
+	return bootstrapIPs, bootstrapIDs, genesisPath, upgradePath, nil
 }

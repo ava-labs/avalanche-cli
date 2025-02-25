@@ -32,7 +32,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
-	"github.com/ava-labs/coreth/plugin/evm"
+	"github.com/ava-labs/coreth/plugin/evm/atomic"
 	goethereumcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -431,9 +431,17 @@ func interEvmSend(
 	if err != nil {
 		return err
 	}
+	senderDesc, err := contract.GetBlockchainDesc(senderChainFlags)
+	if err != nil {
+		return err
+	}
+	receiverDesc, err := contract.GetBlockchainDesc(receiverChainFlags)
+	if err != nil {
+		return err
+	}
 	if originTransferrerAddress == "" {
 		addr, err := app.Prompt.CaptureAddress(
-			fmt.Sprintf("Enter the address of the Token Transferrer on %s", originSubnet),
+			fmt.Sprintf("Enter the address of the Token Transferrer on %s", senderDesc),
 		)
 		if err != nil {
 			return err
@@ -446,7 +454,7 @@ func interEvmSend(
 	}
 	if destinationTransferrerAddress == "" {
 		addr, err := app.Prompt.CaptureAddress(
-			fmt.Sprintf("Enter the address of the Token Transferrer on %s", destinationSubnet),
+			fmt.Sprintf("Enter the address of the Token Transferrer on %s", receiverDesc),
 		)
 		if err != nil {
 			return err
@@ -593,12 +601,7 @@ func pToPSend(
 		return err
 	}
 	pContext := wallet.P().Builder().Context()
-	var pFeeCalculator avagofee.Calculator
-	if pContext.GasPrice != 0 {
-		pFeeCalculator = avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
-	} else {
-		pFeeCalculator = avagofee.NewStaticCalculator(pContext.StaticFeeConfig)
-	}
+	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 	if err != nil {
 		return err
@@ -809,7 +812,7 @@ func importIntoC(
 	if err != nil {
 		return fmt.Errorf("error building tx: %w", err)
 	}
-	tx := evm.Tx{UnsignedAtomicTx: unsignedTx}
+	tx := atomic.Tx{UnsignedAtomicTx: unsignedTx}
 	if err := wallet.C().Signer().SignAtomic(context.Background(), &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
@@ -918,7 +921,7 @@ func exportFromC(
 	if err != nil {
 		return fmt.Errorf("error building tx: %w", err)
 	}
-	tx := evm.Tx{UnsignedAtomicTx: unsignedTx}
+	tx := atomic.Tx{UnsignedAtomicTx: unsignedTx}
 	if err := wallet.C().Signer().SignAtomic(context.Background(), &tx); err != nil {
 		return fmt.Errorf("error signing tx: %w", err)
 	}
