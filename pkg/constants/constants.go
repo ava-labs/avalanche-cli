@@ -344,5 +344,5 @@ const (
 	DefaultAggregatorLogLevel  = "Debug"
 	SignatureAggregatorLogName = "signature-aggregator"
 	MaxL1TotalWeightChange     = 0.2
-	SignatureAggregatorTimeout = 120 * time.Second
+	SignatureAggregatorTimeout = 60 * time.Second
 )

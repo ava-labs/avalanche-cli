@@ -6,8 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -18,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"
@@ -225,7 +225,7 @@ func importL1(subnetID ids.ID, rpcURL string, network models.Network) (models.Si
 		return models.Sidecar{}, err
 	}
 	if subnetInfo.IsPermissioned {
-		return models.Sidecar{}, fmt.Errorf("use avalanche addValidator <subnetName> command for non sovereign Subnets")
+		return models.Sidecar{}, fmt.Errorf("unable to import non sovereign Subnets")
 	}
 	blockchainID := subnetInfo.ManagerChainID
 	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
@@ -235,14 +235,14 @@ func importL1(subnetID ids.ID, rpcURL string, network models.Network) (models.Si
 		Sovereign: true,
 	}
 
-	isPoA := validatormanager.IsValidatorManagerPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
+	isPoA := validatorManagerSDK.ValidatorManagerIsPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
 	if err != nil {
 		return models.Sidecar{}, err
 	}
 
 	if isPoA {
 		sc.ValidatorManagement = models.ProofOfAuthority
-		owner, err := validatormanager.GetValidatorManagerOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+		owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
 		if err != nil {
 			return models.Sidecar{}, err
 		}

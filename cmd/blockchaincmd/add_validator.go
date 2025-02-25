@@ -5,10 +5,9 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"strings"
 	"time"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -138,7 +137,7 @@ func preAddChecks(args []string) error {
 		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used")
 	}
 	if len(args) == 0 && createLocalValidator {
-		return fmt.Errorf("use `avalanche addValidator <l1Name>`to use local machine as new validator")
+		return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator")
 	}
 
 	return nil
@@ -188,9 +187,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		if createLocalValidator {
-			return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator")
-		}
 		var subnetID ids.ID
 		if subnetIDstr == "" {
 			subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
