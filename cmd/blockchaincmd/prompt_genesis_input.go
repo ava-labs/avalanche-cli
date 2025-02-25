@@ -127,7 +127,7 @@ func promptBootstrapValidators(
 	numBootstrapValidators int,
 	validatorBalance uint64,
 	availableBalance uint64,
-) ([]models.SubnetValidator, error) {
+) ([]models.SubnetValidator, bool, error) {
 	var subnetValidators []models.SubnetValidator
 	var err error
 	if numBootstrapValidators == 0 {
@@ -151,7 +151,7 @@ func promptBootstrapValidators(
 		)
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	var setUpNodes bool
 	if generateNodeID {
@@ -159,14 +159,14 @@ func promptBootstrapValidators(
 	} else {
 		setUpNodes, err = promptSetUpNodes()
 		if err != nil {
-			return nil, err
+			return nil, setUpNodes, err
 		}
 		generateNodeID = !setUpNodes
 	}
 	if changeOwnerAddress == "" {
 		changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
 		if err != nil {
-			return nil, err
+			return nil, setUpNodes, err
 		}
 	}
 	for len(subnetValidators) < numBootstrapValidators {
@@ -176,20 +176,20 @@ func promptBootstrapValidators(
 		if setUpNodes {
 			nodeID, err = PromptNodeID("add as bootstrap validator")
 			if err != nil {
-				return nil, err
+				return nil, setUpNodes, err
 			}
 			publicKey, pop, err = promptProofOfPossession(true, true)
 			if err != nil {
-				return nil, err
+				return nil, setUpNodes, err
 			}
 		} else {
 			nodeIDStr, publicKey, pop, err = generateNewNodeAndBLS()
 			if err != nil {
-				return nil, err
+				return nil, setUpNodes, err
 			}
 			nodeID, err = ids.NodeIDFromString(nodeIDStr)
 			if err != nil {
-				return nil, err
+				return nil, setUpNodes, err
 			}
 		}
 		subnetValidator := models.SubnetValidator{
@@ -205,7 +205,7 @@ func promptBootstrapValidators(
 		ux.Logger.PrintToUser("- Node ID: %s", nodeID)
 		ux.Logger.PrintToUser("- Change Address: %s", changeOwnerAddress)
 	}
-	return subnetValidators, nil
+	return subnetValidators, setUpNodes, nil
 }
 
 func validateBLS(publicKey, pop string) error {

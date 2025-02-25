@@ -6,7 +6,7 @@ import "time"
 
 const (
 	// http
-	APIRequestTimeout      = 30 * time.Second
+	APIRequestTimeout      = 10 * time.Second
 	APIRequestLargeTimeout = 2 * time.Minute
 
 	// node

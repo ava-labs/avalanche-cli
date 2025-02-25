@@ -257,5 +257,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 		float64(balance)/float64(units.Avax),
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
+		sc,
 	)
 }
