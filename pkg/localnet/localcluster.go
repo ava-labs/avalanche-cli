@@ -167,21 +167,21 @@ func GetClusterNetworkKind(app *application.Avalanche, clusterName string) (mode
 	return models.NetworkFromNetworkID(networkID), nil
 }
 
-func GetLocalNetworkClusters(app *application.Avalanche) ([]string, error) {
+func GetLocalNetworkRunningClusters(app *application.Avalanche) ([]string, error) {
 	runningClusters, err := GetRunningClusters(app)
 	if err != nil {
 		return nil, err
 	}
-	localNetworkClusters := []string{}
+	localNetworkRunningClusters := []string{}
 	for _, clusterName := range runningClusters {
 		if local, err := IsLocalNetworkCluster(app, clusterName); err != nil {
 			return nil, err
 		} else if !local {
 			continue
 		}
-		localNetworkClusters = append(localNetworkClusters, clusterName)
+		localNetworkRunningClusters = append(localNetworkRunningClusters, clusterName)
 	}
-	return localNetworkClusters, nil
+	return localNetworkRunningClusters, nil
 }
 
 func GetRunningClusters(app *application.Avalanche) ([]string, error) {

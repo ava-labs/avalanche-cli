@@ -78,7 +78,7 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	clusterNames, err := localnet.GetLocalNetworkClusters(app)
+	clusterNames, err := localnet.GetLocalNetworkRunningClusters(app)
 	if err != nil {
 		return err
 	}

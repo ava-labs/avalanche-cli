@@ -80,7 +80,7 @@ func stopAndSaveNetwork(flags StopFlags) error {
 		}
 	}
 
-	clusterNames, err := localnet.GetLocalNetworkClusters(app)
+	clusterNames, err := localnet.GetLocalNetworkRunningClusters(app)
 	if err != nil {
 		return err
 	}
