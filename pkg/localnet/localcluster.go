@@ -185,6 +185,23 @@ func GetLocalNetworkRunningClusters(app *application.Avalanche) ([]string, error
 }
 
 func GetRunningClusters(app *application.Avalanche) ([]string, error) {
+	clusters, err := GetClusters(app)
+	if err != nil {
+		return nil, err
+	}
+	runningClusters := []string{}
+	for _, clusterName := range clusters {
+		if running, err := ClusterIsRunning(app, clusterName); err != nil {
+			return nil, err
+		} else if !running {
+			continue
+		}
+		runningClusters = append(runningClusters, clusterName)
+	}
+	return runningClusters, nil
+}
+
+func GetClusters(app *application.Avalanche) ([]string, error) {
 	clusters := []string{}
 	clustersDir := app.GetLocalClustersDir()
 	entries, err := os.ReadDir(clustersDir)
@@ -196,10 +213,8 @@ func GetRunningClusters(app *application.Avalanche) ([]string, error) {
 			continue
 		}
 		clusterName := entry.Name()
-		if running, err := ClusterIsRunning(app, clusterName); err != nil {
-			return nil, err
-		} else if !running {
-			continue
+		if _, err := GetLocalCluster(app, clusterName); err != nil {
+			return nil, fmt.Errorf("failure loading cluster %s: %w", clusterName, err)
 		}
 		clusters = append(clusters, clusterName)
 	}
@@ -245,4 +260,96 @@ func GetLocalNetworkConnectionInfo(
 		return ConnectionSettings{}, err
 	}
 	return connectionSettings, nil
+}
+
+// Indicates if a blockchain is bootstrapped on the local network
+// If the network has no validators for the blockchain, it fails
+func IsLocalClusterBlockchainBootstrapped(
+	app *application.Avalanche,
+	clusterName string,
+	blockchainID string,
+	subnetID ids.ID,
+) (bool, error) {
+	network, err := GetLocalCluster(app, clusterName)
+	if err != nil {
+		return false, err
+	}
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	return IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
+}
+
+// Indicates if P-Chain is bootstrapped on the network, and also if
+// all blockchain that have validators on the network, are bootstrapped
+func LocalClusterHealth(
+	app *application.Avalanche,
+	clusterName string,
+) (bool, bool, error) {
+	pChainBootstrapped, err := IsLocalClusterBlockchainBootstrapped(app, clusterName, "P", ids.Empty)
+	if err != nil {
+		return false, false, err
+	}
+	blockchains, err := GetLocalClusterBlockchainInfo(app, clusterName)
+	if err != nil {
+		return pChainBootstrapped, false, err
+	}
+	for _, blockchain := range blockchains {
+		if hasValidators, err := LocalClusterHasValidatorsForSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+			return pChainBootstrapped, false, err
+		} else if !hasValidators {
+			continue
+		}
+		if blockchainBootstrapped, err := IsLocalClusterBlockchainBootstrapped(app, clusterName, blockchain.ID.String(), blockchain.SubnetID); err != nil {
+			return pChainBootstrapped, false, err
+		} else if !blockchainBootstrapped {
+			return pChainBootstrapped, false, nil
+		}
+	}
+	return pChainBootstrapped, true, nil
+}
+
+// Returns blockchain info for all non standard blockchains deployed into the network
+func GetLocalClusterBlockchainInfo(
+	app *application.Avalanche,
+	clusterName string,
+) ([]BlockchainInfo, error) {
+	endpoint, err := GetLocalClusterEndpoint(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	return GetBlockchainInfo(endpoint)
+}
+
+// Returns the endpoint associated to the cluster
+// If the network is not alive it errors
+func GetLocalClusterEndpoint(
+	app *application.Avalanche,
+	clusterName string,
+) (string, error) {
+	network, err := GetLocalCluster(app, clusterName)
+	if err != nil {
+		return "", err
+	}
+	return GetTmpNetEndpoint(network)
+}
+
+// Indicates if the cluster validates a subnet at all
+func LocalClusterHasValidatorsForSubnet(
+	app *application.Avalanche,
+	clusterName string,
+	subnetID ids.ID,
+) (bool, error) {
+	network, err := GetLocalCluster(app, clusterName)
+	if err != nil {
+		return false, err
+	}
+	return TmpNetHasValidatorsForSubnet(network, subnetID)
+}
+
+func GetLocalClusterURIs(
+	app *application.Avalanche,
+	clusterName string,
+) ([]string, error) {
+	networkDir := GetLocalClusterDir(app, clusterName)
+	return GetTmpNetNodeURIsWithFix(networkDir)
 }

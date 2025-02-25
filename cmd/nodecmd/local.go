@@ -374,7 +374,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("local cluster name cannot be empty")
 	}
 
-	if ok, err := node.CheckClusterIsLocal(app, clusterName); err != nil || !ok {
+	if !localnet.LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local cluster %q not found, please create it first using avalanche node local start %q", clusterName, clusterName)
 	}
 

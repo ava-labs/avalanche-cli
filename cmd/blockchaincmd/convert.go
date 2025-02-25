@@ -152,9 +152,7 @@ func StartLocalMachine(
 	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if useLocalMachine && clusterNameFlagValue == "" {
-		if clusterExists, err := node.CheckClusterIsLocal(app, clusterName); err != nil {
-			return err
-		} else if clusterExists {
+		if localnet.LocalClusterExists(app, clusterName) {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(
 				logging.Red.Wrap("A local machine L1 deploy already exists for %s L1 and network %s"),
@@ -170,7 +168,7 @@ func StartLocalMachine(
 			if !yes {
 				return nil
 			}
-			_ = node.DestroyLocalNode(app, clusterName)
+			_ = localnet.LocalClusterRemove(app, clusterName)
 		}
 		requiredBalance := deployBalance * uint64(numLocalNodes)
 		if availableBalance < requiredBalance {

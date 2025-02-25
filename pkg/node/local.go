@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -39,7 +38,7 @@ func TrackSubnetWithLocalMachine(
 	blockchainName string,
 	avalancheGoBinPath string,
 ) error {
-	if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
+	if !localnet.LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
 	sc, err := app.LoadSidecar(blockchainName)
@@ -174,15 +173,6 @@ func LocalNodeTrackSubnet(
 	}
 
 	return nil
-}
-
-func CheckClusterIsLocal(app *application.Avalanche, clusterName string) (bool, error) {
-	clustersConfig, err := app.GetClustersConfig()
-	if err != nil {
-		return false, err
-	}
-	clusterConf, ok := clustersConfig.Clusters[clusterName]
-	return ok && clusterConf.Local, nil
 }
 
 func StartLocalNode(
@@ -475,97 +465,38 @@ func UpsizeLocalNode(
 	return newNodeName, nil
 }
 
-func DestroyLocalNode(app *application.Avalanche, clusterName string) error {
-	_ = localnet.LocalClusterStop(app, clusterName)
-
-	if err := localnet.LocalClusterRemove(app, clusterName); err != nil {
-		return err
-	}
-
-	if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
-		return fmt.Errorf("local cluster %q not found", clusterName)
-	}
-	clustersConfig, err := app.LoadClustersConfig()
-	if err != nil {
-		return err
-	}
-	delete(clustersConfig.Clusters, clusterName)
-	if err := app.WriteClustersConfigFile(&clustersConfig); err != nil {
-		return err
-	}
-
-	ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
-	return nil
-}
-
-func listLocalClusters(app *application.Avalanche, clusterNamesToInclude []string) (map[string]string, error) {
-	localClusters := map[string]string{} // map[clusterName]rootDir
-	clustersConfig, err := app.GetClustersConfig()
-	if err != nil {
-		return localClusters, err
-	}
-	for clusterName := range clustersConfig.Clusters {
-		if len(clusterNamesToInclude) == 0 || slices.Contains(clusterNamesToInclude, clusterName) {
-			if ok, err := CheckClusterIsLocal(app, clusterName); err == nil && ok {
-				localClusters[clusterName] = app.GetLocalClusterDir(clusterName)
-			}
-		}
-	}
-	return localClusters, nil
-}
-
-func LocalStatus(app *application.Avalanche, clusterName string, blockchainName string) error {
-	clustersToList := make([]string, 0)
+func LocalStatus(
+	app *application.Avalanche,
+	clusterName string,
+	blockchainName string,
+) error {
+	var localClusters []string
 	if clusterName != "" {
-		if ok, err := CheckClusterIsLocal(app, clusterName); err != nil || !ok {
-			return fmt.Errorf("local cluster %q not found", clusterName)
+		if !localnet.LocalClusterExists(app, clusterName) {
+			return fmt.Errorf("local node %q is not found", clusterName)
 		}
-		clustersToList = append(clustersToList, clusterName)
-	}
-
-	// get currently running local cluster
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	currentlyRunningRootDir := ""
-	isHealthy := false
-	cli, _ := binutils.NewGRPCClientWithEndpoint( // ignore error as ANR might be not running
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	runningAvagoURIs := []string{}
-	if cli != nil {
-		status, _ := cli.Status(ctx) // ignore error as ANR might be not running
-		if status != nil && status.ClusterInfo != nil {
-			if status.ClusterInfo.RootDataDir != "" {
-				currentlyRunningRootDir = status.ClusterInfo.RootDataDir
-			}
-			isHealthy = status.ClusterInfo.Healthy
-			// get list of the nodes
-			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-				runningAvagoURIs = append(runningAvagoURIs, nodeInfo.Uri)
-			}
+		localClusters = []string{clusterName}
+	} else {
+		var err error
+		localClusters, err = localnet.GetClusters(app)
+		if err != nil {
+			return fmt.Errorf("failed to list local clusters: %w", err)
 		}
-	}
-	localClusters, err := listLocalClusters(app, clustersToList)
-	if err != nil {
-		return fmt.Errorf("failed to list local clusters: %w", err)
 	}
 	if clusterName != "" {
 		ux.Logger.PrintToUser("%s %s", logging.Blue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
 	} else {
 		ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:"))
 	}
-	for clusterName, rootDir := range localClusters {
+	for _, clusterName := range localClusters {
 		currenlyRunning := ""
 		healthStatus := ""
 		avagoURIOuput := ""
 
-		clusterConf, err := app.GetClusterConfig(clusterName)
+		network, err := localnet.GetClusterNetworkKind(app, clusterName)
 		if err != nil {
-			return fmt.Errorf("failed to get cluster config: %w", err)
+			return fmt.Errorf("failed to get cluster network: %w", err)
 		}
-		network := models.ConvertClusterToNetwork(clusterConf.Network)
 		networkKind := fmt.Sprintf(" [%s]", logging.Orange.Wrap(network.Name()))
 
 		// load sidecar and cluster config for the cluster  if blockchainName is not empty
@@ -577,12 +508,24 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 			}
 			blockchainID = sc.Networks[network.Name()].BlockchainID
 		}
-		if rootDir == currentlyRunningRootDir {
+		isRunning, err := localnet.ClusterIsRunning(app, clusterName)
+		if err != nil {
+			return err
+		}
+		if isRunning {
+			pChainHealth, l1Health, err := localnet.LocalClusterHealth(app, clusterName)
+			if err != nil {
+				return err
+			}
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Blue.Wrap("Running"))
-			if isHealthy {
+			if pChainHealth && l1Health {
 				healthStatus = fmt.Sprintf(" [%s]", logging.Green.Wrap("Healthy"))
 			} else {
 				healthStatus = fmt.Sprintf(" [%s]", logging.Red.Wrap("Unhealthy"))
+			}
+			runningAvagoURIs, err := localnet.GetLocalClusterURIs(app, clusterName)
+			if err != nil {
+				return err
 			}
 			for _, avagoURI := range runningAvagoURIs {
 				nodeID, nodePOP, isBoot, err := GetInfo(avagoURI, blockchainID.String())
@@ -614,7 +557,8 @@ func LocalStatus(app *application.Avalanche, clusterName string, blockchainName 
 		} else {
 			currenlyRunning = fmt.Sprintf(" [%s]", logging.Black.Wrap("Stopped"))
 		}
-		ux.Logger.PrintToUser("- %s: %s %s %s %s", clusterName, rootDir, networkKind, currenlyRunning, healthStatus)
+		networkDir := localnet.GetLocalClusterDir(app, clusterName)
+		ux.Logger.PrintToUser("- %s: %s %s %s %s", clusterName, networkDir, networkKind, currenlyRunning, healthStatus)
 		ux.Logger.PrintToUser(avagoURIOuput)
 	}
 

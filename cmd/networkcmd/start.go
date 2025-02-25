@@ -263,26 +263,23 @@ func startLocalCluster(avalancheGoBinPath string) error {
 	if len(blockchains) > 0 {
 		blockchainName := blockchains[0].Name
 		clusterName := blockchainName + "-local-node-local-network"
-		isLocal, err := node.CheckClusterIsLocal(app, clusterName)
-		if err != nil {
-			return err
+		if !localnet.LocalClusterExists(app, clusterName) {
+			return nil
 		}
-		if isLocal {
-			if err = node.StartLocalNode(
-				app,
-				clusterName,
-				avalancheGoBinPath,
-				0,
-				nil,
-				localnet.ConnectionSettings{},
-				localnet.NodeSettings{},
-				node.AvalancheGoVersionSettings{},
-				models.NewLocalNetwork(),
-				networkoptions.NetworkFlags{},
-				nil,
-			); err != nil {
-				return err
-			}
+		if err = node.StartLocalNode(
+			app,
+			clusterName,
+			avalancheGoBinPath,
+			0,
+			nil,
+			localnet.ConnectionSettings{},
+			localnet.NodeSettings{},
+			node.AvalancheGoVersionSettings{},
+			models.NewLocalNetwork(),
+			networkoptions.NetworkFlags{},
+			nil,
+		); err != nil {
+			return err
 		}
 	}
 	return nil
