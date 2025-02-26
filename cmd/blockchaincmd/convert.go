@@ -107,7 +107,7 @@ func StartLocalMachine(
 	blockchainName string,
 	deployBalance,
 	availableBalance uint64,
-) error {
+) (bool, error) {
 	var err error
 	if network.Kind == models.Local {
 		useLocalMachine = true
@@ -118,7 +118,7 @@ func StartLocalMachine(
 		clusterName = clusterNameFlagValue
 		clusterConfig, err := app.GetClusterConfig(clusterName)
 		if err != nil {
-			return err
+			return false, err
 		}
 		// check if cluster is local
 		if clusterConfig.Local {
@@ -126,7 +126,7 @@ func StartLocalMachine(
 			if len(bootstrapEndpoints) == 0 {
 				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 				if err != nil {
-					return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+					return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 						"please create your local node again and call blockchain deploy command again", err)
 				}
 			}
@@ -143,7 +143,7 @@ func StartLocalMachine(
 
 		useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 	// default number of local machine nodes to be 1
@@ -154,7 +154,7 @@ func StartLocalMachine(
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if useLocalMachine && clusterNameFlagValue == "" {
 		if clusterExists, err := node.CheckClusterIsLocal(app, clusterName); err != nil {
-			return err
+			return false, err
 		} else if clusterExists {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(
@@ -166,16 +166,16 @@ func StartLocalMachine(
 				fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
 			)
 			if err != nil {
-				return err
+				return false, err
 			}
 			if !yes {
-				return nil
+				return true, nil
 			}
 			_ = node.DestroyLocalNode(app, clusterName)
 		}
 		requiredBalance := deployBalance * uint64(numLocalNodes)
 		if availableBalance < requiredBalance {
-			return fmt.Errorf(
+			return false, fmt.Errorf(
 				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
 				numLocalNodes,
 				requiredBalance,
@@ -197,20 +197,20 @@ func StartLocalMachine(
 			)
 			if err != nil {
 				if err != vm.ErrNoAvagoVersion {
-					return err
+					return false, err
 				}
 				avagoVersion = constants.LatestPreReleaseVersionTag
 			}
 		}
 		avagoBinaryPath, err := localnet.SetupAvalancheGoBinary(app, avagoVersion, avagoBinaryPath)
 		if err != nil {
-			return err
+			return false, err
 		}
 		nodeConfig := map[string]interface{}{}
 		if app.AvagoNodeConfigExists(blockchainName) {
 			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 		if partialSync {
@@ -235,18 +235,18 @@ func StartLocalMachine(
 			networkoptions.NetworkFlags{},
 			nil,
 		); err != nil {
-			return err
+			return false, err
 		}
 		clusterNameFlagValue = clusterName
 		if len(bootstrapEndpoints) == 0 {
 			bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 			if err != nil {
-				return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+				return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 					"please create your local node again and call blockchain deploy command again", err)
 			}
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func InitializeValidatorManager(
@@ -594,8 +594,10 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
+			if cancel, err := StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
 				return err
+			} else if cancel {
+				return nil
 			}
 		}
 		switch {

@@ -584,8 +584,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
+			if cancel, err := StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
 				return err
+			} else if cancel {
+				return nil
 			}
 		}
 		switch {
