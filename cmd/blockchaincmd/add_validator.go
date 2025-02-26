@@ -5,9 +5,10 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"

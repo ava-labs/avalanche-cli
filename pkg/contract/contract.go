@@ -630,24 +630,3 @@ func UnpackLog(
 	contract := bind.NewBoundContract(common.Address{}, *abi, nil, nil, nil)
 	return contract.UnpackLog(event, eventName, log)
 }
-
-// GetContractOwner gets owner for https://docs.openzeppelin.com/contracts/2.x/api/ownership#Ownable-owner contracts
-func GetContractOwner(
-	rpcURL string,
-	contractAddress common.Address,
-) (common.Address, error) {
-	out, err := CallToMethod(
-		rpcURL,
-		contractAddress,
-		"owner()->(address)",
-	)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	ownerAddr, ok := out[0].(common.Address)
-	if !ok {
-		return common.Address{}, fmt.Errorf("error at owner() call, expected common.Address, got %T", out[0])
-	}
-	return ownerAddr, nil
-}
