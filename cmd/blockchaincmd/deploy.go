@@ -576,7 +576,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
-	//var setUpNode bool
 	if sidecar.Sovereign {
 		if changeOwnerAddress == "" {
 			// use provided key as change owner unless already set
@@ -800,6 +799,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
 			ux.Logger.PrintToUser("==================================================")
 			ux.Logger.PrintToUser("To enable the nodes to track the L1, set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
+			ux.Logger.PrintToUser("Ensure that the P2P port is exposed and 'public-ip' config value is set")
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
 			return nil
 		}
