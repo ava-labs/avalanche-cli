@@ -819,7 +819,10 @@ func TmpNetBootstrap(
 			return err
 		}
 	}
-	return WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty)
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
+		return err
+	}
+	return TmpNetPersistPorts(networkDir)
 }
 
 func TmpNetEnableSybilProtection(
@@ -832,6 +835,24 @@ func TmpNetEnableSybilProtection(
 	network.DefaultFlags[config.SybilProtectionEnabledKey] = true
 	for i := range network.Nodes {
 		network.Nodes[i].Flags[config.SybilProtectionEnabledKey] = true
+	}
+	return network.Write()
+}
+
+func TmpNetPersistPorts(
+	networkDir string,
+) error {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	for i := range network.Nodes {
+		ipPort, err := utils.GetIPPort(network.Nodes[i].URI)
+		if err != nil {
+			return fmt.Errorf("couldn't parse node URI %s: %w", network.Nodes[i].URI, err)
+		}
+		network.Nodes[i].Flags[config.HTTPPortKey] = ipPort.Port()
+		network.Nodes[i].Flags[config.StakingPortKey] = network.Nodes[i].StakingAddress.Port()
 	}
 	return network.Write()
 }
