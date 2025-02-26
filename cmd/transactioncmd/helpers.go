@@ -8,6 +8,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -22,7 +23,7 @@ func validateConvertOperation(tx *txs.Tx, action string) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("expected tx to be of type txs.ConvertSubnetToL1Tx, found %T", tx.Unsigned)
 	}
-	ux.Logger.PrintToUser("You are about to %s a txs.ConvertSubnetToL1Tx for %s with the following content:", action, network.Name())
+	ux.Logger.PrintToUser("You are about to %s a ConvertSubnetToL1Tx for %s with the following content:", action, network.Name())
 	ux.Logger.PrintToUser("  Subnet ID: %s", convertToL1Tx.Subnet)
 	ux.Logger.PrintToUser("  Blockchain ID: %s", convertToL1Tx.BlockchainID)
 	ux.Logger.PrintToUser("  Manager Address: %s", common.BytesToAddress(convertToL1Tx.Address).Hex())
@@ -33,9 +34,10 @@ func validateConvertOperation(tx *txs.Tx, action string) (bool, error) {
 			return false, fmt.Errorf("unexpected node ID on tx")
 		}
 		ux.Logger.PrintToUser("    %s", nodeID)
+		ux.Logger.PrintToUser("    %.5f", float64(val.Balance)/float64(units.Avax))
 	}
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Please review details and decide if it is safe to continue")
+	ux.Logger.PrintToUser("Please review the details of the ConvertSubnetToL1 Transaction")
 	ux.Logger.PrintToUser("")
 	return app.Prompt.CaptureYesNo(fmt.Sprintf("Do you want to %s the transaction?", action))
 }
