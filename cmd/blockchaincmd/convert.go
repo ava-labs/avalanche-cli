@@ -441,7 +441,7 @@ func convertSubnetToL1(
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 
 	if doStrongInputsCheck {
-		ux.Logger.PrintToUser("You are about to create a txs.ConvertSubnetToL1Tx on %s with the following content:", network.Name())
+		ux.Logger.PrintToUser("You are about to create a ConvertSubnetToL1Tx on %s with the following content:", network.Name())
 		ux.Logger.PrintToUser("  Subnet ID: %s", subnetID)
 		ux.Logger.PrintToUser("  Blockchain ID: %s", blockchainID)
 		ux.Logger.PrintToUser("  Manager Address: %s", managerAddress.Hex())
@@ -451,7 +451,7 @@ func convertSubnetToL1(
 			ux.Logger.PrintToUser("    %.5f", float64(val.Balance)/float64(units.Avax))
 		}
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Please review details and decide if it is safe to continue")
+		ux.Logger.PrintToUser("Please review the details of the ConvertSubnetToL1 Transaction")
 		ux.Logger.PrintToUser("")
 		if doContinue, err := app.Prompt.CaptureYesNo("Do you want to create the transaction?"); err != nil {
 			return avaGoBootstrapValidators, false, false, err
