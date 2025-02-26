@@ -775,7 +775,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if sidecar.Sovereign {
 		validatorManagerStr := validatorManagerSDK.ProxyContractAddress
-		avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(
+		avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 			bootstrapValidators,
 			deployer,
 			subnetID,
@@ -786,9 +786,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			controlKeys,
 			subnetAuthKeys,
 			validatorManagerStr,
+			false,
 		)
 		if err != nil {
 			return err
+		}
+		if cancel {
+			return nil
 		}
 
 		if savePartialTx {

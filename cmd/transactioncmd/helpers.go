@@ -5,6 +5,7 @@ package transactioncmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
@@ -13,11 +14,15 @@ import (
 )
 
 func validateConvertOperation(tx *txs.Tx, action string) (bool, error) {
+	network, err := txutils.GetNetwork(tx)
+	if err != nil {
+		return false, err
+	}
 	convertToL1Tx, ok := tx.Unsigned.(*txs.ConvertSubnetToL1Tx)
 	if !ok {
 		return false, fmt.Errorf("expected tx to be of type txs.ConvertSubnetToL1Tx, found %T", tx.Unsigned)
 	}
-	ux.Logger.PrintToUser("You are about to %s a txs.ConvertSubnetToL1Tx with the following content:", action)
+	ux.Logger.PrintToUser("You are about to %s a txs.ConvertSubnetToL1Tx for %s with the following content:", action, network.Name())
 	ux.Logger.PrintToUser("  Subnet ID: %s", convertToL1Tx.Subnet)
 	ux.Logger.PrintToUser("  Blockchain ID: %s", convertToL1Tx.BlockchainID)
 	ux.Logger.PrintToUser("  Manager Address: %s", common.BytesToAddress(convertToL1Tx.Address).Hex())

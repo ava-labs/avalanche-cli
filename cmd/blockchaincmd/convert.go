@@ -42,6 +42,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var doStrongInputChecks bool
+
 // avalanche blockchain convert
 func newConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -98,6 +100,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
+	cmd.Flags().BoolVar(&doStrongInputChecks, "strong-checks", true, "double check for input information")
 	return cmd
 }
 
@@ -419,22 +422,43 @@ func convertSubnetToL1(
 	controlKeysList,
 	subnetAuthKeysList []string,
 	validatorManagerAddressStr string,
-) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
+	doStrongInputsCheck bool,
+) ([]*txs.ConvertSubnetToL1Validator, bool, bool, error) {
 	if subnetID == ids.Empty {
-		return nil, false, clierrors.ErrNoSubnetID
+		return nil, false, false, clierrors.ErrNoSubnetID
 	}
 	if blockchainID == ids.Empty {
-		return nil, false, clierrors.ErrNoBlockchainID
+		return nil, false, false, clierrors.ErrNoBlockchainID
 	}
 	if !common.IsHexAddress(validatorManagerAddressStr) {
-		return nil, false, clierrors.ErrInvalidValidatorManagerAddress
+		return nil, false, false, clierrors.ErrInvalidValidatorManagerAddress
 	}
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
-		return avaGoBootstrapValidators, false, err
+		return avaGoBootstrapValidators, false, false, err
 	}
 	deployer.CleanCacheWallet()
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+
+	if doStrongInputsCheck {
+		ux.Logger.PrintToUser("You are about to create a txs.ConvertSubnetToL1Tx on %s with the following content:", network.Name())
+		ux.Logger.PrintToUser("  Subnet ID: %s", subnetID)
+		ux.Logger.PrintToUser("  Blockchain ID: %s", blockchainID)
+		ux.Logger.PrintToUser("  Manager Address: %s", managerAddress.Hex())
+		ux.Logger.PrintToUser("  Validators:")
+		for _, val := range bootstrapValidators {
+			ux.Logger.PrintToUser("    %s", val.NodeID)
+		}
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Please review details and decide if it is safe to continue")
+		ux.Logger.PrintToUser("")
+		if doContinue, err := app.Prompt.CaptureYesNo("Do you want to create the transaction?"); err != nil {
+			return avaGoBootstrapValidators, false, false, err
+		} else if !doContinue {
+			return avaGoBootstrapValidators, true, false, err
+		}
+	}
+
 	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 		controlKeysList,
 		subnetAuthKeysList,
@@ -445,7 +469,7 @@ func convertSubnetToL1(
 	)
 	if err != nil {
 		ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
-		return avaGoBootstrapValidators, false, err
+		return avaGoBootstrapValidators, false, false, err
 	}
 
 	savePartialTx := !isFullySigned && err == nil
@@ -460,7 +484,7 @@ func convertSubnetToL1(
 			outputTxPath,
 			false,
 		); err != nil {
-			return avaGoBootstrapValidators, savePartialTx, err
+			return avaGoBootstrapValidators, false, savePartialTx, err
 		}
 	} else {
 		ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
@@ -470,13 +494,13 @@ func convertSubnetToL1(
 			0,
 		)
 		if err != nil {
-			return avaGoBootstrapValidators, savePartialTx, err
+			return avaGoBootstrapValidators, false, savePartialTx, err
 		}
 	}
 
 	ux.Logger.PrintToUser("")
 	setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
-	return avaGoBootstrapValidators, savePartialTx, app.UpdateSidecarNetworks(
+	return avaGoBootstrapValidators, false, savePartialTx, app.UpdateSidecarNetworks(
 		&sidecar,
 		network,
 		subnetID,
@@ -536,11 +560,34 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
 
+	if doStrongInputChecks && subnetID != ids.Empty {
+		ux.Logger.PrintToUser("Subnet ID to be used is %s", subnetID)
+		if acceptValue, err := app.Prompt.CaptureYesNo("Is this value correct?"); err != nil {
+			return err
+		} else if !acceptValue {
+			subnetID = ids.Empty
+		}
+	}
 	if subnetID == ids.Empty {
-		return clierrors.ErrNoSubnetID
+		subnetID, err = app.Prompt.CaptureID("Which is the subnet ID?")
+		if err != nil {
+			return err
+		}
+	}
+
+	if doStrongInputChecks && blockchainID != ids.Empty {
+		ux.Logger.PrintToUser("Blockchain ID to be used is %s", blockchainID)
+		if acceptValue, err := app.Prompt.CaptureYesNo("Is this value correct?"); err != nil {
+			return err
+		} else if !acceptValue {
+			blockchainID = ids.Empty
+		}
 	}
 	if blockchainID == ids.Empty {
-		return clierrors.ErrNoBlockchainID
+		blockchainID, err = app.Prompt.CaptureID("Which is the blockchain ID?")
+		if err != nil {
+			return err
+		}
 	}
 
 	if validatorManagerAddress == "" {
@@ -685,7 +732,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(
+	avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 		bootstrapValidators,
 		deployer,
 		subnetID,
@@ -696,9 +743,13 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		controlKeys,
 		subnetAuthKeys,
 		validatorManagerAddress,
+		doStrongInputChecks,
 	)
 	if err != nil {
 		return err
+	}
+	if cancel {
+		return nil
 	}
 
 	if savePartialTx {
