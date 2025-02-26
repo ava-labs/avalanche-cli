@@ -5,8 +5,9 @@ package blockchain
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanchego/ids"
 	"time"
+
+	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
