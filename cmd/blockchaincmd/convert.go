@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+	"github.com/ava-labs/avalanche-cli/pkg/clierrors"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -419,6 +420,15 @@ func convertSubnetToL1(
 	subnetAuthKeysList []string,
 	validatorManagerAddressStr string,
 ) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
+	if subnetID == ids.Empty {
+		return nil, false, clierrors.ErrNoSubnetID
+	}
+	if blockchainID == ids.Empty {
+		return nil, false, clierrors.ErrNoBlockchainID
+	}
+	if !common.IsHexAddress(validatorManagerAddressStr) {
+		return nil, false, clierrors.ErrInvalidValidatorManagerAddress
+	}
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
 		return avaGoBootstrapValidators, false, err
@@ -525,6 +535,13 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
+
+	if subnetID == ids.Empty {
+		return clierrors.ErrNoSubnetID
+	}
+	if blockchainID == ids.Empty {
+		return clierrors.ErrNoBlockchainID
+	}
 
 	if !convertOnly {
 		if validatorManagerAddress == "" {
