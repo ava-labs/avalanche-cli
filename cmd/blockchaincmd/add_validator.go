@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -144,14 +142,6 @@ func preAddChecks(args []string) error {
 	return nil
 }
 
-func GetSubnet(subnetID ids.ID, network models.Network) (platformvm.GetSubnetClientResponse, error) {
-	api := network.Endpoint
-	pClient := platformvm.NewClient(api)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	return pClient.GetSubnet(ctx, subnetID)
-}
-
 func addValidator(cmd *cobra.Command, args []string) error {
 	var sc models.Sidecar
 	blockchainName := ""
@@ -188,26 +178,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		var subnetID ids.ID
-		if subnetIDstr == "" {
-			subnetID, err = app.Prompt.CaptureID("What is the Subnet ID?")
-			if err != nil {
-				return err
-			}
-		} else {
-			subnetID, err = ids.FromString(subnetIDstr)
-			if err != nil {
-				return err
-			}
-		}
-
 		if rpcURL == "" {
 			rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 			if err != nil {
 				return err
 			}
 		}
-		sc, err = importL1(subnetID, rpcURL, network)
+		sc, err = importL1(blockchainIDStr, rpcURL, network)
 		if err != nil {
 			return err
 		}

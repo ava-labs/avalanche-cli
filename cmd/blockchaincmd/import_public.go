@@ -6,13 +6,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
@@ -217,17 +218,35 @@ func importPublic(*cobra.Command, []string) error {
 	return nil
 }
 
-func importL1(subnetID ids.ID, rpcURL string, network models.Network) (models.Sidecar, error) {
+func importL1(blockchainIDStr string, rpcURL string, network models.Network) (models.Sidecar, error) {
 	var sc models.Sidecar
 
-	subnetInfo, err := GetSubnet(subnetID, network)
+	blockchainID, err := precompiles.WarpPrecompileGetBlockchainID(rpcURL)
+	if err != nil {
+		if blockchainIDStr == "" {
+			blockchainID, err = app.Prompt.CaptureID("What is the Blockchain ID?")
+			if err != nil {
+				return models.Sidecar{}, err
+			}
+		} else {
+			blockchainID, err = ids.FromString(blockchainIDStr)
+			if err != nil {
+				return models.Sidecar{}, err
+			}
+		}
+	}
+	subnetID, err := blockchain.GetSubnetIDFromBlockchainID(blockchainID, network)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	subnetInfo, err := blockchain.GetSubnet(subnetID, network)
 	if err != nil {
 		return models.Sidecar{}, err
 	}
 	if subnetInfo.IsPermissioned {
 		return models.Sidecar{}, fmt.Errorf("unable to import non sovereign Subnets")
 	}
-	blockchainID := subnetInfo.ManagerChainID
 	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
 
 	// add validator without blockchain arg is only for l1s
