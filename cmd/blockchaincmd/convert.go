@@ -526,15 +526,15 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
 
-	if !convertOnly {
-		if validatorManagerAddress == "" {
-			validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
-			if err != nil {
-				return err
-			}
-			validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+	if validatorManagerAddress == "" {
+		validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
+		if err != nil {
+			return err
 		}
+		validatorManagerAddress = validatorManagerAddressAddrFmt.String()
+	}
 
+	if !convertOnly {
 		if err = promptValidatorManagementType(app, &sidecar); err != nil {
 			return err
 		}
