@@ -21,8 +21,11 @@ func WarpPrecompileGetBlockchainID(
 	if err != nil {
 		return ids.Empty, err
 	}
-	received, b := out[0].([32]byte)
-	if !b {
+	if len(out) == 0 {
+		return ids.Empty, fmt.Errorf("error at getBlockchainID call: no return value")
+	}
+	received, ok := out[0].([32]byte)
+	if !ok {
 		return ids.Empty, fmt.Errorf("error at getBlockchainID call, expected ids.ID, got %T", out[0])
 	}
 	return received, nil
