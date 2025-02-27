@@ -308,7 +308,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
-		return ErrNoSubnetID
+		return constants.ErrNoSubnetID
 	}
 
 	ux.Logger.PrintToUser("")
@@ -366,7 +366,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
-		return ErrNoBlockchainID
+		return constants.ErrNoBlockchainID
 	}
 	// update logging
 	if addMonitoring {
@@ -503,7 +503,7 @@ func updateProposerVMs(
 			ux.Logger.PrintToUser("Updating proposerVM on %s", deployedSubnetName)
 			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
 			if blockchainID == ids.Empty {
-				return ErrNoBlockchainID
+				return constants.ErrNoBlockchainID
 			}
 			if err := interchain.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
 				return err

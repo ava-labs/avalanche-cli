@@ -8,18 +8,19 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/status"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/pborman/ansi"
 	"github.com/spf13/cobra"
@@ -71,7 +72,7 @@ func statusNode(_ *cobra.Command, args []string) error {
 		}
 		blockchainID = sc.Networks[clusterConf.Network.Name()].BlockchainID
 		if blockchainID == ids.Empty {
-			return ErrNoBlockchainID
+			return constants.ErrNoBlockchainID
 		}
 	}
 

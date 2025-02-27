@@ -255,7 +255,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if !avoidSubnetValidationChecks {
 		blockchainID = sc.Networks[network.Name()].BlockchainID
 		if blockchainID == ids.Empty {
-			return ErrNoBlockchainID
+			return constants.ErrNoBlockchainID
 		}
 	}
 	nodeErrors := map[string]error{}

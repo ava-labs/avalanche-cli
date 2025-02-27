@@ -117,7 +117,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	scNetwork := sc.Networks[network.Name()]
 	subnetID := scNetwork.SubnetID
 	if subnetID == ids.Empty {
-		return errNoSubnetID
+		return constants.ErrNoSubnetID
 	}
 
 	var nodeID ids.NodeID
