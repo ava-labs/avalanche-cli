@@ -93,6 +93,7 @@ var (
 	poSWeightToValueFactor         uint64
 	deployBalanceAVAX              float64
 	validatorManagerAddress        string
+	validatorManagerOwnerAddress   string
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
@@ -574,7 +575,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
-
+	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign {
 		if changeOwnerAddress == "" {
 			// use provided key as change owner unless already set
@@ -792,13 +793,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if savePartialTx {
 			return nil
 		}
-
 		if convertOnly || generateNodeID || (!useLocalMachine && clusterNameFlagValue == "") {
 			ux.Logger.GreenCheckmarkToUser("Converted blockchain successfully generated")
 			ux.Logger.PrintToUser("To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info")
-			ux.Logger.PrintToUser("and setup them to track subnet ID %s with 'track-subnets' config setting", subnetID)
-			ux.Logger.PrintToUser(logging.Green.Wrap("Double check the nodes expose the P2P port and have a correct setting for 'public-ip' config value"))
 			ux.Logger.PrintToUser("Created Node ID and BLS Info can be found at %s", app.GetSidecarPath(blockchainName))
+			ux.Logger.PrintToUser("==================================================")
+			ux.Logger.PrintToUser("To enable the nodes to track the L1, set '%s' as the value for 'track-subnets' configuration in ~/.avalanchego/config.json", subnetID)
+			ux.Logger.PrintToUser("Ensure that the P2P port is exposed and 'public-ip' config value is set")
 			ux.Logger.PrintToUser("Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager %s` to finish conversion to sovereign L1", blockchainName)
 			return nil
 		}
