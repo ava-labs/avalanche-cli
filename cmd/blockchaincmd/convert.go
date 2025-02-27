@@ -100,7 +100,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
-	cmd.Flags().BoolVar(&doStrongInputChecks, "strong-checks", true, "double check for input information")
+	cmd.Flags().BoolVar(&doStrongInputChecks, "verify-input", true, "check for input confirmation")
 	return cmd
 }
 
@@ -447,8 +447,8 @@ func convertSubnetToL1(
 		ux.Logger.PrintToUser("  Manager Address: %s", managerAddress.Hex())
 		ux.Logger.PrintToUser("  Validators:")
 		for _, val := range bootstrapValidators {
-			ux.Logger.PrintToUser("    %s", val.NodeID)
-			ux.Logger.PrintToUser("    %.5f", float64(val.Balance)/float64(units.Avax))
+			ux.Logger.PrintToUser("    Node ID: %s", val.NodeID)
+			ux.Logger.PrintToUser("    Balance: %.5f", float64(val.Balance)/float64(units.Avax))
 		}
 		ux.Logger.PrintToUser("")
 		ux.Logger.PrintToUser("Please review the details of the ConvertSubnetToL1 Transaction")
@@ -570,7 +570,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		}
 	}
 	if subnetID == ids.Empty {
-		subnetID, err = app.Prompt.CaptureID("Which is the subnet ID?")
+		subnetID, err = app.Prompt.CaptureID("What is the subnet ID?")
 		if err != nil {
 			return err
 		}
@@ -585,7 +585,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		}
 	}
 	if blockchainID == ids.Empty {
-		blockchainID, err = app.Prompt.CaptureID("Which is the blockchain ID?")
+		blockchainID, err = app.Prompt.CaptureID("What is the blockchain ID?")
 		if err != nil {
 			return err
 		}

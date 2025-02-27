@@ -33,8 +33,8 @@ func validateConvertOperation(tx *txs.Tx, action string) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("unexpected node ID on tx")
 		}
-		ux.Logger.PrintToUser("    %s", nodeID)
-		ux.Logger.PrintToUser("    %.5f", float64(val.Balance)/float64(units.Avax))
+		ux.Logger.PrintToUser("    Node ID: %s", nodeID)
+		ux.Logger.PrintToUser("    Balance: %.5f", float64(val.Balance)/float64(units.Avax))
 	}
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Please review the details of the ConvertSubnetToL1 Transaction")
