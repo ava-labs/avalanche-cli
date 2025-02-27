@@ -7,7 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
-	"github.com/ava-labs/avalanche-cli/pkg/clierrors"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -86,7 +86,7 @@ func UpdateKeychainWithSubnetControlKeys(
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
-		return clierrors.ErrNoSubnetID
+		return constants.ErrNoSubnetID
 	}
 	_, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {

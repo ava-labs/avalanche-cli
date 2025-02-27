@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
-	"github.com/ava-labs/avalanche-cli/pkg/clierrors"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -83,7 +83,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 			}
 			subnetID = sc.Networks[network.Name()].SubnetID
 			if subnetID == ids.Empty {
-				return clierrors.ErrNoSubnetID
+				return constants.ErrNoSubnetID
 			}
 		}
 	} else if isCreateChainTx {

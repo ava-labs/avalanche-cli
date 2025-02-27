@@ -12,7 +12,6 @@ import (
 
 	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/clierrors"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -256,7 +255,7 @@ func validateSubnet(_ *cobra.Command, args []string) error {
 	if !avoidSubnetValidationChecks {
 		blockchainID = sc.Networks[network.Name()].BlockchainID
 		if blockchainID == ids.Empty {
-			return clierrors.ErrNoBlockchainID
+			return constants.ErrNoBlockchainID
 		}
 	}
 	nodeErrors := map[string]error{}

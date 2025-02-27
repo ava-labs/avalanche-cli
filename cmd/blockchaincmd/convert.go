@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-	"github.com/ava-labs/avalanche-cli/pkg/clierrors"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -425,13 +424,13 @@ func convertSubnetToL1(
 	doStrongInputsCheck bool,
 ) ([]*txs.ConvertSubnetToL1Validator, bool, bool, error) {
 	if subnetID == ids.Empty {
-		return nil, false, false, clierrors.ErrNoSubnetID
+		return nil, false, false, constants.ErrNoSubnetID
 	}
 	if blockchainID == ids.Empty {
-		return nil, false, false, clierrors.ErrNoBlockchainID
+		return nil, false, false, constants.ErrNoBlockchainID
 	}
 	if !common.IsHexAddress(validatorManagerAddressStr) {
-		return nil, false, false, clierrors.ErrInvalidValidatorManagerAddress
+		return nil, false, false, constants.ErrInvalidValidatorManagerAddress
 	}
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {

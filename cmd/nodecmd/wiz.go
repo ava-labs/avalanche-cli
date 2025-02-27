@@ -16,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
-	"github.com/ava-labs/avalanche-cli/pkg/clierrors"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -309,7 +308,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
-		return clierrors.ErrNoSubnetID
+		return constants.ErrNoSubnetID
 	}
 
 	ux.Logger.PrintToUser("")
@@ -367,7 +366,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 	blockchainID := sc.Networks[network.Name()].BlockchainID
 	if blockchainID == ids.Empty {
-		return clierrors.ErrNoBlockchainID
+		return constants.ErrNoBlockchainID
 	}
 	// update logging
 	if addMonitoring {
@@ -504,7 +503,7 @@ func updateProposerVMs(
 			ux.Logger.PrintToUser("Updating proposerVM on %s", deployedSubnetName)
 			blockchainID := deployedSubnetSc.Networks[network.Name()].BlockchainID
 			if blockchainID == ids.Empty {
-				return clierrors.ErrNoBlockchainID
+				return constants.ErrNoBlockchainID
 			}
 			if err := interchain.SetProposerVM(app, network, blockchainID.String(), deployedSubnetSc.TeleporterKey); err != nil {
 				return err
