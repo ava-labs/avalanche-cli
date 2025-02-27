@@ -448,6 +448,7 @@ func convertSubnetToL1(
 		ux.Logger.PrintToUser("  Validators:")
 		for _, val := range bootstrapValidators {
 			ux.Logger.PrintToUser("    Node ID: %s", val.NodeID)
+			ux.Logger.PrintToUser("    Weight: %d", val.Weight)
 			ux.Logger.PrintToUser("    Balance: %.5f", float64(val.Balance)/float64(units.Avax))
 		}
 		ux.Logger.PrintToUser("")
