@@ -485,10 +485,8 @@ func LocalStatus(
 	}
 	if clusterName != "" {
 		ux.Logger.PrintToUser("%s %s", logging.Blue.Wrap("Local cluster:"), logging.Green.Wrap(clusterName))
-	} else {
-		if len(localClusters) > 0 {
-			ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:"))
-		}
+	} else if len(localClusters) > 0 {
+		ux.Logger.PrintToUser(logging.Blue.Wrap("Local clusters:"))
 	}
 	for _, clusterName := range localClusters {
 		currenlyRunning := ""

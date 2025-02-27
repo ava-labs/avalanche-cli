@@ -49,7 +49,7 @@ func CreateLocalCluster(
 	}
 	var unparsedGenesis *genesis.UnparsedConfig
 	if len(connectionSettings.Genesis) > 0 {
-		unparsedGenesis := &genesis.UnparsedConfig{}
+		unparsedGenesis = &genesis.UnparsedConfig{}
 		if err := json.Unmarshal(connectionSettings.Genesis, unparsedGenesis); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal genesis: %w", err)
 		}
