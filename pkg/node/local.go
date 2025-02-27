@@ -79,7 +79,7 @@ func TrackSubnetWithLocalMachine(
 	rootDir := app.GetLocalDir(clusterName)
 
 	pluginPath := filepath.Join(rootDir, "node1", "plugins", vmID.String())
-	if err := utils.SetupExecFile(vmBin, pluginPath); err != nil {
+	if err := utils.SetupExecFile(app.Log, vmBin, pluginPath); err != nil {
 		return err
 	}
 

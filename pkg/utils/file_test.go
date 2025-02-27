@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,7 +112,7 @@ func TestSetupExecFile(t *testing.T) {
 		require.Equal(t, false, FileExists(src))
 		require.Equal(t, true, FileExists(dest))
 		require.Equal(t, false, IsExecutable(dest))
-		err = SetupExecFile(src, dest)
+		err = SetupExecFile(logging.NoLog{}, src, dest)
 		require.Error(t, err)
 		content, err := os.ReadFile(dest)
 		require.NoError(t, err)
@@ -125,7 +127,7 @@ func TestSetupExecFile(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, false, FileExists(dest))
 		require.Equal(t, false, IsExecutable(dest))
-		err = SetupExecFile(src, dest)
+		err = SetupExecFile(logging.NoLog{}, src, dest)
 		require.NoError(t, err)
 		content, err := os.ReadFile(dest)
 		require.NoError(t, err)
@@ -138,7 +140,7 @@ func TestSetupExecFile(t *testing.T) {
 		dest := createTemp(t, "testexecfile", destContent)
 		require.Equal(t, true, FileExists(dest))
 		require.Equal(t, false, IsExecutable(dest))
-		err := SetupExecFile(src, dest)
+		err := SetupExecFile(logging.NoLog{}, src, dest)
 		require.NoError(t, err)
 		content, err := os.ReadFile(dest)
 		require.NoError(t, err)
@@ -153,7 +155,7 @@ func TestSetupExecFile(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, true, FileExists(dest))
 		require.Equal(t, true, IsExecutable(dest))
-		err = SetupExecFile(src, dest)
+		err = SetupExecFile(logging.NoLog{}, src, dest)
 		require.NoError(t, err)
 		content, err := os.ReadFile(dest)
 		require.NoError(t, err)
