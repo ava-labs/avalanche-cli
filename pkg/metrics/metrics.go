@@ -3,19 +3,16 @@
 package metrics
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
-	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/posthog/posthog-go"
 	"github.com/spf13/cobra"
@@ -40,14 +37,32 @@ func GetCLIVersion() string {
 	return string(content)
 }
 
-func userIsOptedIn(app *application.Avalanche) bool {
-	if app.Conf.ConfigFileExists() && app.Conf.GetConfigBoolValue(constants.ConfigMetricsEnabledKey) {
-		return true
+func getMetricsUserID(app *application.Avalanche) string {
+	if !app.Conf.ConfigFileExists() || !app.Conf.ConfigValueIsSet(constants.ConfigMetricsUserIDKey) {
+		userID := utils.RandomString(20)
+		if err := app.Conf.SetConfigValue(constants.ConfigMetricsUserIDKey, userID); err != nil {
+			ux.Logger.PrintToUser(logging.Red.Wrap("failure initializing metrics id: %s"), err)
+		}
+		return userID
 	}
-	return false
+	return app.Conf.GetConfigStringValue(constants.ConfigMetricsUserIDKey)
+}
+
+func notInitialized(app *application.Avalanche) bool {
+	return !app.Conf.ConfigFileExists() || !app.Conf.ConfigValueIsSet(constants.ConfigMetricsEnabledKey)
+}
+
+func userIsOptedIn(app *application.Avalanche) bool {
+	return app.Conf.ConfigFileExists() && app.Conf.GetConfigBoolValue(constants.ConfigMetricsEnabledKey)
 }
 
 func HandleTracking(cmd *cobra.Command, commandPath string, app *application.Avalanche, flags map[string]string) {
+	if notInitialized(app) {
+		if err := app.Conf.SetConfigValue(constants.ConfigMetricsEnabledKey, true); err != nil {
+			ux.Logger.PrintToUser(logging.Red.Wrap("failure initializing metrics default: %s"), err)
+		}
+		_ = getMetricsUserID(app)
+	}
 	if !userIsOptedIn(app) {
 		return
 	}
@@ -80,9 +95,7 @@ func trackMetrics(app *application.Avalanche, commandPath string, flags map[stri
 		version = GetCLIVersion()
 	}
 
-	usr, _ := user.Current() // use empty string if err
-	hash := sha256.Sum256([]byte(fmt.Sprintf("%s%s", usr.Username, usr.Uid)))
-	userID := base64.StdEncoding.EncodeToString(hash[:])
+	userID := getMetricsUserID(app)
 
 	telemetryProperties := make(map[string]interface{})
 	telemetryProperties["command"] = commandPath
@@ -93,8 +106,6 @@ func trackMetrics(app *application.Avalanche, commandPath string, flags map[stri
 	if insideCodespace {
 		codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
 		telemetryProperties["codespace"] = codespaceName
-		hash := sha256.Sum256([]byte(codespaceName))
-		userID = base64.StdEncoding.EncodeToString(hash[:])
 	}
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue

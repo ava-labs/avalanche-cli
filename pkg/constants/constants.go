@@ -165,6 +165,7 @@ const (
 	ConfigAPMCredentialsFileKey   = "credentials-file"
 	ConfigAPMAdminAPIEndpointKey  = "admin-api-endpoint"
 	ConfigNodeConfigKey           = "node-config"
+	ConfigMetricsUserIDKey        = "MetricsUserID"
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
 	ConfigUpdatesDisabledKey      = "UpdatesDisabled"
 	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
