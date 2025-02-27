@@ -457,7 +457,7 @@ func convertSubnetToL1(
 		if doContinue, err := app.Prompt.CaptureYesNo("Do you want to create the transaction?"); err != nil {
 			return avaGoBootstrapValidators, false, false, err
 		} else if !doContinue {
-			return avaGoBootstrapValidators, true, false, err
+			return avaGoBootstrapValidators, true, false, nil
 		}
 	}
 
