@@ -3,6 +3,7 @@
 package validatormanager
 
 import (
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -149,6 +150,7 @@ func InitializeValidatorRegistrationPoA(
 }
 
 func GetSubnetValidatorRegistrationMessage(
+	ctx context.Context,
 	rpcURL string,
 	network models.Network,
 	aggregatorLogger logging.Logger,
@@ -222,6 +224,7 @@ func GetSubnetValidatorRegistrationMessage(
 		}
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,
@@ -236,28 +239,29 @@ func GetSubnetValidatorRegistrationMessage(
 	return signedMessage, validationID, err
 }
 
-func GetValidatorWeight(
+func PoSWeightToValue(
 	rpcURL string,
 	managerAddress common.Address,
-	validatorID ids.ID,
-) (uint64, error) {
+	weight uint64,
+) (*big.Int, error) {
 	out, err := contract.CallToMethod(
 		rpcURL,
 		managerAddress,
-		"getWeight(bytes32)->(uint64)",
-		validatorID,
+		"weightToValue(uint64)->(uint256)",
+		weight,
 	)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	weight, b := out[0].(uint64)
+	value, b := out[0].(*big.Int)
 	if !b {
-		return 0, fmt.Errorf("error at getWeight call, expected uint64, got %T", out[0])
+		return nil, fmt.Errorf("error at weightToValue, expected *big.Int, got %T", out[0])
 	}
-	return weight, nil
+	return value, nil
 }
 
 func GetPChainSubnetValidatorRegistrationWarpMessage(
+	ctx context.Context,
 	network models.Network,
 	rpcURL string,
 	aggregatorLogger logging.Logger,
@@ -288,6 +292,7 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 		return nil, err
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
+		ctx,
 		network,
 		aggregatorLogger,
 		subnetID,
@@ -329,6 +334,7 @@ func CompleteValidatorRegistration(
 }
 
 func InitValidatorRegistration(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -346,7 +352,6 @@ func InitValidatorRegistration(
 	initWithPos bool,
 	delegationFee uint16,
 	stakeDuration time.Duration,
-	stakeAmount *big.Int,
 	validatorManagerAddressStr string,
 ) (*warp.Message, ids.ID, error) {
 	subnetID, err := contract.GetSubnetID(
@@ -368,6 +373,14 @@ func InitValidatorRegistration(
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	alreadyInitialized := false
 	if initWithPos {
+		stakeAmount, err := PoSWeightToValue(
+			rpcURL,
+			managerAddress,
+			weight,
+		)
+		if err != nil {
+			return nil, ids.Empty, fmt.Errorf("failure obtaining value from weight: %w", err)
+		}
 		ux.Logger.PrintLineSeparator()
 		ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
 		ux.Logger.PrintToUser("Using RPC URL: %s", rpcURL)
@@ -393,6 +406,7 @@ func InitValidatorRegistration(
 			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
 		}
+		ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
 	} else {
 		managerAddress = common.HexToAddress(validatorManagerAddressStr)
 		tx, _, err := InitializeValidatorRegistrationPoA(
@@ -413,24 +427,11 @@ func InitValidatorRegistration(
 			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
 		}
-	}
-	if initWithPos {
-		validationID, err := validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
-		if err != nil {
-			ux.Logger.PrintToUser("Error getting validation ID")
-			return nil, ids.Empty, err
-		}
-		weight, err = GetValidatorWeight(rpcURL, managerAddress, validationID)
-		if err != nil {
-			ux.Logger.PrintToUser("Error getting validator weight")
-			return nil, ids.Empty, err
-		}
-	} else {
-		// Print validator weight for POA only
 		ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
 	}
 
 	return GetSubnetValidatorRegistrationMessage(
+		ctx,
 		rpcURL,
 		network,
 		aggregatorLogger,
@@ -451,6 +452,7 @@ func InitValidatorRegistration(
 }
 
 func FinishValidatorRegistration(
+	ctx context.Context,
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -472,6 +474,7 @@ func FinishValidatorRegistration(
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
+		ctx,
 		network,
 		rpcURL,
 		aggregatorLogger,

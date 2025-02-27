@@ -23,7 +23,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
-	anrnetwork "github.com/ava-labs/avalanche-network-runner/network"
 	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
@@ -258,7 +257,7 @@ func StartLocalNode(
 	if err != nil {
 		return err
 	}
-	alreadyBootstrapped, err := localnet.IsBootstrapped(ctx, cli)
+	alreadyBootstrapped, err := localnet.IsANRNetworkBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
@@ -327,48 +326,11 @@ func StartLocalNode(
 		case network.Kind == models.Mainnet:
 			ux.Logger.PrintToUser(logging.Yellow.Wrap("Warning: Mainnet Bootstrapping can take 6-24 hours"))
 		case network.Kind == models.Local:
-			clusterInfo, err := localnet.GetClusterInfo()
+			anrSettings.BootstrapIPs, anrSettings.BootstrapIDs, anrSettings.GenesisPath, anrSettings.UpgradePath, err = GetLocalNetworkConnectionInfo(app)
 			if err != nil {
-				return fmt.Errorf("failed to connect to local network: %w", err)
-			}
-			rootDataDir := clusterInfo.RootDataDir
-			networkJSONPath := filepath.Join(rootDataDir, "network.json")
-			bs, err := os.ReadFile(networkJSONPath)
-			if err != nil {
-				return fmt.Errorf("could not read local network config file %s: %w", networkJSONPath, err)
-			}
-			var networkJSON anrnetwork.Config
-			if err := json.Unmarshal(bs, &networkJSON); err != nil {
 				return err
 			}
-			for id, ip := range networkJSON.BeaconConfig {
-				anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
-				anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
-			}
-			// prepare genesis and upgrade files for anr
-			genesisFile, err := os.CreateTemp("", "local_network_genesis")
-			if err != nil {
-				return fmt.Errorf("could not create local network genesis file: %w", err)
-			}
-			if _, err := genesisFile.Write([]byte(networkJSON.Genesis)); err != nil {
-				return fmt.Errorf("could not write local network genesis file: %w", err)
-			}
-			if err := genesisFile.Close(); err != nil {
-				return fmt.Errorf("could not close local network genesis file: %w", err)
-			}
-			anrSettings.GenesisPath = genesisFile.Name()
 			defer os.Remove(anrSettings.GenesisPath)
-			upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
-			if err != nil {
-				return fmt.Errorf("could not create local network upgrade file: %w", err)
-			}
-			if _, err := upgradeFile.Write([]byte(networkJSON.Upgrade)); err != nil {
-				return fmt.Errorf("could not write local network upgrade file: %w", err)
-			}
-			anrSettings.UpgradePath = upgradeFile.Name()
-			if err := upgradeFile.Close(); err != nil {
-				return fmt.Errorf("could not close local network upgrade file: %w", err)
-			}
 			defer os.Remove(anrSettings.UpgradePath)
 		}
 
@@ -499,48 +461,11 @@ func UpsizeLocalNode(
 
 	// we will remove this code soon, so it can be not DRY
 	if network.Kind == models.Local {
-		clusterInfo, err := localnet.GetClusterInfo()
+		anrSettings.BootstrapIPs, anrSettings.BootstrapIDs, anrSettings.GenesisPath, anrSettings.UpgradePath, err = GetLocalNetworkConnectionInfo(app)
 		if err != nil {
-			return "", fmt.Errorf("failed to connect to local network: %w", err)
-		}
-		rootDataDir := clusterInfo.RootDataDir
-		networkJSONPath := filepath.Join(rootDataDir, "network.json")
-		bs, err := os.ReadFile(networkJSONPath)
-		if err != nil {
-			return "", fmt.Errorf("could not read local network config file %s: %w", networkJSONPath, err)
-		}
-		var networkJSON anrnetwork.Config
-		if err := json.Unmarshal(bs, &networkJSON); err != nil {
 			return "", err
 		}
-		for id, ip := range networkJSON.BeaconConfig {
-			anrSettings.BootstrapIDs = append(anrSettings.BootstrapIDs, id.String())
-			anrSettings.BootstrapIPs = append(anrSettings.BootstrapIPs, ip.String())
-		}
-		// prepare genesis and upgrade files for anr
-		genesisFile, err := os.CreateTemp("", "local_network_genesis")
-		if err != nil {
-			return "", fmt.Errorf("could not create local network genesis file: %w", err)
-		}
-		if _, err := genesisFile.Write([]byte(networkJSON.Genesis)); err != nil {
-			return "", fmt.Errorf("could not write local network genesis file: %w", err)
-		}
-		if err := genesisFile.Close(); err != nil {
-			return "", fmt.Errorf("could not close local network genesis file: %w", err)
-		}
-		anrSettings.GenesisPath = genesisFile.Name()
 		defer os.Remove(anrSettings.GenesisPath)
-		upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
-		if err != nil {
-			return "", fmt.Errorf("could not create local network upgrade file: %w", err)
-		}
-		if _, err := upgradeFile.Write([]byte(networkJSON.Upgrade)); err != nil {
-			return "", fmt.Errorf("could not write local network upgrade file: %w", err)
-		}
-		anrSettings.UpgradePath = upgradeFile.Name()
-		if err := upgradeFile.Close(); err != nil {
-			return "", fmt.Errorf("could not close local network upgrade file: %w", err)
-		}
 		defer os.Remove(anrSettings.UpgradePath)
 	}
 	// end of code to be removed
@@ -725,7 +650,7 @@ func StopLocalNode(app *application.Avalanche) error {
 	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-	bootstrapped, err := localnet.IsBootstrapped(ctx, cli)
+	bootstrapped, err := localnet.IsANRNetworkBootstrapped(ctx, cli)
 	if err != nil {
 		return err
 	}
@@ -991,4 +916,50 @@ func WaitBootstrapped(ctx context.Context, cli client.Client, blockchainID strin
 		}
 	}
 	return err
+}
+
+func GetLocalNetworkConnectionInfo(
+	app *application.Avalanche,
+) ([]string, []string, string, string, error) {
+	rootDataDir, err := localnet.GetLocalNetworkDir(app)
+	if err != nil {
+		return nil, nil, "", "", fmt.Errorf("failed to connect to local network: %w", err)
+	}
+	bootstrapIPs, bootstrapIDs, err := localnet.GetTmpNetBootstrappers(rootDataDir)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	// prepare genesis file for anr
+	genesisBytes, err := localnet.GetTmpNetGenesis(rootDataDir)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	genesisFile, err := os.CreateTemp("", "local_network_genesis")
+	if err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not create local network genesis file: %w", err)
+	}
+	if _, err := genesisFile.Write(genesisBytes); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not write local network genesis file: %w", err)
+	}
+	genesisPath := genesisFile.Name()
+	if err := genesisFile.Close(); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not close local network genesis file: %w", err)
+	}
+	// prepare upgrade file for anr
+	upgradeBytes, err := localnet.GetTmpNetUpgrade(rootDataDir)
+	if err != nil {
+		return nil, nil, "", "", err
+	}
+	upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
+	if err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not create local network upgrade file: %w", err)
+	}
+	if _, err := upgradeFile.Write(upgradeBytes); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not write local network upgrade file: %w", err)
+	}
+	upgradePath := upgradeFile.Name()
+	if err := upgradeFile.Close(); err != nil {
+		return nil, nil, "", "", fmt.Errorf("could not close local network upgrade file: %w", err)
+	}
+	return bootstrapIPs, bootstrapIDs, genesisPath, upgradePath, nil
 }

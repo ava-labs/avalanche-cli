@@ -5,6 +5,7 @@ package blockchain
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -342,6 +343,7 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func (c *Subnet) InitializeProofOfAuthority(
+	ctx context.Context,
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -373,7 +375,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
@@ -391,6 +393,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	}
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		ctx,
 		network,
 		aggregatorLogger,
 		0,
@@ -422,6 +425,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 }
 
 func (c *Subnet) InitializeProofOfStake(
+	ctx context.Context,
 	network models.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
@@ -434,7 +438,7 @@ func (c *Subnet) InitializeProofOfStake(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
@@ -451,6 +455,7 @@ func (c *Subnet) InitializeProofOfStake(
 		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
 	}
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		ctx,
 		network,
 		aggregatorLogger,
 		0,

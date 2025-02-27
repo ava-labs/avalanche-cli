@@ -4,37 +4,35 @@ package nodecmd
 
 import (
 	"fmt"
-	"math/big"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
-
-	"github.com/ava-labs/avalanchego/api/info"
-
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
-	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/formatting/address"
-	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
-
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/api"
+	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+
 	"github.com/spf13/cobra"
 )
 
@@ -322,7 +320,8 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
@@ -540,7 +539,10 @@ func addAsValidator(network models.Network,
 		return fmt.Errorf("failure parsing BLS info: %w", err)
 	}
 
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -558,7 +560,6 @@ func addAsValidator(network models.Network,
 		true,
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
-		big.NewInt(int64(stakeAmount)),
 		validatorManagerAddressStr,
 	)
 	if err != nil {
@@ -582,7 +583,10 @@ func addAsValidator(network models.Network,
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	if err := validatormanager.FinishValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,

@@ -105,7 +105,7 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	if err != nil {
 		return "", "", "", err
 	}
-	blsSignerKey, err := bls.NewSecretKey()
+	blsSignerKey, err := bls.NewSigner()
 	if err != nil {
 		return "", "", "", err
 	}

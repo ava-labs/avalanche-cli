@@ -3,8 +3,10 @@
 package interchain
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/icm-services/signature-aggregator/aggregator"
 	"github.com/ava-labs/icm-services/signature-aggregator/metrics"
@@ -13,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
-	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	apiConfig "github.com/ava-labs/icm-services/config"
@@ -33,6 +35,7 @@ type SignatureAggregator struct {
 	subnetID         ids.ID
 	quorumPercentage uint64
 	aggregator       *aggregator.SignatureAggregator
+	network          peers.AppRequestNetwork
 }
 
 // createAppRequestNetwork creates a new AppRequestNetwork for the given network and log level.
@@ -50,21 +53,27 @@ func createAppRequestNetwork(
 	registerer prometheus.Registerer,
 	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
+	trackedSubnetIDs []string,
 ) (peers.AppRequestNetwork, error) {
+	networkConfig := config.Config{
+		PChainAPI: &apiConfig.APIConfig{
+			BaseURL: network.Endpoint,
+		},
+		InfoAPI: &apiConfig.APIConfig{
+			BaseURL: network.Endpoint,
+		},
+		AllowPrivateIPs:  allowPrivatePeers,
+		TrackedSubnetIDs: trackedSubnetIDs,
+	}
+	if err := networkConfig.Validate(); err != nil {
+		return nil, fmt.Errorf("failed to validate peer network config: %w", err)
+	}
 	peerNetwork, err := peers.NewNetwork(
 		logger,
 		registerer,
-		nil,
+		networkConfig.GetTrackedSubnets(),
 		extraPeerEndpoints,
-		&config.Config{
-			PChainAPI: &apiConfig.APIConfig{
-				BaseURL: network.Endpoint,
-			},
-			InfoAPI: &apiConfig.APIConfig{
-				BaseURL: network.Endpoint,
-			},
-			AllowPrivateIPs: allowPrivatePeers,
-		},
+		&networkConfig,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create peer network: %w", err)
@@ -100,8 +109,8 @@ func initSignatureAggregator(
 	messageCreator, err := message.NewCreator(
 		logger,
 		registerer,
-		avagoconstants.DefaultNetworkCompressionType,
-		avagoconstants.DefaultNetworkMaximumInboundTimeout,
+		constants.DefaultNetworkCompressionType,
+		constants.DefaultNetworkMaximumInboundTimeout,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create message creator: %w", err)
@@ -119,6 +128,7 @@ func initSignatureAggregator(
 		return nil, fmt.Errorf("failed to create signature aggregator: %w", err)
 	}
 	sa.aggregator = signatureAggregator
+	sa.network = network
 	return sa, nil
 }
 
@@ -132,6 +142,7 @@ func initSignatureAggregator(
 //
 // Returns a new signature aggregator instance, or an error if creation fails.
 func NewSignatureAggregator(
+	ctx context.Context,
 	network models.Network,
 	logger logging.Logger,
 	subnetID ids.ID,
@@ -140,11 +151,39 @@ func NewSignatureAggregator(
 	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
 	registerer := prometheus.NewRegistry()
-	peerNetwork, err := createAppRequestNetwork(network, logger, registerer, allowPrivatePeers, extraPeerEndpoints)
+	trackedSubnetIDs := []string{}
+	if subnetID != constants.PrimaryNetworkID {
+		trackedSubnetIDs = append(trackedSubnetIDs, subnetID.String())
+	}
+	peerNetwork, err := createAppRequestNetwork(network, logger, registerer, allowPrivatePeers, extraPeerEndpoints, trackedSubnetIDs)
 	if err != nil {
 		return nil, err
 	}
-	return initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
+	sa, err := initSignatureAggregator(peerNetwork, logger, registerer, subnetID, quorumPercentage)
+	if err != nil {
+		return sa, err
+	}
+	err = sa.waitForHealthy(ctx)
+	return sa, err
+}
+
+func (s *SignatureAggregator) waitForHealthy(ctx context.Context) error {
+	subnets := []ids.ID{}
+	if s.subnetID != constants.PrimaryNetworkID {
+		subnets = append(subnets, s.subnetID)
+	}
+	subnets = append(subnets, constants.PrimaryNetworkID)
+	healthy := peers.GetNetworkHealthFunc(s.network, subnets)
+	for {
+		if err := healthy(ctx); err == nil {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for signature aggregation being healthy: %w", ctx.Err())
+		case <-time.After(1 * time.Second):
+		}
+	}
 }
 
 // AggregateSignatures aggregates signatures for a given message and justification.
@@ -196,6 +235,15 @@ func (s *SignatureAggregator) Sign(
 	msg *warp.UnsignedMessage,
 	justification []byte,
 ) (*warp.Message, error) {
+	if signed, err := s.aggregator.CreateSignedMessage(
+		msg,
+		justification,
+		s.subnetID,
+		s.quorumPercentage,
+	); err == nil {
+		return signed, nil
+	}
+	// many times first attempt just fails for connection timeouts (<= 10 secs spent there)
 	return s.aggregator.CreateSignedMessage(
 		msg,
 		justification,

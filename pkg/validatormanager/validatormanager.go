@@ -3,26 +3,53 @@
 package validatormanager
 
 import (
+	"context"
 	_ "embed"
 	"math/big"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//go:embed deployed_poa_validator_manager_bytecode.txt
+//go:embed deployed_validator_messages_bytecode_v1.0.0.txt
+var deployedValidatorMessagesBytecode []byte
+
+func AddValidatorMessagesContractToAllocations(
+	allocs core.GenesisAlloc,
+) {
+	deployedValidatorMessagesBytes := common.FromHex(strings.TrimSpace(string(deployedValidatorMessagesBytecode)))
+	allocs[common.HexToAddress(validatorManagerSDK.ValidatorMessagesContractAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedValidatorMessagesBytes,
+		Nonce:   1,
+	}
+}
+
+func fillValidatorMessagesAddressPlaceholder(contract string) string {
+	return strings.ReplaceAll(
+		contract,
+		"__$fd0c147b4031eef6079b0498cbafa865f0$__",
+		validatorManagerSDK.ValidatorMessagesContractAddress[2:],
+	)
+}
+
+//go:embed deployed_poa_validator_manager_bytecode_v1.0.0.txt
 var deployedPoAValidatorManagerBytecode []byte
 
 func AddPoAValidatorManagerContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
-	deployedPoaValidatorManagerBytes := common.FromHex(strings.TrimSpace(string(deployedPoAValidatorManagerBytecode)))
+	deployedPoaValidatorManagerString := strings.TrimSpace(string(deployedPoAValidatorManagerBytecode))
+	deployedPoaValidatorManagerString = fillValidatorMessagesAddressPlaceholder(deployedPoaValidatorManagerString)
+	deployedPoaValidatorManagerBytes := common.FromHex(deployedPoaValidatorManagerString)
 	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedPoaValidatorManagerBytes,
@@ -44,6 +71,47 @@ func AddPoSValidatorManagerContractToAllocations(
 	}
 }
 
+//go:embed native_token_staking_manager_bytecode_v1.0.0.txt
+var posValidatorManagerBytecode []byte
+
+func DeployPoSValidatorManagerContract(
+	rpcURL string,
+	privateKey string,
+) (common.Address, error) {
+	posValidatorManagerString := strings.TrimSpace(string(posValidatorManagerBytecode))
+	posValidatorManagerString = fillValidatorMessagesAddressPlaceholder(posValidatorManagerString)
+	posValidatorManagerBytes := []byte(posValidatorManagerString)
+	return contract.DeployContract(
+		rpcURL,
+		privateKey,
+		posValidatorManagerBytes,
+		"(uint8)",
+		uint8(0),
+	)
+}
+
+func DeployAndRegisterPoSValidatorManagerContrac(
+	rpcURL string,
+	privateKey string,
+	proxyOwnerPrivateKey string,
+) (common.Address, error) {
+	posValidatorManagerAddress, err := DeployPoSValidatorManagerContract(
+		rpcURL,
+		privateKey,
+	)
+	if err != nil {
+		return common.Address{}, err
+	}
+	if _, _, err := SetupValidatorManagerAtProxy(
+		rpcURL,
+		proxyOwnerPrivateKey,
+		posValidatorManagerAddress,
+	); err != nil {
+		return common.Address{}, err
+	}
+	return posValidatorManagerAddress, nil
+}
+
 //go:embed deployed_transparent_proxy_bytecode.txt
 var deployedTransparentProxyBytecode []byte
 
@@ -54,6 +122,12 @@ func AddTransparentProxyContractToAllocations(
 	allocs core.GenesisAlloc,
 	proxyManager string,
 ) {
+	if _, found := allocs[common.HexToAddress(proxyManager)]; !found {
+		ownerBalance := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1))
+		allocs[common.HexToAddress(proxyManager)] = core.GenesisAccount{
+			Balance: ownerBalance,
+		}
+	}
 	// proxy admin
 	deployedProxyAdmin := common.FromHex(strings.TrimSpace(string(deployedProxyAdminBytecode)))
 	allocs[common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress)] = core.GenesisAccount{
@@ -79,7 +153,7 @@ func AddTransparentProxyContractToAllocations(
 	}
 }
 
-//go:embed deployed_reward_calculator_bytecode.txt
+//go:embed deployed_example_reward_calculator_bytecode_v1.0.0.txt
 var deployedRewardCalculatorBytecode []byte
 
 func AddRewardCalculatorToAllocations(
@@ -103,6 +177,7 @@ func AddRewardCalculatorToAllocations(
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func SetupPoA(
+	ctx context.Context,
 	subnet blockchainSDK.Subnet,
 	network models.Network,
 	privateKey string,
@@ -112,6 +187,7 @@ func SetupPoA(
 	validatorManagerAddressStr string,
 ) error {
 	return subnet.InitializeProofOfAuthority(
+		ctx,
 		network,
 		privateKey,
 		aggregatorExtraPeerEndpoints,
@@ -127,6 +203,7 @@ func SetupPoA(
 // [convertSubnetValidators], together with an evm [ownerAddress]
 // to set as the owner of the PoA manager
 func SetupPoS(
+	ctx context.Context,
 	subnet blockchainSDK.Subnet,
 	network models.Network,
 	privateKey string,
@@ -136,7 +213,9 @@ func SetupPoS(
 	posParams validatorManagerSDK.PoSParams,
 	validatorManagerAddressStr string,
 ) error {
-	return subnet.InitializeProofOfStake(network,
+	return subnet.InitializeProofOfStake(
+		ctx,
+		network,
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,

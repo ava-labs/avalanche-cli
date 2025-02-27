@@ -103,7 +103,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			localClusterUris[5],
 			ewoqPChainAddress,
 			1,
-			100,
 			false, // use existing avago running
 		)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -117,7 +116,6 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoA]", func() {
 			localClusterUris[6],
 			ewoqPChainAddress,
 			1,
-			100,
 			false, // use existing avago running
 		)
 		gomega.Expect(err).Should(gomega.BeNil())

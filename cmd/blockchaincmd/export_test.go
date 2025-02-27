@@ -33,7 +33,7 @@ func TestExportImportSubnet(t *testing.T) {
 	mockAppDownloader := mocks.Downloader{}
 	mockAppDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
 
-	app.Setup(testDir, logging.NoLog{}, nil, prompts.NewPrompter(), &mockAppDownloader)
+	app.Setup(testDir, logging.NoLog{}, nil, "", prompts.NewPrompter(), &mockAppDownloader)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	genBytes, err := os.ReadFile("../../" + utils.SubnetEvmGenesisPath)
 	require.NoError(err)

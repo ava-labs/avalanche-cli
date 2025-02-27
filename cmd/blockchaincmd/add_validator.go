@@ -5,17 +5,10 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
-	"github.com/ava-labs/avalanchego/config"
-	"github.com/ava-labs/avalanchego/utils/units"
-
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -29,12 +22,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
@@ -110,7 +107,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
-	privateKeyFlags.AddToCmd(cmd, "to pay fees for completing the validator's registration (blockchain gas token)")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
@@ -122,7 +118,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for Subnets, not L1s) control keys that will be used to authenticate add validator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
-	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "(PoS only) amount of tokens to stake")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 
 	return cmd
@@ -177,7 +172,8 @@ func addValidator(_ *cobra.Command, args []string) error {
 		clusterNameFlagValue = sc.Networks[network.Name()].ClusterName
 	}
 
-	fee := network.GenesisParams().TxFeeConfig.StaticFeeConfig.AddSubnetValidatorFee
+	// TODO: will estimate fee in subsecuent PR
+	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
@@ -385,22 +381,7 @@ func CallAddValidator(
 	pos := sc.PoS()
 
 	if pos {
-		// should take input prior to here for stake amount, delegation fee, and min stake duration
-		if stakeAmount == 0 {
-			stakeAmount, err = app.Prompt.CaptureUint64Compare(
-				fmt.Sprintf("Enter the amount of %s to stake ", sc.TokenName),
-				[]prompts.Comparator{
-					{
-						Label: "Positive",
-						Type:  prompts.MoreThan,
-						Value: 0,
-					},
-				},
-			)
-			if err != nil {
-				return err
-			}
-		}
+		// should take input prior to here for delegation fee, and min stake duration
 		if duration == 0 {
 			duration, err = PromptDuration(time.Now(), network, true) // it's pos
 			if err != nil {
@@ -501,7 +482,10 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
@@ -519,7 +503,6 @@ func CallAddValidator(
 		pos,
 		delegationFee,
 		duration,
-		big.NewInt(int64(stakeAmount)),
 		validatorManagerAddress,
 	)
 	if err != nil {
@@ -542,7 +525,10 @@ func CallAddValidator(
 		}
 	}
 
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
 	if err := validatormanager.FinishValidatorRegistration(
+		aggregatorCtx,
 		app,
 		network,
 		rpcURL,

@@ -15,9 +15,9 @@ import (
 	cliutils "github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/utils/units"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -54,15 +54,14 @@ func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
 		_ = commands.SimulateFujiJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
 	}
 	// get and check whitelisted subnets from config file
-	var whitelistedSubnets string
 	for _, nodeInfo := range nodeInfos {
-		whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+		whitelistedSubnets, err := utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
 		gomega.Expect(err).Should(gomega.BeNil())
 		whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
 		gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
 	}
-	// update nodes whitelisted subnets
-	err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
+	// restart nodes
+	err = utils.RestartNodes()
 	gomega.Expect(err).Should(gomega.BeNil())
 	// wait for subnet walidators to be up
 	err = utils.WaitSubnetValidators(subnetID, nodeInfos)
@@ -105,8 +104,10 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 			interactionEndCh, ledgerSimEndCh = utils.StartLedgerSim(4, ledger1Seed, true)
 		}
 		// fund ledger address
-		genesisParams := genesis.MainnetParams
-		err := utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
+		// TODO: will estimate fee in subsecuent PR
+		// CreateSubnetTxFee + CreateBlockchainTxFee + TxFee
+		fee := 3 * units.Avax
+		err := utils.FundLedgerAddress(fee)
 		gomega.Expect(err).Should(gomega.BeNil())
 		fmt.Println()
 		fmt.Println(logging.LightRed.Wrap("DEPLOYING SUBNET. VERIFY LEDGER ADDRESS HAS CUSTOM HRP BEFORE SIGNING"))
@@ -135,15 +136,14 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 			_ = commands.SimulateMainnetJoin(subnetName, nodeInfo.ConfigFile, nodeInfo.PluginDir, nodeInfo.ID)
 		}
 		// get and check whitelisted subnets from config file
-		var whitelistedSubnets string
 		for _, nodeInfo := range nodeInfos {
-			whitelistedSubnets, err = utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
+			whitelistedSubnets, err := utils.GetWhitelistedSubnetsFromConfigFile(nodeInfo.ConfigFile)
 			gomega.Expect(err).Should(gomega.BeNil())
 			whitelistedSubnetsSlice := strings.Split(whitelistedSubnets, ",")
 			gomega.Expect(whitelistedSubnetsSlice).Should(gomega.ContainElement(subnetID))
 		}
-		// update nodes whitelisted subnets
-		err = utils.RestartNodesWithWhitelistedSubnets(whitelistedSubnets)
+		// restart nodes
+		err = utils.RestartNodes()
 		gomega.Expect(err).Should(gomega.BeNil())
 		// wait for subnet walidators to be up
 		err = utils.WaitSubnetValidators(subnetID, nodeInfos)
@@ -257,14 +257,17 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 			txPath,
 			true,
 		)
-		toMatch := "(?s).+Not enough funds in the first (?s).+ indices of Ledger(?s).+Error: not enough funds on ledger(?s).+"
+		toMatch := "(?s).+error building tx: insufficient funds: provided UTXOs needed(?s).+"
+
 		matched, err := regexp.MatchString(toMatch, cliutils.RemoveLineCleanChars(s))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(matched).Should(gomega.Equal(true), "no match between command output %q and pattern %q", s, toMatch)
 
 		// let's fund the ledger
-		genesisParams := genesis.MainnetParams
-		err = utils.FundLedgerAddress(genesisParams.TxFeeConfig.StaticFeeConfig.CreateSubnetTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.CreateBlockchainTxFee + genesisParams.TxFeeConfig.StaticFeeConfig.TxFee)
+		// TODO: will estimate fee in subsecuent PR
+		// CreateSubnetTxFee + CreateBlockchainTxFee + TxFee
+		fee := 3 * units.Avax
+		err = utils.FundLedgerAddress(fee)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		// multisig deploy from funded ledger1 should create the subnet but not deploy the blockchain,

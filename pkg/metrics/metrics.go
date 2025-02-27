@@ -52,7 +52,7 @@ func HandleTracking(cmd *cobra.Command, commandPath string, app *application.Ava
 		return
 	}
 	if !cmd.HasSubCommands() && CheckCommandIsNotCompletion(cmd) {
-		TrackMetrics(commandPath, flags)
+		trackMetrics(app, commandPath, flags)
 	}
 }
 
@@ -64,7 +64,10 @@ func CheckCommandIsNotCompletion(cmd *cobra.Command) bool {
 	return true
 }
 
-func TrackMetrics(commandPath string, flags map[string]string) {
+func trackMetrics(app *application.Avalanche, commandPath string, flags map[string]string) {
+	if telemetryToken == "" {
+		telemetryToken = os.Getenv(constants.MetricsAPITokenEnvVarName)
+	}
 	if telemetryToken == "" || utils.IsE2E() {
 		return
 	}
@@ -72,15 +75,26 @@ func TrackMetrics(commandPath string, flags map[string]string) {
 
 	defer client.Close()
 
+	version := app.Version
+	if version == "" {
+		version = GetCLIVersion()
+	}
+
 	usr, _ := user.Current() // use empty string if err
 	hash := sha256.Sum256([]byte(fmt.Sprintf("%s%s", usr.Username, usr.Uid)))
 	userID := base64.StdEncoding.EncodeToString(hash[:])
+
 	telemetryProperties := make(map[string]interface{})
 	telemetryProperties["command"] = commandPath
-	telemetryProperties["version"] = GetCLIVersion()
+	telemetryProperties["version"] = version
 	telemetryProperties["os"] = runtime.GOOS
-	if utils.InsideCodespace() {
-		telemetryProperties["codespace"] = os.Getenv(constants.CodespaceNameEnvVar)
+	insideCodespace := utils.InsideCodespace()
+	telemetryProperties["insideCodespace"] = insideCodespace
+	if insideCodespace {
+		codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
+		telemetryProperties["codespace"] = codespaceName
+		hash := sha256.Sum256([]byte(codespaceName))
+		userID = base64.StdEncoding.EncodeToString(hash[:])
 	}
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
