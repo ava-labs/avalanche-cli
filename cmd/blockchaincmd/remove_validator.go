@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
+	"github.com/ava-labs/avalanche-cli/pkg/clierrors"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -117,7 +118,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	scNetwork := sc.Networks[network.Name()]
 	subnetID := scNetwork.SubnetID
 	if subnetID == ids.Empty {
-		return errNoSubnetID
+		return clierrors.ErrNoSubnetID
 	}
 
 	var nodeID ids.NodeID
