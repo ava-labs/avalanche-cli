@@ -77,10 +77,7 @@ func TrackSubnetWithLocalMachine(
 	}
 	rootDir := app.GetLocalClusterDir(clusterName)
 	pluginPath := filepath.Join(rootDir, "node1", "plugins", vmID.String())
-	if err := utils.FileCopy(vmBin, pluginPath); err != nil {
-		return err
-	}
-	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
+	if err := utils.SetupExecFile(app.Log, vmBin, pluginPath); err != nil {
 		return err
 	}
 

@@ -3,26 +3,33 @@
 package blockchaincmd
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/precompiles"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/coreth/core"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
 var (
-	blockchainIDstr string
+	blockchainIDStr string
+	subnetIDstr     string
 	nodeURL         string
 	useSubnetEvm    bool
 	useCustomVM     bool
@@ -55,7 +62,7 @@ flag.`,
 		"overwrite the existing configuration if one exists",
 	)
 	cmd.Flags().StringVar(
-		&blockchainIDstr,
+		&blockchainIDStr,
 		"blockchain-id",
 		"",
 		"the blockchain ID",
@@ -102,13 +109,13 @@ func importPublic(*cobra.Command, []string) error {
 	}
 
 	var blockchainID ids.ID
-	if blockchainIDstr == "" {
+	if blockchainIDStr == "" {
 		blockchainID, err = app.Prompt.CaptureID("What is the ID of the blockchain?")
 		if err != nil {
 			return err
 		}
 	} else {
-		blockchainID, err = ids.FromString(blockchainIDstr)
+		blockchainID, err = ids.FromString(blockchainIDStr)
 		if err != nil {
 			return err
 		}
@@ -210,4 +217,71 @@ func importPublic(*cobra.Command, []string) error {
 	ux.Logger.PrintToUser("Blockchain %q imported successfully", sc.Name)
 
 	return nil
+}
+
+func importL1(blockchainIDStr string, rpcURL string, network models.Network) (models.Sidecar, error) {
+	var sc models.Sidecar
+
+	blockchainID, err := precompiles.WarpPrecompileGetBlockchainID(rpcURL)
+	if err != nil {
+		if blockchainIDStr == "" {
+			blockchainID, err = app.Prompt.CaptureID("What is the Blockchain ID?")
+			if err != nil {
+				return models.Sidecar{}, err
+			}
+		} else {
+			blockchainID, err = ids.FromString(blockchainIDStr)
+			if err != nil {
+				return models.Sidecar{}, err
+			}
+		}
+	}
+	subnetID, err := blockchain.GetSubnetIDFromBlockchainID(blockchainID, network)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	subnetInfo, err := blockchain.GetSubnet(subnetID, network)
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+	if subnetInfo.IsPermissioned {
+		return models.Sidecar{}, fmt.Errorf("unable to import non sovereign Subnets")
+	}
+	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
+	fmt.Printf("obtained blockchainid %s \n", blockchainID.String())
+	fmt.Printf("obtained subnetid %s \n", subnetID.String())
+
+	fmt.Printf("obtained validatorManagerAddress %s \n", validatorManagerAddress)
+
+	// add validator without blockchain arg is only for l1s
+	sc = models.Sidecar{
+		Sovereign: true,
+	}
+
+	isPoA := validatorManagerSDK.ValidatorManagerIsPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
+	if err != nil {
+		return models.Sidecar{}, err
+	}
+
+	if isPoA {
+		sc.ValidatorManagement = models.ProofOfAuthority
+		owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+		if err != nil {
+			return models.Sidecar{}, err
+		}
+		sc.ValidatorManagerOwner = owner.String()
+	} else {
+		sc.ValidatorManagement = models.ProofOfStake
+	}
+
+	sc.Networks = make(map[string]models.NetworkData)
+
+	sc.Networks[network.Name()] = models.NetworkData{
+		SubnetID:                subnetID,
+		BlockchainID:            blockchainID,
+		ValidatorManagerAddress: validatorManagerAddress,
+		RPCEndpoints:            []string{rpcURL},
+	}
+	return sc, err
 }

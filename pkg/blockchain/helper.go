@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -124,7 +126,7 @@ func UpdatePChainHeight(
 	title string,
 ) error {
 	_, err := ux.TimedProgressBar(
-		40*time.Second,
+		30*time.Second,
 		title,
 		0,
 	)
@@ -140,4 +142,20 @@ func GetBlockchainTimestamp(network models.Network) (time.Time, error) {
 	defer cancel()
 	platformCli := platformvm.NewClient(network.Endpoint)
 	return platformCli.GetTimestamp(ctx)
+}
+
+func GetSubnet(subnetID ids.ID, network models.Network) (platformvm.GetSubnetClientResponse, error) {
+	api := network.Endpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	return pClient.GetSubnet(ctx, subnetID)
+}
+
+func GetSubnetIDFromBlockchainID(blockchainID ids.ID, network models.Network) (ids.ID, error) {
+	api := network.Endpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	return pClient.ValidatedBy(ctx, blockchainID)
 }

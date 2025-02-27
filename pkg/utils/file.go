@@ -9,6 +9,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanchego/utils/logging"
+
+	"go.uber.org/zap"
 	"golang.org/x/mod/modfile"
 )
 
@@ -38,7 +41,11 @@ func IsExecutable(filename string) bool {
 		return false
 	}
 	info, _ := os.Stat(filename)
-	return info.Mode()&0x0100 != 0
+	// A file perm can be seen as a 9-bit sequence mapping to: rwxrwxrwx
+	// read-write-execute for owner, group and everybody.
+	// 0o100 is the bit mask that, when applied with the bitwise-AND operator &,
+	// results in != 0 state whenever the file can be executed by the owner.
+	return info.Mode()&0o100 != 0
 }
 
 // UserHomePath returns the absolute path of a file located in the user's home directory.
@@ -75,6 +82,34 @@ func FileCopy(src string, dst string) error {
 		return err
 	}
 	return os.WriteFile(dst, data, constants.WriteReadReadPerms)
+}
+
+// SetupExecFile copies a file into destination and set it to have exec perms,
+// if destination either does not exists, or is not executable
+func SetupExecFile(
+	log logging.Logger,
+	src string,
+	dst string,
+) error {
+	if !IsExecutable(dst) {
+		if FileExists(dst) {
+			log.Error(
+				"binary was not properly installed on a previous CLI execution",
+				zap.String("binary-path", dst),
+			)
+		}
+		// Either it was never installed, or it was partially done (copy or chmod
+		// failure)
+		// As the file is not executable, there is no risk of encountering text file busy
+		// error during copy, because that happens when the binary is being executed.
+		if err := FileCopy(src, dst); err != nil {
+			return err
+		}
+		if err := os.Chmod(dst, constants.DefaultPerms755); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // ReadFile reads a file and returns the contents as a string

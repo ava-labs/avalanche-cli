@@ -410,19 +410,18 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 
 // Install the given VM binary into the appropriate location with the
 // appropriate name
-func TmpNetInstallVM(network *tmpnet.Network, binaryPath string, vmID ids.ID) error {
+func TmpNetInstallVM(
+	log logging.Logger,
+	network *tmpnet.Network,
+	binaryPath string,
+	vmID ids.ID,
+) error {
 	pluginDir, err := network.DefaultFlags.GetStringVal(config.PluginDirKey)
 	if err != nil {
 		return err
 	}
 	pluginPath := filepath.Join(pluginDir, vmID.String())
-	if err := utils.FileCopy(binaryPath, pluginPath); err != nil {
-		return err
-	}
-	if err := os.Chmod(pluginPath, constants.DefaultPerms755); err != nil {
-		return err
-	}
-	return nil
+	return utils.SetupExecFile(log, binaryPath, pluginPath)
 }
 
 // Set up blockchain config for all nodes in the network
@@ -628,7 +627,7 @@ func TmpNetTrackSubnet(
 	if err != nil {
 		return err
 	}
-	if err := TmpNetInstallVM(network, vmBinaryPath, vmID); err != nil {
+	if err := TmpNetInstallVM(log, network, vmBinaryPath, vmID); err != nil {
 		return err
 	}
 	// Configs

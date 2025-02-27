@@ -65,8 +65,11 @@ var (
 	aggregatorExtraEndpoints            []string
 	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
+	createLocalValidator                bool
+)
 
-	createLocalValidator bool
+const (
+	validatorWeightFlag = "weight"
 )
 
 // avalanche blockchain addValidator
@@ -83,12 +86,11 @@ staking token. Both processes will issue a RegisterL1ValidatorTx on the P-Chain.
 This command currently only works on Blockchains deployed to either the Fuji
 Testnet or Mainnet.`,
 		RunE: addValidator,
-		Args: cobrautils.ExactArgs(1),
+		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
-	cmd.Flags().Uint64Var(&weight, "weight", constants.NonBootstrapValidatorWeight, "set the staking weight of the validator to add")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
 		"balance",
@@ -120,31 +122,42 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
+	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
+	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
+	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
 
 	return cmd
 }
 
-func preAddChecks() error {
+func preAddChecks(args []string) error {
 	if nodeEndpoint != "" && createLocalValidator {
 		return fmt.Errorf("cannot set both --node-endpoint and --create-local-validator")
 	}
 	if createLocalValidator && (nodeIDStr != "" || publicKey != "" || pop != "") {
 		return fmt.Errorf("cannot set --node-id, --bls-public-key or --bls-proof-of-possession if --create-local-validator used")
 	}
+	if len(args) == 0 && createLocalValidator {
+		return fmt.Errorf("use avalanche addValidator <subnetName> command to use local machine as new validator")
+	}
 
 	return nil
 }
 
-func addValidator(_ *cobra.Command, args []string) error {
-	blockchainName := args[0]
-	_, err := ValidateSubnetNameAndGetChains([]string{blockchainName})
-	if err != nil {
-		return err
-	}
-
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
+func addValidator(cmd *cobra.Command, args []string) error {
+	var sc models.Sidecar
+	blockchainName := ""
+	networkOption := networkoptions.DefaultSupportedNetworkOptions
+	if len(args) == 1 {
+		blockchainName = args[0]
+		_, err := ValidateSubnetNameAndGetChains([]string{blockchainName})
+		if err != nil {
+			return err
+		}
+		sc, err = app.LoadSidecar(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		networkOption = networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions)
 	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -153,7 +166,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		globalNetworkFlags,
 		true,
 		false,
-		networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions),
+		networkOption,
 		"",
 	)
 	if err != nil {
@@ -165,7 +178,20 @@ func addValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
-	if err := preAddChecks(); err != nil {
+	if len(args) == 0 {
+		if rpcURL == "" {
+			rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+			if err != nil {
+				return err
+			}
+		}
+		sc, err = importL1(blockchainIDStr, rpcURL, network)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := preAddChecks(args); err != nil {
 		return err
 	}
 
@@ -198,19 +224,35 @@ func addValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add a aditional local node
-	if (!sovereign && nodeIDStr == "") || (sovereign && !createLocalValidator && nodeIDStr == "" && publicKey == "" && pop == "") {
-		for {
-			local := "Use my local machine to spin up an additional validator"
-			existing := "I have an existing Avalanche node (we will require its NodeID and BLS info)"
-			if option, err := app.Prompt.CaptureList(
-				"How would you like to set up the new validator",
-				[]string{local, existing},
-			); err != nil {
+	if sovereign {
+		if !cmd.Flags().Changed(validatorWeightFlag) {
+			weight, err = app.Prompt.CaptureWeight(
+				"What weight would you like to assign to the validator?",
+				func(uint64) error { return nil },
+			)
+			if err != nil {
 				return err
-			} else {
-				createLocalValidator = option == local
-				break
+			}
+		}
+	}
+
+	// if we don't have a nodeID or ProofOfPossession by this point, prompt user if we want to add additional local node
+	if (!sovereign && nodeIDStr == "") || (sovereign && !createLocalValidator && nodeIDStr == "" && publicKey == "" && pop == "") {
+		if len(args) == 0 {
+			createLocalValidator = false
+		} else {
+			for {
+				local := "Use my local machine to spin up an additional validator"
+				existing := "I have an existing Avalanche node (we will require its NodeID and BLS info)"
+				if option, err := app.Prompt.CaptureList(
+					"How would you like to set up the new validator",
+					[]string{local, existing},
+				); err != nil {
+					return err
+				} else {
+					createLocalValidator = option == local
+					break
+				}
 			}
 		}
 	}
@@ -313,6 +355,7 @@ func addValidator(_ *cobra.Command, args []string) error {
 		balanceAVAX,
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
+		sc,
 	)
 }
 
@@ -336,6 +379,7 @@ func CallAddValidator(
 	balanceAVAX float64,
 	remainingBalanceOwnerAddr string,
 	disableOwnerAddr string,
+	sc models.Sidecar,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -351,21 +395,16 @@ func CallAddValidator(
 		return fmt.Errorf("failed to get blockchain timestamp: %w", err)
 	}
 	expiry := uint64(blockchainTimestamp.Add(constants.DefaultValidationIDExpiryDuration).Unix())
-
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
 	}
-
-	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
+	if sc.Networks[network.Name()].BlockchainID.String() != "" {
+		chainSpec.BlockchainID = sc.Networks[network.Name()].BlockchainID.String()
 	}
-
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-
 	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
 		app,
 		network,

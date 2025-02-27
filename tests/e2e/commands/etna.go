@@ -258,6 +258,8 @@ func AddEtnaSubnetValidatorToCluster(
 		"100",
 		"--staking-period",
 		"100s",
+		"--weight",
+		strconv.Itoa(constants.DefaultStakeWeight),
 		"--"+constants.SkipUpdateFlag,
 	)
 	if clusterName != "" {
