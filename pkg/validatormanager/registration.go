@@ -82,6 +82,7 @@ func InitializeValidatorRegistrationPoSNative(
 
 	return contract.TxToMethod(
 		rpcURL,
+		false,
 		managerOwnerPrivateKey,
 		managerAddress,
 		stakeAmount,
@@ -138,6 +139,7 @@ func InitializeValidatorRegistrationPoA(
 	}
 	return contract.TxToMethod(
 		rpcURL,
+		false,
 		managerOwnerPrivateKey,
 		managerAddress,
 		big.NewInt(0),
@@ -322,6 +324,7 @@ func CompleteValidatorRegistration(
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
+		false,
 		privateKey,
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,

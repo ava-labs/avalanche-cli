@@ -289,11 +289,33 @@ func ParseSpec(
 	return name, string(abiBytes), nil
 }
 
+// Signer that just copy the raw Tx and returns error
+// To be used on multisig flows where the user is going
+// to sign and commit in separate flow
+//
+// Using this signer hack because it is the only setting that can be
+// configured to get access to the raw tx before beign signed (subnet-evm
+// transact function)
+//
+// Not multithread safe
+var (
+	rawTxCopy *types.Transaction
+	errRawTxCopy = errors.New("raw tx has been copied, not signed")
+)
+func rawTxCopySigner(
+	_ common.Address,
+	tx *types.Transaction,
+) (*types.Transaction, error) {
+	rawTxCopy = tx 
+	return nil, errRawTxCopy
+}
+
 // get method name and types from [methodsSpec], then call it
 // at the smart contract [contractAddress] with the given [params].
 // also send [payment] tokens to it
 func TxToMethod(
 	rpcURL string,
+	generateRawTxOnly bool,
 	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
@@ -324,8 +346,14 @@ func TxToMethod(
 		return nil, nil, err
 	}
 	txOpts.Value = payment
+	if generateRawTxOnly {
+		txOpts.Signer = rawTxCopySigner
+	}
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
+		if err == errRawTxCopy {
+			return rawTxCopy, nil, nil
+		}
 		trace, traceCallErr := DebugTraceCall(
 			rpcURL,
 			privateKey,
@@ -373,6 +401,7 @@ func TxToMethod(
 // also send [payment] tokens to it
 func TxToMethodWithWarpMessage(
 	rpcURL string,
+	generateRawTxOnly bool,
 	privateKey string,
 	contractAddress common.Address,
 	warpMessage *avalancheWarp.Message,
@@ -402,8 +431,9 @@ func TxToMethodWithWarpMessage(
 		return nil, nil, err
 	}
 	defer client.Close()
-	tx, err := evm.GetSignedTxToMethodWithWarpMessage(
+	tx, err := evm.GetTxToMethodWithWarpMessage(
 		client,
+		generateRawTxOnly,
 		privateKey,
 		warpMessage,
 		contractAddress,

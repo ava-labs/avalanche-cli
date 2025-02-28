@@ -46,6 +46,7 @@ func PoSValidatorManagerInitialize(
 
 	return contract.TxToMethod(
 		rpcURL,
+		false,
 		privateKey,
 		managerAddress,
 		nil,

@@ -264,8 +264,9 @@ func FundAddress(
 	return nil
 }
 
-func GetSignedTxToMethodWithWarpMessage(
+func GetTxToMethodWithWarpMessage(
 	client ethclient.Client,
+	generateRawTxOnly bool,
 	privateKeyStr string,
 	warpMessage *avalancheWarp.Message,
 	contract common.Address,
@@ -320,6 +321,9 @@ func GetSignedTxToMethodWithWarpMessage(
 		Data:       callData,
 		AccessList: accessList,
 	})
+	if generateRawTxOnly {
+		return tx, nil
+	}
 	txSigner := types.LatestSignerForChainID(chainID)
 	return types.SignTx(tx, txSigner, privateKey)
 }

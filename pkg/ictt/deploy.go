@@ -38,6 +38,7 @@ func RegisterRemote(
 	}
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
 		privateKey,
 		remoteAddress,
 		nil,

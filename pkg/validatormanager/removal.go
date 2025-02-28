@@ -42,6 +42,7 @@ func InitializeValidatorRemoval(
 		if force {
 			return contract.TxToMethod(
 				rpcURL,
+				false,
 				privateKey,
 				managerAddress,
 				big.NewInt(0),
@@ -56,6 +57,7 @@ func InitializeValidatorRemoval(
 		// remove PoS validator with uptime proof
 		return contract.TxToMethodWithWarpMessage(
 			rpcURL,
+			false,
 			privateKey,
 			managerAddress,
 			uptimeProofSignedMessage,
@@ -71,6 +73,7 @@ func InitializeValidatorRemoval(
 	// PoA case
 	return contract.TxToMethod(
 		rpcURL,
+		false,
 		privateKey,
 		managerAddress,
 		big.NewInt(0),
@@ -286,6 +289,7 @@ func CompleteValidatorRemoval(
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
+		false,
 		privateKey,
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,
