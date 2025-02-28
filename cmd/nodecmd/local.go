@@ -5,7 +5,6 @@ package nodecmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -297,27 +296,18 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 }
 
 func localTrack(_ *cobra.Command, args []string) error {
-	if avalanchegoBinaryPath == "" {
-		if useCustomAvalanchegoVersion != "" {
-			latestAvagoReleaseVersion = false
-			latestAvagoPreReleaseVersion = false
-		}
-		avaGoVersionSetting := node.AvalancheGoVersionSettings{
-			UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-			UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
-			UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
-		}
-		avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
-		if err != nil {
-			return err
-		}
-		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
-		if err != nil {
-			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
-		}
-		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
+	clusterName := args[0]
+	blockchainName := args[1]
+	if useCustomAvalanchegoVersion != "" {
+		latestAvagoReleaseVersion = false
+		latestAvagoPreReleaseVersion = false
 	}
-	return node.TrackSubnetWithLocalMachine(app, args[0], args[1], avalanchegoBinaryPath)
+	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
+		UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
+		UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
+	}
+	return node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName, avalanchegoBinaryPath, avaGoVersionSetting)
 }
 
 func localStatus(_ *cobra.Command, args []string) error {

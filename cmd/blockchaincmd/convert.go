@@ -265,6 +265,7 @@ func InitializeValidatorManager(
 			clusterName,
 			blockchainName,
 			avagoBinaryPath,
+			node.AvalancheGoVersionSettings{},
 		); err != nil {
 			return false, err
 		}

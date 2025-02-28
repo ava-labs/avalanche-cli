@@ -36,11 +36,24 @@ func TrackSubnetWithLocalMachine(
 	app *application.Avalanche,
 	clusterName,
 	blockchainName string,
-	avalancheGoBinPath string,
+	avalancheGoBinaryPath string,
+	avaGoVersionSetting AvalancheGoVersionSettings,
 ) error {
 	if !localnet.LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
+	// setup avalanchego
+	var err error
+	avalancheGoBinaryPath, err = setupAvalancheGo(
+		app,
+		avalancheGoBinaryPath,
+		avaGoVersionSetting,
+		ux.NoPrint,
+	)
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("PEPE")
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
@@ -104,7 +117,7 @@ func TrackSubnetWithLocalMachine(
 			cli,
 			app,
 			rootDir,
-			avalancheGoBinPath,
+			avalancheGoBinaryPath,
 			blockchainName,
 			blockchainID,
 			subnetID,
@@ -139,7 +152,7 @@ func LocalNodeTrackSubnet(
 	cli client.Client,
 	app *application.Avalanche,
 	rootDir string,
-	avalancheGoBinPath string,
+	avalancheGoBinaryPath string,
 	blockchainName string,
 	blockchainID ids.ID,
 	subnetID ids.ID,
@@ -161,7 +174,7 @@ func LocalNodeTrackSubnet(
 	opts := []client.OpOption{
 		client.WithWhitelistedSubnets(subnetID.String()),
 		client.WithRootDataDir(rootDir),
-		client.WithExecPath(avalancheGoBinPath),
+		client.WithExecPath(avalancheGoBinaryPath),
 	}
 	ux.Logger.Info("Using client options: %v", opts)
 	ux.Logger.Info("Restarting node %s", nodeName)
@@ -170,6 +183,29 @@ func LocalNodeTrackSubnet(
 	}
 
 	return nil
+}
+
+func setupAvalancheGo(
+	app *application.Avalanche,
+	avalancheGoBinaryPath string,
+	avaGoVersionSetting AvalancheGoVersionSettings,
+	printFunc func(msg string, args ...interface{}),
+) (string, error) {
+	var err error
+	avalancheGoVersion := ""
+	if avalancheGoBinaryPath == "" {
+		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
+		if err != nil {
+			return "", err
+		}
+		printFunc("Using AvalancheGo version: %s", avalancheGoVersion)
+	}
+	avalancheGoBinaryPath, err = localnet.SetupAvalancheGoBinary(app, avalancheGoVersion, avalancheGoBinaryPath)
+	if err != nil {
+		return "", err
+	}
+	printFunc("AvalancheGo path: %s\n", avalancheGoBinaryPath)
+	return avalancheGoBinaryPath, err
 }
 
 func StartLocalNode(
@@ -196,19 +232,15 @@ func StartLocalNode(
 	}
 	// setup avalanchego
 	var err error
-	avalancheGoVersion := ""
-	if avalancheGoBinaryPath == "" {
-		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
-		if err != nil {
-			return err
-		}
-		ux.Logger.PrintToUser("Using AvalancheGo version: %s", avalancheGoVersion)
-	}
-	avalancheGoBinaryPath, err = localnet.SetupAvalancheGoBinary(app, avalancheGoVersion, avalancheGoBinaryPath)
+	avalancheGoBinaryPath, err = setupAvalancheGo(
+		app,
+		avalancheGoBinaryPath,
+		avaGoVersionSetting,
+		ux.Logger.PrintToUser,
+	)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("AvalancheGo path: %s\n", avalancheGoBinaryPath)
 
 	// node config setup
 	if defaultFlags == nil {
@@ -326,7 +358,7 @@ func UpsizeLocalNode(
 	blockchainName string,
 	blockchainID ids.ID,
 	subnetID ids.ID,
-	avalancheGoBinPath string,
+	avalancheGoBinaryPath string,
 	nodeConfig map[string]interface{},
 	connectionSettings localnet.ConnectionSettings,
 ) (
@@ -363,7 +395,7 @@ func UpsizeLocalNode(
 	// end of code to be removed
 	anrOpts := []client.OpOption{
 		client.WithNetworkID(network.ID),
-		client.WithExecPath(avalancheGoBinPath),
+		client.WithExecPath(avalancheGoBinaryPath),
 		client.WithRootDataDir(rootDir),
 		client.WithWhitelistedSubnets(subnetID.String()),
 		client.WithReassignPortsIfUsed(true),
@@ -409,7 +441,7 @@ func UpsizeLocalNode(
 	err = DownloadPublicArchive(network, rootDir, []string{newNodeName})
 	ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
 	// add new local node
-	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinPath, anrOpts...); err != nil {
+	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinaryPath, anrOpts...); err != nil {
 		ux.SpinFailWithError(spinner, "", err)
 		return newNodeName, fmt.Errorf("failed to add local validator: %w", err)
 	}
@@ -429,7 +461,7 @@ func UpsizeLocalNode(
 		cli,
 		app,
 		rootDir,
-		avalancheGoBinPath,
+		avalancheGoBinaryPath,
 		blockchainName,
 		blockchainID,
 		subnetID,

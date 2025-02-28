@@ -90,3 +90,6 @@ func ConvertToStringWithThousandSeparator(input uint64) string {
 	s := p.Sprintf("%d", input)
 	return strings.ReplaceAll(s, ",", "_")
 }
+
+func NoPrint(string, ...interface{}) {
+}
