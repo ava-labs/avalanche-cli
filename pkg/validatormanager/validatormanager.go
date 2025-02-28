@@ -187,8 +187,16 @@ func SetupPoA(
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 ) error {
-	return subnet.InitializeProofOfAuthority(
-		ctx,
+	//return subnet.InitializeProofOfAuthority(
+	//	ctx,
+	//	network,
+	//	privateKey,
+	//	aggregatorExtraPeerEndpoints,
+	//	aggregatorAllowPrivatePeers,
+	//	aggregatorLogger,
+	//	validatorManagerAddressStr,
+	//)
+	return subnet.InitializeValidatorManager(ctx,
 		network,
 		privateKey,
 		aggregatorExtraPeerEndpoints,

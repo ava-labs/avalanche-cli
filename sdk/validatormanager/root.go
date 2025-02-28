@@ -29,6 +29,13 @@ type ValidatorManagerSettings struct {
 	MaximumChurnPercentage uint8
 }
 
+type ACP99ValidatorManagerSettings struct {
+	OwnerAddress           common.Address
+	SubnetID               [32]byte
+	ChurnPeriodSeconds     uint64
+	MaximumChurnPercentage uint8
+}
+
 type NativeTokenValidatorManagerSettings struct {
 	BaseSettings             ValidatorManagerSettings
 	MinimumStakeAmount       *big.Int
@@ -292,5 +299,34 @@ func InitializeValidatorsSet(
 		"initializeValidatorSet((bytes32,bytes32,address,[(bytes,bytes,uint64)]),uint32)",
 		subnetConversionData,
 		uint32(0),
+	)
+}
+
+func InitializeValidatorManager(
+	rpcURL string,
+	managerAddress common.Address,
+	privateKey string,
+	subnetID ids.ID,
+	ownerAddress common.Address,
+) (*types.Transaction, *types.Receipt, error) {
+	const (
+		defaultChurnPeriodSeconds     = uint64(0)
+		defaultMaximumChurnPercentage = uint8(20)
+	)
+	params := ACP99ValidatorManagerSettings{
+		OwnerAddress:           ownerAddress,
+		SubnetID:               subnetID,
+		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
+		MaximumChurnPercentage: defaultMaximumChurnPercentage,
+	}
+	return contract.TxToMethod(
+		rpcURL,
+		privateKey,
+		managerAddress,
+		nil,
+		"initialize validator manager",
+		ErrorSignatureToError,
+		"initialize((address,bytes32,uint64,uint8))",
+		params,
 	)
 }
