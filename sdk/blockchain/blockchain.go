@@ -424,6 +424,88 @@ func (c *Subnet) InitializeProofOfAuthority(
 	return nil
 }
 
+func (c *Subnet) InitializeValidatorManager(
+	ctx context.Context,
+	network models.Network,
+	privateKey string,
+	aggregatorExtraPeerEndpoints []info.Peer,
+	aggregatorAllowPrivatePeers bool,
+	aggregatorLogger logging.Logger,
+	validatorManagerAddressStr string,
+) error {
+	if c.SubnetID == ids.Empty {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
+	}
+
+	if c.BlockchainID == ids.Empty {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBlockchainID)
+	}
+
+	if c.RPC == "" {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingRPC)
+	}
+
+	if c.OwnerAddress == nil {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingOwnerAddress)
+	}
+
+	if len(c.BootstrapValidators) == 0 {
+		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBootstrapValidators)
+	}
+
+	if err := evm.SetupProposerVM(
+		c.RPC,
+		privateKey,
+	); err != nil {
+		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
+	}
+	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	tx, _, err := validatormanager.InitializeValidatorManager(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		*c.OwnerAddress,
+	)
+	if err != nil {
+		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
+		}
+		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
+	}
+
+	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+		ctx,
+		network,
+		aggregatorLogger,
+		0,
+		aggregatorAllowPrivatePeers,
+		aggregatorExtraPeerEndpoints,
+		c.SubnetID,
+		c.BlockchainID,
+		managerAddress,
+		c.BootstrapValidators,
+	)
+	if err != nil {
+		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
+	}
+
+	tx, _, err = validatormanager.InitializeValidatorsSet(
+		c.RPC,
+		managerAddress,
+		privateKey,
+		c.SubnetID,
+		c.BlockchainID,
+		c.BootstrapValidators,
+		subnetConversionSignedMessage,
+	)
+	if err != nil {
+		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
+	}
+
+	return nil
+}
+
 func (c *Subnet) InitializeProofOfStake(
 	ctx context.Context,
 	network models.Network,

@@ -395,7 +395,18 @@ func InitializeValidatorManager(
 		ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	} else {
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-		if err := subnetSDK.InitializeProofOfAuthority(
+		//if err := subnetSDK.InitializeProofOfAuthority(
+		//	aggregatorCtx,
+		//	network,
+		//	genesisPrivateKey,
+		//	extraAggregatorPeers,
+		//	aggregatorAllowPrivatePeers,
+		//	aggregatorLogger,
+		//	validatorManagerAddrStr,
+		//); err != nil {
+		//	return tracked, err
+		//}
+		if err := subnetSDK.InitializeValidatorManager(
 			aggregatorCtx,
 			network,
 			genesisPrivateKey,
