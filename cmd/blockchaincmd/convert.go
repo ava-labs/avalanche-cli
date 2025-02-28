@@ -41,6 +41,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var doStrongInputChecks bool
+
 // avalanche blockchain convert
 func newConvertCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -97,6 +99,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().StringVar(&createFlags.proxyContractOwner, "proxy-contract-owner", "", "EVM address that controls ProxyAdmin for TransparentProxy of ValidatorManager contract")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
+	cmd.Flags().BoolVar(&doStrongInputChecks, "verify-input", true, "check for input confirmation")
 	return cmd
 }
 
@@ -106,7 +109,7 @@ func StartLocalMachine(
 	blockchainName string,
 	deployBalance,
 	availableBalance uint64,
-) error {
+) (bool, error) {
 	var err error
 	if network.Kind == models.Local {
 		useLocalMachine = true
@@ -117,7 +120,7 @@ func StartLocalMachine(
 		clusterName = clusterNameFlagValue
 		clusterConfig, err := app.GetClusterConfig(clusterName)
 		if err != nil {
-			return err
+			return false, err
 		}
 		// check if cluster is local
 		if clusterConfig.Local {
@@ -125,7 +128,7 @@ func StartLocalMachine(
 			if len(bootstrapEndpoints) == 0 {
 				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 				if err != nil {
-					return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+					return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 						"please create your local node again and call blockchain deploy command again", err)
 				}
 			}
@@ -142,7 +145,7 @@ func StartLocalMachine(
 
 		useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 	// default number of local machine nodes to be 1
@@ -163,17 +166,17 @@ func StartLocalMachine(
 				fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
 			)
 			if err != nil {
-				return err
+				return false, err
 			}
 			if !yes {
-				return nil
+				return true, nil
 			}
 			_ = localnet.LocalClusterRemove(app, clusterName)
 			ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 		}
 		requiredBalance := deployBalance * uint64(numLocalNodes)
 		if availableBalance < requiredBalance {
-			return fmt.Errorf(
+			return false, fmt.Errorf(
 				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
 				numLocalNodes,
 				requiredBalance,
@@ -192,20 +195,20 @@ func StartLocalMachine(
 			)
 			if err != nil {
 				if err != vm.ErrNoAvagoVersion {
-					return err
+					return false, err
 				}
 				avagoVersion = constants.LatestPreReleaseVersionTag
 			}
 		}
 		avagoBinaryPath, err := localnet.SetupAvalancheGoBinary(app, avagoVersion, avagoBinaryPath)
 		if err != nil {
-			return err
+			return false, err
 		}
 		nodeConfig := map[string]interface{}{}
 		if app.AvagoNodeConfigExists(blockchainName) {
 			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 		if partialSync {
@@ -231,18 +234,18 @@ func StartLocalMachine(
 			networkoptions.NetworkFlags{},
 			nil,
 		); err != nil {
-			return err
+			return false, err
 		}
 		clusterNameFlagValue = clusterName
 		if len(bootstrapEndpoints) == 0 {
 			bootstrapEndpoints, err = getLocalBootstrapEndpoints()
 			if err != nil {
-				return fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
+				return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 					"please create your local node again and call blockchain deploy command again", err)
 			}
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func InitializeValidatorManager(
@@ -416,13 +419,45 @@ func convertSubnetToL1(
 	controlKeysList,
 	subnetAuthKeysList []string,
 	validatorManagerAddressStr string,
-) ([]*txs.ConvertSubnetToL1Validator, bool, error) {
+	doStrongInputsCheck bool,
+) ([]*txs.ConvertSubnetToL1Validator, bool, bool, error) {
+	if subnetID == ids.Empty {
+		return nil, false, false, constants.ErrNoSubnetID
+	}
+	if blockchainID == ids.Empty {
+		return nil, false, false, constants.ErrNoBlockchainID
+	}
+	if !common.IsHexAddress(validatorManagerAddressStr) {
+		return nil, false, false, constants.ErrInvalidValidatorManagerAddress
+	}
 	avaGoBootstrapValidators, err := ConvertToAvalancheGoSubnetValidator(bootstrapValidators)
 	if err != nil {
-		return avaGoBootstrapValidators, false, err
+		return avaGoBootstrapValidators, false, false, err
 	}
 	deployer.CleanCacheWallet()
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+
+	if doStrongInputsCheck {
+		ux.Logger.PrintToUser("You are about to create a ConvertSubnetToL1Tx on %s with the following content:", network.Name())
+		ux.Logger.PrintToUser("  Subnet ID: %s", subnetID)
+		ux.Logger.PrintToUser("  Blockchain ID: %s", blockchainID)
+		ux.Logger.PrintToUser("  Manager Address: %s", managerAddress.Hex())
+		ux.Logger.PrintToUser("  Validators:")
+		for _, val := range bootstrapValidators {
+			ux.Logger.PrintToUser("    Node ID: %s", val.NodeID)
+			ux.Logger.PrintToUser("    Weight: %d", val.Weight)
+			ux.Logger.PrintToUser("    Balance: %.5f", float64(val.Balance)/float64(units.Avax))
+		}
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("Please review the details of the ConvertSubnetToL1 Transaction")
+		ux.Logger.PrintToUser("")
+		if doContinue, err := app.Prompt.CaptureYesNo("Do you want to create the transaction?"); err != nil {
+			return avaGoBootstrapValidators, false, false, err
+		} else if !doContinue {
+			return avaGoBootstrapValidators, true, false, nil
+		}
+	}
+
 	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
 		controlKeysList,
 		subnetAuthKeysList,
@@ -433,7 +468,7 @@ func convertSubnetToL1(
 	)
 	if err != nil {
 		ux.Logger.RedXToUser("error converting blockchain: %s. fix the issue and try again with a new convert cmd", err)
-		return avaGoBootstrapValidators, false, err
+		return avaGoBootstrapValidators, false, false, err
 	}
 
 	savePartialTx := !isFullySigned && err == nil
@@ -448,7 +483,7 @@ func convertSubnetToL1(
 			outputTxPath,
 			false,
 		); err != nil {
-			return avaGoBootstrapValidators, savePartialTx, err
+			return avaGoBootstrapValidators, false, savePartialTx, err
 		}
 	} else {
 		ux.Logger.PrintToUser("ConvertSubnetToL1Tx ID: %s", convertL1TxID)
@@ -458,13 +493,13 @@ func convertSubnetToL1(
 			0,
 		)
 		if err != nil {
-			return avaGoBootstrapValidators, savePartialTx, err
+			return avaGoBootstrapValidators, false, savePartialTx, err
 		}
 	}
 
 	ux.Logger.PrintToUser("")
 	setBootstrapValidatorValidationID(avaGoBootstrapValidators, bootstrapValidators, subnetID)
-	return avaGoBootstrapValidators, savePartialTx, app.UpdateSidecarNetworks(
+	return avaGoBootstrapValidators, false, savePartialTx, app.UpdateSidecarNetworks(
 		&sidecar,
 		network,
 		subnetID,
@@ -524,6 +559,36 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	subnetID := sidecar.Networks[network.Name()].SubnetID
 	blockchainID := sidecar.Networks[network.Name()].BlockchainID
 
+	if doStrongInputChecks && subnetID != ids.Empty {
+		ux.Logger.PrintToUser("Subnet ID to be used is %s", subnetID)
+		if acceptValue, err := app.Prompt.CaptureYesNo("Is this value correct?"); err != nil {
+			return err
+		} else if !acceptValue {
+			subnetID = ids.Empty
+		}
+	}
+	if subnetID == ids.Empty {
+		subnetID, err = app.Prompt.CaptureID("What is the subnet ID?")
+		if err != nil {
+			return err
+		}
+	}
+
+	if doStrongInputChecks && blockchainID != ids.Empty {
+		ux.Logger.PrintToUser("Blockchain ID to be used is %s", blockchainID)
+		if acceptValue, err := app.Prompt.CaptureYesNo("Is this value correct?"); err != nil {
+			return err
+		} else if !acceptValue {
+			blockchainID = ids.Empty
+		}
+	}
+	if blockchainID == ids.Empty {
+		blockchainID, err = app.Prompt.CaptureID("What is the blockchain ID?")
+		if err != nil {
+			return err
+		}
+	}
+
 	if validatorManagerAddress == "" {
 		validatorManagerAddressAddrFmt, err := app.Prompt.CaptureAddress("What is the address of the Validator Manager?")
 		if err != nil {
@@ -575,8 +640,10 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if err = StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
+			if cancel, err := StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
 				return err
+			} else if cancel {
+				return nil
 			}
 		}
 		switch {
@@ -664,7 +731,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
-	avaGoBootstrapValidators, savePartialTx, err := convertSubnetToL1(
+	avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 		bootstrapValidators,
 		deployer,
 		subnetID,
@@ -675,9 +742,13 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		controlKeys,
 		subnetAuthKeys,
 		validatorManagerAddress,
+		doStrongInputChecks,
 	)
 	if err != nil {
 		return err
+	}
+	if cancel {
+		return nil
 	}
 
 	if savePartialTx {

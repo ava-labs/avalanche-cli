@@ -43,8 +43,6 @@ var (
 	useCustomDuration            bool
 	ErrMutuallyExlusiveKeyLedger = errors.New("--key and --ledger,--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key is not available for mainnet operations")
-	ErrNoBlockchainID            = errors.New("failed to find the blockchain ID for this subnet, has it been deployed/created on this network?")
-	ErrNoSubnetID                = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 )
 
 func newValidatePrimaryCmd() *cobra.Command {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -15,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+
 	"github.com/spf13/cobra"
 )
 
@@ -48,6 +50,15 @@ func commitTx(_ *cobra.Command, args []string) error {
 	isCreateChainTx := txutils.IsCreateChainTx(tx)
 
 	isConvertToL1Tx := txutils.IsConvertToL1Tx(tx)
+	if isConvertToL1Tx {
+		doContinue, err := validateConvertOperation(tx, "commit")
+		if err != nil {
+			return err
+		}
+		if !doContinue {
+			return nil
+		}
+	}
 
 	network, err := txutils.GetNetwork(tx)
 	if err != nil {
@@ -72,7 +83,7 @@ func commitTx(_ *cobra.Command, args []string) error {
 			}
 			subnetID = sc.Networks[network.Name()].SubnetID
 			if subnetID == ids.Empty {
-				return errNoSubnetID
+				return constants.ErrNoSubnetID
 			}
 		}
 	} else if isCreateChainTx {
