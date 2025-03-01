@@ -39,6 +39,7 @@ func CreateEvmSidecar(
 	tokenSymbol string,
 	getRPCVersionFromBinary bool,
 	sovereign bool,
+	useACP99 bool,
 ) (*models.Sidecar, error) {
 	var (
 		err        error
@@ -73,6 +74,7 @@ func CreateEvmSidecar(
 	sc.TokenSymbol = tokenSymbol
 	sc.TokenName = tokenSymbol + " Token"
 	sc.Sovereign = sovereign
+	sc.UseACP99 = useACP99
 	return sc, nil
 }
 
@@ -82,6 +84,7 @@ func CreateEVMGenesis(
 	addICMRegistryToGenesis bool,
 	proxyOwner string,
 	rewardBasisPoints uint64,
+	useACP99 bool,
 ) ([]byte, error) {
 	feeConfig := getFeeConfig(params)
 
@@ -127,8 +130,13 @@ func CreateEVMGenesis(
 	}
 	if params.UsePoAValidatorManager {
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
-		validatormanager.AddValidatorMessagesContractToAllocations(params.initialTokenAllocation)
-		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		if useACP99 {
+			validatormanager.AddValidatorMessagesACP99ContractToAllocations(params.initialTokenAllocation)
+			validatormanager.AddPoAValidatorManagerACP99ContractToAllocations(params.initialTokenAllocation)
+		} else {
+			validatormanager.AddValidatorMessagesContractToAllocations(params.initialTokenAllocation)
+			validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		}
 	} else if params.UsePoSValidatorManager {
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
 		validatormanager.AddValidatorMessagesContractToAllocations(params.initialTokenAllocation)

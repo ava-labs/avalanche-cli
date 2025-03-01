@@ -55,6 +55,7 @@ type CreateFlags struct {
 	validatorManagerOwner         string
 	proxyContractOwner            string
 	enableDebugging               bool
+	useACP99                      bool
 }
 
 var (
@@ -123,6 +124,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
+	cmd.Flags().BoolVar(&createFlags.useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
 	return cmd
 }
 
@@ -335,6 +337,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 				createFlags.addICMRegistryToGenesis,
 				sc.ProxyContractOwner,
 				createFlags.rewardBasisPoints,
+				createFlags.useACP99,
 			)
 			if err != nil {
 				return err
@@ -348,6 +351,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			tokenSymbol,
 			true,
 			sovereign,
+			createFlags.useACP99,
 		); err != nil {
 			return err
 		}

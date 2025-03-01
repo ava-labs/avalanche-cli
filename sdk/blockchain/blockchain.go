@@ -350,6 +350,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
+	useACP99 bool,
 ) error {
 	if c.SubnetID == ids.Empty {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
@@ -384,6 +385,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		privateKey,
 		c.SubnetID,
 		*c.OwnerAddress,
+		useACP99,
 	)
 	if err != nil {
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {

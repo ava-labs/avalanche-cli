@@ -820,6 +820,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar.ValidatorManagement == models.ProofOfStake,
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
+			sidecar.UseACP99,
 		)
 		if err != nil {
 			return err

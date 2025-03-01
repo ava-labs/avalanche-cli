@@ -66,7 +66,7 @@ var (
 	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
 	createLocalValidator                bool
-	multisigValidatorManagerOwner       bool
+	externalValidatorManagerOwner       bool
 )
 
 const (
@@ -126,7 +126,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
 	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
-	cmd.Flags().BoolVar(&multisigValidatorManagerOwner, "multisig-validator-manager-ower", false, "validator manager owner is multisig, make hex dump of ech evm transactions, so they can be signed in a separate flow")
+	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-validator-manager-owner", false, "validator manager owner is external, make hex dump of ech evm transactions, so they can be signed in a separate flow")
 
 	return cmd
 }
@@ -409,7 +409,7 @@ func CallAddValidator(
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
 	var ownerPrivateKey string
-	if !multisigValidatorManagerOwner {
+	if !externalValidatorManagerOwner {
 		var ownerPrivateKeyFound bool
 		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
 			app,
@@ -436,6 +436,13 @@ func CallAddValidator(
 			}
 		}
 	}
+
+	if sc.UseACP99 {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+	} else {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+	}
+
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
 
 	if rpcURL == "" {
@@ -537,7 +544,7 @@ func CallAddValidator(
 		network,
 		rpcURL,
 		chainSpec,
-		multisigValidatorManagerOwner,
+		externalValidatorManagerOwner,
 		sc.ValidatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
@@ -553,6 +560,7 @@ func CallAddValidator(
 		delegationFee,
 		duration,
 		validatorManagerAddress,
+		sc.UseACP99,
 	)
 	if err != nil {
 		return err
@@ -591,7 +599,7 @@ func CallAddValidator(
 		network,
 		rpcURL,
 		chainSpec,
-		multisigValidatorManagerOwner,
+		externalValidatorManagerOwner,
 		sc.ValidatorManagerOwner,
 		ownerPrivateKey,
 		validationID,

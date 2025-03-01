@@ -109,17 +109,11 @@ func InitializeValidatorRegistrationPoA(
 	balanceOwners warpMessage.PChainOwner,
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
+	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	type PChainOwner struct {
 		Threshold uint32
 		Addresses []common.Address
-	}
-	type ValidatorRegistrationInput struct {
-		NodeID                []byte
-		BlsPublicKey          []byte
-		RegistrationExpiry    uint64
-		RemainingBalanceOwner PChainOwner
-		DisableOwner          PChainOwner
 	}
 	balanceOwnersAux := PChainOwner{
 		Threshold: balanceOwners.Threshold,
@@ -133,12 +127,31 @@ func InitializeValidatorRegistrationPoA(
 			return common.BytesToAddress(addr[:])
 		}),
 	}
-	validatorRegistrationInput := ValidatorRegistrationInput{
-		NodeID:                nodeID[:],
-		BlsPublicKey:          blsPublicKey,
-		RegistrationExpiry:    expiry,
-		RemainingBalanceOwner: balanceOwnersAux,
-		DisableOwner:          disableOwnersAux,
+	if useACP99 {
+		return contract.TxToMethod(
+			rpcURL,
+			generateRawTxOnly,
+			managerOwnerAddress,
+			managerOwnerPrivateKey,
+			managerAddress,
+			big.NewInt(0),
+			"initialize validator registration",
+			validatormanager.ErrorSignatureToError,
+			"initiateValidatorRegistration(bytes,bytes,uint64,(uint32,[address]),(uint32,[address]),uint64)",
+			nodeID[:],
+			blsPublicKey,
+			expiry,
+			balanceOwnersAux,
+			disableOwnersAux,
+			weight,
+		)
+	}
+	type ValidatorRegistrationInput struct {
+		NodeID                []byte
+		BlsPublicKey          []byte
+		RegistrationExpiry    uint64
+		RemainingBalanceOwner PChainOwner
+		DisableOwner          PChainOwner
 	}
 	return contract.TxToMethod(
 		rpcURL,
@@ -150,7 +163,13 @@ func InitializeValidatorRegistrationPoA(
 		"initialize validator registration",
 		validatormanager.ErrorSignatureToError,
 		"initializeValidatorRegistration((bytes,bytes,uint64,(uint32,[address]),(uint32,[address])),uint64)",
-		validatorRegistrationInput,
+		ValidatorRegistrationInput{
+			NodeID:                nodeID[:],
+			BlsPublicKey:          blsPublicKey,
+			RegistrationExpiry:    expiry,
+			RemainingBalanceOwner: balanceOwnersAux,
+			DisableOwner:          disableOwnersAux,
+		},
 		weight,
 	)
 }
@@ -365,6 +384,7 @@ func InitValidatorRegistration(
 	delegationFee uint16,
 	stakeDuration time.Duration,
 	validatorManagerAddressStr string,
+	useACP99 bool,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -434,6 +454,7 @@ func InitValidatorRegistration(
 			balanceOwners,
 			disableOwners,
 			weight,
+			useACP99,
 		)
 		if err != nil {
 			if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
@@ -553,10 +574,12 @@ func GetRegistrationMessage(
 	if err != nil {
 		return nil, err
 	}
-	for blockNumber := uint64(0); blockNumber <= height; blockNumber++ {
+	maxBlock := int64(height)
+	minBlock := int64(0)
+	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		block, err := client.BlockByNumber(ctx, big.NewInt(int64(blockNumber)))
+		block, err := client.BlockByNumber(ctx, big.NewInt(blockNumber))
 		if err != nil {
 			return nil, err
 		}
@@ -568,17 +591,15 @@ func GetRegistrationMessage(
 		if err != nil {
 			return nil, err
 		}
-		for _, txLog := range logs {
-			msg, err := subnetEvmWarp.UnpackSendWarpEventDataToMessage(txLog.Data)
+		msgs := GetWarpMessagesFromLogs(utils.PointersSlice(logs))
+		for _, msg := range msgs {
+			payload := msg.Payload
+			addressedCall, err := warpPayload.ParseAddressedCall(payload)
 			if err == nil {
-				payload := msg.Payload
-				addressedCall, err := warpPayload.ParseAddressedCall(payload)
+				reg, err := warpMessage.ParseRegisterL1Validator(addressedCall.Payload)
 				if err == nil {
-					reg, err := warpMessage.ParseRegisterL1Validator(addressedCall.Payload)
-					if err == nil {
-						if reg.ValidationID() == validationID {
-							return msg.Bytes(), nil
-						}
+					if reg.ValidationID() == validationID {
+						return msg.Bytes(), nil
 					}
 				}
 			}

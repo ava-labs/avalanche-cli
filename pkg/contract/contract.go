@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -358,13 +357,10 @@ func TxToMethod(
 			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
 			return tx, nil, err
 		}
-		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
-			ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
-			ux.Logger.PrintToUser("error trace for %s error:", description)
-			ux.Logger.PrintToUser("%#v", trace)
-		} else if errorFromSignature != nil {
+		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); errorFromSignature != nil {
 			return tx, nil, errorFromSignature
 		} else {
+			ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
 			ux.Logger.PrintToUser("error trace for %s error:", description)
 			ux.Logger.PrintToUser("%#v", trace)
 		}
@@ -489,13 +485,11 @@ func handleFailedReceiptStatus(
 		ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
 		return tx, receipt, err
 	}
-	if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
-		printFailedReceiptStatusMessage(rpcURL, description, tx)
-		ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
-	} else if errorFromSignature != nil {
+	if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); errorFromSignature != nil {
 		return tx, receipt, errorFromSignature
 	} else {
 		printFailedReceiptStatusMessage(rpcURL, description, tx)
+		ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
 		ux.Logger.PrintToUser("error trace:")
 		ux.Logger.PrintToUser("%#v", trace)
 	}

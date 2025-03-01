@@ -23,6 +23,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type ACP99ValidatorManagerSettings struct {
+	Admin                  common.Address
+	SubnetID               [32]byte
+	ChurnPeriodSeconds     uint64
+	MaximumChurnPercentage uint8
+}
+
 type ValidatorManagerSettings struct {
 	SubnetID               [32]byte
 	ChurnPeriodSeconds     uint64
