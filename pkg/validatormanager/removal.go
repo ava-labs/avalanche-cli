@@ -43,6 +43,7 @@ func InitializeValidatorRemoval(
 			return contract.TxToMethod(
 				rpcURL,
 				false,
+				common.Address{},
 				privateKey,
 				managerAddress,
 				big.NewInt(0),
@@ -58,6 +59,7 @@ func InitializeValidatorRemoval(
 		return contract.TxToMethodWithWarpMessage(
 			rpcURL,
 			false,
+			common.Address{},
 			privateKey,
 			managerAddress,
 			uptimeProofSignedMessage,
@@ -74,6 +76,7 @@ func InitializeValidatorRemoval(
 	return contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		managerAddress,
 		big.NewInt(0),
@@ -290,6 +293,7 @@ func CompleteValidatorRemoval(
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,

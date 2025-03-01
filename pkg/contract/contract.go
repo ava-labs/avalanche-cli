@@ -289,25 +289,11 @@ func ParseSpec(
 	return name, string(abiBytes), nil
 }
 
-// Signer that just copy the raw Tx and returns error
-// To be used on multisig flows where the user is going
-// to sign and commit in separate flow
-//
-// Using this signer hack because it is the only setting that can be
-// configured to get access to the raw tx before beign signed (subnet-evm
-// transact function)
-//
-// Not multithread safe
-var (
-	rawTxCopy *types.Transaction
-	errRawTxCopy = errors.New("raw tx has been copied, not signed")
-)
-func rawTxCopySigner(
+func idempotentSigner(
 	_ common.Address,
 	tx *types.Transaction,
 ) (*types.Transaction, error) {
-	rawTxCopy = tx 
-	return nil, errRawTxCopy
+	return tx, nil
 }
 
 // get method name and types from [methodsSpec], then call it
@@ -316,6 +302,7 @@ func rawTxCopySigner(
 func TxToMethod(
 	rpcURL string,
 	generateRawTxOnly bool,
+	from common.Address,
 	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
@@ -341,21 +328,25 @@ func TxToMethod(
 	}
 	defer client.Close()
 	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
-	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
-	if err != nil {
-		return nil, nil, err
+	var txOpts *bind.TransactOpts
+	if generateRawTxOnly {
+		txOpts = &bind.TransactOpts{
+			From:   from,
+			Signer: idempotentSigner,
+			NoSend: true,
+		}
+	} else {
+		txOpts, err = evm.GetTxOptsWithSigner(client, privateKey)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	txOpts.Value = payment
-	if generateRawTxOnly {
-		txOpts.Signer = rawTxCopySigner
-	}
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
-		if err == errRawTxCopy {
-			return rawTxCopy, nil, nil
-		}
 		trace, traceCallErr := DebugTraceCall(
 			rpcURL,
+			from,
 			privateKey,
 			contractAddress,
 			payment,
@@ -378,6 +369,9 @@ func TxToMethod(
 			ux.Logger.PrintToUser("%#v", trace)
 		}
 		return tx, nil, err
+	}
+	if generateRawTxOnly {
+		return tx, nil, nil
 	}
 	receipt, success, err := evm.WaitForTransaction(client, tx)
 	if err != nil {
@@ -402,6 +396,7 @@ func TxToMethod(
 func TxToMethodWithWarpMessage(
 	rpcURL string,
 	generateRawTxOnly bool,
+	from common.Address,
 	privateKey string,
 	contractAddress common.Address,
 	warpMessage *avalancheWarp.Message,
@@ -434,6 +429,7 @@ func TxToMethodWithWarpMessage(
 	tx, err := evm.GetTxToMethodWithWarpMessage(
 		client,
 		generateRawTxOnly,
+		from,
 		privateKey,
 		warpMessage,
 		contractAddress,
@@ -442,6 +438,9 @@ func TxToMethodWithWarpMessage(
 	)
 	if err != nil {
 		return nil, nil, err
+	}
+	if generateRawTxOnly {
+		return tx, nil, nil
 	}
 	if err := evm.SendTransaction(client, tx); err != nil {
 		return tx, nil, err
@@ -519,6 +518,7 @@ func DebugTraceTransaction(
 
 func DebugTraceCall(
 	rpcURL string,
+	from common.Address,
 	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
@@ -545,11 +545,13 @@ func DebugTraceCall(
 		return nil, err
 	}
 	defer client.Close()
-	pk, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		return nil, err
+	if from == (common.Address{}) {
+		pk, err := crypto.HexToECDSA(privateKey)
+		if err != nil {
+			return nil, err
+		}
+		from = crypto.PubkeyToAddress(pk.PublicKey)
 	}
-	from := crypto.PubkeyToAddress(pk.PublicKey)
 	data := map[string]string{
 		"from":  from.Hex(),
 		"to":    contractAddress.Hex(),

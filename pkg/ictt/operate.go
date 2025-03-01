@@ -229,6 +229,7 @@ func ERC20TokenHomeSend(
 	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		tokenAddress,
 		nil,
@@ -253,6 +254,7 @@ func ERC20TokenHomeSend(
 	_, _, err = contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		homeAddress,
 		nil,
@@ -301,6 +303,7 @@ func NativeTokenHomeSend(
 	_, _, err = contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		homeAddress,
 		amount,
@@ -324,6 +327,7 @@ func ERC20TokenRemoteSend(
 	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		remoteAddress,
 		nil,
@@ -358,6 +362,7 @@ func ERC20TokenRemoteSend(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		remoteAddress,
 		nil,
@@ -402,6 +407,7 @@ func NativeTokenRemoteSend(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		remoteAddress,
 		amount,
@@ -424,6 +430,7 @@ func NativeTokenHomeAddCollateral(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		homeAddress,
 		amount,
@@ -451,6 +458,7 @@ func ERC20TokenHomeAddCollateral(
 	if _, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		tokenAddress,
 		nil,
@@ -465,6 +473,7 @@ func ERC20TokenHomeAddCollateral(
 	_, _, err = contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		homeAddress,
 		nil,

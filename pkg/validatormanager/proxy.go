@@ -23,6 +23,7 @@ func SetupValidatorManagerAtProxy(
 	return contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		proxyManagerPrivateKey,
 		common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress),
 		big.NewInt(0),

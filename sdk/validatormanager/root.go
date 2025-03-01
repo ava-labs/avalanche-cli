@@ -284,6 +284,7 @@ func InitializeValidatorsSet(
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		managerAddress,
 		subnetConversionSignedMessage,

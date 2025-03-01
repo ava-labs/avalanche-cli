@@ -541,12 +541,14 @@ func addAsValidator(network models.Network,
 
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		false,
+		"",
 		payerPrivateKey,
 		nodeID,
 		blsInfo.PublicKey[:],
@@ -585,12 +587,14 @@ func addAsValidator(network models.Network,
 
 	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	if err := validatormanager.FinishValidatorRegistration(
+	if _, err := validatormanager.FinishValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		false,
+		"",
 		payerPrivateKey,
 		validationID,
 		extraAggregatorPeers,

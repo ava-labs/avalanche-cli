@@ -83,6 +83,7 @@ func InitializeValidatorRegistrationPoSNative(
 	return contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		managerOwnerPrivateKey,
 		managerAddress,
 		stakeAmount,
@@ -99,6 +100,8 @@ func InitializeValidatorRegistrationPoSNative(
 func InitializeValidatorRegistrationPoA(
 	rpcURL string,
 	managerAddress common.Address,
+	generateRawTxOnly bool,
+	managerOwnerAddress common.Address,
 	managerOwnerPrivateKey string,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
@@ -139,7 +142,8 @@ func InitializeValidatorRegistrationPoA(
 	}
 	return contract.TxToMethod(
 		rpcURL,
-		false,
+		generateRawTxOnly,
+		managerOwnerAddress,
 		managerOwnerPrivateKey,
 		managerAddress,
 		big.NewInt(0),
@@ -319,12 +323,15 @@ func GetPChainSubnetValidatorRegistrationWarpMessage(
 func CompleteValidatorRegistration(
 	rpcURL string,
 	managerAddress common.Address,
+	generateRawTxOnly bool,
+	ownerAddress common.Address,
 	privateKey string, // not need to be owner atm
 	subnetValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
-		false,
+		generateRawTxOnly,
+		ownerAddress,
 		privateKey,
 		managerAddress,
 		subnetValidatorRegistrationSignedMessage,
@@ -342,6 +349,8 @@ func InitValidatorRegistration(
 	network models.Network,
 	rpcURL string,
 	chainSpec contract.ChainSpec,
+	generateRawTxOnly bool,
+	ownerAddressStr string,
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	blsPublicKey []byte,
@@ -356,14 +365,14 @@ func InitValidatorRegistration(
 	delegationFee uint16,
 	stakeDuration time.Duration,
 	validatorManagerAddressStr string,
-) (*warp.Message, ids.ID, error) {
+) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
 		chainSpec,
 	)
 	if err != nil {
-		return nil, ids.Empty, err
+		return nil, ids.Empty, nil, err
 	}
 	blockchainID, err := contract.GetBlockchainID(
 		app,
@@ -371,9 +380,10 @@ func InitValidatorRegistration(
 		chainSpec,
 	)
 	if err != nil {
-		return nil, ids.Empty, err
+		return nil, ids.Empty, nil, err
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
+	ownerAddress := common.HexToAddress(ownerAddressStr)
 	alreadyInitialized := false
 	if initWithPos {
 		stakeAmount, err := PoSWeightToValue(
@@ -382,7 +392,7 @@ func InitValidatorRegistration(
 			weight,
 		)
 		if err != nil {
-			return nil, ids.Empty, fmt.Errorf("failure obtaining value from weight: %w", err)
+			return nil, ids.Empty, nil, fmt.Errorf("failure obtaining value from weight: %w", err)
 		}
 		ux.Logger.PrintLineSeparator()
 		ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
@@ -404,7 +414,7 @@ func InitValidatorRegistration(
 		)
 		if err != nil {
 			if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
-				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
+				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
 			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
@@ -415,6 +425,8 @@ func InitValidatorRegistration(
 		tx, _, err := InitializeValidatorRegistrationPoA(
 			rpcURL,
 			managerAddress,
+			generateRawTxOnly,
+			ownerAddress,
 			ownerPrivateKey,
 			nodeID,
 			blsPublicKey,
@@ -425,15 +437,17 @@ func InitValidatorRegistration(
 		)
 		if err != nil {
 			if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
-				return nil, ids.Empty, evm.TransactionError(tx, err, "failure initializing validator registration")
+				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
 			}
 			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 			alreadyInitialized = true
+		} else if generateRawTxOnly {
+			return nil, ids.Empty, tx, nil
 		}
 		ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
 	}
 
-	return GetSubnetValidatorRegistrationMessage(
+	signedMessage, validationID, err := GetSubnetValidatorRegistrationMessage(
 		ctx,
 		rpcURL,
 		network,
@@ -452,6 +466,8 @@ func InitValidatorRegistration(
 		weight,
 		alreadyInitialized,
 	)
+
+	return signedMessage, validationID, nil, err
 }
 
 func FinishValidatorRegistration(
@@ -460,20 +476,22 @@ func FinishValidatorRegistration(
 	network models.Network,
 	rpcURL string,
 	chainSpec contract.ChainSpec,
+	generateRawTxOnly bool,
+	ownerAddressStr string,
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
-) error {
+) (*types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
 		network,
 		chainSpec,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
@@ -489,28 +507,36 @@ func FinishValidatorRegistration(
 		true,
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := evm.SetupProposerVM(
-		rpcURL,
-		privateKey,
-	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+	if privateKey != "" {
+		if err := evm.SetupProposerVM(
+			rpcURL,
+			privateKey,
+		); err != nil {
+			ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		}
 	}
+	ownerAddress := common.HexToAddress(ownerAddressStr)
 	tx, _, err := CompleteValidatorRegistration(
 		rpcURL,
 		managerAddress,
+		generateRawTxOnly,
+		ownerAddress,
 		privateKey,
 		signedMessage,
 	)
 	if err != nil {
 		if !errors.Is(err, validatormanager.ErrInvalidValidationID) {
-			return evm.TransactionError(tx, err, "failure completing validator registration")
+			return nil, evm.TransactionError(tx, err, "failure completing validator registration")
 		} else {
-			return fmt.Errorf("the Validator was already fully registered on the Manager")
+			return nil, fmt.Errorf("the Validator was already fully registered on the Manager")
 		}
 	}
-	return nil
+	if generateRawTxOnly {
+		return tx, nil
+	}
+	return nil, nil
 }
 
 func GetRegistrationMessage(

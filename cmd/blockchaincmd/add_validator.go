@@ -3,6 +3,7 @@
 package blockchaincmd
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -31,31 +32,31 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
 var (
-	nodeIDStr                 string
-	nodeEndpoint              string
-	balanceAVAX               float64
-	weight                    uint64
-	startTimeStr              string
-	duration                  time.Duration
-	defaultValidatorParams    bool
-	useDefaultStartTime       bool
-	useDefaultDuration        bool
-	useDefaultWeight          bool
-	waitForTxAcceptance       bool
-	publicKey                 string
-	pop                       string
-	remainingBalanceOwnerAddr string
-	disableOwnerAddr          string
-	rpcURL                    string
-	aggregatorLogLevel        string
-	aggregatorLogToStdout     bool
-	delegationFee             uint16
-
+	nodeIDStr                           string
+	nodeEndpoint                        string
+	balanceAVAX                         float64
+	weight                              uint64
+	startTimeStr                        string
+	duration                            time.Duration
+	defaultValidatorParams              bool
+	useDefaultStartTime                 bool
+	useDefaultDuration                  bool
+	useDefaultWeight                    bool
+	waitForTxAcceptance                 bool
+	publicKey                           string
+	pop                                 string
+	remainingBalanceOwnerAddr           string
+	disableOwnerAddr                    string
+	rpcURL                              string
+	aggregatorLogLevel                  string
+	aggregatorLogToStdout               bool
+	delegationFee                       uint16
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
 	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
@@ -65,6 +66,7 @@ var (
 	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
 	createLocalValidator                bool
+	multisigValidatorManagerOwner       bool
 )
 
 const (
@@ -124,6 +126,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
 	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
+	cmd.Flags().BoolVar(&multisigValidatorManagerOwner, "multisig-validator-manager-ower", false, "validator manager owner is multisig, make hex dump of ech evm transactions, so they can be signed in a separate flow")
 
 	return cmd
 }
@@ -404,17 +407,22 @@ func CallAddValidator(
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
-		app,
-		network,
-		common.HexToAddress(sc.ValidatorManagerOwner),
-		true,
-	)
-	if err != nil {
-		return err
-	}
-	if !ownerPrivateKeyFound {
-		return fmt.Errorf("private key for Validator manager owner %s is not found", sc.ValidatorManagerOwner)
+
+	var ownerPrivateKey string
+	if !multisigValidatorManagerOwner {
+		var ownerPrivateKeyFound bool
+		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
+			app,
+			network,
+			common.HexToAddress(sc.ValidatorManagerOwner),
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		if !ownerPrivateKeyFound {
+			return fmt.Errorf("private key for Validator manager owner %s is not found", sc.ValidatorManagerOwner)
+		}
 	}
 
 	pos := sc.PoS()
@@ -523,12 +531,14 @@ func CallAddValidator(
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		multisigValidatorManagerOwner,
+		sc.ValidatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
 		blsInfo.PublicKey[:],
@@ -546,6 +556,15 @@ func CallAddValidator(
 	)
 	if err != nil {
 		return err
+	}
+	if rawTx != nil {
+		bs, err := rawTx.MarshalBinary()
+		if err != nil {
+			return fmt.Errorf("failure marshalling raw evm tx: %w", err)
+		}
+		ux.Logger.PrintToUser("Raw Tx Dump For Initializing Validator Registration. Please sign and commit it.")
+		ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
+		return nil
 	}
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 
@@ -566,20 +585,32 @@ func CallAddValidator(
 
 	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	if err := validatormanager.FinishValidatorRegistration(
+	rawTx, err = validatormanager.FinishValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		multisigValidatorManagerOwner,
+		sc.ValidatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
-	); err != nil {
+	)
+	if err != nil {
 		return err
+	}
+	if rawTx != nil {
+		bs, err := rawTx.MarshalBinary()
+		if err != nil {
+			return fmt.Errorf("failure marshalling raw evm tx: %w", err)
+		}
+		ux.Logger.PrintToUser("Raw Tx Dump For Finish Validator Registration. Please sign and commit it.")
+		ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
+		return nil
 	}
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)

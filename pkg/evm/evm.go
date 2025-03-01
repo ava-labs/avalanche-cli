@@ -267,6 +267,7 @@ func FundAddress(
 func GetTxToMethodWithWarpMessage(
 	client ethclient.Client,
 	generateRawTxOnly bool,
+	from common.Address,
 	privateKeyStr string,
 	warpMessage *avalancheWarp.Message,
 	contract common.Address,
@@ -274,12 +275,20 @@ func GetTxToMethodWithWarpMessage(
 	value *big.Int,
 ) (*types.Transaction, error) {
 	const defaultGasLimit = 2_000_000
-	privateKey, err := crypto.HexToECDSA(privateKeyStr)
-	if err != nil {
-		return nil, err
+	var (
+		privateKey *ecdsa.PrivateKey
+		err        error
+	)
+	if privateKeyStr != "" {
+		privateKey, err = crypto.HexToECDSA(privateKeyStr)
+		if err != nil {
+			return nil, err
+		}
 	}
-	address := crypto.PubkeyToAddress(privateKey.PublicKey)
-	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, address.Hex())
+	if from == (common.Address{}) {
+		from = crypto.PubkeyToAddress(privateKey.PublicKey)
+	}
+	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, from.Hex())
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +303,7 @@ func GetTxToMethodWithWarpMessage(
 		},
 	}
 	msg := interfaces.CallMsg{
-		From:       address,
+		From:       from,
 		To:         &contract,
 		GasPrice:   nil,
 		GasTipCap:  gasTipCap,

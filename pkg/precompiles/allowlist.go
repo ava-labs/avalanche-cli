@@ -20,6 +20,7 @@ func SetAdmin(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -40,6 +41,7 @@ func SetManager(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -60,6 +62,7 @@ func SetEnabled(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -80,6 +83,7 @@ func SetNone(
 	_, _, err := contract.TxToMethod(
 		rpcURL,
 		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
