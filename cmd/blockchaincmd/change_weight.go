@@ -179,7 +179,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 
 	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
 	allowedWeightFunction := func(v uint64) error {
-		delta := 0
+		delta := uint64(0)
 		if v > validatorInfo.Weight {
 			delta = v - validatorInfo.Weight
 		} else {
