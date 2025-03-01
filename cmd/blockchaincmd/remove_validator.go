@@ -143,37 +143,38 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	chainSpec := contract.ChainSpec{
-		BlockchainName: blockchainName,
+	validatorKind, err := validatorsdk.IsSovereignValidator(network.SDKNetwork(), subnetID, nodeID)
+	if err != nil {
+		return err
 	}
-	if rpcURL == "" {
-		rpcURL, _, err = contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
+	if validatorKind == validatorsdk.NonValidator {
+		// it may be unregistered from P-Chain, but registered on validator manager
+		// due to a previous partial removal operation
+		if rpcURL == "" {
+			rpcURL, _, err = contract.GetBlockchainEndpoints(
+				app,
+				network,
+				contract.ChainSpec{
+					BlockchainName: blockchainName,
+				},
+				true,
+				false,
+			)
+			if err != nil {
+				return err
+			}
+		}
+		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+		validationID, err := validatorsdk.GetRegisteredValidator(
+			rpcURL,
+			common.HexToAddress(validatorManagerAddress),
+			nodeID,
 		)
 		if err != nil {
 			return err
 		}
-	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-	validationID, err := validatorsdk.GetRegisteredValidator(
-		rpcURL,
-		common.HexToAddress(validatorManagerAddress),
-		nodeID,
-	)
-	if err != nil {
-		return err
-	}
-	var validatorKind validatorsdk.ValidatorKind
-	if validationID != ids.Empty {
-		validatorKind = validatorsdk.SovereignValidator
-	} else {
-		validatorKind, err = validatorsdk.IsSovereignValidator(network.SDKNetwork(), subnetID, nodeID)
-		if err != nil {
-			return err
+		if validationID != ids.Empty {
+			validatorKind = validatorsdk.SovereignValidator
 		}
 	}
 	if validatorKind == validatorsdk.NonValidator {
@@ -294,7 +295,20 @@ func removeValidatorSOV(
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
+	if rpcURL == "" {
+		rpcURL, _, err = contract.GetBlockchainEndpoints(
+			app,
+			network,
+			chainSpec,
+			true,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+
 	clusterName := sc.Networks[network.Name()].ClusterName
 	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
 	if err != nil {
