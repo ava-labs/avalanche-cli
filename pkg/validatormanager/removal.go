@@ -159,7 +159,7 @@ func InitValidatorRemoval(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
-	initWithPos bool,
+	isPoS bool,
 	uptimeSec uint64,
 	force bool,
 	validatorManagerAddressStr string,
@@ -196,7 +196,7 @@ func InitValidatorRemoval(
 	}
 
 	signedUptimeProof := &warp.Message{}
-	if initWithPos {
+	if isPoS {
 		if uptimeSec == 0 {
 			uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
 			if err != nil {
@@ -226,7 +226,7 @@ func InitValidatorRemoval(
 		ownerAddress,
 		ownerPrivateKey,
 		validationID,
-		initWithPos,
+		isPoS,
 		signedUptimeProof, // is empty for non-PoS
 		force,
 		useACP99,

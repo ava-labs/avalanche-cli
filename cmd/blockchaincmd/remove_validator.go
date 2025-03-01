@@ -416,7 +416,7 @@ func removeValidatorSOV(
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
-		sc.UseACP99,
+		sc.PoA() && sc.UseACP99,
 	)
 	if err != nil {
 		return err
