@@ -216,7 +216,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	}
 
 	if err := allowedWeightFunction(newWeight); err != nil {
-		return nil
+		return err
 	}
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
