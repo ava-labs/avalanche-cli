@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -389,13 +389,7 @@ func removeValidatorSOV(
 		return err
 	}
 	if rawTx != nil {
-		bs, err := rawTx.MarshalBinary()
-		if err != nil {
-			return fmt.Errorf("failure marshalling raw evm tx: %w", err)
-		}
-		ux.Logger.PrintToUser("Raw Tx Dump For Initializing Validator Removal. Please sign and commit it.")
-		ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
-		return nil
+		return evm.TxDump("Initializing Validator Removal", rawTx)
 	}
 
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
@@ -436,13 +430,7 @@ func removeValidatorSOV(
 		return err
 	}
 	if rawTx != nil {
-		bs, err := rawTx.MarshalBinary()
-		if err != nil {
-			return fmt.Errorf("failure marshalling raw evm tx: %w", err)
-		}
-		ux.Logger.PrintToUser("Raw Tx Dump For Finish Validator Removal. Please sign and commit it.")
-		ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
-		return nil
+		return evm.TxDump("Finish Validator Removal", rawTx)
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Validator successfully removed from the Subnet")

@@ -3,7 +3,6 @@
 package blockchaincmd
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -383,13 +383,7 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		bs, err := rawTx.MarshalBinary()
-		if err != nil {
-			return fmt.Errorf("failure marshalling raw evm tx: %w", err)
-		}
-		ux.Logger.PrintToUser("Raw Tx Dump For Initializing Validator Weight Change. Please sign and commit it.")
-		ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
-		return nil
+		return evm.TxDump("Initializing Validator Weight Change", rawTx)
 	}
 
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
@@ -440,13 +434,7 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		bs, err := rawTx.MarshalBinary()
-		if err != nil {
-			return fmt.Errorf("failure marshalling raw evm tx: %w", err)
-		}
-		ux.Logger.PrintToUser("Raw Tx Dump For Finish Validator Weight Change. Please sign and commit it.")
-		ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
-		return nil
+		return evm.TxDump("Finish Validator Weight Change", rawTx)
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Weight change successfully made")

@@ -817,3 +817,24 @@ func TransactionError(tx *types.Transaction, err error, msg string, args ...inte
 	args = append(args, err)
 	return fmt.Errorf(msg+msgSuffix, args...)
 }
+
+func TxDump(description string, tx *types.Transaction) error {
+	bs, err := tx.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("failure marshalling raw evm tx: %w", err)
+	}
+	ux.Logger.PrintToUser("Tx Dump For %s:", description)
+	ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
+	ux.Logger.PrintToUser("Calldata Dump:")
+	ux.Logger.PrintToUser("0x%s", hex.EncodeToString(tx.Data()))
+	if len(tx.AccessList()) > 0 {
+		ux.Logger.PrintToUser("Access List Dump:")
+		for _, t := range tx.AccessList() {
+			ux.Logger.PrintToUser("  Address: %s", t.Address)
+			for _, s := range t.StorageKeys {
+				ux.Logger.PrintToUser("  Storage: %s", s)
+			}
+		}
+	}
+	return nil
+}
