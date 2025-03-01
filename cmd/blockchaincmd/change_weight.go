@@ -178,31 +178,45 @@ func setWeight(_ *cobra.Command, args []string) error {
 	}
 
 	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
-
-	if float64(validatorInfo.Weight) > allowedChange {
-		return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
+	allowedWeightFunction := func(v uint64) error {
+		delta := 0
+		if v > validatorInfo.Weight {
+			delta = v - validatorInfo.Weight
+		} else {
+			delta = validatorInfo.Weight - v
+		}
+		if delta > uint64(allowedChange) {
+			return fmt.Errorf("weight change %d exceeds max allowed weight change of %d", delta, uint64(allowedChange))
+		}
+		return nil
 	}
 
-	allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
+	if !sc.UseACP99 {
+		if float64(validatorInfo.Weight) > allowedChange {
+			return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
+		}
+		allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
+		allowedWeightFunction = func(v uint64) error {
+			if v > uint64(allowedChange) {
+				return fmt.Errorf("new weight exceeds max allowed weight change of %d", uint64(allowedChange))
+			}
+			return nil
+		}
+	}
 
 	if newWeight == 0 {
 		ux.Logger.PrintToUser("Current validator weight is %d", validatorInfo.Weight)
 		newWeight, err = app.Prompt.CaptureWeight(
 			"What weight would you like to assign to the validator?",
-			func(v uint64) error {
-				if v > uint64(allowedChange) {
-					return fmt.Errorf("weight exceeds max allowed weight change of %d", uint64(allowedChange))
-				}
-				return nil
-			},
+			allowedWeightFunction,
 		)
 		if err != nil {
 			return err
 		}
 	}
 
-	if float64(newWeight) > allowedChange {
-		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
+	if err := allowedWeightFunction(newWeight); err != nil {
+		return nil
 	}
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
