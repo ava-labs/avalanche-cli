@@ -22,6 +22,8 @@ func SetupValidatorManagerAtProxy(
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		proxyManagerPrivateKey,
 		common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress),
 		big.NewInt(0),

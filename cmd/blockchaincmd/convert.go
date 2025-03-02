@@ -261,7 +261,14 @@ func InitializeValidatorManager(
 	pos bool,
 	validatorManagerAddrStr string,
 	proxyContractOwner string,
+	useACP99 bool,
 ) (bool, error) {
+	if useACP99 {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+	} else {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+	}
+
 	var err error
 	clusterName := clusterNameFlagValue
 	switch {
@@ -403,6 +410,7 @@ func InitializeValidatorManager(
 			aggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerAddrStr,
+			useACP99,
 		); err != nil {
 			return tracked, err
 		}
@@ -768,6 +776,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			sidecar.ValidatorManagement == models.ProofOfStake,
 			validatorManagerAddress,
 			sidecar.ProxyContractOwner,
+			sidecar.UseACP99,
 		); err != nil {
 			return err
 		}

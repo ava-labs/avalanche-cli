@@ -210,6 +210,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			validatorManagerFlags.aggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerAddress,
+			sc.UseACP99,
 		); err != nil {
 			return err
 		}
