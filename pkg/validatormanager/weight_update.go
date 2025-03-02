@@ -57,6 +57,7 @@ func InitializeValidatorWeightChange(
 
 func InitValidatorWeightChange(
 	ctx context.Context,
+	printFunc func(msg string, args ...interface{}),
 	app *application.Avalanche,
 	network models.Network,
 	rpcURL string,
@@ -70,6 +71,7 @@ func InitValidatorWeightChange(
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	weight uint64,
+	initiateTxHash string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -101,9 +103,24 @@ func InitValidatorWeightChange(
 		return nil, ids.Empty, nil, fmt.Errorf("node %s is not a L1 validator", nodeID)
 	}
 
-	unsignedMessage, err := GetWeightMessage(rpcURL, validationID, weight)
-	if err != nil {
-		return nil, ids.Empty, nil, fmt.Errorf("failure trying to get weight message from evm logs: %w", err)
+	var unsignedMessage *warp.UnsignedMessage
+	if initiateTxHash != "" {
+		unsignedMessage, err = GetWeightMessageFromTx(
+			rpcURL,
+			validationID,
+			weight,
+			initiateTxHash,
+		)
+		if err != nil {
+			return nil, ids.Empty, nil, err
+		}
+	}
+
+	if unsignedMessage == nil {
+		unsignedMessage, err = SearchForWeightMessage(rpcURL, validationID, weight)
+		if err != nil {
+			printFunc(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err)
+		}
 	}
 
 	var receipt *types.Receipt
@@ -124,7 +141,7 @@ func InitValidatorWeightChange(
 			return nil, ids.Empty, tx, nil
 		}
 	} else {
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
+		printFunc(logging.LightBlue.Wrap("The validator weight change process was already initialized. Proceeding to the next step"))
 	}
 
 	if receipt != nil {
@@ -381,7 +398,39 @@ func GetPChainL1ValidatorWeightMessage(
 	return signatureAggregator.Sign(unsignedMessage, nil)
 }
 
-func GetWeightMessage(
+func GetWeightMessageFromTx(
+	rpcURL string,
+	validationID ids.ID,
+	weight uint64,
+	txHash string,
+) (*warp.UnsignedMessage, error) {
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := utils.GetAPILargeContext()
+	defer cancel()
+	receipt, err := client.TransactionReceipt(ctx, common.HexToHash(txHash))
+	if err != nil {
+		return nil, err
+	}
+	msgs := GetWarpMessagesFromLogs(receipt.Logs)
+	for _, msg := range msgs {
+		payload := msg.Payload
+		addressedCall, err := warpPayload.ParseAddressedCall(payload)
+		if err == nil {
+			weightMsg, err := warpMessage.ParseL1ValidatorWeight(addressedCall.Payload)
+			if err == nil {
+				if weightMsg.ValidationID == validationID && weightMsg.Weight == weight {
+					return msg, nil
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("weight message not found on tx %s", txHash)
+}
+
+func SearchForWeightMessage(
 	rpcURL string,
 	validationID ids.ID,
 	weight uint64,

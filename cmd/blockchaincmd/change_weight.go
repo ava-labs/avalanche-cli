@@ -34,7 +34,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var newWeight uint64
+var (
+	newWeight      uint64
+	initiateTxHash string
+)
 
 // avalanche blockchain addValidator
 func newChangeWeightCmd() *cobra.Command {
@@ -63,6 +66,7 @@ The L1 has to be a Proof of Authority L1.`,
 	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
+	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 	return cmd
 }
 
@@ -371,6 +375,7 @@ func changeWeightACP99(
 
 	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
 		aggregatorCtx,
+		ux.Logger.PrintToUser,
 		app,
 		network,
 		rpcURL,
@@ -384,6 +389,7 @@ func changeWeightACP99(
 		aggregatorLogger,
 		validatorManagerAddress,
 		weight,
+		initiateTxHash,
 	)
 	if err != nil {
 		return err
