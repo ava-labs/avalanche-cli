@@ -67,6 +67,7 @@ var (
 	clusterNameFlagValue                string
 	createLocalValidator                bool
 	externalValidatorManagerOwner       bool
+	validatorManagerOwner               string
 )
 
 const (
@@ -124,8 +125,8 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
-	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
+	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-validator-manager-owner", false, "validator manager owner is external, make hex dump of ech evm transactions, so they can be signed in a separate flow")
 
 	return cmd
@@ -408,20 +409,24 @@ func CallAddValidator(
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
+	if validatorManagerOwner == "" {
+		validatorManagerOwner = sc.ValidatorManagerOwner
+	}
+
 	var ownerPrivateKey string
 	if !externalValidatorManagerOwner {
 		var ownerPrivateKeyFound bool
 		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
 			app,
 			network,
-			common.HexToAddress(sc.ValidatorManagerOwner),
+			common.HexToAddress(validatorManagerOwner),
 			true,
 		)
 		if err != nil {
 			return err
 		}
 		if !ownerPrivateKeyFound {
-			return fmt.Errorf("private key for Validator manager owner %s is not found", sc.ValidatorManagerOwner)
+			return fmt.Errorf("private key for Validator manager owner %s is not found", validatorManagerOwner)
 		}
 	}
 
@@ -443,7 +448,7 @@ func CallAddValidator(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), validatorManagerOwner)
 
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
@@ -545,7 +550,7 @@ func CallAddValidator(
 		rpcURL,
 		chainSpec,
 		externalValidatorManagerOwner,
-		sc.ValidatorManagerOwner,
+		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
 		blsInfo.PublicKey[:],
@@ -594,7 +599,7 @@ func CallAddValidator(
 		rpcURL,
 		chainSpec,
 		externalValidatorManagerOwner,
-		sc.ValidatorManagerOwner,
+		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,

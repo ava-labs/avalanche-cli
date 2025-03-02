@@ -67,6 +67,7 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
 	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-validator-manager-owner", false, "validator manager owner is external, make hex dump of ech evm transactions, so they can be signed in a separate flow")
+	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 	return cmd
 }
 
@@ -265,20 +266,25 @@ func removeValidatorSOV(
 	if err != nil {
 		return fmt.Errorf("failed to load sidecar: %w", err)
 	}
+
+	if validatorManagerOwner == "" {
+		validatorManagerOwner = sc.ValidatorManagerOwner
+	}
+
 	var ownerPrivateKey string
 	if !externalValidatorManagerOwner {
 		var ownerPrivateKeyFound bool
 		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
 			app,
 			network,
-			common.HexToAddress(sc.ValidatorManagerOwner),
+			common.HexToAddress(validatorManagerOwner),
 			true,
 		)
 		if err != nil {
 			return err
 		}
 		if !ownerPrivateKeyFound {
-			return fmt.Errorf("not private key found for Validator manager owner %s", sc.ValidatorManagerOwner)
+			return fmt.Errorf("not private key found for Validator manager owner %s", validatorManagerOwner)
 		}
 	}
 
@@ -288,7 +294,7 @@ func removeValidatorSOV(
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), sc.ValidatorManagerOwner)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's removal (Blockchain gas token)"), validatorManagerOwner)
 
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
@@ -340,7 +346,7 @@ func removeValidatorSOV(
 		rpcURL,
 		chainSpec,
 		externalValidatorManagerOwner,
-		sc.ValidatorManagerOwner,
+		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
 		extraAggregatorPeers,
@@ -370,7 +376,7 @@ func removeValidatorSOV(
 			rpcURL,
 			chainSpec,
 			externalValidatorManagerOwner,
-			sc.ValidatorManagerOwner,
+			validatorManagerOwner,
 			ownerPrivateKey,
 			nodeID,
 			extraAggregatorPeers,
@@ -417,7 +423,7 @@ func removeValidatorSOV(
 		rpcURL,
 		chainSpec,
 		externalValidatorManagerOwner,
-		sc.ValidatorManagerOwner,
+		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
