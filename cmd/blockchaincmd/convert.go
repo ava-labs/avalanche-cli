@@ -316,6 +316,7 @@ func InitializeValidatorManager(
 	}
 	evm.WaitForChainID(client)
 
+	// TODO: review this implementation below
 	if pos {
 		deployed, err := validatormanager.ProxyHasValidatorManagerSet(rpcURL)
 		if err != nil {
@@ -369,6 +370,22 @@ func InitializeValidatorManager(
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
+
+	// both POA and POS have to do this step first now
+	ux.Logger.PrintToUser("Initializing Validator Manager contract on blockchain %s ...", blockchainName)
+	if err := subnetSDK.InitializeValidatorManager(
+		aggregatorCtx,
+		network,
+		genesisPrivateKey,
+		extraAggregatorPeers,
+		aggregatorAllowPrivatePeers,
+		aggregatorLogger,
+		validatorManagerAddrStr,
+	); err != nil {
+		return tracked, err
+	}
+	ux.Logger.GreenCheckmarkToUser("Validator Manager contract is successfully initialized on blockchain %s", blockchainName)
+	// TODO: replace the implementation below
 	if pos {
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfStake(
@@ -393,31 +410,6 @@ func InitializeValidatorManager(
 			return tracked, err
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
-	} else {
-		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
-		//if err := subnetSDK.InitializeProofOfAuthority(
-		//	aggregatorCtx,
-		//	network,
-		//	genesisPrivateKey,
-		//	extraAggregatorPeers,
-		//	aggregatorAllowPrivatePeers,
-		//	aggregatorLogger,
-		//	validatorManagerAddrStr,
-		//); err != nil {
-		//	return tracked, err
-		//}
-		if err := subnetSDK.InitializeValidatorManager(
-			aggregatorCtx,
-			network,
-			genesisPrivateKey,
-			extraAggregatorPeers,
-			aggregatorAllowPrivatePeers,
-			aggregatorLogger,
-			validatorManagerAddrStr,
-		); err != nil {
-			return tracked, err
-		}
-		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	}
 	return tracked, nil
 }

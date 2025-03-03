@@ -251,7 +251,7 @@ func GetPChainSubnetConversionWarpMessage(
 	return signatureAggregator.Sign(subnetConversionUnsignedMessage, subnetID[:])
 }
 
-// InitializeValidatorsSet calls poa manager validators set init method,
+// InitializeValidatorsSet calls validator manager validator set init method,
 // passing to it the p-chain signed [subnetConversionSignedMessage]
 // to verify p-chain already processed the associated ConvertSubnetToL1Tx
 func InitializeValidatorsSet(

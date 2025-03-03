@@ -42,7 +42,7 @@ func fillValidatorMessagesAddressPlaceholder(contract string) string {
 	)
 }
 
-//go:embed deployed_poa_validator_manager_bytecode_v1.0.0.txt
+//go:embed deployed_validator_manager_bytecode_acp99.txt
 var deployedPoAValidatorManagerBytecode []byte
 
 func AddPoAValidatorManagerContractToAllocations(
