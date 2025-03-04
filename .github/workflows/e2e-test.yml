@@ -36,9 +36,9 @@ jobs:
             "\\[Node devnet\\]",
             "\\[Docker\\]",
           ]
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-24.04, macos-14]
         exclude:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             suite: "\\[Etna Subnet SOV\\]"
           - os: macos-14
             suite: "\\[Node create\\]"
@@ -48,11 +48,11 @@ jobs:
             suite: "\\[Docker\\]"
           - os: macos-14
             suite: "\\[Public Subnet non SOV\\]"
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             suite: "\\[Etna AddRemove Validator SOV PoA\\]"
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             suite: "\\[Etna AddRemove Validator SOV PoS\\]"
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             suite: "\\[Etna Add Validator SOV Local\\]"
     steps:
       - name: Checkout repository
