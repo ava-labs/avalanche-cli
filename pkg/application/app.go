@@ -490,9 +490,7 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	}
 	keyStr := string(keyBytes)
 	keyStr = strings.TrimSpace(keyStr)
-	if strings.HasPrefix(keyStr, "0x") {
-		keyStr = keyStr[2:]
-	}
+	keyStr = strings.TrimPrefix(keyStr, "0x")
 	keyPath := app.GetKeyPath(keyName)
 	return os.WriteFile(keyPath, []byte(keyStr), constants.WriteReadReadPerms)
 }
