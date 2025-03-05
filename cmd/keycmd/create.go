@@ -4,7 +4,6 @@ package keycmd
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -26,8 +25,6 @@ var (
 
 func createKey(_ *cobra.Command, args []string) error {
 	keyName := args[0]
-	ux.Logger.PrintToUser("we are key create \n")
-	fmt.Println("we are key create print ln")
 	if match, _ := regexp.MatchString("\\s", keyName); match {
 		return errors.New("key name contains whitespace")
 	}
