@@ -121,7 +121,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
-	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
+	cmd.Flags().StringVar(&blockchainIDStr, "blockchain-id", "", "blockchain ID (only if blockchain name is not provided)")
 	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
 

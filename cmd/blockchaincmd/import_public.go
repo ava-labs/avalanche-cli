@@ -245,14 +245,11 @@ func importL1(blockchainIDStr string, rpcURL string, network models.Network) (mo
 	if err != nil {
 		return models.Sidecar{}, err
 	}
+	fmt.Printf("obtained subnetInfo %s \n", subnetInfo)
 	if subnetInfo.IsPermissioned {
 		return models.Sidecar{}, fmt.Errorf("unable to import non sovereign Subnets")
 	}
 	validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
-	fmt.Printf("obtained blockchainid %s \n", blockchainID.String())
-	fmt.Printf("obtained subnetid %s \n", subnetID.String())
-
-	fmt.Printf("obtained validatorManagerAddress %s \n", validatorManagerAddress)
 
 	// add validator without blockchain arg is only for l1s
 	sc = models.Sidecar{

@@ -49,7 +49,7 @@ validating your deployed Blockchain.
 To remove the validator from the Subnet's allow list, provide the validator's unique NodeID. You can bypass
 these prompts by providing the values with flags.`,
 		RunE: removeValidator,
-		Args: cobrautils.ExactArgs(1),
+		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
@@ -66,28 +66,34 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
+	cmd.Flags().StringVar(&blockchainIDStr, "blockchain-id", "", "blockchain ID (only if blockchain name is not provided)")
+
 	return cmd
 }
 
 func removeValidator(_ *cobra.Command, args []string) error {
-	blockchainName := args[0]
-	_, err := ValidateSubnetNameAndGetChains([]string{blockchainName})
-	if err != nil {
-		return err
+	blockchainName := ""
+	var sc models.Sidecar
+	networkOption := networkoptions.DefaultSupportedNetworkOptions
+	if len(args) == 1 {
+		blockchainName = args[0]
+		_, err := ValidateSubnetNameAndGetChains([]string{blockchainName})
+		if err != nil {
+			return err
+		}
+		sc, err = app.LoadSidecar(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		networkOption = networkoptions.GetNetworkFromSidecar(sc, networkOption)
 	}
-
-	sc, err := app.LoadSidecar(blockchainName)
-	if err != nil {
-		return err
-	}
-
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
 		globalNetworkFlags,
 		true,
 		false,
-		networkoptions.GetNetworkFromSidecar(sc, networkoptions.DefaultSupportedNetworkOptions),
+		networkOption,
 		"",
 	)
 	if err != nil {
@@ -97,7 +103,20 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		network = models.ConvertClusterToNetwork(network)
 	}
 
-	// TODO: will estimate fee in subsecuent PR
+	if len(args) == 0 {
+		if rpcURL == "" {
+			rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+			if err != nil {
+				return err
+			}
+		}
+		sc, err = importL1(blockchainIDStr, rpcURL, network)
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: will estimate fee in subsequent PR
 	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,

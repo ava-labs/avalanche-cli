@@ -61,7 +61,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 		Short: "Initializes Proof of Authority(PoA) or Proof of Stake(PoS) Validator Manager on a given Network and Blockchain",
 		Long:  "Initializes Proof of Authority(PoA) or Proof of Stake(PoS)Validator Manager contract on a Blockchain and sets up initial validator set on the Blockchain. For more info on Validator Manager, please head to https://github.com/ava-labs/icm-contracts/tree/main/contracts/validator-manager",
 		RunE:  initValidatorManager,
-		Args:  cobrautils.ExactArgs(1),
+		Args:  cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &validatorManagerFlags.Network, true, networkoptions.DefaultSupportedNetworkOptions)
 	validatorManagerFlags.PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
@@ -82,9 +82,24 @@ func newInitValidatorManagerCmd() *cobra.Command {
 }
 
 func initValidatorManager(_ *cobra.Command, args []string) error {
-	blockchainName := args[0]
+	blockchainName := ""
+	var sc models.Sidecar
+	networkOption := networkoptions.DefaultSupportedNetworkOptions
+
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
+	}
+	if len(args) == 1 {
+		blockchainName = args[0]
+		//_, err := ValidateSubnetNameAndGetChains([]string{blockchainName})
+		//if err != nil {
+		//	return err
+		//}
+		sc, err := app.LoadSidecar(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
+		}
+		networkOption = networkoptions.GetNetworkFromSidecar(sc, networkOption)
 	}
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
@@ -92,7 +107,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		validatorManagerFlags.Network,
 		true,
 		false,
-		networkoptions.DefaultSupportedNetworkOptions,
+		networkOption,
 		"",
 	)
 	if err != nil {
@@ -101,6 +116,35 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
+	//if len(args) == 0 {
+	//	if rpcURL == "" {
+	//		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+	//		if err != nil {
+	//			return err
+	//		}
+	//	}
+	//	sc, err = importL1(blockchainIDStr, rpcURL, network)
+	//	if err != nil {
+	//		return err
+	//	}
+	//}
+	subnetID, _ := ids.FromString("m1T2ePf8QE2hhjo4N1Jt1Pn2khX3wTUnefJqPrsigCQNCQR6Y")
+	fmt.Printf("subnetID %s \n", subnetID)
+	subnetInfo, err := blockchain.GetSubnet(subnetID, network)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("obtained subnetInfo %s \n", subnetInfo)
+	// Get NodeIDs of all validators on the subnet
+	validators, err := blockchain.GetSubnetValidators(subnetID, network)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("obtained validators %s \n", validators)
+
+	//if subnetInfo.IsPermissioned {
+	//	return models.Sidecar{}, fmt.Errorf("unable to import non sovereign Subnets")
+	//}
 	if validatorManagerFlags.rpcEndpoint == "" {
 		validatorManagerFlags.rpcEndpoint, _, err = contract.GetBlockchainEndpoints(
 			app,
@@ -139,10 +183,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to load sidecar: %w", err)
-	}
+
 	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
@@ -172,11 +213,11 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	subnetID, err := contract.GetSubnetID(
-		app,
-		network,
-		chainSpec,
-	)
+	//subnetID, err := contract.GetSubnetID(
+	//	app,
+	//	network,
+	//	chainSpec,
+	//)
 	if err != nil {
 		return err
 	}

@@ -146,10 +146,20 @@ func GetBlockchainTimestamp(network models.Network) (time.Time, error) {
 
 func GetSubnet(subnetID ids.ID, network models.Network) (platformvm.GetSubnetClientResponse, error) {
 	api := network.Endpoint
+	fmt.Printf("GetSubnet api %s \n", api)
 	pClient := platformvm.NewClient(api)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
 	return pClient.GetSubnet(ctx, subnetID)
+}
+
+func GetSubnetValidators(subnetID ids.ID, network models.Network) ([]platformvm.ClientPermissionlessValidator, error) {
+	api := network.Endpoint
+	pClient := platformvm.NewClient(api)
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+
+	return pClient.GetCurrentValidators(ctx, subnetID, nil)
 }
 
 func GetSubnetIDFromBlockchainID(blockchainID ids.ID, network models.Network) (ids.ID, error) {
