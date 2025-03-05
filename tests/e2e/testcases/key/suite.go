@@ -31,9 +31,9 @@ var _ = ginkgo.Describe("[Key]", func() {
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		os.Remove(outputKey)
-		//err = utils.DeleteKey(keyName2)
-		//gomega.Expect(err).Should(gomega.BeNil())
-		//os.Remove(outputKeywith0x)
+		err = utils.DeleteKey(keyName2)
+		gomega.Expect(err).Should(gomega.BeNil())
+		os.Remove(outputKeywith0x)
 	})
 
 	ginkgo.It("can create a new key", func() {

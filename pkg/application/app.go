@@ -484,20 +484,17 @@ func (app *Avalanche) CopyVMBinary(inputFilename string, blockchainName string) 
 }
 
 func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
-	fmt.Printf("we are CopyKeyFile \n")
 	keyBytes, err := os.ReadFile(inputFilename)
 	if err != nil {
 		return err
 	}
 	keyStr := string(keyBytes)
 	keyStr = strings.TrimSpace(keyStr)
-	fmt.Printf("obtained keyStr %s \n", keyStr)
 	if strings.HasPrefix(keyStr, "0x") {
 		keyStr = keyStr[2:]
 	}
-	fmt.Printf("obtained keyStr after trim %s \n", keyStr)
 	keyPath := app.GetKeyPath(keyName)
-	return os.WriteFile(keyPath, keyBytes, constants.WriteReadReadPerms)
+	return os.WriteFile(keyPath, []byte(keyStr), constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) HasSubnetEVMGenesis(blockchainName string) (bool, error, error) {
