@@ -1,14 +1,15 @@
 module github.com/ava-labs/avalanche-cli
 
 go 1.22.10
+toolchain go1.23.7
 
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20250219173912-dbb9afce58c1
-	github.com/ava-labs/avalanchego v1.12.3-0.20250131150857-54ad8e645d65
-	github.com/ava-labs/coreth v0.14.1-rc.1
+	github.com/ava-labs/avalanchego v1.12.3-0.20250218154446-f1ec9a13b90a
+	github.com/ava-labs/coreth v0.14.1-rc.1.0.20250217192834-6060a4a6a6d3
 	github.com/ava-labs/icm-services v1.4.1-0.20250207174027-616890e0c1ca
-	github.com/ava-labs/subnet-evm v0.7.1
+	github.com/ava-labs/subnet-evm v0.7.2
 	github.com/aws/aws-sdk-go-v2 v1.36.1
 	github.com/aws/aws-sdk-go-v2/config v1.29.6
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.200.0
