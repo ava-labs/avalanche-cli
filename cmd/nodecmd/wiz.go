@@ -274,18 +274,11 @@ func wiz(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	sc, err := app.LoadSidecar(subnetName)
-	if err != nil {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser(logging.Green.Wrap("Checking subnet compatibility"))
+	ux.Logger.PrintToUser("")
+	if err := checkRPCCompatibility(clusterName, subnetName); err != nil {
 		return err
-	}
-
-	if sc.VM != models.CustomVM {
-		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser(logging.Green.Wrap("Checking subnet compatibility"))
-		ux.Logger.PrintToUser("")
-		if err := checkRPCCompatibility(clusterName, subnetName); err != nil {
-			return err
-		}
 	}
 
 	ux.Logger.PrintToUser("")
@@ -311,7 +304,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	}
 
 	// load sidecar one more time to get deployed subnet id
-	sc, err = app.LoadSidecar(subnetName)
+	sc, err := app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
 	}
