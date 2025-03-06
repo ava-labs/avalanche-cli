@@ -25,7 +25,6 @@ var (
 
 func createKey(_ *cobra.Command, args []string) error {
 	keyName := args[0]
-
 	if match, _ := regexp.MatchString("\\s", keyName); match {
 		return errors.New("key name contains whitespace")
 	}
