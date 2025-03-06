@@ -309,6 +309,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("obtained network name %s \n", network.Name())
 	subnetID := sc.Networks[network.Name()].SubnetID
 	if subnetID == ids.Empty {
 		return constants.ErrNoSubnetID
