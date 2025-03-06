@@ -234,7 +234,6 @@ func createEC2Instances(ec2Svc map[string]*awsAPI.AwsCloud,
 			// delete existing key pair on AWS console and download the newly created key pair file
 			// in .ssh dir (will overwrite existing file in .ssh dir)
 			if keyPairExists {
-				fmt.Printf("we are removing keypair %s, %s, %s, %s \n", instanceIDs, elasticIPs, sshCertPath, keyPairName)
 				if err := ec2Svc[region].DeleteKeyPair(regionConf[region].Prefix); err != nil {
 					return instanceIDs, elasticIPs, sshCertPath, keyPairName, fmt.Errorf("unable to delete existing key pair %s in AWS console due to %w", regionConf[region].Prefix, err)
 				}
