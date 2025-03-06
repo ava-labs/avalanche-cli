@@ -309,9 +309,8 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("obtained network name %s \n", network.Name())
-	fmt.Printf("sidecar %s \n", sc)
-	fmt.Printf("subnetname %s \n", sc)
+
+	// load sidecar one more time to get deployed subnet id
 	sc, err = app.LoadSidecar(subnetName)
 	if err != nil {
 		return err
