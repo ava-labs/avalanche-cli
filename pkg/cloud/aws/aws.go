@@ -446,6 +446,7 @@ func (c *AwsCloud) CreateAndDownloadKeyPair(keyName string, privateKeyFilePath s
 		return err
 	}
 	privateKeyMaterial := *createKeyPairOutput.KeyMaterial
+	fmt.Printf("we are writing keypair %s \n", privateKeyFilePath)
 	err = os.WriteFile(privateKeyFilePath, []byte(privateKeyMaterial), 0o600)
 	if err != nil {
 		return err
