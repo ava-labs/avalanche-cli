@@ -44,7 +44,7 @@ func ComposeSSHSetupNode(
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
-	ux.Logger.Info("avalancheCLI folder structure created on remote host %s after %s", folderStructure, time.Since(startTime))
+	ux.Logger.Info("avalancheCLI folder structure created on remote host %s after %s ", folderStructure, time.Since(startTime))
 
 	avagoDockerImage := fmt.Sprintf("%s:%s", constants.AvalancheGoDockerImage, avalancheGoVersion)
 	ux.Logger.Info("Preparing AvalancheGo Docker image %s on %s[%s]", avagoDockerImage, host.NodeID, host.IP)

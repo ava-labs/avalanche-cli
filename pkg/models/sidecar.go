@@ -50,6 +50,7 @@ type Sidecar struct {
 	ProxyContractOwner    string
 	// Subnet defaults to Sovereign post ACP-77
 	Sovereign bool
+	UseACP99  bool
 }
 
 func (sc Sidecar) GetVMID() (string, error) {
