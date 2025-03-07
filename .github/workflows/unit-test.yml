@@ -32,3 +32,7 @@ jobs:
           scripts/unit_test.sh
         env:
           CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
+
+      - name: Check Code Coverage
+        run: |
+          scripts/check_coverage_unit_test.sh
