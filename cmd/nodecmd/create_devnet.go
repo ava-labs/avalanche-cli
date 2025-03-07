@@ -6,12 +6,15 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 
@@ -27,7 +30,6 @@ import (
 	"github.com/ava-labs/avalanchego/config"
 	avago_upgrade "github.com/ava-labs/avalanchego/upgrade"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -48,8 +50,23 @@ const (
 var upgradeBytes []byte
 
 func generateCustomCchainGenesis() ([]byte, error) {
+	chainConfig := &coreth_params.ChainConfig{
+		ChainID:             coreth_params.AvalancheLocalChainID,
+		HomesteadBlock:      big.NewInt(0),
+		DAOForkBlock:        big.NewInt(0),
+		DAOForkSupport:      true,
+		EIP150Block:         big.NewInt(0),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		IstanbulBlock:       big.NewInt(0),
+		MuirGlacierBlock:    big.NewInt(0),
+		NetworkUpgrades:     coreth_params.GetNetworkUpgrades(avago_upgrade.GetConfig(avago_constants.LocalID)),
+	}
 	cChainGenesisMap := map[string]interface{}{}
-	cChainGenesisMap["config"] = coreth_params.GetChainConfig(avago_upgrade.GetConfig(avago_constants.LocalID), coreth_params.AvalancheLocalChainID)
+	cChainGenesisMap["config"] = chainConfig
 	cChainGenesisMap["nonce"] = hexa0Str
 	cChainGenesisMap["timestamp"] = hexa0Str
 	cChainGenesisMap["extraData"] = "0x00"
@@ -95,11 +112,14 @@ func generateCustomGenesis(
 		if err != nil {
 			return nil, err
 		}
-		blsSk, err := bls.SecretKeyFromBytes(blsKey)
+		blsSk, err := localsigner.FromBytes(blsKey)
 		if err != nil {
 			return nil, err
 		}
-		p := signer.NewProofOfPossession(blsSk)
+		p, err := signer.NewProofOfPossession(blsSk)
+		if err != nil {
+			return nil, err
+		}
 		pk, err := formatting.Encode(formatting.HexNC, p.PublicKey[:])
 		if err != nil {
 			return nil, err
