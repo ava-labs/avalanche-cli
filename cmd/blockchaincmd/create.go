@@ -201,7 +201,9 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	if vmFile != "" || customVMRepoURL != "" || customVMBranch != "" || customVMBuildScript != "" {
 		createFlags.useCustomVM = true
 	}
-
+	if createFlags.useCustomVM {
+		sovereign = false
+	}
 	// vm type exclusiveness
 	if !flags.EnsureMutuallyExclusive([]bool{createFlags.useSubnetEvm, createFlags.useCustomVM}) {
 		return errors.New("flags --evm,--custom are mutually exclusive")

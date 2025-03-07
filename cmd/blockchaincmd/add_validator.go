@@ -617,6 +617,9 @@ func CallAddValidatorNonSOV(
 		useDefaultDuration = true
 		useDefaultStartTime = true
 		useDefaultWeight = true
+		duration = 0
+		startTimeStr = ""
+		weight = 0
 	}
 
 	if useDefaultDuration && duration != 0 {
