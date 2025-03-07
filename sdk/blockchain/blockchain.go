@@ -37,11 +37,12 @@ import (
 )
 
 var (
-	errMissingSubnetID            = fmt.Errorf("missing Subnet ID")
-	errMissingBlockchainID        = fmt.Errorf("missing Blockchain ID")
-	errMissingRPC                 = fmt.Errorf("missing RPC URL")
-	errMissingBootstrapValidators = fmt.Errorf("missing bootstrap validators")
-	errMissingOwnerAddress        = fmt.Errorf("missing Owner Address")
+	errMissingSubnetID                    = fmt.Errorf("missing Subnet ID")
+	errMissingBlockchainID                = fmt.Errorf("missing Blockchain ID")
+	errMissingRPC                         = fmt.Errorf("missing RPC URL")
+	errMissingBootstrapValidators         = fmt.Errorf("missing bootstrap validators")
+	errMissingOwnerAddress                = fmt.Errorf("missing Owner Address")
+	errUnableToInitializeValidatorManager = fmt.Errorf("unable to initialize Validator Manager")
 )
 
 type SubnetParams struct {
@@ -337,12 +338,12 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 	return tx.ID(), issueTxErr
 }
 
-// InitializeProofOfAuthority setups PoA manager after a successful execution of
+// InitializeValidatorManager setups Validator manager after a successful execution of
 // ConvertSubnetToL1Tx on P-Chain
 // needs the list of validators for that tx,
 // [convertSubnetValidators], together with an evm [ownerAddress]
-// to set as the owner of the PoA manager
-func (c *Subnet) InitializeProofOfAuthority(
+// to set as the owner of the validator manager
+func (c *Subnet) InitializeValidatorManager(
 	ctx context.Context,
 	network models.Network,
 	privateKey string,
@@ -352,23 +353,23 @@ func (c *Subnet) InitializeProofOfAuthority(
 	validatorManagerAddressStr string,
 ) error {
 	if c.SubnetID == ids.Empty {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
+		return fmt.Errorf("%w: %w", errUnableToInitializeValidatorManager, errMissingSubnetID)
 	}
 
 	if c.BlockchainID == ids.Empty {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBlockchainID)
+		return fmt.Errorf("%w: %w", errUnableToInitializeValidatorManager, errMissingBlockchainID)
 	}
 
 	if c.RPC == "" {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingRPC)
+		return fmt.Errorf("%w: %w", errUnableToInitializeValidatorManager, errMissingRPC)
 	}
 
 	if c.OwnerAddress == nil {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingOwnerAddress)
+		return fmt.Errorf("%w: %w", errUnableToInitializeValidatorManager, errMissingOwnerAddress)
 	}
 
 	if len(c.BootstrapValidators) == 0 {
-		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBootstrapValidators)
+		return fmt.Errorf("%w: %w", errUnableToInitializeValidatorManager, errMissingBootstrapValidators)
 	}
 
 	if err := evm.SetupProposerVM(
@@ -378,7 +379,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
-	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+	tx, _, err := validatormanager.InitializeValidatorManager(
 		c.RPC,
 		managerAddress,
 		privateKey,
@@ -387,9 +388,9 @@ func (c *Subnet) InitializeProofOfAuthority(
 	)
 	if err != nil {
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
-			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
+			return evm.TransactionError(tx, err, "failure initializing validator manager")
 		}
-		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
+		ux.Logger.PrintToUser("Warning: the validator manager contract is already initialized.")
 	}
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
@@ -418,7 +419,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		subnetConversionSignedMessage,
 	)
 	if err != nil {
-		return evm.TransactionError(tx, err, "failure initializing validators set on poa manager")
+		return evm.TransactionError(tx, err, "failure initializing validators set")
 	}
 
 	return nil
