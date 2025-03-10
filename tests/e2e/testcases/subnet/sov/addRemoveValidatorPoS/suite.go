@@ -44,6 +44,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 
 	ginkgo.It("Can create a local node connected to Etna Local Network", func() {
 		output, err := commands.CreateLocalEtnaNode(
+			avagoVersion,
 			utils.TestLocalNodeName,
 			7,
 		)

@@ -86,6 +86,7 @@ func CreateEtnaSubnetEvmConfig(
 }
 
 func CreateLocalEtnaNode(
+	avagoVersion string,
 	clusterName string,
 	numNodes int,
 ) (string, error) {
@@ -98,6 +99,8 @@ func CreateLocalEtnaNode(
 		"--local",
 		"--num-nodes",
 		fmt.Sprintf("%d", numNodes),
+		"--custom-avalanchego-version",
+		avagoVersion,
 		"--"+constants.SkipUpdateFlag,
 	)
 	fmt.Println(cmd)
