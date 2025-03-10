@@ -394,7 +394,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
 	}
 
-	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
 		ctx,
 		network,
 		aggregatorLogger,
@@ -456,7 +456,7 @@ func (c *Subnet) InitializeProofOfStake(
 		}
 		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
 	}
-	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetConversionWarpMessage(
+	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
 		ctx,
 		network,
 		aggregatorLogger,

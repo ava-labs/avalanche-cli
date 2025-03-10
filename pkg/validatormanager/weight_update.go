@@ -105,7 +105,7 @@ func InitValidatorWeightChange(
 
 	var unsignedMessage *warp.UnsignedMessage
 	if initiateTxHash != "" {
-		unsignedMessage, err = GetWeightMessageFromTx(
+		unsignedMessage, err = GetL1ValidatorWeightMessageFromTx(
 			rpcURL,
 			validationID,
 			weight,
@@ -117,7 +117,7 @@ func InitValidatorWeightChange(
 	}
 
 	if unsignedMessage == nil {
-		unsignedMessage, err = SearchForWeightMessage(rpcURL, validationID, weight)
+		unsignedMessage, err = SearchForL1ValidatorWeightMessage(rpcURL, validationID, weight)
 		if err != nil {
 			printFunc(logging.Red.Wrap("Failure checking for warp messages of previous operations: %s. Proceeding."), err)
 		}
@@ -398,7 +398,7 @@ func GetPChainL1ValidatorWeightMessage(
 	return signatureAggregator.Sign(unsignedMessage, nil)
 }
 
-func GetWeightMessageFromTx(
+func GetL1ValidatorWeightMessageFromTx(
 	rpcURL string,
 	validationID ids.ID,
 	weight uint64,
@@ -430,7 +430,7 @@ func GetWeightMessageFromTx(
 	return nil, fmt.Errorf("weight message not found on tx %s", txHash)
 }
 
-func SearchForWeightMessage(
+func SearchForL1ValidatorWeightMessage(
 	rpcURL string,
 	validationID ids.ID,
 	weight uint64,

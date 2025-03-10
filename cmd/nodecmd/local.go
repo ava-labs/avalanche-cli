@@ -574,6 +574,7 @@ func addAsValidator(network models.Network,
 		time.Duration(minimumStakeDuration)*time.Second,
 		validatorManagerAddressStr,
 		useACP99,
+		"",
 	)
 	if err != nil {
 		return err

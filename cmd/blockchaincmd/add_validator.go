@@ -128,6 +128,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-validator-manager-owner", false, "validator manager owner is external, make hex dump of ech evm transactions, so they can be signed in a separate flow")
+	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 
 	return cmd
 }
@@ -566,6 +567,7 @@ func CallAddValidator(
 		duration,
 		validatorManagerAddress,
 		sc.UseACP99,
+		initiateTxHash,
 	)
 	if err != nil {
 		return err

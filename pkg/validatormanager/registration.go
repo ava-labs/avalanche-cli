@@ -174,7 +174,7 @@ func InitializeValidatorRegistrationPoA(
 	)
 }
 
-func GetSubnetValidatorRegistrationMessage(
+func GetRegisterL1ValidatorMessage(
 	ctx context.Context,
 	rpcURL string,
 	network models.Network,
@@ -192,61 +192,82 @@ func GetSubnetValidatorRegistrationMessage(
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
 	alreadyInitialized bool,
+	initiateTxHash string,
+	registerSubnetValidatorUnsignedMessage *warp.UnsignedMessage,
 ) (*warp.Message, ids.ID, error) {
 	var (
-		registerSubnetValidatorUnsignedMessage *warp.UnsignedMessage
-		validationID                           ids.ID
-		err                                    error
+		validationID ids.ID
+		err          error
 	)
-	if alreadyInitialized {
-		validationID, err = validator.GetRegisteredValidator(
-			rpcURL,
-			managerAddress,
-			nodeID,
-		)
-		if err != nil {
-			return nil, ids.Empty, err
-		}
-		unsignedMessageBytes, err := GetRegistrationMessage(
-			rpcURL,
-			validationID,
-		)
-		if err != nil {
-			return nil, ids.Empty, err
-		}
-		registerSubnetValidatorUnsignedMessage, err = warp.ParseUnsignedMessage(unsignedMessageBytes)
-		if err != nil {
-			return nil, ids.Empty, err
+	if registerSubnetValidatorUnsignedMessage == nil {
+		if alreadyInitialized {
+			validationID, err = validator.GetRegisteredValidator(
+				rpcURL,
+				managerAddress,
+				nodeID,
+			)
+			if err != nil {
+				return nil, ids.Empty, err
+			}
+			if initiateTxHash != "" {
+				registerSubnetValidatorUnsignedMessage, err = GetRegisterL1ValidatorMessageFromTx(
+					rpcURL,
+					validationID,
+					initiateTxHash,
+				)
+				if err != nil {
+					return nil, ids.Empty, err
+				}
+			} else {
+				registerSubnetValidatorUnsignedMessage, err = SearchForRegisterL1ValidatorMessage(
+					rpcURL,
+					validationID,
+				)
+				if err != nil {
+					return nil, ids.Empty, err
+				}
+			}
+		} else {
+			addressedCallPayload, err := warpMessage.NewRegisterL1Validator(
+				subnetID,
+				nodeID,
+				blsPublicKey,
+				expiry,
+				balanceOwners,
+				disableOwners,
+				weight,
+			)
+			if err != nil {
+				return nil, ids.Empty, err
+			}
+			validationID = addressedCallPayload.ValidationID()
+			registerSubnetValidatorAddressedCall, err := warpPayload.NewAddressedCall(
+				managerAddress.Bytes(),
+				addressedCallPayload.Bytes(),
+			)
+			if err != nil {
+				return nil, ids.Empty, err
+			}
+			registerSubnetValidatorUnsignedMessage, err = warp.NewUnsignedMessage(
+				network.ID,
+				blockchainID,
+				registerSubnetValidatorAddressedCall.Bytes(),
+			)
+			if err != nil {
+				return nil, ids.Empty, err
+			}
 		}
 	} else {
-		addressedCallPayload, err := warpMessage.NewRegisterL1Validator(
-			subnetID,
-			nodeID,
-			blsPublicKey,
-			expiry,
-			balanceOwners,
-			disableOwners,
-			weight,
-		)
+		payload := registerSubnetValidatorUnsignedMessage.Payload
+		addressedCall, err := warpPayload.ParseAddressedCall(payload)
 		if err != nil {
-			return nil, ids.Empty, err
+			return nil, ids.Empty, fmt.Errorf("unexpected format on given registration warp message: %w", err)
 		}
-		validationID = addressedCallPayload.ValidationID()
-		registerSubnetValidatorAddressedCall, err := warpPayload.NewAddressedCall(
-			managerAddress.Bytes(),
-			addressedCallPayload.Bytes(),
-		)
+		reg, err := warpMessage.ParseRegisterL1Validator(addressedCall.Payload)
 		if err != nil {
-			return nil, ids.Empty, err
+			return nil, ids.Empty, fmt.Errorf("unexpected format on given registration warp message: %w", err)
 		}
-		registerSubnetValidatorUnsignedMessage, err = warp.NewUnsignedMessage(
-			network.ID,
-			blockchainID,
-			registerSubnetValidatorAddressedCall.Bytes(),
-		)
-		if err != nil {
-			return nil, ids.Empty, err
-		}
+		validationID = reg.ValidationID()
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		ctx,
@@ -285,7 +306,7 @@ func PoSWeightToValue(
 	return value, nil
 }
 
-func GetPChainSubnetValidatorRegistrationWarpMessage(
+func GetPChainL1ValidatorRegistrationMessage(
 	ctx context.Context,
 	network models.Network,
 	rpcURL string,
@@ -345,7 +366,7 @@ func CompleteValidatorRegistration(
 	generateRawTxOnly bool,
 	ownerAddress common.Address,
 	privateKey string, // not need to be owner atm
-	subnetValidatorRegistrationSignedMessage *warp.Message,
+	l1ValidatorRegistrationSignedMessage *warp.Message,
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
@@ -353,7 +374,7 @@ func CompleteValidatorRegistration(
 		ownerAddress,
 		privateKey,
 		managerAddress,
-		subnetValidatorRegistrationSignedMessage,
+		l1ValidatorRegistrationSignedMessage,
 		big.NewInt(0),
 		"complete validator registration",
 		validatormanager.ErrorSignatureToError,
@@ -380,11 +401,12 @@ func InitValidatorRegistration(
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
-	initWithPos bool,
+	isPos bool,
 	delegationFee uint16,
 	stakeDuration time.Duration,
 	validatorManagerAddressStr string,
 	useACP99 bool,
+	initiateTxHash string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -404,71 +426,85 @@ func InitValidatorRegistration(
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
-	alreadyInitialized := false
-	if initWithPos {
-		stakeAmount, err := PoSWeightToValue(
-			rpcURL,
-			managerAddress,
-			weight,
-		)
-		if err != nil {
-			return nil, ids.Empty, nil, fmt.Errorf("failure obtaining value from weight: %w", err)
-		}
-		ux.Logger.PrintLineSeparator()
-		ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
-		ux.Logger.PrintToUser("Using RPC URL: %s", rpcURL)
-		ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount)
-		ux.Logger.PrintLineSeparator()
-		tx, _, err := InitializeValidatorRegistrationPoSNative(
-			rpcURL,
-			managerAddress,
-			ownerPrivateKey,
-			nodeID,
-			blsPublicKey,
-			expiry,
-			balanceOwners,
-			disableOwners,
-			delegationFee,
-			stakeDuration,
-			stakeAmount,
-		)
-		if err != nil {
-			if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
-				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
+	var receipt *types.Receipt
+	alreadyInitialized := initiateTxHash != ""
+	if !alreadyInitialized {
+		var tx *types.Transaction
+		if isPos {
+			stakeAmount, err := PoSWeightToValue(
+				rpcURL,
+				managerAddress,
+				weight,
+			)
+			if err != nil {
+				return nil, ids.Empty, nil, fmt.Errorf("failure obtaining value from weight: %w", err)
 			}
-			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
-			alreadyInitialized = true
+			ux.Logger.PrintLineSeparator()
+			ux.Logger.PrintToUser("Initializing validator registration with PoS validator manager")
+			ux.Logger.PrintToUser("Using RPC URL: %s", rpcURL)
+			ux.Logger.PrintToUser("NodeID: %s staking %s tokens", nodeID.String(), stakeAmount)
+			ux.Logger.PrintLineSeparator()
+			tx, receipt, err = InitializeValidatorRegistrationPoSNative(
+				rpcURL,
+				managerAddress,
+				ownerPrivateKey,
+				nodeID,
+				blsPublicKey,
+				expiry,
+				balanceOwners,
+				disableOwners,
+				delegationFee,
+				stakeDuration,
+				stakeAmount,
+			)
+			if err != nil {
+				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
+					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
+				}
+				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				alreadyInitialized = true
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
+		} else {
+			managerAddress = common.HexToAddress(validatorManagerAddressStr)
+			tx, receipt, err = InitializeValidatorRegistrationPoA(
+				rpcURL,
+				managerAddress,
+				generateRawTxOnly,
+				ownerAddress,
+				ownerPrivateKey,
+				nodeID,
+				blsPublicKey,
+				expiry,
+				balanceOwners,
+				disableOwners,
+				weight,
+				useACP99,
+			)
+			if err != nil {
+				if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
+					return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
+				}
+				ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
+				alreadyInitialized = true
+			} else if generateRawTxOnly {
+				return nil, ids.Empty, tx, nil
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
 		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Validator staked amount: %d", stakeAmount))
 	} else {
-		managerAddress = common.HexToAddress(validatorManagerAddressStr)
-		tx, _, err := InitializeValidatorRegistrationPoA(
-			rpcURL,
-			managerAddress,
-			generateRawTxOnly,
-			ownerAddress,
-			ownerPrivateKey,
-			nodeID,
-			blsPublicKey,
-			expiry,
-			balanceOwners,
-			disableOwners,
-			weight,
-			useACP99,
-		)
-		if err != nil {
-			if !errors.Is(err, validatormanager.ErrNodeAlreadyRegistered) {
-				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator registration")
-			}
-			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
-			alreadyInitialized = true
-		} else if generateRawTxOnly {
-			return nil, ids.Empty, tx, nil
-		}
-		ux.Logger.PrintToUser(fmt.Sprintf("Validator weight: %d", weight))
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator registration was already initialized. Proceeding to the next step"))
 	}
 
-	signedMessage, validationID, err := GetSubnetValidatorRegistrationMessage(
+	var unsignedMessage *warp.UnsignedMessage
+	if receipt != nil {
+		unsignedMessage, err = GetWarpMessageFromLogs(receipt.Logs)
+		if err != nil {
+			return nil, ids.Empty, nil, err
+		}
+	}
+
+	signedMessage, validationID, err := GetRegisterL1ValidatorMessage(
 		ctx,
 		rpcURL,
 		network,
@@ -486,6 +522,8 @@ func InitValidatorRegistration(
 		disableOwners,
 		weight,
 		alreadyInitialized,
+		initiateTxHash,
+		unsignedMessage,
 	)
 
 	return signedMessage, validationID, nil, err
@@ -515,7 +553,7 @@ func FinishValidatorRegistration(
 		return nil, err
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
-	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
 		rpcURL,
@@ -560,10 +598,10 @@ func FinishValidatorRegistration(
 	return nil, nil
 }
 
-func GetRegistrationMessage(
+func SearchForRegisterL1ValidatorMessage(
 	rpcURL string,
 	validationID ids.ID,
-) ([]byte, error) {
+) (*warp.UnsignedMessage, error) {
 	client, err := evm.GetClient(rpcURL)
 	if err != nil {
 		return nil, err
@@ -599,7 +637,7 @@ func GetRegistrationMessage(
 				reg, err := warpMessage.ParseRegisterL1Validator(addressedCall.Payload)
 				if err == nil {
 					if reg.ValidationID() == validationID {
-						return msg.Bytes(), nil
+						return msg, nil
 					}
 				}
 			}
@@ -628,18 +666,14 @@ func GetRegistrationJustification(
 			return proto.Marshal(&justification)
 		}
 	}
-	msg, err := GetRegistrationMessage(
+	msg, err := SearchForRegisterL1ValidatorMessage(
 		rpcURL,
 		validationID,
 	)
 	if err != nil {
 		return nil, err
 	}
-	parsed, err := warp.ParseUnsignedMessage(msg)
-	if err != nil {
-		return nil, err
-	}
-	payload := parsed.Payload
+	payload := msg.Payload
 	addressedCall, err := warpPayload.ParseAddressedCall(payload)
 	if err != nil {
 		return nil, err
@@ -650,4 +684,35 @@ func GetRegistrationJustification(
 		},
 	}
 	return proto.Marshal(&justification)
+}
+
+func GetRegisterL1ValidatorMessageFromTx(
+	rpcURL string,
+	validationID ids.ID,
+	txHash string,
+) (*warp.UnsignedMessage, error) {
+	client, err := evm.GetClient(rpcURL)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := utils.GetAPILargeContext()
+	defer cancel()
+	receipt, err := client.TransactionReceipt(ctx, common.HexToHash(txHash))
+	if err != nil {
+		return nil, err
+	}
+	msgs := GetWarpMessagesFromLogs(receipt.Logs)
+	for _, msg := range msgs {
+		payload := msg.Payload
+		addressedCall, err := warpPayload.ParseAddressedCall(payload)
+		if err == nil {
+			reg, err := warpMessage.ParseRegisterL1Validator(addressedCall.Payload)
+			if err == nil {
+				if reg.ValidationID() == validationID {
+					return msg, nil
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("register validator message not found on tx %s", txHash)
 }

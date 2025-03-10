@@ -164,6 +164,7 @@ func InitValidatorRemoval(
 	force bool,
 	validatorManagerAddressStr string,
 	useACP99 bool,
+	initiateTxHash string,
 ) (*warp.Message, ids.ID, *types.Transaction, error) {
 	subnetID, err := contract.GetSubnetID(
 		app,
@@ -195,52 +196,70 @@ func InitValidatorRemoval(
 		return nil, ids.Empty, nil, fmt.Errorf("node %s is not a L1 validator", nodeID)
 	}
 
-	signedUptimeProof := &warp.Message{}
-	if isPoS {
-		if uptimeSec == 0 {
-			uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
-			if err != nil {
-				return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime data for nodeID: %s via %s ", nodeID, rpcURL)
-			}
-		}
-		ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
-		signedUptimeProof, err = GetUptimeProofMessage(
-			ctx,
-			network,
-			aggregatorLogger,
-			0,
-			aggregatorExtraPeerEndpoints,
-			subnetID,
-			blockchainID,
+	var unsignedMessage *warp.UnsignedMessage
+	if initiateTxHash != "" {
+		unsignedMessage, err = GetL1ValidatorWeightMessageFromTx(
+			rpcURL,
 			validationID,
-			uptimeSec,
+			0,
+			initiateTxHash,
 		)
 		if err != nil {
-			return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime proof")
+			return nil, ids.Empty, nil, err
 		}
-	}
-	tx, receipt, err := InitializeValidatorRemoval(
-		rpcURL,
-		managerAddress,
-		generateRawTxOnly,
-		ownerAddress,
-		ownerPrivateKey,
-		validationID,
-		isPoS,
-		signedUptimeProof, // is empty for non-PoS
-		force,
-		useACP99,
-	)
-	if err != nil {
-		if !errors.Is(err, validatormanager.ErrInvalidValidatorStatus) {
-			return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator removal")
-		}
-		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
-	} else if generateRawTxOnly {
-		return nil, ids.Empty, tx, nil
 	}
 
-	var unsignedMessage *warp.UnsignedMessage
+	var receipt *types.Receipt
+	if unsignedMessage == nil {
+		signedUptimeProof := &warp.Message{}
+		if isPoS {
+			if uptimeSec == 0 {
+				uptimeSec, err = utils.GetL1ValidatorUptimeSeconds(rpcURL, nodeID)
+				if err != nil {
+					return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime data for nodeID: %s via %s ", nodeID, rpcURL)
+				}
+			}
+			ux.Logger.PrintToUser("Using uptime: %ds", uptimeSec)
+			signedUptimeProof, err = GetUptimeProofMessage(
+				ctx,
+				network,
+				aggregatorLogger,
+				0,
+				aggregatorExtraPeerEndpoints,
+				subnetID,
+				blockchainID,
+				validationID,
+				uptimeSec,
+			)
+			if err != nil {
+				return nil, ids.Empty, nil, evm.TransactionError(nil, err, "failure getting uptime proof")
+			}
+		}
+		var tx *types.Transaction
+		tx, receipt, err = InitializeValidatorRemoval(
+			rpcURL,
+			managerAddress,
+			generateRawTxOnly,
+			ownerAddress,
+			ownerPrivateKey,
+			validationID,
+			isPoS,
+			signedUptimeProof, // is empty for non-PoS
+			force,
+			useACP99,
+		)
+		if err != nil {
+			if !errors.Is(err, validatormanager.ErrInvalidValidatorStatus) {
+				return nil, ids.Empty, nil, evm.TransactionError(tx, err, "failure initializing validator removal")
+			}
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
+		} else if generateRawTxOnly {
+			return nil, ids.Empty, tx, nil
+		}
+	} else {
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The validator removal process was already initialized. Proceeding to the next step"))
+	}
+
 	if receipt != nil {
 		unsignedMessage, err = GetWarpMessageFromLogs(receipt.Logs)
 		if err != nil {
@@ -338,7 +357,7 @@ func FinishValidatorRemoval(
 	if err != nil {
 		return nil, err
 	}
-	signedMessage, err := GetPChainSubnetValidatorRegistrationWarpMessage(
+	signedMessage, err := GetPChainL1ValidatorRegistrationMessage(
 		ctx,
 		network,
 		rpcURL,
