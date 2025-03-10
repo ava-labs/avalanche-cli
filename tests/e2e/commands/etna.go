@@ -31,7 +31,7 @@ func CreateEtnaSubnetEvmConfig(
 	subnetName string,
 	ewoqEVMAddress string,
 	subnetManagementType SubnetManagementType,
-) {
+) (string, string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -77,6 +77,12 @@ func CreateEtnaSubnetEvmConfig(
 	exists, err = utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// return binary versions for this conf
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
 func CreateLocalEtnaNode(

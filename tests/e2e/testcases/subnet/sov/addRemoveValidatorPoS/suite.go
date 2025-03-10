@@ -25,11 +25,12 @@ const (
 var (
 	blockchainID     string
 	localClusterUris []string
+	avagoVersion     string
 )
 
 var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
-		commands.CreateEtnaSubnetEvmConfig(
+		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
 			utils.SubnetName,
 			ewoqEVMAddress,
 			commands.PoS,
@@ -37,7 +38,7 @@ var _ = ginkgo.Describe("[Etna AddRemove Validator SOV PoS]", func() {
 	})
 
 	ginkgo.It("Can create an Etna Local Network", func() {
-		output := commands.StartNetwork()
+		output := commands.StartNetworkWithVersion(avagoVersion)
 		fmt.Println(output)
 	})
 
