@@ -279,14 +279,23 @@ func GetTxToMethodWithWarpMessage(
 		privateKey *ecdsa.PrivateKey
 		err        error
 	)
+	if privateKeyStr == "" && from == (common.Address{}) {
+		return nil, fmt.Errorf("from address and private key can't be both empty at GetTxToMethodWithWarpMessage")
+	}
+	if privateKeyStr != "" && from != (common.Address{}) {
+		return nil, fmt.Errorf("from address and private key can't be both defined at GetTxToMethodWithWarpMessage")
+	}
+	if !generateRawTxOnly && privateKeyStr == "" {
+		return nil, fmt.Errorf("from private key must be defined to be able to sign the tx at GetTxToMethodWithWarpMessage")
+	}
 	if privateKeyStr != "" {
 		privateKey, err = crypto.HexToECDSA(privateKeyStr)
 		if err != nil {
 			return nil, err
 		}
-	}
-	if from == (common.Address{}) {
-		from = crypto.PubkeyToAddress(privateKey.PublicKey)
+		if from == (common.Address{}) {
+			from = crypto.PubkeyToAddress(privateKey.PublicKey)
+		}
 	}
 	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, from.Hex())
 	if err != nil {

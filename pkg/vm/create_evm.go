@@ -130,16 +130,17 @@ func CreateEVMGenesis(
 	}
 	if params.UsePoAValidatorManager {
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
+		// valid for both ACP99 and v1.0.0
+		validatormanager.AddValidatorMessagesACP99ContractToAllocations(params.initialTokenAllocation)
 		if useACP99 {
-			validatormanager.AddValidatorMessagesACP99ContractToAllocations(params.initialTokenAllocation)
 			validatormanager.AddPoAValidatorManagerACP99ContractToAllocations(params.initialTokenAllocation)
 		} else {
-			validatormanager.AddValidatorMessagesContractToAllocations(params.initialTokenAllocation)
 			validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
 		}
 	} else if params.UsePoSValidatorManager {
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
-		validatormanager.AddValidatorMessagesContractToAllocations(params.initialTokenAllocation)
+		// valid for v1.0.0
+		validatormanager.AddValidatorMessagesACP99ContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddRewardCalculatorToAllocations(params.initialTokenAllocation, rewardBasisPoints)
 		params.enableNativeMinterPrecompile = true
 	}

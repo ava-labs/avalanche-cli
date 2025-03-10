@@ -20,20 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//go:embed deployed_validator_messages_bytecode_v1.0.0.txt
-var deployedValidatorMessagesBytecode []byte
-
-func AddValidatorMessagesContractToAllocations(
-	allocs core.GenesisAlloc,
-) {
-	deployedValidatorMessagesBytes := common.FromHex(strings.TrimSpace(string(deployedValidatorMessagesBytecode)))
-	allocs[common.HexToAddress(validatorManagerSDK.ValidatorMessagesContractAddress)] = core.GenesisAccount{
-		Balance: big.NewInt(0),
-		Code:    deployedValidatorMessagesBytes,
-		Nonce:   1,
-	}
-}
-
 //go:embed deployed_validator_messages_bytecode_acp99.txt
 var deployedValidatorMessagesACP99Bytecode []byte
 
