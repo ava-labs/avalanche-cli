@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/mod/semver"
+
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -182,6 +184,21 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		StakingSignerKeyPath: stakingTLSKeyPath,
 		StakingCertKeyPath:   stakingCertKeyPath,
 		StakingTLSKeyPath:    stakingTLSKeyPath,
+	}
+	// TODO: remove this check for releases above v1.8.7, once v1.13.0-fuji avalanchego is latest release
+	if globalNetworkFlags.UseFuji && useCustomAvalanchegoVersion == "" {
+		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		versionComparison := semver.Compare(constants.FujiAvalancheGoV113, latestAvagoVersion)
+		if versionComparison == 1 {
+			useCustomAvalanchegoVersion = constants.FujiAvalancheGoV113
+		}
 	}
 	if useCustomAvalanchegoVersion != "" {
 		latestAvagoPreReleaseVersion = false

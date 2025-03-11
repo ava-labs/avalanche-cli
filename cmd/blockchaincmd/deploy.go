@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"golang.org/x/mod/semver"
+
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -471,6 +473,22 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
+
+	if network.Kind == models.Fuji && userProvidedAvagoVersion == "" {
+		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		versionComparison := semver.Compare(constants.FujiAvalancheGoV113, latestAvagoVersion)
+		if versionComparison == 1 {
+			userProvidedAvagoVersion = constants.FujiAvalancheGoV113
+		}
+		return nil
+	}
 
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
