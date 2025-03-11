@@ -282,9 +282,6 @@ func GetTxToMethodWithWarpMessage(
 	if privateKeyStr == "" && from == (common.Address{}) {
 		return nil, fmt.Errorf("from address and private key can't be both empty at GetTxToMethodWithWarpMessage")
 	}
-	if privateKeyStr != "" && from != (common.Address{}) {
-		return nil, fmt.Errorf("from address and private key can't be both defined at GetTxToMethodWithWarpMessage")
-	}
 	if !generateRawTxOnly && privateKeyStr == "" {
 		return nil, fmt.Errorf("from private key must be defined to be able to sign the tx at GetTxToMethodWithWarpMessage")
 	}

@@ -313,9 +313,6 @@ func TxToMethod(
 	if privateKey == "" && from == (common.Address{}) {
 		return nil, nil, fmt.Errorf("from address and private key can't be both empty at TxToMethod")
 	}
-	if privateKey != "" && from != (common.Address{}) {
-		return nil, nil, fmt.Errorf("from address and private key can't be both defined at TxToMethod")
-	}
 	if !generateRawTxOnly && privateKey == "" {
 		return nil, nil, fmt.Errorf("from private key must be defined to be able to sign the tx at TxToMethod")
 	}
@@ -412,13 +409,10 @@ func TxToMethodWithWarpMessage(
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
 	if privateKey == "" && from == (common.Address{}) {
-		return nil, nil, fmt.Errorf("from address and private key can't be both empty at TxToMethod")
-	}
-	if privateKey != "" && from != (common.Address{}) {
-		return nil, nil, fmt.Errorf("from address and private key can't be both defined at TxToMethod")
+		return nil, nil, fmt.Errorf("from address and private key can't be both empty at TxToMethodWithWarpMessage")
 	}
 	if !generateRawTxOnly && privateKey == "" {
-		return nil, nil, fmt.Errorf("from private key must be defined to be able to sign the tx at TxToMethod")
+		return nil, nil, fmt.Errorf("from private key must be defined to be able to sign the tx at TxToMethodWithWarpMessage")
 	}
 	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, params...)
 	if err != nil {
