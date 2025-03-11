@@ -351,6 +351,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	useACP99 bool,
+	skipInitializeValidatorManager bool,
 ) error {
 	if c.SubnetID == ids.Empty {
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingSubnetID)
@@ -379,19 +380,22 @@ func (c *Subnet) InitializeProofOfAuthority(
 		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
-	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
-		c.RPC,
-		managerAddress,
-		privateKey,
-		c.SubnetID,
-		*c.OwnerAddress,
-		useACP99,
-	)
-	if err != nil {
-		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
-			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
+
+	if !skipInitializeValidatorManager {
+		tx, _, err := validatormanager.PoAValidatorManagerInitialize(
+			c.RPC,
+			managerAddress,
+			privateKey,
+			c.SubnetID,
+			*c.OwnerAddress,
+			useACP99,
+		)
+		if err != nil {
+			if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+				return evm.TransactionError(tx, err, "failure initializing poa validator manager")
+			}
+			ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
 		}
-		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
 	}
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
@@ -410,7 +414,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	tx, _, err = validatormanager.InitializeValidatorsSet(
+	tx, _, err := validatormanager.InitializeValidatorsSet(
 		c.RPC,
 		managerAddress,
 		privateKey,
@@ -435,6 +439,7 @@ func (c *Subnet) InitializeProofOfStake(
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
 	validatorManagerAddressStr string,
+	skipInitializeValidatorManager bool,
 ) error {
 	if err := evm.SetupProposerVM(
 		c.RPC,
@@ -443,19 +448,22 @@ func (c *Subnet) InitializeProofOfStake(
 		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
-	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
-		c.RPC,
-		managerAddress,
-		privateKey,
-		c.SubnetID,
-		posParams,
-	)
-	if err != nil {
-		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
-			return evm.TransactionError(tx, err, "failure initializing native PoS validator manager")
+	if !skipInitializeValidatorManager {
+		tx, _, err := validatormanager.PoSValidatorManagerInitialize(
+			c.RPC,
+			managerAddress,
+			privateKey,
+			c.SubnetID,
+			posParams,
+		)
+		if err != nil {
+			if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
+				return evm.TransactionError(tx, err, "failure initializing native PoS validator manager")
+			}
+			ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
 		}
-		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
 	}
+
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
 		ctx,
 		network,
@@ -472,7 +480,7 @@ func (c *Subnet) InitializeProofOfStake(
 		return fmt.Errorf("failure signing subnet conversion warp message: %w", err)
 	}
 
-	tx, _, err = validatormanager.InitializeValidatorsSet(
+	tx, _, err := validatormanager.InitializeValidatorsSet(
 		c.RPC,
 		managerAddress,
 		privateKey,
