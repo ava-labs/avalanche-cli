@@ -215,7 +215,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 
 		ctx, cancel := utils.GetSignatureAggregatorContext()
 		defer cancel()
-		err = subnetSDK.InitializeProofOfAuthority(ctx, network, k.PrivKeyHex(), extraAggregatorPeers, true, logging.NoLog{}, ProxyContractAddress, true)
+		err = subnetSDK.InitializeProofOfAuthority(ctx, network, k.PrivKeyHex(), extraAggregatorPeers, true, logging.NoLog{}, ProxyContractAddress, true, false)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })
