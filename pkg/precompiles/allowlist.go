@@ -19,6 +19,8 @@ func SetAdmin(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -38,6 +40,8 @@ func SetManager(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -57,6 +61,8 @@ func SetEnabled(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -76,6 +82,8 @@ func SetNone(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,

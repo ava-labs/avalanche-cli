@@ -20,13 +20,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//go:embed deployed_validator_messages_bytecode_v1.0.0.txt
-var deployedValidatorMessagesBytecode []byte
+//go:embed deployed_validator_messages_bytecode_acp99.txt
+var deployedValidatorMessagesACP99Bytecode []byte
 
-func AddValidatorMessagesContractToAllocations(
+func AddValidatorMessagesACP99ContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
-	deployedValidatorMessagesBytes := common.FromHex(strings.TrimSpace(string(deployedValidatorMessagesBytecode)))
+	deployedValidatorMessagesBytes := common.FromHex(strings.TrimSpace(string(deployedValidatorMessagesACP99Bytecode)))
 	allocs[common.HexToAddress(validatorManagerSDK.ValidatorMessagesContractAddress)] = core.GenesisAccount{
 		Balance: big.NewInt(0),
 		Code:    deployedValidatorMessagesBytes,
@@ -49,6 +49,22 @@ func AddPoAValidatorManagerContractToAllocations(
 	allocs core.GenesisAlloc,
 ) {
 	deployedPoaValidatorManagerString := strings.TrimSpace(string(deployedPoAValidatorManagerBytecode))
+	deployedPoaValidatorManagerString = fillValidatorMessagesAddressPlaceholder(deployedPoaValidatorManagerString)
+	deployedPoaValidatorManagerBytes := common.FromHex(deployedPoaValidatorManagerString)
+	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
+		Balance: big.NewInt(0),
+		Code:    deployedPoaValidatorManagerBytes,
+		Nonce:   1,
+	}
+}
+
+//go:embed deployed_validator_manager_bytecode_acp99.txt
+var deployedPoAValidatorManagerACP99Bytecode []byte
+
+func AddPoAValidatorManagerACP99ContractToAllocations(
+	allocs core.GenesisAlloc,
+) {
+	deployedPoaValidatorManagerString := strings.TrimSpace(string(deployedPoAValidatorManagerACP99Bytecode))
 	deployedPoaValidatorManagerString = fillValidatorMessagesAddressPlaceholder(deployedPoaValidatorManagerString)
 	deployedPoaValidatorManagerBytes := common.FromHex(deployedPoaValidatorManagerString)
 	allocs[common.HexToAddress(validatorManagerSDK.ValidatorContractAddress)] = core.GenesisAccount{
@@ -186,6 +202,7 @@ func SetupPoA(
 	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
+	useACP99 bool,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		ctx,
@@ -195,6 +212,7 @@ func SetupPoA(
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddressStr,
+		useACP99,
 	)
 }
 

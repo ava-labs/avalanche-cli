@@ -4,28 +4,40 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
-var newWeight uint64
+var (
+	newWeight      uint64
+	initiateTxHash string
+)
 
 // avalanche blockchain addValidator
 func newChangeWeightCmd() *cobra.Command {
@@ -47,6 +59,14 @@ The L1 has to be a Proof of Authority L1.`,
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
+	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
+	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
+	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
+	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
+	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
+	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
+	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 	return cmd
 }
 
@@ -163,31 +183,60 @@ func setWeight(_ *cobra.Command, args []string) error {
 	}
 
 	allowedChange := float64(totalWeight) * constants.MaxL1TotalWeightChange
-
-	if float64(validatorInfo.Weight) > allowedChange {
-		return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
+	allowedWeightFunction := func(v uint64) error {
+		delta := uint64(0)
+		if v > validatorInfo.Weight {
+			delta = v - validatorInfo.Weight
+		} else {
+			delta = validatorInfo.Weight - v
+		}
+		if delta > uint64(allowedChange) {
+			return fmt.Errorf("weight change %d exceeds max allowed weight change of %d", delta, uint64(allowedChange))
+		}
+		return nil
 	}
 
-	allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
+	if !sc.UseACP99 {
+		if float64(validatorInfo.Weight) > allowedChange {
+			return fmt.Errorf("can't make change: current validator weight %d exceeds max allowed weight change of %d", validatorInfo.Weight, uint64(allowedChange))
+		}
+		allowedChange = float64(totalWeight-validatorInfo.Weight) * constants.MaxL1TotalWeightChange
+		allowedWeightFunction = func(v uint64) error {
+			if v > uint64(allowedChange) {
+				return fmt.Errorf("new weight exceeds max allowed weight change of %d", uint64(allowedChange))
+			}
+			return nil
+		}
+	}
 
 	if newWeight == 0 {
 		ux.Logger.PrintToUser("Current validator weight is %d", validatorInfo.Weight)
 		newWeight, err = app.Prompt.CaptureWeight(
 			"What weight would you like to assign to the validator?",
-			func(v uint64) error {
-				if v > uint64(allowedChange) {
-					return fmt.Errorf("weight exceeds max allowed weight change of %d", uint64(allowedChange))
-				}
-				return nil
-			},
+			allowedWeightFunction,
 		)
 		if err != nil {
 			return err
 		}
 	}
 
-	if float64(newWeight) > allowedChange {
-		return fmt.Errorf("can't make change: desired validator weight %d exceeds max allowed weight change of %d", newWeight, uint64(allowedChange))
+	if err := allowedWeightFunction(newWeight); err != nil {
+		return err
+	}
+
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+
+	if sc.UseACP99 {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+		return changeWeightACP99(
+			deployer,
+			network,
+			blockchainName,
+			nodeID,
+			newWeight,
+		)
+	} else {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
 	publicKey, err = formatting.Encode(formatting.HexNC, bls.PublicKeyToCompressedBytes(validatorInfo.PublicKey))
@@ -201,8 +250,6 @@ func setWeight(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
-	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	var remainingBalanceOwnerAddr, disableOwnerAddr string
 	hrp := key.GetHRP(network.ID)
@@ -259,4 +306,150 @@ func setWeight(_ *cobra.Command, args []string) error {
 		disableOwnerAddr,
 		sc,
 	)
+}
+
+func changeWeightACP99(
+	deployer *subnet.PublicDeployer,
+	network models.Network,
+	blockchainName string,
+	nodeID ids.NodeID,
+	weight uint64,
+) error {
+	chainSpec := contract.ChainSpec{
+		BlockchainName: blockchainName,
+	}
+
+	sc, err := app.LoadSidecar(chainSpec.BlockchainName)
+	if err != nil {
+		return fmt.Errorf("failed to load sidecar: %w", err)
+	}
+
+	if validatorManagerOwner == "" {
+		validatorManagerOwner = sc.ValidatorManagerOwner
+	}
+
+	var ownerPrivateKey string
+	if !externalValidatorManagerOwner {
+		var ownerPrivateKeyFound bool
+		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
+			app,
+			network,
+			common.HexToAddress(validatorManagerOwner),
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		if !ownerPrivateKeyFound {
+			return fmt.Errorf("not private key found for Validator manager owner %s", validatorManagerOwner)
+		}
+	}
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator manager owner %s pays for the initialization of the validator's weight change (Blockchain gas token)"), validatorManagerOwner)
+
+	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
+		return fmt.Errorf("unable to find Validator Manager address")
+	}
+	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+
+	clusterName := sc.Networks[network.Name()].ClusterName
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
+	if err != nil {
+		return err
+	}
+	aggregatorLogger, err := utils.NewLogger(
+		constants.SignatureAggregatorLogName,
+		aggregatorLogLevel,
+		constants.DefaultAggregatorLogLevel,
+		app.GetAggregatorLogDir(clusterName),
+		aggregatorLogToStdout,
+		ux.Logger.PrintToUser,
+	)
+	if err != nil {
+		return err
+	}
+
+	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
+
+	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorWeightChange(
+		aggregatorCtx,
+		ux.Logger.PrintToUser,
+		app,
+		network,
+		rpcURL,
+		chainSpec,
+		externalValidatorManagerOwner,
+		validatorManagerOwner,
+		ownerPrivateKey,
+		nodeID,
+		extraAggregatorPeers,
+		aggregatorAllowPrivatePeers,
+		aggregatorLogger,
+		validatorManagerAddress,
+		weight,
+		initiateTxHash,
+	)
+	if err != nil {
+		return err
+	}
+	if rawTx != nil {
+		return evm.TxDump("Initializing Validator Weight Change", rawTx)
+	}
+
+	ux.Logger.PrintToUser("ValidationID: %s", validationID)
+
+	validatorInfo, err := validator.GetValidatorInfo(network.SDKNetwork(), validationID)
+	if err != nil {
+		return err
+	}
+	if validatorInfo.Weight == newWeight {
+		ux.Logger.PrintToUser(logging.LightBlue.Wrap("The new Weight was already set on the P-Chain. Proceeding to the next step"))
+	} else {
+		txID, _, err := deployer.SetL1ValidatorWeight(signedMessage)
+		if err != nil {
+			if !strings.Contains(err.Error(), "could not load L1 validator: not found") {
+				return err
+			}
+			ux.Logger.PrintToUser(logging.LightBlue.Wrap("The Validation ID was already removed on the P-Chain. Proceeding to the next step"))
+		} else {
+			ux.Logger.PrintToUser("SetL1ValidatorWeightTx ID: %s", txID)
+			if err := blockchain.UpdatePChainHeight(
+				"Waiting for P-Chain to update validator information ...",
+			); err != nil {
+				return err
+			}
+		}
+	}
+
+	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
+	defer aggregatorCancel()
+	rawTx, err = validatormanager.FinishValidatorWeightChange(
+		aggregatorCtx,
+		app,
+		network,
+		rpcURL,
+		chainSpec,
+		externalValidatorManagerOwner,
+		validatorManagerOwner,
+		ownerPrivateKey,
+		validationID,
+		extraAggregatorPeers,
+		aggregatorAllowPrivatePeers,
+		aggregatorLogger,
+		validatorManagerAddress,
+		signedMessage,
+		newWeight,
+	)
+	if err != nil {
+		return err
+	}
+	if rawTx != nil {
+		return evm.TxDump("Finish Validator Weight Change", rawTx)
+	}
+
+	ux.Logger.GreenCheckmarkToUser("Weight change successfully made")
+
+	return nil
 }

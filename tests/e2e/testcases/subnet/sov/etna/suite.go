@@ -22,7 +22,7 @@ const (
 	ewoqPChainAddress = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
 )
 
-func createEtnaSubnetEvmConfig(poa, pos bool) {
+func createEtnaSubnetEvmConfig(poa, pos bool) string {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(utils.SubnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -62,6 +62,12 @@ func createEtnaSubnetEvmConfig(poa, pos bool) {
 	exists, err = utils.SubnetConfigExists(utils.SubnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeTrue())
+
+	// return binary versions for this conf
+	mapper := utils.NewVersionMapper()
+	mapping, err := utils.GetVersionMapping(mapper)
+	gomega.Expect(err).Should(gomega.BeNil())
+	return mapping[utils.LatestAvago2EVMKey]
 }
 
 func createEtnaSubnetEvmConfigWithoutProxyOwner(poa, pos bool) {
@@ -336,6 +342,8 @@ func initValidatorManagerEtnaFlag(
 	return string(output), err
 }
 
+var avagoVersion string
+
 var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	ginkgo.BeforeEach(func() {
 		// key
@@ -377,10 +385,10 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 
 	ginkgo.It("Start Local Node on Etna & Deploy the Subnet To Etna Local Network using cluster flag", func() {
-		_ = commands.StartNetwork()
-		_, err := commands.CreateLocalEtnaNode(utils.TestLocalNodeName, 1)
+		avagoVersion = createEtnaSubnetEvmConfig(true, false)
+		_ = commands.StartNetworkWithVersion(avagoVersion)
+		_, err := commands.CreateLocalEtnaNode(avagoVersion, utils.TestLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
-		createEtnaSubnetEvmConfig(true, false)
 		deployEtnaSubnetClusterFlagConvertOnly(utils.TestLocalNodeName)
 		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -389,10 +397,10 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 	})
 
 	ginkgo.It("Mix and match network and cluster flags test 1", func() {
-		_ = commands.StartNetwork()
-		_, err := commands.CreateLocalEtnaNode(utils.TestLocalNodeName, 1)
+		avagoVersion = createEtnaSubnetEvmConfig(true, false)
+		_ = commands.StartNetworkWithVersion(avagoVersion)
+		_, err := commands.CreateLocalEtnaNode(avagoVersion, utils.TestLocalNodeName, 1)
 		gomega.Expect(err).Should(gomega.BeNil())
-		createEtnaSubnetEvmConfig(true, false)
 		deployEtnaSubnetClusterFlagConvertOnly(utils.TestLocalNodeName)
 		_, err = commands.TrackLocalEtnaSubnet(utils.TestLocalNodeName, utils.SubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())

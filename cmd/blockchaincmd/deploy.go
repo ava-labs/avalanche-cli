@@ -93,7 +93,6 @@ var (
 	poSWeightToValueFactor         uint64
 	deployBalanceAVAX              float64
 	validatorManagerAddress        string
-	validatorManagerOwnerAddress   string
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
@@ -820,6 +819,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar.ValidatorManagement == models.ProofOfStake,
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
+			sidecar.UseACP99,
 		)
 		if err != nil {
 			return err

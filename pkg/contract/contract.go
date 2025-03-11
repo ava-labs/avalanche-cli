@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -289,11 +288,20 @@ func ParseSpec(
 	return name, string(abiBytes), nil
 }
 
+func idempotentSigner(
+	_ common.Address,
+	tx *types.Transaction,
+) (*types.Transaction, error) {
+	return tx, nil
+}
+
 // get method name and types from [methodsSpec], then call it
 // at the smart contract [contractAddress] with the given [params].
 // also send [payment] tokens to it
 func TxToMethod(
 	rpcURL string,
+	generateRawTxOnly bool,
+	from common.Address,
 	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
@@ -302,6 +310,12 @@ func TxToMethod(
 	methodSpec string,
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
+	if privateKey == "" && from == (common.Address{}) {
+		return nil, nil, fmt.Errorf("from address and private key can't be both empty at TxToMethod")
+	}
+	if !generateRawTxOnly && privateKey == "" {
+		return nil, nil, fmt.Errorf("from private key must be defined to be able to sign the tx at TxToMethod")
+	}
 	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, payment != nil, false, params...)
 	if err != nil {
 		return nil, nil, err
@@ -319,15 +333,25 @@ func TxToMethod(
 	}
 	defer client.Close()
 	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
-	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
-	if err != nil {
-		return nil, nil, err
+	var txOpts *bind.TransactOpts
+	if generateRawTxOnly {
+		txOpts = &bind.TransactOpts{
+			From:   from,
+			Signer: idempotentSigner,
+			NoSend: true,
+		}
+	} else {
+		txOpts, err = evm.GetTxOptsWithSigner(client, privateKey)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	txOpts.Value = payment
 	tx, err := contract.Transact(txOpts, methodName, params...)
 	if err != nil {
 		trace, traceCallErr := DebugTraceCall(
 			rpcURL,
+			from,
 			privateKey,
 			contractAddress,
 			payment,
@@ -339,17 +363,17 @@ func TxToMethod(
 			ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
 			return tx, nil, err
 		}
-		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
-			ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
-			ux.Logger.PrintToUser("error trace for %s error:", description)
-			ux.Logger.PrintToUser("%#v", trace)
-		} else if errorFromSignature != nil {
+		if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); errorFromSignature != nil {
 			return tx, nil, errorFromSignature
 		} else {
+			ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
 			ux.Logger.PrintToUser("error trace for %s error:", description)
 			ux.Logger.PrintToUser("%#v", trace)
 		}
 		return tx, nil, err
+	}
+	if generateRawTxOnly {
+		return tx, nil, nil
 	}
 	receipt, success, err := evm.WaitForTransaction(client, tx)
 	if err != nil {
@@ -373,6 +397,8 @@ func TxToMethod(
 // also send [payment] tokens to it
 func TxToMethodWithWarpMessage(
 	rpcURL string,
+	generateRawTxOnly bool,
+	from common.Address,
 	privateKey string,
 	contractAddress common.Address,
 	warpMessage *avalancheWarp.Message,
@@ -382,6 +408,12 @@ func TxToMethodWithWarpMessage(
 	methodSpec string,
 	params ...interface{},
 ) (*types.Transaction, *types.Receipt, error) {
+	if privateKey == "" && from == (common.Address{}) {
+		return nil, nil, fmt.Errorf("from address and private key can't be both empty at TxToMethodWithWarpMessage")
+	}
+	if !generateRawTxOnly && privateKey == "" {
+		return nil, nil, fmt.Errorf("from private key must be defined to be able to sign the tx at TxToMethodWithWarpMessage")
+	}
 	methodName, methodABI, err := ParseSpec(methodSpec, nil, false, false, false, false, params...)
 	if err != nil {
 		return nil, nil, err
@@ -402,8 +434,10 @@ func TxToMethodWithWarpMessage(
 		return nil, nil, err
 	}
 	defer client.Close()
-	tx, err := evm.GetSignedTxToMethodWithWarpMessage(
+	tx, err := evm.GetTxToMethodWithWarpMessage(
 		client,
+		generateRawTxOnly,
+		from,
 		privateKey,
 		warpMessage,
 		contractAddress,
@@ -412,6 +446,9 @@ func TxToMethodWithWarpMessage(
 	)
 	if err != nil {
 		return nil, nil, err
+	}
+	if generateRawTxOnly {
+		return tx, nil, nil
 	}
 	if err := evm.SendTransaction(client, tx); err != nil {
 		return tx, nil, err
@@ -460,13 +497,11 @@ func handleFailedReceiptStatus(
 		ux.Logger.PrintToUser("Verify --debug flag value when calling 'blockchain create'")
 		return tx, receipt, err
 	}
-	if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); err != nil && !errors.Is(err, evm.ErrUnknownErrorSelector) {
-		printFailedReceiptStatusMessage(rpcURL, description, tx)
-		ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
-	} else if errorFromSignature != nil {
+	if errorFromSignature, err := evm.GetErrorFromTrace(trace, errorSignatureToError); errorFromSignature != nil {
 		return tx, receipt, errorFromSignature
 	} else {
 		printFailedReceiptStatusMessage(rpcURL, description, tx)
+		ux.Logger.RedXToUser("failed to match error selector on trace: %s", err)
 		ux.Logger.PrintToUser("error trace:")
 		ux.Logger.PrintToUser("%#v", trace)
 	}
@@ -489,6 +524,7 @@ func DebugTraceTransaction(
 
 func DebugTraceCall(
 	rpcURL string,
+	from common.Address,
 	privateKey string,
 	contractAddress common.Address,
 	payment *big.Int,
@@ -515,11 +551,13 @@ func DebugTraceCall(
 		return nil, err
 	}
 	defer client.Close()
-	pk, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		return nil, err
+	if from == (common.Address{}) {
+		pk, err := crypto.HexToECDSA(privateKey)
+		if err != nil {
+			return nil, err
+		}
+		from = crypto.PubkeyToAddress(pk.PublicKey)
 	}
-	from := crypto.PubkeyToAddress(pk.PublicKey)
 	data := map[string]string{
 		"from":  from.Hex(),
 		"to":    contractAddress.Hex(),

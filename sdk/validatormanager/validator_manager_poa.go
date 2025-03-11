@@ -23,25 +23,46 @@ func PoAValidatorManagerInitialize(
 	privateKey string,
 	subnetID ids.ID,
 	ownerAddress common.Address,
+	useACP99 bool,
 ) (*types.Transaction, *types.Receipt, error) {
 	const (
 		defaultChurnPeriodSeconds     = uint64(0)
 		defaultMaximumChurnPercentage = uint8(20)
 	)
-	params := ValidatorManagerSettings{
-		SubnetID:               subnetID,
-		ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
-		MaximumChurnPercentage: defaultMaximumChurnPercentage,
+	if useACP99 {
+		return contract.TxToMethod(
+			rpcURL,
+			false,
+			common.Address{},
+			privateKey,
+			managerAddress,
+			nil,
+			"initialize PoA manager",
+			ErrorSignatureToError,
+			"initialize((address, bytes32,uint64,uint8))",
+			ACP99ValidatorManagerSettings{
+				Admin:                  ownerAddress,
+				SubnetID:               subnetID,
+				ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
+				MaximumChurnPercentage: defaultMaximumChurnPercentage,
+			},
+		)
 	}
 	return contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		managerAddress,
 		nil,
 		"initialize PoA manager",
 		ErrorSignatureToError,
 		"initialize((bytes32,uint64,uint8),address)",
-		params,
+		ValidatorManagerSettings{
+			SubnetID:               subnetID,
+			ChurnPeriodSeconds:     defaultChurnPeriodSeconds,
+			MaximumChurnPercentage: defaultMaximumChurnPercentage,
+		},
 		ownerAddress,
 	)
 }
