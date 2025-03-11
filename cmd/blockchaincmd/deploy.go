@@ -487,7 +487,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if versionComparison == 1 {
 			userProvidedAvagoVersion = constants.FujiAvalancheGoV113
 		}
-		return nil
 	}
 
 	if network.Kind == models.Local {
