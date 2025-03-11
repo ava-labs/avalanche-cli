@@ -532,7 +532,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			tokenHomeDecimals,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying ERC20 Home: %w", err)
 		}
 		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
@@ -553,7 +553,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			nativeTokenSymbol,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying Wrapped Native Token: %w", err)
 		}
 		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", nativeTokenSymbol, wrappedNativeTokenAddress)
@@ -567,7 +567,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			wrappedNativeTokenAddress,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying Native Home: %w", err)
 		}
 		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
@@ -642,7 +642,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			remoteDecimals,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying ERC20 Remote: %w", err)
 		}
 	} else {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
@@ -674,7 +674,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			big.NewInt(0),
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying Native Remote: %w", err)
 		}
 	}
 	ux.Logger.PrintToUser("Remote Deployed to %s", remoteRPCEndpoint)
