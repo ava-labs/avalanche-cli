@@ -474,10 +474,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
-	fmt.Printf("we are here first network.Kind %s,  userProvidedAvagoVersion %s \n", network.Kind, userProvidedAvagoVersion)
-
 	if network.Kind == models.Fuji && userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion {
-		fmt.Printf("we are here \n")
 		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
 			constants.AvaLabsOrg,
 			constants.AvalancheGoRepoName,
@@ -491,7 +488,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			userProvidedAvagoVersion = constants.FujiAvalancheGoV113
 		}
 	}
-	fmt.Printf("userProvidedAvagoVersion %s \n", userProvidedAvagoVersion)
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
 
