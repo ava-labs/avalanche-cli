@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/genesis"
@@ -90,6 +90,40 @@ func CreateLocalCluster(
 	return network, nil
 }
 
+func AddNodeToLocalCluster(
+	app *application.Avalanche,
+	clusterName string,
+) (*tmpnet.Node, error) {
+	network, err := GetLocalCluster(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	node, err := GetTmpNetFirstNode(network)
+	if err != nil {
+		return nil, err
+	}
+	networkModel, err := GetClusterNetworkKind(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := networkModel.BootstrappingContext()
+	defer cancel()
+	newNode, err := TmpNetCopyNode(node)
+	if err != nil {
+		return nil, err
+	}
+	networkDir := GetLocalClusterDir(app, clusterName)
+	if err = TmpNetAddNode(
+		ctx,
+		app.Log,
+		networkDir,
+		newNode,
+	); err != nil {
+		return nil, err
+	}
+	return newNode, nil
+}
+
 // Returns the directory associated to the local cluster
 func GetLocalClusterDir(
 	app *application.Avalanche,
@@ -151,11 +185,7 @@ func ClusterIsRunning(app *application.Avalanche, clusterName string) (bool, err
 }
 
 func IsLocalNetworkCluster(app *application.Avalanche, clusterName string) (bool, error) {
-	network, err := GetLocalCluster(app, clusterName)
-	if err != nil {
-		return false, err
-	}
-	return network.GetNetworkID() == constants.LocalNetworkID, nil
+	return IsLocalClusterForNetwork(app, clusterName, models.NewLocalNetwork())
 }
 
 func GetClusterNetworkKind(app *application.Avalanche, clusterName string) (models.Network, error) {
@@ -168,37 +198,65 @@ func GetClusterNetworkKind(app *application.Avalanche, clusterName string) (mode
 }
 
 func GetLocalNetworkRunningClusters(app *application.Avalanche) ([]string, error) {
-	runningClusters, err := GetRunningClusters(app)
-	if err != nil {
-		return nil, err
-	}
-	localNetworkRunningClusters := []string{}
-	for _, clusterName := range runningClusters {
-		if local, err := IsLocalNetworkCluster(app, clusterName); err != nil {
-			return nil, err
-		} else if !local {
-			continue
-		}
-		localNetworkRunningClusters = append(localNetworkRunningClusters, clusterName)
-	}
-	return localNetworkRunningClusters, nil
+	return GetFilteredClusters(app, true, models.NewLocalNetwork(), "")
 }
 
 func GetRunningClusters(app *application.Avalanche) ([]string, error) {
+	return GetFilteredClusters(app, true, models.UndefinedNetwork, "")
+}
+
+func IsLocalClusterForNetwork(
+	app *application.Avalanche,
+	clusterName string,
+	network models.Network,
+) (bool, error) {
+	networkDir := GetLocalClusterDir(app, clusterName)
+	networkID, err := GetTmpNetNetworkID(networkDir)
+	if err != nil {
+		return false, err
+	}
+	return networkID == network.ID, nil
+}
+
+func GetFilteredClusters(
+	app *application.Avalanche,
+	running bool,
+	network models.Network,
+	blockchainName string,
+) ([]string, error) {
 	clusters, err := GetClusters(app)
 	if err != nil {
 		return nil, err
 	}
-	runningClusters := []string{}
+	filteredClusters := []string{}
 	for _, clusterName := range clusters {
-		if running, err := ClusterIsRunning(app, clusterName); err != nil {
-			return nil, err
-		} else if !running {
-			continue
+		if running {
+			if isRunning, err := ClusterIsRunning(app, clusterName); err != nil {
+				return nil, err
+			} else if !isRunning {
+				continue
+			}
+			if blockchainName != "" {
+				blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+				if err != nil {
+					return nil, err
+				}
+				blockchainNames := utils.Map(blockchains, func(i BlockchainInfo) string { return i.Name })
+				if !sdkutils.Belongs(blockchainNames, blockchainName) {
+					continue
+				}
+			}
 		}
-		runningClusters = append(runningClusters, clusterName)
+		if network != models.UndefinedNetwork {
+			if isForNetwork, err := IsLocalClusterForNetwork(app, clusterName, network); err != nil {
+				return nil, err
+			} else if !isForNetwork {
+				continue
+			}
+		}
+		filteredClusters = append(filteredClusters, clusterName)
 	}
-	return runningClusters, nil
+	return filteredClusters, nil
 }
 
 func GetClusters(app *application.Avalanche) ([]string, error) {

@@ -838,6 +838,31 @@ func GetNewTmpNetNodes(
 	return nodes, nil
 }
 
+func TmpNetCopyNode(
+	node *tmpnet.Node,
+) (*tmpnet.Node, error) {
+	if node == nil {
+		return nil, fmt.Errorf("can't copy nil node")
+	}
+	flags := maps.Clone(node.Flags)
+	for _, flag := range []string{
+		config.StakingCertContentKey,
+		config.StakingTLSKeyContentKey,
+		config.StakingSignerKeyContentKey,
+		config.DataDirKey,
+	} {
+		if _, ok := flags[flag]; ok {
+			delete(flags, flag)
+		}
+	}
+	flags[config.HTTPPortKey] = 0
+	flags[config.StakingPortKey] = 0
+	newNode := tmpnet.Node{
+		Flags: flags,
+	}
+	return &newNode, nil
+}
+
 func TmpNetBootstrap(
 	ctx context.Context,
 	log logging.Logger,
@@ -851,6 +876,32 @@ func TmpNetBootstrap(
 		if err := TmpNetStartNode(ctx, log, network, node); err != nil {
 			return err
 		}
+	}
+	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
+		return err
+	}
+	return TmpNetPersistPorts(networkDir)
+}
+
+func TmpNetAddNode(
+	ctx context.Context,
+	log logging.Logger,
+	networkDir string,
+	node *tmpnet.Node,
+) error {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
+	network.Nodes = append(network.Nodes, node)
+	if err := network.EnsureNodeConfig(node); err != nil {
+		return err
+	}
+	if err := network.Write(); err != nil {
+		return err
+	}
+	if err := TmpNetStartNode(ctx, log, network, node); err != nil {
+		return err
 	}
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
 		return err
