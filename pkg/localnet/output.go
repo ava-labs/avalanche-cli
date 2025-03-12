@@ -4,14 +4,11 @@ package localnet
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
@@ -46,10 +43,14 @@ func PrintEndpoints(
 		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, networkDir); err != nil {
 			return err
 		}
-		clusterInfo, err := GetANRNetworkInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-		if err == nil {
+		clusters, err := GetLocalNetworkRunningClusters(app)
+		if err != nil {
+			return err
+		}
+		for _, clusterName := range clusters {
+			networkDir := GetLocalClusterDir(app, clusterName)
 			printFunc("")
-			if err := PrintNetworkEndpointsFromClusterInfo("L1 Nodes", printFunc, clusterInfo); err != nil {
+			if err := PrintNetworkEndpoints("L1 Nodes", printFunc, networkDir); err != nil {
 				return err
 			}
 		}
@@ -94,41 +95,6 @@ func PrintBlockchainEndpoints(
 			return err
 		}
 		t.AppendRow(table.Row{"Codespace", codespaceURL})
-	}
-	printFunc(t.Render())
-	return nil
-}
-
-func PrintNetworkEndpointsFromClusterInfo(
-	title string,
-	printFunc func(msg string, args ...interface{}),
-	clusterInfo *rpcpb.ClusterInfo,
-) error {
-	header := table.Row{"Node ID", "Localhost Endpoint"}
-	insideCodespace := utils.InsideCodespace()
-	if insideCodespace {
-		header = append(header, "Codespace Endpoint")
-	}
-	t := ux.DefaultTable(title, header)
-	nodeNames := clusterInfo.NodeNames
-	sort.Strings(nodeNames)
-	nodeInfos := map[string]*rpcpb.NodeInfo{}
-	for _, nodeInfo := range clusterInfo.NodeInfos {
-		nodeInfos[nodeInfo.Name] = nodeInfo
-	}
-	var err error
-	for _, nodeName := range nodeNames {
-		nodeInfo := nodeInfos[nodeName]
-		nodeURL := nodeInfo.GetUri()
-		row := table.Row{nodeInfo.Id, nodeURL}
-		if insideCodespace {
-			nodeURL, err = utils.GetCodespaceURL(nodeURL)
-			if err != nil {
-				return err
-			}
-			row = append(row, nodeURL)
-		}
-		t.AppendRow(row)
 	}
 	printFunc(t.Render())
 	return nil

@@ -142,7 +142,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
-		if err := startLocalCluster(avalancheGoBinPath); err != nil {
+		if err := startLocalClusters(avalancheGoBinPath); err != nil {
 			return err
 		}
 		if err := localnet.TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
@@ -255,13 +255,13 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	return nil
 }
 
-func startLocalCluster(avalancheGoBinPath string) error {
+func startLocalClusters(avalancheGoBinPath string) error {
 	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
 	if err != nil {
 		return err
 	}
-	if len(blockchains) > 0 {
-		blockchainName := blockchains[0].Name
+	for _, blockchain := range blockchains {
+		blockchainName := blockchain.Name
 		clusterName := blockchainName + "-local-node-local-network"
 		if !localnet.LocalClusterExists(app, clusterName) {
 			return nil

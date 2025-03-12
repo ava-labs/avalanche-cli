@@ -65,8 +65,8 @@ func LocalClusterTrackSubnet(
 	clusterName string,
 ) error {
 	if !LocalClusterExists(app, clusterName) {
-                return fmt.Errorf("local cluster %q is not found", clusterName)
-        }
+		return fmt.Errorf("local cluster %q is not found", clusterName)
+	}
 	networkModel, err := GetClusterNetworkKind(app, clusterName)
 	if err != nil {
 		return err
@@ -122,7 +122,7 @@ func MiscTrackSubnet(
 		return err
 	}
 	ctx, cancel := networkModel.BootstrappingContext()
-        defer cancel()
+	defer cancel()
 	if err := TmpNetTrackSubnet(
 		ctx,
 		app.Log,

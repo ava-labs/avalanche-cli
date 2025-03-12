@@ -118,15 +118,10 @@ func StartLocalMachine(
 	clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
 	if clusterNameFlagValue != "" {
 		clusterName = clusterNameFlagValue
-		clusterConfig, err := app.GetClusterConfig(clusterName)
-		if err != nil {
-			return false, err
-		}
-		// check if cluster is local
-		if clusterConfig.Local {
+		if localnet.LocalClusterExists(app, clusterName) {
 			useLocalMachine = true
 			if len(bootstrapEndpoints) == 0 {
-				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+				bootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
 				if err != nil {
 					return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 						"please create your local node again and call blockchain deploy command again", err)
@@ -238,7 +233,7 @@ func StartLocalMachine(
 		}
 		clusterNameFlagValue = clusterName
 		if len(bootstrapEndpoints) == 0 {
-			bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+			bootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
 			if err != nil {
 				return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 					"please create your local node again and call blockchain deploy command again", err)
