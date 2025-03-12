@@ -659,6 +659,7 @@ func RestartNodes() error {
 		logging.NoLog{},
 		func(string, ...interface{}) {},
 		network,
+		network.Nodes,
 		nil,
 	); err != nil {
 		return err
