@@ -174,7 +174,6 @@ func IsLocalNetworkBlockchainBootstrapped(
 // all blockchain that have validators on the network, are bootstrapped
 func LocalNetworkHealth(
 	app *application.Avalanche,
-	printFunc func(msg string, args ...interface{}),
 ) (bool, bool, error) {
 	pChainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, "P", ids.Empty)
 	if err != nil {

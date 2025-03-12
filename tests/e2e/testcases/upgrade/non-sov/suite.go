@@ -276,7 +276,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		// check running version
 		// remove string suffix starting with /ext
 		nodeURI := strings.Split(rpcs[0], "/ext")[0]
-		vmid, err := anr_utils.VMID(subnetName)
+		vmid, err := utils.VMID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		version, err := utils.GetNodeVMVersion(nodeURI, vmid.String())
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -319,7 +319,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		// check running version
 		// remove string suffix starting with /ext from rpc url to get node uri
 		nodeURI := strings.Split(rpcs[0], "/ext")[0]
-		vmid, err := anr_utils.VMID(subnetName)
+		vmid, err := utils.VMID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		version, err := utils.GetNodeVMVersion(nodeURI, vmid.String())
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -414,7 +414,7 @@ var _ = ginkgo.Describe("[Upgrade local network non SOV]", ginkgo.Ordered, func(
 		var originalHash string
 
 		// upgrade the vm on each node
-		vmid, err := anr_utils.VMID(subnetName)
+		vmid, err := utils.VMID(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		for _, nodeInfo := range nodeInfos {

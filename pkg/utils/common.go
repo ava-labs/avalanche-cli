@@ -650,4 +650,3 @@ func MkDirWithTimestamp(dirPrefix string) (string, error) {
 	dirName := dirPrefix + "_" + currentTime
 	return dirName, os.MkdirAll(dirName, os.ModePerm)
 }
-

@@ -375,3 +375,25 @@ func GetLocalClusterValidatedBlockchains(
 	}
 	return validatedBlockchains, nil
 }
+
+func LocalClusterTrackSubnet(
+	app *application.Avalanche,
+	clusterName string,
+	blockchainName string,
+) error {
+	if !LocalClusterExists(app, clusterName) {
+		return fmt.Errorf("local cluster %q is not found", clusterName)
+	}
+	networkModel, err := GetClusterNetworkKind(app, clusterName)
+	if err != nil {
+		return err
+	}
+	networkDir := GetLocalClusterDir(app, clusterName)
+	return TrackSubnet(
+		app,
+		blockchainName,
+		networkModel,
+		networkDir,
+		nil,
+	)
+}

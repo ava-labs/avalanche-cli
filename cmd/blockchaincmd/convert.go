@@ -258,13 +258,7 @@ func InitializeValidatorManager(
 	clusterName := clusterNameFlagValue
 	switch {
 	case useLocalMachine:
-		if err := node.TrackSubnetWithLocalMachine(
-			app,
-			clusterName,
-			blockchainName,
-			avagoBinaryPath,
-			node.AvalancheGoVersionSettings{},
-		); err != nil {
+		if err := localnet.LocalClusterTrackSubnet(app, clusterName, blockchainName); err != nil {
 			return false, err
 		}
 	default:

@@ -7,8 +7,8 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -23,7 +23,7 @@ var stopNetworkOptions = []networkoptions.NetworkOption{
 }
 
 type StopFlags struct {
-	Network              networkoptions.NetworkFlags
+	Network networkoptions.NetworkFlags
 }
 
 var stopFlags StopFlags
@@ -51,7 +51,7 @@ func CallStop(_ []string, flags StopFlags, network models.Network) error {
 		network, err = networkoptions.GetNetworkFromCmdLineFlags(
 			app,
 			"",
-			globalNetworkFlags,
+			flags.Network,
 			false,
 			false,
 			stopNetworkOptions,

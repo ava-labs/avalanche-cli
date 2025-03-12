@@ -147,7 +147,7 @@ func PrintL1Endpoints(
 		if err != nil {
 			return err
 		}
-		validatedBlockchains := utils.Map(validatedBlockchainsInfo, func (i BlockchainInfo) string {return i.Name})
+		validatedBlockchains := utils.Map(validatedBlockchainsInfo, func(i BlockchainInfo) string { return i.Name })
 		networkDir := GetLocalClusterDir(app, clusterName)
 		network, err := GetTmpNetNetworkWithURIFix(networkDir)
 		if err != nil {

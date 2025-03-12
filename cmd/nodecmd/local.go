@@ -140,10 +140,6 @@ func newLocalTrackCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE:  localTrack,
 	}
-	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().BoolVar(&latestAvagoReleaseVersion, "latest-avalanchego-version", true, "install latest avalanchego release version on node/s")
-	cmd.Flags().BoolVar(&latestAvagoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
-	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	return cmd
 }
 
@@ -298,16 +294,7 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 func localTrack(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	blockchainName := args[1]
-	if useCustomAvalanchegoVersion != "" {
-		latestAvagoReleaseVersion = false
-		latestAvagoPreReleaseVersion = false
-	}
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
-		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-		UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
-		UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
-	}
-	return node.TrackSubnetWithLocalMachine(app, clusterName, blockchainName, avalanchegoBinaryPath, avaGoVersionSetting)
+	return localnet.LocalClusterTrackSubnet(app, clusterName, blockchainName)
 }
 
 func localStatus(_ *cobra.Command, args []string) error {

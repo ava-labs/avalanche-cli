@@ -10,11 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -29,6 +28,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -907,7 +907,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func (i localnet.BlockchainInfo) string {return i.Name}))
+					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
 				if network.Kind == models.Local || useLocalMachine {
 					deployRelayerFlags.Key = constants.ICMRelayerKeyName
