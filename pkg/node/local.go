@@ -125,14 +125,6 @@ func StartLocalNode(
 		return err
 	}
 
-	// node config setup
-	if defaultFlags == nil {
-		defaultFlags = map[string]interface{}{}
-	}
-	defaultFlags[config.NetworkAllowPrivateIPsKey] = true
-	defaultFlags[config.IndexEnabledKey] = false
-	defaultFlags[config.IndexAllowIncompleteKey] = true
-
 	var (
 		ctx    context.Context
 		cancel context.CancelFunc
@@ -179,6 +171,13 @@ func StartLocalNode(
 				return err
 			}
 		}
+
+		if defaultFlags == nil {
+			defaultFlags = map[string]interface{}{}
+		}
+		defaultFlags[config.NetworkAllowPrivateIPsKey] = true
+		defaultFlags[config.IndexEnabledKey] = false
+		defaultFlags[config.IndexAllowIncompleteKey] = true
 
 		ctx, cancel = network.BootstrappingContext()
 		defer cancel()
@@ -538,50 +537,4 @@ func WaitBootstrapped(ctx context.Context, cli client.Client, blockchainID strin
 		}
 	}
 	return err
-}
-
-func GetLocalNetworkConnectionInfo(
-	app *application.Avalanche,
-) ([]string, []string, string, string, error) {
-	rootDataDir, err := localnet.GetLocalNetworkDir(app)
-	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("failed to connect to local network: %w", err)
-	}
-	bootstrapIPs, bootstrapIDs, err := localnet.GetTmpNetBootstrappers(rootDataDir, ids.EmptyNodeID)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	// prepare genesis file for anr
-	genesisBytes, err := localnet.GetTmpNetGenesis(rootDataDir)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	genesisFile, err := os.CreateTemp("", "local_network_genesis")
-	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not create local network genesis file: %w", err)
-	}
-	if _, err := genesisFile.Write(genesisBytes); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not write local network genesis file: %w", err)
-	}
-	genesisPath := genesisFile.Name()
-	if err := genesisFile.Close(); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not close local network genesis file: %w", err)
-	}
-	// prepare upgrade file for anr
-	upgradeBytes, err := localnet.GetTmpNetUpgrade(rootDataDir)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	upgradeFile, err := os.CreateTemp("", "local_network_upgrade")
-	if err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not create local network upgrade file: %w", err)
-	}
-	if _, err := upgradeFile.Write(upgradeBytes); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not write local network upgrade file: %w", err)
-	}
-	upgradePath := upgradeFile.Name()
-	if err := upgradeFile.Close(); err != nil {
-		return nil, nil, "", "", fmt.Errorf("could not close local network upgrade file: %w", err)
-	}
-	return bootstrapIPs, bootstrapIDs, genesisPath, upgradePath, nil
 }
