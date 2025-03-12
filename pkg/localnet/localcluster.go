@@ -214,7 +214,9 @@ func GetClusters(app *application.Avalanche) ([]string, error) {
 		}
 		clusterName := entry.Name()
 		if _, err := GetLocalCluster(app, clusterName); err != nil {
-			return nil, fmt.Errorf("failure loading cluster %s: %w", clusterName, err)
+			continue
+			//TODO: migration
+			//return nil, fmt.Errorf("failure loading cluster %s: %w", clusterName, err)
 		}
 		clusters = append(clusters, clusterName)
 	}

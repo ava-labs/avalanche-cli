@@ -3,7 +3,6 @@
 package localnet
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -31,10 +30,13 @@ type ExtraLocalNetworkData struct {
 // After the blockchain is bootstrapped, add alias for it [blockchainName]->[blockchainID]
 // Finally persist all new blockchain RPC URLs into blockchain sidecar.
 func LocalNetworkTrackSubnet(
-	ctx context.Context,
 	app *application.Avalanche,
 	blockchainName string,
 ) error {
+	networkDir, err := GetLocalNetworkDir(app)
+	if err != nil {
+		return err
+	}
 	networkModel := models.NewLocalNetwork()
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
@@ -43,7 +45,56 @@ func LocalNetworkTrackSubnet(
 	if sc.Networks[networkModel.Name()].BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
 	}
-	sovereign := sc.Sovereign
+	subnetID := sc.Networks[networkModel.Name()].SubnetID
+	wallet, err := GetLocalNetworkWallet(app, []ids.ID{subnetID})
+	if err != nil {
+		return err
+	}
+	return MiscTrackSubnet(
+		app,
+		blockchainName,
+		networkModel,
+		networkDir,
+		wallet,
+	)
+}
+
+func LocalClusterTrackSubnet(
+	app *application.Avalanche,
+	blockchainName string,
+	clusterName string,
+) error {
+	if !LocalClusterExists(app, clusterName) {
+                return fmt.Errorf("local cluster %q is not found", clusterName)
+        }
+	networkModel, err := GetClusterNetworkKind(app, clusterName)
+	if err != nil {
+		return err
+	}
+	networkDir := GetLocalClusterDir(app, clusterName)
+	return MiscTrackSubnet(
+		app,
+		blockchainName,
+		networkModel,
+		networkDir,
+		nil,
+	)
+}
+
+func MiscTrackSubnet(
+	app *application.Avalanche,
+	blockchainName string,
+	networkModel models.Network,
+	networkDir string,
+	wallet *primary.Wallet,
+) error {
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	if sc.Networks[networkModel.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
+	}
 	blockchainID := sc.Networks[networkModel.Name()].BlockchainID
 	subnetID := sc.Networks[networkModel.Name()].SubnetID
 	var (
@@ -70,21 +121,15 @@ func LocalNetworkTrackSubnet(
 	if err != nil {
 		return err
 	}
-	wallet, err := GetLocalNetworkWallet(ctx, app, []ids.ID{subnetID})
-	if err != nil {
-		return err
-	}
-	networkDir, err := GetLocalNetworkDir(app)
-	if err != nil {
-		return err
-	}
+	ctx, cancel := networkModel.BootstrappingContext()
+        defer cancel()
 	if err := TmpNetTrackSubnet(
 		ctx,
 		app.Log,
 		ux.Logger.PrintToUser,
 		networkDir,
 		blockchainName,
-		sovereign,
+		sc.Sovereign,
 		blockchainID,
 		subnetID,
 		vmBinaryPath,
@@ -96,11 +141,11 @@ func LocalNetworkTrackSubnet(
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
-	network, err := GetLocalNetwork(app)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
 	}
-	if err := TmpNetSetAlias(network, blockchainID.String(), blockchainName, subnetID); err != nil {
+	if err := TmpNetSetAlias(network, network.Nodes, blockchainID.String(), blockchainName, subnetID); err != nil {
 		return err
 	}
 	nodeURIs, err := GetTmpNetNodeURIsWithFix(networkDir)
@@ -149,7 +194,6 @@ func GetLocalNetworkRelayerConfigPath(app *application.Avalanche, networkDir str
 // GetLocalNetworkWallet returns a wallet that can operate on the local network
 // initialized to recognice all given [subnetIDs] as pre generated
 func GetLocalNetworkWallet(
-	ctx context.Context,
 	app *application.Avalanche,
 	subnetIDs []ids.ID,
 ) (*primary.Wallet, error) {
@@ -161,6 +205,8 @@ func GetLocalNetworkWallet(
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := GetLocalNetworkDefaultContext()
+	defer cancel()
 	return primary.MakeWallet(
 		ctx,
 		endpoint,

@@ -343,6 +343,7 @@ func TmpNetHasValidatorsForSubnet(
 // if the network does not validate the blockchain, it errors
 func TmpNetSetAlias(
 	network *tmpnet.Network,
+	nodes []*tmpnet.Node,
 	blockchainID string,
 	alias string,
 	subnetID ids.ID,
@@ -357,7 +358,7 @@ func TmpNetSetAlias(
 			return err
 		}
 	}
-	for _, node := range network.Nodes {
+	for _, node := range nodes {
 		if validatorIDs != nil && !sdkutils.Belongs(validatorIDs, node.NodeID) {
 			continue
 		}
@@ -401,7 +402,7 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 		if err := WaitTmpNetBlockchainBootstrapped(ctx, network, blockchain.ID.String(), blockchain.SubnetID); err != nil {
 			return err
 		}
-		if err := TmpNetSetAlias(network, blockchain.ID.String(), blockchain.Name, blockchain.SubnetID); err != nil {
+		if err := TmpNetSetAlias(network, network.Nodes, blockchain.ID.String(), blockchain.Name, blockchain.SubnetID); err != nil {
 			return err
 		}
 	}
@@ -427,13 +428,14 @@ func TmpNetInstallVM(
 // Set up blockchain config for all nodes in the network
 func TmpNetSetBlockchainConfig(
 	network *tmpnet.Network,
+	nodes []*tmpnet.Node,
 	blockchainID ids.ID,
 	blockchainConfig []byte,
 ) error {
 	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
 		return err
 	}
-	for _, node := range network.Nodes {
+	for _, node := range nodes {
 		if err := TmpNetSetNodeBlockchainConfig(
 			network,
 			node.NodeID,
@@ -528,9 +530,10 @@ func TmpNetRestartNodes(
 	log logging.Logger,
 	printFunc func(msg string, args ...interface{}),
 	network *tmpnet.Network,
+	nodes []*tmpnet.Node,
 	subnetIDs []ids.ID,
 ) error {
-	for _, node := range network.Nodes {
+	for _, node := range nodes {
 		if len(subnetIDs) > 0 {
 			printFunc("Restarting node %s to track newly deployed subnet/s", node.NodeID)
 			subnets, err := node.Flags.GetStringVal(config.TrackSubnetsKey)
@@ -601,7 +604,7 @@ func GetTmpNetUpgrade(
 // Restart all nodes on [networkDir] to track [subnetID].
 // Before that, set up VM binary [vmBinaryPath] and blockchain and subnet config files from
 // [blockchainConfig], [subnetConfig], [perNodeBlockchainConfig]
-// Add nodes as validators for non [sovereign] flows
+// If [wallet] is given, for non [sovereign] flows, add nodes as non sovereign validators
 // Waits until both P-Chain and the blockchain [blockchainID] are bootstrapped
 func TmpNetTrackSubnet(
 	ctx context.Context,
@@ -631,15 +634,6 @@ func TmpNetTrackSubnet(
 		return err
 	}
 	// Configs
-	if blockchainConfig != nil {
-		if err := TmpNetSetBlockchainConfig(
-			network,
-			blockchainID,
-			blockchainConfig,
-		); err != nil {
-			return err
-		}
-	}
 	if subnetConfig != nil {
 		if err := TmpNetSetSubnetConfig(
 			network,
@@ -649,30 +643,24 @@ func TmpNetTrackSubnet(
 			return err
 		}
 	}
-	for nodeID, blockchainConfig := range perNodeBlockchainConfig {
-		if err := TmpNetSetNodeBlockchainConfig(
-			network,
-			nodeID,
-			blockchainID,
-			blockchainConfig,
-		); err != nil {
-			return err
-		}
-	}
-	// Add subnet to tracked and restart nodes
-	if err := TmpNetRestartNodes(
+	// Set node related conf, add subnet to tracked and restart nodes
+	if err := TmpNetTrackBlockchainOnNodes(
 		ctx,
 		log,
 		printFunc,
 		network,
-		[]ids.ID{subnetID},
+		network.Nodes,
+		subnetID,
+		blockchainID,
+		blockchainConfig,
+		perNodeBlockchainConfig,
 	); err != nil {
-		return nil
+		return err
 	}
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
 		return err
 	}
-	if !sovereign {
+	if !sovereign && wallet != nil {
 		if err := TmpNetAddNonSovereignValidators(ctx, network, subnetID, wallet); err != nil {
 			return err
 		}
@@ -684,6 +672,52 @@ func TmpNetTrackSubnet(
 		return err
 	}
 	return nil
+}
+
+func TmpNetTrackBlockchainOnNodes(
+	ctx context.Context,
+	log logging.Logger,
+	printFunc func(msg string, args ...interface{}),
+	network *tmpnet.Network,
+	nodes []*tmpnet.Node,
+	subnetID ids.ID,
+	blockchainID ids.ID,
+	blockchainConfig []byte,
+	perNodeBlockchainConfig map[ids.NodeID][]byte,
+) error {
+	if blockchainConfig != nil {
+		if err := TmpNetSetBlockchainConfig(
+			network,
+			nodes,
+			blockchainID,
+			blockchainConfig,
+		); err != nil {
+			return err
+		}
+	}
+	nodeIDs := utils.Map(nodes, func(node *tmpnet.Node) ids.NodeID { return node.NodeID })
+	for nodeID, blockchainConfig := range perNodeBlockchainConfig {
+		if !sdkutils.Belongs(nodeIDs, nodeID) {
+			continue
+		}
+		if err := TmpNetSetNodeBlockchainConfig(
+			network,
+			nodeID,
+			blockchainID,
+			blockchainConfig,
+		); err != nil {
+			return err
+		}
+	}
+	// Add subnet to tracked and restart nodes
+	return TmpNetRestartNodes(
+		ctx,
+		log,
+		printFunc,
+		network,
+		nodes,
+		[]ids.ID{subnetID},
+	)
 }
 
 // Add all network nodes of [networkDir] as non SOV validators to [subnetID], using [wallet] to pay for fees

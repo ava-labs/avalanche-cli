@@ -840,10 +840,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
-			ctx, cancel := localnet.GetLocalNetworkDefaultContext()
-			defer cancel()
 			if err := localnet.LocalNetworkTrackSubnet(
-				ctx,
 				app,
 				blockchainName,
 			); err != nil {

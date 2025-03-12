@@ -38,6 +38,8 @@ func TrackSubnetWithLocalMachine(
 	avalancheGoBinaryPath string,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 ) error {
+	return localnet.LocalClusterTrackSubnet(app, blockchainName, clusterName)
+
 	if !localnet.LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local node %q is not found", clusterName)
 	}
