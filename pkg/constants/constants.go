@@ -81,7 +81,7 @@ const (
 
 	LatestPreReleaseVersionTag = "latest-prerelease"
 	LatestReleaseVersionTag    = "latest"
-	DefaultAvalancheGoVersion  = LatestPreReleaseVersionTag
+	DefaultAvalancheGoVersion  = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
@@ -292,6 +292,7 @@ const (
 	NotAvailableLabel         = "Not available"
 	BackendCmd                = "avalanche-cli-backend"
 
+	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
 
