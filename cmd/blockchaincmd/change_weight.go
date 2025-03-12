@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -96,7 +95,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	}
 
 	if nodeEndpoint != "" {
-		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
+		nodeIDStr, publicKey, pop, err = utils.GetNodeID(nodeEndpoint)
 		if err != nil {
 			return err
 		}

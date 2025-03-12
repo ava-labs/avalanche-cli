@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
@@ -92,8 +92,13 @@ func CreateLocalCluster(
 
 func AddNodeToLocalCluster(
 	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
 	clusterName string,
 ) (*tmpnet.Node, error) {
+	blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
 	network, err := GetLocalCluster(app, clusterName)
 	if err != nil {
 		return nil, err
@@ -113,6 +118,11 @@ func AddNodeToLocalCluster(
 		return nil, err
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
+	nodeIDs := []string{newNode.NodeID.String()}
+	if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
+		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
+	}
+	printFunc("Waiting for node: %s to be bootstrapping P-Chain", newNode.NodeID)
 	if err = TmpNetAddNode(
 		ctx,
 		app.Log,
@@ -121,6 +131,26 @@ func AddNodeToLocalCluster(
 	); err != nil {
 		return nil, err
 	}
+	for _, blockchain := range blockchains {
+		printFunc("Waiting for node: %s to be bootstrapping %s", newNode.NodeID, blockchain.Name)
+		if err := WaitLocalClusterBlockchainBootstrapped(
+			app,
+			ctx,
+			clusterName,
+			blockchain.ID.String(),
+			blockchain.SubnetID,
+		); err != nil {
+			return nil, err
+		}
+	}
+	printFunc("")
+	printFunc("Node logs directory: %s/%s/logs", networkDir, newNode.NodeID)
+	printFunc("")
+
+	printFunc("URI: %s", newNode.URI)
+	printFunc("Node ID: %s", newNode.NodeID)
+	printFunc("")
+
 	return newNode, nil
 }
 

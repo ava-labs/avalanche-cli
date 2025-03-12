@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -58,8 +57,6 @@ var (
 	aggregatorLogLevel           string
 	aggregatorLogToStdout        bool
 	delegationFee                uint16
-	publicKey                    string
-	pop                          string
 	minimumStakeDuration         uint64
 	latestAvagoReleaseVersion    bool
 	latestAvagoPreReleaseVersion bool
@@ -510,24 +507,15 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := network.BootstrappingContext()
-	defer cancel()
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return err
-	}
-	status, err := cli.Status(ctx)
+	net, err := localnet.GetLocalCluster(app, clusterName)
 	if err != nil {
 		return err
 	}
 
-	for _, node := range status.ClusterInfo.NodeInfos {
-		if err = addAsValidator(network,
-			node.Name,
+	for _, node := range net.Nodes {
+		if err = addAsValidator(
+			network,
+			node.URI,
 			chainSpec,
 			remainingBalanceOwners, disableOwners,
 			extraAggregatorPeers,
@@ -546,8 +534,9 @@ func localValidate(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func addAsValidator(network models.Network,
-	nodeName string,
+func addAsValidator(
+	network models.Network,
+	nodeURI string,
 	chainSpec contract.ChainSpec,
 	remainingBalanceOwners, disableOwners warpMessage.PChainOwner,
 	extraAggregatorPeers []info.Peer,
@@ -557,13 +546,8 @@ func addAsValidator(network models.Network,
 	payerPrivateKey string,
 	validatorManagerAddressStr string,
 ) error {
-	var nodeIDStr string
 	// get node data
-	nodeInfo, err := node.GetNodeInfo(nodeName)
-	if err != nil {
-		return err
-	}
-	nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeInfo.Uri)
+	nodeIDStr, publicKey, pop, err := utils.GetNodeID(nodeURI)
 	if err != nil {
 		return err
 	}

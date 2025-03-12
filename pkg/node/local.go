@@ -5,23 +5,18 @@ package node
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -29,44 +24,6 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
-
-func LocalNodeTrackSubnet(
-	ctx context.Context,
-	cli client.Client,
-	app *application.Avalanche,
-	rootDir string,
-	avalancheGoBinaryPath string,
-	blockchainName string,
-	blockchainID ids.ID,
-	subnetID ids.ID,
-	nodeName string,
-) error {
-	if app.ChainConfigExists(blockchainName) {
-		inputChainConfigPath := app.GetChainConfigPath(blockchainName)
-		outputChainConfigPath := filepath.Join(rootDir, nodeName, "configs", "chains", blockchainID.String(), "config.json")
-		ux.Logger.Info("Creating chain conf directory %s", filepath.Dir(outputChainConfigPath))
-		if err := os.MkdirAll(filepath.Dir(outputChainConfigPath), 0o700); err != nil {
-			return fmt.Errorf("could not create chain conf directory %s: %w", filepath.Dir(outputChainConfigPath), err)
-		}
-		ux.Logger.Info("Copying %s to %s", inputChainConfigPath, outputChainConfigPath)
-		if err := utils.FileCopy(inputChainConfigPath, outputChainConfigPath); err != nil {
-			return err
-		}
-	}
-
-	opts := []client.OpOption{
-		client.WithWhitelistedSubnets(subnetID.String()),
-		client.WithRootDataDir(rootDir),
-		client.WithExecPath(avalancheGoBinaryPath),
-	}
-	ux.Logger.Info("Using client options: %v", opts)
-	ux.Logger.Info("Restarting node %s", nodeName)
-	if _, err := cli.RestartNode(ctx, nodeName, opts...); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func setupAvalancheGo(
 	app *application.Avalanche,
@@ -233,149 +190,6 @@ func StartLocalNode(
 	return nil
 }
 
-// add additional validator to local node
-func UpsizeLocalNode(
-	app *application.Avalanche,
-	network models.Network,
-	blockchainName string,
-	blockchainID ids.ID,
-	subnetID ids.ID,
-	avalancheGoBinaryPath string,
-	nodeConfig map[string]interface{},
-	connectionSettings localnet.ConnectionSettings,
-) (
-	string, // added nodeName
-	error,
-) {
-	clusterName, err := GetRunnningLocalNodeClusterName(app)
-	if err != nil {
-		return "", err
-	}
-	rootDir := app.GetLocalClusterDir(clusterName)
-	pluginDir := filepath.Join(rootDir, "node1", "plugins")
-
-	if nodeConfig == nil {
-		nodeConfig = map[string]interface{}{}
-	}
-	nodeConfig[config.NetworkAllowPrivateIPsKey] = true
-	if network.Kind == models.Fuji {
-		nodeConfig[config.IndexEnabledKey] = false // disable index for Fuji
-	}
-	nodeConfigBytes, err := json.Marshal(nodeConfig)
-	if err != nil {
-		return "", err
-	}
-	nodeConfigStr := string(nodeConfigBytes)
-
-	// we will remove this code soon, so it can be not DRY
-	if network.Kind == models.Local {
-		connectionSettings, err = localnet.GetLocalNetworkConnectionInfo(app)
-		if err != nil {
-			return "", err
-		}
-	}
-	// end of code to be removed
-	anrOpts := []client.OpOption{
-		client.WithNetworkID(network.ID),
-		client.WithExecPath(avalancheGoBinaryPath),
-		client.WithRootDataDir(rootDir),
-		client.WithWhitelistedSubnets(subnetID.String()),
-		client.WithReassignPortsIfUsed(true),
-		client.WithPluginDir(pluginDir),
-		client.WithFreshStakingIds(true),
-		client.WithZeroIP(false),
-		client.WithGlobalNodeConfig(nodeConfigStr),
-	}
-	/*
-		if connectionSettings.GenesisPath != "" && utils.FileExists(connectionSettings.GenesisPath) {
-			anrOpts = append(anrOpts, client.WithGenesisPath(connectionSettings.GenesisPath))
-		}
-		if connectionSettings.UpgradePath != "" && utils.FileExists(connectionSettings.UpgradePath) {
-			anrOpts = append(anrOpts, client.WithUpgradePath(connectionSettings.UpgradePath))
-		}
-	*/
-	if connectionSettings.BootstrapIDs != nil {
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIDs(connectionSettings.BootstrapIDs))
-	}
-	if connectionSettings.BootstrapIPs != nil {
-		anrOpts = append(anrOpts, client.WithBootstrapNodeIPPortPairs(connectionSettings.BootstrapIPs))
-	}
-
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	ctx, cancel := network.BootstrappingContext()
-	defer cancel()
-
-	newNodeName, err := GetNextNodeName()
-	if err != nil {
-		return "", fmt.Errorf("failed to generate a new node name: %w", err)
-	}
-
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Creating new node with name %s on local machine", newNodeName)
-	err = DownloadPublicArchive(network, rootDir, []string{newNodeName})
-	ux.Logger.Info("seeding public archive data finished with error: %v. Ignored if any", err)
-	// add new local node
-	if _, err := cli.AddNode(ctx, newNodeName, avalancheGoBinaryPath, anrOpts...); err != nil {
-		ux.SpinFailWithError(spinner, "", err)
-		return newNodeName, fmt.Errorf("failed to add local validator: %w", err)
-	}
-	ux.Logger.Info("Waiting for node: %s to be bootstrapping P-Chain", newNodeName)
-	if err := WaitBootstrapped(ctx, cli, "P"); err != nil {
-		return newNodeName, fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
-	}
-	ux.Logger.Info("Waiting for node: %s to be healthy", newNodeName)
-	_, err = subnet.WaitForHealthy(ctx, cli)
-	if err != nil {
-		return newNodeName, fmt.Errorf("failed waiting for node %s to be healthy: %w", newNodeName, err)
-	}
-	ux.SpinComplete(spinner)
-	spinner = spinSession.SpinToUser("Tracking blockchain %s", blockchainName)
-	time.Sleep(10 * time.Second) // delay before restarting new node
-	if err := LocalNodeTrackSubnet(ctx,
-		cli,
-		app,
-		rootDir,
-		avalancheGoBinaryPath,
-		blockchainName,
-		blockchainID,
-		subnetID,
-		newNodeName); err != nil {
-		ux.SpinFailWithError(spinner, "", err)
-		return newNodeName, fmt.Errorf("failed to track blockchain: %w", err)
-	}
-	// wait until cluster is healthy
-	ux.Logger.Info("Waiting for node: %s to be bootstrapping %s", newNodeName, blockchainName)
-	if err := WaitBootstrapped(ctx, cli, blockchainID.String()); err != nil {
-		return newNodeName, fmt.Errorf("failure waiting for local cluster blockchain bootstrapping: %w", err)
-	}
-	spinner = spinSession.SpinToUser("Waiting for blockchain to be healthy")
-	clusterInfo, err := subnet.WaitForHealthy(ctx, cli)
-	if err != nil {
-		return newNodeName, fmt.Errorf("failed waiting for blockchain to become healthy: %w", err)
-	}
-	ux.SpinComplete(spinner)
-	spinSession.Stop()
-
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("Node logs directory: %s/%s/logs", rootDir, newNodeName)
-	ux.Logger.PrintToUser("")
-
-	nodeInfo := clusterInfo.NodeInfos[newNodeName]
-	ux.Logger.PrintToUser("Node name: %s ", newNodeName)
-	ux.Logger.PrintToUser("URI: %s", nodeInfo.Uri)
-	ux.Logger.PrintToUser("Node-ID: %s", nodeInfo.Id)
-	ux.Logger.PrintToUser("")
-	return newNodeName, nil
-}
-
 func LocalStatus(
 	app *application.Avalanche,
 	clusterName string,
@@ -439,7 +253,7 @@ func LocalStatus(
 				return err
 			}
 			for _, avagoURI := range runningAvagoURIs {
-				nodeID, nodePOP, isBoot, err := GetInfo(avagoURI, blockchainID.String())
+				nodeID, nodePOP, isBoot, err := getInfo(avagoURI, blockchainID.String())
 				if err != nil {
 					ux.Logger.RedXToUser("failed to get node  %s info: %v", avagoURI, err)
 					continue
@@ -454,7 +268,7 @@ func LocalStatus(
 
 				blockchainStatus := ""
 				if blockchainID != ids.Empty {
-					blockchainStatus, _ = GetBlockchainStatus(avagoURI, blockchainID.String()) // silence errors
+					blockchainStatus, _ = getBlockchainStatus(avagoURI, blockchainID.String()) // silence errors
 				}
 
 				avagoURIOuput += fmt.Sprintf("   - %s [%s] [%s]\n     publicKey: %s \n     proofOfPossession: %s \n",
@@ -476,7 +290,7 @@ func LocalStatus(
 	return nil
 }
 
-func GetInfo(uri string, blockchainID string) (
+func getInfo(uri string, blockchainID string) (
 	ids.NodeID, // nodeID
 	*signer.ProofOfPossession, // nodePOP
 	bool, // isBootstrapped
@@ -496,7 +310,7 @@ func GetInfo(uri string, blockchainID string) (
 	return nodeID, nodePOP, isBootstrapped, err
 }
 
-func GetBlockchainStatus(uri string, blockchainID string) (
+func getBlockchainStatus(uri string, blockchainID string) (
 	string, // status
 	error, // error
 ) {
@@ -511,30 +325,4 @@ func GetBlockchainStatus(uri string, blockchainID string) (
 		return "Not Syncing", nil
 	}
 	return status.String(), nil
-}
-
-func WaitBootstrapped(ctx context.Context, cli client.Client, blockchainID string) error {
-	blockchainBootstrapCheckFrequency := time.Second
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return err
-	}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		for {
-			infoClient := info.NewClient(nodeInfo.GetUri())
-			boostrapped, err := infoClient.IsBootstrapped(ctx, blockchainID)
-			if err != nil && !strings.Contains(err.Error(), "there is no chain with alias/ID") {
-				return err
-			}
-			if boostrapped {
-				break
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(blockchainBootstrapCheckFrequency):
-			}
-		}
-	}
-	return err
 }

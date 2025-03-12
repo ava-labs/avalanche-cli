@@ -851,9 +851,7 @@ func TmpNetCopyNode(
 		config.StakingSignerKeyContentKey,
 		config.DataDirKey,
 	} {
-		if _, ok := flags[flag]; ok {
-			delete(flags, flag)
-		}
+		delete(flags, flag)
 	}
 	flags[config.HTTPPortKey] = 0
 	flags[config.StakingPortKey] = 0

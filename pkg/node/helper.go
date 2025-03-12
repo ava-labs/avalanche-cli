@@ -3,22 +3,14 @@
 package node
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
@@ -26,13 +18,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	"github.com/ava-labs/avalanche-cli/sdk/network"
-	"github.com/ava-labs/avalanche-cli/sdk/publicarchive"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/set"
 )
 
 const (
@@ -426,200 +413,4 @@ func GetLatestAvagoVersionForRPC(app *application.Avalanche, configuredRPCVersio
 		return "", err
 	}
 	return desiredAvagoVersion, nil
-}
-
-func GetLocalNodeAvalancheGoBinPath() (string, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err != nil {
-		return "", err
-	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return "", err
-	}
-	if len(status.ClusterInfo.NodeInfos) == 0 {
-		return "", fmt.Errorf("no nodes found")
-	} else {
-		return status.ClusterInfo.NodeInfos["node1"].ExecPath, nil
-	}
-}
-
-func GetRunnningLocalNodeClusterName(app *application.Avalanche) (string, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err != nil {
-		return "", err
-	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	pattern := fmt.Sprintf("%s/([^/]+)", app.GetLocalClustersDir())
-	re := regexp.MustCompile(pattern)
-	matches := re.FindStringSubmatch(status.ClusterInfo.GetRootDataDir())
-	if len(matches) < 2 {
-		return "", fmt.Errorf("clusterName not found in input: %s", status.ClusterInfo.GetRootDataDir())
-	}
-	return matches[1], nil
-}
-
-// connect to running ANR and list local node names
-func ListLocalNodeNames() ([]string, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	localNodeNames := []string{}
-	for localNodeName := range status.ClusterInfo.NodeInfos {
-		localNodeNames = append(localNodeNames, localNodeName)
-	}
-	sort.Strings(localNodeNames)
-	return localNodeNames, nil
-}
-
-func GetNextNodeName() (string, error) {
-	currentNodeNames, _ := ListLocalNodeNames()
-	if len(currentNodeNames) == 0 {
-		return "", fmt.Errorf("no nodes found")
-	} else {
-		lastNodeName := currentNodeNames[len(currentNodeNames)-1]
-		splitStr := strings.Split(lastNodeName, "node")
-		if len(splitStr) != 2 {
-			return "", fmt.Errorf("invalid node name format: %s", lastNodeName)
-		}
-		extractedNumber := splitStr[1]
-		nodeNumber, err := strconv.Atoi(extractedNumber)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("node%d", nodeNumber+1), nil
-	}
-}
-
-func AddNodeInfoToSidecar(sc *models.Sidecar, nodeInfo *rpcpb.NodeInfo, network models.Network) error {
-	networkInfo := sc.Networks[network.Name()]
-	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
-	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
-	rpcEndpoints.Add(models.GetRPCEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
-	wsEndpoints.Add(models.GetWSEndpoint(nodeInfo.Uri, networkInfo.BlockchainID.String()))
-	networkInfo.RPCEndpoints = rpcEndpoints.List()
-	networkInfo.WSEndpoints = wsEndpoints.List()
-	sc.Networks[network.Name()] = networkInfo
-	return nil
-}
-
-func GetNodeInfo(nodeName string) (*rpcpb.NodeInfo, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	nodeInfo := status.ClusterInfo.NodeInfos[nodeName]
-	return nodeInfo, nil
-}
-
-func GetNodeData(endpoint string) (
-	string, // nodeID
-	string, // public key
-	string, // PoP
-	error,
-) {
-	infoClient := info.NewClient(endpoint)
-	ctx, cancel := utils.GetAPILargeContext()
-	defer cancel()
-	nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
-	if err != nil {
-		return "", "", "", err
-	}
-	return nodeID.String(),
-		"0x" + hex.EncodeToString(proofOfPossession.PublicKey[:]),
-		"0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:]),
-		nil
-}
-
-func DownloadPublicArchive(
-	clusterNetwork models.Network,
-	rootDir string,
-	nodeNames []string,
-) error {
-	// only fuji is supported for now
-	if clusterNetwork.Kind != models.Fuji {
-		return fmt.Errorf("unsupported network: %s", clusterNetwork.Name())
-	}
-	network := network.FujiNetwork()
-	ux.Logger.Info("downloading public archive for network %s", clusterNetwork.Name())
-	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Off, os.Stdout, logging.JSON.ConsoleEncoder()))) // off as we run inside of the spinner
-	if err != nil {
-		return fmt.Errorf("failed to create public archive downloader for network %s: %w", clusterNetwork.Name(), err)
-	}
-
-	if err := publicArcDownloader.Download(); err != nil {
-		return fmt.Errorf("failed to download public archive: %w", err)
-	}
-	defer publicArcDownloader.CleanUp()
-	if path, err := publicArcDownloader.GetFilePath(); err != nil {
-		return fmt.Errorf("failed to get downloaded file path: %w", err)
-	} else {
-		ux.Logger.Info("public archive downloaded to %s", path)
-	}
-
-	wg := sync.WaitGroup{}
-	mu := sync.Mutex{}
-	var firstErr error
-
-	for _, nodeName := range nodeNames {
-		target := filepath.Join(rootDir, nodeName, "db")
-		ux.Logger.Info("unpacking public archive to %s", target)
-
-		// Skip if target already exists
-		if _, err := os.Stat(target); err == nil {
-			ux.Logger.Info("data folder already exists at %s. Skipping...", target)
-			continue
-		}
-		wg.Add(1)
-		go func(target string) {
-			defer wg.Done()
-
-			if err := publicArcDownloader.UnpackTo(target); err != nil {
-				// Capture the first error encountered
-				mu.Lock()
-				if firstErr == nil {
-					firstErr = fmt.Errorf("failed to unpack public archive: %w", err)
-					_ = cleanUpClusterNodeData(rootDir, nodeNames)
-				}
-				mu.Unlock()
-			}
-		}(target)
-	}
-	wg.Wait()
-
-	if firstErr != nil {
-		return firstErr
-	}
-	ux.Logger.PrintToUser("Public archive unpacked to: %s", rootDir)
-	return nil
-}
-
-func cleanUpClusterNodeData(rootDir string, nodesNames []string) error {
-	for _, nodeName := range nodesNames {
-		if err := os.RemoveAll(filepath.Join(rootDir, nodeName)); err != nil {
-			return err
-		}
-	}
-	return nil
 }
