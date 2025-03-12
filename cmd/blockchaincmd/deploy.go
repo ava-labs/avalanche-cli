@@ -11,9 +11,7 @@ import (
 	"path/filepath"
 
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
@@ -31,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -1151,7 +1148,7 @@ func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids
 	}
 	t.AppendRow(table.Row{"Subnet ID", subnetID.String()})
 	if blockchainName != "" {
-		vmID, err := anrutils.VMID(blockchainName)
+		vmID, err := utils.VMID(blockchainName)
 		if err != nil {
 			return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 		}

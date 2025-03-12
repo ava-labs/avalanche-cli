@@ -22,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -73,7 +72,7 @@ func TrackSubnetWithLocalMachine(
 	}
 	subnetID := sc.Networks[network.Name()].SubnetID
 	blockchainID := sc.Networks[network.Name()].BlockchainID
-	vmID, err := anrutils.VMID(blockchainName)
+	vmID, err := utils.VMID(blockchainName)
 	if err != nil {
 		return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 	}

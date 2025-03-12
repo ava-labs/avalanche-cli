@@ -4,11 +4,13 @@ package localnet
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
@@ -43,16 +45,8 @@ func PrintEndpoints(
 		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, networkDir); err != nil {
 			return err
 		}
-		clusters, err := GetLocalNetworkRunningClusters(app)
-		if err != nil {
+		if err := PrintL1Endpoints(app, printFunc); err != nil {
 			return err
-		}
-		for _, clusterName := range clusters {
-			networkDir := GetLocalClusterDir(app, clusterName)
-			printFunc("")
-			if err := PrintNetworkEndpoints("L1 Nodes", printFunc, networkDir); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -128,6 +122,49 @@ func PrintNetworkEndpoints(
 			}
 		}
 		t.AppendRow(row)
+	}
+	printFunc(t.Render())
+	return nil
+}
+
+func PrintL1Endpoints(
+	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
+) error {
+	header := table.Row{"Node ID", "Localhost Endpoint"}
+	insideCodespace := utils.InsideCodespace()
+	if insideCodespace {
+		header = append(header, "Codespace Endpoint")
+	}
+	header = append(header, "L1")
+	t := ux.DefaultTable("L1 NODES", header)
+	clusters, err := GetLocalNetworkRunningClusters(app)
+	if err != nil {
+		return err
+	}
+	for _, clusterName := range clusters {
+		validatedBlockchainsInfo, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+		if err != nil {
+			return err
+		}
+		validatedBlockchains := utils.Map(validatedBlockchainsInfo, func (i BlockchainInfo) string {return i.Name})
+		networkDir := GetLocalClusterDir(app, clusterName)
+		network, err := GetTmpNetNetworkWithURIFix(networkDir)
+		if err != nil {
+			return err
+		}
+		for _, node := range network.Nodes {
+			row := table.Row{node.NodeID, node.URI}
+			if insideCodespace {
+				if codespaceURL, err := utils.GetCodespaceURL(node.URI); err != nil {
+					return err
+				} else {
+					row = append(row, codespaceURL)
+				}
+			}
+			row = append(row, strings.Join(validatedBlockchains, ","))
+			t.AppendRow(row)
+		}
 	}
 	printFunc(t.Render())
 	return nil

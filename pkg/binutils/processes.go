@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/perms"
 	"github.com/docker/docker/pkg/reexec"
@@ -242,7 +241,7 @@ func StartServerProcess(
 
 	if logPath == "" {
 		outputDirPrefix := path.Join(app.GetRunDir(), prefix+"server")
-		outputDir, err := anrutils.MkDirWithTimestamp(outputDirPrefix)
+		outputDir, err := utils.MkDirWithTimestamp(outputDirPrefix)
 		if err != nil {
 			return err
 		}

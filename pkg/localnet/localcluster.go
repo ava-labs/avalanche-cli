@@ -355,3 +355,23 @@ func GetLocalClusterURIs(
 	networkDir := GetLocalClusterDir(app, clusterName)
 	return GetTmpNetNodeURIsWithFix(networkDir)
 }
+
+func GetLocalClusterValidatedBlockchains(
+	app *application.Avalanche,
+	clusterName string,
+) ([]BlockchainInfo, error) {
+	blockchains, err := GetLocalClusterBlockchainInfo(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
+	validatedBlockchains := []BlockchainInfo{}
+	for _, blockchain := range blockchains {
+		if hasValidators, err := LocalClusterHasValidatorsForSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+			return nil, err
+		} else if !hasValidators {
+			continue
+		}
+		validatedBlockchains = append(validatedBlockchains, blockchain)
+	}
+	return validatedBlockchains, nil
+}

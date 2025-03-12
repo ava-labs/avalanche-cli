@@ -6,7 +6,8 @@ package models
 import (
 	"testing"
 
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
+
 	"github.com/stretchr/testify/require"
 )
 

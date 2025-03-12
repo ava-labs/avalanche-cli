@@ -643,3 +643,11 @@ func VMID(vmName string) (ids.ID, error) {
 	copy(b, []byte(vmName))
 	return ids.ToID(b)
 }
+
+func MkDirWithTimestamp(dirPrefix string) (string, error) {
+	const dirTimestampFormat = "20060102_150405"
+	currentTime := time.Now().Format(dirTimestampFormat)
+	dirName := dirPrefix + "_" + currentTime
+	return dirName, os.MkdirAll(dirName, os.ModePerm)
+}
+

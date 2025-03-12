@@ -22,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	anr_utils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/subnet-evm/core"
@@ -94,7 +93,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 	t.AppendRow(table.Row{"Name", sc.Name, sc.Name}, rowConfig)
 	vmIDstr := sc.ImportedVMID
 	if vmIDstr == "" {
-		vmID, err := anr_utils.VMID(sc.Name)
+		vmID, err := utils.VMID(sc.Name)
 		if err == nil {
 			vmIDstr = vmID.String()
 		} else {
