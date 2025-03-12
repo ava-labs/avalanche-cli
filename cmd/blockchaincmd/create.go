@@ -124,7 +124,7 @@ configuration, pass the -f flag.`,
 	cmd.Flags().BoolVar(&sovereign, "sovereign", true, "set to false if creating non-sovereign blockchain")
 	cmd.Flags().Uint64Var(&createFlags.rewardBasisPoints, "reward-basis-points", 100, "(PoS only) reward basis points for PoS Reward Calculator")
 	cmd.Flags().BoolVar(&createFlags.enableDebugging, "debug", true, "enable blockchain debugging")
-	cmd.Flags().BoolVar(&createFlags.useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
+	cmd.Flags().BoolVar(&createFlags.useACP99, "acp99", false, "use ACP99 contracts instead of v1.0.0 for validator managers")
 	return cmd
 }
 
