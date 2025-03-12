@@ -890,6 +890,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+				_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
 				deployRelayerFlags := relayercmd.DeployFlags{
 					Version:            icmSpec.RelayerVersion,
 					BinPath:            icmSpec.RelayerBinPath,
@@ -900,6 +901,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					Key:                relayerKeyName,
 					Amount:             relayerAmount,
 					AllowPrivateIPs:    relayerAllowPrivateIPs,
+				}
+				if network.Kind == models.Local {
+					blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+					if err != nil {
+						return err
+					}
+					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func (i localnet.BlockchainInfo) string {return i.Name}))
 				}
 				if network.Kind == models.Local || useLocalMachine {
 					deployRelayerFlags.Key = constants.ICMRelayerKeyName

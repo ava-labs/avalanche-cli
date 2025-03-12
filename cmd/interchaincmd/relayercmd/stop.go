@@ -8,6 +8,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -21,6 +22,12 @@ var stopNetworkOptions = []networkoptions.NetworkOption{
 	networkoptions.Fuji,
 }
 
+type StopFlags struct {
+	Network              networkoptions.NetworkFlags
+}
+
+var stopFlags StopFlags
+
 // avalanche interchain relayer stop
 func newStopCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -30,22 +37,29 @@ func newStopCmd() *cobra.Command {
 		RunE:  stop,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, stopNetworkOptions)
+	networkoptions.AddNetworkFlagsToCmd(cmd, &stopFlags.Network, true, stopNetworkOptions)
 	return cmd
 }
 
-func stop(_ *cobra.Command, _ []string) error {
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		globalNetworkFlags,
-		false,
-		false,
-		stopNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
+func stop(_ *cobra.Command, args []string) error {
+	return CallStop(args, stopFlags, models.UndefinedNetwork)
+}
+
+func CallStop(_ []string, flags StopFlags, network models.Network) error {
+	var err error
+	if network == models.UndefinedNetwork {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"",
+			globalNetworkFlags,
+			false,
+			false,
+			stopNetworkOptions,
+			"",
+		)
+		if err != nil {
+			return err
+		}
 	}
 	switch {
 	case network.ClusterName != "":
