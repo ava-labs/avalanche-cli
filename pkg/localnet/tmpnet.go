@@ -858,6 +858,9 @@ func TmpNetCopyNode(
 	newNode := tmpnet.Node{
 		Flags: flags,
 	}
+	if err := newNode.EnsureKeys(); err != nil {
+		return nil, nil
+	}
 	return &newNode, nil
 }
 
