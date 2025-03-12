@@ -17,10 +17,13 @@ import (
 )
 
 const (
-	keyName     = "e2eKey"
-	ewoqKeyName = "ewoq"
-	testKey     = "tests/e2e/assets/test_key.pk"
-	outputKey   = "/tmp/testKey.pk"
+	keyName         = "e2eKey"
+	keyName2        = "e2eKey2"
+	ewoqKeyName     = "ewoq"
+	testKey         = "tests/e2e/assets/test_key.pk"
+	testKeyWith0x   = "tests/e2e/assets/test_key_0x.pk"
+	outputKey       = "/tmp/testKey.pk"
+	outputKeywith0x = "/tmp/testKey_0x.pk"
 )
 
 var _ = ginkgo.Describe("[Key]", func() {
@@ -28,6 +31,9 @@ var _ = ginkgo.Describe("[Key]", func() {
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		os.Remove(outputKey)
+		err = utils.DeleteKey(keyName2)
+		gomega.Expect(err).Should(gomega.BeNil())
+		os.Remove(outputKeywith0x)
 	})
 
 	ginkgo.It("can create a new key", func() {
@@ -67,6 +73,34 @@ var _ = ginkgo.Describe("[Key]", func() {
 
 		// Check two keys are equal
 		genKeyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, keyName+constants.KeySuffix)
+		equal, err := utils.CheckKeyEquality(testKey, genKeyPath)
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(equal).Should(gomega.BeTrue())
+	})
+
+	ginkgo.It("can create a key from file that contains 0x prefix", func() {
+		// Check config does not already exist
+		exists, err := utils.KeyExists(keyName2)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeFalse())
+
+		output, err := commands.CreateKeyFromPath(keyName2, testKeyWith0x)
+		if err != nil {
+			fmt.Println(output)
+			utils.PrintStdErr(err)
+		}
+		gomega.Expect(err).Should(gomega.BeNil())
+
+		exists, err = utils.KeyExists(keyName2)
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(exists).Should(gomega.BeTrue())
+
+		// Check two keys are equal
+		genKeyPath := path.Join(utils.GetBaseDir(), constants.KeyDir, keyName2+constants.KeySuffix)
 		equal, err := utils.CheckKeyEquality(testKey, genKeyPath)
 		if err != nil {
 			fmt.Println(output)

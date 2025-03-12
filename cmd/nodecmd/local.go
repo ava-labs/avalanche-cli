@@ -34,6 +34,7 @@ import (
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 var (
@@ -61,6 +62,7 @@ var (
 	latestAvagoReleaseVersion    bool
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
+	useACP99                     bool
 )
 
 // const snapshotName = "local_snapshot"
@@ -216,6 +218,21 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		StakingCertKey:   stakingCertKey,
 		StakingTLSKey:    stakingTLSKey,
 	}
+	// TODO: remove this check for releases above v1.8.7, once v1.13.0-fuji avalanchego is latest release
+	if globalNetworkFlags.UseFuji && useCustomAvalanchegoVersion == "" {
+		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		versionComparison := semver.Compare(constants.FujiAvalancheGoV113, latestAvagoVersion)
+		if versionComparison == 1 {
+			useCustomAvalanchegoVersion = constants.FujiAvalancheGoV113
+		}
+	}
 	if useCustomAvalanchegoVersion != "" {
 		latestAvagoPreReleaseVersion = false
 		latestAvagoReleaseVersion = false
@@ -334,6 +351,7 @@ This command can only be used to validate Proof of Stake L1.`,
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
 	cmd.Flags().StringVar(&validatorManagerAddress, "validator-manager-address", "", "validator manager address")
+	cmd.Flags().BoolVar(&useACP99, "acp99", true, "use ACP99 contracts instead of v1.0.0 for validator managers")
 
 	return cmd
 }
@@ -512,6 +530,12 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	if useACP99 {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+	} else {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+	}
+
 	for _, node := range net.Nodes {
 		if err = addAsValidator(
 			network,
@@ -524,6 +548,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 			balance,
 			payerPrivateKey,
 			validatorManagerAddress,
+			useACP99,
 		); err != nil {
 			return err
 		}
@@ -545,6 +570,7 @@ func addAsValidator(
 	balance uint64,
 	payerPrivateKey string,
 	validatorManagerAddressStr string,
+	useACP99 bool,
 ) error {
 	// get node data
 	nodeIDStr, publicKey, pop, err := utils.GetNodeID(nodeURI)
@@ -573,12 +599,14 @@ func addAsValidator(
 
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+	signedMessage, validationID, _, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		false,
+		"",
 		payerPrivateKey,
 		nodeID,
 		blsInfo.PublicKey[:],
@@ -593,6 +621,8 @@ func addAsValidator(
 		delegationFee,
 		time.Duration(minimumStakeDuration)*time.Second,
 		validatorManagerAddressStr,
+		useACP99,
+		"",
 	)
 	if err != nil {
 		return err
@@ -617,12 +647,14 @@ func addAsValidator(
 
 	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	if err := validatormanager.FinishValidatorRegistration(
+	if _, err := validatormanager.FinishValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		false,
+		"",
 		payerPrivateKey,
 		validationID,
 		extraAggregatorPeers,

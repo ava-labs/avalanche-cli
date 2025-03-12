@@ -23,6 +23,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type ACP99ValidatorManagerSettings struct {
+	Admin                  common.Address
+	SubnetID               [32]byte
+	ChurnPeriodSeconds     uint64
+	MaximumChurnPercentage uint8
+}
+
 type ValidatorManagerSettings struct {
 	SubnetID               [32]byte
 	ChurnPeriodSeconds     uint64
@@ -174,13 +181,13 @@ func (p PoSParams) Verify() error {
 	return nil
 }
 
-// GetPChainSubnetConversionWarpMessage constructs p-chain-validated (signed) subnet conversion warp
+// GetPChainSubnetToL1ConversionMessage constructs p-chain-validated (signed) subnet conversion warp
 // message, to be sent to the validators manager when
 // initializing validators set
 // the message specifies [subnetID] that is being converted
 // together with the validator's manager [managerBlockchainID],
 // [managerAddress], and the initial list of [validators]
-func GetPChainSubnetConversionWarpMessage(
+func GetPChainSubnetToL1ConversionMessage(
 	ctx context.Context,
 	network models.Network,
 	aggregatorLogger logging.Logger,
@@ -283,6 +290,8 @@ func InitializeValidatorsSet(
 	}
 	return contract.TxToMethodWithWarpMessage(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		managerAddress,
 		subnetConversionSignedMessage,

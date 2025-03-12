@@ -88,6 +88,8 @@ func SendCrossChainMessage(
 	}
 	return contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		messengerAddress,
 		nil,

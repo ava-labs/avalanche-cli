@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -30,31 +31,31 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
 
 var (
-	nodeIDStr                 string
-	nodeEndpoint              string
-	balanceAVAX               float64
-	weight                    uint64
-	startTimeStr              string
-	duration                  time.Duration
-	defaultValidatorParams    bool
-	useDefaultStartTime       bool
-	useDefaultDuration        bool
-	useDefaultWeight          bool
-	waitForTxAcceptance       bool
-	publicKey                 string
-	pop                       string
-	remainingBalanceOwnerAddr string
-	disableOwnerAddr          string
-	rpcURL                    string
-	aggregatorLogLevel        string
-	aggregatorLogToStdout     bool
-	delegationFee             uint16
-
+	nodeIDStr                           string
+	nodeEndpoint                        string
+	balanceAVAX                         float64
+	weight                              uint64
+	startTimeStr                        string
+	duration                            time.Duration
+	defaultValidatorParams              bool
+	useDefaultStartTime                 bool
+	useDefaultDuration                  bool
+	useDefaultWeight                    bool
+	waitForTxAcceptance                 bool
+	publicKey                           string
+	pop                                 string
+	remainingBalanceOwnerAddr           string
+	disableOwnerAddr                    string
+	rpcURL                              string
+	aggregatorLogLevel                  string
+	aggregatorLogToStdout               bool
+	delegationFee                       uint16
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
 	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
@@ -64,6 +65,8 @@ var (
 	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
 	createLocalValidator                bool
+	externalValidatorManagerOwner       bool
+	validatorManagerOwner               string
 )
 
 const (
@@ -121,8 +124,10 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
-	cmd.Flags().StringVar(&validatorManagerOwnerAddress, "validator-manager-owner", "", "validator manager owner address (only if blockchain name is not provided)")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
+	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
+	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
+	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 
 	return cmd
 }
@@ -383,17 +388,26 @@ func CallAddValidator(
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-	ownerPrivateKeyFound, _, _, ownerPrivateKey, err := contract.SearchForManagedKey(
-		app,
-		network,
-		common.HexToAddress(sc.ValidatorManagerOwner),
-		true,
-	)
-	if err != nil {
-		return err
+
+	if validatorManagerOwner == "" {
+		validatorManagerOwner = sc.ValidatorManagerOwner
 	}
-	if !ownerPrivateKeyFound {
-		return fmt.Errorf("private key for Validator manager owner %s is not found", sc.ValidatorManagerOwner)
+
+	var ownerPrivateKey string
+	if !externalValidatorManagerOwner {
+		var ownerPrivateKeyFound bool
+		ownerPrivateKeyFound, _, _, ownerPrivateKey, err = contract.SearchForManagedKey(
+			app,
+			network,
+			common.HexToAddress(validatorManagerOwner),
+			true,
+		)
+		if err != nil {
+			return err
+		}
+		if !ownerPrivateKeyFound {
+			return fmt.Errorf("private key for Validator manager owner %s is not found", validatorManagerOwner)
+		}
 	}
 
 	pos := sc.PoS()
@@ -407,7 +421,14 @@ func CallAddValidator(
 			}
 		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), sc.ValidatorManagerOwner)
+
+	if sc.UseACP99 {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
+	} else {
+		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
+	}
+
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("Validation manager owner %s pays for the initialization of the validator's registration (Blockchain gas token)"), validatorManagerOwner)
 
 	if rpcURL == "" {
 		rpcURL, _, err = contract.GetBlockchainEndpoints(
@@ -502,12 +523,14 @@ func CallAddValidator(
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	signedMessage, validationID, err := validatormanager.InitValidatorRegistration(
+	signedMessage, validationID, rawTx, err := validatormanager.InitValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		externalValidatorManagerOwner,
+		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
 		blsInfo.PublicKey[:],
@@ -522,9 +545,14 @@ func CallAddValidator(
 		delegationFee,
 		duration,
 		validatorManagerAddress,
+		sc.UseACP99,
+		initiateTxHash,
 	)
 	if err != nil {
 		return err
+	}
+	if rawTx != nil {
+		return evm.TxDump("Initializing Validator Registration", rawTx)
 	}
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 
@@ -545,20 +573,26 @@ func CallAddValidator(
 
 	aggregatorCtx, aggregatorCancel = sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
-	if err := validatormanager.FinishValidatorRegistration(
+	rawTx, err = validatormanager.FinishValidatorRegistration(
 		aggregatorCtx,
 		app,
 		network,
 		rpcURL,
 		chainSpec,
+		externalValidatorManagerOwner,
+		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
 		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
-	); err != nil {
+	)
+	if err != nil {
 		return err
+	}
+	if rawTx != nil {
+		return evm.TxDump("Finish Validator Registration", rawTx)
 	}
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)

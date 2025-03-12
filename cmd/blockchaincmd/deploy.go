@@ -43,6 +43,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 const skipRelayerFlagName = "skip-relayer"
@@ -90,7 +91,6 @@ var (
 	poSWeightToValueFactor         uint64
 	deployBalanceAVAX              float64
 	validatorManagerAddress        string
-	validatorManagerOwnerAddress   string
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
@@ -470,6 +470,20 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
+	if network.Kind == models.Fuji && userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion {
+		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
+			constants.AvaLabsOrg,
+			constants.AvalancheGoRepoName,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		versionComparison := semver.Compare(constants.FujiAvalancheGoV113, latestAvagoVersion)
+		if versionComparison == 1 {
+			userProvidedAvagoVersion = constants.FujiAvalancheGoV113
+		}
+	}
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
 
@@ -817,6 +831,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			sidecar.ValidatorManagement == models.ProofOfStake,
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
+			sidecar.UseACP99,
 		)
 		if err != nil {
 			return err

@@ -15,7 +15,7 @@ const (
 	WriteReadReadPerms     = 0o644
 	WriteReadUserOnlyPerms = 0o600
 
-	UbuntuVersionLTS = "20.04"
+	UbuntuVersionLTS = "24.04"
 
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
@@ -82,7 +82,7 @@ const (
 
 	LatestPreReleaseVersionTag = "latest-prerelease"
 	LatestReleaseVersionTag    = "latest"
-	DefaultAvalancheGoVersion  = LatestPreReleaseVersionTag
+	DefaultAvalancheGoVersion  = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
@@ -166,6 +166,7 @@ const (
 	ConfigAPMCredentialsFileKey   = "credentials-file"
 	ConfigAPMAdminAPIEndpointKey  = "admin-api-endpoint"
 	ConfigNodeConfigKey           = "node-config"
+	ConfigMetricsUserIDKey        = "MetricsUserID"
 	ConfigMetricsEnabledKey       = "MetricsEnabled"
 	ConfigUpdatesDisabledKey      = "UpdatesDisabled"
 	ConfigAuthorizeCloudAccessKey = "AuthorizeCloudAccess"
@@ -292,6 +293,7 @@ const (
 	NotAvailableLabel         = "Not available"
 	BackendCmd                = "avalanche-cli-backend"
 
+	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
 	SubnetEVMRPCCompatibilityURL = "https://raw.githubusercontent.com/ava-labs/subnet-evm/master/compatibility.json"
 

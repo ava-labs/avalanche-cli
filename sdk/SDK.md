@@ -467,10 +467,10 @@ func IsValidator(net network.Network, subnetID ids.ID, nodeID ids.NodeID) (bool,
 
 ### Functions
 
-#### GetPChainSubnetConversionWarpMessage
+#### GetPChainSubnetToL1ConversionMessage
 
 ```go
-func GetPChainSubnetConversionWarpMessage(
+func GetPChainSubnetToL1ConversionMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,

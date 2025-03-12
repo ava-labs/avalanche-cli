@@ -25,7 +25,7 @@ func validateConvertOperation(tx *txs.Tx, action string) (bool, error) {
 	}
 	ux.Logger.PrintToUser("You are about to %s a ConvertSubnetToL1Tx for %s with the following content:", action, network.Name())
 	ux.Logger.PrintToUser("  Subnet ID: %s", convertToL1Tx.Subnet)
-	ux.Logger.PrintToUser("  Blockchain ID: %s", convertToL1Tx.BlockchainID)
+	ux.Logger.PrintToUser("  Blockchain ID: %s", convertToL1Tx.ChainID)
 	ux.Logger.PrintToUser("  Manager Address: %s", common.BytesToAddress(convertToL1Tx.Address).Hex())
 	ux.Logger.PrintToUser("  Validators:")
 	for _, val := range convertToL1Tx.Validators {

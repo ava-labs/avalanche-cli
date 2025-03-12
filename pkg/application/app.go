@@ -492,8 +492,11 @@ func (app *Avalanche) CopyKeyFile(inputFilename string, keyName string) error {
 	if err != nil {
 		return err
 	}
+	keyStr := string(keyBytes)
+	keyStr = strings.TrimSpace(keyStr)
+	keyStr = strings.TrimPrefix(keyStr, "0x")
 	keyPath := app.GetKeyPath(keyName)
-	return os.WriteFile(keyPath, keyBytes, constants.WriteReadReadPerms)
+	return os.WriteFile(keyPath, []byte(keyStr), constants.WriteReadReadPerms)
 }
 
 func (app *Avalanche) HasSubnetEVMGenesis(blockchainName string) (bool, error, error) {
