@@ -185,7 +185,7 @@ func (ms *Multisig) GetAuthSigners() ([]ids.ShortID, error) {
 	}
 	authSigners := []ids.ShortID{}
 	for _, sigIndex := range subnetInput.SigIndices {
-		if int(sigIndex) >= len(controlKeys) {
+		if sigIndex >= uint32(len(controlKeys)) {
 			return nil, fmt.Errorf("signer index %d exceeds number of control keys", sigIndex)
 		}
 		authSigners = append(authSigners, controlKeys[sigIndex])
