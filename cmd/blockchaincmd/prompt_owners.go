@@ -58,7 +58,7 @@ func promptOwners(
 	if threshold == 0 && subnetAuthKeys != nil {
 		threshold = uint32(len(subnetAuthKeys))
 	}
-	if threshold > uint32(len(controlKeys)) {
+	if int(threshold) > len(controlKeys) {
 		return nil, 0, fmt.Errorf("given threshold is greater than number of control keys")
 	}
 	if threshold == 0 {
