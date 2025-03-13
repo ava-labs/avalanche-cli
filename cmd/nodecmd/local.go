@@ -109,7 +109,12 @@ You can check the bootstrapping status by running avalanche node status local.
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	cmd.Flags().BoolVar(&latestAvagoReleaseVersion, "latest-avalanchego-version", true, "install latest avalanchego release version on node/s")
 	cmd.Flags().BoolVar(&latestAvagoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
-	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
+	cmd.Flags().StringVar(
+		&useCustomAvalanchegoVersion,
+		"custom-avalanchego-version",
+		constants.FujiAvalancheGoV113,
+		"install given avalanchego version on node/s",
+	)
 	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().StringArrayVar(&bootstrapIDs, "bootstrap-id", []string{}, "nodeIDs of bootstrap nodes")
 	cmd.Flags().StringArrayVar(&bootstrapIPs, "bootstrap-ip", []string{}, "IP:port pairs of bootstrap nodes")

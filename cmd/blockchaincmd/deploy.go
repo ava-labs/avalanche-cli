@@ -124,7 +124,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
 		"avalanchego-version",
-		constants.DefaultAvalancheGoVersion,
+		constants.FujiAvalancheGoV113,
 		"use this version of avalanchego (ex: v1.17.12)",
 	)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
