@@ -131,6 +131,13 @@ func PrintL1Endpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 ) error {
+	clusters, err := GetLocalNetworkRunningClusters(app)
+	if err != nil {
+		return err
+	}
+	if len(clusters) == 0 {
+		return nil
+	}
 	header := table.Row{"Node ID", "Localhost Endpoint"}
 	insideCodespace := utils.InsideCodespace()
 	if insideCodespace {
@@ -138,10 +145,6 @@ func PrintL1Endpoints(
 	}
 	header = append(header, "L1")
 	t := ux.DefaultTable("L1 NODES", header)
-	clusters, err := GetLocalNetworkRunningClusters(app)
-	if err != nil {
-		return err
-	}
 	for _, clusterName := range clusters {
 		validatedBlockchainsInfo, err := GetLocalClusterValidatedBlockchains(app, clusterName)
 		if err != nil {

@@ -29,7 +29,6 @@ type ConnectionSettings struct {
 
 func CreateLocalCluster(
 	app *application.Avalanche,
-	ctx context.Context,
 	printFunc func(msg string, args ...interface{}),
 	clusterName string,
 	avalancheGoBinPath string,
@@ -38,7 +37,7 @@ func CreateLocalCluster(
 	connectionSettings ConnectionSettings,
 	numNodes uint32,
 	nodeSettings []NodeSettings,
-	networkKind models.Network,
+	networkModel models.Network,
 ) (*tmpnet.Network, error) {
 	if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
 		return nil, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
@@ -54,6 +53,8 @@ func CreateLocalCluster(
 			return nil, fmt.Errorf("failed to unmarshal genesis: %w", err)
 		}
 	}
+	ctx, cancel := networkModel.BootstrappingContext()
+	defer cancel()
 	networkDir := GetLocalClusterDir(app, clusterName)
 	network, err := TmpNetCreate(
 		ctx,
@@ -81,7 +82,7 @@ func CreateLocalCluster(
 	for _, node := range network.Nodes {
 		nodeIDs = append(nodeIDs, node.NodeID.String())
 	}
-	if err := DownloadAvalancheGoDB(networkKind, networkDir, nodeIDs, app.Log, printFunc); err != nil {
+	if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
 		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
 	}
 	if err := TmpNetBootstrap(ctx, app.Log, networkDir); err != nil {
@@ -134,8 +135,8 @@ func AddNodeToLocalCluster(
 	for _, blockchain := range blockchains {
 		printFunc("Waiting for node: %s to be bootstrapping %s", newNode.NodeID, blockchain.Name)
 		if err := WaitLocalClusterBlockchainBootstrapped(
-			app,
 			ctx,
+			app,
 			clusterName,
 			blockchain.ID.String(),
 			blockchain.SubnetID,
@@ -312,8 +313,8 @@ func GetClusters(app *application.Avalanche) ([]string, error) {
 }
 
 func WaitLocalClusterBlockchainBootstrapped(
-	app *application.Avalanche,
 	ctx context.Context,
+	app *application.Avalanche,
 	clusterName string,
 	blockchainID string,
 	subnetID ids.ID,
@@ -484,4 +485,40 @@ func LocalClusterTrackSubnet(
 		networkDir,
 		nil,
 	)
+}
+
+func LoadLocalCluster(
+	app *application.Avalanche,
+	clusterName string,
+	avalancheGoBinaryPath string,
+) error {
+	if !LocalClusterExists(app, clusterName) {
+		return fmt.Errorf("local cluster %q is not found", clusterName)
+	}
+	networkDir := GetLocalClusterDir(app, clusterName)
+	networkModel, err := GetClusterNetworkKind(app, clusterName)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := networkModel.BootstrappingContext()
+	defer cancel()
+	if _, err := TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinaryPath); err != nil {
+		return err
+	}
+	blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+	if err != nil {
+		return err
+	}
+	for _, blockchain := range blockchains {
+		if err := WaitLocalClusterBlockchainBootstrapped(
+			ctx,
+			app,
+			clusterName,
+			blockchain.ID.String(),
+			blockchain.SubnetID,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }

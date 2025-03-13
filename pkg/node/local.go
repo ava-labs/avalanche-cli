@@ -3,7 +3,6 @@
 package node
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"os"
@@ -82,19 +81,9 @@ func StartLocalNode(
 		return err
 	}
 
-	var (
-		ctx    context.Context
-		cancel context.CancelFunc
-	)
 	if localnet.LocalClusterExists(app, clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
-		network, err := localnet.GetClusterNetworkKind(app, clusterName)
-		if err != nil {
-			return err
-		}
-		ctx, cancel = network.BootstrappingContext()
-		defer cancel()
-		if _, err := localnet.TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinaryPath); err != nil {
+		if err := localnet.LoadLocalCluster(app, clusterName, avalancheGoBinaryPath); err != nil {
 			return err
 		}
 	} else {
@@ -136,16 +125,12 @@ func StartLocalNode(
 		defaultFlags[config.IndexEnabledKey] = false
 		defaultFlags[config.IndexAllowIncompleteKey] = true
 
-		ctx, cancel = network.BootstrappingContext()
-		defer cancel()
-
 		ux.Logger.PrintToUser("Starting local avalanchego node using root: %s ...", networkDir)
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 
 		_, err := localnet.CreateLocalCluster(
 			app,
-			ctx,
 			ux.Logger.PrintToUser,
 			clusterName,
 			avalancheGoBinaryPath,
@@ -163,11 +148,6 @@ func StartLocalNode(
 
 		ux.SpinComplete(spinner)
 		spinSession.Stop()
-	}
-
-	ux.Logger.PrintToUser("Waiting for P-Chain to be bootstrapped")
-	if err := localnet.WaitLocalClusterBlockchainBootstrapped(app, ctx, clusterName, "P", ids.Empty); err != nil {
-		return fmt.Errorf("failure waiting for local cluster P-Chain bootstrapping: %w", err)
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Avalanchego started and ready to use from %s", networkDir)
