@@ -5,6 +5,7 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"os"
 	"strconv"
 	"time"
@@ -21,7 +22,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
@@ -122,7 +122,11 @@ func joinAsPrimaryNetworkValidator(
 	if err != nil {
 		return err
 	}
-	blsSk, err := bls.SecretKeyFromBytes(blsKeyBytes)
+	blsSk, err := localsigner.FromBytes(blsKeyBytes)
+	if err != nil {
+		return err
+	}
+	proofOfPossession, err := signer.NewProofOfPossession(blsSk)
 	if err != nil {
 		return err
 	}
@@ -136,7 +140,7 @@ func joinAsPrimaryNetworkValidator(
 		recipientAddr,
 		delegationFee,
 		nil,
-		signer.NewProofOfPossession(blsSk),
+		proofOfPossession,
 	); err != nil {
 		return err
 	}
