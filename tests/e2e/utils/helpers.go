@@ -728,25 +728,16 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 }
 
 func GetLocalClusterUris() ([]string, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
+	app := GetApp()
+	clusters, err := localnet.GetLocalNetworkRunningClusters(app)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	resp, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
+	if len(clusters) != 1 {
+		return nil, fmt.Errorf("expected 1 local network cluster running, found %d", len(clusters))
 	}
-	uris := []string{}
-	for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
-		uris = append(uris, nodeInfo.Uri)
-	}
-	return uris, nil
+	clusterName := clusters[0]
+	return localnet.GetLocalClusterURIs(app, clusterName)
 }
 
 func GetWhitelistedSubnetsFromConfigFile(configFile string) (string, error) {
