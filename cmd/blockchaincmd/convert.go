@@ -226,8 +226,6 @@ func StartLocalMachine(
 			localnet.NodeSettings{},
 			avagoVersionSettings,
 			network,
-			networkoptions.NetworkFlags{},
-			nil,
 		); err != nil {
 			return false, err
 		}

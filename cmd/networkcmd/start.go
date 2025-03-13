@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -264,7 +263,7 @@ func startLocalClusters(avalancheGoBinPath string) error {
 		blockchainName := blockchain.Name
 		clusterName := blockchainName + "-local-node-local-network"
 		if !localnet.LocalClusterExists(app, clusterName) {
-			return nil
+			continue
 		}
 		if err = node.StartLocalNode(
 			app,
@@ -276,8 +275,6 @@ func startLocalClusters(avalancheGoBinPath string) error {
 			localnet.NodeSettings{},
 			node.AvalancheGoVersionSettings{},
 			models.NewLocalNetwork(),
-			networkoptions.NetworkFlags{},
-			nil,
 		); err != nil {
 			return err
 		}

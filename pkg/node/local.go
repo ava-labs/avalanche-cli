@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -57,8 +56,6 @@ func StartLocalNode(
 	nodeSettings localnet.NodeSettings,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 	network models.Network,
-	networkFlags networkoptions.NetworkFlags,
-	supportedNetworkOptions []networkoptions.NetworkOption,
 ) error {
 	// initializes directories
 	networkDir := localnet.GetLocalClusterDir(app, clusterName)
@@ -88,20 +85,6 @@ func StartLocalNode(
 		}
 	} else {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
-		if network.Kind == models.Undefined {
-			network, err = networkoptions.GetNetworkFromCmdLineFlags(
-				app,
-				"",
-				networkFlags,
-				false,
-				true,
-				supportedNetworkOptions,
-				"",
-			)
-			if err != nil {
-				return err
-			}
-		}
 		network.ClusterName = clusterName
 
 		switch {

@@ -218,8 +218,22 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		StakingCertKey:   stakingCertKey,
 		StakingTLSKey:    stakingTLSKey,
 	}
+
+	network, err := networkoptions.GetNetworkFromCmdLineFlags(
+		app,
+		"",
+		globalNetworkFlags,
+		false,
+		true,
+		networkoptions.DefaultSupportedNetworkOptions,
+		"",
+	)
+	if err != nil {
+		return err
+	}
+
 	// TODO: remove this check for releases above v1.8.7, once v1.13.0-fuji avalanchego is latest release
-	if globalNetworkFlags.UseFuji && useCustomAvalanchegoVersion == "" {
+	if network.Kind == models.Fuji && useCustomAvalanchegoVersion == "" {
 		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
 			constants.AvaLabsOrg,
 			constants.AvalancheGoRepoName,
@@ -262,9 +276,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		connectionSettings,
 		nodeSettings,
 		avaGoVersionSetting,
-		models.Network{},
-		globalNetworkFlags,
-		networkoptions.DefaultSupportedNetworkOptions,
+		network,
 	)
 }
 
