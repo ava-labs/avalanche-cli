@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -273,8 +272,6 @@ func startLocalCluster(avalancheGoBinPath string) error {
 				node.ANRSettings{},
 				node.AvalancheGoVersionSettings{},
 				models.NewLocalNetwork(),
-				networkoptions.NetworkFlags{},
-				nil,
 			); err != nil {
 				return err
 			}
