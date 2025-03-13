@@ -7,9 +7,9 @@ toolchain go1.23.7
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20250311204312-28fbf1672296
-	github.com/ava-labs/avalanchego v1.13.0-fuji
+	github.com/ava-labs/avalanchego v1.13.0-fuji-rc.2.0.20250313194317-c78027fe41c9
 	github.com/ava-labs/coreth v0.14.1-rc.2
-	github.com/ava-labs/icm-services v1.4.1-0.20250307175119-828cacec2577
+	github.com/ava-labs/icm-services v1.4.1-0.20250313194621-b5eac197b0d8
 	github.com/ava-labs/subnet-evm v0.7.2
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.8

@@ -115,7 +115,7 @@ func updatePublicIPs(clusterName string) error {
 				changed++
 			}
 			node.ElasticIP = publicIPMap[node.NodeID]
-			if err := app.CreateNodeCloudConfigFile(node.NodeID, &node); err != nil { //nolint:gosec
+			if err := app.CreateNodeCloudConfigFile(node.NodeID, &node); err != nil {
 				return err
 			}
 		}

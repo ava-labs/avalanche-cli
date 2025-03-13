@@ -5,12 +5,9 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -18,13 +15,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )

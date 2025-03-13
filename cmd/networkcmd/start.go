@@ -53,7 +53,7 @@ already running.`,
 	cmd.Flags().StringVar(
 		&startFlags.UserProvidedAvagoVersion,
 		"avalanchego-version",
-		constants.DefaultAvalancheGoVersion,
+		constants.FujiAvalancheGoV113,
 		"use this version of avalanchego (ex: v1.17.12)",
 	)
 	cmd.Flags().StringVar(&startFlags.AvagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")

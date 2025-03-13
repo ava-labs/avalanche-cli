@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -15,25 +14,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
-	"golang.org/x/exp/slices"
-
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/config"
 	avago_upgrade "github.com/ava-labs/avalanchego/upgrade"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 	coreth_params "github.com/ava-labs/coreth/params"
+
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 // difference between unlock schedule locktime and startime in original genesis

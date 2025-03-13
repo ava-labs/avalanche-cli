@@ -198,7 +198,11 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	if network.Kind != models.Fuji {
+		ux.Logger.PrintToUser("This version of Avalanche-CLI is only meant for Fuji deployments. To deploy in other networks, please use v1.8.8-rc4")
+		ux.Logger.PrintToUser("curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh | sh -s v1.8.8-rc4")
+		return nil
+	}
 	// TODO: remove this check for releases above v1.8.7, once v1.13.0-fuji avalanchego is latest release
 	if network.Kind == models.Fuji && useCustomAvalanchegoVersion == "" {
 		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(

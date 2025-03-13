@@ -1,6 +1,6 @@
 # https://golangci-lint.run/usage/configuration/
 run:
-  go: "1.21.7"
+  go: "1.23.7"
   timeout: 10m
 
 issues:
@@ -19,7 +19,7 @@ linters:
     - depguard
     - errcheck
     - errorlint
-    - exportloopref
+    - copyloopvar
     - goconst
     - gocritic
     - gofmt
@@ -105,6 +105,7 @@ linters-settings:
     excludes:
       - G107 # https://securego.io/docs/rules/g107.html
       - G204
+      - G115 # TODO: include it again
   depguard:
     rules:
       packages:

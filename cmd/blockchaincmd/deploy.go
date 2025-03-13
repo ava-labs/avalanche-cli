@@ -473,7 +473,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
-
+	if network.Kind != models.Fuji {
+		ux.Logger.PrintToUser("This version of Avalanche-CLI is only meant for Fuji deployments. To deploy in other networks, please use v1.8.8-rc4")
+		ux.Logger.PrintToUser("curl -sSfL https://raw.githubusercontent.com/ava-labs/avalanche-cli/main/scripts/install.sh | sh -s v1.8.8-rc4")
+		return nil
+	}
 	if network.Kind == models.Fuji && userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion {
 		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
 			constants.AvaLabsOrg,
