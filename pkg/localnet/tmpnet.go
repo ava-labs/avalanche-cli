@@ -668,6 +668,7 @@ func TmpNetTrackSubnet(
 			return err
 		}
 	}
+	printFunc("Waiting for blockchain %s to be bootstrapped", blockchainID)
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, blockchainID.String(), subnetID); err != nil {
 		return err
 	}

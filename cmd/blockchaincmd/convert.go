@@ -265,7 +265,12 @@ func InitializeValidatorManager(
 	clusterName := clusterNameFlagValue
 	switch {
 	case useLocalMachine:
-		if err := localnet.LocalClusterTrackSubnet(app, clusterName, blockchainName); err != nil {
+		if err := localnet.LocalClusterTrackSubnet(
+			app,
+			ux.Logger.PrintToUser,
+			clusterName,
+			blockchainName,
+		); err != nil {
 			return false, err
 		}
 	default:

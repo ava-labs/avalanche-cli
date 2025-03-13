@@ -15,6 +15,7 @@ import (
 
 func TrackSubnet(
 	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
 	blockchainName string,
 	networkModel models.Network,
 	networkDir string,
@@ -58,7 +59,7 @@ func TrackSubnet(
 	if err := TmpNetTrackSubnet(
 		ctx,
 		app.Log,
-		ux.Logger.PrintToUser,
+		printFunc,
 		networkDir,
 		blockchainName,
 		sc.Sovereign,

@@ -30,6 +30,7 @@ type ExtraLocalNetworkData struct {
 // Finally persist all new blockchain RPC URLs into blockchain sidecar.
 func LocalNetworkTrackSubnet(
 	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
 	blockchainName string,
 ) error {
 	networkDir, err := GetLocalNetworkDir(app)
@@ -51,6 +52,7 @@ func LocalNetworkTrackSubnet(
 	}
 	return TrackSubnet(
 		app,
+		printFunc,
 		blockchainName,
 		networkModel,
 		networkDir,

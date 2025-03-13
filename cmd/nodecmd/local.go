@@ -308,7 +308,12 @@ func localDestroyNode(_ *cobra.Command, args []string) error {
 func localTrack(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	blockchainName := args[1]
-	return localnet.LocalClusterTrackSubnet(app, clusterName, blockchainName)
+	return localnet.LocalClusterTrackSubnet(
+		app,
+		ux.Logger.PrintToUser,
+		clusterName,
+		blockchainName,
+	)
 }
 
 func localStatus(_ *cobra.Command, args []string) error {

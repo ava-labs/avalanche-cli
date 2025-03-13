@@ -467,6 +467,7 @@ func GetLocalClusterValidatedBlockchains(
 
 func LocalClusterTrackSubnet(
 	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
 	clusterName string,
 	blockchainName string,
 ) error {
@@ -480,6 +481,7 @@ func LocalClusterTrackSubnet(
 	networkDir := GetLocalClusterDir(app, clusterName)
 	return TrackSubnet(
 		app,
+		printFunc,
 		blockchainName,
 		networkModel,
 		networkDir,

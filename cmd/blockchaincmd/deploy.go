@@ -854,6 +854,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser("")
 			if err := localnet.LocalNetworkTrackSubnet(
 				app,
+				ux.Logger.PrintToUser,
 				blockchainName,
 			); err != nil {
 				return err
