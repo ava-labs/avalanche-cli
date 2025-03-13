@@ -49,9 +49,10 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	validatorManagerFlags   ValidatorManagerFlags
-	initPOSManagerFlags     POSManagerSpecFlags
-	validatorManagerAddress string
+	validatorManagerFlags          ValidatorManagerFlags
+	initPOSManagerFlags            POSManagerSpecFlags
+	validatorManagerAddress        string
+	skipInitializeValidatorManager bool
 )
 
 // avalanche contract initValidatorManager
@@ -78,6 +79,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	cmd.Flags().Uint16Var(&initPOSManagerFlags.minimumDelegationFee, "pos-minimum-delegation-fee", 1, "(PoS only) minimum delegation fee")
 	cmd.Flags().Uint8Var(&initPOSManagerFlags.maximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "(PoS only )maximum stake multiplier")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.weightToValueFactor, "pos-weight-to-value-factor", 1, "(PoS only) weight to value factor")
+	cmd.Flags().BoolVar(&skipInitializeValidatorManager, "skip-init-validator-manager", false, "skip initialize validator manager")
 	return cmd
 }
 
@@ -211,6 +213,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			aggregatorLogger,
 			validatorManagerAddress,
 			sc.UseACP99,
+			skipInitializeValidatorManager,
 		); err != nil {
 			return err
 		}
@@ -263,6 +266,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				UptimeBlockchainID:      blockchainID,
 			},
 			validatorManagerAddress,
+			skipInitializeValidatorManager,
 		); err != nil {
 			return err
 		}

@@ -394,6 +394,7 @@ func InitializeValidatorManager(
 				UptimeBlockchainID:      blockchainID,
 			},
 			validatorManagerAddrStr,
+			false,
 		); err != nil {
 			return tracked, err
 		}
@@ -409,6 +410,7 @@ func InitializeValidatorManager(
 			aggregatorLogger,
 			validatorManagerAddrStr,
 			useACP99,
+			false,
 		); err != nil {
 			return tracked, err
 		}

@@ -203,6 +203,7 @@ func SetupPoA(
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	useACP99 bool,
+	skipInitializeValidatorManager bool,
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		ctx,
@@ -213,6 +214,7 @@ func SetupPoA(
 		aggregatorLogger,
 		validatorManagerAddressStr,
 		useACP99,
+		skipInitializeValidatorManager,
 	)
 }
 
@@ -231,6 +233,7 @@ func SetupPoS(
 	aggregatorLogger logging.Logger,
 	posParams validatorManagerSDK.PoSParams,
 	validatorManagerAddressStr string,
+	skipInitializeValidatorManager bool,
 ) error {
 	return subnet.InitializeProofOfStake(
 		ctx,
@@ -241,5 +244,6 @@ func SetupPoS(
 		aggregatorLogger,
 		posParams,
 		validatorManagerAddressStr,
+		skipInitializeValidatorManager,
 	)
 }
