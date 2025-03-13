@@ -32,8 +32,8 @@ source "googlecompute" "ubuntu_gcp" {
 }
 
 source "amazon-ebs" "ubuntu_amd64" {
-  ami_name      = "public-avalanchecli-ubuntu-noble-24.04-docker-{{timestamp}}"
-  ami_description = "Avalanche-CLI Ubuntu 24.04 Docker"
+  ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-{{timestamp}}"
+  ami_description = "Avalanche-CLI Ubuntu 22.04 Docker"
   instance_type = "t3.xlarge"
   region        = "us-east-1"
 
@@ -45,7 +45,7 @@ source "amazon-ebs" "ubuntu_amd64" {
   imds_support = "v2.0"
   source_ami_filter {
     filters = {
-      name                = "ubuntu/images/*ubuntu-noble-24.04-amd64-server-*"
+      name                = "ubuntu/images/*ubuntu-jammy-22.04-amd64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -58,8 +58,8 @@ source "amazon-ebs" "ubuntu_amd64" {
   ami_regions = local.all_regions
 
   tags = {
-    Name = "public-avalanchecli-ubuntu-noble-24.04-docker"
-    Release = "ubuntu-24.04"
+    Name = "public-avalanchecli-ubuntu-jammy-22.04-docker"
+    Release = "ubuntu-22.04"
     Org = "avaplatform"
     Base_AMI_ID = "{{ .SourceAMI }}"
     Base_AMI_Name = "{{ .SourceAMIName }}"
@@ -67,8 +67,8 @@ source "amazon-ebs" "ubuntu_amd64" {
 }
 
 source "amazon-ebs" "ubuntu_arm64" {
-  ami_name      = "public-avalanchecli-ubuntu-noble-24.04-docker-arm64-{{timestamp}}"
-  ami_description = "Avalanche-CLI Ubuntu 24.04 Docker"
+  ami_name      = "public-avalanchecli-ubuntu-jammy-22.04-docker-arm64-{{timestamp}}"
+  ami_description = "Avalanche-CLI Ubuntu 22.04 Docker"
   instance_type = "t4g.xlarge"  # Adjusted for arm64 instance type
   region        = "us-east-1"
   metadata_options {
@@ -79,7 +79,7 @@ source "amazon-ebs" "ubuntu_arm64" {
   imds_support = "v2.0"
   source_ami_filter {
     filters = {
-      name                = "ubuntu/images/*ubuntu-noble-24.04-arm64-server-*"  # Filter for arm64 AMIs (Ubuntu 24.04)
+      name                = "ubuntu/images/*ubuntu-jammy-22.04-arm64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -91,8 +91,8 @@ source "amazon-ebs" "ubuntu_arm64" {
   ami_groups = ["all"]
   ami_regions = local.all_regions
   tags = {
-    Name = "public-avalanchecli-ubuntu-noble-24.04-docker-arm64"
-    Release = "ubuntu-24.04"
+    Name = "public-avalanchecli-ubuntu-jammy-22.04-docker-arm64"
+    Release = "ubuntu-22.04"
     Org = "avaplatform"
     Base_AMI_ID = "{{ .SourceAMI }}"
     Base_AMI_Name = "{{ .SourceAMIName }}"
