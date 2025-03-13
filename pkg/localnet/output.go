@@ -58,7 +58,7 @@ func PrintEndpoints(
 }
 
 // PrintBlockchainEndpoints prints out a table of (RPC Kind, RPC) for the given
-// [blockchain] associated to the the given tmpnet [networkDir]
+// [blockchain] associated to the given tmpnet [networkDir]
 // RPC Kind to be in [Localhost, Codespace] where the latest
 // is used only if inside a codespace environment
 func PrintBlockchainEndpoints(
