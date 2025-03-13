@@ -198,7 +198,7 @@ func LocalStatus(
 		healthStatus := ""
 		avagoURIOuput := ""
 
-		network, err := localnet.GetClusterNetworkKind(app, clusterName)
+		network, err := localnet.GetLocalClusterNetworkModel(app, clusterName)
 		if err != nil {
 			return fmt.Errorf("failed to get cluster network: %w", err)
 		}

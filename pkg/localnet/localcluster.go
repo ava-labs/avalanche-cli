@@ -108,7 +108,7 @@ func AddNodeToLocalCluster(
 	if err != nil {
 		return nil, err
 	}
-	networkModel, err := GetClusterNetworkKind(app, clusterName)
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func IsLocalNetworkCluster(app *application.Avalanche, clusterName string) (bool
 	return IsLocalClusterForNetwork(app, clusterName, models.NewLocalNetwork())
 }
 
-func GetClusterNetworkKind(app *application.Avalanche, clusterName string) (models.Network, error) {
+func GetLocalClusterNetworkModel(app *application.Avalanche, clusterName string) (models.Network, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
 	networkID, err := GetTmpNetNetworkID(networkDir)
 	if err != nil {
@@ -473,7 +473,7 @@ func LocalClusterTrackSubnet(
 	if !LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
-	networkModel, err := GetClusterNetworkKind(app, clusterName)
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -496,7 +496,7 @@ func LoadLocalCluster(
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
-	networkModel, err := GetClusterNetworkKind(app, clusterName)
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return err
 	}
