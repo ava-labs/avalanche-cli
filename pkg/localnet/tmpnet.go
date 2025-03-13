@@ -995,7 +995,7 @@ func GetTmpNetNetworkID(networkDir string) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	networkID, err := strconv.Atoi(networkIDStr)
+	networkID, err := strconv.ParseUint(networkIDStr, 10, 32)
 	if err != nil {
 		return 0, err
 	}
