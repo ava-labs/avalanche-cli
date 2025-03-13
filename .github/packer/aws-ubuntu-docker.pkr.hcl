@@ -122,6 +122,21 @@ build {
 
         ]
     }
+    # Install GLIBC 2.34 for AvalancheGo
+    provisioner "shell" {
+      inline = [
+        "sudo apt-get install -y build-essential manpages-dev",
+        "wget http://ftp.gnu.org/gnu/libc/glibc-2.34.tar.gz",
+        "tar -xvzf glibc-2.34.tar.gz",
+        "cd glibc-2.34 && mkdir build && cd build",
+        "../configure --prefix=/opt/glibc-2.34",
+        "make -j$(nproc)",
+        "sudo make install",
+        "echo 'export LD_LIBRARY_PATH=/opt/glibc-2.34/lib:$LD_LIBRARY_PATH' | sudo tee -a /etc/profile",
+        "echo 'export PATH=/opt/glibc-2.34/bin:$PATH' | sudo tee -a /etc/profile",
+        "source /etc/profile"
+      ]
+    }
     provisioner "shell" {
         inline = [
             "docker pull avaplatform/avalanchego",
