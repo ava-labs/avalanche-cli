@@ -234,8 +234,6 @@ func StartLocalMachine(
 			anrSettings,
 			avagoVersionSettings,
 			network,
-			networkoptions.NetworkFlags{},
-			nil,
 		); err != nil {
 			return false, err
 		}
