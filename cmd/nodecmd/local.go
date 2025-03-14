@@ -185,7 +185,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		StakingCertKeyPath:   stakingCertKeyPath,
 		StakingTLSKeyPath:    stakingTLSKeyPath,
 	}
-
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
