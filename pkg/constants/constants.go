@@ -20,7 +20,8 @@ const (
 	BaseDirName = ".avalanche-cli"
 	LogDir      = "logs"
 
-	LocalNetworkMetaFile = "localNetworks.json"
+	LocalNetworkMetaFile  = "localNetworks.json"
+	LocalClustersMetaFile = "localClusters.json"
 
 	ServerRunFile                   = "gRPCserver.run"
 	ServerRunFileLocalNetworkPrefix = ""
@@ -82,6 +83,7 @@ const (
 	LatestPreReleaseVersionTag = "latest-prerelease"
 	LatestReleaseVersionTag    = "latest"
 	DefaultAvalancheGoVersion  = LatestReleaseVersionTag
+	DefaultRelayerVersion      = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
@@ -302,8 +304,8 @@ const (
 	SubnetIDLabel     = "SubnetID: "
 	BlockchainIDLabel = "BlockchainID: "
 
-	PluginDir = "plugins"
-	LocalDir  = "local"
+	PluginDir        = "plugins"
+	LocalClustersDir = "local"
 
 	DefaultNumberOfLocalMachineNodes = 1
 	MetricsNetwork                   = "network"

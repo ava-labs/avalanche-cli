@@ -61,7 +61,7 @@ func newDeployCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&deployFlags.Version,
 		"version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"version to deploy",
 	)
 	cmd.Flags().StringVar(&deployFlags.LogLevel, "log-level", "", "log level to use for relayer logs")

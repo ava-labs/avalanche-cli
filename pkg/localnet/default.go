@@ -38,6 +38,7 @@ var defaultNetworkData []byte
 // - common flags
 // - node confs
 func GetDefaultNetworkConf(numNodes uint32) (
+	uint32,
 	*genesis.UnparsedConfig,
 	[]byte,
 	map[string]interface{},
@@ -46,7 +47,7 @@ func GetDefaultNetworkConf(numNodes uint32) (
 ) {
 	networkConf := networkConfig{}
 	if err := json.Unmarshal(defaultNetworkData, &networkConf); err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("failure unmarshaling default local network config: %w", err)
+		return 0, nil, nil, nil, nil, fmt.Errorf("failure unmarshaling default local network config: %w", err)
 	}
 	nodes := []*tmpnet.Node{}
 	for i := range numNodes {
@@ -55,7 +56,7 @@ func GetDefaultNetworkConf(numNodes uint32) (
 			maps.Copy(node.Flags, networkConf.NodeConfigs[i].Flags)
 		}
 		if err := node.EnsureKeys(); err != nil {
-			return nil, nil, nil, nil, err
+			return 0, nil, nil, nil, nil, err
 		}
 		nodes = append(nodes, node)
 	}
@@ -63,7 +64,7 @@ func GetDefaultNetworkConf(numNodes uint32) (
 		genesis.EWOQKey,
 	})
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return 0, nil, nil, nil, nil, err
 	}
-	return unparsedGenesis, []byte(networkConf.Upgrade), networkConf.CommonFlags, nodes, nil
+	return constants.LocalNetworkID, unparsedGenesis, []byte(networkConf.Upgrade), networkConf.CommonFlags, nodes, nil
 }

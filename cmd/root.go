@@ -322,6 +322,13 @@ func setupEnv() (string, error) {
 		return "", err
 	}
 
+	// Create local clusters dir if it doesn't exist
+	localClustersDir := filepath.Join(baseDir, constants.LocalClustersDir)
+	if err = os.MkdirAll(localClustersDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the local clusters dir %s: %s\n", localClustersDir, err)
+		return "", err
+	}
+
 	return baseDir, nil
 }
 

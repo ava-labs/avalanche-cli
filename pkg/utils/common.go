@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -455,6 +456,25 @@ func GetChainIDs(endpoint string, chainName string) (string, string, error) {
 	return "", "", fmt.Errorf("%s not found on primary network blockchains", chainName)
 }
 
+func GetNodeID(endpoint string) (
+	string, // nodeID
+	string, // public key
+	string, // PoP
+	error,
+) {
+	infoClient := info.NewClient(endpoint)
+	ctx, cancel := GetAPILargeContext()
+	defer cancel()
+	nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+	if err != nil {
+		return "", "", "", err
+	}
+	return nodeID.String(),
+		"0x" + hex.EncodeToString(proofOfPossession.PublicKey[:]),
+		"0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:]),
+		nil
+}
+
 func GetBlockchainTx(endpoint string, blockchainID ids.ID) (*txs.CreateChainTx, error) {
 	pClient := platformvm.NewClient(endpoint)
 	ctx, cancel := GetAPIContext()
@@ -642,6 +662,13 @@ func VMID(vmName string) (ids.ID, error) {
 	b := make([]byte, 32)
 	copy(b, []byte(vmName))
 	return ids.ToID(b)
+}
+
+func MkDirWithTimestamp(dirPrefix string) (string, error) {
+	const dirTimestampFormat = "20060102_150405"
+	currentTime := time.Now().Format(dirTimestampFormat)
+	dirName := dirPrefix + "_" + currentTime
+	return dirName, os.MkdirAll(dirName, os.ModePerm)
 }
 
 func PointersSlice[T any](input []T) []*T {

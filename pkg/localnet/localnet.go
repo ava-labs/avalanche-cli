@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
-	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 var ErrNetworkNotRunning = errors.New("network is not running")
@@ -175,7 +174,6 @@ func IsLocalNetworkBlockchainBootstrapped(
 // all blockchain that have validators on the network, are bootstrapped
 func LocalNetworkHealth(
 	app *application.Avalanche,
-	printFunc func(msg string, args ...interface{}),
 ) (bool, bool, error) {
 	pChainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, "P", ids.Empty)
 	if err != nil {
@@ -185,22 +183,41 @@ func LocalNetworkHealth(
 	if err != nil {
 		return pChainBootstrapped, false, err
 	}
+	clusters, err := GetLocalNetworkRunningClusters(app)
+	if err != nil {
+		return pChainBootstrapped, false, err
+	}
 	for _, blockchain := range blockchains {
 		hasValidators, err := LocalNetworkHasValidatorsForSubnet(app, blockchain.SubnetID)
 		if err != nil {
 			return pChainBootstrapped, false, err
 		}
 		if !hasValidators {
-			printFunc(logging.Red.Wrap("local network has no validators for subnet %s. l1 check is not implemented yet"), blockchain.SubnetID)
-			printFunc("")
-			return pChainBootstrapped, false, err
-		}
-		blockchainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, blockchain.ID.String(), blockchain.SubnetID)
-		if err != nil {
-			return pChainBootstrapped, false, err
-		}
-		if !blockchainBootstrapped {
-			return pChainBootstrapped, false, nil
+			blockchainBootstrappedOnSomeCluster := false
+			for _, clusterName := range clusters {
+				if hasValidators, err := LocalClusterHasValidatorsForSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+					return pChainBootstrapped, false, err
+				} else if !hasValidators {
+					continue
+				}
+				blockchainBootstrapped, err := IsLocalClusterBlockchainBootstrapped(app, clusterName, blockchain.ID.String(), blockchain.SubnetID)
+				if err != nil {
+					return pChainBootstrapped, false, err
+				} else if blockchainBootstrapped {
+					blockchainBootstrappedOnSomeCluster = true
+				}
+			}
+			if !blockchainBootstrappedOnSomeCluster {
+				return pChainBootstrapped, false, nil
+			}
+		} else {
+			blockchainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, blockchain.ID.String(), blockchain.SubnetID)
+			if err != nil {
+				return pChainBootstrapped, false, err
+			}
+			if !blockchainBootstrapped {
+				return pChainBootstrapped, false, nil
+			}
 		}
 	}
 	return pChainBootstrapped, true, nil

@@ -14,9 +14,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
@@ -25,7 +25,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
-	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -222,7 +221,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	sovereign := sc.Sovereign
 
 	if nodeEndpoint != "" {
-		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
+		nodeIDStr, publicKey, pop, err = utils.GetNodeID(nodeEndpoint)
 		if err != nil {
 			return err
 		}
@@ -265,53 +264,33 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	// if user chose to upsize a local node to add another local validator
 	if createLocalValidator {
-		anrSettings := node.ANRSettings{}
-		nodeConfig := map[string]interface{}{}
-		ux.Logger.PrintToUser("Creating a new Avalanche node on local machine to add as a new validator to blockchain %s", blockchainName)
-		if app.AvagoNodeConfigExists(blockchainName) {
-			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
-			if err != nil {
-				return err
-			}
-		}
-		if partialSync {
-			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
-		}
-		avalancheGoBinPath, err := node.GetLocalNodeAvalancheGoBinPath()
-		if err != nil {
-			return fmt.Errorf("failed to get local node avalanche go bin path: %w", err)
-		}
-
-		nodeName := ""
-		blockchainID := sc.Networks[network.Name()].BlockchainID
-
-		if nodeName, err = node.UpsizeLocalNode(
-			app,
-			network,
-			blockchainName,
-			blockchainID,
-			subnetID,
-			avalancheGoBinPath,
-			nodeConfig,
-			anrSettings,
-		); err != nil {
-			return err
-		}
-		// get node data
-		nodeInfo, err := node.GetNodeInfo(nodeName)
+		// TODO: make this to work even if there is no local cluster for the blockchain and network
+		targetClusters, err := localnet.GetFilteredClusters(app, true, network, blockchainName)
 		if err != nil {
 			return err
 		}
-		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeInfo.Uri)
+		if len(targetClusters) == 0 {
+			return fmt.Errorf("no local cluster is running for network %s and blockchain %s", network.Name(), blockchainName)
+		}
+		if len(targetClusters) != 1 {
+			return fmt.Errorf("too many local clusters running for network %s and blockchain %s", network.Name(), blockchainName)
+		}
+		clusterName := targetClusters[0]
+		node, err := localnet.AddNodeToLocalCluster(app, ux.Logger.PrintToUser, clusterName)
 		if err != nil {
 			return err
 		}
-		// update sidecar with new node
-		if err := node.AddNodeInfoToSidecar(&sc, nodeInfo, network); err != nil {
+		nodeIDStr, publicKey, pop, err = utils.GetNodeID(node.URI)
+		if err != nil {
 			return err
 		}
-		if err := app.UpdateSidecar(&sc); err != nil {
+		if err := app.AddDefaultBlockchainRPCsToSidecar(blockchainName, network, []string{node.URI}); err != nil {
 			return err
+		}
+		// reload sc
+		sc, err = app.LoadSidecar(blockchainName)
+		if err != nil {
+			return fmt.Errorf("failed to load sidecar: %w", err)
 		}
 		// make sure extra validator endpoint added for the new node
 		aggregatorExtraEndpoints = append(aggregatorExtraEndpoints, constants.LocalAPIEndpoint)

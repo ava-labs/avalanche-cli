@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	"github.com/ava-labs/avalanche-network-runner/server"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+
 	"github.com/spf13/cobra"
 )
 
@@ -316,7 +316,7 @@ func updateFutureVM(sc models.Sidecar, targetVersion string) error {
 }
 
 func updateExistingLocalVM(sc models.Sidecar, targetVersion string) error {
-	vmid, err := anrutils.VMID(sc.Name)
+	vmid, err := utils.VMID(sc.Name)
 	if err != nil {
 		return err
 	}

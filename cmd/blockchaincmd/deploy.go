@@ -10,15 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang.org/x/mod/semver"
-
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -33,7 +28,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -48,6 +43,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
 
 const skipRelayerFlagName = "skip-relayer"
@@ -160,7 +156,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringVar(
 		&icmSpec.RelayerVersion,
 		"relayer-version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"relayer version to deploy",
 	)
 	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
@@ -856,11 +852,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
-			ctx, cancel := localnet.GetLocalNetworkDefaultContext()
-			defer cancel()
 			if err := localnet.LocalNetworkTrackSubnet(
-				ctx,
 				app,
+				ux.Logger.PrintToUser,
 				blockchainName,
 			); err != nil {
 				return err
@@ -912,6 +906,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+				_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
+				if network.Kind == models.Local && icmSpec.RelayerBinPath == "" && icmSpec.RelayerVersion == constants.DefaultRelayerVersion {
+					if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
+						return err
+					} else if b {
+						icmSpec.RelayerBinPath = extraLocalNetworkData.RelayerPath
+					}
+				}
 				deployRelayerFlags := relayercmd.DeployFlags{
 					Version:            icmSpec.RelayerVersion,
 					BinPath:            icmSpec.RelayerBinPath,
@@ -922,6 +924,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					Key:                relayerKeyName,
 					Amount:             relayerAmount,
 					AllowPrivateIPs:    relayerAllowPrivateIPs,
+				}
+				if network.Kind == models.Local {
+					blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+					if err != nil {
+						return err
+					}
+					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
 				if network.Kind == models.Local || useLocalMachine {
 					deployRelayerFlags.Key = constants.ICMRelayerKeyName
@@ -1170,7 +1179,7 @@ func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids
 	}
 	t.AppendRow(table.Row{"Subnet ID", subnetID.String()})
 	if blockchainName != "" {
-		vmID, err := anrutils.VMID(blockchainName)
+		vmID, err := utils.VMID(blockchainName)
 		if err != nil {
 			return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 		}

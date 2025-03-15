@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -14,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -97,25 +95,6 @@ func UpdateKeychainWithSubnetControlKeys(
 		return err
 	}
 	return nil
-}
-
-func getLocalBootstrapEndpoints() ([]string, error) {
-	ctx, cancel := utils.GetANRContext()
-	defer cancel()
-	serverEndpoint := binutils.LocalClusterGRPCServerEndpoint
-	cli, err := binutils.NewGRPCClientWithEndpoint(serverEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	status, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	localBootstrapEndpoints := []string{}
-	for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-		localBootstrapEndpoints = append(localBootstrapEndpoints, nodeInfo.Uri)
-	}
-	return localBootstrapEndpoints, nil
 }
 
 func GetProxyOwnerPrivateKey(

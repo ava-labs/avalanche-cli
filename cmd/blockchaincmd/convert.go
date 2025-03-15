@@ -118,15 +118,10 @@ func StartLocalMachine(
 	clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
 	if clusterNameFlagValue != "" {
 		clusterName = clusterNameFlagValue
-		clusterConfig, err := app.GetClusterConfig(clusterName)
-		if err != nil {
-			return false, err
-		}
-		// check if cluster is local
-		if clusterConfig.Local {
+		if localnet.LocalClusterExists(app, clusterName) {
 			useLocalMachine = true
 			if len(bootstrapEndpoints) == 0 {
-				bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+				bootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
 				if err != nil {
 					return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 						"please create your local node again and call blockchain deploy command again", err)
@@ -155,9 +150,7 @@ func StartLocalMachine(
 	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if useLocalMachine && clusterNameFlagValue == "" {
-		if clusterExists, err := node.CheckClusterIsLocal(app, clusterName); err != nil {
-			return false, err
-		} else if clusterExists {
+		if localnet.LocalClusterExists(app, clusterName) {
 			ux.Logger.PrintToUser("")
 			ux.Logger.PrintToUser(
 				logging.Red.Wrap("A local machine L1 deploy already exists for %s L1 and network %s"),
@@ -173,7 +166,8 @@ func StartLocalMachine(
 			if !yes {
 				return true, nil
 			}
-			_ = node.DestroyLocalNode(app, clusterName)
+			_ = localnet.LocalClusterRemove(app, clusterName)
+			ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 		}
 		requiredBalance := deployBalance * uint64(numLocalNodes)
 		if availableBalance < requiredBalance {
@@ -184,9 +178,6 @@ func StartLocalMachine(
 				availableBalance,
 			)
 		}
-		// stop local avalanchego process so that we can generate new local cluster
-		_ = node.StopLocalNode(app)
-		anrSettings := node.ANRSettings{}
 		avagoVersionSettings := node.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
@@ -231,7 +222,8 @@ func StartLocalMachine(
 			avagoBinaryPath,
 			uint32(numLocalNodes),
 			nodeConfig,
-			anrSettings,
+			localnet.ConnectionSettings{},
+			localnet.NodeSettings{},
 			avagoVersionSettings,
 			network,
 		); err != nil {
@@ -239,7 +231,7 @@ func StartLocalMachine(
 		}
 		clusterNameFlagValue = clusterName
 		if len(bootstrapEndpoints) == 0 {
-			bootstrapEndpoints, err = getLocalBootstrapEndpoints()
+			bootstrapEndpoints, err = localnet.GetLocalClusterURIs(app, clusterName)
 			if err != nil {
 				return false, fmt.Errorf("error getting local host bootstrap endpoints: %w, "+
 					"please create your local node again and call blockchain deploy command again", err)
@@ -271,11 +263,11 @@ func InitializeValidatorManager(
 	clusterName := clusterNameFlagValue
 	switch {
 	case useLocalMachine:
-		if err := node.TrackSubnetWithLocalMachine(
+		if err := localnet.LocalClusterTrackSubnet(
 			app,
+			ux.Logger.PrintToUser,
 			clusterName,
 			blockchainName,
-			avagoBinaryPath,
 		); err != nil {
 			return false, err
 		}
@@ -739,6 +731,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
+	fmt.Println("LLEGO ACA")
 	avaGoBootstrapValidators, cancel, savePartialTx, err := convertSubnetToL1(
 		bootstrapValidators,
 		deployer,
