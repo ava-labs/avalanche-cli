@@ -44,7 +44,7 @@ func newStartCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&version,
 		"version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"version to use",
 	)
 	return cmd
@@ -89,7 +89,7 @@ func start(_ *cobra.Command, _ []string) error {
 			}
 		}
 		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
-		if network.Kind == models.Local && binPath == "" {
+		if network.Kind == models.Local && binPath == "" && version == constants.DefaultRelayerVersion {
 			if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
 				return err
 			} else if b {

@@ -156,7 +156,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringVar(
 		&icmSpec.RelayerVersion,
 		"relayer-version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"relayer version to deploy",
 	)
 	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
@@ -907,6 +907,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
 				_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
+				if network.Kind == models.Local && icmSpec.RelayerBinPath == "" && icmSpec.RelayerVersion == constants.DefaultRelayerVersion {
+					if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
+						return err
+					} else if b {
+						icmSpec.RelayerBinPath = extraLocalNetworkData.RelayerPath
+					}
+				}
 				deployRelayerFlags := relayercmd.DeployFlags{
 					Version:            icmSpec.RelayerVersion,
 					BinPath:            icmSpec.RelayerBinPath,

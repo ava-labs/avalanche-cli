@@ -63,7 +63,7 @@ already running.`,
 	cmd.Flags().StringVar(
 		&startFlags.RelayerVersion,
 		"relayer-version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"use this relayer version",
 	)
 
