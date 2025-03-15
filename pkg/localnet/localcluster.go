@@ -37,12 +37,15 @@ func CreateLocalCluster(
 	connectionSettings ConnectionSettings,
 	numNodes uint32,
 	nodeSettings []NodeSettings,
+	trackedSubnets []ids.ID,
 	networkModel models.Network,
+	downloadDB bool,
+	bootstrap bool,
 ) (*tmpnet.Network, error) {
 	if len(connectionSettings.BootstrapIDs) != len(connectionSettings.BootstrapIPs) {
 		return nil, fmt.Errorf("number of bootstrap IDs and bootstrap IP:port pairs must be equal")
 	}
-	nodes, err := GetNewTmpNetNodes(numNodes, nodeSettings)
+	nodes, err := GetNewTmpNetNodes(numNodes, nodeSettings, trackedSubnets)
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +80,20 @@ func CreateLocalCluster(
 	if err := TmpNetEnableSybilProtection(networkDir); err != nil {
 		return nil, err
 	}
-	// preseed nodes db from public archive. ignore errors
-	nodeIDs := []string{}
-	for _, node := range network.Nodes {
-		nodeIDs = append(nodeIDs, node.NodeID.String())
+	if downloadDB {
+		// preseed nodes db from public archive. ignore errors
+		nodeIDs := []string{}
+		for _, node := range network.Nodes {
+			nodeIDs = append(nodeIDs, node.NodeID.String())
+		}
+		if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
+			app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
+		}
 	}
-	if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
-		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
-	}
-	if err := TmpNetBootstrap(ctx, app.Log, networkDir); err != nil {
-		return nil, err
+	if bootstrap {
+		if err := TmpNetBootstrap(ctx, app.Log, networkDir); err != nil {
+			return nil, err
+		}
 	}
 	return network, nil
 }

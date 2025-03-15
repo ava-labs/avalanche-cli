@@ -807,6 +807,7 @@ func TmpNetWaitNonSovereignValidators(ctx context.Context, network *tmpnet.Netwo
 func GetNewTmpNetNodes(
 	numNodes uint32,
 	nodeSettings []NodeSettings,
+	trackedSubnets []ids.ID,
 ) ([]*tmpnet.Node, error) {
 	if len(nodeSettings) > int(numNodes) {
 		return nil, fmt.Errorf("node settings length is bigger than the number of nodes")
@@ -830,6 +831,10 @@ func GetNewTmpNetNodes(
 			if nodeSettings[i].P2PPort != 0 {
 				node.Flags[config.StakingPortKey] = nodeSettings[i].P2PPort
 			}
+		}
+		if len(trackedSubnets) > 0 {
+			trackedSubnetsStr := utils.Map(trackedSubnets, func (i ids.ID) string {return i.String()})
+			node.Flags[config.TrackSubnetsKey] = strings.Join(trackedSubnetsStr, ",")
 		}
 		if err := node.EnsureKeys(); err != nil {
 			return nil, err

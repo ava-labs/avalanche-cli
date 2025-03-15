@@ -122,7 +122,10 @@ func StartLocalNode(
 			connectionSettings,
 			numNodes,
 			[]localnet.NodeSettings{nodeSettings},
+			[]ids.ID{},
 			network,
+			true, // Download DB
+			true, // Bootstrap
 		)
 		if err != nil {
 			ux.SpinFailWithError(spinner, "", err)
