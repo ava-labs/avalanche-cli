@@ -3,6 +3,7 @@
 package localnet
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -32,8 +33,19 @@ func MigrateANRToTmpNet(
 				clusterToReload = filepath.Base(status.ClusterInfo.RootDataDir)
 				printFunc("Found running cluster %s. Will restart after migration.", clusterToReload)
 			}
+			if _, err := cli.Stop(ctx); err != nil {
+				return fmt.Errorf("failed to stop avalanchego: %w", err)
+			}
+		}
+		if err := binutils.KillgRPCServerProcess(
+			app,
+			binutils.LocalClusterGRPCServerEndpoint,
+			constants.ServerRunFileLocalClusterPrefix,
+		); err != nil {
+			return err
 		}
 	}
+	clusterToReload = "pp1-local-node-fuji"
 	if clusterToReload != "" {
 		printFunc("Restarting cluster %s.", clusterToReload)
 	}
