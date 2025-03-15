@@ -13,9 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
-
-	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
@@ -28,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -85,9 +83,6 @@ in with avalanche blockchain create myNewBlockchain.`,
 	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
-
-	// add hidden backend command
-	rootCmd.AddCommand(backendcmd.NewCmd(app))
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))

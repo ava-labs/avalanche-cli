@@ -292,7 +292,6 @@ const (
 
 	UpgradeBytesLockExtension = ".lock"
 	NotAvailableLabel         = "Not available"
-	BackendCmd                = "avalanche-cli-backend"
 
 	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"

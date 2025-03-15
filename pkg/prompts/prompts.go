@@ -126,7 +126,6 @@ type Prompter interface {
 
 type realPrompter struct{}
 
-// NewProcessChecker creates a new process checker which can respond if the server is running
 func NewPrompter() Prompter {
 	return &realPrompter{}
 }
