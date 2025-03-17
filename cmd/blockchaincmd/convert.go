@@ -82,6 +82,8 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
+	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
+	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 
 	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
@@ -109,6 +111,8 @@ func StartLocalMachine(
 	blockchainName string,
 	deployBalance,
 	availableBalance uint64,
+	httpPorts []uint,
+	stakingPorts []uint,
 ) (bool, error) {
 	var err error
 	if network.Kind == models.Local {
@@ -215,6 +219,18 @@ func StartLocalMachine(
 		if network.Kind == models.Mainnet {
 			globalNetworkFlags.UseMainnet = true
 		}
+		nodeSettingsLen := max(len(httpPorts), len(stakingPorts))
+		nodeSettings := make([]localnet.NodeSetting, nodeSettingsLen)
+		for i := range nodeSettingsLen {
+			nodeSetting := localnet.NodeSetting{}
+			if i < len(httpPorts) {
+				nodeSetting.HTTPPort = uint64(httpPorts[i])
+			}
+			if i < len(stakingPorts) {
+				nodeSetting.StakingPort = uint64(stakingPorts[i])
+			}
+			nodeSettings[i] = nodeSetting
+		}
 		// anrSettings, avagoVersionSettings, globalNetworkFlags are empty
 		if err = node.StartLocalNode(
 			app,
@@ -223,7 +239,7 @@ func StartLocalMachine(
 			uint32(numLocalNodes),
 			nodeConfig,
 			localnet.ConnectionSettings{},
-			localnet.NodeSettings{},
+			nodeSettings,
 			avagoVersionSettings,
 			network,
 		); err != nil {
@@ -640,7 +656,15 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if cancel, err := StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
+			if cancel, err := StartLocalMachine(
+				network,
+				sidecar,
+				blockchainName,
+				deployBalance,
+				availableBalance,
+				httpPorts,
+				stakingPorts,
+			); err != nil {
 				return err
 			} else if cancel {
 				return nil

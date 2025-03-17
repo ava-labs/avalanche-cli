@@ -44,9 +44,9 @@ var (
 	bootstrapIPs                 []string
 	genesisPath                  string
 	upgradePath                  string
-	stakingTLSKeyPath            string
-	stakingCertKeyPath           string
-	stakingSignerKeyPath         string
+	stakingTLSKeyPaths           []string
+	stakingCertKeyPaths          []string
+	stakingSignerKeyPaths        []string
 	numNodes                     uint32
 	nodeConfigPath               string
 	partialSync                  bool
@@ -63,6 +63,8 @@ var (
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
 	useACP99                     bool
+	httpPorts                    []uint
+	stakingPorts                 []uint
 )
 
 // const snapshotName = "local_snapshot"
@@ -112,12 +114,14 @@ You can check the bootstrapping status by running avalanche node status local.
 	cmd.Flags().StringArrayVar(&bootstrapIPs, "bootstrap-ip", []string{}, "IP:port pairs of bootstrap nodes")
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
-	cmd.Flags().StringVar(&stakingTLSKeyPath, "staking-tls-key-path", "", "path to provided staking tls key for node")
-	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
-	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
+	cmd.Flags().StringSliceVar(&stakingTLSKeyPaths, "staking-tls-key-path", []string{}, "path to provided staking tls key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingCertKeyPaths, "staking-cert-key-path", []string{}, "path to provided staking cert key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingSignerKeyPaths, "staking-signer-key-path", []string{}, "path to provided staking signer key for node(s)")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of Avalanche nodes to create on local machine")
 	cmd.Flags().StringVar(&nodeConfigPath, "node-config", "", "path to common avalanchego config settings for all nodes")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
+	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
+	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	return cmd
 }
 
@@ -170,12 +174,9 @@ func newLocalStatusCmd() *cobra.Command {
 func localStartNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
 	var (
-		err              error
-		genesis          []byte
-		upgrade          []byte
-		stakingSignerKey []byte
-		stakingCertKey   []byte
-		stakingTLSKey    []byte
+		err     error
+		genesis []byte
+		upgrade []byte
 	)
 	if genesisPath != "" {
 		genesis, err = os.ReadFile(genesisPath)
@@ -195,28 +196,37 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		BootstrapIDs: bootstrapIDs,
 		BootstrapIPs: bootstrapIPs,
 	}
-	if stakingSignerKeyPath != "" {
-		stakingSignerKey, err = os.ReadFile(stakingSignerKeyPath)
-		if err != nil {
-			return fmt.Errorf("could not read staking signer key at %s: %w", stakingSignerKeyPath, err)
-		}
+	if len(stakingSignerKeyPaths) != len(stakingCertKeyPaths) || len(stakingSignerKeyPaths) != len(stakingTLSKeyPaths) {
+		return fmt.Errorf("staking key inputs must be for the same number of nodes")
 	}
-	if stakingCertKeyPath != "" {
-		stakingCertKey, err = os.ReadFile(stakingCertKeyPath)
-		if err != nil {
-			return fmt.Errorf("could not read staking cert key at %s: %w", stakingCertKeyPath, err)
+	nodeSettingsLen := max(len(stakingSignerKeyPaths), len(httpPorts), len(stakingPorts))
+	nodeSettings := make([]localnet.NodeSetting, nodeSettingsLen)
+	for i := range nodeSettingsLen {
+		nodeSetting := localnet.NodeSetting{}
+		if i < len(stakingSignerKeyPaths) {
+			stakingSignerKey, err := os.ReadFile(stakingSignerKeyPaths[i])
+			if err != nil {
+				return fmt.Errorf("could not read staking signer key at %s: %w", stakingSignerKeyPaths[i], err)
+			}
+			stakingCertKey, err := os.ReadFile(stakingCertKeyPaths[i])
+			if err != nil {
+				return fmt.Errorf("could not read staking cert key at %s: %w", stakingCertKeyPaths[i], err)
+			}
+			stakingTLSKey, err := os.ReadFile(stakingTLSKeyPaths[i])
+			if err != nil {
+				return fmt.Errorf("could not read staking TLS key at %s: %w", stakingTLSKeyPaths[i], err)
+			}
+			nodeSetting.StakingSignerKey = stakingSignerKey
+			nodeSetting.StakingCertKey = stakingCertKey
+			nodeSetting.StakingTLSKey = stakingTLSKey
 		}
-	}
-	if stakingTLSKeyPath != "" {
-		stakingTLSKey, err = os.ReadFile(stakingTLSKeyPath)
-		if err != nil {
-			return fmt.Errorf("could not read staking TLS key at %s: %w", stakingTLSKeyPath, err)
+		if i < len(httpPorts) {
+			nodeSetting.HTTPPort = uint64(httpPorts[i])
 		}
-	}
-	nodeSettings := localnet.NodeSettings{
-		StakingSignerKey: stakingSignerKey,
-		StakingCertKey:   stakingCertKey,
-		StakingTLSKey:    stakingTLSKey,
+		if i < len(stakingPorts) {
+			nodeSetting.StakingPort = uint64(stakingPorts[i])
+		}
+		nodeSettings[i] = nodeSetting
 	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(

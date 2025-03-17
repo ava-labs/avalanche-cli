@@ -53,7 +53,7 @@ func StartLocalNode(
 	numNodes uint32,
 	defaultFlags map[string]interface{},
 	connectionSettings localnet.ConnectionSettings,
-	nodeSettings localnet.NodeSettings,
+	nodeSettings []localnet.NodeSetting,
 	avaGoVersionSetting AvalancheGoVersionSettings,
 	network models.Network,
 ) error {
@@ -121,7 +121,7 @@ func StartLocalNode(
 			defaultFlags,
 			connectionSettings,
 			numNodes,
-			[]localnet.NodeSettings{nodeSettings},
+			nodeSettings,
 			[]ids.ID{},
 			network,
 			true, // Download DB

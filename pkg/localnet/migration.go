@@ -1,23 +1,23 @@
-	// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package localnet
 
 import (
-	"fmt"
-	"path/filepath"
-	"os"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
-	avagoconfig "github.com/ava-labs/avalanchego/config"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/network"
+	avagoconfig "github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/ids"
 
 	dircopy "github.com/otiai10/copy"
 )
@@ -117,7 +117,7 @@ func migrateCluster(
 	clusterName string,
 ) error {
 	networkDir := GetLocalClusterDir(app, clusterName)
-	anrDir := GetLocalClusterDir(app, clusterName + migratedSuffix)
+	anrDir := GetLocalClusterDir(app, clusterName+migratedSuffix)
 	if err := os.Rename(networkDir, anrDir); err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func migrateCluster(
 		NetworkID: config.NetworkID,
 	}
 	trackSubnetsStr := ""
-	nodeSettings := []NodeSettings{}
+	nodeSettings := []NodeSetting{}
 	for _, nodeConfig := range config.NodeConfigs {
 		decodedStakingSigningKey, err := base64.StdEncoding.DecodeString(nodeConfig.StakingSigningKey)
 		if err != nil {
@@ -152,15 +152,15 @@ func migrateCluster(
 		if err != nil {
 			return fmt.Errorf("failure reading legacy local network conf: %w", err)
 		}
-		nodeSettings = append(nodeSettings, NodeSettings{
-			StakingTLSKey: []byte(nodeConfig.StakingKey),
-			StakingCertKey: []byte(nodeConfig.StakingCert),
+		nodeSettings = append(nodeSettings, NodeSetting{
+			StakingTLSKey:    []byte(nodeConfig.StakingKey),
+			StakingCertKey:   []byte(nodeConfig.StakingCert),
 			StakingSignerKey: decodedStakingSigningKey,
-			HTTPPort: uint64(httpPort),
-			P2PPort: uint64(stakingPort),
+			HTTPPort:         uint64(httpPort),
+			StakingPort:      uint64(stakingPort),
 		})
 	}
-	trackedSubnets, err := utils.MapWithError(strings.Split(trackSubnetsStr, ","), func (s string) (ids.ID, error){return ids.FromString(s)})
+	trackedSubnets, err := utils.MapWithError(strings.Split(trackSubnetsStr, ","), ids.FromString)
 	if err != nil {
 		return err
 	}

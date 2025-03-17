@@ -36,7 +36,7 @@ func CreateLocalCluster(
 	defaultFlags map[string]interface{},
 	connectionSettings ConnectionSettings,
 	numNodes uint32,
-	nodeSettings []NodeSettings,
+	nodeSettings []NodeSetting,
 	trackedSubnets []ids.ID,
 	networkModel models.Network,
 	downloadDB bool,

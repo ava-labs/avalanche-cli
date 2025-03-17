@@ -45,12 +45,12 @@ const (
 	Running                              // all network nodes are running
 )
 
-type NodeSettings struct {
+type NodeSetting struct {
 	StakingTLSKey    []byte
 	StakingCertKey   []byte
 	StakingSignerKey []byte
 	HTTPPort         uint64
-	P2PPort          uint64
+	StakingPort      uint64
 }
 
 // Creates a new tmpnet with the given parameters
@@ -809,7 +809,7 @@ func TmpNetWaitNonSovereignValidators(ctx context.Context, network *tmpnet.Netwo
 
 func GetNewTmpNetNodes(
 	numNodes uint32,
-	nodeSettings []NodeSettings,
+	nodeSettings []NodeSetting,
 	trackedSubnets []ids.ID,
 ) ([]*tmpnet.Node, error) {
 	if len(nodeSettings) > int(numNodes) {
@@ -829,10 +829,10 @@ func GetNewTmpNetNodes(
 				node.Flags[config.StakingSignerKeyContentKey] = base64.StdEncoding.EncodeToString(nodeSettings[i].StakingSignerKey)
 			}
 			node.Flags[config.HTTPPortKey] = nodeSettings[i].HTTPPort
-			node.Flags[config.StakingPortKey] = nodeSettings[i].P2PPort
+			node.Flags[config.StakingPortKey] = nodeSettings[i].StakingPort
 		}
 		if len(trackedSubnets) > 0 {
-			trackedSubnetsStr := utils.Map(trackedSubnets, func (i ids.ID) string {return i.String()})
+			trackedSubnetsStr := utils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })
 			node.Flags[config.TrackSubnetsKey] = strings.Join(trackedSubnetsStr, ",")
 		}
 		if err := node.EnsureKeys(); err != nil {
@@ -984,7 +984,7 @@ func TmpNetStartNode(
 }
 
 func IsPublicNetwork(networkID uint32) bool {
-        return networkID == avagoconstants.FujiID || networkID == avagoconstants.MainnetID
+	return networkID == avagoconstants.FujiID || networkID == avagoconstants.MainnetID
 }
 
 func GetTmpNetNetworkID(networkDir string) (uint32, error) {
