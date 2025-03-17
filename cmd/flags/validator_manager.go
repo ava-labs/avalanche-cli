@@ -36,11 +36,3 @@ func AddValidatorManagerFlagsToCmd(cmd *cobra.Command, flags ValidatorManagerFla
 		cmd.Flags().StringVar(&flags.RpcURL, rpcURLFLag, "", "connect to validator manager at the given rpc endpoint")
 	}
 }
-
-//
-//func AddValidatorManagerFlagsToCmd(cmd *cobra.Command, flags SignatureAggregatorFlags) {
-//	cmd.Flags().StringVar(&flags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-//	cmd.Flags().BoolVar(&flags.AggregatorLogToStdout, aggregatorLogToStdout, false, "use stdout for signature aggregator logs")
-//	cmd.Flags().StringSliceVar(&flags.AggregatorExtraEndpoints, aggregatorExtraEndpoints, nil, "endpoints for extra nodes that are needed in signature aggregation")
-//	cmd.Flags().BoolVar(&flags.AggregatorAllowPrivatePeers, aggregatorAllowPrivatePeers, true, "allow the signature aggregator to connect to peers with private IP")
-//}
