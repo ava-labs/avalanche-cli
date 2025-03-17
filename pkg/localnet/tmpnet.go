@@ -23,7 +23,7 @@ import (
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
-	avagoConstants "github.com/ava-labs/avalanchego/utils/constants"
+	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
@@ -737,7 +737,7 @@ func TmpNetAddNonSovereignValidators(
 		return err
 	}
 	pClient := platformvm.NewClient(endpoint)
-	vs, err := pClient.GetCurrentValidators(ctx, avagoConstants.PrimaryNetworkID, nil)
+	vs, err := pClient.GetCurrentValidators(ctx, avagoconstants.PrimaryNetworkID, nil)
 	if err != nil {
 		return err
 	}
@@ -828,12 +828,8 @@ func GetNewTmpNetNodes(
 			if len(nodeSettings[i].StakingSignerKey) > 0 {
 				node.Flags[config.StakingSignerKeyContentKey] = base64.StdEncoding.EncodeToString(nodeSettings[i].StakingSignerKey)
 			}
-			if nodeSettings[i].HTTPPort != 0 {
-				node.Flags[config.HTTPPortKey] = nodeSettings[i].HTTPPort
-			}
-			if nodeSettings[i].P2PPort != 0 {
-				node.Flags[config.StakingPortKey] = nodeSettings[i].P2PPort
-			}
+			node.Flags[config.HTTPPortKey] = nodeSettings[i].HTTPPort
+			node.Flags[config.StakingPortKey] = nodeSettings[i].P2PPort
 		}
 		if len(trackedSubnets) > 0 {
 			trackedSubnetsStr := utils.Map(trackedSubnets, func (i ids.ID) string {return i.String()})
@@ -964,8 +960,12 @@ func TmpNetStartNode(
 	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
+	networkID, err := GetTmpNetNodeNetworkID(node)
+	if err != nil {
+		return err
+	}
 	_, ok := node.Flags[config.BootstrapIPsKey]
-	if !ok {
+	if !ok && !IsPublicNetwork(networkID) {
 		bootstrapIPs, bootstrapIDs, err := GetTmpNetBootstrappers(network.Dir, node.NodeID)
 		if err != nil {
 			return err
@@ -983,6 +983,10 @@ func TmpNetStartNode(
 	return nil
 }
 
+func IsPublicNetwork(networkID uint32) bool {
+        return networkID == avagoconstants.FujiID || networkID == avagoconstants.MainnetID
+}
+
 func GetTmpNetNetworkID(networkDir string) (uint32, error) {
 	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
@@ -992,6 +996,18 @@ func GetTmpNetNetworkID(networkDir string) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
+	networkIDStr, err := node.Flags.GetStringVal(config.NetworkNameKey)
+	if err != nil {
+		return 0, err
+	}
+	networkID, err := strconv.ParseUint(networkIDStr, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint32(networkID), nil
+}
+
+func GetTmpNetNodeNetworkID(node *tmpnet.Node) (uint32, error) {
 	networkIDStr, err := node.Flags.GetStringVal(config.NetworkNameKey)
 	if err != nil {
 		return 0, err
