@@ -29,11 +29,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//type ValidatorManagerFlags struct {
-//	Network         networkoptions.NetworkFlags
-//	PrivateKeyFlags contract.PrivateKeyFlags
-//}
-
 type POSManagerSpecFlags struct {
 	rewardCalculatorAddress string
 	minimumStakeAmount      uint64 // big.Int
@@ -45,7 +40,6 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	//validatorManagerFlags    ValidatorManagerFlags
 	initPOSManagerFlags     POSManagerSpecFlags
 	validatorManagerAddress string
 	validatorManagerFlags   flags.ValidatorManagerFlags
