@@ -199,7 +199,7 @@ func LocalStatus(
 			}
 			blockchainID = sc.Networks[network.Name()].BlockchainID
 		}
-		isRunning, err := localnet.ClusterIsRunning(app, clusterName)
+		isRunning, err := localnet.LocalClusterIsRunning(app, clusterName)
 		if err != nil {
 			return err
 		}

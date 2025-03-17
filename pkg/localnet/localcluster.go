@@ -119,6 +119,9 @@ func AddNodeToLocalCluster(
 	if err != nil {
 		return nil, err
 	}
+	if networkModel.Kind != models.Local {
+		network.Genesis = nil
+	}
 	ctx, cancel := networkModel.BootstrappingContext()
 	defer cancel()
 	newNode, err := TmpNetCopyNode(node)
@@ -134,7 +137,7 @@ func AddNodeToLocalCluster(
 	if err = TmpNetAddNode(
 		ctx,
 		app.Log,
-		networkDir,
+		network,
 		newNode,
 	); err != nil {
 		return nil, err
@@ -213,13 +216,22 @@ func LocalClusterRemove(
 	return os.RemoveAll(networkDir)
 }
 
-func ClusterIsRunning(app *application.Avalanche, clusterName string) (bool, error) {
+func LocalClusterIsRunning(app *application.Avalanche, clusterName string) (bool, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
 	status, err := GetTmpNetRunningStatus(networkDir)
 	if err != nil {
 		return false, err
 	}
 	return status == Running, nil
+}
+
+func LocalClusterIsPartiallyRunning(app *application.Avalanche, clusterName string) (bool, error) {
+	networkDir := GetLocalClusterDir(app, clusterName)
+	status, err := GetTmpNetRunningStatus(networkDir)
+	if err != nil {
+		return false, err
+	}
+	return status != NotRunning, nil
 }
 
 func IsLocalNetworkCluster(app *application.Avalanche, clusterName string) (bool, error) {
@@ -269,7 +281,7 @@ func GetFilteredClusters(
 	filteredClusters := []string{}
 	for _, clusterName := range clusters {
 		if running {
-			if isRunning, err := ClusterIsRunning(app, clusterName); err != nil {
+			if isRunning, err := LocalClusterIsRunning(app, clusterName); err != nil {
 				return nil, err
 			} else if !isRunning {
 				continue

@@ -540,8 +540,11 @@ func TmpNetRestartNodes(
 			if err != nil {
 				return err
 			}
+			subnetsSet := set.Set[string]{}
 			subnets = strings.TrimSpace(subnets)
-			subnetsSet := set.Of(strings.Split(subnets, ",")...)
+			if subnets != "" {
+				subnetsSet = set.Of(strings.Split(subnets, ",")...)
+			}
 			for _, subnetID := range subnetIDs {
 				subnetsSet.Add(subnetID.String())
 			}
@@ -887,19 +890,15 @@ func TmpNetBootstrap(
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
 		return err
 	}
-	return TmpNetPersistPorts(networkDir)
+	return TmpNetPersistPorts(network)
 }
 
 func TmpNetAddNode(
 	ctx context.Context,
 	log logging.Logger,
-	networkDir string,
+	network *tmpnet.Network,
 	node *tmpnet.Node,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
 	network.Nodes = append(network.Nodes, node)
 	if err := network.EnsureNodeConfig(node); err != nil {
 		return err
@@ -913,7 +912,7 @@ func TmpNetAddNode(
 	if err := WaitTmpNetBlockchainBootstrapped(ctx, network, "P", ids.Empty); err != nil {
 		return err
 	}
-	return TmpNetPersistPorts(networkDir)
+	return TmpNetPersistPorts(network)
 }
 
 func TmpNetEnableSybilProtection(
@@ -931,12 +930,8 @@ func TmpNetEnableSybilProtection(
 }
 
 func TmpNetPersistPorts(
-	networkDir string,
+	network *tmpnet.Network,
 ) error {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return err
-	}
 	for i := range network.Nodes {
 		ipPort, err := utils.GetIPPort(network.Nodes[i].URI)
 		if err != nil {

@@ -283,7 +283,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 func localStopNode(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		clusterName := args[0]
-		if running, err := localnet.ClusterIsRunning(app, clusterName); err != nil {
+		if running, err := localnet.LocalClusterIsPartiallyRunning(app, clusterName); err != nil {
 			return err
 		} else if !running {
 			ux.Logger.PrintToUser("cluster is not running")
