@@ -46,6 +46,7 @@ type POSManagerSpecFlags struct {
 	minimumDelegationFee    uint16
 	maximumStakeMultiplier  uint8
 	weightToValueFactor     uint64 // big.Int
+
 }
 
 var (
