@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
+
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -51,7 +53,7 @@ The L1 has to be a Proof of Authority L1.`,
 		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-
+	flags.AddValidatorManagerFlagsToCmd(cmd, validatorManagerFlags, true)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&newWeight, "weight", 0, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
@@ -61,11 +63,6 @@ The L1 has to be a Proof of Authority L1.`,
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
-	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
-	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
-	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 	return cmd
 }
@@ -151,8 +148,8 @@ func setWeight(_ *cobra.Command, args []string) error {
 		BlockchainName: blockchainName,
 	}
 
-	if rpcURL == "" {
-		rpcURL, _, err = contract.GetBlockchainEndpoints(
+	if validatorManagerFlags.RpcURL == "" {
+		validatorManagerFlags.RpcURL, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			chainSpec,
@@ -167,7 +164,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-	validationID, err := validator.GetValidationID(rpcURL, nodeID, validatorManagerAddress)
+	validationID, err := validator.GetValidationID(validatorManagerFlags.RpcURL, nodeID, validatorManagerAddress)
 	if err != nil {
 		return err
 	}
@@ -275,6 +272,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		0, // automatic uptime
 		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
+		validatorManagerFlags.RpcURL,
 	)
 	if err != nil {
 		return err
@@ -305,6 +303,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
+		validatorManagerFlags.RpcURL,
 	)
 }
 
@@ -351,19 +350,19 @@ func changeWeightACP99(
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerFlags.RpcURL)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		aggregatorLogLevel,
+		validatorManagerFlags.SigAggFlags.AggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
-		aggregatorLogToStdout,
+		validatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {
@@ -378,14 +377,14 @@ func changeWeightACP99(
 		ux.Logger.PrintToUser,
 		app,
 		network,
-		rpcURL,
+		validatorManagerFlags.RpcURL,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
 		nodeID,
 		extraAggregatorPeers,
-		aggregatorAllowPrivatePeers,
+		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		weight,
@@ -429,14 +428,14 @@ func changeWeightACP99(
 		aggregatorCtx,
 		app,
 		network,
-		rpcURL,
+		validatorManagerFlags.RpcURL,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		aggregatorAllowPrivatePeers,
+		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		signedMessage,

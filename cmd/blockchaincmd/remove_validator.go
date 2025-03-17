@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
+
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -52,6 +54,7 @@ these prompts by providing the values with flags.`,
 		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
+	flags.AddValidatorManagerFlagsToCmd(cmd, validatorManagerFlags, true)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non-SOV blockchain only) file path of the removeValidator tx")
@@ -59,11 +62,6 @@ these prompts by providing the values with flags.`,
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "remove validator that responds to the given endpoint")
-	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
-	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
-	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().Uint64Var(&uptimeSec, "uptime", 0, "validator's uptime in seconds. If not provided, it will be automatically calculated")
 	cmd.Flags().BoolVar(&force, "force", false, "force validator removal even if it's not getting rewarded")
 	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
@@ -145,6 +143,21 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
+	if validatorManagerFlags.RpcURL == "" {
+		validatorManagerFlags.RpcURL, _, err = contract.GetBlockchainEndpoints(
+			app,
+			network,
+			contract.ChainSpec{
+				BlockchainName: blockchainName,
+			},
+			true,
+			false,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	validatorKind, err := validatorsdk.IsSovereignValidator(network.SDKNetwork(), subnetID, nodeID)
 	if err != nil {
 		return err
@@ -152,23 +165,9 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	if validatorKind == validatorsdk.NonValidator {
 		// it may be unregistered from P-Chain, but registered on validator manager
 		// due to a previous partial removal operation
-		if rpcURL == "" {
-			rpcURL, _, err = contract.GetBlockchainEndpoints(
-				app,
-				network,
-				contract.ChainSpec{
-					BlockchainName: blockchainName,
-				},
-				true,
-				false,
-			)
-			if err != nil {
-				return err
-			}
-		}
 		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 		validationID, err := validatorsdk.GetRegisteredValidator(
-			rpcURL,
+			validatorManagerFlags.RpcURL,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,
 		)
@@ -221,6 +220,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		uptimeSec,
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
+		validatorManagerFlags.RpcURL,
 	); err != nil {
 		return err
 	}
@@ -258,6 +258,7 @@ func removeValidatorSOV(
 	uptimeSec uint64,
 	isBootstrapValidator bool,
 	force bool,
+	rpcURL string,
 ) error {
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
@@ -302,31 +303,19 @@ func removeValidatorSOV(
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	if rpcURL == "" {
-		rpcURL, _, err = contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
-		)
-		if err != nil {
-			return err
-		}
-	}
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
 	if err != nil {
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		aggregatorLogLevel,
+		validatorManagerFlags.SigAggFlags.AggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
-		aggregatorLogToStdout,
+		validatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {
@@ -351,7 +340,7 @@ func removeValidatorSOV(
 		ownerPrivateKey,
 		nodeID,
 		extraAggregatorPeers,
-		aggregatorAllowPrivatePeers,
+		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		sc.PoS(),
 		uptimeSec,
@@ -382,7 +371,7 @@ func removeValidatorSOV(
 			ownerPrivateKey,
 			nodeID,
 			extraAggregatorPeers,
-			aggregatorAllowPrivatePeers,
+			validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			sc.PoS(),
 			uptimeSec,
@@ -430,7 +419,7 @@ func removeValidatorSOV(
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		aggregatorAllowPrivatePeers,
+		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		sc.PoA() && sc.UseACP99,
