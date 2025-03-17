@@ -43,8 +43,8 @@ var (
 	initPOSManagerFlags     POSManagerSpecFlags
 	validatorManagerAddress string
 	validatorManagerFlags   flags.ValidatorManagerFlags
-	Network                 networkoptions.NetworkFlags
-	PrivateKeyFlags         contract.PrivateKeyFlags
+	network                 networkoptions.NetworkFlags
+	privateKeyFlags         contract.PrivateKeyFlags
 )
 
 // avalanche contract initValidatorManager
@@ -56,8 +56,8 @@ func newInitValidatorManagerCmd() *cobra.Command {
 		RunE:  initValidatorManager,
 		Args:  cobrautils.ExactArgs(1),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &Network, true, networkoptions.DefaultSupportedNetworkOptions)
-	PrivateKeyFlags.AddToCmd(cmd, "as contract deployer")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &network, true, networkoptions.DefaultSupportedNetworkOptions)
+	privateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	flags.AddValidatorManagerFlagsToCmd(cmd, validatorManagerFlags, true)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
@@ -78,7 +78,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"",
-		Network,
+		network,
 		true,
 		false,
 		networkoptions.DefaultSupportedNetworkOptions,
@@ -111,7 +111,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	privateKey, err := PrivateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
+	privateKey, err := privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return err
 	}
