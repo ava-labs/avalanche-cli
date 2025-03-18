@@ -143,7 +143,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if validatorManagerFlags.RPC == "" {
+	if sc.Sovereign && validatorManagerFlags.RPC == "" {
 		validatorManagerFlags.RPC, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
