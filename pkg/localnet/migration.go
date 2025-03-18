@@ -250,5 +250,6 @@ func migrateCluster(
 			return fmt.Errorf("failure migrating chain configs dir %s into %s: %w", sourceDir, targetDir, err)
 		}
 	}
+	return nil
 	return os.RemoveAll(anrDir)
 }
