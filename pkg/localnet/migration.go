@@ -32,11 +32,11 @@ func MigrateANRToTmpNet(
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	var (
-		clusterToReload string
-		clusterToReloadNetwork models.Network
+		clusterToReload           string
+		clusterToReloadNetwork    models.Network
 		clusterToReloadHasRelayer bool
 	)
-	
+
 	cli, _ := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),
@@ -55,6 +55,7 @@ func MigrateANRToTmpNet(
 				return nil
 			}
 			if clusterToReloadHasRelayer {
+				printFunc("Stopping relayer")
 				if err := relayer.RelayerCleanup(
 					app.GetLocalRelayerRunPath(clusterToReloadNetwork.Kind),
 					app.GetLocalRelayerLogPath(clusterToReloadNetwork.Kind),
@@ -141,6 +142,7 @@ func MigrateANRToTmpNet(
 				}
 			}
 			if utils.FileExists(relayerConfigPath) {
+				printFunc("Restarting relayer")
 				if _, err := relayer.DeployRelayer(
 					constants.DefaultRelayerVersion,
 					relayerBinPath,
