@@ -19,13 +19,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	startNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Cluster,
-		networkoptions.Fuji,
-	}
-)
+var startNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Cluster,
+	networkoptions.Fuji,
+}
 
 type StartFlags struct {
 	Network networkoptions.NetworkFlags

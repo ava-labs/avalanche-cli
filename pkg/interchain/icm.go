@@ -401,7 +401,6 @@ type ICMInfo struct {
 	FundedAddress            string
 	FundedBalance            *big.Int
 	MessengerDeployerAddress string
-	//RelayerAddress           string
 }
 
 func GetICMInfo(
@@ -425,11 +424,5 @@ func GetICMInfo(
 	if err != nil {
 		return nil, err
 	}
-	/*
-		ti.RelayerAddress, _, err = GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
-		if err != nil {
-			return nil, err
-		}
-	*/
 	return &ti, nil
 }
