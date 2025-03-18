@@ -104,6 +104,8 @@ func AddNodeToLocalCluster(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	clusterName string,
+	httpPort uint32,
+	stakingPort uint32,
 ) (*tmpnet.Node, error) {
 	blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
 	if err != nil {
@@ -146,6 +148,8 @@ func AddNodeToLocalCluster(
 		app.Log,
 		network,
 		newNode,
+		httpPort,
+		stakingPort,
 	); err != nil {
 		return nil, err
 	}
@@ -161,6 +165,7 @@ func AddNodeToLocalCluster(
 			return nil, err
 		}
 	}
+
 	printFunc("")
 	printFunc("Node logs directory: %s/%s/logs", networkDir, newNode.NodeID)
 	printFunc("")
@@ -550,4 +555,14 @@ func LoadLocalCluster(
 		return err
 	}
 	return nil
+}
+
+func RefreshLocalClusterAliases(
+	app *application.Avalanche,
+	clusterName string,
+) error {
+	ctx, cancel := sdkutils.GetAPIContext()
+	defer cancel()
+	networkDir := GetLocalClusterDir(app, clusterName)
+	return TmpNetSetDefaultAliases(ctx, networkDir)
 }

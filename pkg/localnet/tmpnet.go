@@ -368,8 +368,14 @@ func TmpNetSetAlias(
 		adminClient := admin.NewClient(node.URI)
 		ctx, cancel := sdkutils.GetAPIContext()
 		defer cancel()
-		if err := adminClient.AliasChain(ctx, blockchainID, alias); err != nil {
+		aliases, err := adminClient.GetChainAliases(ctx, blockchainID)
+		if err != nil {
 			return err
+		}
+		if !sdkutils.Belongs(aliases, alias) {
+			if err := adminClient.AliasChain(ctx, blockchainID, alias); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -858,11 +864,11 @@ func TmpNetCopyNode(
 		config.StakingTLSKeyContentKey,
 		config.StakingSignerKeyContentKey,
 		config.DataDirKey,
+		config.HTTPPortKey,
+		config.StakingPortKey,
 	} {
 		delete(flags, flag)
 	}
-	flags[config.HTTPPortKey] = 0
-	flags[config.StakingPortKey] = 0
 	newNode := tmpnet.Node{
 		Flags: flags,
 	}
@@ -897,7 +903,11 @@ func TmpNetAddNode(
 	log logging.Logger,
 	network *tmpnet.Network,
 	node *tmpnet.Node,
+	httpPort uint32,
+	stakingPort uint32,
 ) error {
+	node.Flags[config.HTTPPortKey] = httpPort
+	node.Flags[config.StakingPortKey] = stakingPort
 	network.Nodes = append(network.Nodes, node)
 	if err := network.EnsureNodeConfig(node); err != nil {
 		return err

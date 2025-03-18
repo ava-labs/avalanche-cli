@@ -67,6 +67,8 @@ var (
 	createLocalValidator                bool
 	externalValidatorManagerOwner       bool
 	validatorManagerOwner               string
+	httpPort                            uint32
+	stakingPort                         uint32
 )
 
 const (
@@ -128,6 +130,8 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
 	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
+	cmd.Flags().Uint32Var(&httpPort, "http-port", 0, "http port for node")
+	cmd.Flags().Uint32Var(&stakingPort, "staking-port", 0, "staking port for node")
 
 	return cmd
 }
@@ -263,6 +267,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	subnetID := sc.Networks[network.Name()].SubnetID
 
 	// if user chose to upsize a local node to add another local validator
+	var localValidatorClusterName string
 	if createLocalValidator {
 		// TODO: make this to work even if there is no local cluster for the blockchain and network
 		targetClusters, err := localnet.GetFilteredClusters(app, true, network, blockchainName)
@@ -275,8 +280,8 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if len(targetClusters) != 1 {
 			return fmt.Errorf("too many local clusters running for network %s and blockchain %s", network.Name(), blockchainName)
 		}
-		clusterName := targetClusters[0]
-		node, err := localnet.AddNodeToLocalCluster(app, ux.Logger.PrintToUser, clusterName)
+		localValidatorClusterName = targetClusters[0]
+		node, err := localnet.AddNodeToLocalCluster(app, ux.Logger.PrintToUser, localValidatorClusterName, httpPort, stakingPort)
 		if err != nil {
 			return err
 		}
@@ -325,7 +330,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	if !sovereign {
 		return CallAddValidatorNonSOV(deployer, network, kc, useLedger, blockchainName, nodeIDStr, defaultValidatorParams, waitForTxAcceptance)
 	}
-	return CallAddValidator(
+	if err := CallAddValidator(
 		deployer,
 		network,
 		kc,
@@ -339,7 +344,15 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-	)
+	); err != nil {
+		return err
+	}
+	if createLocalValidator {
+		if err := localnet.RefreshLocalClusterAliases(app, localValidatorClusterName); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func promptValidatorBalanceAVAX(availableBalance float64) (float64, error) {
@@ -602,6 +615,7 @@ func CallAddValidator(
 		ux.Logger.PrintToUser("  Weight: %d", weight)
 	}
 	ux.Logger.PrintToUser("  Balance: %.2f", balanceAVAX)
+
 	ux.Logger.GreenCheckmarkToUser("Validator successfully added to the L1")
 
 	return nil
