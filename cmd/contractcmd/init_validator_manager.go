@@ -189,6 +189,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	defer aggregatorCancel()
 	switch {
 	case sc.PoA(): // PoA
+		fmt.Printf("we here")
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
 		fmt.Printf("network %s \n", network.Name())
 		fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)

@@ -399,6 +399,13 @@ func InitializeValidatorManager(
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Stake Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	} else {
+		fmt.Printf("we here 2 \n")
+		fmt.Printf("network %s \n", network.Name())
+		fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)
+		fmt.Printf("validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers %s \n", validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers)
+		fmt.Printf("validatorManagerFlags.RpcURL %s \n", validatorManagerFlags.RpcURL)
+		fmt.Printf("validatorManagerAddrStr %s \n", validatorManagerAddrStr)
+
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
 			aggregatorCtx,
