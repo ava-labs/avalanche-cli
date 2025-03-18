@@ -229,17 +229,20 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		nodeSettings[i] = nodeSetting
 	}
 
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		globalNetworkFlags,
-		false,
-		true,
-		networkoptions.DefaultSupportedNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
+	network := models.UndefinedNetwork
+	if !localnet.LocalClusterExists(app, clusterName) {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"",
+			globalNetworkFlags,
+			false,
+			true,
+			networkoptions.DefaultSupportedNetworkOptions,
+			"",
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO: remove this check for releases above v1.8.7, once v1.13.0-fuji avalanchego is latest release
@@ -339,9 +342,7 @@ func localTrack(_ *cobra.Command, args []string) error {
 }
 
 func localStatus(_ *cobra.Command, args []string) error {
-	if err := localnet.MigrateANRToTmpNet(app, ux.Logger.PrintToUser); err != nil {
-		return err
-	}
+	return localnet.MigrateANRToTmpNet(app, ux.Logger.PrintToUser)
 	clusterName := ""
 	if len(args) > 0 {
 		clusterName = args[0]

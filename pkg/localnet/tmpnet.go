@@ -91,6 +91,9 @@ func TmpNetCreate(
 			node.SetNetworkingConfig(bootstrapIDs, bootstrapIPs)
 		}
 	}
+	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
+		return nil, err
+	}
 	if err := network.Write(); err != nil {
 		return nil, err
 	}
@@ -897,6 +900,9 @@ func TmpNetAddNode(
 ) error {
 	network.Nodes = append(network.Nodes, node)
 	if err := network.EnsureNodeConfig(node); err != nil {
+		return err
+	}
+	if err := tmpNetSetBlockchainsConfigDir(network); err != nil {
 		return err
 	}
 	if err := network.Write(); err != nil {

@@ -22,18 +22,12 @@ import (
 	dircopy "github.com/otiai10/copy"
 )
 
-const (
-	migratedSuffix   = "-migrated"
-	disableMigration = true
-)
+const migratedSuffix   = "-migrated"
 
 func MigrateANRToTmpNet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 ) error {
-	if disableMigration {
-		return nil
-	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	clusterToReload := ""
@@ -91,10 +85,6 @@ func MigrateANRToTmpNet(
 				var config network.Config
 				if err := json.Unmarshal(bs, &config); err != nil {
 					printFunc("Unexpected JSON format on cluster at %s: %s. Please manually recover", networkDir, err)
-					continue
-				}
-				if config.NetworkID == constants.LocalNetworkID {
-					printFunc("Found legacy local network cluster at %s. Please manually remove", networkDir, err)
 					continue
 				}
 				toMigrate = append(toMigrate, clusterName)
@@ -172,7 +162,30 @@ func migrateCluster(
 		return err
 	}
 	binPath := config.BinaryPath
+	// local connection info
 	networkModel := models.NetworkFromNetworkID(connectionSettings.NetworkID)
+	if networkModel.Kind == models.Local {
+		genesisPath := filepath.Join(anrDir, "node1", "configs", "genesis.json")
+		if !utils.FileExists(genesisPath) {
+			return fmt.Errorf("genesis path not found at %s for local network cluster", genesisPath)
+		}
+		connectionSettings.Genesis, err = os.ReadFile(genesisPath)
+		if err != nil {
+			return err
+		}
+		upgradePath := filepath.Join(anrDir, "node1", "configs", "upgrade.json")
+		if !utils.FileExists(upgradePath) {
+			return fmt.Errorf("upgrade path not found at %s for local network cluster", upgradePath)
+		}
+		connectionSettings.Upgrade, err = os.ReadFile(upgradePath)
+		if err != nil {
+			return err
+		}
+		for nodeID, nodeIP := range config.BeaconConfig {
+			connectionSettings.BootstrapIDs = append(connectionSettings.BootstrapIDs, nodeID.String())
+			connectionSettings.BootstrapIPs = append(connectionSettings.BootstrapIPs, nodeIP.String())
+		}
+	}
 	//
 	pluginDir := filepath.Join(networkDir, "plugins")
 	if err := os.MkdirAll(networkDir, constants.DefaultPerms755); err != nil {
@@ -215,6 +228,11 @@ func migrateCluster(
 		targetDir = filepath.Join(networkDir, "plugins")
 		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
 			return fmt.Errorf("failure migrating plugindir dir %s into %s: %w", sourceDir, targetDir, err)
+		}
+		sourceDir = filepath.Join(anrDir, config.NodeConfigs[i].Name, "configs", "chains")
+		targetDir = filepath.Join(networkDir, node.NodeID.String(), "configs", "chains")
+		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
+			return fmt.Errorf("failure migrating chain configs dir %s into %s: %w", sourceDir, targetDir, err)
 		}
 	}
 	return os.RemoveAll(anrDir)
