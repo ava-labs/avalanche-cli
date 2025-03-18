@@ -239,8 +239,8 @@ func migrateCluster(
 		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
 			return fmt.Errorf("failure migrating data dir %s into %s: %w", sourceDir, targetDir, err)
 		}
-		sourceDir := filepath.Join(anrDir, config.NodeConfigs[i].Name, "chainData")
-		targetDir := filepath.Join(networkDir, node.NodeID.String(), "chainData")
+		sourceDir = filepath.Join(anrDir, config.NodeConfigs[i].Name, "chainData")
+		targetDir = filepath.Join(networkDir, node.NodeID.String(), "chainData")
 		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
 			return fmt.Errorf("failure migrating data dir %s into %s: %w", sourceDir, targetDir, err)
 		}
