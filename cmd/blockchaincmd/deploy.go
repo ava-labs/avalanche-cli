@@ -486,6 +486,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		versionComparison := semver.Compare(constants.FujiAvalancheGoV113, latestAvagoVersion)
 		if versionComparison == 1 {
 			userProvidedAvagoVersion = constants.FujiAvalancheGoV113
+			icmSpec.RelayerVersion = constants.LatestPreReleaseVersionTag
 		}
 	}
 	if network.Kind == models.Local {
