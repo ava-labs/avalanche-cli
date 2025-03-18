@@ -143,8 +143,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if validatorManagerFlags.RPCURL == "" {
-		validatorManagerFlags.RPCURL, _, err = contract.GetBlockchainEndpoints(
+	if validatorManagerFlags.RPC == "" {
+		validatorManagerFlags.RPC, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			contract.ChainSpec{
@@ -167,7 +167,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		// due to a previous partial removal operation
 		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 		validationID, err := validatorsdk.GetRegisteredValidator(
-			validatorManagerFlags.RPCURL,
+			validatorManagerFlags.RPC,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,
 		)
@@ -220,7 +220,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		uptimeSec,
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
-		validatorManagerFlags.RPCURL,
+		validatorManagerFlags.RPC,
 	); err != nil {
 		return err
 	}

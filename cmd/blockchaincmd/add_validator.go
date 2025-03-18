@@ -176,13 +176,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		if validatorManagerFlags.RPCURL == "" {
-			validatorManagerFlags.RPCURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+		if validatorManagerFlags.RPC == "" {
+			validatorManagerFlags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 			if err != nil {
 				return err
 			}
 		}
-		sc, err = importL1(blockchainIDStr, validatorManagerFlags.RPCURL, network)
+		sc, err = importL1(blockchainIDStr, validatorManagerFlags.RPC, network)
 		if err != nil {
 			return err
 		}
@@ -353,7 +353,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		validatorManagerFlags.RPCURL,
+		validatorManagerFlags.RPC,
 	)
 }
 

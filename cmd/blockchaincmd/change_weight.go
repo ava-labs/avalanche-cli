@@ -148,8 +148,8 @@ func setWeight(_ *cobra.Command, args []string) error {
 		BlockchainName: blockchainName,
 	}
 
-	if validatorManagerFlags.RPCURL == "" {
-		validatorManagerFlags.RPCURL, _, err = contract.GetBlockchainEndpoints(
+	if validatorManagerFlags.RPC == "" {
+		validatorManagerFlags.RPC, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			chainSpec,
@@ -164,7 +164,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-	validationID, err := validator.GetValidationID(validatorManagerFlags.RPCURL, nodeID, validatorManagerAddress)
+	validationID, err := validator.GetValidationID(validatorManagerFlags.RPC, nodeID, validatorManagerAddress)
 	if err != nil {
 		return err
 	}
@@ -272,7 +272,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		0, // automatic uptime
 		isBootstrapValidatorForNetwork(nodeID, sc.Networks[network.Name()]),
 		false, // don't force
-		validatorManagerFlags.RPCURL,
+		validatorManagerFlags.RPC,
 	)
 	if err != nil {
 		return err
@@ -303,7 +303,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		validatorManagerFlags.RPCURL,
+		validatorManagerFlags.RPC,
 	)
 }
 
@@ -350,7 +350,7 @@ func changeWeightACP99(
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerFlags.RPCURL)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerFlags.RPC)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
 	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
@@ -377,7 +377,7 @@ func changeWeightACP99(
 		ux.Logger.PrintToUser,
 		app,
 		network,
-		validatorManagerFlags.RPCURL,
+		validatorManagerFlags.RPC,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
@@ -428,7 +428,7 @@ func changeWeightACP99(
 		aggregatorCtx,
 		app,
 		network,
-		validatorManagerFlags.RPCURL,
+		validatorManagerFlags.RPC,
 		chainSpec,
 		externalValidatorManagerOwner,
 		validatorManagerOwner,
