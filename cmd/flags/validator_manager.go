@@ -16,7 +16,7 @@ const (
 )
 
 type ValidatorManagerFlags struct {
-	RpcURL      string
+	RPCURL      string
 	SigAggFlags SignatureAggregatorFlags
 }
 
@@ -33,6 +33,6 @@ func AddValidatorManagerFlagsToCmd(cmd *cobra.Command, flags *ValidatorManagerFl
 	cmd.Flags().StringSliceVar(&flags.SigAggFlags.AggregatorExtraEndpoints, aggregatorExtraEndpointsFlag, nil, "endpoints for extra nodes that are needed in signature aggregation")
 	cmd.Flags().BoolVar(&flags.SigAggFlags.AggregatorAllowPrivatePeers, aggregatorAllowPrivatePeersFlag, true, "allow the signature aggregator to connect to peers with private IP")
 	if addRPCFlag {
-		cmd.Flags().StringVar(&flags.RpcURL, rpcURLFLag, "", "connect to validator manager at the given rpc endpoint")
+		cmd.Flags().StringVar(&flags.RPCURL, rpcURLFLag, "", "connect to validator manager at the given rpc endpoint")
 	}
 }

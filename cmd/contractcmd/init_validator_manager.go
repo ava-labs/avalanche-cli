@@ -91,8 +91,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
-	if validatorManagerFlags.RpcURL == "" {
-		validatorManagerFlags.RpcURL, _, err = contract.GetBlockchainEndpoints(
+	if validatorManagerFlags.RPCURL == "" {
+		validatorManagerFlags.RPCURL, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			chainSpec,
@@ -103,7 +103,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerFlags.RpcURL)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerFlags.RPCURL)
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
@@ -184,7 +184,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		BlockchainID:        blockchainID,
 		BootstrapValidators: avaGoBootstrapValidators,
 		OwnerAddress:        &ownerAddress,
-		RPC:                 validatorManagerFlags.RpcURL,
+		RPC:                 validatorManagerFlags.RPCURL,
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
@@ -207,7 +207,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	case sc.PoS(): // PoS
-		deployed, err := validatormanager.ProxyHasValidatorManagerSet(validatorManagerFlags.RpcURL)
+		deployed, err := validatormanager.ProxyHasValidatorManagerSet(validatorManagerFlags.RPCURL)
 		if err != nil {
 			return err
 		}
@@ -224,7 +224,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				return err
 			}
 			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
-				validatorManagerFlags.RpcURL,
+				validatorManagerFlags.RPCURL,
 				genesisPrivateKey,
 				proxyOwnerPrivateKey,
 			); err != nil {
