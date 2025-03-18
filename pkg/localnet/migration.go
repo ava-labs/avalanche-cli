@@ -41,10 +41,8 @@ func MigrateANRToTmpNet(
 		status, _ := cli.Status(ctx)
 		if status != nil && status.ClusterInfo != nil {
 			// there is a local cluster up
-			if status.ClusterInfo.NetworkId != constants.LocalNetworkID {
-				clusterToReload = filepath.Base(status.ClusterInfo.RootDataDir)
-				printFunc("Found running cluster %s. Will restart after migration.", clusterToReload)
-			}
+			clusterToReload = filepath.Base(status.ClusterInfo.RootDataDir)
+			printFunc("Found running cluster %s. Will restart after migration.", clusterToReload)
 			if _, err := cli.Stop(ctx); err != nil {
 				return fmt.Errorf("failed to stop avalanchego: %w", err)
 			}
