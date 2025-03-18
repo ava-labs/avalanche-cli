@@ -348,7 +348,7 @@ func InitializeValidatorManager(
 		}
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 	if err != nil {
 		return tracked, err
 	}
@@ -381,7 +381,6 @@ func InitializeValidatorManager(
 			network,
 			genesisPrivateKey,
 			extraAggregatorPeers,
-			validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
@@ -405,7 +404,6 @@ func InitializeValidatorManager(
 			network,
 			genesisPrivateKey,
 			extraAggregatorPeers,
-			validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerAddrStr,
 			useACP99,

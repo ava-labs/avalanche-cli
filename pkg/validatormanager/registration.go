@@ -180,7 +180,6 @@ func GetRegisterL1ValidatorMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	blockchainID ids.ID,
@@ -275,7 +274,6 @@ func GetRegisterL1ValidatorMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -312,7 +310,6 @@ func GetPChainL1ValidatorRegistrationMessage(
 	rpcURL string,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	validationID ids.ID,
@@ -343,7 +340,6 @@ func GetPChainL1ValidatorRegistrationMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -399,7 +395,6 @@ func InitValidatorRegistration(
 	disableOwners warpMessage.PChainOwner,
 	weight uint64,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	isPos bool,
 	delegationFee uint16,
@@ -510,7 +505,6 @@ func InitValidatorRegistration(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		blockchainID,
@@ -540,7 +534,6 @@ func FinishValidatorRegistration(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 ) (*types.Transaction, error) {
@@ -559,7 +552,6 @@ func FinishValidatorRegistration(
 		rpcURL,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,

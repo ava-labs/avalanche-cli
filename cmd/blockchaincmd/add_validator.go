@@ -306,8 +306,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err := app.UpdateSidecar(&sc); err != nil {
 			return err
 		}
-		// make sure extra validator endpoint added for the new node
-		validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints = append(validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints, constants.LocalAPIEndpoint)
 	}
 
 	if nodeIDStr == "" {
@@ -521,8 +519,7 @@ func CallAddValidator(
 		Threshold: 1,
 		Addresses: disableOwnerAddrID,
 	}
-
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue)
 	if err != nil {
 		return err
 	}
@@ -555,7 +552,6 @@ func CallAddValidator(
 		disableOwners,
 		weight,
 		extraAggregatorPeers,
-		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		pos,
 		delegationFee,
@@ -600,7 +596,6 @@ func CallAddValidator(
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 	)

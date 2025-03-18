@@ -306,7 +306,7 @@ func removeValidatorSOV(
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), rpcURL)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -340,7 +340,6 @@ func removeValidatorSOV(
 		ownerPrivateKey,
 		nodeID,
 		extraAggregatorPeers,
-		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		sc.PoS(),
 		uptimeSec,
@@ -371,7 +370,6 @@ func removeValidatorSOV(
 			ownerPrivateKey,
 			nodeID,
 			extraAggregatorPeers,
-			validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			sc.PoS(),
 			uptimeSec,
@@ -419,7 +417,6 @@ func removeValidatorSOV(
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		sc.PoA() && sc.UseACP99,

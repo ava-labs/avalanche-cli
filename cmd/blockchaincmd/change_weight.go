@@ -353,7 +353,7 @@ func changeWeightACP99(
 	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerFlags.RPC)
 
 	clusterName := sc.Networks[network.Name()].ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -384,7 +384,6 @@ func changeWeightACP99(
 		ownerPrivateKey,
 		nodeID,
 		extraAggregatorPeers,
-		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		weight,
@@ -435,7 +434,6 @@ func changeWeightACP99(
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 		signedMessage,

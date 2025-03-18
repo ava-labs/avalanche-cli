@@ -147,7 +147,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		return err
 	}
 	clusterName := scNetwork.ClusterName
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, validatorManagerFlags.SigAggFlags.AggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			network,
 			privateKey,
 			extraAggregatorPeers,
-			validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerAddress,
 			sc.UseACP99,
@@ -241,7 +240,6 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			network,
 			privateKey,
 			extraAggregatorPeers,
-			validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(initPOSManagerFlags.minimumStakeAmount)),

@@ -477,7 +477,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, []string{})
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -596,7 +596,6 @@ func addAsValidator(network models.Network,
 		disableOwners,
 		0,
 		extraAggregatorPeers,
-		true,
 		aggregatorLogger,
 		true,
 		delegationFee,
@@ -639,7 +638,6 @@ func addAsValidator(network models.Network,
 		payerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		true,
 		aggregatorLogger,
 		validatorManagerAddress,
 	); err != nil {
