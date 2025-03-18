@@ -4,8 +4,9 @@ package contractcmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"math/big"
+
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
