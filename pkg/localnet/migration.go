@@ -103,6 +103,9 @@ func MigrateANRToTmpNet(
 			return err
 		}
 	}
+	if len(toMigrate) > 0 {
+		printFunc("")
+	}
 	return nil
 }
 
