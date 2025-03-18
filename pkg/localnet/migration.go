@@ -22,12 +22,18 @@ import (
 	dircopy "github.com/otiai10/copy"
 )
 
-const migratedSuffix = "-migrated"
+const (
+	migratedSuffix   = "-migrated"
+	disableMigration = true
+)
 
 func MigrateANRToTmpNet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 ) error {
+	if disableMigration {
+		return nil
+	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	clusterToReload := ""
