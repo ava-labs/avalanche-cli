@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -72,7 +72,7 @@ func CallStop(_ []string, flags StopFlags, network models.Network) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully stopped", host.GetCloudID())
 	default:
-		b, _, _, err := interchain.RelayerIsUp(
+		b, _, _, err := relayer.RelayerIsUp(
 			app.GetLocalRelayerRunPath(network.Kind),
 		)
 		if err != nil {
@@ -81,7 +81,7 @@ func CallStop(_ []string, flags StopFlags, network models.Network) error {
 		if !b {
 			return fmt.Errorf("there is no CLI-managed local AWM relayer running for %s", network.Kind)
 		}
-		if err := interchain.RelayerCleanup(
+		if err := relayer.RelayerCleanup(
 			app.GetLocalRelayerRunPath(network.Kind),
 			app.GetLocalRelayerLogPath(network.Kind),
 			app.GetLocalRelayerStorageDir(network.Kind),

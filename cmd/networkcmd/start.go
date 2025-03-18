@@ -12,7 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -155,7 +155,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			if relayerBinPath == "" {
 				relayerBinPath = extraLocalNetworkData.RelayerPath
 			}
-			if relayerBinPath, err := interchain.DeployRelayer(
+			if relayerBinPath, err := relayer.DeployRelayer(
 				flags.RelayerVersion,
 				relayerBinPath,
 				app.GetICMRelayerBinDir(),

@@ -5,7 +5,7 @@ package networkcmd
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -49,7 +49,7 @@ func Stop(flags StopFlags) error {
 		return err
 	}
 
-	if err := interchain.RelayerCleanup(
+	if err := relayer.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
 		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),

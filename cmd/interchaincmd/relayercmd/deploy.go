@@ -12,7 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -127,7 +127,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	}
 
 	if !deployToRemote {
-		if isUP, _, _, err := interchain.RelayerIsUp(app.GetLocalRelayerRunPath(network.Kind)); err != nil {
+		if isUP, _, _, err := relayer.RelayerIsUp(app.GetLocalRelayerRunPath(network.Kind)); err != nil {
 			return err
 		} else if isUP {
 			return fmt.Errorf("there is already a local relayer deployed for %s", network.Kind.String())
@@ -453,7 +453,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 	// create config
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Generating relayer config file at %s", configPath)
-	if err := interchain.CreateBaseRelayerConfig(
+	if err := relayer.CreateBaseRelayerConfig(
 		configPath,
 		flags.LogLevel,
 		storageDir,
@@ -464,7 +464,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		return err
 	}
 	for _, source := range configSpec.sources {
-		if err := interchain.AddSourceToRelayerConfig(
+		if err := relayer.AddSourceToRelayerConfig(
 			configPath,
 			source.rpcEndpoint,
 			source.wsEndpoint,
@@ -478,7 +478,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 		}
 	}
 	for _, destination := range configSpec.destinations {
-		if err := interchain.AddDestinationToRelayerConfig(
+		if err := relayer.AddDestinationToRelayerConfig(
 			configPath,
 			destination.rpcEndpoint,
 			destination.subnetID,
@@ -491,7 +491,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	if len(configSpec.sources) > 0 && len(configSpec.destinations) > 0 {
 		// relayer fails for empty configs
-		binPath, err := interchain.DeployRelayer(
+		binPath, err := relayer.DeployRelayer(
 			flags.Version,
 			flags.BinPath,
 			app.GetICMRelayerBinDir(),

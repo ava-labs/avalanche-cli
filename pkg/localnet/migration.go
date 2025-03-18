@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-network-runner/network"
@@ -22,12 +23,16 @@ import (
 	dircopy "github.com/otiai10/copy"
 )
 
-const migratedSuffix   = "-migrated"
+const migratedSuffix = "-migrated"
 
 func MigrateANRToTmpNet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 ) error {
+	localRelayerIsUp, _, _, err := relayer.RelayerIsUp(app.GetLocalRelayerRunPath(models.Local))
+	if err != nil {
+		return nil
+	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
 	clusterToReload := ""
@@ -40,6 +45,15 @@ func MigrateANRToTmpNet(
 		// ANR is running
 		status, _ := cli.Status(ctx)
 		if status != nil && status.ClusterInfo != nil {
+			if status.ClusterInfo.NetworkId == constants.LocalNetworkID && localRelayerIsUp {
+				if err := relayer.RelayerCleanup(
+					app.GetLocalRelayerRunPath(models.Local),
+					app.GetLocalRelayerLogPath(models.Local),
+					app.GetLocalRelayerStorageDir(models.Local),
+				); err != nil {
+					return err
+				}
+			}
 			// there is a local cluster up
 			clusterToReload = filepath.Base(status.ClusterInfo.RootDataDir)
 			printFunc("Found running cluster %s. Will restart after migration.", clusterToReload)

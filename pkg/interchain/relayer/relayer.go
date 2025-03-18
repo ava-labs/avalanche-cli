@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
-package interchain
+package relayer
 
 import (
 	"context"
@@ -39,7 +39,8 @@ const (
 
 var relayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 
-func GetRelayerKeyInfo(keyPath string) (string, string, error) {
+func GetRelayerKeyInfo(app *application.Avalanche) (string, string, error) {
+	keyPath := app.GetKeyPath(constants.ICMRelayerKeyName)
 	var (
 		k   *key.SoftKey
 		err error

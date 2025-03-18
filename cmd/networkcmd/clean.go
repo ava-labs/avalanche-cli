@@ -9,7 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
@@ -51,7 +51,7 @@ func clean(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser(logging.Red.Wrap("No network is running."))
 	}
 
-	if err := interchain.RelayerCleanup(
+	if err := relayer.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
 		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
