@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -16,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
 
+	dircopy "github.com/otiai10/copy"
 	"go.uber.org/zap"
 )
 
@@ -129,6 +131,11 @@ func AddNodeToLocalCluster(
 		return nil, err
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
+	sourceDir := filepath.Join(networkDir, node.NodeID.String(), "configs", "chains")
+	targetDir := filepath.Join(networkDir, newNode.NodeID.String(), "configs", "chains")
+	if err := dircopy.Copy(sourceDir, targetDir); err != nil {
+		return nil, fmt.Errorf("failure migrating chain configs dir %s into %s: %w", sourceDir, targetDir, err)
+	}
 	nodeIDs := []string{newNode.NodeID.String()}
 	if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
 		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
