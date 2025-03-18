@@ -190,6 +190,12 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	switch {
 	case sc.PoA(): // PoA
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
+		fmt.Printf("network %s \n", network.Name())
+		fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)
+		fmt.Printf("validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers %s \n", validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers)
+		fmt.Printf("validatorManagerFlags.RpcURL %s \n", validatorManagerFlags.RpcURL)
+		fmt.Printf("validatorManagerAddress %s \n", validatorManagerAddress)
+
 		if err := validatormanager.SetupPoA(
 			aggregatorCtx,
 			subnetSDK,
