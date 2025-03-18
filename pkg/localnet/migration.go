@@ -29,13 +29,14 @@ func MigrateANRToTmpNet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 ) error {
-	localRelayerIsUp, _, _, err := relayer.RelayerIsUp(app.GetLocalRelayerRunPath(models.Local))
-	if err != nil {
-		return nil
-	}
 	ctx, cancel := utils.GetANRContext()
 	defer cancel()
-	clusterToReload := ""
+	var (
+		clusterToReload string
+		clusterToReloadNetwork models.Network
+		clusterToReloadHasRelayer bool
+	)
+	
 	cli, _ := binutils.NewGRPCClientWithEndpoint(
 		binutils.LocalClusterGRPCServerEndpoint,
 		binutils.WithAvoidRPCVersionCheck(true),
@@ -45,17 +46,23 @@ func MigrateANRToTmpNet(
 		// ANR is running
 		status, _ := cli.Status(ctx)
 		if status != nil && status.ClusterInfo != nil {
-			if status.ClusterInfo.NetworkId == constants.LocalNetworkID && localRelayerIsUp {
+			// there is a local cluster up
+			var err error
+			clusterToReload = filepath.Base(status.ClusterInfo.RootDataDir)
+			clusterToReloadNetwork = models.NetworkFromNetworkID(status.ClusterInfo.NetworkId)
+			clusterToReloadHasRelayer, _, _, err = relayer.RelayerIsUp(app.GetLocalRelayerRunPath(clusterToReloadNetwork.Kind))
+			if err != nil {
+				return nil
+			}
+			if clusterToReloadHasRelayer {
 				if err := relayer.RelayerCleanup(
-					app.GetLocalRelayerRunPath(models.Local),
-					app.GetLocalRelayerLogPath(models.Local),
-					app.GetLocalRelayerStorageDir(models.Local),
+					app.GetLocalRelayerRunPath(clusterToReloadNetwork.Kind),
+					app.GetLocalRelayerLogPath(clusterToReloadNetwork.Kind),
+					app.GetLocalRelayerStorageDir(clusterToReloadNetwork.Kind),
 				); err != nil {
 					return err
 				}
 			}
-			// there is a local cluster up
-			clusterToReload = filepath.Base(status.ClusterInfo.RootDataDir)
 			printFunc("Found running cluster %s. Will restart after migration.", clusterToReload)
 			if _, err := cli.Stop(ctx); err != nil {
 				return fmt.Errorf("failed to stop avalanchego: %w", err)
@@ -115,6 +122,37 @@ func MigrateANRToTmpNet(
 		printFunc("Restarting cluster %s.", clusterToReload)
 		if err := LoadLocalCluster(app, clusterToReload, ""); err != nil {
 			return err
+		}
+		if clusterToReloadHasRelayer {
+			localNetworkRootDir := ""
+			if clusterToReloadNetwork.Kind == models.Local {
+				localNetworkRootDir, err = GetLocalNetworkDir(app)
+				if err != nil {
+					return err
+				}
+			}
+			relayerConfigPath := app.GetLocalRelayerConfigPath(clusterToReloadNetwork.Kind, localNetworkRootDir)
+			relayerBinPath := ""
+			if clusterToReloadNetwork.Kind == models.Local {
+				if b, extraLocalNetworkData, err := GetExtraLocalNetworkData(app, ""); err != nil {
+					return err
+				} else if b {
+					relayerBinPath = extraLocalNetworkData.RelayerPath
+				}
+			}
+			if utils.FileExists(relayerConfigPath) {
+				if _, err := relayer.DeployRelayer(
+					constants.DefaultRelayerVersion,
+					relayerBinPath,
+					app.GetICMRelayerBinDir(),
+					relayerConfigPath,
+					app.GetLocalRelayerLogPath(clusterToReloadNetwork.Kind),
+					app.GetLocalRelayerRunPath(clusterToReloadNetwork.Kind),
+					app.GetLocalRelayerStorageDir(clusterToReloadNetwork.Kind),
+				); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	if len(toMigrate) > 0 {
