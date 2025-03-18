@@ -539,5 +539,8 @@ func LoadLocalCluster(
 			return err
 		}
 	}
+	if err := TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
+		return err
+	}
 	return nil
 }

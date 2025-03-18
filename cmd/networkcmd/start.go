@@ -3,7 +3,6 @@
 package networkcmd
 
 import (
-	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
@@ -142,7 +141,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
-		if err := startLocalClusters(ctx, avalancheGoBinPath); err != nil {
+		if err := startLocalClusters(avalancheGoBinPath); err != nil {
 			return err
 		}
 		if err := localnet.TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
@@ -255,7 +254,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	return nil
 }
 
-func startLocalClusters(ctx context.Context, avalancheGoBinPath string) error {
+func startLocalClusters(avalancheGoBinPath string) error {
 	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
 	if err != nil {
 		return err
@@ -277,10 +276,6 @@ func startLocalClusters(ctx context.Context, avalancheGoBinPath string) error {
 			node.AvalancheGoVersionSettings{},
 			models.NewLocalNetwork(),
 		); err != nil {
-			return err
-		}
-		networkDir := localnet.GetLocalClusterDir(app, clusterName)
-		if err := localnet.TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
 			return err
 		}
 	}

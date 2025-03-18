@@ -57,8 +57,6 @@ func MigrateANRToTmpNet(
 			return err
 		}
 	}
-	clusterToReload = "pp1-local-node-fuji"
-
 	toMigrate := []string{}
 	clustersDir := app.GetLocalClustersDir()
 	entries, err := os.ReadDir(clustersDir)
@@ -107,6 +105,9 @@ func MigrateANRToTmpNet(
 	}
 	if clusterToReload != "" {
 		printFunc("Restarting cluster %s.", clusterToReload)
+		if err := LoadLocalCluster(app, clusterToReload, ""); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -210,5 +211,5 @@ func migrateCluster(
 			return fmt.Errorf("failure migrating plugindir dir %s into %s: %w", sourceDir, targetDir, err)
 		}
 	}
-	return nil
+	return os.RemoveAll(anrDir)
 }
