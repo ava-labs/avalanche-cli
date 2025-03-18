@@ -89,7 +89,7 @@ Testnet or Mainnet.`,
 		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddValidatorManagerFlagsToCmd(cmd, validatorManagerFlags, true)
+	flags.AddValidatorManagerFlagsToCmd(cmd, &validatorManagerFlags, true)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,

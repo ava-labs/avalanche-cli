@@ -58,7 +58,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &network, true, networkoptions.DefaultSupportedNetworkOptions)
 	privateKeyFlags.AddToCmd(cmd, "as contract deployer")
-	flags.AddValidatorManagerFlagsToCmd(cmd, validatorManagerFlags, true)
+	flags.AddValidatorManagerFlagsToCmd(cmd, &validatorManagerFlags, true)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
@@ -189,13 +189,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	defer aggregatorCancel()
 	switch {
 	case sc.PoA(): // PoA
-		fmt.Printf("we here")
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
-		fmt.Printf("network %s \n", network.Name())
-		fmt.Printf("extraAggregatorPeers %s \n", extraAggregatorPeers)
-		fmt.Printf("validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers %s \n", validatorManagerFlags.SigAggFlags.AggregatorAllowPrivatePeers)
-		fmt.Printf("validatorManagerFlags.RpcURL %s \n", validatorManagerFlags.RpcURL)
-		fmt.Printf("validatorManagerAddress %s \n", validatorManagerAddress)
 
 		if err := validatormanager.SetupPoA(
 			aggregatorCtx,

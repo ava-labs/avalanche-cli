@@ -27,7 +27,7 @@ type SignatureAggregatorFlags struct {
 	AggregatorAllowPrivatePeers bool
 }
 
-func AddValidatorManagerFlagsToCmd(cmd *cobra.Command, flags ValidatorManagerFlags, addRPCFlag bool) {
+func AddValidatorManagerFlagsToCmd(cmd *cobra.Command, flags *ValidatorManagerFlags, addRPCFlag bool) {
 	cmd.Flags().StringVar(&flags.SigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	cmd.Flags().BoolVar(&flags.SigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
 	cmd.Flags().StringSliceVar(&flags.SigAggFlags.AggregatorExtraEndpoints, aggregatorExtraEndpointsFlag, nil, "endpoints for extra nodes that are needed in signature aggregation")
