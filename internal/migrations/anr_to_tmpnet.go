@@ -10,6 +10,5 @@ import (
 )
 
 func migrateANRToTmpNet(app *application.Avalanche, _ *migrationRunner) error {
-	return nil
 	return localnet.MigrateANRToTmpNet(app, ux.Logger.PrintToUser)
 }

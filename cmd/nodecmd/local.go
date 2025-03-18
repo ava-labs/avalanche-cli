@@ -342,7 +342,6 @@ func localTrack(_ *cobra.Command, args []string) error {
 }
 
 func localStatus(_ *cobra.Command, args []string) error {
-	return localnet.MigrateANRToTmpNet(app, ux.Logger.PrintToUser)
 	clusterName := ""
 	if len(args) > 0 {
 		clusterName = args[0]
