@@ -65,7 +65,7 @@ var (
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
 	useACP99                     bool
-	validatorManagerFlags        flags.ValidatorManagerFlags
+	signatureAggregatorFlags     flags.SignatureAggregatorFlags
 )
 
 // const snapshotName = "local_snapshot"
@@ -306,7 +306,8 @@ This command can only be used to validate Proof of Stake L1.`,
 		Args: cobra.ExactArgs(1),
 		RunE: localValidate,
 	}
-	flags.AddValidatorManagerFlagsToCmd(cmd, &validatorManagerFlags, true)
+	flags.AddRPCFlagToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
@@ -381,13 +382,13 @@ func localValidate(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if validatorManagerFlags.RPC == "" {
-		validatorManagerFlags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+	if flags.RPC == "" {
+		flags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
 			return err
 		}
 	}
-	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(validatorManagerFlags.RPC)
+	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(flags.RPC)
 	// if there is error that means RPC URL did not contain blockchain in it
 	// RPC might be in the format of something like https://etna.avax-dev.network
 	// We will prompt for blockchainID in that case
@@ -480,10 +481,10 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		validatorManagerFlags.SigAggFlags.AggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
-		validatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
+		signatureAggregatorFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {
@@ -581,7 +582,7 @@ func addAsValidator(network models.Network,
 		aggregatorCtx,
 		app,
 		network,
-		validatorManagerFlags.RPC,
+		flags.RPC,
 		chainSpec,
 		false,
 		"",
@@ -628,7 +629,7 @@ func addAsValidator(network models.Network,
 		aggregatorCtx,
 		app,
 		network,
-		validatorManagerFlags.RPC,
+		flags.RPC,
 		chainSpec,
 		false,
 		"",

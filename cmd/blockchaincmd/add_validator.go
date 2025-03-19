@@ -65,7 +65,7 @@ var (
 	createLocalValidator                bool
 	externalValidatorManagerOwner       bool
 	validatorManagerOwner               string
-	validatorManagerFlags               flags.ValidatorManagerFlags
+	signatureAggregatorFlags            flags.SignatureAggregatorFlags
 )
 
 const (
@@ -89,7 +89,8 @@ Testnet or Mainnet.`,
 		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddValidatorManagerFlagsToCmd(cmd, &validatorManagerFlags, true)
+	flags.AddRPCFlagToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
@@ -176,13 +177,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		if validatorManagerFlags.RPC == "" {
-			validatorManagerFlags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+		if flags.RPC == "" {
+			flags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 			if err != nil {
 				return err
 			}
 		}
-		sc, err = importL1(blockchainIDStr, validatorManagerFlags.RPC, network)
+		sc, err = importL1(blockchainIDStr, flags.RPC, network)
 		if err != nil {
 			return err
 		}
@@ -351,7 +352,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		validatorManagerFlags.RPC,
+		flags.RPC,
 	)
 }
 
@@ -525,10 +526,10 @@ func CallAddValidator(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		validatorManagerFlags.SigAggFlags.AggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterNameFlagValue),
-		validatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
+		signatureAggregatorFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {

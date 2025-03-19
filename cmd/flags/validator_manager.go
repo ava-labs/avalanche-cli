@@ -13,20 +13,18 @@ const (
 	aggregatorLogToStdoutFlag = "aggregator-log-to-stdout"
 )
 
-type ValidatorManagerFlags struct {
-	RPC         string
-	SigAggFlags SignatureAggregatorFlags
-}
+var RPC string
 
 type SignatureAggregatorFlags struct {
 	AggregatorLogLevel    string
 	AggregatorLogToStdout bool
 }
 
-func AddValidatorManagerFlagsToCmd(cmd *cobra.Command, flags *ValidatorManagerFlags, addRPCFlag bool) {
-	cmd.Flags().StringVar(&flags.SigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&flags.SigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
-	if addRPCFlag {
-		cmd.Flags().StringVar(&flags.RPC, rpcURLFLag, "", "connect to validator manager at the given rpc endpoint")
-	}
+func AddRPCFlagToCmd(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&RPC, rpcURLFLag, "", "blockchain rpc endpoint")
+}
+
+func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command, flags *SignatureAggregatorFlags) {
+	cmd.Flags().StringVar(&flags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&flags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
 }

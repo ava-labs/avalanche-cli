@@ -54,7 +54,8 @@ these prompts by providing the values with flags.`,
 		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddValidatorManagerFlagsToCmd(cmd, &validatorManagerFlags, true)
+	flags.AddRPCFlagToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non-SOV blockchain only) file path of the removeValidator tx")
@@ -143,8 +144,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if sc.Sovereign && validatorManagerFlags.RPC == "" {
-		validatorManagerFlags.RPC, _, err = contract.GetBlockchainEndpoints(
+	if sc.Sovereign && flags.RPC == "" {
+		flags.RPC, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			contract.ChainSpec{
@@ -167,7 +168,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		// due to a previous partial removal operation
 		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 		validationID, err := validatorsdk.GetRegisteredValidator(
-			validatorManagerFlags.RPC,
+			flags.RPC,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,
 		)
@@ -220,7 +221,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		uptimeSec,
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
-		validatorManagerFlags.RPC,
+		flags.RPC,
 	); err != nil {
 		return err
 	}
@@ -312,10 +313,10 @@ func removeValidatorSOV(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		validatorManagerFlags.SigAggFlags.AggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
-		validatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
+		signatureAggregatorFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {

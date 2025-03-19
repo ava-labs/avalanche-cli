@@ -41,11 +41,11 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	initPOSManagerFlags     POSManagerSpecFlags
-	validatorManagerAddress string
-	validatorManagerFlags   flags.ValidatorManagerFlags
-	network                 networkoptions.NetworkFlags
-	privateKeyFlags         contract.PrivateKeyFlags
+	initPOSManagerFlags      POSManagerSpecFlags
+	validatorManagerAddress  string
+	signatureAggregatorFlags flags.SignatureAggregatorFlags
+	network                  networkoptions.NetworkFlags
+	privateKeyFlags          contract.PrivateKeyFlags
 )
 
 // avalanche contract initValidatorManager
@@ -59,7 +59,8 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &network, true, networkoptions.DefaultSupportedNetworkOptions)
 	privateKeyFlags.AddToCmd(cmd, "as contract deployer")
-	flags.AddValidatorManagerFlagsToCmd(cmd, &validatorManagerFlags, true)
+	flags.AddRPCFlagToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
@@ -91,8 +92,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
-	if validatorManagerFlags.RPC == "" {
-		validatorManagerFlags.RPC, _, err = contract.GetBlockchainEndpoints(
+	if flags.RPC == "" {
+		flags.RPC, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			chainSpec,
@@ -103,7 +104,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), validatorManagerFlags.RPC)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), flags.RPC)
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
@@ -153,10 +154,10 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		validatorManagerFlags.SigAggFlags.AggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogLevel,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
-		validatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
+		signatureAggregatorFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {
@@ -184,7 +185,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		BlockchainID:        blockchainID,
 		BootstrapValidators: avaGoBootstrapValidators,
 		OwnerAddress:        &ownerAddress,
-		RPC:                 validatorManagerFlags.RPC,
+		RPC:                 flags.RPC,
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
@@ -206,7 +207,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	case sc.PoS(): // PoS
-		deployed, err := validatormanager.ProxyHasValidatorManagerSet(validatorManagerFlags.RPC)
+		deployed, err := validatormanager.ProxyHasValidatorManagerSet(flags.RPC)
 		if err != nil {
 			return err
 		}
@@ -223,7 +224,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				return err
 			}
 			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
-				validatorManagerFlags.RPC,
+				flags.RPC,
 				genesisPrivateKey,
 				proxyOwnerPrivateKey,
 			); err != nil {
