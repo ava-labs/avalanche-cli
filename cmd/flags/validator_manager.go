@@ -13,7 +13,10 @@ const (
 	aggregatorLogToStdoutFlag = "aggregator-log-to-stdout"
 )
 
-var RPC string
+var (
+	RPC         string
+	SigAggFlags SignatureAggregatorFlags
+)
 
 type SignatureAggregatorFlags struct {
 	AggregatorLogLevel    string
@@ -24,7 +27,7 @@ func AddRPCFlagToCmd(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&RPC, rpcURLFLag, "", "blockchain rpc endpoint")
 }
 
-func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command, flags *SignatureAggregatorFlags) {
-	cmd.Flags().StringVar(&flags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&flags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
+func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&SigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.Flags().BoolVar(&SigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
 }

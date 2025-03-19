@@ -65,7 +65,6 @@ var (
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
 	useACP99                     bool
-	signatureAggregatorFlags     flags.SignatureAggregatorFlags
 )
 
 // const snapshotName = "local_snapshot"
@@ -307,7 +306,7 @@ This command can only be used to validate Proof of Stake L1.`,
 		RunE: localValidate,
 	}
 	flags.AddRPCFlagToCmd(cmd)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
@@ -481,10 +480,9 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		signatureAggregatorFlags.AggregatorLogLevel,
+		flags.SigAggFlags,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
-		signatureAggregatorFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {

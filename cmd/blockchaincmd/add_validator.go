@@ -65,7 +65,6 @@ var (
 	createLocalValidator                bool
 	externalValidatorManagerOwner       bool
 	validatorManagerOwner               string
-	signatureAggregatorFlags            flags.SignatureAggregatorFlags
 )
 
 const (
@@ -90,7 +89,7 @@ Testnet or Mainnet.`,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
@@ -526,10 +525,9 @@ func CallAddValidator(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		signatureAggregatorFlags.AggregatorLogLevel,
+		flags.SigAggFlags,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterNameFlagValue),
-		signatureAggregatorFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {

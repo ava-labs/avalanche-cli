@@ -61,7 +61,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
@@ -363,10 +363,9 @@ func InitializeValidatorManager(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		signatureAggregatorFlags.AggregatorLogLevel,
+		flags.SigAggFlags,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
-		signatureAggregatorFlags.AggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {
@@ -773,7 +772,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			validatorManagerAddress,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
-			signatureAggregatorFlags,
+			flags.SigAggFlags,
 		); err != nil {
 			return err
 		}

@@ -123,7 +123,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd, &signatureAggregatorFlags)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
 		"avalanchego-version",
@@ -835,7 +835,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
-			signatureAggregatorFlags,
+			flags.SigAggFlags,
 		)
 		if err != nil {
 			return err
