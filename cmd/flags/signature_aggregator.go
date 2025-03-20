@@ -3,18 +3,19 @@
 package flags
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/spf13/cobra"
 )
 
 const (
-	rpcURLFLag                = "rpc"
 	aggregatorLogLevelFlag    = "aggregator-log-level"
 	aggregatorLogToStdoutFlag = "aggregator-log-to-stdout"
 )
 
 var (
-	RPC         string
 	SigAggFlags SignatureAggregatorFlags
 )
 
@@ -23,11 +24,32 @@ type SignatureAggregatorFlags struct {
 	AggregatorLogToStdout bool
 }
 
-func AddRPCFlagToCmd(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&RPC, rpcURLFLag, "", "blockchain rpc endpoint")
+func validateSignatureAggregatorFlags() error {
+	if _, err := logging.ToLevel(SigAggFlags.AggregatorLogLevel); err != nil {
+		return fmt.Errorf(
+			"invalid log level: %q. Available values: %s, %s, %s, %s, %s, %s, %s, %s",
+			SigAggFlags.AggregatorLogLevel,
+			logging.Info.LowerString(),
+			logging.Warn.LowerString(),
+			logging.Error.LowerString(),
+			logging.Off.LowerString(),
+			logging.Fatal.LowerString(),
+			logging.Debug.LowerString(),
+			logging.Trace.LowerString(),
+			logging.Verbo.LowerString(),
+		)
+	}
+	return nil
 }
 
 func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&SigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if err := validateSignatureAggregatorFlags(); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	cmd.Flags().BoolVar(&SigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
 }
