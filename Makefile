@@ -30,7 +30,7 @@ fmt: ## Run gofumpt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
-test: fmt vet envtest ## Run tests.
+test: fmt vet ## Run tests.
 	go test -v ./... -coverprofile cover.out
 
 lint: ## Run golangci-lint against code.
@@ -47,15 +47,15 @@ run: build ## Run avalanche CLI
 
 colima: ## check colima
 ifndef COLIMA
-brew install colima
-brew install docker docker-compose
-brew install chipmk/tap/docker-mac-net-connect
-brew services start chipmk/tap/docker-mac-net-connect
+	brew install colima
+	brew install docker docker-compose
+	brew install chipmk/tap/docker-mac-net-connect
+	brew services start chipmk/tap/docker-mac-net-connect
 endif
 	
 docker: colima ## check docker
 ifndef DOCKER
-$(error "No docker in $(PATH), pls follow https://docs.docker.com/get-docker/ to install")	
+	$(error "No docker in $(PATH), pls follow https://docs.docker.com/get-docker/ to install")	
 endif
 
 docker-build: docker ## Build docker image
