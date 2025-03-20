@@ -10,9 +10,7 @@ const (
 	rpcURLFLag = "rpc"
 )
 
-var (
-	RPC string
-)
+var RPC string
 
 func AddRPCFlagToCmd(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&RPC, rpcURLFLag, "", "blockchain rpc endpoint")

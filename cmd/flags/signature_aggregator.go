@@ -15,9 +15,7 @@ const (
 	aggregatorLogToStdoutFlag = "aggregator-log-to-stdout"
 )
 
-var (
-	SigAggFlags SignatureAggregatorFlags
-)
+var SigAggFlags SignatureAggregatorFlags
 
 type SignatureAggregatorFlags struct {
 	AggregatorLogLevel    string
@@ -44,7 +42,7 @@ func validateSignatureAggregatorFlags() error {
 
 func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&SigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+	cmd.PreRunE = func(_ *cobra.Command, _ []string) error {
 		if err := validateSignatureAggregatorFlags(); err != nil {
 			return err
 		}
