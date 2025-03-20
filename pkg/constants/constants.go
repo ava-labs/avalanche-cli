@@ -21,7 +21,6 @@ const (
 	LogDir      = "logs"
 
 	LocalNetworkMetaFile  = "localNetworks.json"
-	LocalClustersMetaFile = "localClusters.json"
 
 	ServerRunFile                   = "gRPCserver.run"
 	ServerRunFileLocalNetworkPrefix = ""
