@@ -363,7 +363,7 @@ func InitializeValidatorManager(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags,
+		signatureAggregatorFlags,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterName),
 		ux.Logger.PrintToUser,
