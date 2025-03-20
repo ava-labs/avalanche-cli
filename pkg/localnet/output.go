@@ -17,7 +17,7 @@ import (
 // PrintEndpoints prints the endpoint information for the executing local network,
 // including primary nodes, l1 nodes, and blockchain URLs for all blockchains in the
 // network
-// If [blockchainName] is given, it only prints information for that only
+// If [blockchainName] is given, only prints information for it
 func PrintEndpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -127,11 +127,14 @@ func PrintNetworkEndpoints(
 	return nil
 }
 
+// PrintL1Endpoints prints out a table of (Node ID, Endpoint, L1) for all running clusters
+// connected to the local network
+// If the environment is codespace based, It also adds a node codespace URI
 func PrintL1Endpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 ) error {
-	clusters, err := GetLocalNetworkRunningClusters(app)
+	clusters, err := GetRunningLocalClustersConnectedToLocalNetwork(app)
 	if err != nil {
 		return err
 	}

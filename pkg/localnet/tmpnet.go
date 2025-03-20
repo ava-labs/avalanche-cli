@@ -54,10 +54,12 @@ type NodeSetting struct {
 }
 
 // Creates a new tmpnet with the given parameters
-// accepts:
-// - settint specific[rootDir] for the network,
+// Accepts:
+// - setting specific [networkDir] for the network,
 // - a list of [nodes] where some of them have pregenerated parameters
-// - [upgradeBytes] to be used on the network
+// - [genesis] and [upgradeBytes]
+// - [bootstrapIPs] and [bootstrapIDs] to be used (if bootstrapping from another custom network)
+// - can be bootstrapped or not depending on [bootstrap] setting
 func TmpNetCreate(
 	ctx context.Context,
 	log logging.Logger,
@@ -105,8 +107,8 @@ func TmpNetCreate(
 }
 
 // Copies a tmpnet from [oldDir] to [newDir], fixing
-// configuration needed to as the new network can be bootstrapped
-func TmpNetMigrate(
+// configuration so the new network can be bootstrapped
+func TmpNetMove(
 	oldDir string,
 	newDir string,
 ) error {
@@ -127,11 +129,14 @@ func TmpNetMigrate(
 			if err != nil {
 				return err
 			}
+			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
 			data[config.ChainConfigDirKey], err = tmpNetGetNodeBlockchainConfigsDir(newDir, entry.Name())
 			if err != nil {
 				return err
 			}
-			data[config.DataDirKey] = filepath.Join(newDir, entry.Name())
+			if _, ok := data[config.SubnetConfigDirKey]; ok {
+				data[config.SubnetConfigDirKey] = filepath.Join(newDir, "subnets")
+			}
 			if _, ok := data[config.GenesisFileKey]; ok {
 				data[config.GenesisFileKey] = filepath.Join(newDir, "genesis.json")
 			}
@@ -143,14 +148,25 @@ func TmpNetMigrate(
 	return nil
 }
 
-// reads in tmpnet
+// Reads in a tmpnet
 func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
-	return tmpnet.ReadNetwork(networkDir)
+	network, err := tmpnet.ReadNetwork(networkDir)
+	if err != nil {
+		return network, err
+	}
+	networkID, err := GetTmpNetNetworkID(network)
+	if err != nil {
+		return network, err
+	}
+	if IsPublicNetwork(networkID) {
+		// this is loaded non empty for public networks, and causes genesis flag to be set later on
+		network.Genesis = nil
+	}
+	return network, nil
 }
 
 // Bootstrap a previously generated network
-// If [avalancheGoBinPath] is given, uses it instead of the previously
-// one used
+// If [avalancheGoBinPath] is given, uses it instead of the persisted one
 func TmpNetLoad(
 	ctx context.Context,
 	log logging.Logger,
@@ -184,7 +200,7 @@ func TmpNetStop(
 	return tmpnet.StopNetwork(ctx, networkDir)
 }
 
-// Indicates whether the given network has all of its nodes running, part of them, or none
+// Indicates whether the given network has all, part, or none of its nodes running
 func GetTmpNetRunningStatus(networkDir string) (RunningStatus, error) {
 	status := UndefinedRunningStatus
 	network, err := GetTmpNetNetwork(networkDir)
@@ -342,8 +358,8 @@ func TmpNetHasValidatorsForSubnet(
 	return false, nil
 }
 
-// Assign alias [alias]->[blockchainID] on network
-// if the network does not validate the blockchain, it errors
+// Assign alias [alias]->[blockchainID] to the given [nodes] of [network]
+// if none of the nodes validate the blockchain, it errors
 func TmpNetSetAlias(
 	network *tmpnet.Network,
 	nodes []*tmpnet.Node,
@@ -382,7 +398,7 @@ func TmpNetSetAlias(
 }
 
 // Assign alias [blockchain.Name]->[blockchain.ID] for all non standard
-// blockchains on the network
+// blockchains on the [network]
 // if the blockchain is not validated by the network, skips it
 func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 	network, err := GetTmpNetNetwork(networkDir)
@@ -434,7 +450,7 @@ func TmpNetInstallVM(
 	return utils.SetupExecFile(log, binaryPath, pluginPath)
 }
 
-// Set up blockchain config for all nodes in the network
+// Set up blockchain config for the given [nodes] of [network]
 func TmpNetSetBlockchainConfig(
 	network *tmpnet.Network,
 	nodes []*tmpnet.Node,
@@ -457,9 +473,7 @@ func TmpNetSetBlockchainConfig(
 	return nil
 }
 
-// Set up blockchain config for the given node
-// To be implemented after aligning with tmpnet on
-// blockchain supporting different confs for different nodes
+// Set up blockchain config for the given [nodeID] of the [network]
 func TmpNetSetNodeBlockchainConfig(
 	network *tmpnet.Network,
 	nodeID ids.NodeID,
@@ -488,10 +502,11 @@ func TmpNetSetNodeBlockchainConfig(
 	if configPath == "" {
 		return fmt.Errorf("failure writing chain config file: node %s not found on network", nodeID)
 	}
-
 	return os.WriteFile(configPath, blockchainConfig, constants.WriteReadReadPerms)
 }
 
+// Return path to the blockchain configs dir for the given [networkDir] and [nodeID]. If the dir does not
+// exists, first creates it.
 func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) (string, error) {
 	nodeBlockchainConfigsDir := filepath.Join(networkDir, nodeID, "configs", "chains")
 	if err := os.MkdirAll(nodeBlockchainConfigsDir, constants.DefaultPerms755); err != nil {
@@ -500,6 +515,7 @@ func tmpNetGetNodeBlockchainConfigsDir(networkDir string, nodeID string) (string
 	return nodeBlockchainConfigsDir, nil
 }
 
+// Set up the blockchain configs dir for all nodes in the [network]
 func tmpNetSetBlockchainsConfigDir(network *tmpnet.Network) error {
 	for _, node := range network.Nodes {
 		nodeBlockchainConfigsDir, err := tmpNetGetNodeBlockchainConfigsDir(network.Dir, node.NodeID.String())
@@ -532,8 +548,8 @@ func TmpNetSetSubnetConfig(
 	return os.WriteFile(configPath, subnetConfig, constants.WriteReadReadPerms)
 }
 
-// Restart all network nodes
-// If [subnetIDs] is given, conf the nodes to track the subnets
+// Restart given [nodes] of [network]
+// If [subnetIDs] are given, configure the nodes to track the subnets
 func TmpNetRestartNodes(
 	ctx context.Context,
 	log logging.Logger,
@@ -687,6 +703,8 @@ func TmpNetTrackSubnet(
 	return nil
 }
 
+// Restart given [nodes] of [network] to track [subnetID].
+// Before that, set up blockchain config files from [blockchainConfig] and [perNodeBlockchainConfig]
 func TmpNetTrackBlockchainOnNodes(
 	ctx context.Context,
 	log logging.Logger,
@@ -733,7 +751,7 @@ func TmpNetTrackBlockchainOnNodes(
 	)
 }
 
-// Add all network nodes of [networkDir] as non SOV validators to [subnetID], using [wallet] to pay for fees
+// Add all network nodes of [network] as non SOV validators of [subnetID], using [wallet] to pay for fees
 // If a node is already validator for the subnet, does nothing with it
 func TmpNetAddNonSovereignValidators(
 	ctx context.Context,
@@ -784,7 +802,7 @@ func TmpNetAddNonSovereignValidators(
 	return nil
 }
 
-// Waits until all the network nodes on [networkDir] are included as validators of [subnetID] as verified
+// Waits until all the network nodes of [network] are included as validators of [subnetID] as verified
 // on GetCurrentValidators P-Chain API call
 func TmpNetWaitNonSovereignValidators(ctx context.Context, network *tmpnet.Network, subnetID ids.ID) error {
 	checkFrequency := time.Second
@@ -816,6 +834,9 @@ func TmpNetWaitNonSovereignValidators(ctx context.Context, network *tmpnet.Netwo
 	return nil
 }
 
+// Return a slice of new [numNodes] nodes, setting keys and ports to either fresh values,
+// or values present at companion [nodeSettings] slice
+// If [trackedSubnets] are given, set up appropriate flag
 func GetNewTmpNetNodes(
 	numNodes uint32,
 	nodeSettings []NodeSetting,
@@ -839,6 +860,9 @@ func GetNewTmpNetNodes(
 			}
 			node.Flags[config.HTTPPortKey] = nodeSettings[i].HTTPPort
 			node.Flags[config.StakingPortKey] = nodeSettings[i].StakingPort
+		} else {
+			node.Flags[config.HTTPPortKey] = 0
+			node.Flags[config.StakingPortKey] = 0
 		}
 		if len(trackedSubnets) > 0 {
 			trackedSubnetsStr := utils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })
@@ -852,6 +876,8 @@ func GetNewTmpNetNodes(
 	return nodes, nil
 }
 
+// Copies [node] data into a new fresh node that is to be used in the same network
+// Keeps information regarding genesis, upgrade, bootstrappers, tracked subnets, ...
 func TmpNetCopyNode(
 	node *tmpnet.Node,
 ) (*tmpnet.Node, error) {
@@ -878,6 +904,9 @@ func TmpNetCopyNode(
 	return &newNode, nil
 }
 
+// Starts all nodes of [networkDir], and waits for P-chain to be bootstrapped
+// Then, persists HTTP and Staking ports (changing the config from dynamic
+// ports -if set to 0- into persisted ones)
 func TmpNetBootstrap(
 	ctx context.Context,
 	log logging.Logger,
@@ -898,6 +927,8 @@ func TmpNetBootstrap(
 	return TmpNetPersistPorts(network)
 }
 
+// Adds the given [node] to the [network] conf, and starts it
+// Waits for P-Chain to be bootstrapped, and persists ports for the node
 func TmpNetAddNode(
 	ctx context.Context,
 	log logging.Logger,
@@ -927,6 +958,10 @@ func TmpNetAddNode(
 	return TmpNetPersistPorts(network)
 }
 
+// Enables sybil proyection on [networkDir]
+// This is disabled by default on tmpnet for 1-node networks, but is generally
+//
+//	needed for 1-node clusters that connect to other network
 func TmpNetEnableSybilProtection(
 	networkDir string,
 ) error {
@@ -941,6 +976,7 @@ func TmpNetEnableSybilProtection(
 	return network.Write()
 }
 
+// Persists http and staking ports of a running network
 func TmpNetPersistPorts(
 	network *tmpnet.Network,
 ) error {
@@ -955,6 +991,7 @@ func TmpNetPersistPorts(
 	return network.Write()
 }
 
+// Restart given [node] of [network]
 func TmpNetRestartNode(
 	ctx context.Context,
 	log logging.Logger,
@@ -970,6 +1007,7 @@ func TmpNetRestartNode(
 	return nil
 }
 
+// Starts given [node] of [network]
 func TmpNetStartNode(
 	ctx context.Context,
 	log logging.Logger,
@@ -982,6 +1020,8 @@ func TmpNetStartNode(
 	}
 	_, ok := node.Flags[config.BootstrapIPsKey]
 	if !ok && !IsPublicNetwork(networkID) {
+		// it does not have boostrappers set, and it is also not a public network node,
+		// so we need to set bootstrappers from the custom network itself
 		bootstrapIPs, bootstrapIDs, err := GetTmpNetBootstrappers(network.Dir, node.NodeID)
 		if err != nil {
 			return err
@@ -999,30 +1039,24 @@ func TmpNetStartNode(
 	return nil
 }
 
+// Indicates wether a given network ID is for public network
 func IsPublicNetwork(networkID uint32) bool {
 	return networkID == avagoconstants.FujiID || networkID == avagoconstants.MainnetID
 }
 
-func GetTmpNetNetworkID(networkDir string) (uint32, error) {
-	network, err := GetTmpNetNetwork(networkDir)
-	if err != nil {
-		return 0, err
-	}
+// Returns Network ID of [network]
+// Using this instead of network.GetNetworkID
+// because latest one reads in an empty genesis
+// for public networks on some cases, returning an ID of 0
+func GetTmpNetNetworkID(network *tmpnet.Network) (uint32, error) {
 	node, err := GetTmpNetFirstNode(network)
 	if err != nil {
 		return 0, err
 	}
-	networkIDStr, err := node.Flags.GetStringVal(config.NetworkNameKey)
-	if err != nil {
-		return 0, err
-	}
-	networkID, err := strconv.ParseUint(networkIDStr, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return uint32(networkID), nil
+	return GetTmpNetNodeNetworkID(node)
 }
 
+// Returns Network ID of a [node]
 func GetTmpNetNodeNetworkID(node *tmpnet.Node) (uint32, error) {
 	networkIDStr, err := node.Flags.GetStringVal(config.NetworkNameKey)
 	if err != nil {
@@ -1035,6 +1069,7 @@ func GetTmpNetNodeNetworkID(node *tmpnet.Node) (uint32, error) {
 	return uint32(networkID), nil
 }
 
+// Returns avalanchego path persisted at [networkDir]
 func GetTmpNetAvalancheGoBinaryPath(networkDir string) (string, error) {
 	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
@@ -1050,7 +1085,7 @@ func fixURI(uri string, ip string) string {
 
 // reads in tmpnet for external reference. preferred over tmpnet version due to URI transformation
 func GetTmpNetNetworkWithURIFix(networkDir string) (*tmpnet.Network, error) {
-	network, err := tmpnet.ReadNetwork(networkDir)
+	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return network, err
 	}

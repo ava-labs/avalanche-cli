@@ -169,7 +169,7 @@ func LocalStatus(
 		localClusters = []string{clusterName}
 	} else {
 		var err error
-		localClusters, err = localnet.GetClusters(app)
+		localClusters, err = localnet.GetLocalClusters(app)
 		if err != nil {
 			return fmt.Errorf("failed to list local clusters: %w", err)
 		}

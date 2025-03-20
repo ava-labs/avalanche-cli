@@ -16,6 +16,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// Downloads avalanchego database into the given [nodeNames]
+// To be used on [fuji] only, after creating the nodes, but previously starting them.
 func DownloadAvalancheGoDB(
 	clusterNetwork models.Network,
 	rootDir string,
@@ -84,7 +86,7 @@ func DownloadAvalancheGoDB(
 
 func cleanUpClusterNodeData(rootDir string, nodesNames []string) error {
 	for _, nodeName := range nodesNames {
-		if err := os.RemoveAll(filepath.Join(rootDir, nodeName)); err != nil {
+		if err := os.RemoveAll(filepath.Join(rootDir, nodeName, "db")); err != nil {
 			return err
 		}
 	}

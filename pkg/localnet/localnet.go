@@ -170,8 +170,9 @@ func IsLocalNetworkBlockchainBootstrapped(
 	return IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
 }
 
-// Indicates if P-Chain is bootstrapped on the network, and also if
-// all blockchain that have validators on the network, are bootstrapped
+// Indicates if P-Chain is bootstrapped on the local network, and also if
+// all blockchains that have validators on the local network, or in clusters
+// connected to the local network, are bootstrapped
 func LocalNetworkHealth(
 	app *application.Avalanche,
 ) (bool, bool, error) {
@@ -183,7 +184,7 @@ func LocalNetworkHealth(
 	if err != nil {
 		return pChainBootstrapped, false, err
 	}
-	clusters, err := GetLocalNetworkRunningClusters(app)
+	clusters, err := GetRunningLocalClustersConnectedToLocalNetwork(app)
 	if err != nil {
 		return pChainBootstrapped, false, err
 	}

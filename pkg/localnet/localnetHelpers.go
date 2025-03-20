@@ -26,7 +26,7 @@ type ExtraLocalNetworkData struct {
 
 // Restart all nodes on local network to track [blockchainName].
 // Before that, set up VM binary, blockchain and subnet config information
-// After the blockchain is bootstrapped, add alias for it [blockchainName]->[blockchainID]
+// After the blockchain is bootstrapped, add alias for [blockchainName]->[blockchainID]
 // Finally persist all new blockchain RPC URLs into blockchain sidecar.
 func LocalNetworkTrackSubnet(
 	app *application.Avalanche,
@@ -54,7 +54,6 @@ func LocalNetworkTrackSubnet(
 		app,
 		printFunc,
 		blockchainName,
-		networkModel,
 		networkDir,
 		wallet,
 	)

@@ -26,7 +26,7 @@ func networkStatus(*cobra.Command, []string) error {
 	if err != nil {
 		return err
 	}
-	clusters, err := localnet.GetLocalNetworkRunningClusters(app)
+	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
 	if err != nil {
 		return err
 	}

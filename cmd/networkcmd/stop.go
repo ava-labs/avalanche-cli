@@ -75,12 +75,12 @@ func stopAndSaveNetwork(flags StopFlags) error {
 
 	if !dontSave {
 		snapshotPath := app.GetSnapshotPath(flags.snapshotName)
-		if err := localnet.TmpNetMigrate(networkDir, snapshotPath); err != nil {
+		if err := localnet.TmpNetMove(networkDir, snapshotPath); err != nil {
 			return err
 		}
 	}
 
-	clusterNames, err := localnet.GetLocalNetworkRunningClusters(app)
+	clusterNames, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
 	if err != nil {
 		return err
 	}

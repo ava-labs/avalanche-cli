@@ -729,7 +729,7 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 
 func GetLocalClusterUris() ([]string, error) {
 	app := GetApp()
-	clusters, err := localnet.GetLocalNetworkRunningClusters(app)
+	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
 	if err != nil {
 		return nil, err
 	}

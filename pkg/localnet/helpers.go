@@ -13,14 +13,21 @@ import (
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 )
 
+// Tracks the given [blockchainName] at network given on [networkDir]
+// After P-Chain is bootstrapped, set alias [blockchainName]->blockchainID
+// for the network, and persists RPC into sidecar
+// Use both for local networks and local clusters
 func TrackSubnet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	blockchainName string,
-	networkModel models.Network,
 	networkDir string,
 	wallet *primary.Wallet,
 ) error {
+	networkModel, err := GetNetworkModel(networkDir)
+	if err != nil {
+		return err
+	}
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return err
@@ -90,4 +97,19 @@ func TrackSubnet(
 		networkModel,
 		nodeURIs,
 	)
+}
+
+// Returns the network model for the network at [networkDir]
+func GetNetworkModel(
+	networkDir string,
+) (models.Network, error) {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return models.UndefinedNetwork, err
+	}
+	networkID, err := GetTmpNetNetworkID(network)
+	if err != nil {
+		return models.UndefinedNetwork, err
+	}
+	return models.NetworkFromNetworkID(networkID), nil
 }

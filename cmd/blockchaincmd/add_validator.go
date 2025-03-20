@@ -270,7 +270,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	var localValidatorClusterName string
 	if createLocalValidator {
 		// TODO: make this to work even if there is no local cluster for the blockchain and network
-		targetClusters, err := localnet.GetFilteredClusters(app, true, network, blockchainName)
+		targetClusters, err := localnet.GetFilteredLocalClusters(app, true, network, blockchainName)
 		if err != nil {
 			return err
 		}

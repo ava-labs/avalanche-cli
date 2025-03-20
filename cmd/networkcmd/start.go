@@ -109,7 +109,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			if err != nil {
 				return err
 			}
-			if err := localnet.TmpNetMigrate(snapshotPath, networkDir); err != nil {
+			if err := localnet.TmpNetMove(snapshotPath, networkDir); err != nil {
 				return err
 			}
 		}

@@ -296,6 +296,7 @@ func localStartNode(_ *cobra.Command, args []string) error {
 func localStopNode(_ *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		clusterName := args[0]
+		// want to be able to stop clusters even if they are only partially operative
 		if running, err := localnet.LocalClusterIsPartiallyRunning(app, clusterName); err != nil {
 			return err
 		} else if !running {
@@ -308,7 +309,7 @@ func localStopNode(_ *cobra.Command, args []string) error {
 		}
 		return nil
 	}
-	clusterNames, err := localnet.GetRunningClusters(app)
+	clusterNames, err := localnet.GetRunningLocalClusters(app)
 	if err != nil {
 		return err
 	}

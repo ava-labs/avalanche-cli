@@ -25,6 +25,14 @@ import (
 
 const migratedSuffix = "-migrated"
 
+// Called from 'internal/migrations' previously to any command execution
+// Iterates over all local clusters, finding if there is a legacy network runner one
+// If that is the case, renames it with migratedSuffix, creates a new tmpnet cluster
+// based on all network runner cluster info, and then remove the legacy one on success
+// If the is a cluster running, first stops it, and any relayer associated with it,
+// then migrate the cluster, then run thew new one again, together with the relayer
+// Relayer stop/start is needed because a connected relayer makes bootstrapping to
+// fail upon cluster restart
 func MigrateANRToTmpNet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -163,6 +171,8 @@ func MigrateANRToTmpNet(
 	return nil
 }
 
+// Migrates a network runner cluster, by first renaming it, then creating
+// a new tmpnet one based on it, then finally removing it on success
 func migrateCluster(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),

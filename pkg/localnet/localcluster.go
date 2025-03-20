@@ -21,6 +21,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// A connection setting is either the network ID for a public network,
+// or the full settings for a custom network
 type ConnectionSettings struct {
 	NetworkID    uint32
 	Genesis      []byte
@@ -29,6 +31,12 @@ type ConnectionSettings struct {
 	BootstrapIPs []string
 }
 
+// Create a local cluster [clusterName] connected to another network,
+// based on [connectionSettings].
+// Set up [numNodes] nodes, either with fresh keys and ports, or based on settings given by [nodeSettings]
+// If [downloadDB] is set, and network is fuji, downloads the current avalanchego DB -note: db download is not desired
+// if migrating from a network runner cluster-
+// If [bootstrap] is set, starts the nodes
 func CreateLocalCluster(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -79,6 +87,7 @@ func CreateLocalCluster(
 	if err != nil {
 		return nil, err
 	}
+	// for 1-node clusters we need to overwrite tmpnet's default
 	if err := TmpNetEnableSybilProtection(networkDir); err != nil {
 		return nil, err
 	}
@@ -100,6 +109,12 @@ func CreateLocalCluster(
 	return network, nil
 }
 
+// Adds a new fresh node with given [httpPort] and [stakingPort]
+// into cluster [clusterName] conf, and starts it
+// Copies all node conf from the first node of the cluster,
+// including connection settings, tracked subnets, blockchain config files.
+// Downloads avalanchego DB for fuji nodes
+// Finally waits for all the blockchains validated by the cluster to be bootstrapped
 func AddNodeToLocalCluster(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -107,10 +122,6 @@ func AddNodeToLocalCluster(
 	httpPort uint32,
 	stakingPort uint32,
 ) (*tmpnet.Node, error) {
-	blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
-	if err != nil {
-		return nil, err
-	}
 	network, err := GetLocalCluster(app, clusterName)
 	if err != nil {
 		return nil, err
@@ -119,19 +130,13 @@ func AddNodeToLocalCluster(
 	if err != nil {
 		return nil, err
 	}
-	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
-	if err != nil {
-		return nil, err
-	}
-	if networkModel.Kind != models.Local {
-		network.Genesis = nil
-	}
-	ctx, cancel := networkModel.BootstrappingContext()
-	defer cancel()
+	// copy network connection info + tracked subnets
+	// creates node dir
 	newNode, err := TmpNetCopyNode(node)
 	if err != nil {
 		return nil, err
 	}
+	// copy chain config files into new dir
 	networkDir := GetLocalClusterDir(app, clusterName)
 	sourceDir := filepath.Join(networkDir, node.NodeID.String(), "configs", "chains")
 	targetDir := filepath.Join(networkDir, newNode.NodeID.String(), "configs", "chains")
@@ -139,10 +144,16 @@ func AddNodeToLocalCluster(
 		return nil, fmt.Errorf("failure migrating chain configs dir %s into %s: %w", sourceDir, targetDir, err)
 	}
 	nodeIDs := []string{newNode.NodeID.String()}
+	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
+	if err != nil {
+		return nil, err
+	}
 	if err := DownloadAvalancheGoDB(networkModel, networkDir, nodeIDs, app.Log, printFunc); err != nil {
 		app.Log.Info("seeding public archive data finished with error: %v. Ignored if any", zap.Error(err))
 	}
 	printFunc("Waiting for node: %s to be bootstrapping P-Chain", newNode.NodeID)
+	ctx, cancel := networkModel.BootstrappingContext()
+	defer cancel()
 	if err = TmpNetAddNode(
 		ctx,
 		app.Log,
@@ -151,6 +162,10 @@ func AddNodeToLocalCluster(
 		httpPort,
 		stakingPort,
 	); err != nil {
+		return nil, err
+	}
+	blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+	if err != nil {
 		return nil, err
 	}
 	for _, blockchain := range blockchains {
@@ -203,7 +218,7 @@ func LocalClusterExists(
 	return err == nil
 }
 
-// Stops a local cluster
+// Stops local cluster [clusterName]
 func LocalClusterStop(
 	app *application.Avalanche,
 	clusterName string,
@@ -212,7 +227,8 @@ func LocalClusterStop(
 	return TmpNetStop(networkDir)
 }
 
-// Removes a local cluster
+// Removes local cluster [clusterName]
+// First stops it if needed
 func LocalClusterRemove(
 	app *application.Avalanche,
 	clusterName string,
@@ -228,6 +244,7 @@ func LocalClusterRemove(
 	return os.RemoveAll(networkDir)
 }
 
+// Indicates if local cluster is running
 func LocalClusterIsRunning(app *application.Avalanche, clusterName string) (bool, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
 	status, err := GetTmpNetRunningStatus(networkDir)
@@ -237,6 +254,9 @@ func LocalClusterIsRunning(app *application.Avalanche, clusterName string) (bool
 	return status == Running, nil
 }
 
+// Indicates if local cluster is partially running (only some nodes are executing)
+// Useful for stop and destroy flows that need to accomplish the operation
+// regardless the cluster is operative
 func LocalClusterIsPartiallyRunning(app *application.Avalanche, clusterName string) (bool, error) {
 	networkDir := GetLocalClusterDir(app, clusterName)
 	status, err := GetTmpNetRunningStatus(networkDir)
@@ -246,47 +266,51 @@ func LocalClusterIsPartiallyRunning(app *application.Avalanche, clusterName stri
 	return status != NotRunning, nil
 }
 
-func IsLocalNetworkCluster(app *application.Avalanche, clusterName string) (bool, error) {
-	return IsLocalClusterForNetwork(app, clusterName, models.NewLocalNetwork())
-}
-
-func GetLocalClusterNetworkModel(app *application.Avalanche, clusterName string) (models.Network, error) {
-	networkDir := GetLocalClusterDir(app, clusterName)
-	networkID, err := GetTmpNetNetworkID(networkDir)
-	if err != nil {
-		return models.UndefinedNetwork, err
-	}
-	return models.NetworkFromNetworkID(networkID), nil
-}
-
-func GetLocalNetworkRunningClusters(app *application.Avalanche) ([]string, error) {
-	return GetFilteredClusters(app, true, models.NewLocalNetwork(), "")
-}
-
-func GetRunningClusters(app *application.Avalanche) ([]string, error) {
-	return GetFilteredClusters(app, true, models.UndefinedNetwork, "")
-}
-
-func IsLocalClusterForNetwork(
+// Indicates if the cluster [clusterName] is connected to a network of kind [networkModel]
+func LocalClusterIsConnectedToNetwork(
 	app *application.Avalanche,
 	clusterName string,
-	network models.Network,
+	networkModel models.Network,
 ) (bool, error) {
-	networkDir := GetLocalClusterDir(app, clusterName)
-	networkID, err := GetTmpNetNetworkID(networkDir)
+	network, err := GetLocalCluster(app, clusterName)
 	if err != nil {
 		return false, err
 	}
-	return networkID == network.ID, nil
+	networkID, err := GetTmpNetNetworkID(network)
+	if err != nil {
+		return false, err
+	}
+	return networkID == networkModel.ID, nil
 }
 
-func GetFilteredClusters(
+// Returns the network model the local cluster given by [clusterName]
+func GetLocalClusterNetworkModel(
+	app *application.Avalanche,
+	clusterName string,
+) (models.Network, error) {
+	networkDir := GetLocalClusterDir(app, clusterName)
+	return GetNetworkModel(networkDir)
+}
+
+// Gets a list of clusters connected to local network that are also running
+func GetRunningLocalClustersConnectedToLocalNetwork(app *application.Avalanche) ([]string, error) {
+	return GetFilteredLocalClusters(app, true, models.NewLocalNetwork(), "")
+}
+
+// Gets a list of clusters that are running
+func GetRunningLocalClusters(app *application.Avalanche) ([]string, error) {
+	return GetFilteredLocalClusters(app, true, models.UndefinedNetwork, "")
+}
+
+// Gets a list of clusters filtered by running status, network model, and
+// validated blockchains
+func GetFilteredLocalClusters(
 	app *application.Avalanche,
 	running bool,
 	network models.Network,
 	blockchainName string,
 ) ([]string, error) {
-	clusters, err := GetClusters(app)
+	clusters, err := GetLocalClusters(app)
 	if err != nil {
 		return nil, err
 	}
@@ -310,7 +334,7 @@ func GetFilteredClusters(
 			}
 		}
 		if network != models.UndefinedNetwork {
-			if isForNetwork, err := IsLocalClusterForNetwork(app, clusterName, network); err != nil {
+			if isForNetwork, err := LocalClusterIsConnectedToNetwork(app, clusterName, network); err != nil {
 				return nil, err
 			} else if !isForNetwork {
 				continue
@@ -321,7 +345,8 @@ func GetFilteredClusters(
 	return filteredClusters, nil
 }
 
-func GetClusters(app *application.Avalanche) ([]string, error) {
+// Get list of all local clusters
+func GetLocalClusters(app *application.Avalanche) ([]string, error) {
 	clusters := []string{}
 	clustersDir := app.GetLocalClustersDir()
 	entries, err := os.ReadDir(clustersDir)
@@ -341,6 +366,7 @@ func GetClusters(app *application.Avalanche) ([]string, error) {
 	return clusters, nil
 }
 
+// Waits for cluster [clusterName] to have [blockchainID] bootstrapped
 func WaitLocalClusterBlockchainBootstrapped(
 	ctx context.Context,
 	app *application.Avalanche,
@@ -355,17 +381,22 @@ func WaitLocalClusterBlockchainBootstrapped(
 	return WaitTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
 }
 
+// Get connections settings needed to connect a cluster to the local network
 func GetLocalNetworkConnectionInfo(
 	app *application.Avalanche,
 ) (ConnectionSettings, error) {
 	connectionSettings := ConnectionSettings{}
-	networkDir, err := GetLocalNetworkDir(app)
+	network, err := GetLocalNetwork(app)
 	if err != nil {
 		return ConnectionSettings{}, fmt.Errorf("failed to connect to local network: %w", err)
 	}
-	connectionSettings.NetworkID, err = GetTmpNetNetworkID(networkDir)
+	connectionSettings.NetworkID, err = GetTmpNetNetworkID(network)
 	if err != nil {
 		return ConnectionSettings{}, err
+	}
+	networkDir, err := GetLocalNetworkDir(app)
+	if err != nil {
+		return ConnectionSettings{}, fmt.Errorf("failed to connect to local network: %w", err)
 	}
 	connectionSettings.BootstrapIPs, connectionSettings.BootstrapIDs, err = GetTmpNetBootstrappers(networkDir, ids.EmptyNodeID)
 	if err != nil {
@@ -441,7 +472,7 @@ func GetLocalClusterBlockchainInfo(
 }
 
 // Returns the endpoint associated to the cluster
-// If the network is not alive it errors
+// If the network is not running it errors
 func GetLocalClusterEndpoint(
 	app *application.Avalanche,
 	clusterName string,
@@ -466,6 +497,7 @@ func LocalClusterHasValidatorsForSubnet(
 	return TmpNetHasValidatorsForSubnet(network, subnetID)
 }
 
+// Get local cluster URIs
 func GetLocalClusterURIs(
 	app *application.Avalanche,
 	clusterName string,
@@ -474,6 +506,7 @@ func GetLocalClusterURIs(
 	return GetTmpNetNodeURIsWithFix(networkDir)
 }
 
+// Return a list of blockchains that are validated at least by one node in the cluster
 func GetLocalClusterValidatedBlockchains(
 	app *application.Avalanche,
 	clusterName string,
@@ -494,6 +527,7 @@ func GetLocalClusterValidatedBlockchains(
 	return validatedBlockchains, nil
 }
 
+// Tracks the subnet of [blockchainName] in the cluster given by [clusterName]
 func LocalClusterTrackSubnet(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -503,21 +537,19 @@ func LocalClusterTrackSubnet(
 	if !LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
-	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
-	if err != nil {
-		return err
-	}
 	networkDir := GetLocalClusterDir(app, clusterName)
 	return TrackSubnet(
 		app,
 		printFunc,
 		blockchainName,
-		networkModel,
 		networkDir,
 		nil,
 	)
 }
 
+// Loads an already existing cluster [clusterName]
+// Waits for all blockchains validated by the cluster to be bootstrapped
+// Sets default aliases for all blockchains validated by the cluster
 func LoadLocalCluster(
 	app *application.Avalanche,
 	clusterName string,
@@ -557,6 +589,7 @@ func LoadLocalCluster(
 	return nil
 }
 
+// Sets default aliases for all blockchains validated by the cluster
 func RefreshLocalClusterAliases(
 	app *application.Avalanche,
 	clusterName string,
