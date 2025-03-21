@@ -583,8 +583,8 @@ func LoadLocalCluster(
 			return err
 		}
 	}
-	if err := TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
-		return err
+	if networkModel.Kind == models.Local {
+		return TmpNetSetDefaultAliases(ctx, networkDir)
 	}
 	return nil
 }

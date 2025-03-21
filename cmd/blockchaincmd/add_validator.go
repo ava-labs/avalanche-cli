@@ -343,12 +343,10 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	); err != nil {
 		return err
 	}
-	if createLocalValidator {
+	if createLocalValidator && network.Kind == models.Local {
 		// For all blockchains validated by the cluster, set up an alias from blockchain name
 		// into blockchain id, to be mainly used in the blockchain RPC
-		if err := localnet.RefreshLocalClusterAliases(app, localValidatorClusterName); err != nil {
-			return err
-		}
+		return localnet.RefreshLocalClusterAliases(app, localValidatorClusterName)
 	}
 	return nil
 }
