@@ -634,14 +634,14 @@ func (app *Avalanche) AddDefaultBlockchainRPCsToSidecar(
 	blockchainName string,
 	networkModel models.Network,
 	nodeURIs []string,
-) error {
+) (models.Sidecar, error) {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
-		return err
+		return sc, err
 	}
 	networkInfo := sc.Networks[networkModel.Name()]
 	if networkInfo.BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
+		return sc, fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
 	}
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
@@ -652,7 +652,10 @@ func (app *Avalanche) AddDefaultBlockchainRPCsToSidecar(
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()
 	sc.Networks[networkModel.Name()] = networkInfo
-	return app.UpdateSidecar(&sc)
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return sc, err
+	}
+	return sc, nil
 }
 
 func (app *Avalanche) GetTokenName(blockchainName string) string {

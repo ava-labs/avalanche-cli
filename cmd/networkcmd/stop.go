@@ -84,13 +84,19 @@ func stopAndSaveNetwork(flags StopFlags) error {
 	if err != nil {
 		return err
 	}
+	failedClusters := []string{}
 	for _, clusterName := range clusterNames {
 		if err := localnet.LocalClusterStop(app, clusterName); err != nil {
-			return err
+			ux.Logger.RedXToUser("Could not properly stop cluster %s: %w", clusterName, err)
+			failedClusters = append(failedClusters, clusterName)
 		}
 	}
 
-	ux.Logger.PrintToUser("Network stopped successfully.")
+	if len(failedClusters) == 0 {
+		ux.Logger.PrintToUser("Network stopped successfully.")
+	} else {
+		ux.Logger.PrintToUser("Partial network stop: some clusters were not completely stopped.")
+	}
 
 	return nil
 }

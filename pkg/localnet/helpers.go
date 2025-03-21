@@ -92,11 +92,12 @@ func TrackSubnet(
 	if err != nil {
 		return err
 	}
-	return app.AddDefaultBlockchainRPCsToSidecar(
+	_, err = app.AddDefaultBlockchainRPCsToSidecar(
 		blockchainName,
 		networkModel,
 		nodeURIs,
 	)
+	return err
 }
 
 // Returns the network model for the network at [networkDir]

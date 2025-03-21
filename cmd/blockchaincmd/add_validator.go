@@ -289,13 +289,9 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := app.AddDefaultBlockchainRPCsToSidecar(blockchainName, network, []string{node.URI}); err != nil {
-			return err
-		}
-		// reload sc
-		sc, err = app.LoadSidecar(blockchainName)
+		sc, err = app.AddDefaultBlockchainRPCsToSidecar(blockchainName, network, []string{node.URI})
 		if err != nil {
-			return fmt.Errorf("failed to load sidecar: %w", err)
+			return err
 		}
 		// make sure extra validator endpoint added for the new node
 		aggregatorExtraEndpoints = append(aggregatorExtraEndpoints, constants.LocalAPIEndpoint)
@@ -348,6 +344,8 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if createLocalValidator {
+		// For all blockchains validated by the cluster, set up an alias from blockchain name
+		// into blockchain id, to be mainly used in the blockchain RPC
 		if err := localnet.RefreshLocalClusterAliases(app, localValidatorClusterName); err != nil {
 			return err
 		}
