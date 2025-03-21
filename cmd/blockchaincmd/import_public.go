@@ -255,20 +255,17 @@ func importL1(blockchainIDStr string, rpcURL string, network models.Network) (mo
 		Sovereign: true,
 	}
 
-	isPoA := validatorManagerSDK.ValidatorManagerIsPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
+	sc.ValidatorManagement, err = validatorManagerSDK.ValidatorManagerKind(rpcURL, common.HexToAddress(validatorManagerAddress))
 	if err != nil {
-		return models.Sidecar{}, err
+		return models.Sidecar{}, fmt.Errorf("could not obtain validator manager type: %w", err)
 	}
 
-	if isPoA {
-		sc.ValidatorManagement = models.ProofOfAuthority
+	if sc.ValidatorManagement == models.ProofOfAuthority {
 		owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
 		if err != nil {
 			return models.Sidecar{}, err
 		}
 		sc.ValidatorManagerOwner = owner.String()
-	} else {
-		sc.ValidatorManagement = models.ProofOfStake
 	}
 
 	sc.Networks = make(map[string]models.NetworkData)
