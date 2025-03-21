@@ -4,6 +4,9 @@
 package validatormanager
 
 import (
+	"fmt"
+	"math/big"
+
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -56,4 +59,25 @@ func PoSValidatorManagerInitialize(
 		"initialize(((bytes32,uint64,uint8),uint256,uint256,uint64,uint16,uint8,uint256,address,bytes32))",
 		params,
 	)
+}
+
+func PoSWeightToValue(
+	rpcURL string,
+	managerAddress common.Address,
+	weight uint64,
+) (*big.Int, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"weightToValue(uint64)->(uint256)",
+		weight,
+	)
+	if err != nil {
+		return nil, err
+	}
+	value, b := out[0].(*big.Int)
+	if !b {
+		return nil, fmt.Errorf("error at weightToValue, expected *big.Int, got %T", out[0])
+	}
+	return value, nil
 }

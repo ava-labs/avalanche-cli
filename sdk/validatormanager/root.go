@@ -7,10 +7,12 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -20,6 +22,7 @@ import (
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -302,4 +305,26 @@ func InitializeValidatorsSet(
 		subnetConversionData,
 		uint32(0),
 	)
+}
+
+// ValidatorManagerKind returns models.ProofOfAuthority if validator manager is verified to be Proof of Authority
+// If validator manager is verified to be Proof of Stake, returns models.ProofOfStake
+// In other cases, returns models.UndefinedValidatorManagement and the associated error
+func ValidatorManagerKind(
+	rpcURL string,
+	managerAddress common.Address,
+) (models.ValidatorManagementType, error) {
+	// verify it is indeed a validator
+	if _, err := validator.GetRegisteredValidator(rpcURL, managerAddress, ids.EmptyNodeID); err != nil {
+		return models.UndefinedValidatorManagement, err
+	}
+	// verify it is PoS
+	if _, err := PoSWeightToValue(rpcURL, managerAddress, 0); err != nil {
+		// if it is PoA it will return Error: execution reverted
+		if strings.Contains(err.Error(), "execution reverted") {
+			return models.ProofOfAuthority, nil
+		}
+		return models.UndefinedValidatorManagement, err
+	}
+	return models.ProofOfStake, nil
 }

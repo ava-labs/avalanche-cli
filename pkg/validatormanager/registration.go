@@ -285,27 +285,6 @@ func GetRegisterL1ValidatorMessage(
 	return signedMessage, validationID, err
 }
 
-func PoSWeightToValue(
-	rpcURL string,
-	managerAddress common.Address,
-	weight uint64,
-) (*big.Int, error) {
-	out, err := contract.CallToMethod(
-		rpcURL,
-		managerAddress,
-		"weightToValue(uint64)->(uint256)",
-		weight,
-	)
-	if err != nil {
-		return nil, err
-	}
-	value, b := out[0].(*big.Int)
-	if !b {
-		return nil, fmt.Errorf("error at weightToValue, expected *big.Int, got %T", out[0])
-	}
-	return value, nil
-}
-
 func GetPChainL1ValidatorRegistrationMessage(
 	ctx context.Context,
 	network models.Network,
@@ -431,7 +410,7 @@ func InitValidatorRegistration(
 	if !alreadyInitialized {
 		var tx *types.Transaction
 		if isPos {
-			stakeAmount, err := PoSWeightToValue(
+			stakeAmount, err := validatormanager.PoSWeightToValue(
 				rpcURL,
 				managerAddress,
 				weight,
