@@ -5,6 +5,8 @@ package blockchaincmd
 import (
 	"fmt"
 
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
+
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -15,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
@@ -105,11 +106,14 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	if err != nil {
 		return "", "", "", err
 	}
-	blsSignerKey, err := bls.NewSigner()
+	blsSignerKey, err := localsigner.New()
 	if err != nil {
 		return "", "", "", err
 	}
-	p := signer.NewProofOfPossession(blsSignerKey)
+	p, err := signer.NewProofOfPossession(blsSignerKey)
+	if err != nil {
+		return "", "", "", err
+	}
 	publicKey, err := formatting.Encode(formatting.HexNC, p.PublicKey[:])
 	if err != nil {
 		return "", "", "", err
