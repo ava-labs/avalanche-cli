@@ -604,6 +604,21 @@ func CallToMethod(
 	return out, nil
 }
 
+func GetMethodReturn[T any](methodName string, out []interface{}) (T, error) {
+	empty := new(T)
+	if len(out) == 0 {
+		return *empty, fmt.Errorf("error at %s call: no return value", methodName)
+	}
+	if len(out) != 1 {
+		return *empty, fmt.Errorf("error at %s call: expected 1 return value, got %d", methodName, len(out))
+	}
+	received, typeIsOk := out[0].(T)
+	if !typeIsOk {
+		return *empty, fmt.Errorf("error at %s call, expected %T, got %T", methodName, *empty, out[0])
+	}
+	return received, nil
+}
+
 func DeployContract(
 	rpcURL string,
 	privateKey string,
