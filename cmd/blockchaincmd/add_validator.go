@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
+
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -53,17 +55,12 @@ var (
 	pop                                 string
 	remainingBalanceOwnerAddr           string
 	disableOwnerAddr                    string
-	rpcURL                              string
-	aggregatorLogLevel                  string
-	aggregatorLogToStdout               bool
 	delegationFee                       uint16
 	errNoSubnetID                       = errors.New("failed to find the subnet ID for this subnet, has it been deployed/created on this network?")
 	errMutuallyExclusiveDurationOptions = errors.New("--use-default-duration/--use-default-validator-params and --staking-period are mutually exclusive")
 	errMutuallyExclusiveStartOptions    = errors.New("--use-default-start-time/--use-default-validator-params and --start-time are mutually exclusive")
 	errMutuallyExclusiveWeightOptions   = errors.New("--use-default-validator-params and --weight are mutually exclusive")
 	ErrNotPermissionedSubnet            = errors.New("subnet is not permissioned")
-	aggregatorExtraEndpoints            []string
-	aggregatorAllowPrivatePeers         bool
 	clusterNameFlagValue                string
 	createLocalValidator                bool
 	externalValidatorManagerOwner       bool
@@ -91,7 +88,8 @@ Testnet or Mainnet.`,
 		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-
+	flags.AddRPCFlagToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
@@ -110,11 +108,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().BoolVar(&createLocalValidator, "create-local-validator", false, "create additional local validator and add it to existing running local node")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
-	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
-	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
-	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	cmd.Flags().BoolVar(&useDefaultStartTime, "default-start-time", false, "(for Subnets, not L1s) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
@@ -183,13 +176,13 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		if rpcURL == "" {
-			rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+		if flags.RPC == "" {
+			flags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 			if err != nil {
 				return err
 			}
 		}
-		sc, err = importL1(blockchainIDStr, rpcURL, network)
+		sc, err = importL1(blockchainIDStr, flags.RPC, network)
 		if err != nil {
 			return err
 		}
@@ -313,8 +306,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		if err := app.UpdateSidecar(&sc); err != nil {
 			return err
 		}
-		// make sure extra validator endpoint added for the new node
-		aggregatorExtraEndpoints = append(aggregatorExtraEndpoints, constants.LocalAPIEndpoint)
 	}
 
 	if nodeIDStr == "" {
@@ -360,6 +351,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
+		flags.RPC,
 	)
 }
 
@@ -384,6 +376,7 @@ func CallAddValidator(
 	remainingBalanceOwnerAddr string,
 	disableOwnerAddr string,
 	sc models.Sidecar,
+	rpcURL string,
 ) error {
 	nodeID, err := ids.NodeIDFromString(nodeIDStr)
 	if err != nil {
@@ -526,17 +519,15 @@ func CallAddValidator(
 		Threshold: 1,
 		Addresses: disableOwnerAddrID,
 	}
-
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterNameFlagValue)
 	if err != nil {
 		return err
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		aggregatorLogLevel,
+		flags.SigAggFlags,
 		constants.DefaultAggregatorLogLevel,
 		app.GetAggregatorLogDir(clusterNameFlagValue),
-		aggregatorLogToStdout,
 		ux.Logger.PrintToUser,
 	)
 	if err != nil {
@@ -560,7 +551,6 @@ func CallAddValidator(
 		disableOwners,
 		weight,
 		extraAggregatorPeers,
-		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		pos,
 		delegationFee,
@@ -605,7 +595,6 @@ func CallAddValidator(
 		ownerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		aggregatorAllowPrivatePeers,
 		aggregatorLogger,
 		validatorManagerAddress,
 	)
