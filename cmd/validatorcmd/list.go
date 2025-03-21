@@ -107,7 +107,7 @@ func list(_ *cobra.Command, args []string) error {
 			return err
 		}
 		balance := uint64(0)
-		validationID, err := validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err := validator.GetValidationID(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
 		} else {

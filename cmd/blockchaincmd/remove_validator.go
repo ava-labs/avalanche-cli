@@ -167,7 +167,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 			}
 		}
 		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-		validationID, err := validatorsdk.GetRegisteredValidator(
+		validationID, err := validatorsdk.GetValidationID(
 			rpcURL,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,

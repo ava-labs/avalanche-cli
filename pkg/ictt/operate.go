@@ -55,11 +55,7 @@ func ERC20TokenHomeGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenAddress, b := out[0].(common.Address)
-	if !b {
-		return common.Address{}, fmt.Errorf("error at token call, expected common.Address, got %T", out[0])
-	}
-	return tokenAddress, nil
+	return contract.GetMethodReturn[common.Address]("token", out)
 }
 
 func NativeTokenHomeGetTokenAddress(
@@ -74,11 +70,7 @@ func NativeTokenHomeGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenAddress, b := out[0].(common.Address)
-	if !b {
-		return common.Address{}, fmt.Errorf("error at wrappedToken call, expected common.Address, got %T", out[0])
-	}
-	return tokenAddress, nil
+	return contract.GetMethodReturn[common.Address]("wrappedToken", out)
 }
 
 func TokenRemoteIsCollateralized(
@@ -93,11 +85,7 @@ func TokenRemoteIsCollateralized(
 	if err != nil {
 		return false, err
 	}
-	isCollateralized, b := out[0].(bool)
-	if !b {
-		return false, fmt.Errorf("error at isCollateralized call, expected bool, got %T", out[0])
-	}
-	return isCollateralized, nil
+	return contract.GetMethodReturn[bool]("isCollateralized", out)
 }
 
 func TokenHomeGetDecimals(
@@ -112,11 +100,7 @@ func TokenHomeGetDecimals(
 	if err != nil {
 		return 0, err
 	}
-	decimals, b := out[0].(uint8)
-	if !b {
-		return 0, fmt.Errorf("error at tokenDecimals, expected uint8, got %T", out[0])
-	}
-	return decimals, nil
+	return contract.GetMethodReturn[uint8]("tokenDecimals", out)
 }
 
 type RegisteredRemote struct {
@@ -146,6 +130,9 @@ func TokenHomeGetRegisteredRemote(
 		registeredRemote RegisteredRemote
 		b                bool
 	)
+	if len(out) != 4 {
+		return RegisteredRemote{}, fmt.Errorf("error at registeredRemotes call, expected 4 return values, got %d", len(out))
+	}
 	registeredRemote.Registered, b = out[0].(bool)
 	if !b {
 		return RegisteredRemote{}, fmt.Errorf("error at registeredRemotes call, expected bool, got %T", out[0])
@@ -177,11 +164,7 @@ func ERC20TokenRemoteGetTokenHomeAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	tokenHubAddress, b := out[0].(common.Address)
-	if !b {
-		return common.Address{}, fmt.Errorf("error at tokenHubAddress call, expected common.Address, got %T", out[0])
-	}
-	return tokenHubAddress, nil
+	return contract.GetMethodReturn[common.Address]("tokenHomeAddress", out)
 }
 
 func NativeTokenRemoteGetTotalNativeAssetSupply(
@@ -196,11 +179,7 @@ func NativeTokenRemoteGetTotalNativeAssetSupply(
 	if err != nil {
 		return nil, err
 	}
-	supply, b := out[0].(*big.Int)
-	if !b {
-		return nil, fmt.Errorf("error at totalNativeAssetSupply, expected *big.Int, got %T", out[0])
-	}
-	return supply, nil
+	return contract.GetMethodReturn[*big.Int]("totalNativeAssetSupply", out)
 }
 
 func ERC20TokenHomeSend(
