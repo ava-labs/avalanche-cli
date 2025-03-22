@@ -27,7 +27,6 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
@@ -283,27 +282,19 @@ func WaitTmpNetBlockchainBootstrapped(
 }
 
 // Indicates if the given blockchain is bootstrapped on the network
-// Check this for all network nodes that are also validators of the subnet
-// If the network does not validate the blockchain at all, it errors
+// Check this for all network nodes that are also trackers of the subnet
+// If the network does not track the blockchain at all, it errors
 func IsTmpNetBlockchainBootstrapped(
 	ctx context.Context,
 	network *tmpnet.Network,
 	blockchainID string,
 	subnetID ids.ID,
 ) (bool, error) {
-	var (
-		err          error
-		validatorIDs []ids.NodeID
-	)
-	if subnetID != ids.Empty {
-		validatorIDs, err = GetTmpNetSubnetValidatorIDs(network, subnetID)
-		if err != nil {
-			return false, err
-		}
-	}
 	queried := 0
 	for _, node := range network.Nodes {
-		if validatorIDs != nil && !sdkutils.Belongs(validatorIDs, node.NodeID) {
+		if isTracking, err := IsTmpNetNodeTrackingSubnet([]*tmpnet.Node{node}, subnetID); err != nil {
+			return false, err
+		} else if !isTracking {
 			continue
 		}
 		infoClient := info.NewClient(node.URI)
@@ -317,68 +308,64 @@ func IsTmpNetBlockchainBootstrapped(
 		queried++
 	}
 	if queried == 0 {
-		return false, fmt.Errorf("no validators of %s present on network at %s", blockchainID, network.Dir)
+		return false, fmt.Errorf("no trackers of %s present on network at %s", blockchainID, network.Dir)
 	}
 	return true, nil
 }
 
-// Returns the subnet validator IDs as per P-Chain [GetValidatorsAt]
-func GetTmpNetSubnetValidatorIDs(
-	network *tmpnet.Network,
-	subnetID ids.ID,
-) ([]ids.NodeID, error) {
-	endpoint, err := GetTmpNetEndpoint(network)
-	if err != nil {
-		return nil, err
-	}
-	pClient := platformvm.NewClient(endpoint)
-	ctx, cancel := sdkutils.GetAPIContext()
-	defer cancel()
-	validators, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
-	if err != nil {
-		return nil, err
-	}
-	return maps.Keys(validators), nil
-}
-
-// Verifies if the network validates the subnet at all
-func TmpNetHasValidatorsForSubnet(
-	network *tmpnet.Network,
+// Indicates if any of the [nodes] do track [subnetID]
+func IsTmpNetNodeTrackingSubnet(
+	nodes []*tmpnet.Node,
 	subnetID ids.ID,
 ) (bool, error) {
-	validatorIDs, err := GetTmpNetSubnetValidatorIDs(network, subnetID)
+	if subnetID == ids.Empty {
+		return true, nil
+	}
+	trackedSubnets, err := GetTmpNetNodesTrackedSubnets(nodes)
 	if err != nil {
 		return false, err
 	}
-	for _, node := range network.Nodes {
-		if sdkutils.Belongs(validatorIDs, node.NodeID) {
-			return true, nil
+	return sdkutils.Belongs(trackedSubnets, subnetID), nil
+}
+
+// Returns the subnets tracked by [nodes]
+func GetTmpNetNodesTrackedSubnets(
+	nodes []*tmpnet.Node,
+) ([]ids.ID, error) {
+	trackedSubnets := []ids.ID{}
+	for _, node := range nodes {
+		subnets, err := node.Flags.GetStringVal(config.TrackSubnetsKey)
+		if err != nil {
+			return nil, fmt.Errorf("failure obtaining tracked subnets flag of node %s: %w", node.NodeID, err)
+		}
+		subnets = strings.TrimSpace(subnets)
+		if subnets != "" {
+			for _, subnetStr := range strings.Split(subnets, ",") {
+				subnet, err := ids.FromString(subnetStr)
+				if err != nil {
+					return nil, fmt.Errorf("failure parsing subnet ID from tracked subnet %s of node %s: %w", subnetStr, node.NodeID, err)
+				}
+				if !sdkutils.Belongs(trackedSubnets, subnet) {
+					trackedSubnets = append(trackedSubnets, subnet)
+				}
+			}
 		}
 	}
-	return false, nil
+	return trackedSubnets, nil
 }
 
 // Assign alias [alias]->[blockchainID] to the given [nodes] of [network]
 // if none of the nodes validate the blockchain, it errors
 func TmpNetSetAlias(
-	network *tmpnet.Network,
 	nodes []*tmpnet.Node,
 	blockchainID string,
 	alias string,
 	subnetID ids.ID,
 ) error {
-	var (
-		err          error
-		validatorIDs []ids.NodeID
-	)
-	if subnetID != ids.Empty {
-		validatorIDs, err = GetTmpNetSubnetValidatorIDs(network, subnetID)
-		if err != nil {
-			return err
-		}
-	}
 	for _, node := range nodes {
-		if validatorIDs != nil && !sdkutils.Belongs(validatorIDs, node.NodeID) {
+		if isTracking, err := IsTmpNetNodeTrackingSubnet([]*tmpnet.Node{node}, subnetID); err != nil {
+			return err
+		} else if !isTracking {
 			continue
 		}
 		adminClient := admin.NewClient(node.URI)
@@ -399,7 +386,7 @@ func TmpNetSetAlias(
 
 // Assign alias [blockchain.Name]->[blockchain.ID] for all non standard
 // blockchains on the [network]
-// if the blockchain is not validated by the network, skips it
+// if the blockchain is not tracked by the network, skips it
 func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
@@ -417,17 +404,15 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 		return err
 	}
 	for _, blockchain := range blockchains {
-		hasValidators, err := TmpNetHasValidatorsForSubnet(network, blockchain.SubnetID)
-		if err != nil {
+		if tracking, err := IsTmpNetNodeTrackingSubnet(network.Nodes, blockchain.SubnetID); err != nil {
 			return err
-		}
-		if !hasValidators {
+		} else if !tracking {
 			continue
 		}
 		if err := WaitTmpNetBlockchainBootstrapped(ctx, network, blockchain.ID.String(), blockchain.SubnetID); err != nil {
 			return err
 		}
-		if err := TmpNetSetAlias(network, network.Nodes, blockchain.ID.String(), blockchain.Name, blockchain.SubnetID); err != nil {
+		if err := TmpNetSetAlias(network.Nodes, blockchain.ID.String(), blockchain.Name, blockchain.SubnetID); err != nil {
 			return err
 		}
 	}

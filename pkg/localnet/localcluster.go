@@ -164,7 +164,7 @@ func AddNodeToLocalCluster(
 	); err != nil {
 		return nil, err
 	}
-	blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+	blockchains, err := GetLocalClusterTrackedBlockchains(app, clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func GetFilteredLocalClusters(
 				continue
 			}
 			if blockchainName != "" {
-				blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+				blockchains, err := GetLocalClusterTrackedBlockchains(app, clusterName)
 				if err != nil {
 					return nil, err
 				}
@@ -445,9 +445,9 @@ func LocalClusterHealth(
 		return pChainBootstrapped, false, err
 	}
 	for _, blockchain := range blockchains {
-		if hasValidators, err := LocalClusterHasValidatorsForSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+		if isTracking, err := IsLocalClusterTrackingSubnet(app, clusterName, blockchain.SubnetID); err != nil {
 			return pChainBootstrapped, false, err
-		} else if !hasValidators {
+		} else if !isTracking {
 			continue
 		}
 		if blockchainBootstrapped, err := IsLocalClusterBlockchainBootstrapped(app, clusterName, blockchain.ID.String(), blockchain.SubnetID); err != nil {
@@ -484,8 +484,8 @@ func GetLocalClusterEndpoint(
 	return GetTmpNetEndpoint(network)
 }
 
-// Indicates if the cluster validates a subnet at all
-func LocalClusterHasValidatorsForSubnet(
+// Indicates if the cluster tracks a subnet at all
+func IsLocalClusterTrackingSubnet(
 	app *application.Avalanche,
 	clusterName string,
 	subnetID ids.ID,
@@ -494,7 +494,7 @@ func LocalClusterHasValidatorsForSubnet(
 	if err != nil {
 		return false, err
 	}
-	return TmpNetHasValidatorsForSubnet(network, subnetID)
+	return IsTmpNetNodeTrackingSubnet(network.Nodes, subnetID)
 }
 
 // Get local cluster URIs
@@ -506,8 +506,8 @@ func GetLocalClusterURIs(
 	return GetTmpNetNodeURIsWithFix(networkDir)
 }
 
-// Return a list of blockchains that are validated at least by one node in the cluster
-func GetLocalClusterValidatedBlockchains(
+// Return a list of blockchains that are tracked at least by one node in the cluster
+func GetLocalClusterTrackedBlockchains(
 	app *application.Avalanche,
 	clusterName string,
 ) ([]BlockchainInfo, error) {
@@ -515,16 +515,15 @@ func GetLocalClusterValidatedBlockchains(
 	if err != nil {
 		return nil, err
 	}
-	validatedBlockchains := []BlockchainInfo{}
+	trackedBlockchains := []BlockchainInfo{}
 	for _, blockchain := range blockchains {
-		if hasValidators, err := LocalClusterHasValidatorsForSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+		if isTracking, err := IsLocalClusterTrackingSubnet(app, clusterName, blockchain.SubnetID); err != nil {
 			return nil, err
-		} else if !hasValidators {
-			continue
+		} else if isTracking {
+			trackedBlockchains = append(trackedBlockchains, blockchain)
 		}
-		validatedBlockchains = append(validatedBlockchains, blockchain)
 	}
-	return validatedBlockchains, nil
+	return trackedBlockchains, nil
 }
 
 // Tracks the subnet of [blockchainName] in the cluster given by [clusterName]
@@ -568,7 +567,7 @@ func LoadLocalCluster(
 	if _, err := TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinaryPath); err != nil {
 		return err
 	}
-	blockchains, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+	blockchains, err := GetLocalClusterTrackedBlockchains(app, clusterName)
 	if err != nil {
 		return err
 	}

@@ -66,17 +66,6 @@ func StartLocalNode(
 	if err := os.MkdirAll(pluginDir, constants.DefaultPerms755); err != nil {
 		return fmt.Errorf("could not create plugin directory %s: %w", pluginDir, err)
 	}
-	// setup avalanchego
-	var err error
-	avalancheGoBinaryPath, err = setupAvalancheGo(
-		app,
-		avalancheGoBinaryPath,
-		avaGoVersionSetting,
-		ux.Logger.PrintToUser,
-	)
-	if err != nil {
-		return err
-	}
 
 	if localnet.LocalClusterExists(app, clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
@@ -84,6 +73,17 @@ func StartLocalNode(
 			return err
 		}
 	} else {
+		var err error
+		avalancheGoBinaryPath, err = setupAvalancheGo(
+			app,
+			avalancheGoBinaryPath,
+			avaGoVersionSetting,
+			ux.Logger.PrintToUser,
+		)
+		if err != nil {
+			return err
+		}
+
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s not found. Creating...", clusterName)
 		network.ClusterName = clusterName
 
@@ -112,7 +112,7 @@ func StartLocalNode(
 		spinSession := ux.NewUserSpinner()
 		spinner := spinSession.SpinToUser("Booting Network. Wait until healthy...")
 
-		_, err := localnet.CreateLocalCluster(
+		_, err = localnet.CreateLocalCluster(
 			app,
 			ux.Logger.PrintToUser,
 			clusterName,

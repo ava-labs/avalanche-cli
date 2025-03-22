@@ -149,11 +149,11 @@ func PrintL1Endpoints(
 	header = append(header, "L1")
 	t := ux.DefaultTable("L1 NODES", header)
 	for _, clusterName := range clusters {
-		validatedBlockchainsInfo, err := GetLocalClusterValidatedBlockchains(app, clusterName)
+		trackedBlockchainsInfo, err := GetLocalClusterTrackedBlockchains(app, clusterName)
 		if err != nil {
 			return err
 		}
-		validatedBlockchains := utils.Map(validatedBlockchainsInfo, func(i BlockchainInfo) string { return i.Name })
+		trackedBlockchains := utils.Map(trackedBlockchainsInfo, func(i BlockchainInfo) string { return i.Name })
 		networkDir := GetLocalClusterDir(app, clusterName)
 		network, err := GetTmpNetNetworkWithURIFix(networkDir)
 		if err != nil {
@@ -168,7 +168,7 @@ func PrintL1Endpoints(
 					row = append(row, codespaceURL)
 				}
 			}
-			row = append(row, strings.Join(validatedBlockchains, ","))
+			row = append(row, strings.Join(trackedBlockchains, ","))
 			t.AppendRow(row)
 		}
 	}

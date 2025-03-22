@@ -142,8 +142,8 @@ func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
 	return sdkutils.GetTimedContext(2 * time.Minute)
 }
 
-// Indicates if the local network validates a subnet at all
-func LocalNetworkHasValidatorsForSubnet(
+// Indicates if the local network tracks a subnet at all
+func IsLocalNetworkTrackingSubnet(
 	app *application.Avalanche,
 	subnetID ids.ID,
 ) (bool, error) {
@@ -151,7 +151,7 @@ func LocalNetworkHasValidatorsForSubnet(
 	if err != nil {
 		return false, err
 	}
-	return TmpNetHasValidatorsForSubnet(network, subnetID)
+	return IsTmpNetNodeTrackingSubnet(network.Nodes, subnetID)
 }
 
 // Indicates if a blockchain is bootstrapped on the local network
@@ -189,16 +189,16 @@ func LocalNetworkHealth(
 		return pChainBootstrapped, false, err
 	}
 	for _, blockchain := range blockchains {
-		hasValidators, err := LocalNetworkHasValidatorsForSubnet(app, blockchain.SubnetID)
+		isTracking, err := IsLocalNetworkTrackingSubnet(app, blockchain.SubnetID)
 		if err != nil {
 			return pChainBootstrapped, false, err
 		}
-		if !hasValidators {
+		if !isTracking {
 			blockchainBootstrappedOnSomeCluster := false
 			for _, clusterName := range clusters {
-				if hasValidators, err := LocalClusterHasValidatorsForSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+				if isTracking, err := IsLocalClusterTrackingSubnet(app, clusterName, blockchain.SubnetID); err != nil {
 					return pChainBootstrapped, false, err
-				} else if !hasValidators {
+				} else if !isTracking {
 					continue
 				}
 				blockchainBootstrapped, err := IsLocalClusterBlockchainBootstrapped(app, clusterName, blockchain.ID.String(), blockchain.SubnetID)

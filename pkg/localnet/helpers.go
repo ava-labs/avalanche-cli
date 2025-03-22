@@ -86,7 +86,7 @@ func TrackSubnet(
 		return err
 	}
 	if networkModel.Kind == models.Local {
-		if err := TmpNetSetAlias(network, network.Nodes, blockchainID.String(), blockchainName, subnetID); err != nil {
+		if err := TmpNetSetAlias(network.Nodes, blockchainID.String(), blockchainName, subnetID); err != nil {
 			return err
 		}
 	}
