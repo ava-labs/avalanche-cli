@@ -104,8 +104,12 @@ func (app *Avalanche) GetPluginsDir() string {
 	return filepath.Join(app.baseDir, constants.PluginDir)
 }
 
-func (app *Avalanche) GetLocalDir(clusterName string) string {
-	return filepath.Join(app.baseDir, constants.LocalDir, clusterName)
+func (app *Avalanche) GetLocalClustersDir() string {
+	return filepath.Join(app.baseDir, constants.LocalClustersDir)
+}
+
+func (app *Avalanche) GetLocalClusterDir(clusterName string) string {
+	return filepath.Join(app.GetLocalClustersDir(), clusterName)
 }
 
 func (app *Avalanche) GetLogDir() string {
@@ -116,7 +120,7 @@ func (app *Avalanche) GetAggregatorLogDir(clusterName string) string {
 	if clusterName != "" {
 		conf, err := app.GetClusterConfig(clusterName)
 		if err == nil && conf.Local {
-			return app.GetLocalDir(clusterName)
+			return app.GetLocalClusterDir(clusterName)
 		}
 	}
 	return app.GetLogDir()
@@ -630,14 +634,14 @@ func (app *Avalanche) AddDefaultBlockchainRPCsToSidecar(
 	blockchainName string,
 	networkModel models.Network,
 	nodeURIs []string,
-) error {
+) (models.Sidecar, error) {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
-		return err
+		return sc, err
 	}
 	networkInfo := sc.Networks[networkModel.Name()]
 	if networkInfo.BlockchainID == ids.Empty {
-		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
+		return sc, fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
 	}
 	rpcEndpoints := set.Of(networkInfo.RPCEndpoints...)
 	wsEndpoints := set.Of(networkInfo.WSEndpoints...)
@@ -648,7 +652,10 @@ func (app *Avalanche) AddDefaultBlockchainRPCsToSidecar(
 	networkInfo.RPCEndpoints = rpcEndpoints.List()
 	networkInfo.WSEndpoints = wsEndpoints.List()
 	sc.Networks[networkModel.Name()] = networkInfo
-	return app.UpdateSidecar(&sc)
+	if err := app.UpdateSidecar(&sc); err != nil {
+		return sc, err
+	}
+	return sc, nil
 }
 
 func (app *Avalanche) GetTokenName(blockchainName string) string {

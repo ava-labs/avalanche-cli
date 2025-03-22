@@ -12,7 +12,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -63,7 +63,7 @@ already running.`,
 	cmd.Flags().StringVar(
 		&startFlags.RelayerVersion,
 		"relayer-version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"use this relayer version",
 	)
 
@@ -109,7 +109,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			if err != nil {
 				return err
 			}
-			if err := localnet.TmpNetMigrate(snapshotPath, networkDir); err != nil {
+			if err := localnet.TmpNetMove(snapshotPath, networkDir); err != nil {
 				return err
 			}
 		}
@@ -141,7 +141,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		if err := localnet.SaveLocalNetworkMeta(app, networkDir); err != nil {
 			return err
 		}
-		if err := startLocalCluster(avalancheGoBinPath); err != nil {
+		if err := startLocalClusters(avalancheGoBinPath); err != nil {
 			return err
 		}
 		if err := localnet.TmpNetSetDefaultAliases(ctx, networkDir); err != nil {
@@ -155,7 +155,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			if relayerBinPath == "" {
 				relayerBinPath = extraLocalNetworkData.RelayerPath
 			}
-			if relayerBinPath, err := interchain.DeployRelayer(
+			if relayerBinPath, err := relayer.DeployRelayer(
 				flags.RelayerVersion,
 				relayerBinPath,
 				app.GetICMRelayerBinDir(),
@@ -189,7 +189,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		}
 
 		// get default network conf for NumNodes
-		unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := localnet.GetDefaultNetworkConf(flags.NumNodes)
+		networkID, unparsedGenesis, upgradeBytes, defaultFlags, nodes, err := localnet.GetDefaultNetworkConf(flags.NumNodes)
 		if err != nil {
 			return err
 		}
@@ -217,10 +217,14 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			networkDir,
 			avalancheGoBinPath,
 			pluginDir,
-			nodes,
-			defaultFlags,
+			networkID,
+			nil,
+			nil,
 			unparsedGenesis,
 			upgradeBytes,
+			defaultFlags,
+			nodes,
+			true,
 		)
 		if err != nil {
 			return err
@@ -250,31 +254,29 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	return nil
 }
 
-func startLocalCluster(avalancheGoBinPath string) error {
+func startLocalClusters(avalancheGoBinPath string) error {
 	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
 	if err != nil {
 		return err
 	}
-	if len(blockchains) > 0 {
-		blockchainName := blockchains[0].Name
+	for _, blockchain := range blockchains {
+		blockchainName := blockchain.Name
 		clusterName := blockchainName + "-local-node-local-network"
-		isLocal, err := node.CheckClusterIsLocal(app, clusterName)
-		if err != nil {
-			return err
+		if !localnet.LocalClusterExists(app, clusterName) {
+			continue
 		}
-		if isLocal {
-			if err = node.StartLocalNode(
-				app,
-				clusterName,
-				avalancheGoBinPath,
-				0,
-				nil,
-				node.ANRSettings{},
-				node.AvalancheGoVersionSettings{},
-				models.NewLocalNetwork(),
-			); err != nil {
-				return err
-			}
+		if err = node.StartLocalNode(
+			app,
+			clusterName,
+			avalancheGoBinPath,
+			0,
+			nil,
+			localnet.ConnectionSettings{},
+			nil,
+			node.AvalancheGoVersionSettings{},
+			models.NewLocalNetwork(),
+		); err != nil {
+			return err
 		}
 	}
 	return nil

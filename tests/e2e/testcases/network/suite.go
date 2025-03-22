@@ -56,18 +56,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.StopNetwork()
-		restartOutput := commands.StartNetwork()
-		rpcs, err = utils.ParseRPCsFromOutput(restartOutput)
-		fmt.Println(restartOutput)
-		if err != nil {
-			fmt.Println(restartOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-		rpc = rpcs[0]
-
-		err = utils.SetHardhatRPC(rpc)
-		gomega.Expect(err).Should(gomega.BeNil())
+		commands.StartNetwork()
 
 		// Check greeter contract has right value
 		scriptOutput, scriptErr, err = utils.RunHardhatScript(utils.GreeterCheck)
@@ -113,17 +102,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		commands.StopNetwork()
-		restartOutput := commands.StartNetwork()
-		rpcs, err = utils.ParseRPCsFromOutput(restartOutput)
-		if err != nil {
-			fmt.Println(restartOutput)
-		}
-		gomega.Expect(err).Should(gomega.BeNil())
-		gomega.Expect(rpcs).Should(gomega.HaveLen(1))
-		rpc = rpcs[0]
-
-		err = utils.SetHardhatRPC(rpc)
-		gomega.Expect(err).Should(gomega.BeNil())
+		commands.StartNetwork()
 
 		// Check greeter contract has right value
 		scriptOutput, scriptErr, err = utils.RunHardhatScript(utils.GreeterCheck)

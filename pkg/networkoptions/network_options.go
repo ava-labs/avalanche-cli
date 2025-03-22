@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -394,9 +395,16 @@ func GetNetworkFromCmdLineFlags(
 	case Mainnet:
 		network = models.NewMainnetNetwork()
 	case Cluster:
-		network, err = app.GetClusterNetwork(networkFlags.ClusterName)
-		if err != nil {
-			return models.UndefinedNetwork, err
+		if localnet.LocalClusterExists(app, networkFlags.ClusterName) {
+			network, err = localnet.GetLocalClusterNetworkModel(app, networkFlags.ClusterName)
+			if err != nil {
+				return models.UndefinedNetwork, err
+			}
+		} else {
+			network, err = app.GetClusterNetwork(networkFlags.ClusterName)
+			if err != nil {
+				return models.UndefinedNetwork, err
+			}
 		}
 	}
 

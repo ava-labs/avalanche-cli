@@ -68,3 +68,15 @@ func SetJSONKey(jsonBody string, k string, v interface{}) (string, error) {
 	}
 	return string(updatedJSON), nil
 }
+
+func GetJSONKey[T any](jsonMap map[string]interface{}, k string) (T, error) {
+	intf, ok := jsonMap[k]
+	if !ok {
+		return *new(T), fmt.Errorf("%s not found on map", k)
+	}
+	v, ok := intf.(T)
+	if !ok {
+		return *new(T), fmt.Errorf("unexpected format on %s (%v) on map, expected %T found %T", k, v, new(T), intf)
+	}
+	return v, nil
+}

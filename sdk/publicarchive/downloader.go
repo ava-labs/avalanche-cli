@@ -57,6 +57,9 @@ func newGetter(endpoint string, target string) (Getter, error) {
 	}
 }
 
+// TODO: add timeout control based on contexts
+// TODO: improve locks to provide graceful recovery under signals such as SIGTERM
+
 // NewDownloader returns a new Downloader
 // network: the network to download from ( fuji only).
 // target: the path to download to

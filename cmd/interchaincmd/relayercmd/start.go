@@ -7,7 +7,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -19,16 +19,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	startNetworkOptions = []networkoptions.NetworkOption{
-		networkoptions.Local,
-		networkoptions.Cluster,
-		networkoptions.Fuji,
-	}
-	globalNetworkFlags networkoptions.NetworkFlags
-	binPath            string
-	version            string
-)
+var startNetworkOptions = []networkoptions.NetworkOption{
+	networkoptions.Local,
+	networkoptions.Cluster,
+	networkoptions.Fuji,
+}
+
+type StartFlags struct {
+	Network networkoptions.NetworkFlags
+	BinPath string
+	Version string
+}
+
+var startFlags StartFlags
 
 // avalanche interchain relayer start
 func newStartCmd() *cobra.Command {
@@ -39,29 +42,36 @@ func newStartCmd() *cobra.Command {
 		RunE:  start,
 		Args:  cobrautils.ExactArgs(0),
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, startNetworkOptions)
-	cmd.Flags().StringVar(&binPath, "bin-path", "", "use the given relayer binary")
+	networkoptions.AddNetworkFlagsToCmd(cmd, &startFlags.Network, true, startNetworkOptions)
+	cmd.Flags().StringVar(&startFlags.BinPath, "bin-path", "", "use the given relayer binary")
 	cmd.Flags().StringVar(
-		&version,
+		&startFlags.Version,
 		"version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"version to use",
 	)
 	return cmd
 }
 
-func start(_ *cobra.Command, _ []string) error {
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		globalNetworkFlags,
-		false,
-		false,
-		startNetworkOptions,
-		"",
-	)
-	if err != nil {
-		return err
+func start(_ *cobra.Command, args []string) error {
+	return CallStart(args, startFlags, models.UndefinedNetwork)
+}
+
+func CallStart(_ []string, flags StartFlags, network models.Network) error {
+	var err error
+	if network == models.UndefinedNetwork {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"",
+			startFlags.Network,
+			false,
+			false,
+			startNetworkOptions,
+			"",
+		)
+		if err != nil {
+			return err
+		}
 	}
 	switch {
 	case network.ClusterName != "":
@@ -74,7 +84,7 @@ func start(_ *cobra.Command, _ []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Remote AWM Relayer on %s successfully started", host.GetCloudID())
 	default:
-		if relayerIsUp, _, _, err := interchain.RelayerIsUp(
+		if relayerIsUp, _, _, err := relayer.RelayerIsUp(
 			app.GetLocalRelayerRunPath(network.Kind),
 		); err != nil {
 			return err
@@ -89,18 +99,18 @@ func start(_ *cobra.Command, _ []string) error {
 			}
 		}
 		relayerConfigPath := app.GetLocalRelayerConfigPath(network.Kind, localNetworkRootDir)
-		if network.Kind == models.Local && binPath == "" {
+		if network.Kind == models.Local && flags.BinPath == "" && flags.Version == constants.DefaultRelayerVersion {
 			if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
 				return err
 			} else if b {
-				binPath = extraLocalNetworkData.RelayerPath
+				flags.BinPath = extraLocalNetworkData.RelayerPath
 			}
 		}
 		if !utils.FileExists(relayerConfigPath) {
 			return fmt.Errorf("there is no relayer configuration available")
-		} else if binPath, err := interchain.DeployRelayer(
-			version,
-			binPath,
+		} else if binPath, err := relayer.DeployRelayer(
+			flags.Version,
+			flags.BinPath,
 			app.GetICMRelayerBinDir(),
 			relayerConfigPath,
 			app.GetLocalRelayerLogPath(network.Kind),

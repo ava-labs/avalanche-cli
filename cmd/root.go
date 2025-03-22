@@ -13,9 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
-
-	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
@@ -28,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -85,9 +83,6 @@ in with avalanche blockchain create myNewBlockchain.`,
 	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
-
-	// add hidden backend command
-	rootCmd.AddCommand(backendcmd.NewCmd(app))
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
@@ -319,6 +314,13 @@ func setupEnv() (string, error) {
 	pluginDir := filepath.Join(baseDir, constants.PluginDir)
 	if err = os.MkdirAll(pluginDir, os.ModePerm); err != nil {
 		fmt.Printf("failed creating the plugin dir %s: %s\n", pluginDir, err)
+		return "", err
+	}
+
+	// Create local clusters dir if it doesn't exist
+	localClustersDir := filepath.Join(baseDir, constants.LocalClustersDir)
+	if err = os.MkdirAll(localClustersDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the local clusters dir %s: %s\n", localClustersDir, err)
 		return "", err
 	}
 

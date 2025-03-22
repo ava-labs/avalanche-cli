@@ -9,10 +9,9 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -52,7 +51,7 @@ func clean(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser(logging.Red.Wrap("No network is running."))
 	}
 
-	if err := interchain.RelayerCleanup(
+	if err := relayer.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
 		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
@@ -79,7 +78,16 @@ func clean(*cobra.Command, []string) error {
 		return err
 	}
 
-	return node.DestroyLocalNetworkConnectedCluster(app)
+	clusterNames, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
+	if err != nil {
+		return err
+	}
+	for _, clusterName := range clusterNames {
+		if err := localnet.LocalClusterRemove(app, clusterName); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func removeLocalDeployInfoFromSidecars() error {

@@ -24,12 +24,10 @@ import (
 )
 
 type LocalDeployer struct {
-	procChecker            binutils.ProcessChecker
 	binChecker             binutils.BinaryChecker
 	getClientFunc          getGRPCClientFunc
 	binaryDownloader       binutils.PluginBinaryDownloader
 	app                    *application.Avalanche
-	backendStartedHere     bool
 	avagoVersion           string
 	avagoBinaryPath        string
 	vmBin                  string
@@ -45,7 +43,6 @@ func NewLocalDeployer(
 	installSnapshotUpdates bool,
 ) *LocalDeployer {
 	return &LocalDeployer{
-		procChecker:            binutils.NewProcessChecker(),
 		binChecker:             binutils.NewBinaryChecker(),
 		getClientFunc:          binutils.NewGRPCClient,
 		binaryDownloader:       binutils.NewPluginBinaryDownloader(app),
@@ -77,40 +74,6 @@ type DeployInfo struct {
 	BlockchainID        ids.ID
 	ICMMessengerAddress string
 	ICMRegistryAddress  string
-}
-
-func (d *LocalDeployer) StartServer(
-	prefix string,
-	serverPort string,
-	gatewayPort string,
-	snapshotsDir string,
-	logPath string,
-) error {
-	isRunning, err := d.procChecker.IsServerProcessRunning(d.app, prefix)
-	if err != nil {
-		return fmt.Errorf("failed querying if server process is running: %w", err)
-	}
-	if !isRunning {
-		d.app.Log.Debug("gRPC server is not running")
-		if err := binutils.StartServerProcess(
-			d.app,
-			prefix,
-			serverPort,
-			gatewayPort,
-			snapshotsDir,
-			logPath,
-		); err != nil {
-			return fmt.Errorf("failed starting gRPC server process: %w", err)
-		}
-		d.backendStartedHere = true
-	}
-	return nil
-}
-
-// BackendStartedHere returns true if the backend was started by this run,
-// or false if it found it there already
-func (d *LocalDeployer) BackendStartedHere() bool {
-	return d.backendStartedHere
 }
 
 // SetupLocalEnv also does some heavy lifting:

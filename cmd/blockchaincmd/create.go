@@ -332,6 +332,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			deployICM = params.UseICM
 			useExternalGasToken = params.UseExternalGasToken
 			genesisBytes, err = vm.CreateEVMGenesis(
+				app,
 				params,
 				icmInfo,
 				createFlags.addICMRegistryToGenesis,
