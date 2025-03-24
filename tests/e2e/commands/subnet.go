@@ -298,11 +298,11 @@ func DeleteSubnetConfig(subnetName string) {
 // Returns the deploy output
 /* #nosec G204 */
 func DeploySubnetLocallyNonSOV(subnetName string) string {
-	return DeploySubnetLocallyWithArgsNonSOV(subnetName, "", "")
+	return DeploySubnetLocallyWithArgsNonSOV(subnetName, "v1.12.2", "")
 }
 
 func DeploySubnetLocallySOV(subnetName string) string {
-	return DeploySubnetLocallyWithArgsSOV(subnetName, "", "")
+	return DeploySubnetLocallyWithArgsSOV(subnetName, "v1.12.2", "")
 }
 
 /* #nosec G204 */

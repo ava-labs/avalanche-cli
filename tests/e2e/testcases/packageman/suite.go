@@ -70,7 +70,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 
 	ginkgo.It("can deploy a subnet with subnet-evm version SOV", func() {
 		evmVersion := binaryToVersion[utils.SoloSubnetEVMKey1]
-		avagoVersion := binaryToVersion[utils.SoloAvagoKey]
+		avagoVersion := "v1.12.2"
 
 		// check subnet-evm install precondition
 		gomega.Expect(utils.CheckSubnetEVMExists(evmVersion)).Should(gomega.BeFalse())
