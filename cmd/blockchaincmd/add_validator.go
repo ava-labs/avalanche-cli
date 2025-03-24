@@ -90,6 +90,7 @@ Testnet or Mainnet.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddNonSovFlagsToCmd(cmd, false)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
@@ -113,8 +114,6 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 	cmd.Flags().BoolVar(&useDefaultDuration, "default-duration", false, "(for Subnets, not L1s) set duration so as to validate until primary validator ends its period")
 	cmd.Flags().BoolVar(&defaultValidatorParams, "default-validator-params", false, "(for Subnets, not L1s) use default weight/start/duration params for subnet validator")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for Subnets, not L1s) control keys that will be used to authenticate add validator tx")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
 	cmd.Flags().BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
@@ -652,10 +651,8 @@ func CallAddValidatorNonSOV(
 		return errMutuallyExclusiveWeightOptions
 	}
 
-	if outputTxPath != "" {
-		if utils.FileExists(outputTxPath) {
-			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
-		}
+	if err = flags.NonSovFlags.ValidateOutputTxPath(); err != nil {
+		return err
 	}
 
 	_, err = ValidateSubnetNameAndGetChains([]string{blockchainName})
@@ -673,13 +670,15 @@ func CallAddValidatorNonSOV(
 		return errNoSubnetID
 	}
 
-	isPermissioned, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+	isPermissioned, subnetControlKeys, subnetOwnerThreshold, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
 	if !isPermissioned {
 		return ErrNotPermissionedSubnet
 	}
+	flags.NonSovFlags.ControlKeys = subnetControlKeys
+	flags.NonSovFlags.Threshold = subnetOwnerThreshold
 
 	kcKeys, err := kc.PChainFormattedStrAddresses()
 	if err != nil {
@@ -687,17 +686,17 @@ func CallAddValidatorNonSOV(
 	}
 
 	// get keys for add validator tx signing
-	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
+	if flags.NonSovFlags.SubnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, flags.NonSovFlags); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
+		err = prompts.SetSubnetAuthKeys(app.Prompt, kcKeys, &flags.NonSovFlags)
 		if err != nil {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", flags.NonSovFlags.SubnetAuthKeys)
 
 	selectedWeight, err := getWeight()
 	if err != nil {
@@ -721,8 +720,7 @@ func CallAddValidatorNonSOV(
 
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.AddValidatorNonSOV(
 		waitForTxAcceptance,
-		controlKeys,
-		subnetAuthKeys,
+		flags.NonSovFlags,
 		subnetID,
 		nodeID,
 		selectedWeight,
@@ -737,9 +735,8 @@ func CallAddValidatorNonSOV(
 			"Add Validator",
 			tx,
 			blockchainName,
-			subnetAuthKeys,
+			flags.NonSovFlags,
 			remainingSubnetAuthKeys,
-			outputTxPath,
 			false,
 		); err != nil {
 			return err

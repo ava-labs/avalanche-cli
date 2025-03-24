@@ -55,13 +55,8 @@ import (
 const skipRelayerFlagName = "skip-relayer"
 
 var (
-	sameControlKey                  bool
 	keyName                         string
-	threshold                       uint32
-	controlKeys                     []string
-	subnetAuthKeys                  []string
 	userProvidedAvagoVersion        string
-	outputTxPath                    string
 	useLedger                       bool
 	useLocalMachine                 bool
 	useEwoq                         bool
@@ -131,11 +126,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		"use this version of avalanchego (ex: v1.17.12)",
 	)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet deploy only]")
-	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make blockchain changes")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate chain creation")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
+	flags.AddNonSovFlagsToCmd(cmd, true)
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet deploy only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
@@ -233,11 +224,9 @@ func CallDeploy(
 	keyNameParam string,
 	useLedgerParam bool,
 	useEwoqParam bool,
-	sameControlKeyParam bool,
 ) error {
 	subnetOnly = subnetOnlyParam
 	globalNetworkFlags = networkFlags
-	sameControlKey = sameControlKeyParam
 	keyName = keyNameParam
 	useLedger = useLedgerParam
 	useEwoq = useEwoqParam
@@ -416,10 +405,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		return errors.New("unable to deploy blockchains imported from a repo")
 	}
 
-	if outputTxPath != "" {
-		if _, err := os.Stat(outputTxPath); err == nil {
-			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
-		}
+	// TODO: can we actually just do this on global level on flag/blockchain.go?
+	if err = flags.NonSovFlags.ValidateOutputTxPath(); err != nil {
+		return err
 	}
 
 	if !sidecar.Sovereign && bootstrapValidatorsJSONFilePath != "" {
@@ -653,7 +641,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 	} else if network.Kind == models.Local {
-		sameControlKey = true
+		flags.NonSovFlags.SameControlKey = true
 	}
 
 	// from here on we are assuming a public deploy
@@ -677,14 +665,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if createSubnet {
 		if sidecar.Sovereign {
-			sameControlKey = true
+			flags.NonSovFlags.SameControlKey = true
 		}
-		controlKeys, threshold, err = promptOwners(
+		err = promptOwners(
 			kc,
-			controlKeys,
-			sameControlKey,
-			threshold,
-			subnetAuthKeys,
+			&flags.NonSovFlags,
 			true,
 		)
 		if err != nil {
@@ -695,7 +680,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			fmt.Sprintf("Deploying into pre-existent subnet ID %s", subnetID.String()),
 		))
 		var isPermissioned bool
-		isPermissioned, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		isPermissioned, flags.NonSovFlags.ControlKeys, flags.NonSovFlags.Threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -705,7 +690,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	// add control keys to the keychain whenever possible
-	if err := kc.AddAddresses(controlKeys); err != nil {
+	if err := kc.AddAddresses(flags.NonSovFlags.ControlKeys); err != nil {
 		return err
 	}
 
@@ -715,29 +700,29 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	// get keys for blockchain tx signing
-	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
+	if flags.NonSovFlags.SubnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, flags.NonSovFlags); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
+		err = prompts.SetSubnetAuthKeys(app.Prompt, kcKeys, &flags.NonSovFlags)
 		if err != nil {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your blockchain auth keys for chain creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your blockchain auth keys for chain creation: %s", flags.NonSovFlags.SubnetAuthKeys)
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	if createSubnet {
-		subnetID, err = deployer.DeploySubnet(controlKeys, threshold)
+		subnetID, err = deployer.DeploySubnet(flags.NonSovFlags)
 		if err != nil {
 			return err
 		}
 		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
-		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+		_, flags.NonSovFlags.ControlKeys, flags.NonSovFlags.Threshold, err = txutils.GetOwners(network, subnetID)
 		if err != nil {
 			return err
 		}
@@ -753,8 +738,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if !subnetOnly {
 		isFullySigned, blockchainID, tx, remainingSubnetAuthKeys, err = deployer.DeployBlockchain(
-			controlKeys,
-			subnetAuthKeys,
+			flags.NonSovFlags,
 			subnetID,
 			chain,
 			chainGenesis,
@@ -777,9 +761,8 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			"Blockchain Creation",
 			tx,
 			chain,
-			subnetAuthKeys,
+			flags.NonSovFlags,
 			remainingSubnetAuthKeys,
-			outputTxPath,
 			false,
 		); err != nil {
 			return err
@@ -798,8 +781,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			network,
 			chain,
 			sidecar,
-			controlKeys,
-			subnetAuthKeys,
+			flags.NonSovFlags,
 			validatorManagerStr,
 			false,
 		)
@@ -1081,27 +1063,26 @@ func SaveNotFullySignedTx(
 	txName string,
 	tx *txs.Tx,
 	blockchainName string,
-	subnetAuthKeys []string,
+	subnetFlags flags.SubnetFlags,
 	remainingSubnetAuthKeys []string,
-	outputTxPath string,
 	forceOverwrite bool,
 ) error {
-	signedCount := len(subnetAuthKeys) - len(remainingSubnetAuthKeys)
+	signedCount := len(subnetFlags.SubnetAuthKeys) - len(remainingSubnetAuthKeys)
 	ux.Logger.PrintToUser("")
-	if signedCount == len(subnetAuthKeys) {
+	if signedCount == len(subnetFlags.SubnetAuthKeys) {
 		ux.Logger.PrintToUser("All %d required %s signatures have been signed. "+
-			"Saving tx to disk to enable commit.", len(subnetAuthKeys), txName)
+			"Saving tx to disk to enable commit.", len(subnetFlags.SubnetAuthKeys), txName)
 	} else {
 		ux.Logger.PrintToUser("%d of %d required %s signatures have been signed. "+
-			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetAuthKeys), txName)
+			"Saving tx to disk to enable remaining signing.", signedCount, len(subnetFlags.SubnetAuthKeys), txName)
 	}
-	if outputTxPath == "" {
+	if subnetFlags.OutputTxPath == "" {
 		ux.Logger.PrintToUser("")
 		var err error
 		if forceOverwrite {
-			outputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
+			subnetFlags.OutputTxPath, err = app.Prompt.CaptureString("Path to export partially signed tx to")
 		} else {
-			outputTxPath, err = app.Prompt.CaptureNewFilepath("Path to export partially signed tx to")
+			subnetFlags.OutputTxPath, err = app.Prompt.CaptureNewFilepath("Path to export partially signed tx to")
 		}
 		if err != nil {
 			return err
@@ -1109,15 +1090,15 @@ func SaveNotFullySignedTx(
 	}
 	if forceOverwrite {
 		ux.Logger.PrintToUser("")
-		ux.Logger.PrintToUser("Overwriting %s", outputTxPath)
+		ux.Logger.PrintToUser("Overwriting %s", subnetFlags.OutputTxPath)
 	}
-	if err := txutils.SaveToDisk(tx, outputTxPath, forceOverwrite); err != nil {
+	if err := txutils.SaveToDisk(tx, subnetFlags.OutputTxPath, forceOverwrite); err != nil {
 		return err
 	}
-	if signedCount == len(subnetAuthKeys) {
-		PrintReadyToSignMsg(blockchainName, outputTxPath)
+	if signedCount == len(subnetFlags.SubnetAuthKeys) {
+		PrintReadyToSignMsg(blockchainName, subnetFlags.OutputTxPath)
 	} else {
-		PrintRemainingToSignMsg(blockchainName, remainingSubnetAuthKeys, outputTxPath)
+		PrintRemainingToSignMsg(blockchainName, remainingSubnetAuthKeys, subnetFlags.OutputTxPath)
 	}
 	return nil
 }

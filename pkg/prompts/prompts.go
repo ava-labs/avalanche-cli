@@ -5,6 +5,7 @@ package prompts
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"math/big"
 	"net/url"
 	"strconv"
@@ -889,18 +890,18 @@ func contains[T comparable](list []T, element T) bool {
 // check subnet authorization criteria:
 // - [subnetAuthKeys] satisfy subnet's [threshold]
 // - [subnetAuthKeys] is a subset of subnet's [controlKeys]
-func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKeys []string, threshold uint32) error {
+func CheckSubnetAuthKeys(walletKeys []string, subnetFlags flags.SubnetFlags) error {
 	for _, walletKey := range walletKeys {
-		if slices.Contains(controlKeys, walletKey) && !slices.Contains(subnetAuthKeys, walletKey) {
+		if slices.Contains(subnetFlags.ControlKeys, walletKey) && !slices.Contains(subnetFlags.SubnetAuthKeys, walletKey) {
 			return fmt.Errorf("wallet key %s is a control key so it must be included in auth keys", walletKey)
 		}
 	}
-	if len(subnetAuthKeys) != int(threshold) {
+	if len(subnetFlags.SubnetAuthKeys) != int(subnetFlags.Threshold) {
 		return fmt.Errorf("number of given auth keys differs from the threshold")
 	}
-	for _, subnetAuthKey := range subnetAuthKeys {
+	for _, subnetAuthKey := range subnetFlags.SubnetAuthKeys {
 		found := false
-		for _, controlKey := range controlKeys {
+		for _, controlKey := range subnetFlags.ControlKeys {
 			if subnetAuthKey == controlKey {
 				found = true
 				break
@@ -915,40 +916,40 @@ func CheckSubnetAuthKeys(walletKeys []string, subnetAuthKeys []string, controlKe
 
 // get subnet authorization keys from the user, as a subset of the subnet's [controlKeys]
 // with a len equal to the subnet's [threshold]
-func GetSubnetAuthKeys(prompt Prompter, walletKeys []string, controlKeys []string, threshold uint32) ([]string, error) {
-	if len(controlKeys) == int(threshold) {
-		return controlKeys, nil
+func SetSubnetAuthKeys(prompt Prompter, walletKeys []string, subnetFlags *flags.SubnetFlags) error {
+	if len(subnetFlags.ControlKeys) == int(subnetFlags.Threshold) {
+		return nil
 	}
 	subnetAuthKeys := []string{}
 	filteredControlKeys := []string{}
-	filteredControlKeys = append(filteredControlKeys, controlKeys...)
+	filteredControlKeys = append(filteredControlKeys, subnetFlags.ControlKeys...)
 	for _, walletKey := range walletKeys {
-		if slices.Contains(controlKeys, walletKey) {
+		if slices.Contains(subnetFlags.ControlKeys, walletKey) {
 			ux.Logger.PrintToUser("Adding wallet key %s to the tx auth keys as it is a control key", walletKey)
 			subnetAuthKeys = append(subnetAuthKeys, walletKey)
 			index, err := utils.GetIndexInSlice(filteredControlKeys, walletKey)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
 		}
 	}
-	for len(subnetAuthKeys) != int(threshold) {
+	for len(subnetAuthKeys) != int(subnetFlags.Threshold) {
 		subnetAuthKey, err := prompt.CaptureList(
 			"Choose an auth key",
 			filteredControlKeys,
 		)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		index, err := utils.GetIndexInSlice(filteredControlKeys, subnetAuthKey)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		subnetAuthKeys = append(subnetAuthKeys, subnetAuthKey)
 		filteredControlKeys = append(filteredControlKeys[:index], filteredControlKeys[index+1:]...)
 	}
-	return subnetAuthKeys, nil
+	return nil
 }
 
 func GetKeyOrLedger(prompt Prompter, goal string, keyDir string, includeEwoq bool) (bool, string, error) {

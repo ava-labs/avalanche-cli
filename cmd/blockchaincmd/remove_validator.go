@@ -5,7 +5,6 @@ package blockchaincmd
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -56,9 +55,8 @@ these prompts by providing the values with flags.`,
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddNonSovFlagsToCmd(cmd, false)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "(for non-SOV blockchain only) file path of the removeValidator tx")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator")
@@ -184,18 +182,16 @@ func removeValidator(_ *cobra.Command, args []string) error {
 	}
 
 	if validatorKind == validatorsdk.SovereignValidator {
-		if outputTxPath != "" {
+		if flags.NonSovFlags.OutputTxPath != "" {
 			return errors.New("--output-tx-path flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")
 		}
 
-		if len(subnetAuthKeys) > 0 {
+		if len(flags.NonSovFlags.SubnetAuthKeys) > 0 {
 			return errors.New("--subnetAuthKeys flag cannot be used for non-SOV (Subnet-Only Validators) blockchains")
 		}
 	}
-	if outputTxPath != "" {
-		if _, err := os.Stat(outputTxPath); err == nil {
-			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
-		}
+	if err = flags.NonSovFlags.ValidateOutputTxPath(); err != nil {
+		return err
 	}
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
@@ -211,7 +207,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		if err := UpdateKeychainWithSubnetControlKeys(kc, network, blockchainName); err != nil {
 			return err
 		}
-		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID)
+		return removeValidatorNonSOV(deployer, network, subnetID, kc, blockchainName, nodeID, flags.NonSovFlags)
 	}
 	if err := removeValidatorSOV(
 		deployer,
@@ -433,14 +429,15 @@ func removeValidatorSOV(
 	return nil
 }
 
-func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Network, subnetID ids.ID, kc *keychain.Keychain, blockchainName string, nodeID ids.NodeID) error {
-	_, controlKeys, threshold, err := txutils.GetOwners(network, subnetID)
+func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Network, subnetID ids.ID, kc *keychain.Keychain, blockchainName string, nodeID ids.NodeID, subnetFlags flags.SubnetFlags) error {
+	var err error
+	_, subnetFlags.ControlKeys, subnetFlags.Threshold, err = txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
 
 	// add control keys to the keychain whenever possible
-	if err := kc.AddAddresses(controlKeys); err != nil {
+	if err := kc.AddAddresses(subnetFlags.ControlKeys); err != nil {
 		return err
 	}
 
@@ -450,25 +447,24 @@ func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Netwo
 	}
 
 	// get keys for add validator tx signing
-	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
+	if flags.NonSovFlags.SubnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, flags.NonSovFlags); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
+		err = prompts.SetSubnetAuthKeys(app.Prompt, kcKeys, &flags.NonSovFlags)
 		if err != nil {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your auth keys for remove validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for remove validator tx creation: %s", flags.NonSovFlags.SubnetAuthKeys)
 
 	ux.Logger.PrintToUser("NodeID: %s", nodeID.String())
 	ux.Logger.PrintToUser("Network: %s", network.Name())
 	ux.Logger.PrintToUser("Inputs complete, issuing transaction to remove the specified validator...")
 
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.RemoveValidator(
-		controlKeys,
-		subnetAuthKeys,
+		flags.NonSovFlags,
 		subnetID,
 		nodeID,
 	)
@@ -480,9 +476,8 @@ func removeValidatorNonSOV(deployer *subnet.PublicDeployer, network models.Netwo
 			"Remove Validator",
 			tx,
 			blockchainName,
-			subnetAuthKeys,
+			flags.NonSovFlags,
 			remainingSubnetAuthKeys,
-			outputTxPath,
 			false,
 		); err != nil {
 			return err

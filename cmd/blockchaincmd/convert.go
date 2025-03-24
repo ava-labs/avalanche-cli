@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"os"
 	"strings"
 	"time"
 
@@ -62,9 +61,8 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddNonSovFlagsToCmd(cmd, false)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 
@@ -421,8 +419,7 @@ func convertSubnetToL1(
 	network models.Network,
 	chain string,
 	sidecar models.Sidecar,
-	controlKeysList,
-	subnetAuthKeysList []string,
+	subnetFlags flags.SubnetFlags,
 	validatorManagerAddressStr string,
 	doStrongInputsCheck bool,
 ) ([]*txs.ConvertSubnetToL1Validator, bool, bool, error) {
@@ -464,8 +461,7 @@ func convertSubnetToL1(
 	}
 
 	isFullySigned, convertL1TxID, tx, remainingSubnetAuthKeys, err := deployer.ConvertL1(
-		controlKeysList,
-		subnetAuthKeysList,
+		subnetFlags,
 		subnetID,
 		blockchainID,
 		managerAddress,
@@ -483,9 +479,8 @@ func convertSubnetToL1(
 			"ConvertSubnetToL1Tx",
 			tx,
 			chain,
-			subnetAuthKeys,
+			flags.NonSovFlags,
 			remainingSubnetAuthKeys,
-			outputTxPath,
 			false,
 		); err != nil {
 			return avaGoBootstrapValidators, false, savePartialTx, err
@@ -541,10 +536,8 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load sidecar for later update: %w", err)
 	}
 
-	if outputTxPath != "" {
-		if _, err := os.Stat(outputTxPath); err == nil {
-			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
-		}
+	if err = flags.NonSovFlags.ValidateOutputTxPath(); err != nil {
+		return err
 	}
 
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
@@ -716,22 +709,22 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 	}
 
 	// get keys for blockchain tx signing
-	_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
+	_, flags.NonSovFlags.ControlKeys, flags.NonSovFlags.Threshold, err = txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
 	// get keys for convertL1 tx signing
-	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, controlKeys, threshold); err != nil {
+	if flags.NonSovFlags.SubnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, flags.NonSovFlags); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, controlKeys, threshold)
+		err = prompts.SetSubnetAuthKeys(app.Prompt, kcKeys, &flags.NonSovFlags)
 		if err != nil {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", flags.NonSovFlags.SubnetAuthKeys)
 
 	// deploy to public network
 	deployer := subnet.NewPublicDeployer(app, kc, network)
@@ -744,8 +737,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 		network,
 		chain,
 		sidecar,
-		controlKeys,
-		subnetAuthKeys,
+		flags.NonSovFlags,
 		validatorManagerAddress,
 		doStrongInputChecks,
 	)
