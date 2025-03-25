@@ -88,7 +88,7 @@ Testnet or Mainnet.`,
 		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddRPCFlagToCmd(cmd)
+	flags.AddRPCFlagToCmd(cmd, app)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
@@ -525,10 +525,9 @@ func CallAddValidator(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags,
-		constants.DefaultAggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterNameFlagValue),
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err

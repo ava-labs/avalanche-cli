@@ -58,7 +58,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &network, true, networkoptions.DefaultSupportedNetworkOptions)
 	privateKeyFlags.AddToCmd(cmd, "as contract deployer")
-	flags.AddRPCFlagToCmd(cmd)
+	flags.AddRPCFlagToCmd(cmd, app)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
@@ -153,10 +153,9 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags,
-		constants.DefaultAggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err

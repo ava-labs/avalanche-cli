@@ -54,7 +54,7 @@ these prompts by providing the values with flags.`,
 		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddRPCFlagToCmd(cmd)
+	flags.AddRPCFlagToCmd(cmd, app)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
@@ -313,10 +313,9 @@ func removeValidatorSOV(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags,
-		constants.DefaultAggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err

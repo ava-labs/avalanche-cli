@@ -42,11 +42,21 @@ func validateSignatureAggregatorFlags() error {
 
 func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&SigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.PreRunE = func(_ *cobra.Command, _ []string) error {
+	sigAggPreRun := func(_ *cobra.Command, _ []string) error {
 		if err := validateSignatureAggregatorFlags(); err != nil {
 			return err
 		}
 		return nil
+	}
+
+	existingPreRunE := cmd.PreRunE
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if existingPreRunE != nil {
+			if err := existingPreRunE(cmd, args); err != nil {
+				return err
+			}
+		}
+		return sigAggPreRun(cmd, args)
 	}
 
 	cmd.Flags().BoolVar(&SigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")

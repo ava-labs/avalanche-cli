@@ -363,10 +363,9 @@ func InitializeValidatorManager(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		signatureAggregatorFlags,
-		constants.DefaultAggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return tracked, err

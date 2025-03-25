@@ -24,8 +24,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
@@ -596,20 +594,14 @@ func PrintUnreportedErrors(
 
 func NewLogger(
 	logName string,
-	sigAggFlags flags.SignatureAggregatorFlags,
-	defaultLogLevelStr string,
+	aggregatorLogLevel string,
+	aggregatorLogToStdout bool,
 	logDir string,
-	print func(string, ...interface{}),
 ) (logging.Logger, error) {
-	logLevel, err := logging.ToLevel(sigAggFlags.AggregatorLogLevel)
+	// we already validate log level values in validateSignatureAggregatorFlags
+	logLevel, err := logging.ToLevel(aggregatorLogLevel)
 	if err != nil {
-		if sigAggFlags.AggregatorLogLevel != "" {
-			print("undefined logLevel %s. Setting %s log to %s", sigAggFlags.AggregatorLogLevel, logName, defaultLogLevelStr)
-		}
-		logLevel, err = logging.ToLevel(defaultLogLevelStr)
-		if err != nil {
-			return logging.NoLog{}, err
-		}
+		return logging.NoLog{}, err
 	}
 	logConfig := logging.Config{
 		RotatingWriterConfig: logging.RotatingWriterConfig{
@@ -617,7 +609,7 @@ func NewLogger(
 		},
 		LogLevel: logLevel,
 	}
-	if sigAggFlags.AggregatorLogToStdout {
+	if aggregatorLogToStdout {
 		logConfig.DisplayLevel = logLevel
 	}
 	logFactory := logging.NewFactory(logConfig)

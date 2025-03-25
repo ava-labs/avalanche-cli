@@ -305,7 +305,7 @@ This command can only be used to validate Proof of Stake L1.`,
 		Args: cobra.ExactArgs(1),
 		RunE: localValidate,
 	}
-	flags.AddRPCFlagToCmd(cmd)
+	flags.AddRPCFlagToCmd(cmd, app)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
@@ -480,10 +480,9 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags,
-		constants.DefaultAggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err

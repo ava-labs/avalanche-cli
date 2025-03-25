@@ -53,7 +53,7 @@ The L1 has to be a Proof of Authority L1.`,
 		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddRPCFlagToCmd(cmd)
+	flags.AddRPCFlagToCmd(cmd, app)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&newWeight, "weight", 0, "set the new staking weight of the validator")
@@ -360,10 +360,9 @@ func changeWeightACP99(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags,
-		constants.DefaultAggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogLevel,
+		flags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err
