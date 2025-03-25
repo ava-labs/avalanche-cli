@@ -4,7 +4,7 @@ package nodecmd
 
 import (
 	"fmt"
-
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
@@ -78,7 +78,7 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 	keyNameParam := ""
 	useLedgerParam := false
 	useEwoqParam := true
-	sameControlKey := true
+	flags.NonSovFlags.SameControlKey = true
 
 	if err := blockchaincmd.CallDeploy(
 		cmd,
@@ -88,7 +88,6 @@ func deploySubnet(cmd *cobra.Command, args []string) error {
 		keyNameParam,
 		useLedgerParam,
 		useEwoqParam,
-		sameControlKey,
 	); err != nil {
 		return err
 	}

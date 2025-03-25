@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -32,11 +33,6 @@ func newChangeOwnerCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet]")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet]")
-	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate transfer blockchain ownership tx")
-	cmd.Flags().BoolVarP(&sameControlKey, "same-control-key", "s", false, "use the fee-paying key as control key")
-	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
-	cmd.Flags().Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make blockchain changes")
-	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the transfer blockchain ownership tx")
 	return cmd
 }
 
@@ -74,9 +70,9 @@ func changeOwner(_ *cobra.Command, args []string) error {
 
 	network.HandlePublicNetworkSimulation()
 
-	if outputTxPath != "" {
-		if utils.FileExists(outputTxPath) {
-			return fmt.Errorf("outputTxPath %q already exists", outputTxPath)
+	if flags.NonSovFlags.OutputTxPath != "" {
+		if utils.FileExists(flags.NonSovFlags.OutputTxPath) {
+			return fmt.Errorf("outputTxPath %q already exists", flags.NonSovFlags.OutputTxPath)
 		}
 	}
 
@@ -99,6 +95,18 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	currentSubnetOwnerFlags := flags.SubnetFlags{
+		ControlKeys:    currentControlKeys,
+		Threshold:      currentThreshold,
+		SubnetAuthKeys: flags.NonSovFlags.SubnetAuthKeys,
+		OutputTxPath:   flags.NonSovFlags.OutputTxPath,
+	}
+	// flags.NonSovFlags in this example contains control keys, threshold for the new owners of the blockchain
+	// subnet auth keys flags provided is for the old blockchain, and thus must be set empty for the new blockchain owners
+	// since it is only relevant for old subnet owners
+	flags.NonSovFlags.SubnetAuthKeys = []string{}
+	// same case for output tx path, we'll set it to empty since this is only relevant for old subnet owners
+	flags.NonSovFlags.OutputTxPath = ""
 
 	// add control keys to the keychain whenever possible
 	if err := kc.AddAddresses(currentControlKeys); err != nil {
@@ -111,24 +119,21 @@ func changeOwner(_ *cobra.Command, args []string) error {
 	}
 
 	// get keys for add validator tx signing
-	if subnetAuthKeys != nil {
-		if err := prompts.CheckSubnetAuthKeys(kcKeys, subnetAuthKeys, currentControlKeys, currentThreshold); err != nil {
+	if currentSubnetOwnerFlags.SubnetAuthKeys != nil {
+		if err := prompts.CheckSubnetAuthKeys(kcKeys, currentSubnetOwnerFlags); err != nil {
 			return err
 		}
 	} else {
-		subnetAuthKeys, err = prompts.GetSubnetAuthKeys(app.Prompt, kcKeys, currentControlKeys, currentThreshold)
+		err = prompts.SetSubnetAuthKeys(app.Prompt, kcKeys, &currentSubnetOwnerFlags)
 		if err != nil {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", subnetAuthKeys)
+	ux.Logger.PrintToUser("Your auth keys for add validator tx creation: %s", currentSubnetOwnerFlags.SubnetAuthKeys)
 
-	controlKeys, threshold, err = promptOwners(
+	err = promptOwners(
 		kc,
-		controlKeys,
-		sameControlKey,
-		threshold,
-		nil,
+		&flags.NonSovFlags,
 		false,
 	)
 	if err != nil {
@@ -137,11 +142,10 @@ func changeOwner(_ *cobra.Command, args []string) error {
 
 	deployer := subnet.NewPublicDeployer(app, kc, network)
 	isFullySigned, tx, remainingSubnetAuthKeys, err := deployer.TransferSubnetOwnership(
-		currentControlKeys,
-		subnetAuthKeys,
+		currentSubnetOwnerFlags,
 		subnetID,
-		controlKeys,
-		threshold,
+		flags.NonSovFlags.ControlKeys,
+		flags.NonSovFlags.Threshold,
 	)
 	if err != nil {
 		return err
@@ -151,9 +155,8 @@ func changeOwner(_ *cobra.Command, args []string) error {
 			"Transfer Blockchain Ownership",
 			tx,
 			blockchainName,
-			subnetAuthKeys,
+			currentSubnetOwnerFlags,
 			remainingSubnetAuthKeys,
-			outputTxPath,
 			false,
 		); err != nil {
 			return err

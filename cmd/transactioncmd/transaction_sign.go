@@ -5,6 +5,7 @@ package transactioncmd
 import (
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -184,13 +185,17 @@ func signTx(_ *cobra.Command, args []string) error {
 		return err
 	}
 
+	subnetFlags := flags.SubnetFlags{
+		ControlKeys:    controlKeys,
+		SubnetAuthKeys: subnetAuthKeys,
+		OutputTxPath:   inputTxPath,
+	}
 	if err := blockchaincmd.SaveNotFullySignedTx(
 		"Tx",
 		tx,
 		blockchainName,
-		subnetAuthKeys,
+		subnetFlags,
 		remainingSubnetAuthKeys,
-		inputTxPath,
 		true,
 	); err != nil {
 		return err

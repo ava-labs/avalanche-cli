@@ -4,6 +4,7 @@ package blockchaincmd
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,55 +20,52 @@ import (
 
 func promptOwners(
 	kc *keychain.Keychain,
-	controlKeys []string,
-	sameControlKey bool,
-	threshold uint32,
-	subnetAuthKeys []string,
+	subnetFlags *flags.SubnetFlags,
 	creatingBlockchain bool,
-) ([]string, uint32, error) {
+) error {
 	var err error
 	// accept only one control keys specification
-	if len(controlKeys) > 0 && sameControlKey {
-		return nil, 0, errMutuallyExlusiveControlKeys
+	if len(subnetFlags.ControlKeys) > 0 && subnetFlags.SameControlKey {
+		return errMutuallyExlusiveControlKeys
 	}
 	// use first fee-paying key as control key
-	if sameControlKey {
+	if subnetFlags.SameControlKey {
 		kcKeys, err := kc.PChainFormattedStrAddresses()
 		if err != nil {
-			return nil, 0, err
+			return err
 		}
 		if len(kcKeys) == 0 {
-			return nil, 0, fmt.Errorf("no keys found on keychain")
+			return fmt.Errorf("no keys found on keychain")
 		}
-		controlKeys = kcKeys[:1]
+		subnetFlags.ControlKeys = kcKeys[:1]
 	}
 	// prompt for control keys
-	if controlKeys == nil {
+	if subnetFlags.ControlKeys == nil {
 		var cancelled bool
-		controlKeys, cancelled, err = getControlKeys(kc, creatingBlockchain)
+		subnetFlags.ControlKeys, cancelled, err = getControlKeys(kc, creatingBlockchain)
 		if err != nil {
-			return nil, 0, err
+			return err
 		}
 		if cancelled {
 			ux.Logger.PrintToUser("User cancelled. No operation was performed")
-			return nil, 0, fmt.Errorf("user cancelled operation")
+			return fmt.Errorf("user cancelled operation")
 		}
 	}
-	ux.Logger.PrintToUser("Your blockchain control keys: %s", controlKeys)
+	ux.Logger.PrintToUser("Your blockchain control keys: %s", subnetFlags.ControlKeys)
 	// validate and prompt for threshold
-	if threshold == 0 && subnetAuthKeys != nil {
-		threshold = uint32(len(subnetAuthKeys))
+	if subnetFlags.Threshold == 0 && subnetFlags.SubnetAuthKeys != nil {
+		subnetFlags.Threshold = uint32(len(subnetFlags.SubnetAuthKeys))
 	}
-	if threshold > uint32(len(controlKeys)) {
-		return nil, 0, fmt.Errorf("given threshold is greater than number of control keys")
+	if subnetFlags.Threshold > uint32(len(subnetFlags.ControlKeys)) {
+		return fmt.Errorf("given threshold is greater than number of control keys")
 	}
-	if threshold == 0 {
-		threshold, err = getThreshold(len(controlKeys))
+	if subnetFlags.Threshold == 0 {
+		subnetFlags.Threshold, err = getThreshold(len(subnetFlags.ControlKeys))
 		if err != nil {
-			return nil, 0, err
+			return err
 		}
 	}
-	return controlKeys, threshold, nil
+	return nil
 }
 
 func getControlKeys(kc *keychain.Keychain, creatingBlockchain bool) ([]string, bool, error) {

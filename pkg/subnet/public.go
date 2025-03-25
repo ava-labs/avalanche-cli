@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"time"
 
 	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
@@ -65,8 +66,7 @@ func NewPublicDeployer(app *application.Avalanche, kc *keychain.Keychain, networ
 //   - if fully signed, issues it
 func (d *PublicDeployer) AddValidatorNonSOV(
 	waitForTxAcceptance bool,
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
+	subnetFlags flags.SubnetFlags,
 	subnetID ids.ID,
 	nodeID ids.NodeID,
 	weight uint64,
@@ -77,7 +77,7 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 	if err != nil {
 		return false, nil, nil, err
 	}
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	subnetAuthKeys, err := address.ParseToIDs(subnetFlags.SubnetAuthKeys)
 	if err != nil {
 		return false, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
@@ -97,7 +97,7 @@ func (d *PublicDeployer) AddValidatorNonSOV(
 		return false, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, subnetFlags.ControlKeys)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -211,8 +211,7 @@ func (*PublicDeployer) createRegisterSubnetValidatorTx(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) TransferSubnetOwnership(
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
+	subnetFlags flags.SubnetFlags,
 	subnetID ids.ID,
 	newControlKeys []string,
 	newThreshold uint32,
@@ -221,7 +220,7 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 	if err != nil {
 		return false, nil, nil, err
 	}
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	subnetAuthKeys, err := address.ParseToIDs(subnetFlags.SubnetAuthKeys)
 	if err != nil {
 		return false, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
@@ -238,7 +237,7 @@ func (d *PublicDeployer) TransferSubnetOwnership(
 		return false, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, subnetFlags.ControlKeys)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -313,8 +312,7 @@ func (d *PublicDeployer) CreateAssetTx(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) RemoveValidator(
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
+	subnetFlags flags.SubnetFlags,
 	subnetID ids.ID,
 	nodeID ids.NodeID,
 ) (bool, *txs.Tx, []string, error) {
@@ -322,7 +320,7 @@ func (d *PublicDeployer) RemoveValidator(
 	if err != nil {
 		return false, nil, nil, err
 	}
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	subnetAuthKeys, err := address.ParseToIDs(subnetFlags.SubnetAuthKeys)
 	if err != nil {
 		return false, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
@@ -334,7 +332,7 @@ func (d *PublicDeployer) RemoveValidator(
 		return false, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, subnetFlags.ControlKeys)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -383,14 +381,13 @@ func (d *PublicDeployer) AddPermissionlessValidator(
 
 // - creates a subnet for [chain] using the given [controlKeys] and [threshold] as subnet authentication parameters
 func (d *PublicDeployer) DeploySubnet(
-	controlKeys []string,
-	threshold uint32,
+	subnetFlags flags.SubnetFlags,
 ) (ids.ID, error) {
 	wallet, err := d.loadWallet()
 	if err != nil {
 		return ids.Empty, err
 	}
-	subnetID, err := d.createSubnetTx(controlKeys, threshold, wallet)
+	subnetID, err := d.createSubnetTx(subnetFlags.ControlKeys, subnetFlags.Threshold, wallet)
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -406,8 +403,7 @@ func (d *PublicDeployer) DeploySubnet(
 //   - if partially signed, returns the tx so that it can later on be signed by the rest of the subnet auth keys
 //   - if fully signed, issues it
 func (d *PublicDeployer) DeployBlockchain(
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
+	subnetFlags flags.SubnetFlags,
 	subnetID ids.ID,
 	chain string,
 	genesis []byte,
@@ -424,7 +420,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
 
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	subnetAuthKeys, err := address.ParseToIDs(subnetFlags.SubnetAuthKeys)
 	if err != nil {
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
@@ -436,7 +432,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, subnetFlags.ControlKeys)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}
@@ -454,8 +450,7 @@ func (d *PublicDeployer) DeployBlockchain(
 }
 
 func (d *PublicDeployer) ConvertL1(
-	controlKeys []string,
-	subnetAuthKeysStrs []string,
+	subnetFlags flags.SubnetFlags,
 	subnetID ids.ID,
 	chainID ids.ID,
 	validatorManagerAddress goethereumcommon.Address,
@@ -468,7 +463,7 @@ func (d *PublicDeployer) ConvertL1(
 		return false, ids.Empty, nil, nil, err
 	}
 
-	subnetAuthKeys, err := address.ParseToIDs(subnetAuthKeysStrs)
+	subnetAuthKeys, err := address.ParseToIDs(subnetFlags.SubnetAuthKeys)
 	if err != nil {
 		return false, ids.Empty, nil, nil, fmt.Errorf("failure parsing auth keys: %w", err)
 	}
@@ -480,7 +475,7 @@ func (d *PublicDeployer) ConvertL1(
 		return false, ids.Empty, nil, nil, err
 	}
 
-	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
+	_, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, subnetFlags.ControlKeys)
 	if err != nil {
 		return false, ids.Empty, nil, nil, err
 	}

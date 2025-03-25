@@ -46,7 +46,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.SoloAvagoKey])).Should(gomega.BeFalse())
 
 		commands.CreateSubnetEvmConfigWithVersionNonSOV(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1])
-		deployOutput := commands.DeploySubnetLocallyWithVersionNonSOV(subnetName, binaryToVersion[utils.SoloAvagoKey])
+		deployOutput := commands.DeploySubnetLocallyWithVersionNonSOV(subnetName, "v1.12.2")
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
 			fmt.Println(deployOutput)
@@ -70,7 +70,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 
 	ginkgo.It("can deploy a subnet with subnet-evm version SOV", func() {
 		evmVersion := binaryToVersion[utils.SoloSubnetEVMKey1]
-		avagoVersion := binaryToVersion[utils.SoloAvagoKey]
+		avagoVersion := "v1.12.2"
 
 		// check subnet-evm install precondition
 		gomega.Expect(utils.CheckSubnetEVMExists(evmVersion)).Should(gomega.BeFalse())
