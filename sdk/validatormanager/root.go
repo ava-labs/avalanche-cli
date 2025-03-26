@@ -307,14 +307,14 @@ func InitializeValidatorsSet(
 	)
 }
 
-// ValidatorManagerKind returns models.ProofOfAuthority if validator manager is verified to be Proof of Authority
+// GetValidatorManagerType returns models.ProofOfAuthority if validator manager is verified to be Proof of Authority
 // If validator manager is verified to be Proof of Stake, returns models.ProofOfStake
 // In other cases, returns models.UndefinedValidatorManagement and the associated error
-func ValidatorManagerKind(
+func GetValidatorManagerType(
 	rpcURL string,
 	managerAddress common.Address,
 ) (models.ValidatorManagementType, error) {
-	// verify it is indeed a validator
+	// Verify that ACP99 validator manager contract is present in the rpc url by calling registeredValidators func in ValidatorManager.sol
 	if _, err := validator.GetRegisteredValidator(rpcURL, managerAddress, ids.EmptyNodeID); err != nil {
 		return models.UndefinedValidatorManagement, err
 	}

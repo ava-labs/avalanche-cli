@@ -255,7 +255,7 @@ func importL1(blockchainIDStr string, rpcURL string, network models.Network) (mo
 		Sovereign: true,
 	}
 
-	sc.ValidatorManagement, err = validatorManagerSDK.ValidatorManagerKind(rpcURL, common.HexToAddress(validatorManagerAddress))
+	sc.ValidatorManagement, err = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
 	if err != nil {
 		return models.Sidecar{}, fmt.Errorf("could not obtain validator manager type: %w", err)
 	}
