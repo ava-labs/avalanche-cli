@@ -29,9 +29,10 @@ var (
 		networkoptions.Local,
 		networkoptions.Fuji,
 	}
-	raw   bool
-	last  uint
-	first uint
+	raw                bool
+	last               uint
+	first              uint
+	globalNetworkFlags networkoptions.NetworkFlags
 )
 
 // avalanche interchain relayer logs
