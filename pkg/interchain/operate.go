@@ -26,7 +26,7 @@ func GetNextMessageID(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return contract.GetMethodReturn[[32]byte]("getNextMessageID", out)
+	return contract.GetSmartContractCallResult[[32]byte]("getNextMessageID", out)
 }
 
 func MessageReceived(
@@ -43,7 +43,7 @@ func MessageReceived(
 	if err != nil {
 		return false, err
 	}
-	return contract.GetMethodReturn[bool]("messageReceived", out)
+	return contract.GetSmartContractCallResult[bool]("messageReceived", out)
 }
 
 func SendCrossChainMessage(

@@ -604,7 +604,7 @@ func CallToMethod(
 	return out, nil
 }
 
-func GetMethodReturn[T any](methodName string, out []interface{}) (T, error) {
+func GetSmartContractCallResult[T any](methodName string, out []interface{}) (T, error) {
 	empty := new(T)
 	if len(out) == 0 {
 		return *empty, fmt.Errorf("error at %s call: no return value", methodName)

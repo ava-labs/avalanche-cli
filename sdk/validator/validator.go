@@ -69,6 +69,8 @@ func GetValidatorInfo(net network.Network, validationID ids.ID) (platformvm.L1Va
 	return vdrInfo, nil
 }
 
+// Returns the validation ID for the Node ID, as registered at the validator manager
+// Will return ids.Empty in case it is not registered
 func GetValidationID(
 	rpcURL string,
 	managerAddress common.Address,
@@ -83,7 +85,7 @@ func GetValidationID(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return contract.GetMethodReturn[[32]byte]("registeredValidators", out)
+	return contract.GetSmartContractCallResult[[32]byte]("registeredValidators", out)
 }
 
 func IsSovereignValidator(

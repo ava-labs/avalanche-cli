@@ -55,7 +55,7 @@ func ERC20TokenHomeGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return contract.GetMethodReturn[common.Address]("token", out)
+	return contract.GetSmartContractCallResult[common.Address]("token", out)
 }
 
 func NativeTokenHomeGetTokenAddress(
@@ -70,7 +70,7 @@ func NativeTokenHomeGetTokenAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return contract.GetMethodReturn[common.Address]("wrappedToken", out)
+	return contract.GetSmartContractCallResult[common.Address]("wrappedToken", out)
 }
 
 func TokenRemoteIsCollateralized(
@@ -85,7 +85,7 @@ func TokenRemoteIsCollateralized(
 	if err != nil {
 		return false, err
 	}
-	return contract.GetMethodReturn[bool]("isCollateralized", out)
+	return contract.GetSmartContractCallResult[bool]("isCollateralized", out)
 }
 
 func TokenHomeGetDecimals(
@@ -100,7 +100,7 @@ func TokenHomeGetDecimals(
 	if err != nil {
 		return 0, err
 	}
-	return contract.GetMethodReturn[uint8]("tokenDecimals", out)
+	return contract.GetSmartContractCallResult[uint8]("tokenDecimals", out)
 }
 
 type RegisteredRemote struct {
@@ -164,7 +164,7 @@ func ERC20TokenRemoteGetTokenHomeAddress(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return contract.GetMethodReturn[common.Address]("tokenHomeAddress", out)
+	return contract.GetSmartContractCallResult[common.Address]("tokenHomeAddress", out)
 }
 
 func NativeTokenRemoteGetTotalNativeAssetSupply(
@@ -179,7 +179,7 @@ func NativeTokenRemoteGetTotalNativeAssetSupply(
 	if err != nil {
 		return nil, err
 	}
-	return contract.GetMethodReturn[*big.Int]("totalNativeAssetSupply", out)
+	return contract.GetSmartContractCallResult[*big.Int]("totalNativeAssetSupply", out)
 }
 
 func ERC20TokenHomeSend(

@@ -46,7 +46,7 @@ func GetProxyValidatorManager(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return contract.GetMethodReturn[common.Address]("getProxyImplementation", out)
+	return contract.GetSmartContractCallResult[common.Address]("getProxyImplementation", out)
 }
 
 func ProxyHasValidatorManagerSet(

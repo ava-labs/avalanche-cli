@@ -17,5 +17,5 @@ func GetContractOwner(
 	if err != nil {
 		return common.Address{}, err
 	}
-	return GetMethodReturn[common.Address]("owner", out)
+	return GetSmartContractCallResult[common.Address]("owner", out)
 }

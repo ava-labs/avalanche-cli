@@ -299,7 +299,7 @@ func PoSWeightToValue(
 	if err != nil {
 		return nil, err
 	}
-	return contract.GetMethodReturn[*big.Int]("weightToValue", out)
+	return contract.GetSmartContractCallResult[*big.Int]("weightToValue", out)
 }
 
 func GetPChainL1ValidatorRegistrationMessage(

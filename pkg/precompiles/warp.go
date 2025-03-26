@@ -20,5 +20,5 @@ func WarpPrecompileGetBlockchainID(
 	if err != nil {
 		return ids.Empty, err
 	}
-	return contract.GetMethodReturn[[32]byte]("getBlockchainID", out)
+	return contract.GetSmartContractCallResult[[32]byte]("getBlockchainID", out)
 }

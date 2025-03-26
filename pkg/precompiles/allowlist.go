@@ -108,5 +108,5 @@ func ReadAllowList(
 	if err != nil {
 		return nil, err
 	}
-	return contract.GetMethodReturn[*big.Int]("readAllowList", out)
+	return contract.GetSmartContractCallResult[*big.Int]("readAllowList", out)
 }
