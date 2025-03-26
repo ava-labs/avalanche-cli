@@ -34,7 +34,6 @@ import (
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/mod/semver"
 )
 
 var (
@@ -245,21 +244,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	// TODO: remove this check for releases above v1.8.7, once v1.13.0-fuji avalanchego is latest release
-	if network.Kind == models.Fuji && useCustomAvalanchegoVersion == "" {
-		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
-			constants.AvaLabsOrg,
-			constants.AvalancheGoRepoName,
-			"",
-		)
-		if err != nil {
-			return err
-		}
-		versionComparison := semver.Compare(constants.FujiAvalancheGoV113, latestAvagoVersion)
-		if versionComparison == 1 {
-			useCustomAvalanchegoVersion = constants.FujiAvalancheGoV113
-		}
-	}
 	if useCustomAvalanchegoVersion != "" {
 		latestAvagoPreReleaseVersion = false
 		latestAvagoReleaseVersion = false
