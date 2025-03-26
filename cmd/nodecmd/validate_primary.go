@@ -5,10 +5,11 @@ package nodecmd
 import (
 	"errors"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 

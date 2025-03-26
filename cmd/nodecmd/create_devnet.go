@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 
