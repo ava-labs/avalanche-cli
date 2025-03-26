@@ -4,9 +4,6 @@
 package validatormanager
 
 import (
-	"math/big"
-	"strings"
-
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -65,24 +62,4 @@ func PoAValidatorManagerInitialize(
 		},
 		ownerAddress,
 	)
-}
-
-// ValidatorManagerIsPoA returns true if validator manager is Proof of Authority
-// If validator manager is Proof of Stake, ValidatorManagerIsPoA returns false
-func ValidatorManagerIsPoA(
-	rpcURL string,
-	managerAddress common.Address,
-) bool {
-	out, err := contract.CallToMethod(
-		rpcURL,
-		managerAddress,
-		"weightToValue(uint64)->(uint256)",
-		uint64(1),
-	)
-	// if it is PoA it will return Error: execution reverted
-	if err != nil && strings.Contains(err.Error(), "execution reverted") {
-		return true
-	}
-	_, ok := out[0].(*big.Int)
-	return !ok
 }

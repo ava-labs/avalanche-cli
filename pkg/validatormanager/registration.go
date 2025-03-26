@@ -427,7 +427,7 @@ func InitValidatorRegistration(
 	if !alreadyInitialized {
 		var tx *types.Transaction
 		if isPos {
-			stakeAmount, err := PoSWeightToValue(
+			stakeAmount, err := validatormanager.PoSWeightToValue(
 				rpcURL,
 				managerAddress,
 				weight,
