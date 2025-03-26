@@ -333,7 +333,6 @@ func localValidate(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
 	// TODO: will estimate fee in subsecuent PR
 	fee := uint64(0)
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
