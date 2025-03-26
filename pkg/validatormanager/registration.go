@@ -201,7 +201,7 @@ func GetRegisterL1ValidatorMessage(
 	)
 	if registerSubnetValidatorUnsignedMessage == nil {
 		if alreadyInitialized {
-			validationID, err = validator.GetRegisteredValidator(
+			validationID, err = validator.GetValidationID(
 				rpcURL,
 				managerAddress,
 				nodeID,
@@ -283,6 +283,23 @@ func GetRegisterL1ValidatorMessage(
 	}
 	signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
 	return signedMessage, validationID, err
+}
+
+func PoSWeightToValue(
+	rpcURL string,
+	managerAddress common.Address,
+	weight uint64,
+) (*big.Int, error) {
+	out, err := contract.CallToMethod(
+		rpcURL,
+		managerAddress,
+		"weightToValue(uint64)->(uint256)",
+		weight,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return contract.GetSmartContractCallResult[*big.Int]("weightToValue", out)
 }
 
 func GetPChainL1ValidatorRegistrationMessage(

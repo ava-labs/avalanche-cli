@@ -4,7 +4,6 @@ package precompiles
 
 import (
 	_ "embed"
-	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanchego/ids"
@@ -21,12 +20,5 @@ func WarpPrecompileGetBlockchainID(
 	if err != nil {
 		return ids.Empty, err
 	}
-	if len(out) == 0 {
-		return ids.Empty, fmt.Errorf("error at getBlockchainID call: no return value")
-	}
-	received, ok := out[0].([32]byte)
-	if !ok {
-		return ids.Empty, fmt.Errorf("error at getBlockchainID call, expected ids.ID, got %T", out[0])
-	}
-	return received, nil
+	return contract.GetSmartContractCallResult[[32]byte]("getBlockchainID", out)
 }
