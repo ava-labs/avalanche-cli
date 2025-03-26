@@ -7,9 +7,9 @@ toolchain go1.23.7
 require (
 	github.com/ava-labs/apm v1.0.0
 	github.com/ava-labs/avalanche-network-runner v1.8.4-0.20250324213418-9a0709b1ecfa
-	github.com/ava-labs/avalanchego v1.13.1-0.20250324225627-486823637d34
+	github.com/ava-labs/avalanchego v1.13.1-0.20250326010016-044f93f83526
 	github.com/ava-labs/coreth v0.15.0-rc.0
-	github.com/ava-labs/icm-services v1.4.1-0.20250325155249-78c179bf6bd0
+	github.com/ava-labs/icm-services v1.4.1-0.20250326180348-905d5a5cea3a
 	github.com/ava-labs/subnet-evm v0.7.2
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.10
@@ -28,8 +28,8 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/okteto/remote v0.0.0-20210428052247-99de42c04148
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/onsi/ginkgo/v2 v2.23.2
-	github.com/onsi/gomega v1.36.2
+	github.com/onsi/ginkgo/v2 v2.23.3
+	github.com/onsi/gomega v1.36.3
 	github.com/otiai10/copy v1.14.1
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
@@ -136,7 +136,7 @@ require (
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
 	github.com/google/renameio/v2 v2.0.0 // indirect
