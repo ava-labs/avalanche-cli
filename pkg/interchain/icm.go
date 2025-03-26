@@ -385,46 +385,6 @@ func SetProposerVM(
 	return evm.SetupProposerVM(wsEndpoint, privKeyStr)
 }
 
-func DeployAndFundRelayer(
-	app *application.Avalanche,
-	td *ICMDeployer,
-	network models.Network,
-	subnetName string,
-	blockchainID string,
-	fundedKeyName string,
-) (bool, string, string, error) {
-	privKeyStr, err := getPrivateKey(app, network, fundedKeyName)
-	if err != nil {
-		return false, "", "", err
-	}
-	endpoint := network.BlockchainEndpoint(blockchainID)
-	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
-		subnetName,
-		endpoint,
-		privKeyStr,
-		true,
-		true,
-		true,
-	)
-	if err != nil {
-		return false, "", "", err
-	}
-	// get relayer address
-	relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
-	if err != nil {
-		return false, "", "", err
-	}
-	// fund relayer
-	if err := FundRelayer(
-		endpoint,
-		privKeyStr,
-		relayerAddress,
-	); err != nil {
-		return false, "", "", err
-	}
-	return alreadyDeployed, messengerAddress, registryAddress, err
-}
-
 func getICMKeyInfo(
 	app *application.Avalanche,
 	keyName string,
@@ -441,7 +401,6 @@ type ICMInfo struct {
 	FundedAddress            string
 	FundedBalance            *big.Int
 	MessengerDeployerAddress string
-	RelayerAddress           string
 }
 
 func GetICMInfo(
@@ -462,10 +421,6 @@ func GetICMInfo(
 		app.GetICMContractsBinDir(),
 		ti.Version,
 	)
-	if err != nil {
-		return nil, err
-	}
-	ti.RelayerAddress, _, err = GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
 	if err != nil {
 		return nil, err
 	}

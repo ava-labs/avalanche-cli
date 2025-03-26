@@ -13,15 +13,14 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
-
 	evmclient "github.com/ava-labs/subnet-evm/plugin/evm/client"
 )
 
 func NewBlsSecretKeyBytes() ([]byte, error) {
-	blsSignerKey, err := bls.NewSigner()
+	blsSignerKey, err := localsigner.New()
 	if err != nil {
 		return nil, err
 	}
@@ -45,11 +44,14 @@ func ToBLSPoP(keyBytes []byte) (
 	[]byte, // bls proof of possession
 	error,
 ) {
-	sk, err := bls.SecretKeyFromBytes(keyBytes)
+	sk, err := localsigner.FromBytes(keyBytes)
 	if err != nil {
 		return nil, nil, err
 	}
-	pop := signer.NewProofOfPossession(sk)
+	pop, err := signer.NewProofOfPossession(sk)
+	if err != nil {
+		return nil, nil, err
+	}
 	return pop.PublicKey[:], pop.ProofOfPossession[:], nil
 }
 

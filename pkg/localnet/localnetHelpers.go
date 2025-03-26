@@ -3,7 +3,6 @@
 package localnet
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
@@ -28,13 +26,17 @@ type ExtraLocalNetworkData struct {
 
 // Restart all nodes on local network to track [blockchainName].
 // Before that, set up VM binary, blockchain and subnet config information
-// After the blockchain is bootstrapped, add alias for it [blockchainName]->[blockchainID]
+// After the blockchain is bootstrapped, add alias for [blockchainName]->[blockchainID]
 // Finally persist all new blockchain RPC URLs into blockchain sidecar.
 func LocalNetworkTrackSubnet(
-	ctx context.Context,
 	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
 	blockchainName string,
 ) error {
+	networkDir, err := GetLocalNetworkDir(app)
+	if err != nil {
+		return err
+	}
 	networkModel := models.NewLocalNetwork()
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
@@ -43,74 +45,17 @@ func LocalNetworkTrackSubnet(
 	if sc.Networks[networkModel.Name()].BlockchainID == ids.Empty {
 		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
 	}
-	sovereign := sc.Sovereign
-	blockchainID := sc.Networks[networkModel.Name()].BlockchainID
 	subnetID := sc.Networks[networkModel.Name()].SubnetID
-	var (
-		blockchainConfig []byte
-		subnetConfig     []byte
-	)
-	vmBinaryPath, err := SetupVMBinary(app, blockchainName)
-	if err != nil {
-		return fmt.Errorf("failed to setup VM binary: %w", err)
-	}
-	if app.ChainConfigExists(blockchainName) {
-		blockchainConfig, err = os.ReadFile(app.GetChainConfigPath(blockchainName))
-		if err != nil {
-			return err
-		}
-	}
-	if app.AvagoSubnetConfigExists(blockchainName) {
-		subnetConfig, err = os.ReadFile(app.GetAvagoSubnetConfigPath(blockchainName))
-		if err != nil {
-			return err
-		}
-	}
-	perNodeBlockchainConfig, err := app.GetPerNodeBlockchainConfig(blockchainName)
+	wallet, err := GetLocalNetworkWallet(app, []ids.ID{subnetID})
 	if err != nil {
 		return err
 	}
-	wallet, err := GetLocalNetworkWallet(ctx, app, []ids.ID{subnetID})
-	if err != nil {
-		return err
-	}
-	networkDir, err := GetLocalNetworkDir(app)
-	if err != nil {
-		return err
-	}
-	if err := TmpNetTrackSubnet(
-		ctx,
-		app.Log,
-		ux.Logger.PrintToUser,
+	return TrackSubnet(
+		app,
+		printFunc,
+		blockchainName,
 		networkDir,
-		blockchainName,
-		sovereign,
-		blockchainID,
-		subnetID,
-		vmBinaryPath,
-		blockchainConfig,
-		subnetConfig,
-		perNodeBlockchainConfig,
 		wallet,
-	); err != nil {
-		return err
-	}
-	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
-	network, err := GetLocalNetwork(app)
-	if err != nil {
-		return err
-	}
-	if err := TmpNetSetAlias(network, blockchainID.String(), blockchainName, subnetID); err != nil {
-		return err
-	}
-	nodeURIs, err := GetTmpNetNodeURIsWithFix(networkDir)
-	if err != nil {
-		return err
-	}
-	return app.AddDefaultBlockchainRPCsToSidecar(
-		blockchainName,
-		networkModel,
-		nodeURIs,
 	)
 }
 
@@ -149,7 +94,6 @@ func GetLocalNetworkRelayerConfigPath(app *application.Avalanche, networkDir str
 // GetLocalNetworkWallet returns a wallet that can operate on the local network
 // initialized to recognice all given [subnetIDs] as pre generated
 func GetLocalNetworkWallet(
-	ctx context.Context,
 	app *application.Avalanche,
 	subnetIDs []ids.ID,
 ) (*primary.Wallet, error) {
@@ -161,6 +105,8 @@ func GetLocalNetworkWallet(
 	if err != nil {
 		return nil, err
 	}
+	ctx, cancel := GetLocalNetworkDefaultContext()
+	defer cancel()
 	return primary.MakeWallet(
 		ctx,
 		endpoint,
