@@ -9,22 +9,22 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
 	blockchaincmd "github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"github.com/ava-labs/avalanchego/utils/units"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )
@@ -122,7 +122,11 @@ func joinAsPrimaryNetworkValidator(
 	if err != nil {
 		return err
 	}
-	blsSk, err := bls.SecretKeyFromBytes(blsKeyBytes)
+	blsSk, err := localsigner.FromBytes(blsKeyBytes)
+	if err != nil {
+		return err
+	}
+	pop, err := signer.NewProofOfPossession(blsSk)
 	if err != nil {
 		return err
 	}
@@ -136,7 +140,7 @@ func joinAsPrimaryNetworkValidator(
 		recipientAddr,
 		delegationFee,
 		nil,
-		signer.NewProofOfPossession(blsSk),
+		pop,
 	); err != nil {
 		return err
 	}

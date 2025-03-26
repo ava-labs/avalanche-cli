@@ -12,7 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-network-runner/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 )
 
 func SanitizePath(path string) (string, error) {

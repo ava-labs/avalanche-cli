@@ -63,19 +63,19 @@ func (comparator *Comparator) Validate(val uint64) error {
 	switch comparator.Type {
 	case LessThanEq:
 		if val > comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be smaller than or equal to %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be smaller than or equal to %s (%d)", comparator.Label, comparator.Value)
 		}
 	case MoreThan:
 		if val <= comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be bigger than %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be bigger than %s (%d)", comparator.Label, comparator.Value)
 		}
 	case MoreThanEq:
 		if val < comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be bigger than or equal to %s (%d)", comparator.Label, comparator.Value)
 		}
 	case NotEq:
 		if val == comparator.Value {
-			return fmt.Errorf(fmt.Sprintf("the value must be different than %s (%d)", comparator.Label, comparator.Value))
+			return fmt.Errorf("the value must be different than %s (%d)", comparator.Label, comparator.Value)
 		}
 	}
 	return nil
@@ -126,7 +126,6 @@ type Prompter interface {
 
 type realPrompter struct{}
 
-// NewProcessChecker creates a new process checker which can respond if the server is running
 func NewPrompter() Prompter {
 	return &realPrompter{}
 }

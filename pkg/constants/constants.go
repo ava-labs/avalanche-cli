@@ -82,6 +82,7 @@ const (
 	LatestPreReleaseVersionTag = "latest-prerelease"
 	LatestReleaseVersionTag    = "latest"
 	DefaultAvalancheGoVersion  = LatestReleaseVersionTag
+	DefaultRelayerVersion      = LatestReleaseVersionTag
 
 	FujiAPIEndpoint    = "https://api.avax-test.network"
 	MainnetAPIEndpoint = "https://api.avax.network"
@@ -290,7 +291,6 @@ const (
 
 	UpgradeBytesLockExtension = ".lock"
 	NotAvailableLabel         = "Not available"
-	BackendCmd                = "avalanche-cli-backend"
 
 	FujiAvalancheGoV113          = "v1.13.0-fuji"
 	AvalancheGoCompatibilityURL  = "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
@@ -302,8 +302,8 @@ const (
 	SubnetIDLabel     = "SubnetID: "
 	BlockchainIDLabel = "BlockchainID: "
 
-	PluginDir = "plugins"
-	LocalDir  = "local"
+	PluginDir        = "plugins"
+	LocalClustersDir = "local"
 
 	DefaultNumberOfLocalMachineNodes = 1
 	MetricsNetwork                   = "network"
