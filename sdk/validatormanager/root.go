@@ -315,7 +315,7 @@ func GetValidatorManagerType(
 	managerAddress common.Address,
 ) (models.ValidatorManagementType, error) {
 	// Verify that ACP99 validator manager contract is present in the rpc url by calling registeredValidators func in ValidatorManager.sol
-	if _, err := validator.GetRegisteredValidator(rpcURL, managerAddress, ids.EmptyNodeID); err != nil {
+	if _, err := validator.GetValidationID(rpcURL, managerAddress, ids.EmptyNodeID); err != nil {
 		return models.UndefinedValidatorManagement, err
 	}
 	// verify it is PoS
