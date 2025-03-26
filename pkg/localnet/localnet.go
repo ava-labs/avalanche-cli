@@ -201,11 +201,12 @@ func LocalNetworkHealth(
 				} else if !isTracking {
 					continue
 				}
-				blockchainBootstrapped, err := IsLocalClusterBlockchainBootstrapped(app, clusterName, blockchain.ID.String(), blockchain.SubnetID)
+				blockchainBootstrappedOnSomeCluster, err = IsLocalClusterBlockchainBootstrapped(app, clusterName, blockchain.ID.String(), blockchain.SubnetID)
 				if err != nil {
 					return pChainBootstrapped, false, err
-				} else if blockchainBootstrapped {
-					blockchainBootstrappedOnSomeCluster = true
+				}
+				if blockchainBootstrappedOnSomeCluster {
+					break
 				}
 			}
 			if !blockchainBootstrappedOnSomeCluster {

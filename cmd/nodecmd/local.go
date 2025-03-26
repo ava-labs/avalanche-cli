@@ -328,7 +328,11 @@ func localStopNode(_ *cobra.Command, args []string) error {
 
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	return localnet.LocalClusterRemove(app, clusterName)
+	if err := localnet.LocalClusterRemove(app, clusterName); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
+	return nil
 }
 
 func localTrack(_ *cobra.Command, args []string) error {

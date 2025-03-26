@@ -30,7 +30,6 @@ func DownloadAvalancheGoDB(
 		return nil
 	}
 	network := network.FujiNetwork()
-	log.Info("downloading public archive for network", zap.String("clustername", clusterNetwork.Name()))
 	printFunc("Downloading public archive for network %s", clusterNetwork.Name())
 	publicArcDownloader, err := publicarchive.NewDownloader(network, logging.NewLogger("public-archive-downloader", logging.NewWrappedCore(logging.Off, os.Stdout, logging.JSON.ConsoleEncoder()))) // off as we run inside of the spinner
 	if err != nil {
