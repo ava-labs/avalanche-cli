@@ -472,7 +472,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	}
 
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
-	
+
 	if network.Kind == models.Local {
 		app.Log.Debug("Deploy local")
 
