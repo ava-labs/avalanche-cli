@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
-package interchain
+package relayer
 
 import (
 	"context"
@@ -30,16 +30,18 @@ import (
 )
 
 const (
-	localRelayerSetupTime         = 2 * time.Second
-	localRelayerCheckPoolTime     = 100 * time.Millisecond
-	localRelayerCheckTimeout      = 3 * time.Second
-	defaultDBWriteIntervalSeconds = 10
-	defaultSignatureCacheSize     = 1024 * 1024
+	localRelayerSetupTime                  = 2 * time.Second
+	localRelayerCheckPoolTime              = 100 * time.Millisecond
+	localRelayerCheckTimeout               = 3 * time.Second
+	defaultDBWriteIntervalSeconds          = 10
+	defaultSignatureCacheSize              = 1024 * 1024
+	defaultInitialConnectionTimeoutSeconds = 60
 )
 
 var relayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 
-func GetRelayerKeyInfo(keyPath string) (string, string, error) {
+func GetRelayerKeyInfo(app *application.Avalanche) (string, string, error) {
+	keyPath := app.GetKeyPath(constants.ICMRelayerKeyName)
 	var (
 		k   *key.SoftKey
 		err error
@@ -407,14 +409,15 @@ func CreateBaseRelayerConfig(
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
-		StorageLocation:        storageLocation,
-		ProcessMissedBlocks:    false,
-		SourceBlockchains:      []*config.SourceBlockchain{},
-		DestinationBlockchains: []*config.DestinationBlockchain{},
-		MetricsPort:            metricsPort,
-		DBWriteIntervalSeconds: defaultDBWriteIntervalSeconds,
-		SignatureCacheSize:     defaultSignatureCacheSize,
-		AllowPrivateIPs:        allowPrivateIPs,
+		StorageLocation:                 storageLocation,
+		ProcessMissedBlocks:             false,
+		SourceBlockchains:               []*config.SourceBlockchain{},
+		DestinationBlockchains:          []*config.DestinationBlockchain{},
+		MetricsPort:                     metricsPort,
+		DBWriteIntervalSeconds:          defaultDBWriteIntervalSeconds,
+		SignatureCacheSize:              defaultSignatureCacheSize,
+		AllowPrivateIPs:                 allowPrivateIPs,
+		InitialConnectionTimeoutSeconds: defaultInitialConnectionTimeoutSeconds,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }

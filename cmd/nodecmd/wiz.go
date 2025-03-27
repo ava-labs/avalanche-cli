@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -336,7 +337,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			// get awm-relayer latest version
-			relayerVersion, err := interchain.GetLatestRelayerReleaseVersion()
+			relayerVersion, err := relayer.GetLatestRelayerReleaseVersion()
 			if err != nil {
 				return err
 			}
@@ -576,7 +577,7 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err != nil {
 		return err
 	}
-	if err := interchain.FundRelayer(
+	if err := relayer.FundRelayer(
 		network.BlockchainEndpoint(blockchainID.String()),
 		icmKey.PrivKeyHex(),
 		relayerKey.C(),
@@ -587,7 +588,7 @@ func updateICMRelayerFunds(network models.Network, sc models.Sidecar, blockchain
 	if err != nil {
 		return err
 	}
-	return interchain.FundRelayer(
+	return relayer.FundRelayer(
 		network.BlockchainEndpoint("C"),
 		ewoqKey.PrivKeyHex(),
 		relayerKey.C(),
@@ -967,7 +968,7 @@ func setUpSubnetLogging(clusterName, subnetName string) error {
 }
 
 func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, blockchainName string) error {
-	relayerAddress, relayerPrivateKey, err := interchain.GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
+	relayerAddress, relayerPrivateKey, err := relayer.GetRelayerKeyInfo(app)
 	if err != nil {
 		return err
 	}
@@ -981,7 +982,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 	}
 	ux.Logger.PrintToUser("updating configuration file %s", configPath)
 
-	if err := interchain.CreateBaseRelayerConfigIfMissing(
+	if err := relayer.CreateBaseRelayerConfigIfMissing(
 		configPath,
 		logging.Info.LowerString(),
 		app.GetICMRelayerServiceStorageDir(storageBasePath),
@@ -1010,7 +1011,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
-	if err = interchain.AddSourceAndDestinationToRelayerConfig(
+	if err = relayer.AddSourceAndDestinationToRelayerConfig(
 		configPath,
 		rpcEndpoint,
 		wsEndpoint,
@@ -1042,7 +1043,7 @@ func addBlockchainToRelayerConf(network models.Network, cloudNodeID string, bloc
 		return err
 	}
 
-	if err = interchain.AddSourceAndDestinationToRelayerConfig(
+	if err = relayer.AddSourceAndDestinationToRelayerConfig(
 		configPath,
 		rpcEndpoint,
 		wsEndpoint,

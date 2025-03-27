@@ -194,7 +194,7 @@ func getNodeValidationID(
 			return ids.Empty, false, err
 		}
 		managerAddress := common.HexToAddress(validatorManagerAddress)
-		validationID, err = validator.GetRegisteredValidator(rpcURL, managerAddress, nodeID)
+		validationID, err = validator.GetValidationID(rpcURL, managerAddress, nodeID)
 		if err != nil {
 			return ids.Empty, false, err
 		}

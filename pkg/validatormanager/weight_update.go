@@ -90,7 +90,7 @@ func InitValidatorWeightChange(
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
-	validationID, err := validator.GetRegisteredValidator(
+	validationID, err := validator.GetValidationID(
 		rpcURL,
 		managerAddress,
 		nodeID,

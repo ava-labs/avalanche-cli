@@ -32,6 +32,7 @@ func RunMigrations(app *application.Avalanche) error {
 			// next one is 2
 			0: migrateTopLevelFiles,
 			1: migrateSubnetEVMNames,
+			2: migrateANRToTmpNet,
 		},
 	}
 	return runner.run(app)

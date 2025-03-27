@@ -4,20 +4,17 @@ package nodecmd
 
 import (
 	"fmt"
-	"path/filepath"
+	"os"
 	"strings"
 	"time"
-
-	"github.com/ava-labs/avalanche-cli/cmd/flags"
-
-	"golang.org/x/mod/semver"
-
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
+  
+  "github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
@@ -47,9 +44,9 @@ var (
 	bootstrapIPs                 []string
 	genesisPath                  string
 	upgradePath                  string
-	stakingTLSKeyPath            string
-	stakingCertKeyPath           string
-	stakingSignerKeyPath         string
+	stakingTLSKeyPaths           []string
+	stakingCertKeyPaths          []string
+	stakingSignerKeyPaths        []string
 	numNodes                     uint32
 	nodeConfigPath               string
 	partialSync                  bool
@@ -58,13 +55,13 @@ var (
 	remainingBalanceOwnerAddr    string
 	disableOwnerAddr             string
 	delegationFee                uint16
-	publicKey                    string
-	pop                          string
 	minimumStakeDuration         uint64
 	latestAvagoReleaseVersion    bool
 	latestAvagoPreReleaseVersion bool
 	validatorManagerAddress      string
 	useACP99                     bool
+	httpPorts                    []uint
+	stakingPorts                 []uint
 )
 
 // const snapshotName = "local_snapshot"
@@ -114,12 +111,14 @@ You can check the bootstrapping status by running avalanche node status local.
 	cmd.Flags().StringArrayVar(&bootstrapIPs, "bootstrap-ip", []string{}, "IP:port pairs of bootstrap nodes")
 	cmd.Flags().StringVar(&genesisPath, "genesis", "", "path to genesis file")
 	cmd.Flags().StringVar(&upgradePath, "upgrade", "", "path to upgrade file")
-	cmd.Flags().StringVar(&stakingTLSKeyPath, "staking-tls-key-path", "", "path to provided staking tls key for node")
-	cmd.Flags().StringVar(&stakingCertKeyPath, "staking-cert-key-path", "", "path to provided staking cert key for node")
-	cmd.Flags().StringVar(&stakingSignerKeyPath, "staking-signer-key-path", "", "path to provided staking signer key for node")
+	cmd.Flags().StringSliceVar(&stakingTLSKeyPaths, "staking-tls-key-path", []string{}, "path to provided staking tls key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingCertKeyPaths, "staking-cert-key-path", []string{}, "path to provided staking cert key for node(s)")
+	cmd.Flags().StringSliceVar(&stakingSignerKeyPaths, "staking-signer-key-path", []string{}, "path to provided staking signer key for node(s)")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", 1, "number of Avalanche nodes to create on local machine")
 	cmd.Flags().StringVar(&nodeConfigPath, "node-config", "", "path to common avalanchego config settings for all nodes")
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "primary network partial sync")
+	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
+	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	return cmd
 }
 
@@ -128,7 +127,7 @@ func newLocalStopCmd() *cobra.Command {
 		Use:   "stop",
 		Short: "Stop local node",
 		Long:  `Stop local node.`,
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.MaximumNArgs(1),
 		RunE:  localStopNode,
 	}
 }
@@ -141,10 +140,6 @@ func newLocalTrackCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE:  localTrack,
 	}
-	cmd.Flags().StringVar(&avalanchegoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
-	cmd.Flags().BoolVar(&latestAvagoReleaseVersion, "latest-avalanchego-version", true, "install latest avalanchego release version on node/s")
-	cmd.Flags().BoolVar(&latestAvagoPreReleaseVersion, "latest-avalanchego-pre-release-version", false, "install latest avalanchego pre-release version on node/s")
-	cmd.Flags().StringVar(&useCustomAvalanchegoVersion, "custom-avalanchego-version", "", "install given avalanchego version on node/s")
 	return cmd
 }
 
@@ -175,44 +170,78 @@ func newLocalStatusCmd() *cobra.Command {
 
 func localStartNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	anrSettings := node.ANRSettings{
-		GenesisPath:          genesisPath,
-		UpgradePath:          upgradePath,
-		BootstrapIDs:         bootstrapIDs,
-		BootstrapIPs:         bootstrapIPs,
-		StakingSignerKeyPath: stakingTLSKeyPath,
-		StakingCertKeyPath:   stakingCertKeyPath,
-		StakingTLSKeyPath:    stakingTLSKeyPath,
-	}
-
-	network, err := networkoptions.GetNetworkFromCmdLineFlags(
-		app,
-		"",
-		globalNetworkFlags,
-		false,
-		true,
-		networkoptions.DefaultSupportedNetworkOptions,
-		"",
+	var (
+		err     error
+		genesis []byte
+		upgrade []byte
 	)
-	if err != nil {
-		return err
+	if genesisPath != "" {
+		genesis, err = os.ReadFile(genesisPath)
+		if err != nil {
+			return fmt.Errorf("could not read genesis at %s: %w", genesisPath, err)
+		}
+	}
+	if upgradePath != "" {
+		upgrade, err = os.ReadFile(upgradePath)
+		if err != nil {
+			return fmt.Errorf("could not read upgrade at %s: %w", upgradePath, err)
+		}
+	}
+	connectionSettings := localnet.ConnectionSettings{
+		Genesis:      genesis,
+		Upgrade:      upgrade,
+		BootstrapIDs: bootstrapIDs,
+		BootstrapIPs: bootstrapIPs,
+	}
+	if len(stakingSignerKeyPaths) != len(stakingCertKeyPaths) || len(stakingSignerKeyPaths) != len(stakingTLSKeyPaths) {
+		return fmt.Errorf("staking key inputs must be for the same number of nodes")
+	}
+	nodeSettingsLen := max(len(stakingSignerKeyPaths), len(httpPorts), len(stakingPorts))
+	nodeSettings := make([]localnet.NodeSetting, nodeSettingsLen)
+	for i := range nodeSettingsLen {
+		nodeSetting := localnet.NodeSetting{}
+		if i < len(stakingSignerKeyPaths) {
+			stakingSignerKey, err := os.ReadFile(stakingSignerKeyPaths[i])
+			if err != nil {
+				return fmt.Errorf("could not read staking signer key at %s: %w", stakingSignerKeyPaths[i], err)
+			}
+			stakingCertKey, err := os.ReadFile(stakingCertKeyPaths[i])
+			if err != nil {
+				return fmt.Errorf("could not read staking cert key at %s: %w", stakingCertKeyPaths[i], err)
+			}
+			stakingTLSKey, err := os.ReadFile(stakingTLSKeyPaths[i])
+			if err != nil {
+				return fmt.Errorf("could not read staking TLS key at %s: %w", stakingTLSKeyPaths[i], err)
+			}
+			nodeSetting.StakingSignerKey = stakingSignerKey
+			nodeSetting.StakingCertKey = stakingCertKey
+			nodeSetting.StakingTLSKey = stakingTLSKey
+		}
+		if i < len(httpPorts) {
+			nodeSetting.HTTPPort = uint64(httpPorts[i])
+		}
+		if i < len(stakingPorts) {
+			nodeSetting.StakingPort = uint64(stakingPorts[i])
+		}
+		nodeSettings[i] = nodeSetting
 	}
 
-	// TODO: remove this check for releases above v1.8.7, once v1.13.0-fuji avalanchego is latest release
-	if network.Kind == models.Fuji && useCustomAvalanchegoVersion == "" {
-		latestAvagoVersion, err := app.Downloader.GetLatestReleaseVersion(
-			constants.AvaLabsOrg,
-			constants.AvalancheGoRepoName,
+	network := models.UndefinedNetwork
+	if !localnet.LocalClusterExists(app, clusterName) {
+		network, err = networkoptions.GetNetworkFromCmdLineFlags(
+			app,
+			"",
+			globalNetworkFlags,
+			false,
+			true,
+			networkoptions.DefaultSupportedNetworkOptions,
 			"",
 		)
 		if err != nil {
 			return err
 		}
-		versionComparison := semver.Compare(constants.FujiAvalancheGoV113, latestAvagoVersion)
-		if versionComparison == 1 {
-			useCustomAvalanchegoVersion = constants.FujiAvalancheGoV113
-		}
 	}
+
 	if useCustomAvalanchegoVersion != "" {
 		latestAvagoPreReleaseVersion = false
 		latestAvagoReleaseVersion = false
@@ -239,43 +268,64 @@ func localStartNode(_ *cobra.Command, args []string) error {
 		avalanchegoBinaryPath,
 		numNodes,
 		nodeConfig,
-		anrSettings,
+		connectionSettings,
+		nodeSettings,
 		avaGoVersionSetting,
 		network,
 	)
 }
 
-func localStopNode(_ *cobra.Command, _ []string) error {
-	return node.StopLocalNode(app)
+func localStopNode(_ *cobra.Command, args []string) error {
+	if len(args) == 1 {
+		clusterName := args[0]
+		// want to be able to stop clusters even if they are only partially operative
+		if running, err := localnet.LocalClusterIsPartiallyRunning(app, clusterName); err != nil {
+			return err
+		} else if !running {
+			ux.Logger.PrintToUser("cluster is not running")
+		} else {
+			if err := localnet.LocalClusterStop(app, clusterName); err != nil {
+				return err
+			}
+			ux.Logger.GreenCheckmarkToUser("avalanchego stopped")
+		}
+		return nil
+	}
+	clusterNames, err := localnet.GetRunningLocalClusters(app)
+	if err != nil {
+		return err
+	}
+	if len(clusterNames) == 0 {
+		ux.Logger.PrintToUser("no clusters to stop")
+		return nil
+	}
+	for _, clusterName := range clusterNames {
+		if err := localnet.LocalClusterStop(app, clusterName); err != nil {
+			return err
+		}
+	}
+	ux.Logger.GreenCheckmarkToUser("avalanchego stopped")
+	return nil
 }
 
 func localDestroyNode(_ *cobra.Command, args []string) error {
 	clusterName := args[0]
-	return node.DestroyLocalNode(app, clusterName)
+	if err := localnet.LocalClusterRemove(app, clusterName); err != nil {
+		return err
+	}
+	ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
+	return nil
 }
 
 func localTrack(_ *cobra.Command, args []string) error {
-	if avalanchegoBinaryPath == "" {
-		if useCustomAvalanchegoVersion != "" {
-			latestAvagoReleaseVersion = false
-			latestAvagoPreReleaseVersion = false
-		}
-		avaGoVersionSetting := node.AvalancheGoVersionSettings{
-			UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
-			UseLatestAvalanchegoPreReleaseVersion: latestAvagoPreReleaseVersion,
-			UseLatestAvalanchegoReleaseVersion:    latestAvagoReleaseVersion,
-		}
-		avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
-		if err != nil {
-			return err
-		}
-		_, avagoDir, err := binutils.SetupAvalanchego(app, avalancheGoVersion)
-		if err != nil {
-			return fmt.Errorf("failed installing Avalanche Go version %s: %w", avalancheGoVersion, err)
-		}
-		avalanchegoBinaryPath = filepath.Join(avagoDir, "avalanchego")
-	}
-	return node.TrackSubnetWithLocalMachine(app, args[0], args[1], avalanchegoBinaryPath)
+	clusterName := args[0]
+	blockchainName := args[1]
+	return localnet.LocalClusterTrackSubnet(
+		app,
+		ux.Logger.PrintToUser,
+		clusterName,
+		blockchainName,
+	)
 }
 
 func localStatus(_ *cobra.Command, args []string) error {
@@ -331,7 +381,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("local cluster name cannot be empty")
 	}
 
-	if ok, err := node.CheckClusterIsLocal(app, clusterName); err != nil || !ok {
+	if !localnet.LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local cluster %q not found, please create it first using avalanche node local start %q", clusterName, clusterName)
 	}
 
@@ -488,17 +538,7 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx, cancel := network.BootstrappingContext()
-	defer cancel()
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
-	if err != nil {
-		return err
-	}
-	status, err := cli.Status(ctx)
+	net, err := localnet.GetLocalCluster(app, clusterName)
 	if err != nil {
 		return err
 	}
@@ -509,9 +549,10 @@ func localValidate(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: v1.0.0"))
 	}
 
-	for _, node := range status.ClusterInfo.NodeInfos {
-		if err = addAsValidator(network,
-			node.Name,
+	for _, node := range net.Nodes {
+		if err = addAsValidator(
+			network,
+			node.URI,
 			chainSpec,
 			remainingBalanceOwners, disableOwners,
 			extraAggregatorPeers,
@@ -531,8 +572,9 @@ func localValidate(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func addAsValidator(network models.Network,
-	nodeName string,
+func addAsValidator(
+	network models.Network,
+	nodeURI string,
 	chainSpec contract.ChainSpec,
 	remainingBalanceOwners, disableOwners warpMessage.PChainOwner,
 	extraAggregatorPeers []info.Peer,
@@ -543,13 +585,8 @@ func addAsValidator(network models.Network,
 	validatorManagerAddressStr string,
 	useACP99 bool,
 ) error {
-	var nodeIDStr string
 	// get node data
-	nodeInfo, err := node.GetNodeInfo(nodeName)
-	if err != nil {
-		return err
-	}
-	nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeInfo.Uri)
+	nodeIDStr, publicKey, pop, err := utils.GetNodeID(nodeURI)
 	if err != nil {
 		return err
 	}
