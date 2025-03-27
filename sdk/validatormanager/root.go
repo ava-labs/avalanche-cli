@@ -195,7 +195,6 @@ func GetPChainSubnetToL1ConversionMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	managerBlockchainID ids.ID,
@@ -245,7 +244,6 @@ func GetPChainSubnetToL1ConversionMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {

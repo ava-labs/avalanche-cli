@@ -700,7 +700,7 @@ func (*realPrompter) CaptureURL(promptStr string, validateConnection bool) (stri
 	for {
 		prompt := promptui.Prompt{
 			Label:    promptStr,
-			Validate: validateURLFormat,
+			Validate: ValidateURLFormat,
 		}
 		str, err := prompt.Run()
 		if err != nil {
@@ -783,7 +783,7 @@ func (*realPrompter) CaptureValidatedString(promptStr string, validator func(str
 func (*realPrompter) CaptureGitURL(promptStr string) (*url.URL, error) {
 	prompt := promptui.Prompt{
 		Label:    promptStr,
-		Validate: validateURLFormat,
+		Validate: ValidateURLFormat,
 	}
 
 	str, err := prompt.Run()
