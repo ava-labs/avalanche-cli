@@ -9,7 +9,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/internal/mocks"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateRPC(t *testing.T) {
@@ -124,6 +124,8 @@ func TestValidateRPC(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+
 			// Create and configure mock prompter if needed
 			mockPrompter := mocks.Prompter{}
 			if tt.cmdName == "addValidator" && len(tt.args) == 0 && tt.rpcURL == "" {
@@ -141,9 +143,9 @@ func TestValidateRPC(t *testing.T) {
 
 			// Check error expectation
 			if tt.wantError {
-				assert.Error(t, err)
+				require.Error(err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(err)
 			}
 
 			// Verify prompt expectations
@@ -157,7 +159,7 @@ func TestValidateRPC(t *testing.T) {
 			}
 
 			// Verify final RPC URL value
-			assert.Equal(t, tt.expectedRPCURL, rpcValue, "RPC URL value mismatch")
+			require.Equal(tt.expectedRPCURL, rpcValue, "RPC URL value mismatch")
 		})
 	}
 }
