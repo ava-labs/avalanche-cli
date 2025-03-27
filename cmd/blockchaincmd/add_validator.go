@@ -332,7 +332,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		disableOwnerAddr,
 		sc,
 		flags.RPC,
-	)
 	); err != nil {
 		return err
 	}
