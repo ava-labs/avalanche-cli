@@ -179,12 +179,6 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		if flags.RPC == "" {
-			flags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
-			if err != nil {
-				return err
-			}
-		}
 		sc, err = importL1(blockchainIDStr, flags.RPC, network)
 		if err != nil {
 			return err
