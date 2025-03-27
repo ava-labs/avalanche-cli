@@ -34,9 +34,10 @@ func AddRPCFlagToCmd(cmd *cobra.Command, app *application.Avalanche) {
 		return rpcPreRun(cmd, args)
 	}
 }
+
 func ValidateRPC(app *application.Avalanche, rpc *string, cmd *cobra.Command, args []string) error {
 	var err error
-	//TODO: modify check below to extend prompting for rpc to commands other than addValidator
+	// TODO: modify check below to extend prompting for rpc to commands other than addValidator
 	if *rpc == "" {
 		if cmd.Name() == "addValidator" && len(args) == 0 {
 			*rpc, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
