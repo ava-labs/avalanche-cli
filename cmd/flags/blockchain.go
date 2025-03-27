@@ -44,8 +44,6 @@ func ValidateRPC(app *application.Avalanche, rpc *string, cmd *cobra.Command, ar
 				return err
 			}
 		}
-	} else {
-		return prompts.ValidateURL(*rpc)
 	}
-	return err
+	return prompts.ValidateURLFormat(*rpc)
 }
