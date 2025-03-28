@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -81,7 +81,7 @@ func GetPrivateKeyBalance(
 	client ethclient.Client,
 	privateKey string,
 ) (*big.Int, error) {
-	addr, err := utils.PrivateKeyToAddress(privateKey)
+	addr, err := PrivateKeyToAddress(privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -679,18 +679,14 @@ func SetupProposerVM(
 	if err != nil {
 		return err
 	}
-	var errorList []error
-	for i := 0; i < repeatsOnFailure; i++ {
-		err = issueTxsToActivateProposerVMFork(client, chainID, privKey)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
-		errorList = append(errorList, err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	utils.PrintUnreportedErrors(errorList, err, ux.Logger.RedXToUser)
-	return err
+	_, err = utils.Retry(
+		func() (any, error) {
+			return nil, issueTxsToActivateProposerVMFork(client, chainID, privKey)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	return fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
 }
 
 // issueTxsToActivateProposerVMFork issues transactions at the current
@@ -843,4 +839,12 @@ func TxDump(description string, tx *types.Transaction) error {
 		}
 	}
 	return nil
+}
+
+func PrivateKeyToAddress(privateKey string) (common.Address, error) {
+	pk, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	return crypto.PubkeyToAddress(pk.PublicKey), nil
 }

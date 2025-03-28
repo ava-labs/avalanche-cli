@@ -4,6 +4,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -23,37 +24,31 @@ func AppendSlices[T any](slices ...[]T) []T {
 
 // Retry retries the given function until it succeeds or the maximum number of attempts is reached.
 func Retry[T any](
-	fn func(context.Context) (T, error),
-	attempTimeout time.Duration,
+	fn func() (T, error),
 	maxAttempts int,
-	errMsg string,
+	retryInterval time.Duration,
 ) (T, error) {
-	const defaultAttempTimeout = 2 * time.Second
-	if attempTimeout == 0 {
-		attempTimeout = defaultAttempTimeout
+	const defaultRetryInterval = 2 * time.Second
+	if retryInterval == 0 {
+		retryInterval = defaultRetryInterval
 	}
 	var (
 		result T
-		err    error
+		cumErr error
 	)
 	for attempt := 0; attempt < maxAttempts; attempt++ {
-		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), attempTimeout)
-		defer cancel()
-		result, err = fn(ctx)
+		var err error
+		result, err = fn()
 		if err == nil {
 			return result, nil
 		}
-		elapsed := time.Since(start)
-		if elapsed < attempTimeout {
-			time.Sleep(attempTimeout - elapsed)
-		}
+		cumErr = errors.Join(cumErr, err)
+		time.Sleep(retryInterval)
 	}
 	return result, fmt.Errorf(
-		"%s: maximum retry attempts %d reached: last err = %w",
-		errMsg,
+		"maximum retry attempts %d reached: cumulated err = %w",
 		maxAttempts,
-		err,
+		cumErr,
 	)
 }
 

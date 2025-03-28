@@ -228,7 +228,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			// from the blockchain id (as relayer logs cmd)
 			ux.Logger.PrintToUser("")
 			for _, destination := range configSpec.destinations {
-				addr, err := utils.PrivateKeyToAddress(destination.privateKey)
+				addr, err := evm.PrivateKeyToAddress(destination.privateKey)
 				if err != nil {
 					return err
 				}
@@ -274,7 +274,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	if fundBlockchains {
 		for _, destination := range configSpec.destinations {
-			addr, err := utils.PrivateKeyToAddress(destination.privateKey)
+			addr, err := evm.PrivateKeyToAddress(destination.privateKey)
 			if err != nil {
 				return err
 			}
