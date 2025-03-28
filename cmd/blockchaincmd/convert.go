@@ -30,6 +30,7 @@ import (
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -386,7 +387,7 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfStake(
 			aggregatorCtx,
-			network,
+			network.SDKNetwork(),
 			genesisPrivateKey,
 			extraAggregatorPeers,
 			aggregatorAllowPrivatePeers,
@@ -410,7 +411,7 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
 			aggregatorCtx,
-			network,
+			network.SDKNetwork(),
 			genesisPrivateKey,
 			extraAggregatorPeers,
 			aggregatorAllowPrivatePeers,
@@ -787,7 +788,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			blockchainID,
 			network,
 			avaGoBootstrapValidators,
-			sidecar.ValidatorManagement == models.ProofOfStake,
+			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
 			validatorManagerAddress,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,

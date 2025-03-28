@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	network := models.NewFujiNetwork()
+	network := network.FujiNetwork()
 	aggregator, err := interchain.NewSignatureAggregator(
 		network,
 		logging.NewLogger(

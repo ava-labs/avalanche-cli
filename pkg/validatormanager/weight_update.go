@@ -319,7 +319,7 @@ func GetL1ValidatorWeightMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		ctx,
-		network,
+		network.SDKNetwork(),
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
@@ -385,7 +385,7 @@ func GetPChainL1ValidatorWeightMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		ctx,
-		network,
+		network.SDKNetwork(),
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,

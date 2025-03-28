@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
@@ -64,15 +65,15 @@ func promptValidatorManagementType(
 ) error {
 	explainOption := "Explain the difference"
 	if createFlags.proofOfStake {
-		sidecar.ValidatorManagement = models.ProofOfStake
+		sidecar.ValidatorManagement = validatormanagertypes.ProofOfStake
 		return nil
 	}
 	if createFlags.proofOfAuthority {
-		sidecar.ValidatorManagement = models.ProofOfAuthority
+		sidecar.ValidatorManagement = validatormanagertypes.ProofOfAuthority
 		return nil
 	}
 
-	options := []string{models.ProofOfAuthority, models.ProofOfStake, explainOption}
+	options := []string{validatormanagertypes.ProofOfAuthority, validatormanagertypes.ProofOfStake, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
 			"Which validator management type would you like to use in your blockchain?",
@@ -82,10 +83,10 @@ func promptValidatorManagementType(
 			return err
 		}
 		switch option {
-		case models.ProofOfAuthority:
-			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
-		case models.ProofOfStake:
-			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
+		case validatormanagertypes.ProofOfAuthority:
+			sidecar.ValidatorManagement = validatormanagertypes.ValidatorManagementTypeFromString(option)
+		case validatormanagertypes.ProofOfStake:
+			sidecar.ValidatorManagement = validatormanagertypes.ValidatorManagementTypeFromString(option)
 		case explainOption:
 			continue
 		}

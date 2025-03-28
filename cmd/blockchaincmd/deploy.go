@@ -29,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -825,7 +826,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			blockchainID,
 			network,
 			avaGoBootstrapValidators,
-			sidecar.ValidatorManagement == models.ProofOfStake,
+			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,

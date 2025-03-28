@@ -14,26 +14,22 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/wallet"
-
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
-
+	"github.com/ava-labs/avalanche-cli/sdk/wallet"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	commonAvago "github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var (
@@ -344,7 +340,7 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 // to set as the owner of the PoA manager
 func (c *Subnet) InitializeProofOfAuthority(
 	ctx context.Context,
-	network models.Network,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
@@ -428,7 +424,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 func (c *Subnet) InitializeProofOfStake(
 	ctx context.Context,
-	network models.Network,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
