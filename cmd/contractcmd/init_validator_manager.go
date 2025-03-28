@@ -203,6 +203,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Initializing Proof of Authority Validator Manager contract on blockchain %s"), blockchainName)
 		if err := validatormanager.SetupPoA(
 			aggregatorCtx,
+			app.Log,
 			subnetSDK,
 			network,
 			privateKey,
@@ -246,6 +247,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		if err := validatormanager.SetupPoS(
 			aggregatorCtx,
+			app.Log,
 			subnetSDK,
 			network,
 			privateKey,
