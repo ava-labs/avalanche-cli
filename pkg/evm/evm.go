@@ -107,7 +107,7 @@ func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 	return nil, "", notDeterminedErr
 }
 
-// connects a evm client to the given [rpcURL] supporting [repeatsOnFailure] connection failures
+// connects an evm client to the given [rpcURL] supporting [repeatsOnFailure] connection failures
 func GetClient(rpcURL string) (Client, error) {
 	client := Client{
 		URL: rpcURL,
@@ -185,12 +185,15 @@ func GetContractBytecode(
 		repeatsOnFailure,
 		sleepBetweenRepeats,
 	)
-	return code, fmt.Errorf(
-		"failure obtaining code from %s at address %s: %w",
-		client.URL,
-		contractAddressStr,
-		err,
-	)
+	if err != nil {
+		err = fmt.Errorf(
+			"failure obtaining code from %s at address %s: %w",
+			client.URL,
+			contractAddressStr,
+			err,
+		)
+	}
+	return code, err
 }
 
 func GetPrivateKeyBalance(
@@ -718,7 +721,10 @@ func SetupProposerVM(
 		repeatsOnFailure,
 		sleepBetweenRepeats,
 	)
-	return fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
+	if err != nil {
+		err = fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
+	}
+	return err
 }
 
 // issueTxsToActivateProposerVMFork issues transactions at the current
