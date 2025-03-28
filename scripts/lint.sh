@@ -14,14 +14,19 @@ CLI_PATH=$(
 GOLANGCI_LINT_VERSION=v1.64.5
 
 # avoid calling go install unless it is needed: makes the script able to be used offline
-do_install=true
-which golangci-lint > /dev/null 2>&1
-if [ $? = 0 ]
+
+exists=true
+which golangci-lint > /dev/null 2>&1 || exists=false
+
+install=false
+if [ $exists = true ]
 then
-	golangci-lint --version | grep $GOLANGCI_LINT_VERSION > /dev/null 2>&1
-	[ $? = 0 ] && do_install=false
+	golangci-lint --version | grep $GOLANGCI_LINT_VERSION > /dev/null 2>&1 || install=true
+else
+	install=true
 fi
-if [ $do_install = true ]
+
+if [ $install = true ]
 then
 	go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
 fi
