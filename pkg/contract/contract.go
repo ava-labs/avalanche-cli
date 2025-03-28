@@ -332,7 +332,7 @@ func TxToMethod(
 		return nil, nil, err
 	}
 	defer client.Close()
-	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
+	contract := bind.NewBoundContract(contractAddress, *abi, client.EthClient, client.EthClient, client.EthClient)
 	var txOpts *bind.TransactOpts
 	if generateRawTxOnly {
 		txOpts = &bind.TransactOpts{
@@ -595,7 +595,7 @@ func CallToMethod(
 		return nil, err
 	}
 	defer client.Close()
-	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
+	contract := bind.NewBoundContract(contractAddress, *abi, client.EthClient, client.EthClient, client.EthClient)
 	var out []interface{}
 	err = contract.Call(&bind.CallOpts{}, &out, methodName, params...)
 	if err != nil {
@@ -651,7 +651,7 @@ func DeployContract(
 	if err != nil {
 		return common.Address{}, err
 	}
-	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, params...)
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client.EthClient, params...)
 	if err != nil {
 		return common.Address{}, err
 	}

@@ -38,12 +38,14 @@ const (
 
 var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")
 
-// ethclient with:
-// - repeats on failure for most operations
-// - logging of rpc url
+// wraps over ethclient for calls used by SDK. includes:
+// - finds out url scheme in case it is missing, to connect to ws/wss/http/https
+// - repeats to try to recover from failures
+// - logs rpc url in case of failure
+// - receives addresses and private keys as strings
 type Client struct {
-	ethclient ethclient.Client
-	url string
+	EthClient ethclient.Client
+	URL       string
 }
 
 // indicates if the given rpc url has schema or not
@@ -108,13 +110,13 @@ func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 // connects a evm client to the given [rpcURL] supporting [repeatsOnFailure] connection failures
 func GetClient(rpcURL string) (Client, error) {
 	client := Client{
-		url: rpcURL,
+		URL: rpcURL,
 	}
 	hasScheme, err := HasScheme(rpcURL)
 	if err != nil {
 		return client, fmt.Errorf("failure determining the scheme of url %s: %w", rpcURL, err)
 	}
-	client.ethclient, err = utils.Retry(
+	client.EthClient, err = utils.Retry(
 		func() (ethclient.Client, error) {
 			ctx, cancel := utils.GetAPILargeContext()
 			defer cancel()
@@ -132,6 +134,30 @@ func GetClient(rpcURL string) (Client, error) {
 		err = fmt.Errorf("failure connecting to %s: %w", rpcURL, err)
 	}
 	return client, err
+}
+
+func (client Client) Close() {
+	client.EthClient.Close()
+}
+
+func (client Client) BalanceAt(ctx context.Context, address common.Address, blockNumber *big.Int) (*big.Int, error) {
+	return client.EthClient.BalanceAt(ctx, address, blockNumber)
+}
+
+func (client Client) BlockNumber(ctx context.Context) (uint64, error) {
+	return client.EthClient.BlockNumber(ctx)
+}
+
+func (client Client) BlockByNumber(ctx context.Context, n *big.Int) (*types.Block, error) {
+	return client.EthClient.BlockByNumber(ctx, n)
+}
+
+func (client Client) FilterLogs(ctx context.Context, query interfaces.FilterQuery) ([]types.Log, error) {
+	return client.EthClient.FilterLogs(ctx, query)
+}
+
+func (client Client) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	return client.EthClient.TransactionReceipt(ctx, hash)
 }
 
 func ContractAlreadyDeployed(
@@ -154,14 +180,14 @@ func GetContractBytecode(
 		func() ([]byte, error) {
 			ctx, cancel := utils.GetAPILargeContext()
 			defer cancel()
-			return client.ethclient.CodeAt(ctx, contractAddress, nil)
+			return client.EthClient.CodeAt(ctx, contractAddress, nil)
 		},
 		repeatsOnFailure,
 		sleepBetweenRepeats,
 	)
 	return code, fmt.Errorf(
 		"failure obtaining code from %s at address %s: %w",
-		client.url,
+		client.URL,
 		contractAddressStr,
 		err,
 	)
@@ -190,11 +216,11 @@ func GetAddressBalance(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		balance, err = client.ethclient.BalanceAt(ctx, address, nil)
+		balance, err = client.EthClient.BalanceAt(ctx, address, nil)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure obtaining balance for %s on %s: %w", addressStr, client.url, err)
+		err = fmt.Errorf("failure obtaining balance for %s on %s: %w", addressStr, client.URL, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -235,11 +261,11 @@ func NonceAt(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		nonce, err = client.ethclient.NonceAt(ctx, address, nil)
+		nonce, err = client.EthClient.NonceAt(ctx, address, nil)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure obtaining nonce for %s on %s: %w", addressStr, client.url, err)
+		err = fmt.Errorf("failure obtaining nonce for %s on %s: %w", addressStr, client.URL, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -256,11 +282,11 @@ func SuggestGasTipCap(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		gasTipCap, err = client.ethclient.SuggestGasTipCap(ctx)
+		gasTipCap, err = client.EthClient.SuggestGasTipCap(ctx)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure obtaining gas tip cap on %s: %w", client.url, err)
+		err = fmt.Errorf("failure obtaining gas tip cap on %s: %w", client.URL, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -277,11 +303,11 @@ func EstimateBaseFee(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		baseFee, err = client.ethclient.EstimateBaseFee(ctx)
+		baseFee, err = client.EthClient.EstimateBaseFee(ctx)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure estimating base fee on %s: %w", client.url, err)
+		err = fmt.Errorf("failure estimating base fee on %s: %w", client.URL, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -299,11 +325,11 @@ func EstimateGasLimit(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		gasLimit, err = client.ethclient.EstimateGas(ctx, msg)
+		gasLimit, err = client.EthClient.EstimateGas(ctx, msg)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure estimating gas limit on %s: %w", client.url, err)
+		err = fmt.Errorf("failure estimating gas limit on %s: %w", client.URL, err)
 		time.Sleep(sleepBetweenRepeats)
 	}
 	return gasLimit, err
@@ -460,11 +486,11 @@ func SendTransaction(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		err = client.ethclient.SendTransaction(ctx, tx)
+		err = client.EthClient.SendTransaction(ctx, tx)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure sending transaction %#v to %s: %w", tx, client.url, err)
+		err = fmt.Errorf("failure sending transaction %#v to %s: %w", tx, client.URL, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -478,7 +504,7 @@ func WaitForChainID(client Client) {
 	for {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		_, err := client.ethclient.ChainID(ctx)
+		_, err := client.EthClient.ChainID(ctx)
 		if err == nil {
 			ux.SpinComplete(spinner)
 			spinSession.Stop()
@@ -486,7 +512,7 @@ func WaitForChainID(client Client) {
 			break
 		} else {
 			if time.Since(startTime) > 60*time.Second {
-				ux.SpinFailWithError(spinner, "", fmt.Errorf("failure getting chain id from %s: %w", client.url, err))
+				ux.SpinFailWithError(spinner, "", fmt.Errorf("failure getting chain id from %s: %w", client.URL, err))
 				spinSession.Stop()
 				break
 			}
@@ -503,11 +529,11 @@ func GetChainID(client Client) (*big.Int, error) {
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		chainID, err = client.ethclient.ChainID(ctx)
+		chainID, err = client.EthClient.ChainID(ctx)
 		if err == nil {
 			break
 		}
-		err = fmt.Errorf("failure getting chain id from %s: %w", client.url, err)
+		err = fmt.Errorf("failure getting chain id from %s: %w", client.URL, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -541,12 +567,12 @@ func WaitForTransaction(
 	for i := 0; i < repeatsOnFailure; i++ {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		receipt, err = bind.WaitMined(ctx, client.ethclient, tx)
+		receipt, err = bind.WaitMined(ctx, client.EthClient, tx)
 		if err == nil {
 			success = receipt.Status == types.ReceiptStatusSuccessful
 			break
 		}
-		err = fmt.Errorf("failure waiting for tx %#v on %s: %w", tx, client.url, err)
+		err = fmt.Errorf("failure waiting for tx %#v on %s: %w", tx, client.URL, err)
 		ux.Logger.RedXToUser("%s", err)
 		time.Sleep(sleepBetweenRepeats)
 	}
@@ -713,11 +739,11 @@ func issueTxsToActivateProposerVMFork(
 	for i := 0; i < numTriggerTxs; i++ {
 		ctx, cancel := utils.GetTimedContext(1 * time.Minute)
 		defer cancel()
-		prevBlockNumber, err := client.ethclient.BlockNumber(ctx)
+		prevBlockNumber, err := client.EthClient.BlockNumber(ctx)
 		if err != nil {
 			return fmt.Errorf("client.BlockNumber failure at step %d: %w", i, err)
 		}
-		nonce, err := client.ethclient.NonceAt(ctx, addr, nil)
+		nonce, err := client.EthClient.NonceAt(ctx, addr, nil)
 		if err != nil {
 			return fmt.Errorf("client.NonceAt failure at step %d: %w", i, err)
 		}
@@ -726,7 +752,7 @@ func issueTxsToActivateProposerVMFork(
 		if err != nil {
 			return fmt.Errorf("types.SignTx failure at step %d: %w", i, err)
 		}
-		if err := client.ethclient.SendTransaction(ctx, triggerTx); err != nil {
+		if err := client.EthClient.SendTransaction(ctx, triggerTx); err != nil {
 			return fmt.Errorf("client.SendTransaction failure at step %d: %w", i, err)
 		}
 		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
@@ -751,7 +777,7 @@ func WaitForNewBlock(
 	}
 	steps := totalDuration / stepDuration
 	for step := 0; step < int(steps); step++ {
-		blockNumber, err := client.ethclient.BlockNumber(ctx)
+		blockNumber, err := client.EthClient.BlockNumber(ctx)
 		if err != nil {
 			return err
 		}
@@ -760,7 +786,7 @@ func WaitForNewBlock(
 		}
 		time.Sleep(stepDuration)
 	}
-	return fmt.Errorf("no new block produced on %s in %f seconds", client.url, totalDuration.Seconds())
+	return fmt.Errorf("no new block produced on %s in %f seconds", client.URL, totalDuration.Seconds())
 }
 
 func ExtractWarpMessageFromReceipt(
@@ -768,7 +794,7 @@ func ExtractWarpMessageFromReceipt(
 	ctx context.Context,
 	receipt *types.Receipt,
 ) (*avalancheWarp.UnsignedMessage, error) {
-	logs, err := client.ethclient.FilterLogs(ctx, interfaces.FilterQuery{
+	logs, err := client.EthClient.FilterLogs(ctx, interfaces.FilterQuery{
 		BlockHash: &receipt.BlockHash,
 		Addresses: []common.Address{warp.Module.Address},
 	})
