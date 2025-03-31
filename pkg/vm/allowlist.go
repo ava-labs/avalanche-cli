@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
@@ -60,11 +61,11 @@ func getNewAddresses(
 	for _, address := range addresses {
 		switch {
 		case sdkUtils.Belongs(allowList.AdminAddresses, address):
-			fmt.Println(address.Hex() + " is already allowed as admin role")
+			ux.Logger.RedXToUser(address.Hex() + " is already allowed as admin role")
 		case sdkUtils.Belongs(allowList.ManagerAddresses, address):
-			fmt.Println(address.Hex() + " is already allowed as manager role")
+			ux.Logger.RedXToUser(address.Hex() + " is already allowed as manager role")
 		case sdkUtils.Belongs(allowList.EnabledAddresses, address):
-			fmt.Println(address.Hex() + " is already allowed as enabled role")
+			ux.Logger.RedXToUser(address.Hex() + " is already allowed as enabled role")
 		default:
 			newAddresses = append(newAddresses, address)
 		}
