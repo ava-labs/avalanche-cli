@@ -228,7 +228,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			// from the blockchain id (as relayer logs cmd)
 			ux.Logger.PrintToUser("")
 			for _, destination := range configSpec.destinations {
-				addr, err := utils.PrivateKeyToAddress(destination.privateKey)
+				addr, err := evm.PrivateKeyToAddress(destination.privateKey)
 				if err != nil {
 					return err
 				}
@@ -236,7 +236,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				if err != nil {
 					return err
 				}
-				balance, err := evm.GetAddressBalance(client, addr.Hex())
+				balance, err := client.GetAddressBalance(addr.Hex())
 				if err != nil {
 					return err
 				}
@@ -274,7 +274,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 
 	if fundBlockchains {
 		for _, destination := range configSpec.destinations {
-			addr, err := utils.PrivateKeyToAddress(destination.privateKey)
+			addr, err := evm.PrivateKeyToAddress(destination.privateKey)
 			if err != nil {
 				return err
 			}
@@ -300,7 +300,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			case isCChainDestination && flags.CChainAmount != 0:
 				doPay = true
 			default:
-				balance, err := evm.GetAddressBalance(client, addr.Hex())
+				balance, err := client.GetAddressBalance(addr.Hex())
 				if err != nil {
 					return err
 				}
@@ -370,7 +370,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 						return err
 					}
 				}
-				balance, err := evm.GetPrivateKeyBalance(client, privateKey)
+				balance, err := client.GetPrivateKeyBalance(privateKey)
 				if err != nil {
 					return err
 				}
@@ -415,7 +415,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 				amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
 				amount, _ := amountBigFlt.Int(nil)
-				if err := evm.FundAddress(client, privateKey, addr.Hex(), amount); err != nil {
+				if err := client.FundAddress(privateKey, addr.Hex(), amount); err != nil {
 					return err
 				}
 			}

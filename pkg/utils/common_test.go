@@ -4,10 +4,8 @@ package utils
 
 import (
 	"encoding/json"
-	"errors"
 	"reflect"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -238,62 +236,6 @@ func TestExtractPlaceholderValue(t *testing.T) {
 				t.Errorf("ExtractPlaceholderValue() = %v, want %v", got, tt.expected)
 			}
 		})
-	}
-}
-
-// Mock function for testing retries.
-func mockFunction() (interface{}, error) {
-	return nil, errors.New("error occurred")
-}
-
-// TestRetryFunction tests the RetryFunction.
-func TestRetryFunction(t *testing.T) {
-	success := "success"
-	// Test with a function that always returns an error.
-	result, err := RetryFunction(mockFunction, 3, 100*time.Millisecond)
-	if err == nil {
-		t.Errorf("Expected an error, got nil")
-	}
-	if result != nil {
-		t.Errorf("Expected nil result, got %v", result)
-	}
-
-	// Test with a function that succeeds on the first attempt.
-	fn := func() (interface{}, error) {
-		return success, nil
-	}
-	result, err = RetryFunction(fn, 3, 100*time.Millisecond)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if result != success {
-		t.Errorf("Expected 'success' result, got %v", result)
-	}
-
-	// Test with a function that succeeds after multiple attempts.
-	count := 0
-	fn = func() (interface{}, error) {
-		count++
-		if count < 3 {
-			return nil, errors.New("error occurred")
-		}
-		return success, nil
-	}
-	result, err = RetryFunction(fn, 5, 100*time.Millisecond)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if result != success {
-		t.Errorf("Expected 'success' result, got %v", result)
-	}
-
-	// Test with invalid retry interval.
-	result, err = RetryFunction(mockFunction, 3, 0)
-	if err == nil {
-		t.Errorf("Expected an error, got nil")
-	}
-	if result != nil {
-		t.Errorf("Expected nil result, got %v", result)
 	}
 }
 

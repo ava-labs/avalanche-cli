@@ -332,7 +332,7 @@ func TxToMethod(
 		return nil, nil, err
 	}
 	defer client.Close()
-	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
+	contract := bind.NewBoundContract(contractAddress, *abi, client.EthClient, client.EthClient, client.EthClient)
 	var txOpts *bind.TransactOpts
 	if generateRawTxOnly {
 		txOpts = &bind.TransactOpts{
@@ -341,7 +341,7 @@ func TxToMethod(
 			NoSend: true,
 		}
 	} else {
-		txOpts, err = evm.GetTxOptsWithSigner(client, privateKey)
+		txOpts, err = client.GetTxOptsWithSigner(privateKey)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -375,7 +375,7 @@ func TxToMethod(
 	if generateRawTxOnly {
 		return tx, nil, nil
 	}
-	receipt, success, err := evm.WaitForTransaction(client, tx)
+	receipt, success, err := client.WaitForTransaction(tx)
 	if err != nil {
 		return tx, nil, err
 	} else if !success {
@@ -450,10 +450,10 @@ func TxToMethodWithWarpMessage(
 	if generateRawTxOnly {
 		return tx, nil, nil
 	}
-	if err := evm.SendTransaction(client, tx); err != nil {
+	if err := client.SendTransaction(tx); err != nil {
 		return tx, nil, err
 	}
-	receipt, success, err := evm.WaitForTransaction(client, tx)
+	receipt, success, err := client.WaitForTransaction(tx)
 	if err != nil {
 		return tx, receipt, err
 	} else if !success {
@@ -595,7 +595,7 @@ func CallToMethod(
 		return nil, err
 	}
 	defer client.Close()
-	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
+	contract := bind.NewBoundContract(contractAddress, *abi, client.EthClient, client.EthClient, client.EthClient)
 	var out []interface{}
 	err = contract.Call(&bind.CallOpts{}, &out, methodName, params...)
 	if err != nil {
@@ -647,15 +647,15 @@ func DeployContract(
 		return common.Address{}, err
 	}
 	defer client.Close()
-	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
+	txOpts, err := client.GetTxOptsWithSigner(privateKey)
 	if err != nil {
 		return common.Address{}, err
 	}
-	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, params...)
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client.EthClient, params...)
 	if err != nil {
 		return common.Address{}, err
 	}
-	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+	if _, success, err := client.WaitForTransaction(tx); err != nil {
 		return common.Address{}, err
 	} else if !success {
 		return common.Address{}, ErrFailedReceiptStatus

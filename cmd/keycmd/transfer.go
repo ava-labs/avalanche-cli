@@ -405,7 +405,7 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	return clievm.FundAddress(client, privateKey, destinationAddr, amount)
+	return client.FundAddress(privateKey, destinationAddr, amount)
 }
 
 func interEvmSend(
@@ -800,7 +800,7 @@ func importIntoC(
 	if err != nil {
 		return err
 	}
-	baseFee, err := clievm.EstimateBaseFee(client)
+	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
 		return err
 	}
@@ -903,7 +903,7 @@ func exportFromC(
 	if err != nil {
 		return err
 	}
-	baseFee, err := clievm.EstimateBaseFee(client)
+	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
 		return err
 	}

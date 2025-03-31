@@ -114,7 +114,7 @@ func (h *Host) Upload(localFile string, remoteFile string, timeout time.Duration
 		}
 	}
 	_, err := utils.TimedFunction(
-		func() (interface{}, error) {
+		func() (any, error) {
 			return nil, h.Connection.Upload(localFile, remoteFile)
 		},
 		"upload",
@@ -153,7 +153,7 @@ func (h *Host) Download(remoteFile string, localFile string, timeout time.Durati
 		return err
 	}
 	_, err := utils.TimedFunction(
-		func() (interface{}, error) {
+		func() (any, error) {
 			return nil, h.Connection.Download(remoteFile, localFile)
 		},
 		"download",
@@ -199,7 +199,7 @@ func (h *Host) MkdirAll(remoteDir string, timeout time.Duration) error {
 		}
 	}
 	_, err := utils.TimedFunction(
-		func() (interface{}, error) {
+		func() (any, error) {
 			return nil, h.UntimedMkdirAll(remoteDir)
 		},
 		"mkdir",
@@ -255,8 +255,8 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error
 			return nil, err
 		}
 	}
-	retI, err := utils.TimedFunctionWithRetry(
-		func() (interface{}, error) {
+	ret, err := utils.TimedFunctionWithRetry(
+		func() ([]byte, error) {
 			return h.UntimedForward(httpRequest)
 		},
 		"post over ssh",
@@ -266,10 +266,6 @@ func (h *Host) Forward(httpRequest string, timeout time.Duration) ([]byte, error
 	)
 	if err != nil {
 		err = fmt.Errorf("%w for host %s", err, h.IP)
-	}
-	ret := []byte(nil)
-	if retI != nil {
-		ret = retI.([]byte)
 	}
 	return ret, err
 }

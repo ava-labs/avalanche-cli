@@ -60,8 +60,7 @@ func ProxyHasValidatorManagerSet(
 	if err != nil {
 		return false, err
 	}
-	return evm.ContractAlreadyDeployed(
-		client,
+	return client.ContractAlreadyDeployed(
 		validatorManagerAddress.Hex(),
 	)
 }

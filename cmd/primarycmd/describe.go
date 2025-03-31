@@ -97,7 +97,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	evmChainID, err := evm.GetChainID(client)
+	evmChainID, err := client.GetChainID()
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	}
 	address := k.C()
 	privKey := k.PrivKeyHex()
-	balance, err := evm.GetAddressBalance(client, address)
+	balance, err := client.GetAddressBalance(address)
 	if err != nil {
 		return err
 	}

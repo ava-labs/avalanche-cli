@@ -5,6 +5,7 @@ package keychain
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -91,7 +92,7 @@ func (kc *Keychain) AddAddresses(addresses []string) error {
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(kc.LedgerIndices...)
 		kc.LedgerIndices = ledgerIndicesSet.List()
-		utils.SortUint32(kc.LedgerIndices)
+		slices.Sort(kc.LedgerIndices)
 		if len(kc.LedgerIndices) != prevNumIndices {
 			if err := showLedgerAddresses(kc.Network, kc.Ledger, kc.LedgerIndices); err != nil {
 				return err
@@ -206,7 +207,7 @@ func GetKeychain(
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(ledgerIndices...)
 		ledgerIndices = ledgerIndicesSet.List()
-		utils.SortUint32(ledgerIndices)
+		slices.Sort(ledgerIndices)
 		if err := showLedgerAddresses(network, ledgerDevice, ledgerIndices); err != nil {
 			return nil, err
 		}

@@ -73,14 +73,13 @@ func FundRelayer(
 	if err != nil {
 		return err
 	}
-	relayerBalance, err := evm.GetAddressBalance(client, relayerAddress)
+	relayerBalance, err := client.GetAddressBalance(relayerAddress)
 	if err != nil {
 		return err
 	}
 	if relayerBalance.Cmp(relayerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(relayerRequiredBalance, relayerBalance)
-		err := evm.FundAddress(
-			client,
+		err := client.FundAddress(
 			prefundedPrivateKey,
 			relayerAddress,
 			toFund,

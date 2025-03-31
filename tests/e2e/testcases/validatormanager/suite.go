@@ -189,7 +189,8 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		rpcURL := fmt.Sprintf("%s/ext/bc/%s/rpc", uris[0], blockchainIDStr)
 		client, err := evm.GetClient(rpcURL)
 		gomega.Expect(err).Should(gomega.BeNil())
-		evm.WaitForChainID(client)
+		err = client.WaitForEVMBootstrapped(0)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), utils.TestLocalNodeName)
 

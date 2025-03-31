@@ -327,7 +327,9 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	evm.WaitForChainID(client)
+	if err := client.WaitForEVMBootstrapped(0); err != nil {
+		return tracked, err
+	}
 
 	if pos {
 		deployed, err := validatormanager.ProxyHasValidatorManagerSet(rpcURL)

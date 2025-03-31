@@ -275,15 +275,14 @@ func (t *ICMDeployer) DeployMessenger(
 	if err != nil {
 		return false, "", err
 	}
-	if messengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.messengerContractAddress); err != nil {
+	if messengerAlreadyDeployed, err := client.ContractAlreadyDeployed(t.messengerContractAddress); err != nil {
 		return false, "", fmt.Errorf("failure making a request to %s: %w", rpcURL, err)
 	} else if messengerAlreadyDeployed {
 		ux.Logger.PrintToUser("ICM Messenger has already been deployed to %s", subnetName)
 		return true, t.messengerContractAddress, nil
 	}
 	// get icm deployer balance
-	messengerDeployerBalance, err := evm.GetAddressBalance(
-		client,
+	messengerDeployerBalance, err := client.GetAddressBalance(
 		t.messengerDeployerAddress,
 	)
 	if err != nil {
@@ -292,8 +291,7 @@ func (t *ICMDeployer) DeployMessenger(
 	if messengerDeployerBalance.Cmp(messengerDeployerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).
 			Sub(messengerDeployerRequiredBalance, messengerDeployerBalance)
-		if err := evm.FundAddress(
-			client,
+		if err := client.FundAddress(
 			privateKey,
 			t.messengerDeployerAddress,
 			toFund,
@@ -301,7 +299,7 @@ func (t *ICMDeployer) DeployMessenger(
 			return false, "", err
 		}
 	}
-	if err := evm.IssueTx(client, t.messengerDeployerTx); err != nil {
+	if err := client.IssueTx(t.messengerDeployerTx); err != nil {
 		return false, "", err
 	}
 	ux.Logger.PrintToUser(

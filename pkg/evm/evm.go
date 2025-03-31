@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package evm
 
@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -29,359 +29,40 @@ import (
 )
 
 const (
-	BaseFeeFactor               = 2
-	MaxPriorityFeePerGas        = 2500000000 // 2.5 gwei
-	NativeTransferGas    uint64 = 21_000
 	repeatsOnFailure            = 3
 	sleepBetweenRepeats         = 1 * time.Second
+	baseFeeFactor               = 2
+	maxPriorityFeePerGas        = 2500000000 // 2.5 gwei
+	nativeTransferGas    uint64 = 21_000
 )
 
 var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")
 
-func ContractAlreadyDeployed(
-	client ethclient.Client,
-	contractAddress string,
-) (bool, error) {
-	if bs, err := GetContractBytecode(client, contractAddress); err != nil {
-		return false, err
+// wraps over ethclient for calls used by SDK. includes:
+// - finds out url scheme in case it is missing, to connect to ws/wss/http/https
+// - repeats to try to recover from failures, generating its own context for each call
+// - logs rpc url in case of failure
+// - receives addresses and private keys as strings
+type Client struct {
+	EthClient ethclient.Client
+	URL       string
+}
+
+// indicates if the given rpc url has schema or not
+func HasScheme(rpcURL string) (bool, error) {
+	if parsedURL, err := url.Parse(rpcURL); err != nil {
+		if !strings.Contains(err.Error(), "first path segment in URL cannot contain colon") {
+			return false, err
+		}
+		return false, nil
 	} else {
-		return len(bs) != 0, nil
+		return parsedURL.Scheme != "", nil
 	}
 }
 
-func GetContractBytecode(
-	client ethclient.Client,
-	contractAddressStr string,
-) ([]byte, error) {
-	contractAddress := common.HexToAddress(contractAddressStr)
-	var (
-		code []byte
-		err  error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		code, err = client.CodeAt(ctx, contractAddress, nil)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf(
-			"failure obtaining code for %s on %#v: %w",
-			contractAddressStr,
-			client,
-			err,
-		)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return code, err
-}
-
-func GetPrivateKeyBalance(
-	client ethclient.Client,
-	privateKey string,
-) (*big.Int, error) {
-	addr, err := utils.PrivateKeyToAddress(privateKey)
-	if err != nil {
-		return nil, err
-	}
-	return GetAddressBalance(client, addr.Hex())
-}
-
-func GetAddressBalance(
-	client ethclient.Client,
-	addressStr string,
-) (*big.Int, error) {
-	address := common.HexToAddress(addressStr)
-	var (
-		balance *big.Int
-		err     error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		balance, err = client.BalanceAt(ctx, address, nil)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure obtaining balance for %s on %#v: %w", addressStr, client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return balance, err
-}
-
-// Returns the gasFeeCap, gasTipCap, and nonce the be used when constructing a transaction from address
-func CalculateTxParams(
-	client ethclient.Client,
-	addressStr string,
-) (*big.Int, *big.Int, uint64, error) {
-	baseFee, err := EstimateBaseFee(client)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	gasTipCap, err := SuggestGasTipCap(client)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	nonce, err := NonceAt(client, addressStr)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(BaseFeeFactor))
-	gasFeeCap.Add(gasFeeCap, big.NewInt(MaxPriorityFeePerGas))
-	return gasFeeCap, gasTipCap, nonce, nil
-}
-
-func NonceAt(
-	client ethclient.Client,
-	addressStr string,
-) (uint64, error) {
-	address := common.HexToAddress(addressStr)
-	var (
-		nonce uint64
-		err   error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		nonce, err = client.NonceAt(ctx, address, nil)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure obtaining nonce for %s on %#v: %w", addressStr, client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return nonce, err
-}
-
-func SuggestGasTipCap(
-	client ethclient.Client,
-) (*big.Int, error) {
-	var (
-		gasTipCap *big.Int
-		err       error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		gasTipCap, err = client.SuggestGasTipCap(ctx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure obtaining gas tip cap on %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return gasTipCap, err
-}
-
-func EstimateBaseFee(
-	client ethclient.Client,
-) (*big.Int, error) {
-	var (
-		baseFee *big.Int
-		err     error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		baseFee, err = client.EstimateBaseFee(ctx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure estimating base fee on %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return baseFee, err
-}
-
-func EstimateGasLimit(
-	client ethclient.Client,
-	msg interfaces.CallMsg,
-) (uint64, error) {
-	var (
-		gasLimit uint64
-		err      error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		gasLimit, err = client.EstimateGas(ctx, msg)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure estimating gas limit on %#v: %w", client, err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return gasLimit, err
-}
-
-func FundAddress(
-	client ethclient.Client,
-	sourceAddressPrivateKeyStr string,
-	targetAddressStr string,
-	amount *big.Int,
-) error {
-	sourceAddressPrivateKey, err := crypto.HexToECDSA(sourceAddressPrivateKeyStr)
-	if err != nil {
-		return err
-	}
-	sourceAddress := crypto.PubkeyToAddress(sourceAddressPrivateKey.PublicKey)
-	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, sourceAddress.Hex())
-	if err != nil {
-		return err
-	}
-	targetAddress := common.HexToAddress(targetAddressStr)
-	chainID, err := GetChainID(client)
-	if err != nil {
-		return err
-	}
-	tx := types.NewTx(&types.DynamicFeeTx{
-		ChainID:   chainID,
-		Nonce:     nonce,
-		To:        &targetAddress,
-		Gas:       NativeTransferGas,
-		GasFeeCap: gasFeeCap,
-		GasTipCap: gasTipCap,
-		Value:     amount,
-	})
-	txSigner := types.LatestSignerForChainID(chainID)
-	signedTx, err := types.SignTx(tx, txSigner, sourceAddressPrivateKey)
-	if err != nil {
-		return err
-	}
-	if err := SendTransaction(client, signedTx); err != nil {
-		return err
-	}
-	if _, b, err := WaitForTransaction(client, signedTx); err != nil {
-		return err
-	} else if !b {
-		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
-	}
-	return nil
-}
-
-func GetTxToMethodWithWarpMessage(
-	client ethclient.Client,
-	generateRawTxOnly bool,
-	from common.Address,
-	privateKeyStr string,
-	warpMessage *avalancheWarp.Message,
-	contract common.Address,
-	callData []byte,
-	value *big.Int,
-) (*types.Transaction, error) {
-	const defaultGasLimit = 2_000_000
-	var (
-		privateKey *ecdsa.PrivateKey
-		err        error
-	)
-	if privateKeyStr == "" && from == (common.Address{}) {
-		return nil, fmt.Errorf("from address and private key can't be both empty at GetTxToMethodWithWarpMessage")
-	}
-	if !generateRawTxOnly && privateKeyStr == "" {
-		return nil, fmt.Errorf("from private key must be defined to be able to sign the tx at GetTxToMethodWithWarpMessage")
-	}
-	if privateKeyStr != "" {
-		privateKey, err = crypto.HexToECDSA(privateKeyStr)
-		if err != nil {
-			return nil, err
-		}
-		if from == (common.Address{}) {
-			from = crypto.PubkeyToAddress(privateKey.PublicKey)
-		}
-	}
-	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, from.Hex())
-	if err != nil {
-		return nil, err
-	}
-	chainID, err := GetChainID(client)
-	if err != nil {
-		return nil, err
-	}
-	accessList := types.AccessList{
-		types.AccessTuple{
-			Address:     warp.ContractAddress,
-			StorageKeys: subnetEvmUtils.BytesToHashSlice(predicate.PackPredicate(warpMessage.Bytes())),
-		},
-	}
-	msg := interfaces.CallMsg{
-		From:       from,
-		To:         &contract,
-		GasPrice:   nil,
-		GasTipCap:  gasTipCap,
-		GasFeeCap:  gasFeeCap,
-		Value:      value,
-		Data:       callData,
-		AccessList: accessList,
-	}
-	gasLimit, err := EstimateGasLimit(client, msg)
-	if err != nil {
-		// assuming this is related to the tx itself.
-		// just using default gas limit, and let the user debug the
-		// tx if needed so
-		gasLimit = defaultGasLimit
-	}
-	tx := types.NewTx(&types.DynamicFeeTx{
-		ChainID:    chainID,
-		Nonce:      nonce,
-		To:         &contract,
-		Gas:        gasLimit,
-		GasFeeCap:  gasFeeCap,
-		GasTipCap:  gasTipCap,
-		Value:      value,
-		Data:       callData,
-		AccessList: accessList,
-	})
-	if generateRawTxOnly {
-		return tx, nil
-	}
-	txSigner := types.LatestSignerForChainID(chainID)
-	return types.SignTx(tx, txSigner, privateKey)
-}
-
-func IssueTx(
-	client ethclient.Client,
-	txStr string,
-) error {
-	tx := new(types.Transaction)
-	if err := tx.UnmarshalBinary(common.FromHex(txStr)); err != nil {
-		return err
-	}
-	if err := SendTransaction(client, tx); err != nil {
-		return err
-	}
-	if receipt, b, err := WaitForTransaction(client, tx); err != nil {
-		return err
-	} else if !b {
-		return fmt.Errorf("failure sending tx: got status %d expected %d", receipt.Status, types.ReceiptStatusSuccessful)
-	}
-	return nil
-}
-
-func SendTransaction(
-	client ethclient.Client,
-	tx *types.Transaction,
-) error {
-	var err error
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		err = client.SendTransaction(ctx, tx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure sending transaction %#v to %#v: %w", tx, client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return err
-}
-
-func FindOutScheme(rpcURL string) (ethclient.Client, string, error) {
+// tries to connect an ethclient to a rpc url without scheme,
+// by trying out different possible schemes: ws, wss, https, http
+func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 	if b, err := HasScheme(rpcURL); err != nil {
 		return nil, "", err
 	} else if b {
@@ -426,125 +107,444 @@ func FindOutScheme(rpcURL string) (ethclient.Client, string, error) {
 	return nil, "", notDeterminedErr
 }
 
-func HasScheme(rpcURL string) (bool, error) {
-	if parsedURL, err := url.Parse(rpcURL); err != nil {
-		if !strings.Contains(err.Error(), "first path segment in URL cannot contain colon") {
-			return false, err
-		}
-		return false, nil
-	} else if parsedURL.Scheme == "" {
-		return false, nil
+// connects an evm client to the given [rpcURL]
+// supports [repeatsOnFailure] failures
+func GetClient(rpcURL string) (Client, error) {
+	client := Client{
+		URL: rpcURL,
 	}
-	return true, nil
-}
-
-func GetClient(rpcURL string) (ethclient.Client, error) {
-	var (
-		client ethclient.Client
-		err    error
-	)
 	hasScheme, err := HasScheme(rpcURL)
 	if err != nil {
-		return nil, err
+		return client, fmt.Errorf("failure determining the scheme of url %s: %w", rpcURL, err)
 	}
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		if hasScheme {
-			client, err = ethclient.DialContext(ctx, rpcURL)
-		} else {
-			client, _, err = FindOutScheme(rpcURL)
-		}
-		if err == nil {
-			break
-		}
+	client.EthClient, err = utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (ethclient.Client, error) {
+			if hasScheme {
+				return ethclient.DialContext(ctx, rpcURL)
+			} else {
+				client, _, err := GetClientWithoutScheme(rpcURL)
+				return client, err
+			}
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
 		err = fmt.Errorf("failure connecting to %s: %w", rpcURL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
 	}
 	return client, err
 }
 
-func WaitForChainID(client ethclient.Client) {
-	startTime := time.Now()
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Checking if node is healthy...")
-	for {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		_, err := client.ChainID(ctx)
-		if err == nil {
-			ux.SpinComplete(spinner)
-			spinSession.Stop()
-			ux.Logger.GreenCheckmarkToUser("Node is healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
-			break
-		} else {
-			if time.Since(startTime) > 60*time.Second {
-				ux.SpinFailWithError(spinner, "", fmt.Errorf("failure getting chain id from client %#v: %w", client, err))
-				spinSession.Stop()
-				break
-			}
-			time.Sleep(5 * time.Second)
-		}
+// closes underlying ethclient connection
+func (client Client) Close() {
+	client.EthClient.Close()
+}
+
+// indicates wether a contract is deployed on [contractAddress]
+// supports [repeatsOnFailure] failures
+func (client Client) ContractAlreadyDeployed(
+	contractAddress string,
+) (bool, error) {
+	if bs, err := client.GetContractBytecode(contractAddress); err != nil {
+		return false, err
+	} else {
+		return len(bs) != 0, nil
 	}
 }
 
-func GetChainID(client ethclient.Client) (*big.Int, error) {
-	var (
-		chainID *big.Int
-		err     error
+// returns the contract bytecode at [contractAddress]
+// supports [repeatsOnFailure] failures
+func (client Client) GetContractBytecode(
+	contractAddressStr string,
+) ([]byte, error) {
+	contractAddress := common.HexToAddress(contractAddressStr)
+	code, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) ([]byte, error) {
+			return client.EthClient.CodeAt(ctx, contractAddress, nil)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
 	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		chainID, err = client.ChainID(ctx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure getting chain id from client %#v: %w", client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
+	if err != nil {
+		err = fmt.Errorf(
+			"failure obtaining code from %s at address %s: %w",
+			client.URL,
+			contractAddressStr,
+			err,
+		)
+	}
+	return code, err
+}
+
+// returns the balance for [privateKey]
+// supports [repeatsOnFailure] failures
+func (client Client) GetPrivateKeyBalance(
+	privateKey string,
+) (*big.Int, error) {
+	addr, err := PrivateKeyToAddress(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return client.GetAddressBalance(addr.Hex())
+}
+
+// returns the balance for [address]
+// supports [repeatsOnFailure] failures
+func (client Client) GetAddressBalance(
+	addressStr string,
+) (*big.Int, error) {
+	address := common.HexToAddress(addressStr)
+	balance, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.BalanceAt(ctx, address, nil)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure obtaining balance for %s on %s: %w", addressStr, client.URL, err)
+	}
+	return balance, err
+}
+
+// returns the nonce at [address]
+// supports [repeatsOnFailure] failures
+func (client Client) NonceAt(
+	addressStr string,
+) (uint64, error) {
+	address := common.HexToAddress(addressStr)
+	nonce, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (uint64, error) {
+			return client.EthClient.NonceAt(ctx, address, nil)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure obtaining nonce for %s on %s: %w", addressStr, client.URL, err)
+	}
+	return nonce, err
+}
+
+// returns the suggested gas tip
+// supports [repeatsOnFailure] failures
+func (client Client) SuggestGasTipCap() (*big.Int, error) {
+	gasTipCap, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.SuggestGasTipCap(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure obtaining gas tip cap on %s: %w", client.URL, err)
+	}
+	return gasTipCap, err
+}
+
+// returns the estimated base fee
+// supports [repeatsOnFailure] failures
+func (client Client) EstimateBaseFee() (*big.Int, error) {
+	baseFee, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.EstimateBaseFee(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure estimating base fee on %s: %w", client.URL, err)
+	}
+	return baseFee, err
+}
+
+// Returns gasFeeCap, gasTipCap, and nonce to be used when constructing a transaction
+// supports [repeatsOnFailure] failures on each step
+func (client Client) CalculateTxParams(
+	address string,
+) (*big.Int, *big.Int, uint64, error) {
+	baseFee, err := client.EstimateBaseFee()
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	gasTipCap, err := client.SuggestGasTipCap()
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	nonce, err := client.NonceAt(address)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(baseFeeFactor))
+	gasFeeCap.Add(gasFeeCap, big.NewInt(maxPriorityFeePerGas))
+	return gasFeeCap, gasTipCap, nonce, nil
+}
+
+// returns the estimated gas limit
+// supports [repeatsOnFailure] failures
+func (client Client) EstimateGasLimit(
+	msg interfaces.CallMsg,
+) (uint64, error) {
+	gasLimit, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (uint64, error) {
+			return client.EthClient.EstimateGas(ctx, msg)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure estimating gas limit on %s: %w", client.URL, err)
+	}
+	return gasLimit, err
+}
+
+// returns the chain ID
+// supports [repeatsOnFailure] failures
+func (client Client) GetChainID() (*big.Int, error) {
+	chainID, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.ChainID(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure getting chain id from %s: %w", client.URL, err)
 	}
 	return chainID, err
 }
 
-func GetTxOptsWithSigner(
-	client ethclient.Client,
+// sends [tx]
+// supports [repeatsOnFailure] failures
+func (client Client) SendTransaction(
+	tx *types.Transaction,
+) error {
+	_, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (any, error) {
+			return nil, client.EthClient.SendTransaction(ctx, tx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure sending transaction %#v to %s: %w", tx, client.URL, err)
+	}
+	return err
+}
+
+// waits for [tx]'s receipt to have successful state
+// supports [repeatsOnFailure] failures
+func (client Client) WaitForTransaction(
+	tx *types.Transaction,
+) (*types.Receipt, bool, error) {
+	receipt, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*types.Receipt, error) {
+			return bind.WaitMined(ctx, client.EthClient, tx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure waiting for tx %#v on %s: %w", tx, client.URL, err)
+	}
+	var success bool
+	if receipt != nil {
+		success = receipt.Status == types.ReceiptStatusSuccessful
+	}
+	return receipt, success, err
+}
+
+// transfers [amount] to [targetAddressStr] using [sourceAddressPrivateKeyStr]
+// supports [repeatsOnFailure] failures on each step
+func (client Client) FundAddress(
+	sourceAddressPrivateKeyStr string,
+	targetAddressStr string,
+	amount *big.Int,
+) error {
+	sourceAddressPrivateKey, err := crypto.HexToECDSA(sourceAddressPrivateKeyStr)
+	if err != nil {
+		return err
+	}
+	sourceAddress := crypto.PubkeyToAddress(sourceAddressPrivateKey.PublicKey)
+	gasFeeCap, gasTipCap, nonce, err := client.CalculateTxParams(sourceAddress.Hex())
+	if err != nil {
+		return err
+	}
+	targetAddress := common.HexToAddress(targetAddressStr)
+	chainID, err := client.GetChainID()
+	if err != nil {
+		return err
+	}
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:   chainID,
+		Nonce:     nonce,
+		To:        &targetAddress,
+		Gas:       nativeTransferGas,
+		GasFeeCap: gasFeeCap,
+		GasTipCap: gasTipCap,
+		Value:     amount,
+	})
+	txSigner := types.LatestSignerForChainID(chainID)
+	signedTx, err := types.SignTx(tx, txSigner, sourceAddressPrivateKey)
+	if err != nil {
+		return err
+	}
+	if err := client.SendTransaction(signedTx); err != nil {
+		return err
+	}
+	if _, b, err := client.WaitForTransaction(signedTx); err != nil {
+		return err
+	} else if !b {
+		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
+	}
+	return nil
+}
+
+// encode [txStr] to binary, sends and waits for it
+// supports [repeatsOnFailure] failures on each step
+func (client Client) IssueTx(
+	txStr string,
+) error {
+	tx := new(types.Transaction)
+	if err := tx.UnmarshalBinary(common.FromHex(txStr)); err != nil {
+		return err
+	}
+	if err := client.SendTransaction(tx); err != nil {
+		return err
+	}
+	if receipt, b, err := client.WaitForTransaction(tx); err != nil {
+		return err
+	} else if !b {
+		return fmt.Errorf("failure sending tx: got status %d expected %d", receipt.Status, types.ReceiptStatusSuccessful)
+	}
+	return nil
+}
+
+// returns tx options that include signer for [prefundedPrivateKeyStr]
+// supports [repeatsOnFailure] failures when gathering chain info
+func (client Client) GetTxOptsWithSigner(
 	prefundedPrivateKeyStr string,
 ) (*bind.TransactOpts, error) {
 	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
 	if err != nil {
 		return nil, err
 	}
-	chainID, err := GetChainID(client)
+	chainID, err := client.GetChainID()
 	if err != nil {
 		return nil, fmt.Errorf("failure generating signer: %w", err)
 	}
 	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
 }
 
-func WaitForTransaction(
-	client ethclient.Client,
-	tx *types.Transaction,
-) (*types.Receipt, bool, error) {
-	var (
-		err     error
-		receipt *types.Receipt
-		success bool
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
+// waits for [timeout] until evm is bootstrapped
+// considers evm is bootstrapped if it responds to an evm call (ChainID)
+func (client Client) WaitForEVMBootstrapped(timeout time.Duration) error {
+	const stepDuration = 5 * time.Second
+	if timeout == 0 {
+		timeout = 60 * time.Second
+	}
+	startTime := time.Now()
+	for {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
-		receipt, err = bind.WaitMined(ctx, client, tx)
-		if err == nil {
-			success = receipt.Status == types.ReceiptStatusSuccessful
-			break
+		if _, err := client.EthClient.ChainID(ctx); err == nil {
+			return nil
+		} else {
+			if time.Since(startTime) > timeout {
+				return fmt.Errorf("client at %s not bootstrapped after %.2f seconds: %w", client.URL, timeout.Seconds(), err)
+			}
+			time.Sleep(stepDuration)
 		}
-		err = fmt.Errorf("failure waiting for tx %#v on client %#v: %w", tx, client, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
 	}
-	return receipt, success, err
+}
+
+func GetTxToMethodWithWarpMessage(
+	client Client,
+	generateRawTxOnly bool,
+	from common.Address,
+	privateKeyStr string,
+	warpMessage *avalancheWarp.Message,
+	contract common.Address,
+	callData []byte,
+	value *big.Int,
+) (*types.Transaction, error) {
+	const defaultGasLimit = 2_000_000
+	var (
+		privateKey *ecdsa.PrivateKey
+		err        error
+	)
+	if privateKeyStr == "" && from == (common.Address{}) {
+		return nil, fmt.Errorf("from address and private key can't be both empty at GetTxToMethodWithWarpMessage")
+	}
+	if !generateRawTxOnly && privateKeyStr == "" {
+		return nil, fmt.Errorf("from private key must be defined to be able to sign the tx at GetTxToMethodWithWarpMessage")
+	}
+	if privateKeyStr != "" {
+		privateKey, err = crypto.HexToECDSA(privateKeyStr)
+		if err != nil {
+			return nil, err
+		}
+		if from == (common.Address{}) {
+			from = crypto.PubkeyToAddress(privateKey.PublicKey)
+		}
+	}
+	gasFeeCap, gasTipCap, nonce, err := client.CalculateTxParams(from.Hex())
+	if err != nil {
+		return nil, err
+	}
+	chainID, err := client.GetChainID()
+	if err != nil {
+		return nil, err
+	}
+	accessList := types.AccessList{
+		types.AccessTuple{
+			Address:     warp.ContractAddress,
+			StorageKeys: subnetEvmUtils.BytesToHashSlice(predicate.PackPredicate(warpMessage.Bytes())),
+		},
+	}
+	msg := interfaces.CallMsg{
+		From:       from,
+		To:         &contract,
+		GasPrice:   nil,
+		GasTipCap:  gasTipCap,
+		GasFeeCap:  gasFeeCap,
+		Value:      value,
+		Data:       callData,
+		AccessList: accessList,
+	}
+	gasLimit, err := client.EstimateGasLimit(msg)
+	if err != nil {
+		// assuming this is related to the tx itself.
+		// just using default gas limit, and let the user debug the
+		// tx if needed so
+		gasLimit = defaultGasLimit
+	}
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:    chainID,
+		Nonce:      nonce,
+		To:         &contract,
+		Gas:        gasLimit,
+		GasFeeCap:  gasFeeCap,
+		GasTipCap:  gasTipCap,
+		Value:      value,
+		Data:       callData,
+		AccessList: accessList,
+	})
+	if generateRawTxOnly {
+		return tx, nil
+	}
+	txSigner := types.LatestSignerForChainID(chainID)
+	return types.SignTx(tx, txSigner, privateKey)
 }
 
 // Returns the first log in 'logs' that is successfully parsed by 'parser'
@@ -576,7 +576,7 @@ func GetRPCClient(rpcURL string) (*rpc.Client, error) {
 		ctx, cancel := utils.GetAPILargeContext()
 		defer cancel()
 		if !hasScheme {
-			_, scheme, findErr := FindOutScheme(rpcURL)
+			_, scheme, findErr := GetClientWithoutScheme(rpcURL)
 			if findErr == nil {
 				client, err = rpc.DialContext(ctx, scheme+rpcURL)
 			} else {
@@ -675,21 +675,20 @@ func SetupProposerVM(
 	if err != nil {
 		return err
 	}
-	chainID, err := GetChainID(client)
+	chainID, err := client.GetChainID()
 	if err != nil {
 		return err
 	}
-	var errorList []error
-	for i := 0; i < repeatsOnFailure; i++ {
-		err = issueTxsToActivateProposerVMFork(client, chainID, privKey)
-		if err == nil {
-			break
-		}
+	_, err = utils.Retry(
+		func() (any, error) {
+			return nil, issueTxsToActivateProposerVMFork(client, chainID, privKey)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
 		err = fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
-		errorList = append(errorList, err)
-		time.Sleep(sleepBetweenRepeats)
 	}
-	utils.PrintUnreportedErrors(errorList, err, ux.Logger.RedXToUser)
 	return err
 }
 
@@ -700,7 +699,7 @@ func SetupProposerVM(
 // activation time of 0. Therefore, subsequent blocks should be built with
 // BuildBlockWithContext.
 func issueTxsToActivateProposerVMFork(
-	client ethclient.Client,
+	client Client,
 	chainID *big.Int,
 	fundedKey *ecdsa.PrivateKey,
 ) error {
@@ -711,11 +710,11 @@ func issueTxsToActivateProposerVMFork(
 	for i := 0; i < numTriggerTxs; i++ {
 		ctx, cancel := utils.GetTimedContext(1 * time.Minute)
 		defer cancel()
-		prevBlockNumber, err := client.BlockNumber(ctx)
+		prevBlockNumber, err := client.EthClient.BlockNumber(ctx)
 		if err != nil {
 			return fmt.Errorf("client.BlockNumber failure at step %d: %w", i, err)
 		}
-		nonce, err := client.NonceAt(ctx, addr, nil)
+		nonce, err := client.EthClient.NonceAt(ctx, addr, nil)
 		if err != nil {
 			return fmt.Errorf("client.NonceAt failure at step %d: %w", i, err)
 		}
@@ -724,7 +723,7 @@ func issueTxsToActivateProposerVMFork(
 		if err != nil {
 			return fmt.Errorf("types.SignTx failure at step %d: %w", i, err)
 		}
-		if err := client.SendTransaction(ctx, triggerTx); err != nil {
+		if err := client.EthClient.SendTransaction(ctx, triggerTx); err != nil {
 			return fmt.Errorf("client.SendTransaction failure at step %d: %w", i, err)
 		}
 		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
@@ -735,7 +734,7 @@ func issueTxsToActivateProposerVMFork(
 }
 
 func WaitForNewBlock(
-	client ethclient.Client,
+	client Client,
 	ctx context.Context,
 	prevBlockNumber uint64,
 	totalDuration time.Duration,
@@ -749,7 +748,7 @@ func WaitForNewBlock(
 	}
 	steps := totalDuration / stepDuration
 	for step := 0; step < int(steps); step++ {
-		blockNumber, err := client.BlockNumber(ctx)
+		blockNumber, err := client.EthClient.BlockNumber(ctx)
 		if err != nil {
 			return err
 		}
@@ -758,15 +757,15 @@ func WaitForNewBlock(
 		}
 		time.Sleep(stepDuration)
 	}
-	return fmt.Errorf("no new block produced in %f seconds", totalDuration.Seconds())
+	return fmt.Errorf("no new block produced on %s in %f seconds", client.URL, totalDuration.Seconds())
 }
 
 func ExtractWarpMessageFromReceipt(
-	client ethclient.Client,
+	client Client,
 	ctx context.Context,
 	receipt *types.Receipt,
 ) (*avalancheWarp.UnsignedMessage, error) {
-	logs, err := client.FilterLogs(ctx, interfaces.FilterQuery{
+	logs, err := client.EthClient.FilterLogs(ctx, interfaces.FilterQuery{
 		BlockHash: &receipt.BlockHash,
 		Addresses: []common.Address{warp.Module.Address},
 	})
@@ -843,4 +842,28 @@ func TxDump(description string, tx *types.Transaction) error {
 		}
 	}
 	return nil
+}
+
+func PrivateKeyToAddress(privateKey string) (common.Address, error) {
+	pk, err := crypto.HexToECDSA(privateKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	return crypto.PubkeyToAddress(pk.PublicKey), nil
+}
+
+func (client Client) BlockNumber(ctx context.Context) (uint64, error) {
+	return client.EthClient.BlockNumber(ctx)
+}
+
+func (client Client) BlockByNumber(ctx context.Context, n *big.Int) (*types.Block, error) {
+	return client.EthClient.BlockByNumber(ctx, n)
+}
+
+func (client Client) FilterLogs(ctx context.Context, query interfaces.FilterQuery) ([]types.Log, error) {
+	return client.EthClient.FilterLogs(ctx, query)
+}
+
+func (client Client) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	return client.EthClient.TransactionReceipt(ctx, hash)
 }

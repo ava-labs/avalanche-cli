@@ -4,7 +4,6 @@
 package subnet
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path"
@@ -14,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ethereum/go-ethereum/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -205,8 +203,7 @@ var _ = ginkgo.Describe("[Local Subnet non SOV]", ginkgo.Ordered, func() {
 		cClient, err := evm.GetClient(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		ethAddr := common.HexToAddress(addr)
-		balance, err := cClient.BalanceAt(context.Background(), ethAddr, nil)
+		balance, err := cClient.GetAddressBalance(addr)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		gomega.Expect(balance.Int64()).Should(gomega.Not(gomega.BeZero()))
