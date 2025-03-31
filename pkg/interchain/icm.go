@@ -291,8 +291,7 @@ func (t *ICMDeployer) DeployMessenger(
 	if messengerDeployerBalance.Cmp(messengerDeployerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).
 			Sub(messengerDeployerRequiredBalance, messengerDeployerBalance)
-		if err := evm.FundAddress(
-			client,
+		if err := client.FundAddress(
 			privateKey,
 			t.messengerDeployerAddress,
 			toFund,
@@ -300,7 +299,7 @@ func (t *ICMDeployer) DeployMessenger(
 			return false, "", err
 		}
 	}
-	if err := evm.IssueTx(client, t.messengerDeployerTx); err != nil {
+	if err := client.IssueTx(t.messengerDeployerTx); err != nil {
 		return false, "", err
 	}
 	ux.Logger.PrintToUser(

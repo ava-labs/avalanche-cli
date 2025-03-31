@@ -405,7 +405,7 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	return clievm.FundAddress(client, privateKey, destinationAddr, amount)
+	return client.FundAddress(privateKey, destinationAddr, amount)
 }
 
 func interEvmSend(

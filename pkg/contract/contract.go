@@ -341,7 +341,7 @@ func TxToMethod(
 			NoSend: true,
 		}
 	} else {
-		txOpts, err = evm.GetTxOptsWithSigner(client, privateKey)
+		txOpts, err = client.GetTxOptsWithSigner(privateKey)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -375,7 +375,7 @@ func TxToMethod(
 	if generateRawTxOnly {
 		return tx, nil, nil
 	}
-	receipt, success, err := evm.WaitForTransaction(client, tx)
+	receipt, success, err := client.WaitForTransaction(tx)
 	if err != nil {
 		return tx, nil, err
 	} else if !success {
@@ -450,10 +450,10 @@ func TxToMethodWithWarpMessage(
 	if generateRawTxOnly {
 		return tx, nil, nil
 	}
-	if err := evm.SendTransaction(client, tx); err != nil {
+	if err := client.SendTransaction(tx); err != nil {
 		return tx, nil, err
 	}
-	receipt, success, err := evm.WaitForTransaction(client, tx)
+	receipt, success, err := client.WaitForTransaction(tx)
 	if err != nil {
 		return tx, receipt, err
 	} else if !success {
@@ -647,7 +647,7 @@ func DeployContract(
 		return common.Address{}, err
 	}
 	defer client.Close()
-	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
+	txOpts, err := client.GetTxOptsWithSigner(privateKey)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -655,7 +655,7 @@ func DeployContract(
 	if err != nil {
 		return common.Address{}, err
 	}
-	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+	if _, success, err := client.WaitForTransaction(tx); err != nil {
 		return common.Address{}, err
 	} else if !success {
 		return common.Address{}, ErrFailedReceiptStatus

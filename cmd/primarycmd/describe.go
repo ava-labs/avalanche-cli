@@ -97,7 +97,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	evmChainID, err := evm.GetChainID(client)
+	evmChainID, err := client.GetChainID()
 	if err != nil {
 		return err
 	}

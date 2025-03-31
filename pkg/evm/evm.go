@@ -29,18 +29,18 @@ import (
 )
 
 const (
-	BaseFeeFactor               = 2
-	MaxPriorityFeePerGas        = 2500000000 // 2.5 gwei
-	NativeTransferGas    uint64 = 21_000
 	repeatsOnFailure            = 3
 	sleepBetweenRepeats         = 1 * time.Second
+	baseFeeFactor               = 2
+	maxPriorityFeePerGas        = 2500000000 // 2.5 gwei
+	nativeTransferGas    uint64 = 21_000
 )
 
 var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")
 
 // wraps over ethclient for calls used by SDK. includes:
 // - finds out url scheme in case it is missing, to connect to ws/wss/http/https
-// - repeats to try to recover from failures
+// - repeats to try to recover from failures, generating its own context for each call
 // - logs rpc url in case of failure
 // - receives addresses and private keys as strings
 type Client struct {
@@ -264,10 +264,10 @@ func (client Client) EstimateBaseFee() (*big.Int, error) {
 	return baseFee, err
 }
 
-// Returns the gasFeeCap, gasTipCap, and nonce the be used when constructing a transaction from address
-func CalculateTxParams(
-	client Client,
-	addressStr string,
+// Returns gasFeeCap, gasTipCap, and nonce to be used when constructing a transaction
+// supports [repeatsOnFailure] failures on each step
+func (client Client) CalculateTxParams(
+	address string,
 ) (*big.Int, *big.Int, uint64, error) {
 	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
@@ -277,38 +277,96 @@ func CalculateTxParams(
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	nonce, err := client.NonceAt(addressStr)
+	nonce, err := client.NonceAt(address)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(BaseFeeFactor))
-	gasFeeCap.Add(gasFeeCap, big.NewInt(MaxPriorityFeePerGas))
+	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(baseFeeFactor))
+	gasFeeCap.Add(gasFeeCap, big.NewInt(maxPriorityFeePerGas))
 	return gasFeeCap, gasTipCap, nonce, nil
 }
 
-func EstimateGasLimit(
-	client Client,
+// returns the estimated gas limit
+// supports [repeatsOnFailure] failures
+func (client Client) EstimateGasLimit(
 	msg interfaces.CallMsg,
 ) (uint64, error) {
-	var (
-		gasLimit uint64
-		err      error
+	gasLimit, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (uint64, error) {
+			return client.EthClient.EstimateGas(ctx, msg)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
 	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		gasLimit, err = client.EthClient.EstimateGas(ctx, msg)
-		if err == nil {
-			break
-		}
+	if err != nil {
 		err = fmt.Errorf("failure estimating gas limit on %s: %w", client.URL, err)
-		time.Sleep(sleepBetweenRepeats)
 	}
 	return gasLimit, err
 }
 
-func FundAddress(
-	client Client,
+// returns the chain ID
+// supports [repeatsOnFailure] failures
+func (client Client) GetChainID() (*big.Int, error) {
+	chainID, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.ChainID(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure getting chain id from %s: %w", client.URL, err)
+	}
+	return chainID, err
+}
+
+// sends [tx]
+// supports [repeatsOnFailure] failures
+func (client Client) SendTransaction(
+	tx *types.Transaction,
+) error {
+	_, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (any, error) {
+			return nil, client.EthClient.SendTransaction(ctx, tx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure sending transaction %#v to %s: %w", tx, client.URL, err)
+	}
+	return err
+}
+
+// waits for [tx]'s receipt to have successful state
+// supports [repeatsOnFailure] failures
+func (client Client) WaitForTransaction(
+	tx *types.Transaction,
+) (*types.Receipt, bool, error) {
+	receipt, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*types.Receipt, error) {
+			return bind.WaitMined(ctx, client.EthClient, tx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure waiting for tx %#v on %s: %w", tx, client.URL, err)
+	}
+	var success bool
+	if receipt != nil {
+		success = receipt.Status == types.ReceiptStatusSuccessful
+	}
+	return receipt, success, err
+}
+
+// transfers [amount] to [targetAddressStr] using [sourceAddressPrivateKeyStr]
+// supports [repeatsOnFailure] failures on each step
+func (client Client) FundAddress(
 	sourceAddressPrivateKeyStr string,
 	targetAddressStr string,
 	amount *big.Int,
@@ -318,12 +376,12 @@ func FundAddress(
 		return err
 	}
 	sourceAddress := crypto.PubkeyToAddress(sourceAddressPrivateKey.PublicKey)
-	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, sourceAddress.Hex())
+	gasFeeCap, gasTipCap, nonce, err := client.CalculateTxParams(sourceAddress.Hex())
 	if err != nil {
 		return err
 	}
 	targetAddress := common.HexToAddress(targetAddressStr)
-	chainID, err := GetChainID(client)
+	chainID, err := client.GetChainID()
 	if err != nil {
 		return err
 	}
@@ -331,7 +389,7 @@ func FundAddress(
 		ChainID:   chainID,
 		Nonce:     nonce,
 		To:        &targetAddress,
-		Gas:       NativeTransferGas,
+		Gas:       nativeTransferGas,
 		GasFeeCap: gasFeeCap,
 		GasTipCap: gasTipCap,
 		Value:     amount,
@@ -341,15 +399,73 @@ func FundAddress(
 	if err != nil {
 		return err
 	}
-	if err := SendTransaction(client, signedTx); err != nil {
+	if err := client.SendTransaction(signedTx); err != nil {
 		return err
 	}
-	if _, b, err := WaitForTransaction(client, signedTx); err != nil {
+	if _, b, err := client.WaitForTransaction(signedTx); err != nil {
 		return err
 	} else if !b {
 		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
 	}
 	return nil
+}
+
+// encode [txStr] to binary, sends and waits for it
+// supports [repeatsOnFailure] failures on each step
+func (client Client) IssueTx(
+	txStr string,
+) error {
+	tx := new(types.Transaction)
+	if err := tx.UnmarshalBinary(common.FromHex(txStr)); err != nil {
+		return err
+	}
+	if err := client.SendTransaction(tx); err != nil {
+		return err
+	}
+	if receipt, b, err := client.WaitForTransaction(tx); err != nil {
+		return err
+	} else if !b {
+		return fmt.Errorf("failure sending tx: got status %d expected %d", receipt.Status, types.ReceiptStatusSuccessful)
+	}
+	return nil
+}
+
+// returns tx options that include signer for [prefundedPrivateKeyStr]
+// supports [repeatsOnFailure] failures when gathering chain info
+func (client Client) GetTxOptsWithSigner(
+	prefundedPrivateKeyStr string,
+) (*bind.TransactOpts, error) {
+	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
+	if err != nil {
+		return nil, err
+	}
+	chainID, err := client.GetChainID()
+	if err != nil {
+		return nil, fmt.Errorf("failure generating signer: %w", err)
+	}
+	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
+}
+
+// waits for [timeout] until evm is bootstrapped
+// considers evm is bootstrapped if it responds to an evm call (ChainID)
+func (client Client) WaitForEVMBootstrapped(timeout time.Duration) error {
+	const stepDuration = 5 * time.Second
+	if timeout == 0 {
+		timeout = 60 * time.Second
+	}
+	startTime := time.Now()
+	for {
+		ctx, cancel := utils.GetAPILargeContext()
+		defer cancel()
+		if _, err := client.EthClient.ChainID(ctx); err == nil {
+			return nil
+		} else {
+			if time.Since(startTime) > timeout {
+				return fmt.Errorf("client at %s not bootstrapped after %.2f seconds: %w", client.URL, timeout.Seconds(), err)
+			}
+			time.Sleep(stepDuration)
+		}
+	}
 }
 
 func GetTxToMethodWithWarpMessage(
@@ -382,11 +498,11 @@ func GetTxToMethodWithWarpMessage(
 			from = crypto.PubkeyToAddress(privateKey.PublicKey)
 		}
 	}
-	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, from.Hex())
+	gasFeeCap, gasTipCap, nonce, err := client.CalculateTxParams(from.Hex())
 	if err != nil {
 		return nil, err
 	}
-	chainID, err := GetChainID(client)
+	chainID, err := client.GetChainID()
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +522,7 @@ func GetTxToMethodWithWarpMessage(
 		Data:       callData,
 		AccessList: accessList,
 	}
-	gasLimit, err := EstimateGasLimit(client, msg)
+	gasLimit, err := client.EstimateGasLimit(msg)
 	if err != nil {
 		// assuming this is related to the tx itself.
 		// just using default gas limit, and let the user debug the
@@ -429,126 +545,6 @@ func GetTxToMethodWithWarpMessage(
 	}
 	txSigner := types.LatestSignerForChainID(chainID)
 	return types.SignTx(tx, txSigner, privateKey)
-}
-
-func IssueTx(
-	client Client,
-	txStr string,
-) error {
-	tx := new(types.Transaction)
-	if err := tx.UnmarshalBinary(common.FromHex(txStr)); err != nil {
-		return err
-	}
-	if err := SendTransaction(client, tx); err != nil {
-		return err
-	}
-	if receipt, b, err := WaitForTransaction(client, tx); err != nil {
-		return err
-	} else if !b {
-		return fmt.Errorf("failure sending tx: got status %d expected %d", receipt.Status, types.ReceiptStatusSuccessful)
-	}
-	return nil
-}
-
-func SendTransaction(
-	client Client,
-	tx *types.Transaction,
-) error {
-	var err error
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		err = client.EthClient.SendTransaction(ctx, tx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure sending transaction %#v to %s: %w", tx, client.URL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return err
-}
-
-func WaitForChainID(client Client) {
-	startTime := time.Now()
-	spinSession := ux.NewUserSpinner()
-	spinner := spinSession.SpinToUser("Checking if node is healthy...")
-	for {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		_, err := client.EthClient.ChainID(ctx)
-		if err == nil {
-			ux.SpinComplete(spinner)
-			spinSession.Stop()
-			ux.Logger.GreenCheckmarkToUser("Node is healthy after %d seconds", uint32(time.Since(startTime).Seconds()))
-			break
-		} else {
-			if time.Since(startTime) > 60*time.Second {
-				ux.SpinFailWithError(spinner, "", fmt.Errorf("failure getting chain id from %s: %w", client.URL, err))
-				spinSession.Stop()
-				break
-			}
-			time.Sleep(5 * time.Second)
-		}
-	}
-}
-
-func GetChainID(client Client) (*big.Int, error) {
-	var (
-		chainID *big.Int
-		err     error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		chainID, err = client.EthClient.ChainID(ctx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure getting chain id from %s: %w", client.URL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return chainID, err
-}
-
-func GetTxOptsWithSigner(
-	client Client,
-	prefundedPrivateKeyStr string,
-) (*bind.TransactOpts, error) {
-	prefundedPrivateKey, err := crypto.HexToECDSA(prefundedPrivateKeyStr)
-	if err != nil {
-		return nil, err
-	}
-	chainID, err := GetChainID(client)
-	if err != nil {
-		return nil, fmt.Errorf("failure generating signer: %w", err)
-	}
-	return bind.NewKeyedTransactorWithChainID(prefundedPrivateKey, chainID)
-}
-
-func WaitForTransaction(
-	client Client,
-	tx *types.Transaction,
-) (*types.Receipt, bool, error) {
-	var (
-		err     error
-		receipt *types.Receipt
-		success bool
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		receipt, err = bind.WaitMined(ctx, client.EthClient, tx)
-		if err == nil {
-			success = receipt.Status == types.ReceiptStatusSuccessful
-			break
-		}
-		err = fmt.Errorf("failure waiting for tx %#v on %s: %w", tx, client.URL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return receipt, success, err
 }
 
 // Returns the first log in 'logs' that is successfully parsed by 'parser'
@@ -679,7 +675,7 @@ func SetupProposerVM(
 	if err != nil {
 		return err
 	}
-	chainID, err := GetChainID(client)
+	chainID, err := client.GetChainID()
 	if err != nil {
 		return err
 	}
