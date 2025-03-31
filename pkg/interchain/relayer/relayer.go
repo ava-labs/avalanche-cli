@@ -73,7 +73,7 @@ func FundRelayer(
 	if err != nil {
 		return err
 	}
-	relayerBalance, err := evm.GetAddressBalance(client, relayerAddress)
+	relayerBalance, err := client.GetAddressBalance(relayerAddress)
 	if err != nil {
 		return err
 	}

@@ -107,7 +107,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	}
 	address := k.C()
 	privKey := k.PrivKeyHex()
-	balance, err := evm.GetAddressBalance(client, address)
+	balance, err := client.GetAddressBalance(address)
 	if err != nil {
 		return err
 	}

@@ -52,6 +52,22 @@ func Retry[T any](
 	)
 }
 
+// RetryWithContext retries the given function until it succeeds or the maximum number of attempts is reached.
+// For each retry, it generates a fresh context to be used on the call
+func RetryWithContextGen[T any](
+	ctxGen func() (context.Context, context.CancelFunc),
+	fn func(context.Context) (T, error),
+	maxAttempts int,
+	retryInterval time.Duration,
+) (T, error) {
+	newfn := func() (T, error) {
+		ctx, cancel := ctxGen()
+		defer cancel()
+		return fn(ctx)
+	}
+	return Retry(newfn, maxAttempts, retryInterval)
+}
+
 // WrapContext adds a context based timeout to a given function
 func WrapContext[T any](
 	f func() (T, error),

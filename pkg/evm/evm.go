@@ -107,7 +107,8 @@ func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 	return nil, "", notDeterminedErr
 }
 
-// connects an evm client to the given [rpcURL] supporting [repeatsOnFailure] connection failures
+// connects an evm client to the given [rpcURL]
+// supports [repeatsOnFailure] failures
 func GetClient(rpcURL string) (Client, error) {
 	client := Client{
 		URL: rpcURL,
@@ -116,10 +117,9 @@ func GetClient(rpcURL string) (Client, error) {
 	if err != nil {
 		return client, fmt.Errorf("failure determining the scheme of url %s: %w", rpcURL, err)
 	}
-	client.EthClient, err = utils.Retry(
-		func() (ethclient.Client, error) {
-			ctx, cancel := utils.GetAPILargeContext()
-			defer cancel()
+	client.EthClient, err = utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (ethclient.Client, error) {
 			if hasScheme {
 				return ethclient.DialContext(ctx, rpcURL)
 			} else {
@@ -136,50 +136,32 @@ func GetClient(rpcURL string) (Client, error) {
 	return client, err
 }
 
+// closes underlying ethclient connection
 func (client Client) Close() {
 	client.EthClient.Close()
 }
 
-func (client Client) BalanceAt(ctx context.Context, address common.Address, blockNumber *big.Int) (*big.Int, error) {
-	return client.EthClient.BalanceAt(ctx, address, blockNumber)
-}
-
-func (client Client) BlockNumber(ctx context.Context) (uint64, error) {
-	return client.EthClient.BlockNumber(ctx)
-}
-
-func (client Client) BlockByNumber(ctx context.Context, n *big.Int) (*types.Block, error) {
-	return client.EthClient.BlockByNumber(ctx, n)
-}
-
-func (client Client) FilterLogs(ctx context.Context, query interfaces.FilterQuery) ([]types.Log, error) {
-	return client.EthClient.FilterLogs(ctx, query)
-}
-
-func (client Client) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
-	return client.EthClient.TransactionReceipt(ctx, hash)
-}
-
-func ContractAlreadyDeployed(
-	client Client,
+// indicates wether a contract is deployed on [contractAddress]
+// supports [repeatsOnFailure] failures
+func (client Client) ContractAlreadyDeployed(
 	contractAddress string,
 ) (bool, error) {
-	if bs, err := GetContractBytecode(client, contractAddress); err != nil {
+	if bs, err := client.GetContractBytecode(contractAddress); err != nil {
 		return false, err
 	} else {
 		return len(bs) != 0, nil
 	}
 }
 
-func GetContractBytecode(
-	client Client,
+// returns the contract bytecode at [contractAddress]
+// supports [repeatsOnFailure] failures
+func (client Client) GetContractBytecode(
 	contractAddressStr string,
 ) ([]byte, error) {
 	contractAddress := common.HexToAddress(contractAddressStr)
-	code, err := utils.Retry(
-		func() ([]byte, error) {
-			ctx, cancel := utils.GetAPILargeContext()
-			defer cancel()
+	code, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) ([]byte, error) {
 			return client.EthClient.CodeAt(ctx, contractAddress, nil)
 		},
 		repeatsOnFailure,
@@ -196,38 +178,90 @@ func GetContractBytecode(
 	return code, err
 }
 
-func GetPrivateKeyBalance(
-	client Client,
+// returns the balance for [privateKey]
+// supports [repeatsOnFailure] failures
+func (client Client) GetPrivateKeyBalance(
 	privateKey string,
 ) (*big.Int, error) {
 	addr, err := PrivateKeyToAddress(privateKey)
 	if err != nil {
 		return nil, err
 	}
-	return GetAddressBalance(client, addr.Hex())
+	return client.GetAddressBalance(addr.Hex())
 }
 
-func GetAddressBalance(
-	client Client,
+// returns the balance for [address]
+// supports [repeatsOnFailure] failures
+func (client Client) GetAddressBalance(
 	addressStr string,
 ) (*big.Int, error) {
 	address := common.HexToAddress(addressStr)
-	var (
-		balance *big.Int
-		err     error
+	balance, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.BalanceAt(ctx, address, nil)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
 	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		balance, err = client.EthClient.BalanceAt(ctx, address, nil)
-		if err == nil {
-			break
-		}
+	if err != nil {
 		err = fmt.Errorf("failure obtaining balance for %s on %s: %w", addressStr, client.URL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
 	}
 	return balance, err
+}
+
+// returns the nonce at [address]
+// supports [repeatsOnFailure] failures
+func (client Client) NonceAt(
+	addressStr string,
+) (uint64, error) {
+	address := common.HexToAddress(addressStr)
+	nonce, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (uint64, error) {
+			return client.EthClient.NonceAt(ctx, address, nil)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure obtaining nonce for %s on %s: %w", addressStr, client.URL, err)
+	}
+	return nonce, err
+}
+
+// returns the suggested gas tip
+// supports [repeatsOnFailure] failures
+func (client Client) SuggestGasTipCap() (*big.Int, error) {
+	gasTipCap, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.SuggestGasTipCap(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure obtaining gas tip cap on %s: %w", client.URL, err)
+	}
+	return gasTipCap, err
+}
+
+// returns the estimated base fee
+// supports [repeatsOnFailure] failures
+func (client Client) EstimateBaseFee() (*big.Int, error) {
+	baseFee, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*big.Int, error) {
+			return client.EthClient.EstimateBaseFee(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure estimating base fee on %s: %w", client.URL, err)
+	}
+	return baseFee, err
 }
 
 // Returns the gasFeeCap, gasTipCap, and nonce the be used when constructing a transaction from address
@@ -235,86 +269,21 @@ func CalculateTxParams(
 	client Client,
 	addressStr string,
 ) (*big.Int, *big.Int, uint64, error) {
-	baseFee, err := EstimateBaseFee(client)
+	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	gasTipCap, err := SuggestGasTipCap(client)
+	gasTipCap, err := client.SuggestGasTipCap()
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	nonce, err := NonceAt(client, addressStr)
+	nonce, err := client.NonceAt(addressStr)
 	if err != nil {
 		return nil, nil, 0, err
 	}
 	gasFeeCap := baseFee.Mul(baseFee, big.NewInt(BaseFeeFactor))
 	gasFeeCap.Add(gasFeeCap, big.NewInt(MaxPriorityFeePerGas))
 	return gasFeeCap, gasTipCap, nonce, nil
-}
-
-func NonceAt(
-	client Client,
-	addressStr string,
-) (uint64, error) {
-	address := common.HexToAddress(addressStr)
-	var (
-		nonce uint64
-		err   error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		nonce, err = client.EthClient.NonceAt(ctx, address, nil)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure obtaining nonce for %s on %s: %w", addressStr, client.URL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return nonce, err
-}
-
-func SuggestGasTipCap(
-	client Client,
-) (*big.Int, error) {
-	var (
-		gasTipCap *big.Int
-		err       error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		gasTipCap, err = client.EthClient.SuggestGasTipCap(ctx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure obtaining gas tip cap on %s: %w", client.URL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return gasTipCap, err
-}
-
-func EstimateBaseFee(
-	client Client,
-) (*big.Int, error) {
-	var (
-		baseFee *big.Int
-		err     error
-	)
-	for i := 0; i < repeatsOnFailure; i++ {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		baseFee, err = client.EthClient.EstimateBaseFee(ctx)
-		if err == nil {
-			break
-		}
-		err = fmt.Errorf("failure estimating base fee on %s: %w", client.URL, err)
-		ux.Logger.RedXToUser("%s", err)
-		time.Sleep(sleepBetweenRepeats)
-	}
-	return baseFee, err
 }
 
 func EstimateGasLimit(
@@ -885,4 +854,20 @@ func PrivateKeyToAddress(privateKey string) (common.Address, error) {
 		return common.Address{}, err
 	}
 	return crypto.PubkeyToAddress(pk.PublicKey), nil
+}
+
+func (client Client) BlockNumber(ctx context.Context) (uint64, error) {
+	return client.EthClient.BlockNumber(ctx)
+}
+
+func (client Client) BlockByNumber(ctx context.Context, n *big.Int) (*types.Block, error) {
+	return client.EthClient.BlockByNumber(ctx, n)
+}
+
+func (client Client) FilterLogs(ctx context.Context, query interfaces.FilterQuery) ([]types.Log, error) {
+	return client.EthClient.FilterLogs(ctx, query)
+}
+
+func (client Client) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	return client.EthClient.TransactionReceipt(ctx, hash)
 }

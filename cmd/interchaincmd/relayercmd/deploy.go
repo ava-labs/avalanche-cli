@@ -236,7 +236,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				if err != nil {
 					return err
 				}
-				balance, err := evm.GetAddressBalance(client, addr.Hex())
+				balance, err := client.GetAddressBalance(addr.Hex())
 				if err != nil {
 					return err
 				}
@@ -300,7 +300,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 			case isCChainDestination && flags.CChainAmount != 0:
 				doPay = true
 			default:
-				balance, err := evm.GetAddressBalance(client, addr.Hex())
+				balance, err := client.GetAddressBalance(addr.Hex())
 				if err != nil {
 					return err
 				}
@@ -370,7 +370,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 						return err
 					}
 				}
-				balance, err := evm.GetPrivateKeyBalance(client, privateKey)
+				balance, err := client.GetPrivateKeyBalance(privateKey)
 				if err != nil {
 					return err
 				}

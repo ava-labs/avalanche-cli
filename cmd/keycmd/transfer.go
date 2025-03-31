@@ -800,7 +800,7 @@ func importIntoC(
 	if err != nil {
 		return err
 	}
-	baseFee, err := clievm.EstimateBaseFee(client)
+	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
 		return err
 	}
@@ -903,7 +903,7 @@ func exportFromC(
 	if err != nil {
 		return err
 	}
-	baseFee, err := clievm.EstimateBaseFee(client)
+	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
 		return err
 	}
