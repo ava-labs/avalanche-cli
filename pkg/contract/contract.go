@@ -434,15 +434,14 @@ func TxToMethodWithWarpMessage(
 		return nil, nil, err
 	}
 	defer client.Close()
-	tx, err := evm.GetTxToMethodWithWarpMessage(
-		client,
-		generateRawTxOnly,
+	tx, err := client.TransactWithWarpMessage(
 		from,
 		privateKey,
 		warpMessage,
 		contractAddress,
 		callData,
 		payment,
+		generateRawTxOnly,
 	)
 	if err != nil {
 		return nil, nil, err
