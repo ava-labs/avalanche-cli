@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
@@ -689,25 +688,26 @@ func TransactionError(tx *types.Transaction, err error, msg string, args ...inte
 	return fmt.Errorf(msg+msgSuffix, args...)
 }
 
-func TxDump(description string, tx *types.Transaction) error {
+func TxDump(description string, tx *types.Transaction) (string, error) {
 	bs, err := tx.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("failure marshalling raw evm tx: %w", err)
+		return "", fmt.Errorf("failure marshalling raw evm tx: %w", err)
 	}
-	ux.Logger.PrintToUser("Tx Dump For %s:", description)
-	ux.Logger.PrintToUser("0x%s", hex.EncodeToString(bs))
-	ux.Logger.PrintToUser("Calldata Dump:")
-	ux.Logger.PrintToUser("0x%s", hex.EncodeToString(tx.Data()))
+	txDump := ""
+	fmt.Sprintf("Tx Dump For %s:\n", description)
+	fmt.Sprintf("0x%s\n", hex.EncodeToString(bs))
+	fmt.Sprintf("Calldata Dump:\n")
+	fmt.Sprintf("0x%s\n", hex.EncodeToString(tx.Data()))
 	if len(tx.AccessList()) > 0 {
-		ux.Logger.PrintToUser("Access List Dump:")
+		fmt.Sprintf("Access List Dump:\n")
 		for _, t := range tx.AccessList() {
-			ux.Logger.PrintToUser("  Address: %s", t.Address)
+			fmt.Sprintf("  Address: %s\n", t.Address)
 			for _, s := range t.StorageKeys {
-				ux.Logger.PrintToUser("  Storage: %s", s)
+				fmt.Sprintf("  Storage: %s\n", s)
 			}
 		}
 	}
-	return nil
+	return txDump, nil
 }
 
 func PrivateKeyToAddress(privateKey string) (common.Address, error) {
