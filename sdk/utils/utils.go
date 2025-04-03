@@ -55,5 +55,5 @@ func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc
 	return ctx, func() {
 		sigCancel()
 		timeCancel()
-	}()
+	}
 }
