@@ -135,6 +135,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
 		defer cancel()
 		if _, err := localnet.TmpNetLoad(ctx, app.Log, networkDir, avalancheGoBinPath); err != nil {
+			_ = localnet.TmpNetStop(networkDir)
 			return err
 		}
 		// save network directory
@@ -211,7 +212,7 @@ func Start(flags StartFlags, printEndpoints bool) error {
 		// create network
 		ctx, cancel := localnet.GetLocalNetworkDefaultContext()
 		defer cancel()
-		_, err = localnet.TmpNetCreate(
+		if _, err := localnet.TmpNetCreate(
 			ctx,
 			app.Log,
 			networkDir,
@@ -225,8 +226,8 @@ func Start(flags StartFlags, printEndpoints bool) error {
 			defaultFlags,
 			nodes,
 			true,
-		)
-		if err != nil {
+		); err != nil {
+			_ = localnet.TmpNetStop(networkDir)
 			return err
 		}
 		// save network directory

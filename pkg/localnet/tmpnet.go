@@ -1094,3 +1094,34 @@ func GetTmpNetNodeURIsWithFix(
 	}
 	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
+
+// Get paths for most important avalanchego logs that are present on the network nodes
+func GetTmpNetAvailableLogs(
+	networkDir string,
+	blockchainID ids.ID,
+	includeCChain bool,
+) ([]string, error) {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return nil, err
+	}
+	prefixes := []string{}
+	if blockchainID != ids.Empty {
+		prefixes = append(prefixes, blockchainID.String())
+	}
+	if includeCChain {
+		prefixes = append(prefixes, "C")
+	}
+	prefixes = append(prefixes, "P")
+	prefixes = append(prefixes, "main")
+	logPaths := []string{}
+	for _, node := range network.Nodes {
+		for _, prefix := range prefixes {
+			logPath := filepath.Join(networkDir, node.NodeID.String(), "logs", prefix+".log")
+			if utils.FileExists(logPath) {
+				logPaths = append(logPaths, utils.ReplaceUserHomeWithTilde(logPath))
+			}
+		}
+	}
+	return logPaths, nil
+}
