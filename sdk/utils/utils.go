@@ -50,6 +50,10 @@ func GetAPILargeContext() (context.Context, context.CancelFunc) {
 
 // Timed Context
 func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc) {
-	parent, _ := signal.NotifyContext(context.Background(), os.Interrupt)
-	return context.WithTimeout(parent, timeout)
+	parent, sigCancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, timeCancel := context.WithTimeout(parent, timeout)
+	return ctx, func() {
+		sigCancel()
+		timeCancel()
+	}()
 }
