@@ -4,6 +4,8 @@ package utils
 
 import (
 	"context"
+	"os"
+	"os/signal"
 	"sort"
 	"time"
 
@@ -48,5 +50,6 @@ func GetAPILargeContext() (context.Context, context.CancelFunc) {
 
 // Timed Context
 func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), timeout)
+	parent, _ := signal.NotifyContext(context.Background(), os.Interrupt)
+	return context.WithTimeout(parent, timeout)
 }
