@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"fmt"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -110,9 +111,10 @@ func trackMetrics(app *application.Avalanche, commandPath string, flags map[stri
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
 	}
-	_ = client.Enqueue(posthog.Capture{
+	err := client.Enqueue(posthog.Capture{
 		DistinctId: userID,
 		Event:      "cli-command",
 		Properties: telemetryProperties,
 	})
+	fmt.Println("METRICS DUMP", telemetryProperties, err)
 }
