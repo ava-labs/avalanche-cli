@@ -62,7 +62,6 @@ func HandleTracking(
 	flags map[string]string,
 	err error,
 ) {
-	fmt.Println("HOLA")
 	if sent {
 		// avoid sending duplicate information for special commands with more info
 		return
