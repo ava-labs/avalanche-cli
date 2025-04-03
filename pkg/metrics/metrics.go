@@ -3,6 +3,7 @@
 package metrics
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -91,7 +92,7 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, err error
 		telemetryToken = os.Getenv(constants.MetricsAPITokenEnvVarName)
 	}
 	if telemetryToken == "" && !utils.IsE2E() {
-		ux.Logger.Error("no token is configured for sending metrics")
+		app.Log.Warn("no token is configured for sending metrics")
 	}
 	if telemetryToken == "" || utils.IsE2E() {
 		return
@@ -129,6 +130,6 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, err error
 		Event:      "cli-command",
 		Properties: telemetryProperties,
 	}); err != nil {
-		ux.Logger.Error("failure sending metrics %#v: %s", telemetryProperties, err)
+		app.Log.Warn(fmt.Sprintf("failure sending metrics %#v: %s", telemetryProperties, err))
 	}
 }
