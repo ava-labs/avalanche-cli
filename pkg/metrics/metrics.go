@@ -22,6 +22,7 @@ import (
 var (
 	telemetryToken    = ""
 	telemetryInstance = "https://app.posthog.com"
+	sent              = false
 )
 
 func GetCLIVersion() string {
@@ -61,6 +62,11 @@ func HandleTracking(
 	flags map[string]string,
 	err error,
 ) {
+	if sent {
+		// avoid sending duplicate information for special commands with more info
+		return
+	}
+	sent = true
 	if app.Cmd == nil {
 		// command called with no arguments at all
 		return
