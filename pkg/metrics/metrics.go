@@ -103,9 +103,10 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, err error
 	if telemetryToken == "" || utils.IsE2E() {
 		return
 	}
-	client, _ := posthog.NewWithConfig(telemetryToken, posthog.Config{Endpoint: telemetryInstance})
-
-	defer client.Close()
+	client, err := posthog.NewWithConfig(telemetryToken, posthog.Config{Endpoint: telemetryInstance})
+	if err != nil {
+		app.Log.Warn(fmt.Sprintf("failure creating metrics client: %s", err))
+	}
 
 	version := app.Version
 	if version == "" {
@@ -131,11 +132,15 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, err error
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
 	}
-	if err := client.Enqueue(posthog.Capture{
+	event := posthog.Capture{
 		DistinctId: userID,
 		Event:      "cli-command",
 		Properties: telemetryProperties,
-	}); err != nil {
+	}
+	if err := client.Enqueue(event); err != nil {
 		app.Log.Warn(fmt.Sprintf("failure sending metrics %#v: %s", telemetryProperties, err))
+	}
+	if err := client.Close(); err != nil {
+		app.Log.Warn(fmt.Sprintf("failure closing metrics client %#v: %s", telemetryProperties, err))
 	}
 }
