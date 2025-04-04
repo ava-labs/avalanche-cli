@@ -93,7 +93,7 @@ func CheckCommandIsNotCompletion(commandPath string) bool {
 	return true
 }
 
-func trackMetrics(app *application.Avalanche, flags map[string]string, err error) {
+func trackMetrics(app *application.Avalanche, flags map[string]string, cmdErr error) {
 	if telemetryToken == "" {
 		telemetryToken = os.Getenv(constants.MetricsAPITokenEnvVarName)
 	}
@@ -121,7 +121,7 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, err error
 	telemetryProperties["os"] = runtime.GOOS
 	telemetryProperties["error"] = ""
 	if err != nil {
-		telemetryProperties["error"] = err.Error()
+		telemetryProperties["error"] = cmdErr.Error()
 	}
 	insideCodespace := utils.InsideCodespace()
 	telemetryProperties["insideCodespace"] = insideCodespace
