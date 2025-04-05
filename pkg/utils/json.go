@@ -72,7 +72,7 @@ func SetJSONKey(jsonBody string, k string, v interface{}) (string, error) {
 func GetJSONKey[T any](jsonMap map[string]interface{}, k string) (T, error) {
 	intf, ok := jsonMap[k]
 	if !ok {
-		return *new(T), fmt.Errorf("%s not found on map", k)
+		return *new(T), fmt.Errorf("%w: %s", constants.ErrKeyNotFoundOnMap, k)
 	}
 	v, ok := intf.(T)
 	if !ok {
