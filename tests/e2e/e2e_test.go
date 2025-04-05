@@ -37,7 +37,7 @@ import (
 
 func TestE2e(t *testing.T) {
 	if !utils.IsE2E() {
-		t.Skip("Environment variable RUN_E2E not set; skipping E2E tests")
+		t.Skip("Environment variable RUN_CLI_E2E not set; skipping E2E tests")
 	}
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	format.UseStringerRepresentation = true

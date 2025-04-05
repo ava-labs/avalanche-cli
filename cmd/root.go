@@ -63,7 +63,6 @@ To get started, look at the documentation for the subcommands or jump right
 in with avalanche blockchain create myNewBlockchain.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
-		PersistentPostRun: handleTracking,
 		SilenceErrors:     true,
 		SilenceUsage:      true,
 	}
@@ -138,7 +137,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	log.Info("-----------")
 	log.Info(fmt.Sprintf("cmd: %s", strings.Join(os.Args[1:], " ")))
 	cf := config.New()
-	app.Setup(baseDir, log, cf, Version, prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(baseDir, log, cf, Version, prompts.NewPrompter(), application.NewDownloader(), cmd)
 
 	if err := initConfig(); err != nil {
 		return err
@@ -238,10 +237,6 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 		}
 	}
 	return nil
-}
-
-func handleTracking(cmd *cobra.Command, _ []string) {
-	metrics.HandleTracking(cmd, cmd.CommandPath(), app, nil)
 }
 
 func setupEnv() (string, error) {
@@ -383,6 +378,7 @@ func Execute() {
 	app = application.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
+	metrics.HandleTracking(app, nil, err)
 	cobrautils.HandleErrors(err)
 }
 

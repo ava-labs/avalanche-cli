@@ -60,9 +60,9 @@ type Config struct {
 	E2ESuffixList []string
 }
 
-// IsE2E checks if the environment variable "RUN_E2E" is set and returns true if it is, false otherwise.
+// IsE2E checks if the environment variable "RUN_CLI_E2E" is set and returns true if it is, false otherwise.
 func IsE2E() bool {
-	return os.Getenv("RUN_E2E") != ""
+	return os.Getenv("RUN_CLI_E2E") != ""
 }
 
 // E2EDocker checks if docker and docker-compose are available.
