@@ -5,6 +5,7 @@ package localnet
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-network-runner/network"
 	avagoconfig "github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
@@ -211,7 +213,7 @@ func migrateCluster(
 			return fmt.Errorf("failure reading legacy local network conf: %w", err)
 		}
 		trackSubnetsStr, err = utils.GetJSONKey[string](nodeConfig.Flags, avagoconfig.TrackSubnetsKey)
-		if err != nil {
+		if err != nil && !errors.Is(err, constants.ErrKeyNotFoundOnMap) {
 			return fmt.Errorf("failure reading legacy local network conf: %w", err)
 		}
 		nodeSettings = append(nodeSettings, NodeSetting{
@@ -222,9 +224,13 @@ func migrateCluster(
 			StakingPort:      uint64(stakingPort),
 		})
 	}
-	trackedSubnets, err := utils.MapWithError(strings.Split(trackSubnetsStr, ","), ids.FromString)
-	if err != nil {
-		return err
+	var trackedSubnets []ids.ID
+	trackSubnetsStr = strings.TrimSpace(trackSubnetsStr)
+	if trackSubnetsStr != "" {
+		trackedSubnets, err = utils.MapWithError(strings.Split(trackSubnetsStr, ","), ids.FromString)
+		if err != nil {
+			return err
+		}
 	}
 	binPath := config.BinaryPath
 	// local connection info
@@ -286,23 +292,31 @@ func migrateCluster(
 	for i, node := range network.Nodes {
 		sourceDir := filepath.Join(anrDir, config.NodeConfigs[i].Name, "db")
 		targetDir := filepath.Join(networkDir, node.NodeID.String(), "db")
-		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
-			return fmt.Errorf("failure migrating data dir %s into %s: %w", sourceDir, targetDir, err)
+		if sdkutils.DirExists(sourceDir) {
+			if err := dircopy.Copy(sourceDir, targetDir); err != nil {
+				return fmt.Errorf("failure migrating data dir %s into %s: %w", sourceDir, targetDir, err)
+			}
 		}
 		sourceDir = filepath.Join(anrDir, config.NodeConfigs[i].Name, "chainData")
 		targetDir = filepath.Join(networkDir, node.NodeID.String(), "chainData")
-		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
-			return fmt.Errorf("failure migrating data dir %s into %s: %w", sourceDir, targetDir, err)
+		if sdkutils.DirExists(sourceDir) {
+			if err := dircopy.Copy(sourceDir, targetDir); err != nil {
+				return fmt.Errorf("failure migrating data dir %s into %s: %w", sourceDir, targetDir, err)
+			}
 		}
 		sourceDir = filepath.Join(anrDir, config.NodeConfigs[i].Name, "plugins")
 		targetDir = filepath.Join(networkDir, "plugins")
-		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
-			return fmt.Errorf("failure migrating plugindir dir %s into %s: %w", sourceDir, targetDir, err)
+		if sdkutils.DirExists(sourceDir) {
+			if err := dircopy.Copy(sourceDir, targetDir); err != nil {
+				return fmt.Errorf("failure migrating plugindir dir %s into %s: %w", sourceDir, targetDir, err)
+			}
 		}
 		sourceDir = filepath.Join(anrDir, config.NodeConfigs[i].Name, "configs", "chains")
 		targetDir = filepath.Join(networkDir, node.NodeID.String(), "configs", "chains")
-		if err := dircopy.Copy(sourceDir, targetDir); err != nil {
-			return fmt.Errorf("failure migrating chain configs dir %s into %s: %w", sourceDir, targetDir, err)
+		if sdkutils.DirExists(sourceDir) {
+			if err := dircopy.Copy(sourceDir, targetDir); err != nil {
+				return fmt.Errorf("failure migrating chain configs dir %s into %s: %w", sourceDir, targetDir, err)
+			}
 		}
 	}
 	return os.RemoveAll(anrDir)
