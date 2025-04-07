@@ -1,0 +1,18 @@
+{
+  "Local Network": {
+    "avalanchego": "v1.13.0",
+    "subnet-evm": "v0.7.3"
+  },
+  "DevNet": {
+    "avalanchego": "v1.13.0",
+    "subnet-evm": "v0.7.3"
+  },
+  "Fuji": {
+    "avalanchego": "v1.13.0",
+    "subnet-evm": "v0.7.3"
+  },
+  "Mainnet": {
+    "avalanchego": "v1.13.0",
+    "subnet-evm": "v0.7.3"
+  }
+}
