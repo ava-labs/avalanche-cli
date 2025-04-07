@@ -695,7 +695,7 @@ func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
 
 func GetApp() *application.Avalanche {
 	app := application.New()
-	app.Setup(GetBaseDir(), logging.NoLog{}, nil, "", nil, nil)
+	app.Setup(GetBaseDir(), logging.NoLog{}, nil, "", nil, nil, nil)
 	return app
 }
 
