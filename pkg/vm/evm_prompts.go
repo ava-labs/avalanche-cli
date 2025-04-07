@@ -4,6 +4,7 @@ package vm
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"math/big"
 	"os"
 
@@ -884,11 +885,12 @@ func PromptVMVersion(
 ) (string, error) {
 	switch vmVersion {
 	case latest:
-		return app.Downloader.GetLatestReleaseVersion(
-			constants.AvaLabsOrg,
-			repoName,
-			"",
-		)
+		//return app.Downloader.GetLatestReleaseVersion(
+		//	constants.AvaLabsOrg,
+		//	repoName,
+		//	"",
+		//)
+		return blockchain.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,

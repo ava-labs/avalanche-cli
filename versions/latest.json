@@ -1,22 +1,25 @@
 {
-  "Local Network": {
-    "RPC": "39",
-    "avalanchego": "v1.13.0",
-    "subnet-evm": "v0.7.3"
-  },
-  "DevNet": {
-    "RPC": "39",
-    "avalanchego": "v1.13.0",
-    "subnet-evm": "v0.7.3"
-  },
-  "Fuji": {
-    "RPC": "39",
-    "avalanchego": "v1.13.0",
-    "subnet-evm": "v0.7.3"
-  },
-  "Mainnet": {
-    "RPC": "39",
-    "avalanchego": "v1.13.0",
-    "subnet-evm": "v0.7.3"
+  "subnet-evm": "v0.7.3",
+  "avalanchego": {
+    "Local Network": {
+      "latest-version": "v1.13.0",
+      "require-prerelease": false,
+      "prerelease-version": ""
+    },
+    "DevNet": {
+      "latest-version": "v1.13.0",
+      "require-prerelease": false,
+      "prerelease-version": ""
+    },
+    "Fuji": {
+      "latest-version": "v1.13.0",
+      "require-prerelease": false,
+      "prerelease-version": ""
+    },
+    "Mainnet": {
+      "latest-version": "v1.13.0",
+      "require-prerelease": false,
+      "prerelease-version": ""
+    }
   }
 }
