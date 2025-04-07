@@ -24,7 +24,7 @@ builds:
         goarch: amd64
         env:
           - CC=musl-gcc
-	ldflags:
+        ldflags:
           - -X '-extldflags "-static" -linkmode external'
       - goos: linux
         goarch: arm64
