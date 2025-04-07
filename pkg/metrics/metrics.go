@@ -117,17 +117,17 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, cmdErr er
 
 	telemetryProperties := make(map[string]interface{})
 	telemetryProperties["command"] = app.Cmd.CommandPath()
-	telemetryProperties["version"] = version
+	telemetryProperties["cli_version"] = version
 	telemetryProperties["os"] = runtime.GOOS
-	telemetryProperties["error"] = ""
+	telemetryProperties["was_successful"] = true
+	telemetryProperties["error_msg"] = ""
 	if cmdErr != nil {
-		telemetryProperties["error"] = cmdErr.Error()
+		telemetryProperties["was_successful"] = false
+		telemetryProperties["error_msg"] = cmdErr.Error()
 	}
-	insideCodespace := utils.InsideCodespace()
-	telemetryProperties["insideCodespace"] = insideCodespace
-	if insideCodespace {
-		codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
-		telemetryProperties["codespace"] = codespaceName
+	telemetryProperties["environment"] = "local"
+	if utils.InsideCodespace() {
+		telemetryProperties["environment"] = "codespace"
 	}
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
