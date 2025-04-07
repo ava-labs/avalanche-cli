@@ -60,6 +60,9 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
+      - name: Set up static compilation for amd64
+        run: sudo apt-get -y install musl-tools
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
