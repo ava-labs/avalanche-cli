@@ -143,3 +143,11 @@ func GetSubnetIDFromBlockchainID(blockchainID ids.ID, network models.Network) (i
 	defer cancel()
 	return pClient.ValidatedBy(ctx, blockchainID)
 }
+
+func GetLatestCLISupportedAvalancheGoVersion(app *application.Avalanche, rpcVersion int, url string) (string, error) {
+	useVersion, err := GetAvailableAvalancheGoVersions(app, rpcVersion, url)
+	if err != nil {
+		return "", err
+	}
+	return useVersion[0], nil
+}
