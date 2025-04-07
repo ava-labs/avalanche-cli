@@ -3,6 +3,8 @@
 package localnet
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -78,6 +80,19 @@ func TrackSubnet(
 		perNodeBlockchainConfig,
 		wallet,
 	); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			printFunc("")
+			printFunc("A context timeout has occurred while trying to bootstrap the blockchain.")
+			printFunc("")
+			logPaths, _ := GetTmpNetAvailableLogs(networkDir, blockchainID, false)
+			if len(logPaths) != 0 {
+				printFunc("Please check this log files for more information on the error cause:")
+				for _, logPath := range logPaths {
+					printFunc("  " + logPath)
+				}
+				printFunc("")
+			}
+		}
 		return err
 	}
 	ux.Logger.GreenCheckmarkToUser("%s successfully tracking %s", networkModel.Name(), blockchainName)
