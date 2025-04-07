@@ -3,6 +3,7 @@
 package metrics
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,13 +16,13 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/posthog/posthog-go"
-	"github.com/spf13/cobra"
 )
 
 // telemetryToken value is set at build and install scripts using ldflags
 var (
 	telemetryToken    = ""
 	telemetryInstance = "https://app.posthog.com"
+	sent              = false
 )
 
 func GetCLIVersion() string {
@@ -56,7 +57,20 @@ func userIsOptedIn(app *application.Avalanche) bool {
 	return app.Conf.ConfigFileExists() && app.Conf.GetConfigBoolValue(constants.ConfigMetricsEnabledKey)
 }
 
-func HandleTracking(cmd *cobra.Command, commandPath string, app *application.Avalanche, flags map[string]string) {
+func HandleTracking(
+	app *application.Avalanche,
+	flags map[string]string,
+	err error,
+) {
+	if sent {
+		// avoid sending duplicate information for special commands with more info
+		return
+	}
+	sent = true
+	if app.Cmd == nil {
+		// command called with no arguments at all
+		return
+	}
 	if notInitialized(app) {
 		if err := app.Conf.SetConfigValue(constants.ConfigMetricsEnabledKey, true); err != nil {
 			ux.Logger.PrintToUser(logging.Red.Wrap("failure initializing metrics default: %s"), err)
@@ -66,29 +80,33 @@ func HandleTracking(cmd *cobra.Command, commandPath string, app *application.Ava
 	if !userIsOptedIn(app) {
 		return
 	}
-	if !cmd.HasSubCommands() && CheckCommandIsNotCompletion(cmd) {
-		trackMetrics(app, commandPath, flags)
+	if !app.Cmd.HasSubCommands() && CheckCommandIsNotCompletion(app.Cmd.CommandPath()) {
+		trackMetrics(app, flags, err)
 	}
 }
 
-func CheckCommandIsNotCompletion(cmd *cobra.Command) bool {
-	result := strings.Fields(cmd.CommandPath())
+func CheckCommandIsNotCompletion(commandPath string) bool {
+	result := strings.Fields(commandPath)
 	if len(result) >= 2 && result[1] == "completion" {
 		return false
 	}
 	return true
 }
 
-func trackMetrics(app *application.Avalanche, commandPath string, flags map[string]string) {
+func trackMetrics(app *application.Avalanche, flags map[string]string, cmdErr error) {
 	if telemetryToken == "" {
 		telemetryToken = os.Getenv(constants.MetricsAPITokenEnvVarName)
+	}
+	if telemetryToken == "" && !utils.IsE2E() {
+		app.Log.Warn("no token is configured for sending metrics")
 	}
 	if telemetryToken == "" || utils.IsE2E() {
 		return
 	}
-	client, _ := posthog.NewWithConfig(telemetryToken, posthog.Config{Endpoint: telemetryInstance})
-
-	defer client.Close()
+	client, err := posthog.NewWithConfig(telemetryToken, posthog.Config{Endpoint: telemetryInstance})
+	if err != nil {
+		app.Log.Warn(fmt.Sprintf("failure creating metrics client: %s", err))
+	}
 
 	version := app.Version
 	if version == "" {
@@ -98,9 +116,13 @@ func trackMetrics(app *application.Avalanche, commandPath string, flags map[stri
 	userID := getMetricsUserID(app)
 
 	telemetryProperties := make(map[string]interface{})
-	telemetryProperties["command"] = commandPath
+	telemetryProperties["command"] = app.Cmd.CommandPath()
 	telemetryProperties["version"] = version
 	telemetryProperties["os"] = runtime.GOOS
+	telemetryProperties["error"] = ""
+	if cmdErr != nil {
+		telemetryProperties["error"] = cmdErr.Error()
+	}
 	insideCodespace := utils.InsideCodespace()
 	telemetryProperties["insideCodespace"] = insideCodespace
 	if insideCodespace {
@@ -110,9 +132,15 @@ func trackMetrics(app *application.Avalanche, commandPath string, flags map[stri
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
 	}
-	_ = client.Enqueue(posthog.Capture{
+	event := posthog.Capture{
 		DistinctId: userID,
 		Event:      "cli-command",
 		Properties: telemetryProperties,
-	})
+	}
+	if err := client.Enqueue(event); err != nil {
+		app.Log.Warn(fmt.Sprintf("failure sending metrics %#v: %s", telemetryProperties, err))
+	}
+	if err := client.Close(); err != nil {
+		app.Log.Warn(fmt.Sprintf("failure closing metrics client %#v: %s", telemetryProperties, err))
+	}
 }
