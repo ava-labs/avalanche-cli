@@ -1,17 +1,21 @@
 {
   "Local Network": {
+    "RPC": "39",
     "avalanchego": "v1.13.0",
     "subnet-evm": "v0.7.3"
   },
   "DevNet": {
+    "RPC": "39",
     "avalanchego": "v1.13.0",
     "subnet-evm": "v0.7.3"
   },
   "Fuji": {
+    "RPC": "39",
     "avalanchego": "v1.13.0",
     "subnet-evm": "v0.7.3"
   },
   "Mainnet": {
+    "RPC": "39",
     "avalanchego": "v1.13.0",
     "subnet-evm": "v0.7.3"
   }
