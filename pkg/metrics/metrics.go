@@ -125,11 +125,9 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, cmdErr er
 		telemetryProperties["was_successful"] = false
 		telemetryProperties["error_msg"] = cmdErr.Error()
 	}
-	insideCodespace := utils.InsideCodespace()
-	telemetryProperties["is_inside_codespace"] = insideCodespace
-	if insideCodespace {
-		codespaceName := os.Getenv(constants.CodespaceNameEnvVar)
-		telemetryProperties["codespace"] = codespaceName
+	telemetryProperties["environment"] = "local"
+	if utils.InsideCodespace() {
+		telemetryProperties["environment"] = "codespace"
 	}
 	for propertyKey, propertyValue := range flags {
 		telemetryProperties[propertyKey] = propertyValue
