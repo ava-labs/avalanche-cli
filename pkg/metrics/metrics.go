@@ -120,7 +120,7 @@ func trackMetrics(app *application.Avalanche, flags map[string]string, cmdErr er
 	telemetryProperties["version"] = version
 	telemetryProperties["os"] = runtime.GOOS
 	telemetryProperties["error"] = ""
-	if err != nil {
+	if cmdErr != nil {
 		telemetryProperties["error"] = cmdErr.Error()
 	}
 	insideCodespace := utils.InsideCodespace()
