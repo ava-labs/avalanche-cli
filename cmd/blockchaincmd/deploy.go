@@ -93,11 +93,16 @@ var (
 	poSWeightToValueFactor         uint64
 	deployBalanceAVAX              float64
 	validatorManagerAddress        string
+	deployFlags                    BlockchainDeployFlags
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
+
+type BlockchainDeployFlags struct {
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 // avalanche blockchain deploy
 func newDeployCmd() *cobra.Command {
@@ -119,7 +124,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
 		"avalanchego-version",
@@ -827,7 +832,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
-			flags.SigAggFlags,
+			deployFlags.SigAggFlags,
 		)
 		if err != nil {
 			return err

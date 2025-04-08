@@ -41,11 +41,17 @@ type POSManagerSpecFlags struct {
 }
 
 var (
-	initPOSManagerFlags     POSManagerSpecFlags
-	validatorManagerAddress string
-	network                 networkoptions.NetworkFlags
-	privateKeyFlags         contract.PrivateKeyFlags
+	initPOSManagerFlags       POSManagerSpecFlags
+	validatorManagerAddress   string
+	network                   networkoptions.NetworkFlags
+	privateKeyFlags           contract.PrivateKeyFlags
+	initValidatorManagerFlags ContractInitValidatorManagerFlags
 )
+
+type ContractInitValidatorManagerFlags struct {
+	RPC         string
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 // avalanche contract initValidatorManager
 func newInitValidatorManagerCmd() *cobra.Command {
@@ -59,7 +65,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	networkoptions.AddNetworkFlagsToCmd(cmd, &network, true, networkoptions.DefaultSupportedNetworkOptions)
 	privateKeyFlags.AddToCmd(cmd, "as contract deployer")
 	flags.AddRPCFlagToCmd(cmd, app)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &initValidatorManagerFlags.SigAggFlags)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
 	cmd.Flags().Uint64Var(&initPOSManagerFlags.minimumStakeAmount, "pos-minimum-stake-amount", 1, "(PoS only) minimum stake amount")
@@ -153,8 +159,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags.AggregatorLogLevel,
-		flags.SigAggFlags.AggregatorLogToStdout,
+		initValidatorManagerFlags.SigAggFlags.AggregatorLogLevel,
+		initValidatorManagerFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
 	)
 	if err != nil {

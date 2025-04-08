@@ -62,6 +62,7 @@ var (
 	useACP99                     bool
 	httpPorts                    []uint
 	stakingPorts                 []uint
+	localValidateFlags           NodeLocalValidateFlags
 )
 
 // const snapshotName = "local_snapshot"
@@ -344,6 +345,11 @@ func notImplementedForLocal(what string) error {
 	return nil
 }
 
+type NodeLocalValidateFlags struct {
+	RPC         string
+	SigAggFlags flags.SignatureAggregatorFlags
+}
+
 func newLocalValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate [clusterName]",
@@ -356,7 +362,7 @@ This command can only be used to validate Proof of Stake L1.`,
 		RunE: localValidate,
 	}
 	flags.AddRPCFlagToCmd(cmd, app)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &localValidateFlags.SigAggFlags)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
@@ -530,8 +536,8 @@ func localValidate(_ *cobra.Command, args []string) error {
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags.AggregatorLogLevel,
-		flags.SigAggFlags.AggregatorLogToStdout,
+		localValidateFlags.SigAggFlags.AggregatorLogLevel,
+		localValidateFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
 	)
 	if err != nil {

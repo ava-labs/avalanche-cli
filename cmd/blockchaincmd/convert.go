@@ -43,7 +43,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var doStrongInputChecks bool
+var (
+	doStrongInputChecks bool
+	convertFlags        BlockchainConvertFlags
+)
+
+type BlockchainConvertFlags struct {
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 // avalanche blockchain convert
 func newConvertCmd() *cobra.Command {
@@ -61,7 +68,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &convertFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
@@ -787,7 +794,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			validatorManagerAddress,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
-			flags.SigAggFlags,
+			convertFlags.SigAggFlags,
 		); err != nil {
 			return err
 		}

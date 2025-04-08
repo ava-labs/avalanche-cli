@@ -66,7 +66,13 @@ var (
 	validatorManagerOwner               string
 	httpPort                            uint32
 	stakingPort                         uint32
+	addValidatorFlags                   BlockchainAddValidatorFlags
 )
+
+type BlockchainAddValidatorFlags struct {
+	RPC         string
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 const (
 	validatorWeightFlag = "weight"
@@ -90,7 +96,7 @@ Testnet or Mainnet.`,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd, app)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &addValidatorFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
@@ -507,8 +513,8 @@ func CallAddValidator(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags.AggregatorLogLevel,
-		flags.SigAggFlags.AggregatorLogToStdout,
+		addValidatorFlags.SigAggFlags.AggregatorLogLevel,
+		addValidatorFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterNameFlagValue),
 	)
 	if err != nil {

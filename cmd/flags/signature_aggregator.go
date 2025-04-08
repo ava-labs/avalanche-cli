@@ -15,18 +15,16 @@ const (
 	aggregatorLogToStdoutFlag = "aggregator-log-to-stdout"
 )
 
-var SigAggFlags SignatureAggregatorFlags
-
 type SignatureAggregatorFlags struct {
 	AggregatorLogLevel    string
 	AggregatorLogToStdout bool
 }
 
-func validateSignatureAggregatorFlags() error {
-	if _, err := logging.ToLevel(SigAggFlags.AggregatorLogLevel); err != nil {
+func validateSignatureAggregatorFlags(sigAggFlags SignatureAggregatorFlags) error {
+	if _, err := logging.ToLevel(sigAggFlags.AggregatorLogLevel); err != nil {
 		return fmt.Errorf(
 			"invalid log level: %q. Available values: %s, %s, %s, %s, %s, %s, %s, %s",
-			SigAggFlags.AggregatorLogLevel,
+			sigAggFlags.AggregatorLogLevel,
 			logging.Info.LowerString(),
 			logging.Warn.LowerString(),
 			logging.Error.LowerString(),
@@ -40,10 +38,10 @@ func validateSignatureAggregatorFlags() error {
 	return nil
 }
 
-func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&SigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
+func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command, sigAggFlags *SignatureAggregatorFlags) {
+	cmd.Flags().StringVar(&sigAggFlags.AggregatorLogLevel, aggregatorLogLevelFlag, constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
 	sigAggPreRun := func(_ *cobra.Command, _ []string) error {
-		if err := validateSignatureAggregatorFlags(); err != nil {
+		if err := validateSignatureAggregatorFlags(*sigAggFlags); err != nil {
 			return err
 		}
 		return nil
@@ -59,5 +57,5 @@ func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command) {
 		return sigAggPreRun(cmd, args)
 	}
 
-	cmd.Flags().BoolVar(&SigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
+	cmd.Flags().BoolVar(&sigAggFlags.AggregatorLogToStdout, aggregatorLogToStdoutFlag, false, "use stdout for signature aggregator logs")
 }

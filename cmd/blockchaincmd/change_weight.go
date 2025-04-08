@@ -36,9 +36,15 @@ import (
 )
 
 var (
-	newWeight      uint64
-	initiateTxHash string
+	newWeight         uint64
+	initiateTxHash    string
+	changeWeightFlags BlockchainChangeWeightFlags
 )
+
+type BlockchainChangeWeightFlags struct {
+	RPC         string
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 // avalanche blockchain addValidator
 func newChangeWeightCmd() *cobra.Command {
@@ -53,7 +59,7 @@ The L1 has to be a Proof of Authority L1.`,
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd, app)
-	flags.AddSignatureAggregatorFlagsToCmd(cmd)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &changeWeightFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Uint64Var(&newWeight, "weight", 0, "set the new staking weight of the validator")
 	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
@@ -359,8 +365,8 @@ func changeWeightACP99(
 	}
 	aggregatorLogger, err := utils.NewLogger(
 		constants.SignatureAggregatorLogName,
-		flags.SigAggFlags.AggregatorLogLevel,
-		flags.SigAggFlags.AggregatorLogToStdout,
+		changeWeightFlags.SigAggFlags.AggregatorLogLevel,
+		changeWeightFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
 	)
 	if err != nil {
