@@ -480,11 +480,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 		if avagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
 			// nothing given: get avago version from RPC compat
+			//TODO: remove below
 			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
 				app,
 				sidecar.RPCVersion,
 				constants.AvalancheGoCompatibilityURL,
 			)
+			//TODO: need to add rpc version to latest.json
+			avagoVersion, err = blockchain.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network)
 			if err != nil {
 				if err != vm.ErrNoAvagoVersion {
 					return err
