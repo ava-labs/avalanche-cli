@@ -694,16 +694,16 @@ func TxDump(description string, tx *types.Transaction) (string, error) {
 		return "", fmt.Errorf("failure marshalling raw evm tx: %w", err)
 	}
 	txDump := ""
-	fmt.Sprintf("Tx Dump For %s:\n", description)
-	fmt.Sprintf("0x%s\n", hex.EncodeToString(bs))
-	fmt.Sprintf("Calldata Dump:\n")
-	fmt.Sprintf("0x%s\n", hex.EncodeToString(tx.Data()))
+	txDump += fmt.Sprintf("Tx Dump For %s:\n", description)
+	txDump += fmt.Sprintf("0x%s\n", hex.EncodeToString(bs))
+	txDump += "Calldata Dump:\n"
+	txDump += fmt.Sprintf("0x%s\n", hex.EncodeToString(tx.Data()))
 	if len(tx.AccessList()) > 0 {
-		fmt.Sprintf("Access List Dump:\n")
+		txDump += "Access List Dump:\n"
 		for _, t := range tx.AccessList() {
-			fmt.Sprintf("  Address: %s\n", t.Address)
+			txDump += fmt.Sprintf("  Address: %s\n", t.Address)
 			for _, s := range t.StorageKeys {
-				fmt.Sprintf("  Storage: %s\n", s)
+				txDump += fmt.Sprintf("  Storage: %s\n", s)
 			}
 		}
 	}

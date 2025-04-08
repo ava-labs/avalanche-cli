@@ -561,7 +561,11 @@ func CallAddValidator(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Initializing Validator Registration", rawTx)
+		dump, err := evm.TxDump("Initializing Validator Registration", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
 
@@ -601,7 +605,11 @@ func CallAddValidator(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Finish Validator Registration", rawTx)
+		dump, err := evm.TxDump("Finish Validator Registration", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.PrintToUser("  NodeID: %s", nodeID)

@@ -394,7 +394,11 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Initializing Validator Weight Change", rawTx)
+		dump, err := evm.TxDump("Initializing Validator Weight Change", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
@@ -445,7 +449,11 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Finish Validator Weight Change", rawTx)
+		dump, err := evm.TxDump("Finish Validator Weight Change", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Weight change successfully made")

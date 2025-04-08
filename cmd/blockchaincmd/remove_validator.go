@@ -398,7 +398,11 @@ func removeValidatorSOV(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Initializing Validator Removal", rawTx)
+		dump, err := evm.TxDump("Initializing Validator Removal", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
@@ -439,7 +443,11 @@ func removeValidatorSOV(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Finish Validator Removal", rawTx)
+		dump, err := evm.TxDump("Finish Validator Removal", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Validator successfully removed from the Subnet")
