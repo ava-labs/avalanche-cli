@@ -10,7 +10,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	clievm "github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -19,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -401,7 +401,7 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	client, err := clievm.GetClient(senderURL)
+	client, err := evm.GetClient(senderURL)
 	if err != nil {
 		return err
 	}
@@ -796,7 +796,7 @@ func importIntoC(
 	if usingLedger {
 		ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 	}
-	client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+	client, err := evm.GetClient(network.BlockchainEndpoint("C"))
 	if err != nil {
 		return err
 	}
@@ -899,7 +899,7 @@ func exportFromC(
 	if usingLedger {
 		ux.Logger.PrintToUser("*** Please sign ExportTx transaction on the ledger device *** ")
 	}
-	client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+	client, err := evm.GetClient(network.BlockchainEndpoint("C"))
 	if err != nil {
 		return err
 	}
