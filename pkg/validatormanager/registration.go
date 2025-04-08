@@ -565,11 +565,13 @@ func FinishValidatorRegistration(
 		return nil, err
 	}
 	if privateKey != "" {
-		if err := evm.SetupProposerVM(
-			rpcURL,
-			privateKey,
-		); err != nil {
-			ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		if client, err := evm.GetClient(rpcURL); err != nil {
+			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %w", err)
+		} else {
+			if err := client.SetupProposerVM(privateKey); err != nil {
+				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+			}
+			client.Close()
 		}
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)

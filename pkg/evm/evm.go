@@ -639,15 +639,16 @@ func (client Client) WaitForNewBlock(
 	return fmt.Errorf("no new block produced on %s in %f seconds", client.URL, totalDuration.Seconds())
 }
 
-func SetupProposerVM(
-	rpcURL string,
+// issue dummy txs to create the given number of blocks
+func (client Client) CreateDummyBlocks(
+	numBlocks int,
 	privKeyStr string,
 ) error {
-	privKey, err := crypto.HexToECDSA(privKeyStr)
+	addr, err := PrivateKeyToAddress(privKeyStr)
 	if err != nil {
 		return err
 	}
-	client, err := GetClient(rpcURL)
+	privKey, err := crypto.HexToECDSA(privKeyStr)
 	if err != nil {
 		return err
 	}
@@ -655,34 +656,9 @@ func SetupProposerVM(
 	if err != nil {
 		return err
 	}
-	_, err = utils.Retry(
-		func() (any, error) {
-			return nil, client.issueTxsToActivateProposerVMFork(chainID, privKey)
-		},
-		repeatsOnFailure,
-		sleepBetweenRepeats,
-	)
-	if err != nil {
-		err = fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
-	}
-	return err
-}
-
-// issueTxsToActivateProposerVMFork issues transactions at the current
-// timestamp, which should be after the ProposerVM activation time (aka
-// ApricotPhase4). This should generate a PostForkBlock because its parent block
-// (genesis) has a timestamp (0) that is greater than or equal to the fork
-// activation time of 0. Therefore, subsequent blocks should be built with
-// BuildBlockWithContext.
-func (client Client) issueTxsToActivateProposerVMFork(
-	chainID *big.Int,
-	fundedKey *ecdsa.PrivateKey,
-) error {
-	const numTriggerTxs = 2 // Number of txs needed to activate the proposer VM fork
-	addr := crypto.PubkeyToAddress(fundedKey.PublicKey)
 	gasPrice := big.NewInt(params.MinGasPrice)
 	txSigner := types.LatestSignerForChainID(chainID)
-	for i := 0; i < numTriggerTxs; i++ {
+	for i := 0; i < numBlocks; i++ {
 		prevBlockNumber, err := client.BlockNumber()
 		if err != nil {
 			return fmt.Errorf("client.BlockNumber failure at step %d: %w", i, err)
@@ -691,8 +667,9 @@ func (client Client) issueTxsToActivateProposerVMFork(
 		if err != nil {
 			return fmt.Errorf("client.NonceAt failure at step %d: %w", i, err)
 		}
+		// send Big1 to himself
 		tx := types.NewTransaction(nonce, addr, common.Big1, params.TxGas, gasPrice, nil)
-		triggerTx, err := types.SignTx(tx, txSigner, fundedKey)
+		triggerTx, err := types.SignTx(tx, txSigner, privKey)
 		if err != nil {
 			return fmt.Errorf("types.SignTx failure at step %d: %w", i, err)
 		}
@@ -704,4 +681,28 @@ func (client Client) issueTxsToActivateProposerVMFork(
 		}
 	}
 	return nil
+}
+
+// issue transactions on [client] so as to activate Proposer VM Fork
+// this should generate a PostForkBlock because its parent block
+// (genesis) has a timestamp (0) that is greater than or equal to the fork
+// activation time of 0. Therefore, subsequent blocks should be built with
+// BuildBlockWithContext.
+// the current timestamp should be after the ProposerVM activation time (aka ApricotPhase4).
+// supports [repeatsOnFailure] failures on each step
+func (client Client) SetupProposerVM(
+	privKey string,
+) error {
+	const numBlocks = 2 // Number of blocks needed to activate the proposer VM fork
+	_, err := utils.Retry(
+		func() (any, error) {
+			return nil, client.CreateDummyBlocks(numBlocks, privKey)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure issuing tx to activate proposer VM: %w", err)
+	}
+	return err
 }

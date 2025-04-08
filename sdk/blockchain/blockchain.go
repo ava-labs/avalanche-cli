@@ -372,11 +372,13 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBootstrapValidators)
 	}
 
-	if err := evm.SetupProposerVM(
-		c.RPC,
-		privateKey,
-	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
+	if client, err := evm.GetClient(c.RPC); err != nil {
+		ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %s", err)
+	} else {
+		if err := client.SetupProposerVM(privateKey); err != nil {
+			ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
+		}
+		client.Close()
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
@@ -436,11 +438,13 @@ func (c *Subnet) InitializeProofOfStake(
 	posParams validatormanager.PoSParams,
 	validatorManagerAddressStr string,
 ) error {
-	if err := evm.SetupProposerVM(
-		c.RPC,
-		privateKey,
-	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
+	if client, err := evm.GetClient(c.RPC); err != nil {
+		ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %s", err)
+	} else {
+		if err := client.SetupProposerVM(privateKey); err != nil {
+			ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
+		}
+		client.Close()
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(

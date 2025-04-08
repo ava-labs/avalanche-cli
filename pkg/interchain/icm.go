@@ -380,7 +380,12 @@ func SetProposerVM(
 		return err
 	}
 	wsEndpoint := network.BlockchainWSEndpoint(blockchainID)
-	return evm.SetupProposerVM(wsEndpoint, privKeyStr)
+	client, err := evm.GetClient(wsEndpoint)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	return client.SetupProposerVM(privKeyStr)
 }
 
 func getICMKeyInfo(
