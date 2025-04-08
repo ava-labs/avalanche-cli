@@ -511,7 +511,7 @@ func DebugTraceTransaction(
 	rpcURL string,
 	txHash string,
 ) (map[string]interface{}, error) {
-	client, err := evm.GetRPCClient(rpcURL)
+	client, err := evm.GetRawClient(rpcURL)
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +545,7 @@ func DebugTraceCall(
 	if err != nil {
 		return nil, err
 	}
-	client, err := evm.GetRPCClient(rpcURL)
+	client, err := evm.GetRawClient(rpcURL)
 	if err != nil {
 		return nil, err
 	}

@@ -172,7 +172,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	if err == contract.ErrFailedReceiptStatus {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(sourceRPCEndpoint, txHash)
+		trace, err := evm.GetTxTrace(sourceRPCEndpoint, txHash)
 		if err != nil {
 			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
 			ux.Logger.PrintToUser("")
