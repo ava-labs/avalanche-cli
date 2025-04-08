@@ -31,7 +31,7 @@ const (
 var (
 	ErrMutuallyExlusiveKeySource = errors.New("key source flags --key, --ewoq, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet        = errors.New("--key flag is not supported for mainnet operations, please use ledger instead")
-	ErrNonEwoqKeyOnMainnet       = errors.New("key source --ewoq is not available for mainnet operations")
+	ErrNonEwoqKeyOnMainnet       = errors.New("key source --ewoq is not available for mainnet operations, please use ledger instead")
 	ErrNonEwoqKeyOnDevnet        = errors.New("key source --ewoq is the only one available for devnet operations")
 	ErrEwoqKeyOnFuji             = errors.New("key source --ewoq is not available for fuji operations")
 )
