@@ -12,13 +12,11 @@ const (
 	rpcURLFLag = "rpc"
 )
 
-var RPC string
-
-func AddRPCFlagToCmd(cmd *cobra.Command, app *application.Avalanche) {
-	cmd.Flags().StringVar(&RPC, rpcURLFLag, "", "blockchain rpc endpoint")
+func AddRPCFlagToCmd(cmd *cobra.Command, app *application.Avalanche, rpc *string) {
+	cmd.Flags().StringVar(rpc, rpcURLFLag, "", "blockchain rpc endpoint")
 
 	rpcPreRun := func(cmd *cobra.Command, args []string) error {
-		if err := ValidateRPC(app, &RPC, cmd, args); err != nil {
+		if err := ValidateRPC(app, rpc, cmd, args); err != nil {
 			return err
 		}
 		return nil

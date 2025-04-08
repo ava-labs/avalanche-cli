@@ -95,7 +95,7 @@ Testnet or Mainnet.`,
 		Args: cobrautils.MaximumNArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddRPCFlagToCmd(cmd, app)
+	flags.AddRPCFlagToCmd(cmd, app, &addValidatorFlags.RPC)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &addValidatorFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
@@ -185,7 +185,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		sc, err = importL1(blockchainIDStr, flags.RPC, network)
+		sc, err = importL1(blockchainIDStr, addValidatorFlags.RPC, network)
 		if err != nil {
 			return err
 		}
@@ -331,7 +331,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 		remainingBalanceOwnerAddr,
 		disableOwnerAddr,
 		sc,
-		flags.RPC,
+		addValidatorFlags.RPC,
 	); err != nil {
 		return err
 	}

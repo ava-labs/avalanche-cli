@@ -60,7 +60,7 @@ these prompts by providing the values with flags.`,
 		Args: cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
-	flags.AddRPCFlagToCmd(cmd, app)
+	flags.AddRPCFlagToCmd(cmd, app, &removeValidatorFlags.RPC)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &removeValidatorFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji deploy only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "(for non-SOV blockchain only) control keys that will be used to authenticate the removeValidator tx")
@@ -150,8 +150,8 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if sc.Sovereign && flags.RPC == "" {
-		flags.RPC, _, err = contract.GetBlockchainEndpoints(
+	if sc.Sovereign && removeValidatorFlags.RPC == "" {
+		removeValidatorFlags.RPC, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			contract.ChainSpec{
@@ -174,7 +174,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		// due to a previous partial removal operation
 		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
 		validationID, err := validatorsdk.GetValidationID(
-			flags.RPC,
+			removeValidatorFlags.RPC,
 			common.HexToAddress(validatorManagerAddress),
 			nodeID,
 		)
@@ -227,7 +227,7 @@ func removeValidator(_ *cobra.Command, args []string) error {
 		uptimeSec,
 		isBootstrapValidatorForNetwork(nodeID, scNetwork),
 		force,
-		flags.RPC,
+		removeValidatorFlags.RPC,
 	); err != nil {
 		return err
 	}

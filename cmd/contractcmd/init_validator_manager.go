@@ -64,7 +64,7 @@ func newInitValidatorManagerCmd() *cobra.Command {
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &network, true, networkoptions.DefaultSupportedNetworkOptions)
 	privateKeyFlags.AddToCmd(cmd, "as contract deployer")
-	flags.AddRPCFlagToCmd(cmd, app)
+	flags.AddRPCFlagToCmd(cmd, app, &initValidatorManagerFlags.RPC)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &initValidatorManagerFlags.SigAggFlags)
 
 	cmd.Flags().StringVar(&initPOSManagerFlags.rewardCalculatorAddress, "pos-reward-calculator-address", "", "(PoS only) initialize the ValidatorManager with reward calculator address")
@@ -97,8 +97,8 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 	if network.ClusterName != "" {
 		network = models.ConvertClusterToNetwork(network)
 	}
-	if flags.RPC == "" {
-		flags.RPC, _, err = contract.GetBlockchainEndpoints(
+	if initValidatorManagerFlags.RPC == "" {
+		initValidatorManagerFlags.RPC, _, err = contract.GetBlockchainEndpoints(
 			app,
 			network,
 			chainSpec,
@@ -109,7 +109,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), flags.RPC)
+	ux.Logger.PrintToUser(logging.Yellow.Wrap("RPC Endpoint: %s"), initValidatorManagerFlags.RPC)
 	genesisAddress, genesisPrivateKey, err := contract.GetEVMSubnetPrefundedKey(
 		app,
 		network,
@@ -188,7 +188,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		BlockchainID:        blockchainID,
 		BootstrapValidators: avaGoBootstrapValidators,
 		OwnerAddress:        &ownerAddress,
-		RPC:                 flags.RPC,
+		RPC:                 initValidatorManagerFlags.RPC,
 	}
 	aggregatorCtx, aggregatorCancel := sdkutils.GetTimedContext(constants.SignatureAggregatorTimeout)
 	defer aggregatorCancel()
@@ -210,7 +210,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		ux.Logger.GreenCheckmarkToUser("Proof of Authority Validator Manager contract successfully initialized on blockchain %s", blockchainName)
 	case sc.PoS(): // PoS
-		deployed, err := validatormanager.ProxyHasValidatorManagerSet(flags.RPC)
+		deployed, err := validatormanager.ProxyHasValidatorManagerSet(initValidatorManagerFlags.RPC)
 		if err != nil {
 			return err
 		}
@@ -227,7 +227,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 				return err
 			}
 			if _, err := validatormanager.DeployAndRegisterPoSValidatorManagerContrac(
-				flags.RPC,
+				initValidatorManagerFlags.RPC,
 				genesisPrivateKey,
 				proxyOwnerPrivateKey,
 			); err != nil {

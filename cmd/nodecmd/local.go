@@ -361,7 +361,7 @@ This command can only be used to validate Proof of Stake L1.`,
 		Args: cobra.ExactArgs(1),
 		RunE: localValidate,
 	}
-	flags.AddRPCFlagToCmd(cmd, app)
+	flags.AddRPCFlagToCmd(cmd, app, &localValidateFlags.RPC)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &localValidateFlags.SigAggFlags)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
@@ -437,13 +437,13 @@ func localValidate(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if flags.RPC == "" {
-		flags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+	if localValidateFlags.RPC == "" {
+		localValidateFlags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
 			return err
 		}
 	}
-	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(flags.RPC)
+	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(localValidateFlags.RPC)
 	// if there is error that means RPC URL did not contain blockchain in it
 	// RPC might be in the format of something like https://etna.avax-dev.network
 	// We will prompt for blockchainID in that case
@@ -622,7 +622,7 @@ func addAsValidator(
 		aggregatorCtx,
 		app,
 		network,
-		flags.RPC,
+		localValidateFlags.RPC,
 		chainSpec,
 		false,
 		"",
@@ -669,7 +669,7 @@ func addAsValidator(
 		aggregatorCtx,
 		app,
 		network,
-		flags.RPC,
+		localValidateFlags.RPC,
 		chainSpec,
 		false,
 		"",
