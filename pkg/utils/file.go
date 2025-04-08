@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -69,6 +70,15 @@ func ExpandHome(path string) string {
 		path = filepath.Join(home, path[1:])
 	}
 	path, _ = filepath.Abs(path)
+	return path
+}
+
+// ReplaceUserHomeWithTilde replaces user home directory with ~
+func ReplaceUserHomeWithTilde(path string) string {
+	home, _ := os.UserHomeDir()
+	if strings.HasPrefix(path, home) {
+		path = "~" + strings.TrimPrefix(path, home)
+	}
 	return path
 }
 

@@ -33,7 +33,7 @@ require (
 	github.com/otiai10/copy v1.14.1
 	github.com/pborman/ansi v1.0.0
 	github.com/pingcap/errors v0.11.4
-	github.com/posthog/posthog-go v1.2.24
+	github.com/posthog/posthog-go v1.4.7
 	github.com/prometheus/client_golang v1.21.1
 	github.com/schollz/progressbar/v3 v3.17.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
