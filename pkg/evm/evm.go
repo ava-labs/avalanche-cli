@@ -5,7 +5,6 @@ package evm
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"net/url"
@@ -34,7 +33,7 @@ const (
 	nativeTransferGas    uint64 = 21_000
 )
 
-// wraps over ethclient for calls used by SDK. includes:
+// wraps over ethclient for calls used by SDK. featues:
 // - finds out url scheme in case it is missing, to connect to ws/wss/http/https
 // - repeats to try to recover from failures, generating its own context for each call
 // - logs rpc url in case of failure
@@ -464,9 +463,9 @@ func (client Client) WaitForEVMBootstrapped(timeout time.Duration) error {
 	}
 }
 
-// Generates a transaction signed with [privateKeyStr], calling a [contract] method using [callData]
+// generates a transaction signed with [privateKeyStr], calling a [contract] method using [callData]
 // including [warpMessage] in the tx accesslist
-// If [generateRawTxOnly] is set, it generates a similar, unsigned tx, with given [from] address
+// if [generateRawTxOnly] is set, it generates a similar, unsigned tx, with given [from] address
 func (client Client) TransactWithWarpMessage(
 	from common.Address,
 	privateKeyStr string,
@@ -545,31 +544,110 @@ func (client Client) TransactWithWarpMessage(
 	return types.SignTx(tx, txSigner, privateKey)
 }
 
-// Returns the first log in 'logs' that is successfully parsed by 'parser'
-func GetEventFromLogs[T any](logs []*types.Log, parser func(log types.Log) (T, error)) (T, error) {
-	cumErrMsg := ""
-	for i, log := range logs {
-		event, err := parser(*log)
-		if err == nil {
-			return event, nil
-		}
-		if cumErrMsg != "" {
-			cumErrMsg += "; "
-		}
-		cumErrMsg += fmt.Sprintf("log %d -> %s", i, err.Error())
+// gets block [n]
+// supports [repeatsOnFailure] failures
+func (client Client) BlockByNumber(n *big.Int) (*types.Block, error) {
+	block, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*types.Block, error) {
+			return client.EthClient.BlockByNumber(ctx, n)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure retrieving block %d on %s: %w", n, client.URL, err)
 	}
-	return *new(T), fmt.Errorf("failed to find %T event in receipt logs: [%s]", *new(T), cumErrMsg)
+	return block, err
+}
+
+// get logs as given by [query]
+// supports [repeatsOnFailure] failures
+func (client Client) FilterLogs(query interfaces.FilterQuery) ([]types.Log, error) {
+	logs, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) ([]types.Log, error) {
+			return client.EthClient.FilterLogs(ctx, query)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure retrieving logs on %s: %w", client.URL, err)
+	}
+	return logs, err
+}
+
+// get tx receipt for [hash]
+// supports [repeatsOnFailure] failures
+func (client Client) TransactionReceipt(hash common.Hash) (*types.Receipt, error) {
+	receipt, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (*types.Receipt, error) {
+			return client.EthClient.TransactionReceipt(ctx, hash)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure retrieving receipt for %s on %s: %w", hash, client.URL, err)
+	}
+	return receipt, err
+}
+
+// gets current height
+// supports [repeatsOnFailure] failures
+func (client Client) BlockNumber() (uint64, error) {
+	blockNumber, err := utils.RetryWithContextGen(
+		utils.GetAPILargeContext,
+		func(ctx context.Context) (uint64, error) {
+			return client.EthClient.BlockNumber(ctx)
+		},
+		repeatsOnFailure,
+		sleepBetweenRepeats,
+	)
+	if err != nil {
+		err = fmt.Errorf("failure retrieving height (block number) on %s: %w", client.URL, err)
+	}
+	return blockNumber, err
+}
+
+// waits until current height is bigger than the given previous height at [prevBlockNumber]
+// supports [repeatsOnFailure] failures on each step
+func (client Client) WaitForNewBlock(
+	prevBlockNumber uint64,
+	totalDuration time.Duration,
+	stepDuration time.Duration,
+) error {
+	if stepDuration == 0 {
+		stepDuration = 1 * time.Second
+	}
+	if totalDuration == 0 {
+		totalDuration = 10 * time.Second
+	}
+	steps := totalDuration / stepDuration
+	for step := 0; step < int(steps); step++ {
+		blockNumber, err := client.BlockNumber()
+		if err != nil {
+			return err
+		}
+		if blockNumber > prevBlockNumber {
+			return nil
+		}
+		time.Sleep(stepDuration)
+	}
+	return fmt.Errorf("no new block produced on %s in %f seconds", client.URL, totalDuration.Seconds())
 }
 
 func SetupProposerVM(
-	endpoint string,
+	rpcURL string,
 	privKeyStr string,
 ) error {
 	privKey, err := crypto.HexToECDSA(privKeyStr)
 	if err != nil {
 		return err
 	}
-	client, err := GetClient(endpoint)
+	client, err := GetClient(rpcURL)
 	if err != nil {
 		return err
 	}
@@ -579,7 +657,7 @@ func SetupProposerVM(
 	}
 	_, err = utils.Retry(
 		func() (any, error) {
-			return nil, issueTxsToActivateProposerVMFork(client, chainID, privKey)
+			return nil, client.issueTxsToActivateProposerVMFork(chainID, privKey)
 		},
 		repeatsOnFailure,
 		sleepBetweenRepeats,
@@ -596,8 +674,7 @@ func SetupProposerVM(
 // (genesis) has a timestamp (0) that is greater than or equal to the fork
 // activation time of 0. Therefore, subsequent blocks should be built with
 // BuildBlockWithContext.
-func issueTxsToActivateProposerVMFork(
-	client Client,
+func (client Client) issueTxsToActivateProposerVMFork(
 	chainID *big.Int,
 	fundedKey *ecdsa.PrivateKey,
 ) error {
@@ -606,13 +683,11 @@ func issueTxsToActivateProposerVMFork(
 	gasPrice := big.NewInt(params.MinGasPrice)
 	txSigner := types.LatestSignerForChainID(chainID)
 	for i := 0; i < numTriggerTxs; i++ {
-		ctx, cancel := utils.GetTimedContext(1 * time.Minute)
-		defer cancel()
-		prevBlockNumber, err := client.EthClient.BlockNumber(ctx)
+		prevBlockNumber, err := client.BlockNumber()
 		if err != nil {
 			return fmt.Errorf("client.BlockNumber failure at step %d: %w", i, err)
 		}
-		nonce, err := client.EthClient.NonceAt(ctx, addr, nil)
+		nonce, err := client.NonceAt(addr.Hex())
 		if err != nil {
 			return fmt.Errorf("client.NonceAt failure at step %d: %w", i, err)
 		}
@@ -621,115 +696,12 @@ func issueTxsToActivateProposerVMFork(
 		if err != nil {
 			return fmt.Errorf("types.SignTx failure at step %d: %w", i, err)
 		}
-		if err := client.EthClient.SendTransaction(ctx, triggerTx); err != nil {
+		if err := client.SendTransaction(triggerTx); err != nil {
 			return fmt.Errorf("client.SendTransaction failure at step %d: %w", i, err)
 		}
-		if err := WaitForNewBlock(client, ctx, prevBlockNumber, 0, 0); err != nil {
+		if err := client.WaitForNewBlock(prevBlockNumber, 0, 0); err != nil {
 			return fmt.Errorf("WaitForNewBlock failure at step %d: %w", i, err)
 		}
 	}
 	return nil
-}
-
-func WaitForNewBlock(
-	client Client,
-	ctx context.Context,
-	prevBlockNumber uint64,
-	totalDuration time.Duration,
-	stepDuration time.Duration,
-) error {
-	if stepDuration == 0 {
-		stepDuration = 1 * time.Second
-	}
-	if totalDuration == 0 {
-		totalDuration = 10 * time.Second
-	}
-	steps := totalDuration / stepDuration
-	for step := 0; step < int(steps); step++ {
-		blockNumber, err := client.EthClient.BlockNumber(ctx)
-		if err != nil {
-			return err
-		}
-		if blockNumber > prevBlockNumber {
-			return nil
-		}
-		time.Sleep(stepDuration)
-	}
-	return fmt.Errorf("no new block produced on %s in %f seconds", client.URL, totalDuration.Seconds())
-}
-
-func ExtractWarpMessageFromReceipt(
-	client Client,
-	ctx context.Context,
-	receipt *types.Receipt,
-) (*avalancheWarp.UnsignedMessage, error) {
-	logs, err := client.EthClient.FilterLogs(ctx, interfaces.FilterQuery{
-		BlockHash: &receipt.BlockHash,
-		Addresses: []common.Address{warp.Module.Address},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if len(logs) != 1 {
-		return nil, fmt.Errorf("expected block to contain 1 warp log, got %d", len(logs))
-	}
-	txLog := logs[0]
-	return warp.UnpackSendWarpEventDataToMessage(txLog.Data)
-}
-
-func TransactionError(tx *types.Transaction, err error, msg string, args ...interface{}) error {
-	msgSuffix := ": %w"
-	if tx != nil {
-		msgSuffix += fmt.Sprintf(" (txHash=%s)", tx.Hash().String())
-	} else {
-		msgSuffix += " (tx failed to be submitted)"
-	}
-	args = append(args, err)
-	return fmt.Errorf(msg+msgSuffix, args...)
-}
-
-func TxDump(description string, tx *types.Transaction) (string, error) {
-	bs, err := tx.MarshalBinary()
-	if err != nil {
-		return "", fmt.Errorf("failure marshalling raw evm tx: %w", err)
-	}
-	txDump := ""
-	txDump += fmt.Sprintf("Tx Dump For %s:\n", description)
-	txDump += fmt.Sprintf("0x%s\n", hex.EncodeToString(bs))
-	txDump += "Calldata Dump:\n"
-	txDump += fmt.Sprintf("0x%s\n", hex.EncodeToString(tx.Data()))
-	if len(tx.AccessList()) > 0 {
-		txDump += "Access List Dump:\n"
-		for _, t := range tx.AccessList() {
-			txDump += fmt.Sprintf("  Address: %s\n", t.Address)
-			for _, s := range t.StorageKeys {
-				txDump += fmt.Sprintf("  Storage: %s\n", s)
-			}
-		}
-	}
-	return txDump, nil
-}
-
-func PrivateKeyToAddress(privateKey string) (common.Address, error) {
-	pk, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		return common.Address{}, err
-	}
-	return crypto.PubkeyToAddress(pk.PublicKey), nil
-}
-
-func (client Client) BlockNumber(ctx context.Context) (uint64, error) {
-	return client.EthClient.BlockNumber(ctx)
-}
-
-func (client Client) BlockByNumber(ctx context.Context, n *big.Int) (*types.Block, error) {
-	return client.EthClient.BlockByNumber(ctx, n)
-}
-
-func (client Client) FilterLogs(ctx context.Context, query interfaces.FilterQuery) ([]types.Log, error) {
-	return client.EthClient.FilterLogs(ctx, query)
-}
-
-func (client Client) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
-	return client.EthClient.TransactionReceipt(ctx, hash)
 }

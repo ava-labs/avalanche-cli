@@ -261,7 +261,7 @@ func InitValidatorRemoval(
 	}
 
 	if receipt != nil {
-		unsignedMessage, err = GetWarpMessageFromLogs(receipt.Logs)
+		unsignedMessage, err = evm.ExtractWarpMessageFromReceipt(receipt)
 		if err != nil {
 			return nil, ids.Empty, nil, err
 		}

@@ -486,7 +486,7 @@ func handleFailedReceiptStatus(
 	tx *types.Transaction,
 	receipt *types.Receipt,
 ) (*types.Transaction, *types.Receipt, error) {
-	trace, err := DebugTraceTransaction(
+	trace, err := evm.GetTxTrace(
 		rpcURL,
 		tx.Hash().String(),
 	)
@@ -505,20 +505,6 @@ func handleFailedReceiptStatus(
 		ux.Logger.PrintToUser("%#v", trace)
 	}
 	return tx, receipt, ErrFailedReceiptStatus
-}
-
-func DebugTraceTransaction(
-	rpcURL string,
-	txHash string,
-) (map[string]interface{}, error) {
-	client, err := evm.GetRawClient(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	return evm.DebugTraceTransaction(
-		client,
-		txHash,
-	)
 }
 
 func DebugTraceCall(
@@ -566,10 +552,7 @@ func DebugTraceCall(
 		hexBytes, _ := hexutil.Big(*payment).MarshalText()
 		data["value"] = string(hexBytes)
 	}
-	return evm.DebugTraceCall(
-		client,
-		data,
-	)
+	return client.DebugTraceCall(data)
 }
 
 func CallToMethod(

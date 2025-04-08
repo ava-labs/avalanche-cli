@@ -3,10 +3,10 @@
 package evm
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"strings"
-	"context"
 
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/subnet-evm/rpc"
@@ -15,14 +15,29 @@ import (
 
 var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")
 
+// wraps over rpc.Client for calls used by SDK. used to make evm calls not available in ethclient:
+// - debug trace call
+// - debug trace transaction
+// features:
+// - finds out url scheme in case it is missing, to connect to ws/wss/http/https
+// - repeats to try to recover from failures, generating its own context for each call
+// - logs rpc url in case of failure
+type RawClient struct {
+	RPCClient *rpc.Client
+	URL       string
+}
+
 // connects a raw evm rpc client to the given [rpcURL]
 // supports [repeatsOnFailure] failures
-func GetRawClient(rpcURL string) (*rpc.Client, error) {
+func GetRawClient(rpcURL string) (RawClient, error) {
+	client := RawClient{
+		URL: rpcURL,
+	}
 	hasScheme, err := HasScheme(rpcURL)
 	if err != nil {
-		return nil, err
+		return RawClient{}, err
 	}
-	client, err := utils.RetryWithContextGen(
+	client.RPCClient, err = utils.RetryWithContextGen(
 		utils.GetAPILargeContext,
 		func(ctx context.Context) (*rpc.Client, error) {
 			if hasScheme {
@@ -44,17 +59,21 @@ func GetRawClient(rpcURL string) (*rpc.Client, error) {
 	return client, err
 }
 
+// closes underlying rpc connection
+func (client RawClient) Close() {
+	client.RPCClient.Close()
+}
+
 // returns a trace for the given [txID] on [client]
 // supports [repeatsOnFailure] failures
-func DebugTraceTransaction(
-	client *rpc.Client,
+func (client RawClient) DebugTraceTransaction(
 	txID string,
 ) (map[string]interface{}, error) {
 	trace, err := utils.RetryWithContextGen(
 		utils.GetAPILargeContext,
 		func(ctx context.Context) (map[string]interface{}, error) {
 			var trace map[string]interface{}
-			err := client.CallContext(
+			err := client.RPCClient.CallContext(
 				ctx,
 				&trace,
 				"debug_traceTransaction",
@@ -67,22 +86,21 @@ func DebugTraceTransaction(
 		sleepBetweenRepeats,
 	)
 	if err != nil {
-		err = fmt.Errorf("failure tracing tx %s for client %#v: %w", txID, client, err)
+		err = fmt.Errorf("failure tracing tx %s on %s: %w", txID, client.URL, err)
 	}
 	return trace, err
 }
 
 // returns a trace for making a call on [client] with the given [data]
 // supports [repeatsOnFailure] failures
-func DebugTraceCall(
-	client *rpc.Client,
+func (client RawClient) DebugTraceCall(
 	data map[string]string,
 ) (map[string]interface{}, error) {
 	trace, err := utils.RetryWithContextGen(
 		utils.GetAPILargeContext,
 		func(ctx context.Context) (map[string]interface{}, error) {
 			var trace map[string]interface{}
-			err := client.CallContext(
+			err := client.RPCClient.CallContext(
 				ctx,
 				&trace,
 				"debug_traceCall",
@@ -101,7 +119,7 @@ func DebugTraceCall(
 		sleepBetweenRepeats,
 	)
 	if err != nil {
-		err = fmt.Errorf("failure tracing call for client %#v: %w", client, err)
+		err = fmt.Errorf("failure tracing call on %s: %w", client.URL, err)
 	}
 	return trace, err
 }
@@ -113,7 +131,7 @@ func GetTxTrace(rpcURL string, txID string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	return DebugTraceTransaction(client, txID)
+	return client.DebugTraceTransaction(txID)
 }
 
 // returns evm function selector code for the given function signature
