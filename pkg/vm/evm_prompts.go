@@ -878,34 +878,27 @@ func promptPermissioning(
 	return params, nil
 }
 
-func PromptVMVersion(
+func PromptSubnetEVMVersion(
 	app *application.Avalanche,
-	repoName string,
-	vmVersion string,
+	subnetEVMVersion string,
 ) (string, error) {
-	switch vmVersion {
+	switch subnetEVMVersion {
 	case latest:
-		//return app.Downloader.GetLatestReleaseVersion(
-		//	constants.AvaLabsOrg,
-		//	repoName,
-		//	"",
-		//)
 		return blockchain.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
-			repoName,
+			constants.SubnetEVMRepoName,
 			"",
 		)
 	case "":
-		return promptUserForVMVersion(app, repoName)
+		return promptUserForSubnetEVMVersion(app)
 	}
-	return vmVersion, nil
+	return subnetEVMVersion, nil
 }
 
-func promptUserForVMVersion(
+func promptUserForSubnetEVMVersion(
 	app *application.Avalanche,
-	repoName string,
 ) (string, error) {
 	var (
 		latestReleaseVersion    string
@@ -913,17 +906,13 @@ func promptUserForVMVersion(
 		err                     error
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
-		latestReleaseVersion, err = app.Downloader.GetLatestReleaseVersion(
-			constants.AvaLabsOrg,
-			repoName,
-			"",
-		)
+		latestReleaseVersion, err = blockchain.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork)
 		if err != nil {
 			return "", err
 		}
 		latestPreReleaseVersion, err = app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
-			repoName,
+			constants.SubnetEVMRepoName,
 			"",
 		)
 		if err != nil {

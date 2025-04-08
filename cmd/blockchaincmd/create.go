@@ -286,7 +286,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 		if vmVersion != latest && vmVersion != preRelease && vmVersion != "" && !semver.IsValid(vmVersion) {
 			return fmt.Errorf("invalid version string, should be semantic version (ex: v1.1.1): %s", vmVersion)
 		}
-		vmVersion, err = vm.PromptVMVersion(app, constants.SubnetEVMRepoName, vmVersion)
+		vmVersion, err = vm.PromptSubnetEVMVersion(app, constants.SubnetEVMRepoName, vmVersion)
 		if err != nil {
 			return err
 		}
