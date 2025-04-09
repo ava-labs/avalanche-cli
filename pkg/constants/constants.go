@@ -189,7 +189,6 @@ const (
 	AvalancheGoRepoName           = "avalanchego"
 	SubnetEVMRepoName             = "subnet-evm"
 	CliRepoName                   = "avalanche-cli"
-	RpcKey                        = "rpc"
 	ICMContractsRepoName          = "icm-contracts"
 	ICMServicesRepoName           = "icm-services"
 	ICMRelayerKind                = "icm-relayer"
