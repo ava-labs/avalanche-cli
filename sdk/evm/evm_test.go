@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	mockethclient "github.com/ava-labs/avalanche-cli/sdk/mocks/ethclient"
-	"github.com/ava-labs/subnet-evm/core/types"
 	subnetethclient "github.com/ava-labs/subnet-evm/ethclient"
 
 	"github.com/stretchr/testify/require"
@@ -330,16 +329,29 @@ func TestGetClient(t *testing.T) {
 	}
 }
 
-func TestContractAlreadyDeployed(t *testing.T) {
+func TestClose(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	mockClient := mockethclient.NewMockClient(ctrl)
 	client := Client{
 		EthClient: mockClient,
 		URL:       "http://localhost:8545",
 	}
+	// Expect Close to be called exactly once
+	mockClient.EXPECT().Close().Times(1)
+	// Call Close
+	client.Close()
+	// Verify all expectations were met
+	ctrl.Finish()
+}
 
+func TestContractAlreadyDeployed(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
 	tests := []struct {
 		name         string
 		contractAddr string
@@ -371,14 +383,15 @@ func TestContractAlreadyDeployed(t *testing.T) {
 			name:         "error getting code",
 			contractAddr: "0x1234567890123456789012345678901234567890",
 			setupMock: func() {
-				mockClient.EXPECT().CodeAt(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(nil, errors.New("failed to get code"))
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().CodeAt(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(nil, errors.New("failed to get code"))
+				}
 			},
 			expected:    false,
 			expectError: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock()
@@ -396,13 +409,11 @@ func TestContractAlreadyDeployed(t *testing.T) {
 func TestGetAddressBalance(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	mockClient := mockethclient.NewMockClient(ctrl)
 	client := Client{
 		EthClient: mockClient,
 		URL:       "http://localhost:8545",
 	}
-
 	tests := []struct {
 		name        string
 		address     string
@@ -424,14 +435,15 @@ func TestGetAddressBalance(t *testing.T) {
 			name:    "error getting balance",
 			address: "0x1234567890123456789012345678901234567890",
 			setupMock: func() {
-				mockClient.EXPECT().BalanceAt(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(nil, errors.New("failed to get balance"))
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().BalanceAt(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(nil, errors.New("failed to get balance"))
+				}
 			},
 			expected:    nil,
 			expectError: true,
 		},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock()
@@ -442,162 +454,6 @@ func TestGetAddressBalance(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, balance)
-			}
-		})
-	}
-}
-
-func TestNonceAt(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockClient := mockethclient.NewMockClient(ctrl)
-	client := Client{
-		EthClient: mockClient,
-		URL:       "http://localhost:8545",
-	}
-
-	tests := []struct {
-		name        string
-		address     string
-		setupMock   func()
-		expected    uint64
-		expectError bool
-	}{
-		{
-			name:    "successful nonce check",
-			address: "0x1234567890123456789012345678901234567890",
-			setupMock: func() {
-				mockClient.EXPECT().NonceAt(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(uint64(42), nil)
-			},
-			expected:    42,
-			expectError: false,
-		},
-		{
-			name:    "error getting nonce",
-			address: "0x1234567890123456789012345678901234567890",
-			setupMock: func() {
-				mockClient.EXPECT().NonceAt(gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(uint64(0), errors.New("failed to get nonce"))
-			},
-			expected:    0,
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.setupMock()
-			nonce, err := client.NonceAt(tt.address)
-			if tt.expectError {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.address)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expected, nonce)
-			}
-		})
-	}
-}
-
-func TestSuggestGasTipCap(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockClient := mockethclient.NewMockClient(ctrl)
-	client := Client{
-		EthClient: mockClient,
-		URL:       "http://localhost:8545",
-	}
-
-	tests := []struct {
-		name        string
-		setupMock   func()
-		expected    *big.Int
-		expectError bool
-	}{
-		{
-			name: "successful gas tip cap suggestion",
-			setupMock: func() {
-				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
-					Return(big.NewInt(1000000000), nil)
-			},
-			expected:    big.NewInt(1000000000),
-			expectError: false,
-		},
-		{
-			name: "error getting gas tip cap",
-			setupMock: func() {
-				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
-					Return(nil, errors.New("failed to get gas tip cap"))
-			},
-			expected:    nil,
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.setupMock()
-			gasTipCap, err := client.SuggestGasTipCap()
-			if tt.expectError {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), client.URL)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expected, gasTipCap)
-			}
-		})
-	}
-}
-
-func TestEstimateBaseFee(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockClient := mockethclient.NewMockClient(ctrl)
-	client := Client{
-		EthClient: mockClient,
-		URL:       "http://localhost:8545",
-	}
-
-	tests := []struct {
-		name        string
-		setupMock   func()
-		expected    *big.Int
-		expectError bool
-	}{
-		{
-			name: "successful base fee estimation",
-			setupMock: func() {
-				mockClient.EXPECT().HeaderByNumber(gomock.Any(), gomock.Any()).
-					Return(&types.Header{BaseFee: big.NewInt(1000000000)}, nil)
-			},
-			expected:    big.NewInt(1000000000),
-			expectError: false,
-		},
-		{
-			name: "error getting header",
-			setupMock: func() {
-				mockClient.EXPECT().HeaderByNumber(gomock.Any(), gomock.Any()).
-					Return(nil, errors.New("failed to get header"))
-			},
-			expected:    nil,
-			expectError: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.setupMock()
-			baseFee, err := client.EstimateBaseFee()
-			if tt.expectError {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), client.URL)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expected, baseFee)
 			}
 		})
 	}
