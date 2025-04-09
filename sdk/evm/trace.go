@@ -30,6 +30,8 @@ var (
 type RawClient struct {
 	RPCClient *rpc.Client
 	URL       string
+	// also used at mocks
+	CallContext func (context.Context, interface{}, string, ...interface{}) error
 }
 
 // connects a raw evm rpc client to the given [rpcURL]
@@ -61,6 +63,7 @@ func GetRawClient(rpcURL string) (RawClient, error) {
 	if err != nil {
 		err = fmt.Errorf("failure connecting to rpc client on %s: %w", rpcURL, err)
 	}
+	client.CallContext = client.RPCClient.CallContext
 	return client, err
 }
 
@@ -78,7 +81,7 @@ func (client RawClient) DebugTraceTransaction(
 		utils.GetAPILargeContext,
 		func(ctx context.Context) (map[string]interface{}, error) {
 			var trace map[string]interface{}
-			err := client.RPCClient.CallContext(
+			err := client.CallContext(
 				ctx,
 				&trace,
 				"debug_traceTransaction",
@@ -105,7 +108,7 @@ func (client RawClient) DebugTraceCall(
 		utils.GetAPILargeContext,
 		func(ctx context.Context) (map[string]interface{}, error) {
 			var trace map[string]interface{}
-			err := client.RPCClient.CallContext(
+			err := client.CallContext(
 				ctx,
 				&trace,
 				"debug_traceCall",
