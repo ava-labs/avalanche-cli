@@ -92,14 +92,14 @@ func TestGetClientWithoutScheme(t *testing.T) {
 		expectError    bool
 	}{
 		{
-			name:      "invalid url",
-			rpcURL:   "http://:invalid",
+			name:        "invalid url",
+			rpcURL:      "http://:invalid",
 			expectError: true,
 		},
 		{
 			name:   "success with ws scheme",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return mockethclient.NewMockClient(gomock.NewController(t)), nil
 				}
@@ -111,18 +111,18 @@ func TestGetClientWithoutScheme(t *testing.T) {
 		{
 			name:   "failure with ws scheme",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return nil, errors.New("unexpected error on ws connection")
 				}
 				return nil, errors.New("invalid")
 			},
-			expectError:    true,
+			expectError: true,
 		},
 		{
 			name:   "success with wss scheme",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return nil, errors.New("websocket: bad handshake")
 				}
@@ -137,7 +137,7 @@ func TestGetClientWithoutScheme(t *testing.T) {
 		{
 			name:   "failure with wss scheme",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return nil, errors.New("websocket: bad handshake")
 				}
@@ -146,12 +146,12 @@ func TestGetClientWithoutScheme(t *testing.T) {
 				}
 				return nil, errors.New("invalid")
 			},
-			expectError:    true,
+			expectError: true,
 		},
 		{
 			name:   "success with https scheme",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return nil, errors.New("websocket: bad handshake")
 				}
@@ -171,7 +171,7 @@ func TestGetClientWithoutScheme(t *testing.T) {
 		{
 			name:   "failure with https scheme",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return nil, errors.New("websocket: bad handshake")
 				}
@@ -185,12 +185,12 @@ func TestGetClientWithoutScheme(t *testing.T) {
 				}
 				return nil, errors.New("invalid")
 			},
-			expectError:    true,
+			expectError: true,
 		},
 		{
 			name:   "success with http scheme",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return nil, errors.New("websocket: bad handshake")
 				}
@@ -213,7 +213,7 @@ func TestGetClientWithoutScheme(t *testing.T) {
 		{
 			name:   "error - url with scheme",
 			rpcURL: "http://localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, _ string) (subnetethclient.Client, error) {
 				return nil, nil
 			},
 			expectError: true,
@@ -221,7 +221,7 @@ func TestGetClientWithoutScheme(t *testing.T) {
 		{
 			name:   "error - unknown protocol",
 			rpcURL: "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			mockDialFunc: func(_ context.Context, _ string) (subnetethclient.Client, error) {
 				return nil, errors.New("unknown protocol")
 			},
 			expectError: true,
@@ -253,28 +253,28 @@ func TestGetClient(t *testing.T) {
 	defer ctrl.Finish()
 	failuresCount := 0
 	tests := []struct {
-		name        string
-		rpcURL      string
+		name         string
+		rpcURL       string
 		mockDialFunc func(context.Context, string) (subnetethclient.Client, error)
-		expectError bool
+		expectError  bool
 	}{
 		{
-			name:      "invalid url",
-			rpcURL:   "http://:invalid",
+			name:        "invalid url",
+			rpcURL:      "http://:invalid",
 			expectError: true,
 		},
 		{
-			name:      "with scheme, total failure",
-			rpcURL:    "http://localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			name:   "with scheme, total failure",
+			rpcURL: "http://localhost:8545",
+			mockDialFunc: func(_ context.Context, _ string) (subnetethclient.Client, error) {
 				return nil, errors.New("connection error")
 			},
 			expectError: true,
 		},
 		{
-			name:      "with scheme, 2 failures",
-			rpcURL:    "http://localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			name:   "with scheme, 2 failures",
+			rpcURL: "http://localhost:8545",
+			mockDialFunc: func(_ context.Context, _ string) (subnetethclient.Client, error) {
 				failuresCount++
 				if failuresCount < 3 {
 					return nil, errors.New("connection error")
@@ -284,17 +284,17 @@ func TestGetClient(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:      "with scheme",
-			rpcURL:    "http://localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			name:   "with scheme",
+			rpcURL: "http://localhost:8545",
+			mockDialFunc: func(_ context.Context, _ string) (subnetethclient.Client, error) {
 				return mockethclient.NewMockClient(ctrl), nil
 			},
 			expectError: false,
 		},
 		{
-			name:      "without scheme",
-			rpcURL:    "localhost:8545",
-			mockDialFunc: func(ctx context.Context, url string) (subnetethclient.Client, error) {
+			name:   "without scheme",
+			rpcURL: "localhost:8545",
+			mockDialFunc: func(_ context.Context, url string) (subnetethclient.Client, error) {
 				if strings.HasPrefix(url, "ws://") {
 					return nil, errors.New("websocket: bad handshake")
 				}
