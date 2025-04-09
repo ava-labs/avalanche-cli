@@ -1,5 +1,6 @@
 {
   "subnet-evm": "v0.7.3",
+  "rpc": 39,
   "avalanchego": {
     "Local Network": {
       "latest-version": "v1.13.0",

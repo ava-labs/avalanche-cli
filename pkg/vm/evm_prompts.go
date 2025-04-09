@@ -4,7 +4,6 @@ package vm
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"math/big"
 	"os"
 
@@ -884,7 +883,7 @@ func PromptSubnetEVMVersion(
 ) (string, error) {
 	switch subnetEVMVersion {
 	case latest:
-		return blockchain.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork)
+		return GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
@@ -906,7 +905,7 @@ func promptUserForSubnetEVMVersion(
 		err                     error
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
-		latestReleaseVersion, err = blockchain.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork)
+		latestReleaseVersion, err = GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
 		if err != nil {
 			return "", err
 		}

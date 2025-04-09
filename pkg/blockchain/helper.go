@@ -143,27 +143,3 @@ func GetSubnetIDFromBlockchainID(blockchainID ids.ID, network models.Network) (i
 	defer cancel()
 	return pClient.ValidatedBy(ctx, blockchainID)
 }
-
-func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependencyName string, network models.Network) (string, error) {
-	compatibilityBytes, err := app.Downloader.Download(constants.CLILatestDependencyURL)
-	if err != nil {
-		return "", err
-	}
-
-	var parsedCompat models.CLIDependencyMap
-	if err = json.Unmarshal(compatibilityBytes, &parsedCompat); err != nil {
-		return "", err
-	}
-
-	switch dependencyName {
-	case constants.AvalancheGoRepoName:
-		if parsedCompat.AvalancheGo[network.Name()].RequirePrerelease {
-			return parsedCompat.AvalancheGo[network.Name()].PrereleaseVersion, nil
-		}
-		return parsedCompat.AvalancheGo[network.Name()].LatestVersion, nil
-	case constants.SubnetEVMRepoName:
-		return parsedCompat.SubnetEVM, nil
-	default:
-		return "", fmt.Errorf("unsupported dependency: %s", dependencyName)
-	}
-}

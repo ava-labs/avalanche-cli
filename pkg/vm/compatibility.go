@@ -220,3 +220,39 @@ func GetLatestAvalancheGoByProtocolVersion(app *application.Avalanche, rpcVersio
 	}
 	return useVersion[0], nil
 }
+
+func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependencyName string, network models.Network, rpcVersion *int) (string, error) {
+	dependencyBytes, err := app.Downloader.Download(constants.CLILatestDependencyURL)
+	if err != nil {
+		return "", err
+	}
+
+	var parsedDependency models.CLIDependencyMap
+	if err = json.Unmarshal(dependencyBytes, &parsedDependency); err != nil {
+		return "", err
+	}
+
+	switch dependencyName {
+	case constants.AvalancheGoRepoName:
+		if rpcVersion == nil {
+			return "", fmt.Errorf("RPC version is required to get latest Avalanche Go version supported by CLI")
+		}
+		// if the user is using RPC that is lower than the latest RPC supported by CLI, user will get latest AvalancheGo version for that RPC
+		// based on "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
+		if parsedDependency.RPC > *rpcVersion {
+			return GetLatestAvalancheGoByProtocolVersion(
+				app,
+				*rpcVersion,
+				constants.AvalancheGoCompatibilityURL,
+			)
+		}
+		if parsedDependency.AvalancheGo[network.Name()].RequirePrerelease {
+			return parsedDependency.AvalancheGo[network.Name()].PrereleaseVersion, nil
+		}
+		return parsedDependency.AvalancheGo[network.Name()].LatestVersion, nil
+	case constants.SubnetEVMRepoName:
+		return parsedDependency.SubnetEVM, nil
+	default:
+		return "", fmt.Errorf("unsupported dependency: %s", dependencyName)
+	}
+}
