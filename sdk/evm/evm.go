@@ -5,12 +5,14 @@ package evm
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/sdk/constants"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
@@ -27,14 +29,16 @@ import (
 
 const (
 	repeatsOnFailure            = 3
-	sleepBetweenRepeats         = 1 * time.Second
 	baseFeeFactor               = 2
 	maxPriorityFeePerGas        = 2500000000 // 2.5 gwei
 	nativeTransferGas    uint64 = 21_000
 )
 
-// used to mock the connection function
-var ethclientDialContext = ethclient.DialContext
+// also used at mocks
+var (
+	ethclientDialContext = ethclient.DialContext
+	sleepBetweenRepeats  = 1 * time.Second
+)
 
 // wraps over ethclient for calls used by SDK. featues:
 // - finds out url scheme in case it is missing, to connect to ws/wss/http/https
@@ -344,22 +348,21 @@ func (client Client) SendTransaction(
 func (client Client) WaitForTransaction(
 	tx *types.Transaction,
 ) (*types.Receipt, bool, error) {
-	receipt, err := utils.RetryWithContextGen(
-		utils.GetAPILargeContext,
-		func(ctx context.Context) (*types.Receipt, error) {
-			return bind.WaitMined(ctx, client.EthClient, tx)
-		},
-		repeatsOnFailure,
-		sleepBetweenRepeats,
-	)
-	if err != nil {
-		err = fmt.Errorf("failure waiting for tx %#v on %s: %w", tx, client.URL, err)
+	steps := int(constants.APIRequestLargeTimeout.Seconds())
+	var cumErr error
+	for step := 0; step < steps; step++ {
+		receipt, err := client.TransactionReceipt(tx.Hash())
+		if err == nil {
+			var success bool
+			if receipt != nil {
+				success = receipt.Status == types.ReceiptStatusSuccessful
+			}
+			return receipt, success, err
+		}
+		cumErr = errors.Join(cumErr, err)
+		time.Sleep(sleepBetweenRepeats)
 	}
-	var success bool
-	if receipt != nil {
-		success = receipt.Status == types.ReceiptStatusSuccessful
-	}
-	return receipt, success, err
+	return nil, false, fmt.Errorf("timeout of %d seconds while waiting for tx %#v on %s: %w", steps, tx, client.URL, cumErr)
 }
 
 // transfers [amount] to [targetAddressStr] using [sourceAddressPrivateKeyStr]

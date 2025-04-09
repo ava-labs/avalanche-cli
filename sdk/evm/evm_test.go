@@ -6,9 +6,14 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/ava-labs/avalanche-cli/sdk/constants"
 	mockethclient "github.com/ava-labs/avalanche-cli/sdk/mocks/ethclient"
+	"github.com/ava-labs/subnet-evm/core/types"
 	subnetethclient "github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ava-labs/subnet-evm/interfaces"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -78,6 +83,11 @@ func TestHasScheme(t *testing.T) {
 }
 
 func TestGetClientWithoutScheme(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
 	// Save original function to restore later
 	originalDialContext := ethclientDialContext
 	defer func() {
@@ -248,6 +258,11 @@ func TestGetClientWithoutScheme(t *testing.T) {
 }
 
 func TestGetClient(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	failuresCount := 0
@@ -345,6 +360,11 @@ func TestClose(t *testing.T) {
 }
 
 func TestContractAlreadyDeployed(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockClient := mockethclient.NewMockClient(ctrl)
@@ -407,6 +427,11 @@ func TestContractAlreadyDeployed(t *testing.T) {
 }
 
 func TestGetAddressBalance(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockClient := mockethclient.NewMockClient(ctrl)
@@ -454,6 +479,640 @@ func TestGetAddressBalance(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, balance)
+			}
+		})
+	}
+}
+
+func TestNonceAt(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tests := []struct {
+		name        string
+		address     string
+		setupMock   func()
+		expected    uint64
+		expectError bool
+	}{
+		{
+			name:    "successful nonce check",
+			address: "0x1234567890123456789012345678901234567890",
+			setupMock: func() {
+				mockClient.EXPECT().NonceAt(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(uint64(42), nil)
+			},
+			expected:    42,
+			expectError: false,
+		},
+		{
+			name:    "error getting nonce",
+			address: "0x1234567890123456789012345678901234567890",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().NonceAt(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(uint64(0), errors.New("failed to get nonce"))
+				}
+			},
+			expected:    0,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			nonce, err := client.NonceAt(tt.address)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.address)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, nonce)
+			}
+		})
+	}
+}
+
+func TestSuggestGasTipCap(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    *big.Int
+		expectError bool
+	}{
+		{
+			name: "successful gas tip cap suggestion",
+			setupMock: func() {
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+			},
+			expected:    big.NewInt(1000000000),
+			expectError: false,
+		},
+		{
+			name: "error getting gas tip cap",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+						Return(nil, errors.New("failed to get gas tip cap"))
+				}
+			},
+			expected:    nil,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			gasTipCap, err := client.SuggestGasTipCap()
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "gas tip cap")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, gasTipCap)
+			}
+		})
+	}
+}
+
+func TestEstimateBaseFee(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    *big.Int
+		expectError bool
+	}{
+		{
+			name: "successful base fee estimation",
+			setupMock: func() {
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+			},
+			expected:    big.NewInt(10000000000),
+			expectError: false,
+		},
+		{
+			name: "error estimating base fee",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+						Return(nil, errors.New("failed to estimate base fee"))
+				}
+			},
+			expected:    nil,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			baseFee, err := client.EstimateBaseFee()
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "base fee")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, baseFee)
+			}
+		})
+	}
+}
+
+func TestEstimateGasLimit(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    uint64
+		expectError bool
+	}{
+		{
+			name: "successful gas limit estimation",
+			setupMock: func() {
+				mockClient.EXPECT().EstimateGas(gomock.Any(), gomock.Any()).
+					Return(uint64(21000), nil)
+			},
+			expected:    21000,
+			expectError: false,
+		},
+		{
+			name: "error estimating gas limit",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().EstimateGas(gomock.Any(), gomock.Any()).
+						Return(uint64(0), errors.New("failed to estimate gas"))
+				}
+			},
+			expected:    0,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			gasLimit, err := client.EstimateGasLimit(interfaces.CallMsg{})
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "gas limit")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, gasLimit)
+			}
+		})
+	}
+}
+
+func TestGetChainID(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    *big.Int
+		expectError bool
+	}{
+		{
+			name: "successful chain ID retrieval",
+			setupMock: func() {
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+			},
+			expected:    big.NewInt(43114),
+			expectError: false,
+		},
+		{
+			name: "error getting chain ID",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("failed to get chain ID"))
+				}
+			},
+			expected:    nil,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			chainID, err := client.GetChainID()
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "chain id")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, chainID)
+			}
+		})
+	}
+}
+
+func TestSendTransaction(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tx := types.NewTransaction(0, common.Address{}, nil, 0, nil, nil)
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expectError bool
+	}{
+		{
+			name: "successful transaction send",
+			setupMock: func() {
+				mockClient.EXPECT().SendTransaction(gomock.Any(), tx).
+					Return(nil)
+			},
+			expectError: false,
+		},
+		{
+			name: "error sending transaction",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().SendTransaction(gomock.Any(), tx).
+						Return(errors.New("failed to send transaction"))
+				}
+			},
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			err := client.SendTransaction(tx)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "sending transaction")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestWaitForTransaction(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tx := types.NewTransaction(0, common.Address{}, nil, 0, nil, nil)
+	successfulReceipt := &types.Receipt{Status: types.ReceiptStatusSuccessful}
+	failedReceipt := &types.Receipt{Status: types.ReceiptStatusFailed}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    *types.Receipt
+		success     bool
+		expectError bool
+	}{
+		{
+			name: "successful transaction",
+			setupMock: func() {
+				mockClient.EXPECT().TransactionReceipt(gomock.Any(), tx.Hash()).
+					Return(successfulReceipt, nil)
+			},
+			expected:    successfulReceipt,
+			success:     true,
+			expectError: false,
+		},
+		{
+			name: "failed transaction",
+			setupMock: func() {
+				mockClient.EXPECT().TransactionReceipt(gomock.Any(), tx.Hash()).
+					Return(failedReceipt, nil)
+			},
+			expected:    failedReceipt,
+			success:     false,
+			expectError: false,
+		},
+		{
+			name: "error waiting for transaction",
+			setupMock: func() {
+				steps := int(constants.APIRequestLargeTimeout.Seconds())
+				for i := 0; i < steps*repeatsOnFailure; i++ {
+					mockClient.EXPECT().TransactionReceipt(gomock.Any(), tx.Hash()).
+						Return(nil, errors.New("failed to get receipt"))
+				}
+			},
+			expected:    nil,
+			success:     false,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			receipt, success, err := client.WaitForTransaction(tx)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "waiting for tx")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, receipt)
+				require.Equal(t, tt.success, success)
+			}
+		})
+	}
+}
+
+func TestBlockByNumber(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	blockNumber := big.NewInt(1)
+	header := &types.Header{
+		Number: blockNumber,
+	}
+	block := types.NewBlock(header, nil, nil, nil, nil)
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    *types.Block
+		expectError bool
+	}{
+		{
+			name: "successful block retrieval",
+			setupMock: func() {
+				mockClient.EXPECT().BlockByNumber(gomock.Any(), blockNumber).
+					Return(block, nil)
+			},
+			expected:    block,
+			expectError: false,
+		},
+		{
+			name: "error getting block",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().BlockByNumber(gomock.Any(), blockNumber).
+						Return(nil, errors.New("failed to get block"))
+				}
+			},
+			expected:    nil,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			result, err := client.BlockByNumber(blockNumber)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "retrieving block")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestFilterLogs(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	logs := []types.Log{
+		{Address: common.HexToAddress("0x123")},
+		{Address: common.HexToAddress("0x456")},
+	}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    []types.Log
+		expectError bool
+	}{
+		{
+			name: "successful log filtering",
+			setupMock: func() {
+				mockClient.EXPECT().FilterLogs(gomock.Any(), gomock.Any()).
+					Return(logs, nil)
+			},
+			expected:    logs,
+			expectError: false,
+		},
+		{
+			name: "error filtering logs",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().FilterLogs(gomock.Any(), gomock.Any()).
+						Return(nil, errors.New("failed to filter logs"))
+				}
+			},
+			expected:    nil,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			result, err := client.FilterLogs(interfaces.FilterQuery{})
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "retrieving logs")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestTransactionReceipt(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	hash := common.HexToHash("0x123")
+	receipt := &types.Receipt{Status: types.ReceiptStatusSuccessful}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    *types.Receipt
+		expectError bool
+	}{
+		{
+			name: "successful receipt retrieval",
+			setupMock: func() {
+				mockClient.EXPECT().TransactionReceipt(gomock.Any(), hash).
+					Return(receipt, nil)
+			},
+			expected:    receipt,
+			expectError: false,
+		},
+		{
+			name: "error getting receipt",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().TransactionReceipt(gomock.Any(), hash).
+						Return(nil, errors.New("failed to get receipt"))
+				}
+			},
+			expected:    nil,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			result, err := client.TransactionReceipt(hash)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "retrieving receipt")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestBlockNumber(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expected    uint64
+		expectError bool
+	}{
+		{
+			name: "successful block number retrieval",
+			setupMock: func() {
+				mockClient.EXPECT().BlockNumber(gomock.Any()).
+					Return(uint64(1000), nil)
+			},
+			expected:    1000,
+			expectError: false,
+		},
+		{
+			name: "error getting block number",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().BlockNumber(gomock.Any()).
+						Return(uint64(0), errors.New("failed to get block number"))
+				}
+			},
+			expected:    0,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			result, err := client.BlockNumber()
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "retrieving height")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, result)
 			}
 		})
 	}
