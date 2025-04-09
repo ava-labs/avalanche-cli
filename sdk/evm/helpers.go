@@ -44,6 +44,9 @@ func TransactionError(tx *types.Transaction, err error, msg string, args ...inte
 
 // dumps a [tx] hexa description, for it to be separately issued using external tools
 func TxDump(description string, tx *types.Transaction) (string, error) {
+	if tx == nil {
+		return "", fmt.Errorf("can't dump nil tx")
+	}
 	bs, err := tx.MarshalBinary()
 	if err != nil {
 		return "", fmt.Errorf("failure marshalling raw evm tx: %w", err)
