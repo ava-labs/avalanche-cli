@@ -1190,3 +1190,107 @@ func TestGetPrivateKeyBalance(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateTxParams(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	address := common.HexToAddress("0x1234567890123456789012345678901234567890")
+	tests := []struct {
+		name          string
+		address       string
+		setupMock     func()
+		expectedFee   *big.Int
+		expectedTip   *big.Int
+		expectedNonce uint64
+		expectError   bool
+	}{
+		{
+			name:    "successful calculation",
+			address: address.Hex(),
+			setupMock: func() {
+				// Base fee estimation
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				// Gas tip cap suggestion
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				// Nonce retrieval
+				mockClient.EXPECT().NonceAt(gomock.Any(), address, gomock.Any()).
+					Return(uint64(42), nil)
+			},
+			expectedFee:   big.NewInt(22500000000),
+			expectedTip:   big.NewInt(1000000000),
+			expectedNonce: 42,
+			expectError:   false,
+		},
+		{
+			name:    "error estimating base fee",
+			address: address.Hex(),
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+						Return(nil, errors.New("failed to estimate base fee"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:    "error suggesting gas tip cap",
+			address: address.Hex(),
+			setupMock: func() {
+				// Base fee estimation succeeds
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				// Gas tip cap suggestion fails
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+						Return(nil, errors.New("failed to suggest gas tip cap"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:    "error getting nonce",
+			address: address.Hex(),
+			setupMock: func() {
+				// Base fee estimation succeeds
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				// Gas tip cap suggestion succeeds
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				// Nonce retrieval fails
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().NonceAt(gomock.Any(), address, gomock.Any()).
+						Return(uint64(0), errors.New("failed to get nonce"))
+				}
+			},
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			gasFeeCap, gasTipCap, nonce, err := client.CalculateTxParams(tt.address)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "failure")
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedFee, gasFeeCap)
+				require.Equal(t, tt.expectedTip, gasTipCap)
+				require.Equal(t, tt.expectedNonce, nonce)
+			}
+		})
+	}
+}
