@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/sdk/constants"
 	mockethclient "github.com/ava-labs/avalanche-cli/sdk/mocks/ethclient"
+	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/core/types"
 	subnetethclient "github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/interfaces"
@@ -1290,6 +1291,540 @@ func TestCalculateTxParams(t *testing.T) {
 				require.Equal(t, tt.expectedFee, gasFeeCap)
 				require.Equal(t, tt.expectedTip, gasTipCap)
 				require.Equal(t, tt.expectedNonce, nonce)
+			}
+		})
+	}
+}
+
+func TestFundAddress(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
+	sourceAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	targetAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
+	amount := big.NewInt(1000000000000000000) // 1 ETH
+	tests := []struct {
+		name        string
+		setupMock   func()
+		expectError bool
+	}{
+		{
+			name: "successful fund transfer",
+			setupMock: func() {
+				// CalculateTxParams
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), sourceAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+				// SendTransaction
+				mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+					Return(nil)
+				// TransactionReceipt
+				mockClient.EXPECT().TransactionReceipt(gomock.Any(), gomock.Any()).
+					Return(&types.Receipt{Status: types.ReceiptStatusSuccessful}, nil)
+			},
+			expectError: false,
+		},
+		{
+			name: "error calculating tx params",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+						Return(nil, errors.New("failed to estimate base fee"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name: "error getting chain ID",
+			setupMock: func() {
+				// CalculateTxParams succeeds
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), sourceAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID fails
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("failed to get chain ID"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name: "error sending transaction",
+			setupMock: func() {
+				// CalculateTxParams succeeds
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), sourceAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID succeeds
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+				// SendTransaction fails
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+						Return(errors.New("failed to send transaction"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name: "transaction failed",
+			setupMock: func() {
+				// CalculateTxParams succeeds
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), sourceAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID succeeds
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+				// SendTransaction succeeds
+				mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+					Return(nil)
+				// TransactionReceipt returns failed status
+				mockClient.EXPECT().TransactionReceipt(gomock.Any(), gomock.Any()).
+					Return(&types.Receipt{Status: types.ReceiptStatusFailed}, nil)
+			},
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			err := client.FundAddress(privateKeyHex, targetAddress.Hex(), amount)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "failure")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestIssueTx(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tx := types.NewTransaction(0, common.Address{}, nil, 0, nil, nil)
+	txBytes, err := tx.MarshalBinary()
+	require.NoError(t, err)
+	txHex := hex.EncodeToString(txBytes)
+	tests := []struct {
+		name        string
+		txStr       string
+		setupMock   func()
+		expectError bool
+	}{
+		{
+			name:  "successful transaction",
+			txStr: txHex,
+			setupMock: func() {
+				// SendTransaction
+				mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+					Return(nil)
+				// TransactionReceipt
+				mockClient.EXPECT().TransactionReceipt(gomock.Any(), gomock.Any()).
+					Return(&types.Receipt{Status: types.ReceiptStatusSuccessful}, nil)
+			},
+			expectError: false,
+		},
+		{
+			name:        "invalid transaction hex",
+			txStr:       "invalid",
+			setupMock:   func() {},
+			expectError: true,
+		},
+		{
+			name:  "error sending transaction",
+			txStr: txHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+						Return(errors.New("failed to send transaction"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:  "transaction failed",
+			txStr: txHex,
+			setupMock: func() {
+				// SendTransaction succeeds
+				mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+					Return(nil)
+				// TransactionReceipt returns failed status
+				mockClient.EXPECT().TransactionReceipt(gomock.Any(), gomock.Any()).
+					Return(&types.Receipt{Status: types.ReceiptStatusFailed}, nil)
+			},
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			err := client.IssueTx(tt.txStr)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.name != "invalid transaction hex" {
+					require.Contains(t, err.Error(), "failure")
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestGetTxOptsWithSigner(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
+	tests := []struct {
+		name        string
+		privateKey  string
+		setupMock   func()
+		expectError bool
+	}{
+		{
+			name:       "successful signer creation",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+			},
+			expectError: false,
+		},
+		{
+			name:        "invalid private key",
+			privateKey:  "invalid",
+			setupMock:   func() {},
+			expectError: true,
+		},
+		{
+			name:       "error getting chain ID",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("failed to get chain ID"))
+				}
+			},
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			opts, err := client.GetTxOptsWithSigner(tt.privateKey)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.privateKey != "invalid" {
+					require.Contains(t, err.Error(), "failure generating signer")
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, opts)
+				require.NotNil(t, opts.Signer)
+			}
+		})
+	}
+}
+
+func TestWaitForEVMBootstrapped(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	tests := []struct {
+		name        string
+		timeout     time.Duration
+		setupMock   func()
+		expectError bool
+	}{
+		{
+			name:    "successful bootstrap",
+			timeout: 1 * time.Second,
+			setupMock: func() {
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+			},
+			expectError: false,
+		},
+		{
+			name:    "timeout waiting for bootstrap",
+			timeout: 100 * time.Millisecond,
+			setupMock: func() {
+				// Simulate multiple failures until timeout
+				for i := 0; i < 10; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("not bootstrapped"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:    "default timeout",
+			timeout: 0,
+			setupMock: func() {
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+			},
+			expectError: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			err := client.WaitForEVMBootstrapped(tt.timeout)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "not bootstrapped")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestTransactWithWarpMessage(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
+	fromAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	contractAddress := common.HexToAddress("0x1234567890123456789012345678901234567890")
+	callData := []byte{1, 2, 3, 4, 5}
+	value := big.NewInt(1000000000000000000) // 1 ETH
+	unsignedMessage := avalancheWarp.UnsignedMessage{
+		SourceChainID: [32]byte{1, 2, 3},
+		Payload:       []byte{4, 5, 6},
+	}
+	warpMessage := &avalancheWarp.Message{
+		UnsignedMessage: unsignedMessage,
+	}
+	tests := []struct {
+		name              string
+		from              common.Address
+		privateKey        string
+		warpMessage       *avalancheWarp.Message
+		contract          common.Address
+		callData          []byte
+		value             *big.Int
+		generateRawTxOnly bool
+		setupMock         func()
+		expectError       bool
+	}{
+		{
+			name:              "successful transaction with private key",
+			from:              common.Address{},
+			privateKey:        privateKeyHex,
+			warpMessage:       warpMessage,
+			contract:          contractAddress,
+			callData:          callData,
+			value:             value,
+			generateRawTxOnly: false,
+			setupMock: func() {
+				// CalculateTxParams
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), fromAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+				// EstimateGasLimit
+				mockClient.EXPECT().EstimateGas(gomock.Any(), gomock.Any()).
+					Return(uint64(21000), nil)
+			},
+			expectError: false,
+		},
+		{
+			name:              "successful raw transaction with from address",
+			from:              fromAddress,
+			privateKey:        "",
+			warpMessage:       warpMessage,
+			contract:          contractAddress,
+			callData:          callData,
+			value:             value,
+			generateRawTxOnly: true,
+			setupMock: func() {
+				// CalculateTxParams
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), fromAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+				// EstimateGasLimit
+				mockClient.EXPECT().EstimateGas(gomock.Any(), gomock.Any()).
+					Return(uint64(21000), nil)
+			},
+			expectError: false,
+		},
+		{
+			name:              "error calculating tx params",
+			from:              common.Address{},
+			privateKey:        privateKeyHex,
+			warpMessage:       warpMessage,
+			contract:          contractAddress,
+			callData:          callData,
+			value:             value,
+			generateRawTxOnly: false,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+						Return(nil, errors.New("failed to estimate base fee"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:              "error getting chain ID",
+			from:              common.Address{},
+			privateKey:        privateKeyHex,
+			warpMessage:       warpMessage,
+			contract:          contractAddress,
+			callData:          callData,
+			value:             value,
+			generateRawTxOnly: false,
+			setupMock: func() {
+				// CalculateTxParams succeeds
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), fromAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID fails
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("failed to get chain ID"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:              "error estimating gas limit",
+			from:              common.Address{},
+			privateKey:        privateKeyHex,
+			warpMessage:       warpMessage,
+			contract:          contractAddress,
+			callData:          callData,
+			value:             value,
+			generateRawTxOnly: false,
+			setupMock: func() {
+				// CalculateTxParams succeeds
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(10000000000), nil)
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(1000000000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), fromAddress, gomock.Any()).
+					Return(uint64(42), nil)
+				// GetChainID succeeds
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+				// EstimateGasLimit fails
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().EstimateGas(gomock.Any(), gomock.Any()).
+						Return(uint64(0), errors.New("failed to estimate gas"))
+				}
+			},
+			expectError: false, // Should use default gas limit
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			tx, err := client.TransactWithWarpMessage(
+				tt.from,
+				tt.privateKey,
+				tt.warpMessage,
+				tt.contract,
+				tt.callData,
+				tt.value,
+				tt.generateRawTxOnly,
+			)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "failure")
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, tx)
+				if !tt.generateRawTxOnly {
+					require.NotNil(t, tx.Hash())
+				}
 			}
 		})
 	}

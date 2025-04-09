@@ -450,23 +450,20 @@ func (client Client) GetTxOptsWithSigner(
 // waits for [timeout] until evm is bootstrapped
 // considers evm is bootstrapped if it responds to an evm call (ChainID)
 func (client Client) WaitForEVMBootstrapped(timeout time.Duration) error {
-	const stepDuration = 5 * time.Second
 	if timeout == 0 {
 		timeout = 60 * time.Second
 	}
-	startTime := time.Now()
-	for {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		if _, err := client.EthClient.ChainID(ctx); err == nil {
+	steps := int(timeout.Seconds())
+	var cumErr error
+	for step := 0; step < steps; step++ {
+		if _, err := client.GetChainID(); err == nil {
 			return nil
 		} else {
-			if time.Since(startTime) > timeout {
-				return fmt.Errorf("client at %s not bootstrapped after %.2f seconds: %w", client.URL, timeout.Seconds(), err)
-			}
-			time.Sleep(stepDuration)
+			cumErr = errors.Join(cumErr, err)
 		}
+		time.Sleep(sleepBetweenRepeats)
 	}
+	return fmt.Errorf("client at %s not bootstrapped after %.2f seconds: %w", client.URL, timeout.Seconds(), cumErr)
 }
 
 // generates a transaction signed with [privateKeyStr], calling a [contract] method using [callData]
