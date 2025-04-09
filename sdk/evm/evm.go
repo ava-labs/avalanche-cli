@@ -33,6 +33,9 @@ const (
 	nativeTransferGas    uint64 = 21_000
 )
 
+// used to mock the connection function
+var ethclientDialContext = ethclient.DialContext
+
 // wraps over ethclient for calls used by SDK. featues:
 // - finds out url scheme in case it is missing, to connect to ws/wss/http/https
 // - repeats to try to recover from failures, generating its own context for each call
@@ -51,7 +54,7 @@ func HasScheme(rpcURL string) (bool, error) {
 		}
 		return false, nil
 	} else {
-		return parsedURL.Scheme != "", nil
+		return strings.Contains(rpcURL, "://") && parsedURL.Scheme != "", nil
 	}
 }
 
@@ -68,7 +71,7 @@ func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 	scheme := "ws://"
 	ctx, cancel := utils.GetAPILargeContext()
 	defer cancel()
-	client, err := ethclient.DialContext(ctx, scheme+rpcURL)
+	client, err := ethclientDialContext(ctx, scheme+rpcURL)
 	if err == nil {
 		return client, scheme, nil
 	} else if !strings.Contains(err.Error(), "websocket: bad handshake") {
@@ -76,7 +79,7 @@ func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 	}
 	// wss give specific errors for http/http
 	scheme = "wss://"
-	client, err = ethclient.DialContext(ctx, scheme+rpcURL)
+	client, err = ethclientDialContext(ctx, scheme+rpcURL)
 	if err == nil {
 		return client, scheme, nil
 	} else if !strings.Contains(err.Error(), "websocket: bad handshake") && // may be https
@@ -85,7 +88,7 @@ func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 	}
 	// https/http discrimination based on sending a specific query
 	scheme = "https://"
-	client, err = ethclient.DialContext(ctx, scheme+rpcURL)
+	client, err = ethclientDialContext(ctx, scheme+rpcURL)
 	if err == nil {
 		_, err = client.ChainID(ctx)
 		switch {
@@ -93,7 +96,7 @@ func GetClientWithoutScheme(rpcURL string) (ethclient.Client, string, error) {
 			return client, scheme, nil
 		case strings.Contains(err.Error(), "server gave HTTP response to HTTPS client"):
 			scheme = "http://"
-			client, err = ethclient.DialContext(ctx, scheme+rpcURL)
+			client, err = ethclientDialContext(ctx, scheme+rpcURL)
 			if err == nil {
 				return client, scheme, nil
 			}
@@ -116,7 +119,7 @@ func GetClient(rpcURL string) (Client, error) {
 		utils.GetAPILargeContext,
 		func(ctx context.Context) (ethclient.Client, error) {
 			if hasScheme {
-				return ethclient.DialContext(ctx, rpcURL)
+				return ethclientDialContext(ctx, rpcURL)
 			} else {
 				client, _, err := GetClientWithoutScheme(rpcURL)
 				return client, err
