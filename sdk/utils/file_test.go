@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpandHome(t *testing.T) {
@@ -43,4 +45,26 @@ func TestExpandHome(t *testing.T) {
 	if expandedEmptyPath != expectedEmptyPath {
 		t.Errorf("ExpandHome failed for empty path: expected %s, got %s", expectedEmptyPath, expandedEmptyPath)
 	}
+}
+
+func TestFileExists(t *testing.T) {
+	// Create a temporary file
+	tempFile, err := os.CreateTemp("", "testfile")
+	require.NoError(t, err)
+	defer os.Remove(tempFile.Name())
+	// Test that the file exists
+	require.True(t, FileExists(tempFile.Name()))
+	// Test that a non-existent file does not exist
+	require.False(t, FileExists("non_existent_file.txt"))
+}
+
+func TestDirExists(t *testing.T) {
+	// Create a temporary directory
+	tempDir, err := os.MkdirTemp("", "testdir")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+	// Test that the directory exists
+	require.True(t, DirExists(tempDir))
+	// Test that a non-existent directory does not exist
+	require.False(t, DirExists("non_existent_dir"))
 }
