@@ -15,6 +15,11 @@ import (
 
 var ErrUnknownErrorSelector = fmt.Errorf("unknown error selector")
 
+// also used at mocks
+var (
+	rpcDialContext = rpc.DialContext
+)
+
 // wraps over rpc.Client for calls used by SDK. used to make evm calls not available in ethclient:
 // - debug trace call
 // - debug trace transaction
@@ -41,13 +46,13 @@ func GetRawClient(rpcURL string) (RawClient, error) {
 		utils.GetAPILargeContext,
 		func(ctx context.Context) (*rpc.Client, error) {
 			if hasScheme {
-				return rpc.DialContext(ctx, rpcURL)
+				return rpcDialContext(ctx, rpcURL)
 			} else {
 				_, scheme, err := GetClientWithoutScheme(rpcURL)
 				if err != nil {
 					return nil, err
 				}
-				return rpc.DialContext(ctx, scheme+rpcURL)
+				return rpcDialContext(ctx, scheme+rpcURL)
 			}
 		},
 		repeatsOnFailure,

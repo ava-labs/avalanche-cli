@@ -263,6 +263,11 @@ func TestGetClient(t *testing.T) {
 	defer func() {
 		sleepBetweenRepeats = originalSleepBetweenRepeats
 	}()
+	// Save original function to restore later
+	originalDialContext := ethclientDialContext
+	defer func() {
+		ethclientDialContext = originalDialContext
+	}()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	failuresCount := 0
