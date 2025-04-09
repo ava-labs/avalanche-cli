@@ -31,7 +31,7 @@ type RawClient struct {
 	RPCClient *rpc.Client
 	URL       string
 	// also used at mocks
-	CallContext func (context.Context, interface{}, string, ...interface{}) error
+	CallContext func(context.Context, interface{}, string, ...interface{}) error
 }
 
 // connects a raw evm rpc client to the given [rpcURL]
