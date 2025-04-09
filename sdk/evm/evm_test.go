@@ -2,6 +2,7 @@ package evm
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"math/big"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	subnetethclient "github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -1113,6 +1115,77 @@ func TestBlockNumber(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestGetPrivateKeyBalance(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
+	address := crypto.PubkeyToAddress(privateKey.PublicKey)
+	tests := []struct {
+		name        string
+		privateKey  string
+		setupMock   func()
+		expected    *big.Int
+		expectError bool
+	}{
+		{
+			name:       "successful balance check",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				mockClient.EXPECT().BalanceAt(gomock.Any(), address, gomock.Any()).
+					Return(big.NewInt(1000), nil)
+			},
+			expected:    big.NewInt(1000),
+			expectError: false,
+		},
+		{
+			name:       "error getting balance",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().BalanceAt(gomock.Any(), address, gomock.Any()).
+						Return(nil, errors.New("failed to get balance"))
+				}
+			},
+			expected:    nil,
+			expectError: true,
+		},
+		{
+			name:        "invalid private key",
+			privateKey:  "invalid",
+			setupMock:   func() {},
+			expected:    nil,
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			balance, err := client.GetPrivateKeyBalance(tt.privateKey)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.privateKey != "invalid" {
+					require.Contains(t, err.Error(), "obtaining balance")
+				}
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, balance)
 			}
 		})
 	}
