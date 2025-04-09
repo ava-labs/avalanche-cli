@@ -1,3 +1,5 @@
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
 package evm
 
 import (
@@ -1890,6 +1892,149 @@ func TestWaitForNewBlock(t *testing.T) {
 				if tt.name == "timeout waiting for new block" {
 					require.Contains(t, err.Error(), "no new block produced")
 				} else {
+					require.Contains(t, err.Error(), "failure")
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestSetupProposerVM(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	privateKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	privateKeyHex := hex.EncodeToString(crypto.FromECDSA(privateKey))
+	address := crypto.PubkeyToAddress(privateKey.PublicKey)
+	chainID := big.NewInt(43114)
+	tests := []struct {
+		name        string
+		privateKey  string
+		setupMock   func()
+		expectError bool
+	}{
+		{
+			name:       "successful setup",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				// GetChainID
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(chainID, nil)
+				// First block
+				mockClient.EXPECT().BlockNumber(gomock.Any()).
+					Return(uint64(1000), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), address, gomock.Any()).
+					Return(uint64(0), nil)
+				mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+					Return(nil)
+				mockClient.EXPECT().BlockNumber(gomock.Any()).
+					Return(uint64(1001), nil)
+				// Second block
+				mockClient.EXPECT().BlockNumber(gomock.Any()).
+					Return(uint64(1001), nil)
+				mockClient.EXPECT().NonceAt(gomock.Any(), address, gomock.Any()).
+					Return(uint64(1), nil)
+				mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+					Return(nil)
+				mockClient.EXPECT().BlockNumber(gomock.Any()).
+					Return(uint64(1002), nil)
+			},
+			expectError: false,
+		},
+		{
+			name:       "error getting chain ID",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure*repeatsOnFailure; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("failed to get chain ID"))
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:       "error getting block number",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					// GetChainID succeeds
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(chainID, nil)
+					// First block - error getting block number
+					for i := 0; i < repeatsOnFailure; i++ {
+						mockClient.EXPECT().BlockNumber(gomock.Any()).
+							Return(uint64(0), errors.New("failed to get block number"))
+					}
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:       "error getting nonce",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					// GetChainID succeeds
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(chainID, nil)
+					// First block - error getting nonce
+					mockClient.EXPECT().BlockNumber(gomock.Any()).
+						Return(uint64(1000), nil)
+					for i := 0; i < repeatsOnFailure; i++ {
+						mockClient.EXPECT().NonceAt(gomock.Any(), address, gomock.Any()).
+							Return(uint64(0), errors.New("failed to get nonce"))
+					}
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:       "error sending transaction",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					// GetChainID succeeds
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(chainID, nil)
+					// First block - error sending transaction
+					mockClient.EXPECT().BlockNumber(gomock.Any()).
+						Return(uint64(1000), nil)
+					mockClient.EXPECT().NonceAt(gomock.Any(), address, gomock.Any()).
+						Return(uint64(0), nil)
+					for i := 0; i < repeatsOnFailure; i++ {
+						mockClient.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).
+							Return(errors.New("failed to send transaction"))
+					}
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:        "invalid private key",
+			privateKey:  "invalid",
+			setupMock:   func() {},
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			err := client.SetupProposerVM(tt.privateKey)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.name != "invalid private key" {
 					require.Contains(t, err.Error(), "failure")
 				}
 			} else {
