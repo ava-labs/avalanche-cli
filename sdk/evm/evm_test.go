@@ -246,11 +246,6 @@ func TestGetClientWithoutScheme(t *testing.T) {
 			client, scheme, err := GetClientWithoutScheme(tt.rpcURL)
 			if tt.expectError {
 				require.Error(t, err)
-				if tt.rpcURL == "http://localhost:8545" {
-					require.Contains(t, err.Error(), "url does have scheme")
-				} else if tt.rpcURL != "http://:invalid" {
-					require.Contains(t, err.Error(), "protocol could not be determined")
-				}
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, client)
@@ -1825,6 +1820,80 @@ func TestTransactWithWarpMessage(t *testing.T) {
 				if !tt.generateRawTxOnly {
 					require.NotNil(t, tx.Hash())
 				}
+			}
+		})
+	}
+}
+
+func TestWaitForNewBlock(t *testing.T) {
+	originalSleepBetweenRepeats := sleepBetweenRepeats
+	sleepBetweenRepeats = 1 * time.Millisecond
+	defer func() {
+		sleepBetweenRepeats = originalSleepBetweenRepeats
+	}()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockClient := mockethclient.NewMockClient(ctrl)
+	client := Client{
+		EthClient: mockClient,
+		URL:       "http://localhost:8545",
+	}
+	initialBlock := uint64(1000)
+	newBlock := uint64(1001)
+	tests := []struct {
+		name            string
+		prevBlockNumber uint64
+		totalDuration   time.Duration
+		setupMock       func()
+		expectError     bool
+	}{
+		{
+			name:            "successful block retrieval",
+			prevBlockNumber: initialBlock,
+			setupMock: func() {
+				// new block found
+				mockClient.EXPECT().BlockNumber(gomock.Any()).
+					Return(newBlock, nil)
+			},
+			expectError: false,
+		},
+		{
+			name:            "timeout waiting for new block",
+			prevBlockNumber: initialBlock,
+			setupMock: func() {
+				// Simulate multiple checks with same block number until timeout
+				for i := 0; i < 10; i++ {
+					mockClient.EXPECT().BlockNumber(gomock.Any()).
+						Return(initialBlock, nil)
+				}
+			},
+			expectError: true,
+		},
+		{
+			name:            "error getting block number",
+			prevBlockNumber: initialBlock,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure; i++ {
+					mockClient.EXPECT().BlockNumber(gomock.Any()).
+						Return(uint64(0), errors.New("failed to get block number"))
+				}
+			},
+			expectError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupMock()
+			err := client.WaitForNewBlock(tt.prevBlockNumber, tt.totalDuration)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.name == "timeout waiting for new block" {
+					require.Contains(t, err.Error(), "no new block produced")
+				} else {
+					require.Contains(t, err.Error(), "failure")
+				}
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}

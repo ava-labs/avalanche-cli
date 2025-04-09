@@ -620,16 +620,12 @@ func (client Client) BlockNumber() (uint64, error) {
 func (client Client) WaitForNewBlock(
 	prevBlockNumber uint64,
 	totalDuration time.Duration,
-	stepDuration time.Duration,
 ) error {
-	if stepDuration == 0 {
-		stepDuration = 1 * time.Second
-	}
 	if totalDuration == 0 {
 		totalDuration = 10 * time.Second
 	}
-	steps := totalDuration / stepDuration
-	for step := 0; step < int(steps); step++ {
+	steps := int(totalDuration.Seconds())
+	for step := 0; step < steps; step++ {
 		blockNumber, err := client.BlockNumber()
 		if err != nil {
 			return err
@@ -637,9 +633,9 @@ func (client Client) WaitForNewBlock(
 		if blockNumber > prevBlockNumber {
 			return nil
 		}
-		time.Sleep(stepDuration)
+		time.Sleep(sleepBetweenRepeats)
 	}
-	return fmt.Errorf("no new block produced on %s in %f seconds", client.URL, totalDuration.Seconds())
+	return fmt.Errorf("no new block produced on %s in %d seconds", client.URL, steps)
 }
 
 // issue dummy txs to create the given number of blocks
@@ -679,7 +675,7 @@ func (client Client) CreateDummyBlocks(
 		if err := client.SendTransaction(triggerTx); err != nil {
 			return fmt.Errorf("client.SendTransaction failure at step %d: %w", i, err)
 		}
-		if err := client.WaitForNewBlock(prevBlockNumber, 0, 0); err != nil {
+		if err := client.WaitForNewBlock(prevBlockNumber, 0); err != nil {
 			return fmt.Errorf("WaitForNewBlock failure at step %d: %w", i, err)
 		}
 	}
