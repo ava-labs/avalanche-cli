@@ -389,7 +389,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
 			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
 		}
-		log.Warn("the PoA contract is already initialized")
+		log.Info("the PoA contract is already initialized, skipping initializing Proof of Authority contract")
 	}
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
@@ -453,7 +453,7 @@ func (c *Subnet) InitializeProofOfStake(
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
 			return evm.TransactionError(tx, err, "failure initializing native PoS validator manager")
 		}
-		log.Warn("the PoS contract is already initialized.")
+		log.Info("the PoS contract is already initialized, skipping initializing Proof of Stake contract")
 	}
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
 		ctx,
