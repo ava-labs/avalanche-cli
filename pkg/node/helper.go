@@ -302,16 +302,12 @@ func GetClusterNameFromList(app *application.Avalanche) (string, error) {
 // GetAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version
 // or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
 // version of their choice
-func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoVersionSettings) (string, error) {
+func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoVersionSettings, network models.Network) (string, error) {
 	// skip this logic if custom-avalanchego-version flag is set
 	if avagoVersion.UseCustomAvalanchegoVersion != "" {
 		return avagoVersion.UseCustomAvalanchegoVersion, nil
 	}
-	latestReleaseVersion, err := app.Downloader.GetLatestReleaseVersion(
-		constants.AvaLabsOrg,
-		constants.AvalancheGoRepoName,
-		"",
-	)
+	latestReleaseVersion, err := vm.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, nil)
 	if err != nil {
 		return "", err
 	}
@@ -344,7 +340,7 @@ func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoV
 		if err != nil {
 			return "", err
 		}
-		version, err = GetLatestAvagoVersionForRPC(app, sc.RPCVersion, latestPreReleaseVersion)
+		version, err = vm.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sc.RPCVersion)
 		if err != nil {
 			return "", err
 		}

@@ -147,7 +147,7 @@ func setupNode(_ *cobra.Command, _ []string) error {
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 	if err != nil {
 		return err
 	}

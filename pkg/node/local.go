@@ -27,17 +27,21 @@ func setupAvalancheGo(
 	app *application.Avalanche,
 	avalancheGoBinaryPath string,
 	avaGoVersionSetting AvalancheGoVersionSettings,
+	network models.Network,
 	printFunc func(msg string, args ...interface{}),
 ) (string, error) {
+	fmt.Printf("avaGoVersionSetting %s \n", avaGoVersionSetting)
 	var err error
 	avalancheGoVersion := ""
 	if avalancheGoBinaryPath == "" {
-		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
+		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 		if err != nil {
 			return "", err
 		}
 		printFunc("Using AvalancheGo version: %s", avalancheGoVersion)
 	}
+	fmt.Printf("avalancheGoVersion %s \n", avalancheGoVersion)
+	fmt.Printf("avalancheGoBinaryPath %s \n", avalancheGoBinaryPath)
 	avalancheGoBinaryPath, err = localnet.SetupAvalancheGoBinary(app, avalancheGoVersion, avalancheGoBinaryPath)
 	if err != nil {
 		return "", err
@@ -78,6 +82,7 @@ func StartLocalNode(
 			app,
 			avalancheGoBinaryPath,
 			avaGoVersionSetting,
+			network,
 			ux.Logger.PrintToUser,
 		)
 		if err != nil {

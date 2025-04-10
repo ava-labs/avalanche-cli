@@ -234,12 +234,9 @@ func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependen
 
 	switch dependencyName {
 	case constants.AvalancheGoRepoName:
-		if rpcVersion == nil {
-			return "", fmt.Errorf("RPC version is required to get latest Avalanche Go version supported by CLI")
-		}
 		// if the user is using RPC that is lower than the latest RPC supported by CLI, user will get latest AvalancheGo version for that RPC
 		// based on "https://raw.githubusercontent.com/ava-labs/avalanchego/master/version/compatibility.json"
-		if parsedDependency.RPC > *rpcVersion {
+		if rpcVersion != nil && parsedDependency.RPC > *rpcVersion {
 			return GetLatestAvalancheGoByProtocolVersion(
 				app,
 				*rpcVersion,
