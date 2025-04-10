@@ -10,13 +10,13 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 
@@ -97,7 +97,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	evmChainID, err := evm.GetChainID(client)
+	evmChainID, err := client.GetChainID()
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func describe(_ *cobra.Command, _ []string) error {
 	}
 	address := k.C()
 	privKey := k.PrivKeyHex()
-	balance, err := evm.GetAddressBalance(client, address)
+	balance, err := client.GetAddressBalance(address)
 	if err != nil {
 		return err
 	}

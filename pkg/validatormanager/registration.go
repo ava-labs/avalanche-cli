@@ -12,10 +12,10 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -494,7 +494,7 @@ func InitValidatorRegistration(
 
 	var unsignedMessage *warp.UnsignedMessage
 	if receipt != nil {
-		unsignedMessage, err = GetWarpMessageFromLogs(receipt.Logs)
+		unsignedMessage, err = evm.ExtractWarpMessageFromReceipt(receipt)
 		if err != nil {
 			return nil, ids.Empty, nil, err
 		}
@@ -565,11 +565,13 @@ func FinishValidatorRegistration(
 		return nil, err
 	}
 	if privateKey != "" {
-		if err := evm.SetupProposerVM(
-			rpcURL,
-			privateKey,
-		); err != nil {
-			ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		if client, err := evm.GetClient(rpcURL); err != nil {
+			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %w", err)
+		} else {
+			if err := client.SetupProposerVM(privateKey); err != nil {
+				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+			}
+			client.Close()
 		}
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
@@ -602,30 +604,26 @@ func SearchForRegisterL1ValidatorMessage(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPILargeContext()
-	defer cancel()
-	height, err := client.BlockNumber(ctx)
+	height, err := client.BlockNumber()
 	if err != nil {
 		return nil, err
 	}
 	maxBlock := int64(height)
 	minBlock := int64(0)
 	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		block, err := client.BlockByNumber(ctx, big.NewInt(blockNumber))
+		block, err := client.BlockByNumber(big.NewInt(blockNumber))
 		if err != nil {
 			return nil, err
 		}
 		blockHash := block.Hash()
-		logs, err := client.FilterLogs(ctx, interfaces.FilterQuery{
+		logs, err := client.FilterLogs(interfaces.FilterQuery{
 			BlockHash: &blockHash,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {
 			return nil, err
 		}
-		msgs := GetWarpMessagesFromLogs(utils.PointersSlice(logs))
+		msgs := evm.GetWarpMessagesFromLogs(utils.PointersSlice(logs))
 		for _, msg := range msgs {
 			payload := msg.Payload
 			addressedCall, err := warpPayload.ParseAddressedCall(payload)
@@ -691,13 +689,11 @@ func GetRegisterL1ValidatorMessageFromTx(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPILargeContext()
-	defer cancel()
-	receipt, err := client.TransactionReceipt(ctx, common.HexToHash(txHash))
+	receipt, err := client.TransactionReceipt(common.HexToHash(txHash))
 	if err != nil {
 		return nil, err
 	}
-	msgs := GetWarpMessagesFromLogs(receipt.Logs)
+	msgs := evm.GetWarpMessagesFromLogs(receipt.Logs)
 	for _, msg := range msgs {
 		payload := msg.Payload
 		addressedCall, err := warpPayload.ParseAddressedCall(payload)

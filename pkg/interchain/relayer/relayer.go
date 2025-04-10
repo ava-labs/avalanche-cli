@@ -19,11 +19,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	apiConfig "github.com/ava-labs/icm-services/config"
 	offchainregistry "github.com/ava-labs/icm-services/messages/off-chain-registry"
 	"github.com/ava-labs/icm-services/relayer/config"
@@ -73,14 +73,13 @@ func FundRelayer(
 	if err != nil {
 		return err
 	}
-	relayerBalance, err := evm.GetAddressBalance(client, relayerAddress)
+	relayerBalance, err := client.GetAddressBalance(relayerAddress)
 	if err != nil {
 		return err
 	}
 	if relayerBalance.Cmp(relayerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(relayerRequiredBalance, relayerBalance)
-		err := evm.FundAddress(
-			client,
+		err := client.FundAddress(
 			prefundedPrivateKey,
 			relayerAddress,
 			toFund,

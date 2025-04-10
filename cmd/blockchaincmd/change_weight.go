@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -20,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
@@ -394,7 +394,11 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Initializing Validator Weight Change", rawTx)
+		dump, err := evm.TxDump("Initializing Validator Weight Change", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
@@ -445,7 +449,11 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Finish Validator Weight Change", rawTx)
+		dump, err := evm.TxDump("Finish Validator Weight Change", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Weight change successfully made")
