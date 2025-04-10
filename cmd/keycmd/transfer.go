@@ -270,7 +270,7 @@ func transferF(*cobra.Command, []string) error {
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	if destinationAddrStr == "" && !receiverChainFlags.XChain && !(senderChainFlags.CChain && receiverChainFlags.PChain) {
+	if destinationAddrStr == "" && senderChainFlags.PChain && (receiverChainFlags.PChain || receiverChainFlags.CChain) {
 		if destinationKeyName != "" {
 			k, err := app.GetKey(destinationKeyName, network, false)
 			if err != nil {
@@ -286,20 +286,10 @@ func transferF(*cobra.Command, []string) error {
 				}
 				destinationAddrStr = addrs[0]
 			}
-			if receiverChainFlags.XChain {
-				addrs := k.X()
-				if len(addrs) == 0 {
-					return fmt.Errorf("unexpected null number of X-Chain addresses for key")
-				}
-				destinationAddrStr = addrs[0]
-			}
 		} else {
 			format := prompts.EVMFormat
 			if receiverChainFlags.PChain {
 				format = prompts.PChainFormat
-			}
-			if receiverChainFlags.XChain {
-				format = prompts.XChainFormat
 			}
 			destinationAddrStr, err = prompts.PromptAddress(
 				app.Prompt,
