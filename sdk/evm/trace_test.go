@@ -5,6 +5,7 @@ package evm
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -348,6 +349,92 @@ func TestGetFunctionSelector(t *testing.T) {
 			require.True(t, strings.HasPrefix(selector, "0x"))
 			require.Len(t, selector, 10) // 0x + 8 hex characters
 			require.Equal(t, selector, tt.expected)
+		})
+	}
+}
+
+func TestGetErrorFromTrace(t *testing.T) {
+	testErr := fmt.Errorf("transfer failed")
+	tests := []struct {
+		name                     string
+		trace                    map[string]interface{}
+		functionSignatureToError map[string]error
+		mappedErr                error
+		expectedErr              bool
+		errContains              string
+	}{
+		{
+			name:                     "empty trace",
+			trace:                    map[string]interface{}{},
+			functionSignatureToError: map[string]error{},
+			expectedErr:              true,
+			errContains:              "trace does not contain output field",
+		},
+		{
+			name: "output is not string",
+			trace: map[string]interface{}{
+				"output": 5,
+				"gas":    "0x21000",
+				"failed": true,
+			},
+			expectedErr: true,
+			errContains: "expected type string for trace output, got",
+		},
+		{
+			name: "output is not hexa",
+			trace: map[string]interface{}{
+				"output": "pp",
+				"gas":    "0x21000",
+				"failed": true,
+			},
+			expectedErr: true,
+			errContains: "failure decoding trace output",
+		},
+		{
+			name: "output has not enough bytes",
+			trace: map[string]interface{}{
+				"output": "0x",
+				"gas":    "0x21000",
+				"failed": true,
+			},
+			expectedErr: true,
+			errContains: "less than 4 bytes in trace output",
+		},
+		{
+			name: "trace with known function selector",
+			trace: map[string]interface{}{
+				"output": "0xa9059cbb123456", // transfer(address,uint256) selector
+				"gas":    "0x21000",
+				"failed": true,
+			},
+			functionSignatureToError: map[string]error{
+				"transfer(address,uint256)": testErr,
+			},
+			mappedErr:   testErr,
+			expectedErr: false,
+		},
+		{
+			name: "trace with unknown function selector",
+			trace: map[string]interface{}{
+				"output": "0xa9059cbb123456", // transfer(address,uint256) selector
+				"gas":    "0x21000",
+				"failed": true,
+			},
+			expectedErr: true,
+			errContains: ErrUnknownErrorSelector.Error(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mappedErr, err := GetErrorFromTrace(tt.trace, tt.functionSignatureToError)
+			require.Equal(t, tt.mappedErr, mappedErr)
+			if tt.expectedErr {
+				require.Error(t, err)
+				require.True(t, strings.Contains(err.Error(), tt.errContains))
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
