@@ -30,7 +30,6 @@ func setupAvalancheGo(
 	network models.Network,
 	printFunc func(msg string, args ...interface{}),
 ) (string, error) {
-	fmt.Printf("avaGoVersionSetting %s \n", avaGoVersionSetting)
 	var err error
 	avalancheGoVersion := ""
 	if avalancheGoBinaryPath == "" {
@@ -40,8 +39,6 @@ func setupAvalancheGo(
 		}
 		printFunc("Using AvalancheGo version: %s", avalancheGoVersion)
 	}
-	fmt.Printf("avalancheGoVersion %s \n", avalancheGoVersion)
-	fmt.Printf("avalancheGoBinaryPath %s \n", avalancheGoBinaryPath)
 	avalancheGoBinaryPath, err = localnet.SetupAvalancheGoBinary(app, avalancheGoVersion, avalancheGoBinaryPath)
 	if err != nil {
 		return "", err
