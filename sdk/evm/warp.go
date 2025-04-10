@@ -39,5 +39,8 @@ func ExtractWarpMessageFromLogs(
 func ExtractWarpMessageFromReceipt(
 	receipt *types.Receipt,
 ) (*warp.UnsignedMessage, error) {
+	if receipt == nil {
+		return nil, fmt.Errorf("empty receipt was given")
+	}
 	return ExtractWarpMessageFromLogs(receipt.Logs)
 }
