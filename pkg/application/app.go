@@ -23,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/subnet-evm/core"
 
+	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 )
 
@@ -35,6 +36,7 @@ type Avalanche struct {
 	Apm        *apm.APM
 	ApmDir     string
 	Downloader Downloader
+	Cmd        *cobra.Command
 }
 
 func New() *Avalanche {
@@ -48,6 +50,7 @@ func (app *Avalanche) Setup(
 	version string,
 	prompt prompts.Prompter,
 	downloader Downloader,
+	cmd *cobra.Command,
 ) {
 	app.baseDir = baseDir
 	app.Log = log
@@ -55,6 +58,7 @@ func (app *Avalanche) Setup(
 	app.Version = version
 	app.Prompt = prompt
 	app.Downloader = downloader
+	app.Cmd = cmd
 }
 
 func (app *Avalanche) GetRunFile(prefix string) string {

@@ -790,7 +790,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		printResults(cloudConfigMap, publicIPMap, monitoringPublicIP)
 		ux.Logger.PrintToUser(logging.Green.Wrap("AvalancheGo and Avalanche-CLI installed and node(s) are bootstrapping!"))
 	}
-	sendNodeCreateMetrics(cmd, cloudService, network.Name(), numNodesMetricsMap)
+	sendNodeCreateMetrics(cloudService, network.Name(), numNodesMetricsMap)
 	return nil
 }
 
@@ -1389,7 +1389,7 @@ func defaultAvalancheCLIPrefix(region string) (string, error) {
 	return usr.Username + "-" + region + constants.AvalancheCLISuffix, nil
 }
 
-func sendNodeCreateMetrics(cmd *cobra.Command, cloudService, network string, nodes map[string]NumNodes) {
+func sendNodeCreateMetrics(cloudService, network string, nodes map[string]NumNodes) {
 	flags := make(map[string]string)
 	totalValidatorNodes := 0
 	totalAPINodes := 0
@@ -1414,7 +1414,7 @@ func sendNodeCreateMetrics(cmd *cobra.Command, cloudService, network string, nod
 		populateSubnetVMMetrics(flags, wizSubnet)
 		flags[constants.MetricsCalledFromWiz] = strconv.FormatBool(true)
 	}
-	metrics.HandleTracking(cmd, constants.MetricsNodeCreateCommand, app, flags)
+	metrics.HandleTracking(app, flags, nil)
 }
 
 func getPrometheusTargets(clusterName string) ([]string, []string, []string, error) {

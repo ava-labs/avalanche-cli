@@ -945,7 +945,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
-	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
+	metrics.HandleTracking(app, flags, nil)
 
 	if network.Kind == models.Local && !simulatedPublicNetwork() {
 		ux.Logger.PrintToUser("")
