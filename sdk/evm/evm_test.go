@@ -564,10 +564,25 @@ func TestNonceAt(t *testing.T) {
 			expected:    0,
 			expectError: true,
 		},
+		{
+			name:    "successful after max failures",
+			address: "0x1234567890123456789012345678901234567890",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().NonceAt(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(uint64(0), errors.New("failed to get nonce"))
+				}
+				mockClient.EXPECT().NonceAt(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(uint64(42), nil)
+			},
+			expected:    42,
+			expectError: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock()
+
 			nonce, err := client.NonceAt(tt.address)
 			if tt.expectError {
 				require.Error(t, err)
@@ -618,6 +633,19 @@ func TestSuggestGasTipCap(t *testing.T) {
 			},
 			expected:    nil,
 			expectError: true,
+		},
+		{
+			name: "successful after max failures",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+						Return(nil, errors.New("failed to get gas tip cap"))
+				}
+				mockClient.EXPECT().SuggestGasTipCap(gomock.Any()).
+					Return(big.NewInt(100), nil)
+			},
+			expected:    big.NewInt(100),
+			expectError: false,
 		},
 	}
 	for _, tt := range tests {
@@ -674,6 +702,19 @@ func TestEstimateBaseFee(t *testing.T) {
 			expected:    nil,
 			expectError: true,
 		},
+		{
+			name: "successful after max failures",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+						Return(nil, errors.New("failed to estimate base fee"))
+				}
+				mockClient.EXPECT().EstimateBaseFee(gomock.Any()).
+					Return(big.NewInt(100), nil)
+			},
+			expected:    big.NewInt(100),
+			expectError: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -728,6 +769,19 @@ func TestEstimateGasLimit(t *testing.T) {
 			},
 			expected:    0,
 			expectError: true,
+		},
+		{
+			name: "successful after max failures",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().EstimateGas(gomock.Any(), gomock.Any()).
+						Return(uint64(0), errors.New("failed to estimate gas"))
+				}
+				mockClient.EXPECT().EstimateGas(gomock.Any(), gomock.Any()).
+					Return(uint64(21000), nil)
+			},
+			expected:    21000,
+			expectError: false,
 		},
 	}
 	for _, tt := range tests {
@@ -784,6 +838,19 @@ func TestGetChainID(t *testing.T) {
 			expected:    nil,
 			expectError: true,
 		},
+		{
+			name: "successful after max failures",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("failed to get chain ID"))
+				}
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+			},
+			expected:    big.NewInt(43114),
+			expectError: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -836,6 +903,18 @@ func TestSendTransaction(t *testing.T) {
 				}
 			},
 			expectError: true,
+		},
+		{
+			name: "successful after max failures",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().SendTransaction(gomock.Any(), tx).
+						Return(errors.New("failed to send transaction"))
+				}
+				mockClient.EXPECT().SendTransaction(gomock.Any(), tx).
+					Return(nil)
+			},
+			expectError: false,
 		},
 	}
 	for _, tt := range tests {
@@ -1201,6 +1280,20 @@ func TestGetPrivateKeyBalance(t *testing.T) {
 			},
 			expected:    nil,
 			expectError: true,
+		},
+		{
+			name:       "successful after max failures",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().BalanceAt(gomock.Any(), address, gomock.Any()).
+						Return(nil, errors.New("failed to get balance"))
+				}
+				mockClient.EXPECT().BalanceAt(gomock.Any(), address, gomock.Any()).
+					Return(big.NewInt(100), nil)
+			},
+			expected:    big.NewInt(100),
+			expectError: false,
 		},
 		{
 			name:        "invalid private key",
@@ -1593,6 +1686,19 @@ func TestGetTxOptsWithSigner(t *testing.T) {
 				}
 			},
 			expectError: true,
+		},
+		{
+			name:       "successful after max failures",
+			privateKey: privateKeyHex,
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().ChainID(gomock.Any()).
+						Return(nil, errors.New("failed to get chain ID"))
+				}
+				mockClient.EXPECT().ChainID(gomock.Any()).
+					Return(big.NewInt(43114), nil)
+			},
+			expectError: false,
 		},
 	}
 	for _, tt := range tests {
