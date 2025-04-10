@@ -4,8 +4,8 @@ package node
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"sync"
 	"time"
 
@@ -17,7 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 )
@@ -307,7 +306,7 @@ func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoV
 	if avagoVersion.UseCustomAvalanchegoVersion != "" {
 		return avagoVersion.UseCustomAvalanchegoVersion, nil
 	}
-	latestReleaseVersion, err := vm.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, nil)
+	latestReleaseVersion, err := dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, nil)
 	if err != nil {
 		return "", err
 	}
@@ -340,7 +339,7 @@ func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoV
 		if err != nil {
 			return "", err
 		}
-		version, err = vm.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sc.RPCVersion)
+		version, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sc.RPCVersion)
 		if err != nil {
 			return "", err
 		}
@@ -396,17 +395,4 @@ func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVer
 		}
 		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
 	}
-}
-
-func GetLatestAvagoVersionForRPC(app *application.Avalanche, configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
-	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
-		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
-	if errors.Is(err, vm.ErrNoAvagoVersion) {
-		ux.Logger.PrintToUser("No Avalanchego version found for blockchain. Defaulting to latest pre-release version")
-		return latestPreReleaseVersion, nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return desiredAvagoVersion, nil
 }

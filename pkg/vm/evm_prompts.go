@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -883,7 +885,7 @@ func PromptSubnetEVMVersion(
 ) (string, error) {
 	switch subnetEVMVersion {
 	case latest:
-		return GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
+		return dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
 	case preRelease:
 		return app.Downloader.GetLatestPreReleaseVersion(
 			constants.AvaLabsOrg,
@@ -905,7 +907,7 @@ func promptUserForSubnetEVMVersion(
 		err                     error
 	)
 	if os.Getenv(constants.OperateOfflineEnvVarName) == "" {
-		latestReleaseVersion, err = GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
+		latestReleaseVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.SubnetEVMRepoName, models.UndefinedNetwork, nil)
 		if err != nil {
 			return "", err
 		}
