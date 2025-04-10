@@ -457,7 +457,7 @@ func wiz(cmd *cobra.Command, args []string) error {
 	if err := deployClusterYAMLFile(clusterName, subnetName); err != nil {
 		return err
 	}
-	sendNodeWizMetrics(cmd)
+	sendNodeWizMetrics()
 	return nil
 }
 
@@ -889,10 +889,10 @@ func setICMRelayerSecurityGroupRule(clusterName string, awmRelayerHost *models.H
 	return nil
 }
 
-func sendNodeWizMetrics(cmd *cobra.Command) {
+func sendNodeWizMetrics() {
 	flags := make(map[string]string)
 	populateSubnetVMMetrics(flags, wizSubnet)
-	metrics.HandleTracking(cmd, constants.MetricsNodeDevnetWizCommand, app, flags)
+	metrics.HandleTracking(app, flags, nil)
 }
 
 func populateSubnetVMMetrics(flags map[string]string, subnetName string) {

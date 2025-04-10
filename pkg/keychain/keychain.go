@@ -31,7 +31,8 @@ const (
 
 var (
 	ErrMutuallyExlusiveKeySource = errors.New("key source flags --key, --ewoq, --ledger/--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOrEwoqOnMainnet  = errors.New("key sources --key, --ewoq are not available for mainnet operations")
+	ErrStoredKeyOnMainnet        = errors.New("--key flag is not supported for mainnet operations, please use ledger instead")
+	ErrNonEwoqKeyOnMainnet       = errors.New("key source --ewoq is not available for mainnet operations, please use ledger instead")
 	ErrNonEwoqKeyOnDevnet        = errors.New("key source --ewoq is the only one available for devnet operations")
 	ErrEwoqKeyOnFuji             = errors.New("key source --ewoq is not available for fuji operations")
 )
@@ -158,8 +159,11 @@ func GetKeychainFromCmdLineFlags(
 		}
 	case network.Kind == models.Mainnet:
 		// mainnet requires ledger usage
-		if keyName != "" || useEwoq {
-			return nil, ErrStoredKeyOrEwoqOnMainnet
+		if keyName != "" {
+			return nil, ErrStoredKeyOnMainnet
+		}
+		if useEwoq {
+			return nil, ErrNonEwoqKeyOnMainnet
 		}
 		useLedger = true
 	}
