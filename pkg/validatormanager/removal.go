@@ -133,7 +133,7 @@ func GetUptimeProofMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		ctx,
-		network,
+		network.SDKNetwork(),
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
