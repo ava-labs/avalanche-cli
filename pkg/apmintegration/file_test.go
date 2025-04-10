@@ -63,7 +63,7 @@ const (
 func newTestApp(t *testing.T, testDir string) *application.Avalanche {
 	tempDir := t.TempDir()
 	app := application.New()
-	app.Setup(tempDir, logging.NoLog{}, nil, "", prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(tempDir, logging.NoLog{}, nil, "", prompts.NewPrompter(), application.NewDownloader(), nil)
 	app.ApmDir = testDir
 	return app
 }

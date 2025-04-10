@@ -218,6 +218,7 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		defer cancel()
 		err = subnetSDK.InitializeProofOfAuthority(
 			ctx,
+			logging.NoLog{},
 			network.SDKNetwork(),
 			k.PrivKeyHex(),
 			extraAggregatorPeers,

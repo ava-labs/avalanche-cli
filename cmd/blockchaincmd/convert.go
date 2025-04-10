@@ -387,6 +387,7 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Native Token Proof of Stake Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfStake(
 			aggregatorCtx,
+			app.Log,
 			network.SDKNetwork(),
 			genesisPrivateKey,
 			extraAggregatorPeers,
@@ -411,6 +412,7 @@ func InitializeValidatorManager(
 		ux.Logger.PrintToUser("Initializing Proof of Authority Validator Manager contract on blockchain %s ...", blockchainName)
 		if err := subnetSDK.InitializeProofOfAuthority(
 			aggregatorCtx,
+			app.Log,
 			network.SDKNetwork(),
 			genesisPrivateKey,
 			extraAggregatorPeers,
