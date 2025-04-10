@@ -5,6 +5,7 @@ package evm
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -299,6 +300,54 @@ func TestDebugTraceCall(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, trace)
 			}
+		})
+	}
+}
+
+func TestGetFunctionSelector(t *testing.T) {
+	tests := []struct {
+		name        string
+		functionSig string
+		expected    string
+	}{
+		{
+			name:        "transfer function",
+			functionSig: "transfer(address,uint256)",
+			expected:    "0xa9059cbb",
+		},
+		{
+			name:        "approve function",
+			functionSig: "approve(address,uint256)",
+			expected:    "0x095ea7b3",
+		},
+		{
+			name:        "transferFrom function",
+			functionSig: "transferFrom(address,address,uint256)",
+			expected:    "0x23b872dd",
+		},
+		{
+			name:        "balanceOf function",
+			functionSig: "balanceOf(address)",
+			expected:    "0x70a08231",
+		},
+		{
+			name:        "allowance function",
+			functionSig: "allowance(address,address)",
+			expected:    "0xdd62ed3e",
+		},
+		{
+			name:        "empty function",
+			functionSig: "",
+			expected:    "0xc5d24601",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			selector := GetFunctionSelector(tt.functionSig)
+			require.True(t, strings.HasPrefix(selector, "0x"))
+			require.Len(t, selector, 10) // 0x + 8 hex characters
+			require.Equal(t, selector, tt.expected)
 		})
 	}
 }
