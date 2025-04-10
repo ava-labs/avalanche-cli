@@ -286,7 +286,11 @@ func TestGetClient(t *testing.T) {
 			name:   "with scheme, total failure",
 			rpcURL: "http://localhost:8545",
 			mockDialFunc: func(_ context.Context, _ string) (subnetethclient.Client, error) {
-				return nil, errors.New("connection error")
+				failuresCount++
+				if failuresCount <= repeatsOnFailure {
+					return nil, errors.New("connection error")
+				}
+				return mockethclient.NewMockClient(ctrl), nil
 			},
 			expectError: true,
 		},
@@ -295,7 +299,7 @@ func TestGetClient(t *testing.T) {
 			rpcURL: "http://localhost:8545",
 			mockDialFunc: func(_ context.Context, _ string) (subnetethclient.Client, error) {
 				failuresCount++
-				if failuresCount < 3 {
+				if failuresCount < repeatsOnFailure {
 					return nil, errors.New("connection error")
 				}
 				return mockethclient.NewMockClient(ctrl), nil
@@ -337,6 +341,7 @@ func TestGetClient(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Replace the dial function with our mock
 			ethclientDialContext = tt.mockDialFunc
+			failuresCount = 0
 			client, err := GetClient(tt.rpcURL)
 			if tt.expectError {
 				require.Error(t, err)
@@ -416,6 +421,20 @@ func TestContractAlreadyDeployed(t *testing.T) {
 			expected:    false,
 			expectError: true,
 		},
+		{
+			name:         "getting code after max failues",
+			contractAddr: "0x1234567890123456789012345678901234567890",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().CodeAt(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(nil, errors.New("failed to get code"))
+				}
+				mockClient.EXPECT().CodeAt(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return([]byte{1, 2, 3}, nil)
+			},
+			expected:    true,
+			expectError: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -472,6 +491,20 @@ func TestGetAddressBalance(t *testing.T) {
 			},
 			expected:    nil,
 			expectError: true,
+		},
+		{
+			name:    "successful balance check after max failures",
+			address: "0x1234567890123456789012345678901234567890",
+			setupMock: func() {
+				for i := 0; i < repeatsOnFailure-1; i++ {
+					mockClient.EXPECT().BalanceAt(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(nil, errors.New("failed to get balance"))
+				}
+				mockClient.EXPECT().BalanceAt(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(big.NewInt(1000), nil)
+			},
+			expected:    big.NewInt(1000),
+			expectError: false,
 		},
 	}
 	for _, tt := range tests {
