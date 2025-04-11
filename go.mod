@@ -10,7 +10,7 @@ require (
 	github.com/ava-labs/avalanchego v1.13.1-0.20250326010016-044f93f83526
 	github.com/ava-labs/coreth v0.15.0-rc.0
 	github.com/ava-labs/icm-services v1.4.1-0.20250326180348-905d5a5cea3a
-	github.com/ava-labs/subnet-evm v0.7.2
+	github.com/ava-labs/subnet-evm v0.7.3
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.10
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.200.0
@@ -204,7 +204,7 @@ require (
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/supranational/blst v0.3.13 // indirect
+	github.com/supranational/blst v0.3.14 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
