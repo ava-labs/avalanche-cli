@@ -179,7 +179,7 @@ func validateBiggerThanZero(input string) error {
 	return nil
 }
 
-func validateURLFormat(input string) error {
+func ValidateURLFormat(input string) error {
 	_, err := url.ParseRequestURI(input)
 	if err != nil {
 		return err
@@ -355,7 +355,7 @@ func RequestURL(url string) (*http.Response, error) {
 }
 
 func ValidateURL(url string) error {
-	if err := validateURLFormat(url); err != nil {
+	if err := ValidateURLFormat(url); err != nil {
 		return err
 	}
 	resp, err := RequestURL(url)

@@ -137,7 +137,6 @@ func GetUptimeProofMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		true, // allow private peers
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -157,7 +156,6 @@ func InitValidatorRemoval(
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	isPoS bool,
 	uptimeSec uint64,
@@ -280,7 +278,6 @@ func InitValidatorRemoval(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
@@ -343,7 +340,6 @@ func FinishValidatorRemoval(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	useACP99 bool,
@@ -363,7 +359,6 @@ func FinishValidatorRemoval(
 		rpcURL,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		validationID,

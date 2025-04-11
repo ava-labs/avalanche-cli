@@ -51,7 +51,6 @@ func createAppRequestNetwork(
 	network network.Network,
 	logger logging.Logger,
 	registerer prometheus.Registerer,
-	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 	trackedSubnetIDs []string,
 ) (peers.AppRequestNetwork, error) {
@@ -62,7 +61,7 @@ func createAppRequestNetwork(
 		InfoAPI: &apiConfig.APIConfig{
 			BaseURL: network.Endpoint,
 		},
-		AllowPrivateIPs:  allowPrivatePeers,
+		AllowPrivateIPs:  true,
 		TrackedSubnetIDs: trackedSubnetIDs,
 	}
 	if err := networkConfig.Validate(); err != nil {
@@ -147,7 +146,6 @@ func NewSignatureAggregator(
 	logger logging.Logger,
 	subnetID ids.ID,
 	quorumPercentage uint64,
-	allowPrivatePeers bool,
 	extraPeerEndpoints []info.Peer,
 ) (*SignatureAggregator, error) {
 	registerer := prometheus.NewRegistry()
@@ -155,7 +153,7 @@ func NewSignatureAggregator(
 	if subnetID != constants.PrimaryNetworkID {
 		trackedSubnetIDs = append(trackedSubnetIDs, subnetID.String())
 	}
-	peerNetwork, err := createAppRequestNetwork(network, logger, registerer, allowPrivatePeers, extraPeerEndpoints, trackedSubnetIDs)
+	peerNetwork, err := createAppRequestNetwork(network, logger, registerer, extraPeerEndpoints, trackedSubnetIDs)
 	if err != nil {
 		return nil, err
 	}
