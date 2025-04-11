@@ -8,10 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/icm-services/signature-aggregator/aggregator"
-	"github.com/ava-labs/icm-services/signature-aggregator/metrics"
-
-	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/message"
@@ -20,9 +17,12 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	apiConfig "github.com/ava-labs/icm-services/config"
 	"github.com/ava-labs/icm-services/peers"
+	"github.com/ava-labs/icm-services/signature-aggregator/aggregator"
 	"github.com/ava-labs/icm-services/signature-aggregator/config"
+	"github.com/ava-labs/icm-services/signature-aggregator/metrics"
 	awmTypes "github.com/ava-labs/icm-services/types"
 	awmUtils "github.com/ava-labs/icm-services/utils"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,14 +41,14 @@ type SignatureAggregator struct {
 // createAppRequestNetwork creates a new AppRequestNetwork for the given network and log level.
 //
 // Parameters:
-// - network: The network for which the AppRequestNetwork is created. It should be of type models.Network.
+// - network: The network for which the AppRequestNetwork is created. It should be of type network.Network.
 // - logLevel: The log level for the AppRequestNetwork. It should be of type logging.Level.
 //
 // Returns:
 // - peers.AppRequestNetwork: The created AppRequestNetwork, or nil if an error occurred.
 // - error: An error if the creation of the AppRequestNetwork failed.
 func createAppRequestNetwork(
-	network models.Network,
+	network network.Network,
 	logger logging.Logger,
 	registerer prometheus.Registerer,
 	extraPeerEndpoints []info.Peer,
@@ -142,7 +142,7 @@ func initSignatureAggregator(
 // Returns a new signature aggregator instance, or an error if creation fails.
 func NewSignatureAggregator(
 	ctx context.Context,
-	network models.Network,
+	network network.Network,
 	logger logging.Logger,
 	subnetID ids.ID,
 	quorumPercentage uint64,

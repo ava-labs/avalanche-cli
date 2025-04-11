@@ -22,8 +22,9 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/onsi/ginkgo/v2"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
@@ -215,7 +216,17 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 
 		ctx, cancel := utils.GetSignatureAggregatorContext()
 		defer cancel()
-		err = subnetSDK.InitializeProofOfAuthority(ctx, network, k.PrivKeyHex(), extraAggregatorPeers, logging.NoLog{}, ProxyContractAddress, true)
+		err = subnetSDK.InitializeProofOfAuthority(
+			ctx,
+			logging.NoLog{},
+			network.SDKNetwork(),
+			k.PrivKeyHex(),
+			extraAggregatorPeers,
+			true,
+			logging.NoLog{},
+			ProxyContractAddress,
+			true,
+		)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 })

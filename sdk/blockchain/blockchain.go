@@ -14,26 +14,23 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/evm"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-	"github.com/ava-labs/avalanchego/api/info"
-	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
-
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
-	"github.com/ava-labs/avalanche-cli/sdk/wallet"
-
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
-
+	"github.com/ava-labs/avalanche-cli/sdk/wallet"
+	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	commonAvago "github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/params"
+
+	"github.com/ethereum/go-ethereum/common"
+	"go.uber.org/zap"
 )
 
 var (
@@ -344,7 +341,8 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 // to set as the owner of the PoA manager
 func (c *Subnet) InitializeProofOfAuthority(
 	ctx context.Context,
-	network models.Network,
+	log logging.Logger,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
@@ -375,7 +373,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
+		log.Error("failure setting proposer VM on L1", zap.Error(err))
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
@@ -390,7 +388,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
 			return evm.TransactionError(tx, err, "failure initializing poa validator manager")
 		}
-		ux.Logger.PrintToUser("Warning: the PoA contract is already initialized.")
+		log.Info("the PoA contract is already initialized, skipping initializing Proof of Authority contract")
 	}
 
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
@@ -426,7 +424,8 @@ func (c *Subnet) InitializeProofOfAuthority(
 
 func (c *Subnet) InitializeProofOfStake(
 	ctx context.Context,
-	network models.Network,
+	log logging.Logger,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorLogger logging.Logger,
@@ -437,7 +436,7 @@ func (c *Subnet) InitializeProofOfStake(
 		c.RPC,
 		privateKey,
 	); err != nil {
-		ux.Logger.RedXToUser("failure setting proposer VM on L1: %s", err)
+		log.Error("failure setting proposer VM on L1", zap.Error(err))
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
@@ -451,7 +450,7 @@ func (c *Subnet) InitializeProofOfStake(
 		if !errors.Is(err, validatormanager.ErrAlreadyInitialized) {
 			return evm.TransactionError(tx, err, "failure initializing native PoS validator manager")
 		}
-		ux.Logger.PrintToUser("Warning: the PoS contract is already initialized.")
+		log.Info("the PoS contract is already initialized, skipping initializing Proof of Stake contract")
 	}
 	subnetConversionSignedMessage, err := validatormanager.GetPChainSubnetToL1ConversionMessage(
 		ctx,

@@ -198,6 +198,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 
 		if err := validatormanager.SetupPoA(
 			aggregatorCtx,
+			app.Log,
 			subnetSDK,
 			network,
 			privateKey,
@@ -240,6 +241,7 @@ func initValidatorManager(_ *cobra.Command, args []string) error {
 		}
 		if err := validatormanager.SetupPoS(
 			aggregatorCtx,
+			app.Log,
 			subnetSDK,
 			network,
 			privateKey,
