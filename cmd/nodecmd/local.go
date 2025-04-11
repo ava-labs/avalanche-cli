@@ -4,10 +4,11 @@ package nodecmd
 
 import (
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
