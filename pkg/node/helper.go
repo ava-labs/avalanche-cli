@@ -344,6 +344,10 @@ func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoV
 			return "", err
 		}
 	}
+	// TODO: refactor this check in how we handle input and flags for dependency versioning
+	if err := dependencies.CheckVersionIsOverMin(app, constants.AvalancheGoRepoName, network, version); err != nil {
+		return "", err
+	}
 	return version, nil
 }
 
