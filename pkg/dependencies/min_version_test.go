@@ -25,6 +25,7 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 		expectedError     bool
 		cliDependencyData []byte
 		customVersion     string
+		network           models.Network
 	}{
 		{
 			name:              "custom avalanchego dependency equal to cli minimum supported version of avalanchego",
@@ -32,6 +33,7 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 			cliDependencyData: testCLIMinVersion,
 			expectedError:     false,
 			customVersion:     "v1.13.0-fuji",
+			network:           models.NewFujiNetwork(),
 		},
 		{
 			name:              "custom avalanchego dependency higher than cli minimum supported version of avalanchego",
@@ -39,6 +41,23 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 			cliDependencyData: testCLIMinVersion,
 			expectedError:     false,
 			customVersion:     "v1.13.0",
+			network:           models.NewFujiNetwork(),
+		},
+		{
+			name:              "custom avalanchego dependency equal to cli minimum supported version of avalanchego",
+			dependency:        constants.AvalancheGoRepoName,
+			cliDependencyData: testCLIMinVersion,
+			expectedError:     false,
+			customVersion:     "v1.13.0-fuji",
+			network:           models.NewFujiNetwork(),
+		},
+		{
+			name:              "custom avalanchego dependency higher than cli minimum supported version of avalanchego",
+			dependency:        constants.AvalancheGoRepoName,
+			cliDependencyData: testCLIMinVersion,
+			expectedError:     false,
+			customVersion:     "v1.13.1",
+			network:           models.NewFujiNetwork(),
 		},
 		{
 			name:              "custom avalanchego dependency lower than cli minimum supported version of avalanchego",
@@ -46,6 +65,15 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 			cliDependencyData: testCLIMinVersion,
 			expectedError:     true,
 			customVersion:     "v1.12.2",
+			network:           models.NewFujiNetwork(),
+		},
+		{
+			name:              "custom avalanchego dependency for network that doesn't have minimum supported version of avalanchego",
+			dependency:        constants.AvalancheGoRepoName,
+			cliDependencyData: testCLIMinVersion,
+			expectedError:     false,
+			customVersion:     "v1.12.2",
+			network:           models.NewLocalNetwork(),
 		},
 	}
 
@@ -59,7 +87,7 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 		app.Downloader = mockDownloader
 
 		t.Run(tt.name, func(t *testing.T) {
-			err := CheckVersionIsOverMin(app, tt.dependency, models.NewFujiNetwork(), tt.customVersion)
+			err := CheckVersionIsOverMin(app, tt.dependency, tt.network, tt.customVersion)
 			if tt.expectedError {
 				require.Error(t, err)
 			} else {
