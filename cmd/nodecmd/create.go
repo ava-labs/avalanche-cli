@@ -30,7 +30,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
@@ -317,7 +316,7 @@ func createNodes(cmd *cobra.Command, args []string) error {
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 	if err != nil {
 		return err
 	}
@@ -1043,19 +1042,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 		}
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
-}
-
-func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
-	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
-		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
-	if err == vm.ErrNoAvagoVersion {
-		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
-		return latestPreReleaseVersion, nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return desiredAvagoVersion, nil
 }
 
 func setCloudService() (string, error) {
