@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/plugin/evm/upgrade/legacy"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/predicate"
 	"github.com/ava-labs/subnet-evm/rpc"
@@ -706,7 +707,7 @@ func issueTxsToActivateProposerVMFork(
 ) error {
 	const numTriggerTxs = 2 // Number of txs needed to activate the proposer VM fork
 	addr := crypto.PubkeyToAddress(fundedKey.PublicKey)
-	gasPrice := big.NewInt(params.MinGasPrice)
+	gasPrice := big.NewInt(legacy.BaseFee)
 	txSigner := types.LatestSignerForChainID(chainID)
 	for i := 0; i < numTriggerTxs; i++ {
 		ctx, cancel := utils.GetTimedContext(1 * time.Minute)
