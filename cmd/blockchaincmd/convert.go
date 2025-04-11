@@ -141,7 +141,7 @@ func StartLocalMachine(
 	// ask user if we want to use local machine if cluster is not provided
 	if !useLocalMachine && clusterNameFlagValue == "" {
 		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
-		ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
+		ux.Logger.PrintToUser("This means that you don't have to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
 		useLocalMachine, err = app.Prompt.CaptureYesNo("Do you want to use your local machine as a bootstrap validator?")
 		if err != nil {
