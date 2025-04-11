@@ -18,9 +18,7 @@ const (
 	testUnlistedAvagoVersion = "v0.4.3"
 )
 
-var (
-	testSubnetEVMCompat = []byte("{\"rpcChainVMProtocolVersion\": {\"v0.4.2\": 18,\"v0.4.1\": 18,\"v0.4.0\": 17}}")
-)
+var testSubnetEVMCompat = []byte("{\"rpcChainVMProtocolVersion\": {\"v0.4.2\": 18,\"v0.4.1\": 18,\"v0.4.0\": 17}}")
 
 func TestGetRPCProtocolVersionSubnetEVM(t *testing.T) {
 	require := require.New(t)

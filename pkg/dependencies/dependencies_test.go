@@ -14,11 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	testAvagoVersion         = "v0.4.2"
-	testUnlistedAvagoVersion = "v0.4.3"
-)
-
 var (
 	testAvagoCompat  = []byte("{\"19\": [\"v1.9.2\"],\"18\": [\"v1.9.1\"],\"17\": [\"v1.9.0\",\"v1.8.0\"]}")
 	testAvagoCompat2 = []byte("{\"19\": [\"v1.9.2\", \"v1.9.1\"],\"18\": [\"v1.9.0\"]}")

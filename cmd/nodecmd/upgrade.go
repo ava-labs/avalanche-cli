@@ -5,9 +5,10 @@ package nodecmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"strings"
 	"sync"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 

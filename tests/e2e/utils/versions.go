@@ -6,10 +6,11 @@ package utils
 import (
 	"encoding/json"
 	"errors"
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"sort"
 	"strconv"
 	"sync"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
