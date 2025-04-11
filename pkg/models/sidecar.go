@@ -4,6 +4,7 @@ package models
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
 )
 
@@ -45,7 +46,7 @@ type Sidecar struct {
 	// SubnetEVM based VM's only
 	SubnetEVMMainnetChainID uint
 	// TODO: remove if not needed for subnet acp 77 create flow once avalnache go releases etna
-	ValidatorManagement   ValidatorManagementType
+	ValidatorManagement   validatormanagertypes.ValidatorManagementType
 	ValidatorManagerOwner string
 	ProxyContractOwner    string
 	// Subnet defaults to Sovereign post ACP-77
@@ -74,11 +75,11 @@ func (sc Sidecar) NetworkDataIsEmpty(network string) bool {
 }
 
 func (sc Sidecar) PoA() bool {
-	return sc.ValidatorManagement == ProofOfAuthority
+	return sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority
 }
 
 func (sc Sidecar) PoS() bool {
-	return sc.ValidatorManagement == ProofOfStake
+	return sc.ValidatorManagement == validatormanagertypes.ProofOfStake
 }
 
 func (sc Sidecar) UpdateValidatorManagerAddress(network string, managerAddr string) {

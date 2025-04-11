@@ -13,9 +13,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
@@ -342,7 +342,7 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 func (c *Subnet) InitializeProofOfAuthority(
 	ctx context.Context,
 	log logging.Logger,
-	network models.Network,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,
@@ -429,7 +429,7 @@ func (c *Subnet) InitializeProofOfAuthority(
 func (c *Subnet) InitializeProofOfStake(
 	ctx context.Context,
 	log logging.Logger,
-	network models.Network,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	aggregatorAllowPrivatePeers bool,

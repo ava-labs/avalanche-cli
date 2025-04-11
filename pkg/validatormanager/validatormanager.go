@@ -208,7 +208,7 @@ func SetupPoA(
 	return subnet.InitializeProofOfAuthority(
 		ctx,
 		log,
-		network,
+		network.SDKNetwork(),
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,
@@ -238,7 +238,7 @@ func SetupPoS(
 	return subnet.InitializeProofOfStake(
 		ctx,
 		log,
-		network,
+		network.SDKNetwork(),
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,

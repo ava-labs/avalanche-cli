@@ -271,7 +271,7 @@ func GetRegisterL1ValidatorMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		ctx,
-		network,
+		network.SDKNetwork(),
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
@@ -335,7 +335,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 	}
 	signatureAggregator, err := interchain.NewSignatureAggregator(
 		ctx,
-		network,
+		network.SDKNetwork(),
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,

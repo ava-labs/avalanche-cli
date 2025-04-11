@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/plugin/evm/upgrade/legacy"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/warp"
 	"github.com/ava-labs/subnet-evm/predicate"
 	subnetEvmUtils "github.com/ava-labs/subnet-evm/utils"
@@ -655,7 +656,7 @@ func (client Client) CreateDummyBlocks(
 	if err != nil {
 		return err
 	}
-	gasPrice := big.NewInt(params.MinGasPrice)
+	gasPrice := big.NewInt(legacy.BaseFee)
 	txSigner := types.LatestSignerForChainID(chainID)
 	for i := 0; i < numBlocks; i++ {
 		prevBlockNumber, err := client.BlockNumber()
