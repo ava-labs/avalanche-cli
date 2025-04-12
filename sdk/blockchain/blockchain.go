@@ -13,7 +13,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
@@ -370,11 +370,13 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBootstrapValidators)
 	}
 
-	if err := evm.SetupProposerVM(
-		c.RPC,
-		privateKey,
-	); err != nil {
-		log.Error("failure setting proposer VM on L1", zap.Error(err))
+	if client, err := evm.GetClient(c.RPC); err != nil {
+		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
+	} else {
+		if err := client.SetupProposerVM(privateKey); err != nil {
+			log.Error("failure setting proposer VM on L1", zap.Error(err))
+		}
+		client.Close()
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
@@ -435,11 +437,13 @@ func (c *Subnet) InitializeProofOfStake(
 	posParams validatormanager.PoSParams,
 	validatorManagerAddressStr string,
 ) error {
-	if err := evm.SetupProposerVM(
-		c.RPC,
-		privateKey,
-	); err != nil {
-		log.Error("failure setting proposer VM on L1", zap.Error(err))
+	if client, err := evm.GetClient(c.RPC); err != nil {
+		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
+	} else {
+		if err := client.SetupProposerVM(privateKey); err != nil {
+			log.Error("failure setting proposer VM on L1", zap.Error(err))
+		}
+		client.Close()
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(

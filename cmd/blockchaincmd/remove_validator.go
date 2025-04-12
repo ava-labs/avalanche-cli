@@ -12,7 +12,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
@@ -22,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorsdk "github.com/ava-labs/avalanche-cli/sdk/validator"
 	validatormanagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -398,7 +398,11 @@ func removeValidatorSOV(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Initializing Validator Removal", rawTx)
+		dump, err := evm.TxDump("Initializing Validator Removal", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
@@ -439,7 +443,11 @@ func removeValidatorSOV(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Finish Validator Removal", rawTx)
+		dump, err := evm.TxDump("Finish Validator Removal", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Validator successfully removed from the Subnet")

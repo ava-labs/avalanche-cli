@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -28,6 +27,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
@@ -328,7 +328,9 @@ func InitializeValidatorManager(
 	if err != nil {
 		return tracked, err
 	}
-	evm.WaitForChainID(client)
+	if err := client.WaitForEVMBootstrapped(0); err != nil {
+		return tracked, err
+	}
 
 	if pos {
 		deployed, err := validatormanager.ProxyHasValidatorManagerSet(rpcURL)

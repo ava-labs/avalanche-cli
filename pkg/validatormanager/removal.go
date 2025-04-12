@@ -11,10 +11,10 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -261,7 +261,7 @@ func InitValidatorRemoval(
 	}
 
 	if receipt != nil {
-		unsignedMessage, err = GetWarpMessageFromLogs(receipt.Logs)
+		unsignedMessage, err = evm.ExtractWarpMessageFromReceipt(receipt)
 		if err != nil {
 			return nil, ids.Empty, nil, err
 		}
@@ -373,11 +373,13 @@ func FinishValidatorRemoval(
 		return nil, err
 	}
 	if privateKey != "" {
-		if err := evm.SetupProposerVM(
-			rpcURL,
-			privateKey,
-		); err != nil {
-			ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		if client, err := evm.GetClient(rpcURL); err != nil {
+			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %s", err)
+		} else {
+			if err := client.SetupProposerVM(privateKey); err != nil {
+				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+			}
+			client.Close()
 		}
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
