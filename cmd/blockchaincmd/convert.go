@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
-	"github.com/ava-labs/avalanche-cli/pkg/signatureAggregator"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
@@ -378,7 +378,7 @@ func InitializeValidatorManager(
 		RPC:                 rpcURL,
 		BootstrapValidators: avaGoBootstrapValidators,
 	}
-	aggregatorLogger, err := signatureAggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		signatureAggregatorFlags.AggregatorLogLevel,
 		signatureAggregatorFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
