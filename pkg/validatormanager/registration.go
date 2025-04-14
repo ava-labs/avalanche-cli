@@ -268,7 +268,7 @@ func GetRegisterL1ValidatorMessage(
 		}
 		validationID = reg.ValidationID()
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
+	signatureaggregator, err := interchain.NewSignatureAggregator(
 		ctx,
 		network.SDKNetwork(),
 		aggregatorLogger,
@@ -279,7 +279,7 @@ func GetRegisterL1ValidatorMessage(
 	if err != nil {
 		return nil, ids.Empty, err
 	}
-	signedMessage, err := signatureAggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
+	signedMessage, err := signatureaggregator.Sign(registerSubnetValidatorUnsignedMessage, nil)
 	return signedMessage, validationID, err
 }
 
@@ -330,7 +330,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 	if err != nil {
 		return nil, err
 	}
-	signatureAggregator, err := interchain.NewSignatureAggregator(
+	signatureaggregator, err := interchain.NewSignatureAggregator(
 		ctx,
 		network.SDKNetwork(),
 		aggregatorLogger,
@@ -348,7 +348,7 @@ func GetPChainL1ValidatorRegistrationMessage(
 			return nil, err
 		}
 	}
-	return signatureAggregator.Sign(subnetConversionUnsignedMessage, justificationBytes)
+	return signatureaggregator.Sign(subnetConversionUnsignedMessage, justificationBytes)
 }
 
 // last step of flow for adding a new validator

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/signatureAggregator"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
@@ -277,7 +277,7 @@ func InitializeValidatorManager(
 	validatorManagerAddrStr string,
 	proxyContractOwner string,
 	useACP99 bool,
-	signatureAggregatorFlags flags.SignatureAggregatorFlags,
+	signatureaggregatorFlags flags.SignatureAggregatorFlags,
 ) (bool, error) {
 	if useACP99 {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
@@ -381,9 +381,9 @@ func InitializeValidatorManager(
 		RPC:                 rpcURL,
 		BootstrapValidators: avaGoBootstrapValidators,
 	}
-	aggregatorLogger, err := signatureAggregator.NewSignatureAggregatorLoggerNewLogger(
-		signatureAggregatorFlags.AggregatorLogLevel,
-		signatureAggregatorFlags.AggregatorLogToStdout,
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+		signatureaggregatorFlags.AggregatorLogLevel,
+		signatureaggregatorFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
 	)
 	if err != nil {
