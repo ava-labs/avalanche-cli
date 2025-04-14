@@ -27,12 +27,13 @@ func setupAvalancheGo(
 	app *application.Avalanche,
 	avalancheGoBinaryPath string,
 	avaGoVersionSetting AvalancheGoVersionSettings,
+	network models.Network,
 	printFunc func(msg string, args ...interface{}),
 ) (string, error) {
 	var err error
 	avalancheGoVersion := ""
 	if avalancheGoBinaryPath == "" {
-		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting)
+		avalancheGoVersion, err = GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 		if err != nil {
 			return "", err
 		}
@@ -78,6 +79,7 @@ func StartLocalNode(
 			app,
 			avalancheGoBinaryPath,
 			avaGoVersionSetting,
+			network,
 			ux.Logger.PrintToUser,
 		)
 		if err != nil {

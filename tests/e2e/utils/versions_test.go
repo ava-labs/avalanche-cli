@@ -72,7 +72,7 @@ func (*testMapper) GetEligibleVersions(sorted []string, _ string, _ *application
 }
 
 // implement VersionMapper
-func (m *testMapper) GetLatestAvagoByProtoVersion(_ *application.Avalanche, rpcVersion int, _ string) (string, error) {
+func (m *testMapper) GetLatestAvagoByProtoVersion(_ *application.Avalanche, rpcVersion int) (string, error) {
 	cBytes := []byte(m.currentContext.sourceAvago)
 
 	var compat models.AvagoCompatiblity

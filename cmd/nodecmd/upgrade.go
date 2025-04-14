@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
@@ -185,7 +187,7 @@ func getNodesUpgradeInfo(hosts []*models.Host) (map[*models.Host]nodeUpgradeInfo
 					nodeUpgradeInfo.SubnetEVMIDsToUpgrade = append(nodeUpgradeInfo.SubnetEVMIDsToUpgrade, vmName)
 				}
 				// find the highest version of avalanche go that is still compatible with current highest rpc
-				avalancheGoVersionToUpdateTo, err = GetLatestAvagoVersionForRPC(rpcVersion, latestAvagoVersion)
+				avalancheGoVersionToUpdateTo, err = dependencies.GetLatestAvalancheGoByProtocolVersion(app, rpcVersion)
 				if err != nil {
 					nodeErrors[hostID] = err
 					continue
