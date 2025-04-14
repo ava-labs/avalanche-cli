@@ -10,6 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/signatureAggregator"
+
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
+
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -42,7 +46,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var doStrongInputChecks bool
+var (
+	doStrongInputChecks bool
+	convertFlags        BlockchainConvertFlags
+)
+
+type BlockchainConvertFlags struct {
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 // avalanche blockchain convert
 func newConvertCmd() *cobra.Command {
@@ -60,6 +71,7 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &convertFlags.SigAggFlags)
 	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet convert to l1 tx only]")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate convert to L1 tx")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the convert to L1 tx (for multi-sig)")
@@ -70,10 +82,6 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
-	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
-	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().Float64Var(
@@ -269,6 +277,7 @@ func InitializeValidatorManager(
 	validatorManagerAddrStr string,
 	proxyContractOwner string,
 	useACP99 bool,
+	signatureAggregatorFlags flags.SignatureAggregatorFlags,
 ) (bool, error) {
 	if useACP99 {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
@@ -359,7 +368,7 @@ func InitializeValidatorManager(
 		}
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, aggregatorExtraEndpoints)
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 	if err != nil {
 		return tracked, err
 	}
@@ -372,13 +381,10 @@ func InitializeValidatorManager(
 		RPC:                 rpcURL,
 		BootstrapValidators: avaGoBootstrapValidators,
 	}
-	aggregatorLogger, err := utils.NewLogger(
-		constants.SignatureAggregatorLogName,
-		aggregatorLogLevel,
-		constants.DefaultAggregatorLogLevel,
+	aggregatorLogger, err := signatureAggregator.NewSignatureAggregatorLoggerNewLogger(
+		signatureAggregatorFlags.AggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
-		aggregatorLogToStdout,
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return tracked, err
@@ -393,7 +399,6 @@ func InitializeValidatorManager(
 			network.SDKNetwork(),
 			genesisPrivateKey,
 			extraAggregatorPeers,
-			aggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerSDK.PoSParams{
 				MinimumStakeAmount:      big.NewInt(int64(poSMinimumStakeAmount)),
@@ -418,7 +423,6 @@ func InitializeValidatorManager(
 			network.SDKNetwork(),
 			genesisPrivateKey,
 			extraAggregatorPeers,
-			aggregatorAllowPrivatePeers,
 			aggregatorLogger,
 			validatorManagerAddrStr,
 			useACP99,
@@ -796,6 +800,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 			validatorManagerAddress,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
+			convertFlags.SigAggFlags,
 		); err != nil {
 			return err
 		}

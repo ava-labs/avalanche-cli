@@ -25,13 +25,11 @@ import (
 func GetAggregatorExtraPeers(
 	app *application.Avalanche,
 	clusterName string,
-	extraURIs []string,
 ) ([]info.Peer, error) {
 	uris, err := GetAggregatorNetworkUris(app, clusterName)
 	if err != nil {
 		return nil, err
 	}
-	uris = append(uris, extraURIs...)
 	urisSet := set.Of(uris...)
 	uris = urisSet.List()
 	return UrisToPeers(uris)

@@ -67,7 +67,6 @@ func InitValidatorWeightChange(
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	weight uint64,
@@ -164,7 +163,6 @@ func InitValidatorWeightChange(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
@@ -211,7 +209,6 @@ func FinishValidatorWeightChange(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	l1ValidatorRegistrationSignedMessage *warp.Message,
@@ -238,7 +235,6 @@ func FinishValidatorWeightChange(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		l1ValidatorRegistrationSignedMessage,
@@ -282,7 +278,6 @@ func GetL1ValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	// message is given
 	unsignedMessage *warp.UnsignedMessage,
@@ -325,7 +320,6 @@ func GetL1ValidatorWeightMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -339,7 +333,6 @@ func GetPChainL1ValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	// message is given
@@ -391,7 +384,6 @@ func GetPChainL1ValidatorWeightMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
