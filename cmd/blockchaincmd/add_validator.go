@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/signatureAggregator"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -511,8 +513,7 @@ func CallAddValidator(
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := utils.NewLogger(
-		constants.SignatureAggregatorLogName,
+	aggregatorLogger, err := signatureAggregator.NewSignatureAggregatorLoggerNewLogger(
 		addValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		addValidatorFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterNameFlagValue),

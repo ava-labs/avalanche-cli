@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/signatureAggregator"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -317,8 +319,7 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := utils.NewLogger(
-		constants.SignatureAggregatorLogName,
+	aggregatorLogger, err := signatureAggregator.NewSignatureAggregatorLoggerNewLogger(
 		removeValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		removeValidatorFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

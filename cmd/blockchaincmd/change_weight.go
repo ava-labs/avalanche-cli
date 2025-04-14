@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ava-labs/avalanche-cli/pkg/signatureAggregator"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
@@ -363,8 +365,7 @@ func changeWeightACP99(
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := utils.NewLogger(
-		constants.SignatureAggregatorLogName,
+	aggregatorLogger, err := signatureAggregator.NewSignatureAggregatorLoggerNewLogger(
 		changeWeightFlags.SigAggFlags.AggregatorLogLevel,
 		changeWeightFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

@@ -614,14 +614,21 @@ func PrintUnreportedErrors(
 
 func NewLogger(
 	logName string,
-	aggregatorLogLevel string,
-	aggregatorLogToStdout bool,
+	logLevelStr string,
+	defaultLogLevelStr string,
 	logDir string,
+	logToStdout bool,
+	print func(string, ...interface{}),
 ) (logging.Logger, error) {
-	// we already validate log level values in validateSignatureAggregatorFlags
-	logLevel, err := logging.ToLevel(aggregatorLogLevel)
+	logLevel, err := logging.ToLevel(logLevelStr)
 	if err != nil {
-		return logging.NoLog{}, err
+		if logLevelStr != "" {
+			print("undefined logLevel %s. Setting %s log to %s", logLevelStr, logName, defaultLogLevelStr)
+		}
+		logLevel, err = logging.ToLevel(defaultLogLevelStr)
+		if err != nil {
+			return logging.NoLog{}, err
+		}
 	}
 	logConfig := logging.Config{
 		RotatingWriterConfig: logging.RotatingWriterConfig{
@@ -629,7 +636,7 @@ func NewLogger(
 		},
 		LogLevel: logLevel,
 	}
-	if aggregatorLogToStdout {
+	if logToStdout {
 		logConfig.DisplayLevel = logLevel
 	}
 	logFactory := logging.NewFactory(logConfig)
