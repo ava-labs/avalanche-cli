@@ -161,6 +161,14 @@ func StartLocalMachine(
 	if useLocalMachine && numLocalNodes == 0 {
 		numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
 	}
+	if useLocalMachine {
+		if sidecar.VM == models.SubnetEvm {
+			if err = dependencies.CheckVersionIsOverMin(app, constants.SubnetEVMRepoName, network, sidecar.VMVersion); err != nil {
+				ux.Logger.PrintToUser(dependencies.UpdateSubnetEVMInstruction)
+				return false, err
+			}
+		}
+	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if useLocalMachine && clusterNameFlagValue == "" {
 		if localnet.LocalClusterExists(app, clusterName) {
@@ -194,8 +202,10 @@ func StartLocalMachine(
 		avagoVersionSettings := node.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
-		if err = dependencies.CheckVersionIsOverMin(app, constants.AvalancheGoRepoName, network, userProvidedAvagoVersion); err != nil {
-			return false, err
+		if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
+			if err = dependencies.CheckVersionIsOverMin(app, constants.AvalancheGoRepoName, network, userProvidedAvagoVersion); err != nil {
+				return false, err
+			}
 		}
 		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
 			// nothing given: get avago version from RPC compat using latest.json defined in

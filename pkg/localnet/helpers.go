@@ -47,7 +47,7 @@ func TrackSubnet(
 	)
 	if sc.VM == models.SubnetEvm {
 		if err = dependencies.CheckVersionIsOverMin(app, constants.SubnetEVMRepoName, networkModel, sc.VMVersion); err != nil {
-			ux.Logger.PrintToUser("To update the blockchain's Subnet-EVM version, call avalanche blockchain upgrade vm --config --version <version>")
+			ux.Logger.PrintToUser(dependencies.UpdateSubnetEVMInstruction)
 			return err
 		}
 	}

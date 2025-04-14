@@ -13,6 +13,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 )
 
+var UpdateSubnetEVMInstruction = "To update the blockchain's Subnet-EVM version, call avalanche blockchain upgrade vm <blockchainName> --config --version <version>"
+
 func CheckVersionIsOverMin(app *application.Avalanche, dependencyName string, network models.Network, version string) error {
 	dependencyBytes, err := app.Downloader.Download(constants.CLILatestDependencyURL)
 	if err != nil {
