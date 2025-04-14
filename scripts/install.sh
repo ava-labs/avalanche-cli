@@ -21,9 +21,9 @@ EOF
 RUN_COMPLETIONS=true
 
 parse_args() {
-  # BINDIR is ~/.local/bin unless set be overridden by the -b flag (trailing slash is removed) 
+  # BINDIR is ~/bin unless set be overridden by the -b flag (trailing slash is removed) 
   BINDIR=${BINDIR%/}
-  BINDIR=${BINDIR:-~/.local/bin}
+  BINDIR=${BINDIR:-~/bin}
   while getopts "b:ndh?x" arg; do
     case "$arg" in
       b) BINDIR="$OPTARG" ;;
