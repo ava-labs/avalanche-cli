@@ -7,9 +7,12 @@ import (
 	"os"
 	"strings"
 	"time"
-
+  
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
+
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -52,12 +55,9 @@ var (
 	nodeConfigPath               string
 	partialSync                  bool
 	stakeAmount                  uint64
-	rpcURL                       string
 	balanceAVAX                  float64
 	remainingBalanceOwnerAddr    string
 	disableOwnerAddr             string
-	aggregatorLogLevel           string
-	aggregatorLogToStdout        bool
 	delegationFee                uint16
 	minimumStakeDuration         uint64
 	latestAvagoReleaseVersion    bool
@@ -66,6 +66,7 @@ var (
 	useACP99                     bool
 	httpPorts                    []uint
 	stakingPorts                 []uint
+	localValidateFlags           NodeLocalValidateFlags
 )
 
 // const snapshotName = "local_snapshot"
@@ -352,6 +353,11 @@ func notImplementedForLocal(what string) error {
 	return nil
 }
 
+type NodeLocalValidateFlags struct {
+	RPC         string
+	SigAggFlags flags.SignatureAggregatorFlags
+}
+
 func newLocalValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate [clusterName]",
@@ -363,15 +369,13 @@ This command can only be used to validate Proof of Stake L1.`,
 		Args: cobra.ExactArgs(1),
 		RunE: localValidate,
 	}
-
+	flags.AddRPCFlagToCmd(cmd, app, &localValidateFlags.RPC)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &localValidateFlags.SigAggFlags)
 	cmd.Flags().StringVar(&blockchainName, "l1", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().StringVar(&blockchainName, "blockchain", "", "specify the blockchain the node is syncing with")
 	cmd.Flags().Uint64Var(&stakeAmount, "stake-amount", 0, "amount of tokens to stake")
-	cmd.Flags().StringVar(&rpcURL, "rpc", "", "connect to validator manager at the given rpc endpoint")
 	cmd.Flags().Float64Var(&balanceAVAX, "balance", 0, "amount of AVAX to increase validator's balance by")
 	cmd.Flags().Uint16Var(&delegationFee, "delegation-fee", 100, "delegation fee (in bips)")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().Uint64Var(&minimumStakeDuration, "minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
@@ -441,13 +445,13 @@ func localValidate(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	if rpcURL == "" {
-		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+	if localValidateFlags.RPC == "" {
+		localValidateFlags.RPC, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
 			return err
 		}
 	}
-	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(rpcURL)
+	_, blockchainID, err := utils.SplitAvalanchegoRPCURI(localValidateFlags.RPC)
 	// if there is error that means RPC URL did not contain blockchain in it
 	// RPC might be in the format of something like https://etna.avax-dev.network
 	// We will prompt for blockchainID in that case
@@ -534,17 +538,14 @@ func localValidate(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName, []string{})
+	extraAggregatorPeers, err := blockchain.GetAggregatorExtraPeers(app, clusterName)
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := utils.NewLogger(
-		constants.SignatureAggregatorLogName,
-		aggregatorLogLevel,
-		constants.DefaultAggregatorLogLevel,
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
+		localValidateFlags.SigAggFlags.AggregatorLogLevel,
+		localValidateFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
-		aggregatorLogToStdout,
-		ux.Logger.PrintToUser,
 	)
 	if err != nil {
 		return err
@@ -628,7 +629,7 @@ func addAsValidator(
 		aggregatorCtx,
 		app,
 		network,
-		rpcURL,
+		localValidateFlags.RPC,
 		chainSpec,
 		false,
 		"",
@@ -640,7 +641,6 @@ func addAsValidator(
 		disableOwners,
 		0,
 		extraAggregatorPeers,
-		true,
 		aggregatorLogger,
 		true,
 		delegationFee,
@@ -676,14 +676,13 @@ func addAsValidator(
 		aggregatorCtx,
 		app,
 		network,
-		rpcURL,
+		localValidateFlags.RPC,
 		chainSpec,
 		false,
 		"",
 		payerPrivateKey,
 		validationID,
 		extraAggregatorPeers,
-		true,
 		aggregatorLogger,
 		validatorManagerAddress,
 	); err != nil {

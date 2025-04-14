@@ -9,11 +9,11 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -172,7 +172,7 @@ func sendMsg(_ *cobra.Command, args []string) error {
 	if err == contract.ErrFailedReceiptStatus {
 		txHash := tx.Hash().String()
 		ux.Logger.PrintToUser("error: source receipt status for tx %s is not ReceiptStatusSuccessful", txHash)
-		trace, err := evm.GetTrace(sourceRPCEndpoint, txHash)
+		trace, err := evm.GetTxTrace(sourceRPCEndpoint, txHash)
 		if err != nil {
 			ux.Logger.PrintToUser("error obtaining tx trace: %s", err)
 			ux.Logger.PrintToUser("")

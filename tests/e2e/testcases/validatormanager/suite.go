@@ -12,18 +12,19 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/onsi/ginkgo/v2"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
@@ -189,7 +190,8 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		rpcURL := fmt.Sprintf("%s/ext/bc/%s/rpc", uris[0], blockchainIDStr)
 		client, err := evm.GetClient(rpcURL)
 		gomega.Expect(err).Should(gomega.BeNil())
-		evm.WaitForChainID(client)
+		err = client.WaitForEVMBootstrapped(0)
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		network := models.NewNetworkFromCluster(models.NewLocalNetwork(), utils.TestLocalNodeName)
 
@@ -218,10 +220,9 @@ var _ = ginkgo.Describe("[Validator Manager POA Set Up]", ginkgo.Ordered, func()
 		err = subnetSDK.InitializeProofOfAuthority(
 			ctx,
 			logging.NoLog{},
-			network,
+			network.SDKNetwork(),
 			k.PrivKeyHex(),
 			extraAggregatorPeers,
-			true,
 			logging.NoLog{},
 			ProxyContractAddress,
 			true,
