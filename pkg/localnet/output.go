@@ -4,21 +4,20 @@ package localnet
 
 import (
 	"fmt"
-	"sort"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 // PrintEndpoints prints the endpoint information for the executing local network,
 // including primary nodes, l1 nodes, and blockchain URLs for all blockchains in the
 // network
-// If [blockchainName] is given, it only prints information for that only
+// If [blockchainName] is given, only prints information for it
 func PrintEndpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
@@ -46,12 +45,8 @@ func PrintEndpoints(
 		if err := PrintNetworkEndpoints("Primary Nodes", printFunc, networkDir); err != nil {
 			return err
 		}
-		clusterInfo, err := GetANRNetworkInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
-		if err == nil {
-			printFunc("")
-			if err := PrintNetworkEndpointsFromClusterInfo("L1 Nodes", printFunc, clusterInfo); err != nil {
-				return err
-			}
+		if err := PrintL1Endpoints(app, printFunc); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -99,41 +94,6 @@ func PrintBlockchainEndpoints(
 	return nil
 }
 
-func PrintNetworkEndpointsFromClusterInfo(
-	title string,
-	printFunc func(msg string, args ...interface{}),
-	clusterInfo *rpcpb.ClusterInfo,
-) error {
-	header := table.Row{"Node ID", "Localhost Endpoint"}
-	insideCodespace := utils.InsideCodespace()
-	if insideCodespace {
-		header = append(header, "Codespace Endpoint")
-	}
-	t := ux.DefaultTable(title, header)
-	nodeNames := clusterInfo.NodeNames
-	sort.Strings(nodeNames)
-	nodeInfos := map[string]*rpcpb.NodeInfo{}
-	for _, nodeInfo := range clusterInfo.NodeInfos {
-		nodeInfos[nodeInfo.Name] = nodeInfo
-	}
-	var err error
-	for _, nodeName := range nodeNames {
-		nodeInfo := nodeInfos[nodeName]
-		nodeURL := nodeInfo.GetUri()
-		row := table.Row{nodeInfo.Id, nodeURL}
-		if insideCodespace {
-			nodeURL, err = utils.GetCodespaceURL(nodeURL)
-			if err != nil {
-				return err
-			}
-			row = append(row, nodeURL)
-		}
-		t.AppendRow(row)
-	}
-	printFunc(t.Render())
-	return nil
-}
-
 // PrintNetworkEndpoints prints out a table of (Node ID, Node URI) for a given
 // tmpnet [networkDir], with a given [title]
 // If the environment is codespace based, It also adds a node codespace URI
@@ -162,6 +122,55 @@ func PrintNetworkEndpoints(
 			}
 		}
 		t.AppendRow(row)
+	}
+	printFunc(t.Render())
+	return nil
+}
+
+// PrintL1Endpoints prints out a table of (Node ID, Endpoint, L1) for all running clusters
+// connected to the local network
+// If the environment is codespace based, It also adds a node codespace URI
+func PrintL1Endpoints(
+	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
+) error {
+	clusters, err := GetRunningLocalClustersConnectedToLocalNetwork(app)
+	if err != nil {
+		return err
+	}
+	if len(clusters) == 0 {
+		return nil
+	}
+	header := table.Row{"Node ID", "Localhost Endpoint"}
+	insideCodespace := utils.InsideCodespace()
+	if insideCodespace {
+		header = append(header, "Codespace Endpoint")
+	}
+	header = append(header, "L1")
+	t := ux.DefaultTable("L1 NODES", header)
+	for _, clusterName := range clusters {
+		trackedBlockchainsInfo, err := GetLocalClusterTrackedBlockchains(app, clusterName)
+		if err != nil {
+			return err
+		}
+		trackedBlockchains := utils.Map(trackedBlockchainsInfo, func(i BlockchainInfo) string { return i.Name })
+		networkDir := GetLocalClusterDir(app, clusterName)
+		network, err := GetTmpNetNetworkWithURIFix(networkDir)
+		if err != nil {
+			return err
+		}
+		for _, node := range network.Nodes {
+			row := table.Row{node.NodeID, node.URI}
+			if insideCodespace {
+				if codespaceURL, err := utils.GetCodespaceURL(node.URI); err != nil {
+					return err
+				} else {
+					row = append(row, codespaceURL)
+				}
+			}
+			row = append(row, strings.Join(trackedBlockchains, ","))
+			t.AppendRow(row)
+		}
 	}
 	printFunc(t.Render())
 	return nil

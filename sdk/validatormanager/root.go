@@ -7,10 +7,13 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
+	"github.com/ava-labs/avalanche-cli/sdk/validator"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
@@ -20,6 +23,7 @@ import (
 	warpMessage "github.com/ava-labs/avalanchego/vms/platformvm/warp/message"
 	warpPayload "github.com/ava-labs/avalanchego/vms/platformvm/warp/payload"
 	"github.com/ava-labs/subnet-evm/core/types"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -189,7 +193,7 @@ func (p PoSParams) Verify() error {
 // [managerAddress], and the initial list of [validators]
 func GetPChainSubnetToL1ConversionMessage(
 	ctx context.Context,
-	network models.Network,
+	network network.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,
@@ -302,4 +306,26 @@ func InitializeValidatorsSet(
 		subnetConversionData,
 		uint32(0),
 	)
+}
+
+// GetValidatorManagerType returns validatormanagertypes.ProofOfAuthority if validator manager is verified to be Proof of Authority
+// If validator manager is verified to be Proof of Stake, returns validatormanagertypes.ProofOfStake
+// In other cases, returns validatormanagertypes.UndefinedValidatorManagement and the associated error
+func GetValidatorManagerType(
+	rpcURL string,
+	managerAddress common.Address,
+) (validatormanagertypes.ValidatorManagementType, error) {
+	// Verify that ACP99 validator manager contract is present in the rpc url by calling registeredValidators func in ValidatorManager.sol
+	if _, err := validator.GetValidationID(rpcURL, managerAddress, ids.EmptyNodeID); err != nil {
+		return validatormanagertypes.UndefinedValidatorManagement, err
+	}
+	// verify it is PoS
+	if _, err := PoSWeightToValue(rpcURL, managerAddress, 0); err != nil {
+		// if it is PoA it will return Error: execution reverted
+		if strings.Contains(err.Error(), "execution reverted") {
+			return validatormanagertypes.ProofOfAuthority, nil
+		}
+		return validatormanagertypes.UndefinedValidatorManagement, err
+	}
+	return validatormanagertypes.ProofOfStake, nil
 }

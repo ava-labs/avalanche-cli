@@ -10,7 +10,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	clievm "github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ictt"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -19,6 +18,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/crypto/keychain"
@@ -270,27 +270,40 @@ func transferF(*cobra.Command, []string) error {
 	}
 	amount := uint64(amountFlt * float64(units.Avax))
 
-	if destinationAddrStr == "" && !receiverChainFlags.XChain &&
-		!(senderChainFlags.CChain && receiverChainFlags.PChain) {
-		format := prompts.EVMFormat
-		if receiverChainFlags.PChain {
-			format = prompts.PChainFormat
-		}
-		if receiverChainFlags.XChain {
-			format = prompts.XChainFormat
-		}
-		destinationAddrStr, err = prompts.PromptAddress(
-			app.Prompt,
-			"destination address",
-			app.GetKeyDir(),
-			app.GetKey,
-			"",
-			network,
-			format,
-			"destination address",
-		)
-		if err != nil {
-			return err
+	if destinationAddrStr == "" && senderChainFlags.PChain && (receiverChainFlags.PChain || receiverChainFlags.CChain) {
+		if destinationKeyName != "" {
+			k, err := app.GetKey(destinationKeyName, network, false)
+			if err != nil {
+				return err
+			}
+			if receiverChainFlags.CChain {
+				destinationAddrStr = k.C()
+			}
+			if receiverChainFlags.PChain {
+				addrs := k.P()
+				if len(addrs) == 0 {
+					return fmt.Errorf("unexpected null number of P-Chain addresses for key")
+				}
+				destinationAddrStr = addrs[0]
+			}
+		} else {
+			format := prompts.EVMFormat
+			if receiverChainFlags.PChain {
+				format = prompts.PChainFormat
+			}
+			destinationAddrStr, err = prompts.PromptAddress(
+				app.Prompt,
+				"destination address",
+				app.GetKeyDir(),
+				app.GetKey,
+				"",
+				network,
+				format,
+				"destination address",
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -352,41 +365,64 @@ func intraEvmSend(
 	network models.Network,
 	senderChain contract.ChainSpec,
 ) error {
-	privateKey, err := prompts.PromptPrivateKey(
-		app.Prompt,
-		"sender private key",
-		app.GetKeyDir(),
-		app.GetKey,
-		"",
-		"",
+	var (
+		err        error
+		privateKey string
 	)
-	if err != nil {
-		return err
+	if keyName != "" {
+		k, err := app.GetKey(keyName, network, false)
+		if err != nil {
+			return err
+		}
+		privateKey = k.PrivKeyHex()
+	} else {
+		privateKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"sender private key",
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			"",
+		)
+		if err != nil {
+			return err
+		}
 	}
-	destinationAddr, err := prompts.PromptAddress(
-		app.Prompt,
-		"destination address",
-		app.GetKeyDir(),
-		app.GetKey,
-		"",
-		network,
-		prompts.EVMFormat,
-		"destination address",
-	)
-	if err != nil {
-		return err
+	if destinationKeyName != "" {
+		k, err := app.GetKey(destinationKeyName, network, false)
+		if err != nil {
+			return err
+		}
+		destinationAddrStr = k.C()
 	}
-	amountFlt, err := app.Prompt.CaptureFloat(
-		"Amount to transfer",
-		func(f float64) error {
-			if f <= 0 {
-				return fmt.Errorf("not positive")
-			}
-			return nil
-		},
-	)
-	if err != nil {
-		return err
+	if destinationAddrStr == "" {
+		destinationAddrStr, err = prompts.PromptAddress(
+			app.Prompt,
+			"destination address",
+			app.GetKeyDir(),
+			app.GetKey,
+			"",
+			network,
+			prompts.EVMFormat,
+			"destination address",
+		)
+		if err != nil {
+			return err
+		}
+	}
+	if amountFlt == 0 {
+		amountFlt, err = app.Prompt.CaptureFloat(
+			"Amount to transfer",
+			func(f float64) error {
+				if f <= 0 {
+					return fmt.Errorf("not positive")
+				}
+				return nil
+			},
+		)
+		if err != nil {
+			return err
+		}
 	}
 	amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 	amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
@@ -401,11 +437,11 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	client, err := clievm.GetClient(senderURL)
+	client, err := evm.GetClient(senderURL)
 	if err != nil {
 		return err
 	}
-	return clievm.FundAddress(client, privateKey, destinationAddr, amount)
+	return client.FundAddress(privateKey, destinationAddrStr, amount)
 }
 
 func interEvmSend(
@@ -796,11 +832,11 @@ func importIntoC(
 	if usingLedger {
 		ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 	}
-	client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+	client, err := evm.GetClient(network.BlockchainEndpoint("C"))
 	if err != nil {
 		return err
 	}
-	baseFee, err := clievm.EstimateBaseFee(client)
+	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
 		return err
 	}
@@ -899,11 +935,11 @@ func exportFromC(
 	if usingLedger {
 		ux.Logger.PrintToUser("*** Please sign ExportTx transaction on the ledger device *** ")
 	}
-	client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+	client, err := evm.GetClient(network.BlockchainEndpoint("C"))
 	if err != nil {
 		return err
 	}
-	baseFee, err := clievm.EstimateBaseFee(client)
+	baseFee, err := client.EstimateBaseFee()
 	if err != nil {
 		return err
 	}

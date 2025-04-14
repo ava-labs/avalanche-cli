@@ -19,10 +19,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/coreth/core"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -255,20 +257,17 @@ func importL1(blockchainIDStr string, rpcURL string, network models.Network) (mo
 		Sovereign: true,
 	}
 
-	isPoA := validatorManagerSDK.ValidatorManagerIsPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
+	sc.ValidatorManagement, err = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
 	if err != nil {
-		return models.Sidecar{}, err
+		return models.Sidecar{}, fmt.Errorf("could not obtain validator manager type: %w", err)
 	}
 
-	if isPoA {
-		sc.ValidatorManagement = models.ProofOfAuthority
+	if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
 		owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
 		if err != nil {
 			return models.Sidecar{}, err
 		}
 		sc.ValidatorManagerOwner = owner.String()
-	} else {
-		sc.ValidatorManagement = models.ProofOfStake
 	}
 
 	sc.Networks = make(map[string]models.NetworkData)

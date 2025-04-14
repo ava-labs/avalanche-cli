@@ -4,19 +4,15 @@
 package subnet
 
 import (
-	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanche-network-runner/api"
-	"github.com/ethereum/go-ethereum/common"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -204,14 +200,10 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 		err = utils.RunHardhatTests(utils.BaseTest)
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		url, err := url.Parse(rpc)
+		cClient, err := evm.GetClient(rpc)
 		gomega.Expect(err).Should(gomega.BeNil())
-		port, err := strconv.Atoi(url.Port())
-		gomega.Expect(err).Should(gomega.BeNil())
-		cClient := api.NewEthClient(url.Hostname(), uint(port))
 
-		ethAddr := common.HexToAddress(addr)
-		balance, err := cClient.BalanceAt(context.Background(), ethAddr, nil)
+		balance, err := cClient.GetAddressBalance(addr)
 		gomega.Expect(err).Should(gomega.BeNil())
 
 		gomega.Expect(balance.Int64()).Should(gomega.Not(gomega.BeZero()))

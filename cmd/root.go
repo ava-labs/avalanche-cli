@@ -13,9 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
-
-	"github.com/ava-labs/avalanche-cli/cmd/backendcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/blockchaincmd"
 	"github.com/ava-labs/avalanche-cli/cmd/configcmd"
 	"github.com/ava-labs/avalanche-cli/cmd/contractcmd"
@@ -28,6 +25,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/primarycmd"
 	"github.com/ava-labs/avalanche-cli/cmd/transactioncmd"
 	"github.com/ava-labs/avalanche-cli/cmd/updatecmd"
+	"github.com/ava-labs/avalanche-cli/cmd/validatorcmd"
 	"github.com/ava-labs/avalanche-cli/internal/migrations"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -65,7 +63,6 @@ To get started, look at the documentation for the subcommands or jump right
 in with avalanche blockchain create myNewBlockchain.`,
 		PersistentPreRunE: createApp,
 		Version:           Version,
-		PersistentPostRun: handleTracking,
 		SilenceErrors:     true,
 		SilenceUsage:      true,
 	}
@@ -85,9 +82,6 @@ in with avalanche blockchain create myNewBlockchain.`,
 	rootCmd.AddCommand(primarycmd.NewCmd(app))
 	rootCmd.AddCommand(networkcmd.NewCmd(app))
 	rootCmd.AddCommand(keycmd.NewCmd(app))
-
-	// add hidden backend command
-	rootCmd.AddCommand(backendcmd.NewCmd(app))
 
 	// add transaction command
 	rootCmd.AddCommand(transactioncmd.NewCmd(app))
@@ -143,7 +137,7 @@ func createApp(cmd *cobra.Command, _ []string) error {
 	log.Info("-----------")
 	log.Info(fmt.Sprintf("cmd: %s", strings.Join(os.Args[1:], " ")))
 	cf := config.New()
-	app.Setup(baseDir, log, cf, Version, prompts.NewPrompter(), application.NewDownloader())
+	app.Setup(baseDir, log, cf, Version, prompts.NewPrompter(), application.NewDownloader(), cmd)
 
 	if err := initConfig(); err != nil {
 		return err
@@ -245,10 +239,6 @@ func checkForUpdates(cmd *cobra.Command, app *application.Avalanche) error {
 	return nil
 }
 
-func handleTracking(cmd *cobra.Command, _ []string) {
-	metrics.HandleTracking(cmd, cmd.CommandPath(), app, nil)
-}
-
 func setupEnv() (string, error) {
 	// Set base dir
 	usr, err := user.Current()
@@ -322,6 +312,13 @@ func setupEnv() (string, error) {
 		return "", err
 	}
 
+	// Create local clusters dir if it doesn't exist
+	localClustersDir := filepath.Join(baseDir, constants.LocalClustersDir)
+	if err = os.MkdirAll(localClustersDir, os.ModePerm); err != nil {
+		fmt.Printf("failed creating the local clusters dir %s: %s\n", localClustersDir, err)
+		return "", err
+	}
+
 	return baseDir, nil
 }
 
@@ -381,6 +378,7 @@ func Execute() {
 	app = application.New()
 	rootCmd := NewRootCmd()
 	err := rootCmd.Execute()
+	metrics.HandleTracking(app, nil, err)
 	cobrautils.HandleErrors(err)
 }
 

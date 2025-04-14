@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
-	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
 var ErrNetworkNotRunning = errors.New("network is not running")
@@ -143,8 +142,8 @@ func GetLocalNetworkDefaultContext() (context.Context, context.CancelFunc) {
 	return sdkutils.GetTimedContext(2 * time.Minute)
 }
 
-// Indicates if the local network validates a subnet at all
-func LocalNetworkHasValidatorsForSubnet(
+// Indicates if the local network tracks a subnet at all
+func IsLocalNetworkTrackingSubnet(
 	app *application.Avalanche,
 	subnetID ids.ID,
 ) (bool, error) {
@@ -152,7 +151,7 @@ func LocalNetworkHasValidatorsForSubnet(
 	if err != nil {
 		return false, err
 	}
-	return TmpNetHasValidatorsForSubnet(network, subnetID)
+	return IsTmpNetNodeTrackingSubnet(network.Nodes, subnetID)
 }
 
 // Indicates if a blockchain is bootstrapped on the local network
@@ -171,11 +170,11 @@ func IsLocalNetworkBlockchainBootstrapped(
 	return IsTmpNetBlockchainBootstrapped(ctx, network, blockchainID, subnetID)
 }
 
-// Indicates if P-Chain is bootstrapped on the network, and also if
-// all blockchain that have validators on the network, are bootstrapped
+// Indicates if P-Chain is bootstrapped on the local network, and also if
+// all blockchains that have validators on the local network, or in clusters
+// connected to the local network, are bootstrapped
 func LocalNetworkHealth(
 	app *application.Avalanche,
-	printFunc func(msg string, args ...interface{}),
 ) (bool, bool, error) {
 	pChainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, "P", ids.Empty)
 	if err != nil {
@@ -185,22 +184,42 @@ func LocalNetworkHealth(
 	if err != nil {
 		return pChainBootstrapped, false, err
 	}
+	clusters, err := GetRunningLocalClustersConnectedToLocalNetwork(app)
+	if err != nil {
+		return pChainBootstrapped, false, err
+	}
 	for _, blockchain := range blockchains {
-		hasValidators, err := LocalNetworkHasValidatorsForSubnet(app, blockchain.SubnetID)
+		isTracking, err := IsLocalNetworkTrackingSubnet(app, blockchain.SubnetID)
 		if err != nil {
 			return pChainBootstrapped, false, err
 		}
-		if !hasValidators {
-			printFunc(logging.Red.Wrap("local network has no validators for subnet %s. l1 check is not implemented yet"), blockchain.SubnetID)
-			printFunc("")
-			return pChainBootstrapped, false, err
-		}
-		blockchainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, blockchain.ID.String(), blockchain.SubnetID)
-		if err != nil {
-			return pChainBootstrapped, false, err
-		}
-		if !blockchainBootstrapped {
-			return pChainBootstrapped, false, nil
+		if !isTracking {
+			blockchainBootstrappedOnSomeCluster := false
+			for _, clusterName := range clusters {
+				if isTracking, err := IsLocalClusterTrackingSubnet(app, clusterName, blockchain.SubnetID); err != nil {
+					return pChainBootstrapped, false, err
+				} else if !isTracking {
+					continue
+				}
+				blockchainBootstrappedOnSomeCluster, err = IsLocalClusterBlockchainBootstrapped(app, clusterName, blockchain.ID.String(), blockchain.SubnetID)
+				if err != nil {
+					return pChainBootstrapped, false, err
+				}
+				if blockchainBootstrappedOnSomeCluster {
+					break
+				}
+			}
+			if !blockchainBootstrappedOnSomeCluster {
+				return pChainBootstrapped, false, nil
+			}
+		} else {
+			blockchainBootstrapped, err := IsLocalNetworkBlockchainBootstrapped(app, blockchain.ID.String(), blockchain.SubnetID)
+			if err != nil {
+				return pChainBootstrapped, false, err
+			}
+			if !blockchainBootstrapped {
+				return pChainBootstrapped, false, nil
+			}
 		}
 	}
 	return pChainBootstrapped, true, nil

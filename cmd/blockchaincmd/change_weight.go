@@ -10,17 +10,16 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
@@ -116,7 +115,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 	}
 
 	if nodeEndpoint != "" {
-		nodeIDStr, publicKey, pop, err = node.GetNodeData(nodeEndpoint)
+		nodeIDStr, publicKey, pop, err = utils.GetNodeID(nodeEndpoint)
 		if err != nil {
 			return err
 		}
@@ -167,7 +166,7 @@ func setWeight(_ *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to find Validator Manager address")
 	}
 	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-	validationID, err := validator.GetValidationID(rpcURL, nodeID, validatorManagerAddress)
+	validationID, err := validator.GetValidationID(rpcURL, common.HexToAddress(validatorManagerAddress), nodeID)
 	if err != nil {
 		return err
 	}
@@ -395,7 +394,11 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Initializing Validator Weight Change", rawTx)
+		dump, err := evm.TxDump("Initializing Validator Weight Change", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.PrintToUser("ValidationID: %s", validationID)
@@ -446,7 +449,11 @@ func changeWeightACP99(
 		return err
 	}
 	if rawTx != nil {
-		return evm.TxDump("Finish Validator Weight Change", rawTx)
+		dump, err := evm.TxDump("Finish Validator Weight Change", rawTx)
+		if err == nil {
+			ux.Logger.PrintToUser(dump)
+		}
+		return err
 	}
 
 	ux.Logger.GreenCheckmarkToUser("Weight change successfully made")

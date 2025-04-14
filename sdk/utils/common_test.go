@@ -1,12 +1,15 @@
-// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package utils
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestAppendSlices tests AppendSlices
@@ -57,7 +60,7 @@ func mockFunction() (interface{}, error) {
 func TestRetry(t *testing.T) {
 	success := "success"
 	// Test with a function that always returns an error.
-	result, err := Retry(WrapContext(mockFunction), 100*time.Millisecond, 3, "")
+	result, err := Retry(mockFunction, 3, 100*time.Millisecond)
 	if err == nil {
 		t.Errorf("Expected an error, got nil")
 	}
@@ -69,7 +72,7 @@ func TestRetry(t *testing.T) {
 	fn := func() (interface{}, error) {
 		return success, nil
 	}
-	result, err = Retry(WrapContext(fn), 100*time.Millisecond, 3, "")
+	result, err = Retry(fn, 3, 100*time.Millisecond)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -86,7 +89,7 @@ func TestRetry(t *testing.T) {
 		}
 		return success, nil
 	}
-	result, err = Retry(WrapContext(fn), 100*time.Millisecond, 5, "")
+	result, err = Retry(fn, 5, 100*time.Millisecond)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -95,11 +98,94 @@ func TestRetry(t *testing.T) {
 	}
 
 	// Test with invalid retry interval.
-	result, err = Retry(WrapContext(mockFunction), 0, 3, "")
+	result, err = Retry(mockFunction, 3, 0)
 	if err == nil {
 		t.Errorf("Expected an error, got nil")
 	}
 	if result != nil {
 		t.Errorf("Expected nil result, got %v", result)
 	}
+}
+
+func TestRetryWithContextGen_Success(t *testing.T) {
+	ctxGen := func() (context.Context, context.CancelFunc) {
+		return context.WithTimeout(context.Background(), time.Second)
+	}
+	fn := func(_ context.Context) (int, error) {
+		return 42, nil
+	}
+	result, err := RetryWithContextGen(ctxGen, fn, 3, time.Millisecond)
+	require.NoError(t, err)
+	require.Equal(t, 42, result)
+}
+
+func TestRetryWithContextGen_FailureAndRetry(t *testing.T) {
+	ctxGen := func() (context.Context, context.CancelFunc) {
+		return context.WithTimeout(context.Background(), time.Second)
+	}
+	attempts := 0
+	fn := func(_ context.Context) (int, error) {
+		attempts++
+		if attempts < 2 {
+			return 0, errors.New("temporary error")
+		}
+		return 42, nil
+	}
+	result, err := RetryWithContextGen(ctxGen, fn, 3, time.Millisecond)
+	require.NoError(t, err)
+	require.Equal(t, 42, result)
+}
+
+func TestRetryWithContextGen_ExceedMaxAttempts(t *testing.T) {
+	ctxGen := func() (context.Context, context.CancelFunc) {
+		return context.WithTimeout(context.Background(), time.Second)
+	}
+	fn := func(_ context.Context) (int, error) {
+		return 0, errors.New("permanent error")
+	}
+	result, err := RetryWithContextGen(ctxGen, fn, 3, time.Millisecond)
+	require.Error(t, err)
+	require.Equal(t, 0, result)
+}
+
+func TestRetryWithContextGen_ContextCancellation(t *testing.T) {
+	ctxGen := func() (context.Context, context.CancelFunc) {
+		return context.WithTimeout(context.Background(), time.Millisecond)
+	}
+	fn := func(ctx context.Context) (int, error) {
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+		}
+		return 42, nil
+	}
+	result, err := RetryWithContextGen(ctxGen, fn, 3, time.Millisecond)
+	require.Error(t, err)
+	require.Equal(t, 0, result)
+}
+
+func TestWrapContext(t *testing.T) {
+	// Test with a function that completes before the context timeout
+	fn := func() (int, error) {
+		return 42, nil
+	}
+	wrappedFn := WrapContext(fn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	result, err := wrappedFn(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 42, result)
+	// Test with a function that exceeds the context timeout
+	fn = func() (int, error) {
+		time.Sleep(2 * time.Second)
+		return 42, nil
+	}
+	wrappedFn = WrapContext(fn)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Millisecond)
+	defer cancel()
+	result, err = wrappedFn(ctx)
+	require.Error(t, err)
+	require.Equal(t, context.DeadlineExceeded, err)
+	require.Equal(t, 0, result)
 }

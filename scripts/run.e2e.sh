@@ -9,7 +9,7 @@ then
     description_filter="--ginkgo.focus=$pat"
 fi
 
-export RUN_E2E="true"
+export RUN_CLI_E2E="true"
 #github runner detected 
 current_user=$(whoami)
 

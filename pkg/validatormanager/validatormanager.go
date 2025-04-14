@@ -195,6 +195,7 @@ func AddRewardCalculatorToAllocations(
 // to set as the owner of the PoA manager
 func SetupPoA(
 	ctx context.Context,
+	log logging.Logger,
 	subnet blockchainSDK.Subnet,
 	network models.Network,
 	privateKey string,
@@ -206,7 +207,8 @@ func SetupPoA(
 ) error {
 	return subnet.InitializeProofOfAuthority(
 		ctx,
-		network,
+		log,
+		network.SDKNetwork(),
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,
@@ -223,6 +225,7 @@ func SetupPoA(
 // to set as the owner of the PoA manager
 func SetupPoS(
 	ctx context.Context,
+	log logging.Logger,
 	subnet blockchainSDK.Subnet,
 	network models.Network,
 	privateKey string,
@@ -234,7 +237,8 @@ func SetupPoS(
 ) error {
 	return subnet.InitializeProofOfStake(
 		ctx,
-		network,
+		log,
+		network.SDKNetwork(),
 		privateKey,
 		aggregatorExtraPeerEndpoints,
 		aggregatorAllowPrivatePeers,

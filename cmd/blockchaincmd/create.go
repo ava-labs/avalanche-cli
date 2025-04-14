@@ -332,6 +332,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 			deployICM = params.UseICM
 			useExternalGasToken = params.UseExternalGasToken
 			genesisBytes, err = vm.CreateEVMGenesis(
+				app,
 				params,
 				icmInfo,
 				createFlags.addICMRegistryToGenesis,
@@ -454,7 +455,7 @@ func createBlockchainConfig(cmd *cobra.Command, args []string) error {
 	}
 
 	if vmType == models.SubnetEvm {
-		err = sendMetrics(cmd, vmType.RepoName(), blockchainName)
+		err = sendMetrics(vmType.RepoName(), blockchainName)
 		if err != nil {
 			return err
 		}
@@ -485,7 +486,7 @@ func addSubnetEVMGenesisPrefundedAddress(genesisBytes []byte, address string, ba
 	return json.MarshalIndent(genesisMap, "", "  ")
 }
 
-func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
+func sendMetrics(repoName, blockchainName string) error {
 	flags := make(map[string]string)
 	flags[constants.SubnetType] = repoName
 	genesis, err := app.LoadEvmGenesis(blockchainName)
@@ -512,7 +513,7 @@ func sendMetrics(cmd *cobra.Command, repoName, blockchainName string) error {
 	precompilesJoined := strings.Join(precompiles, ",")
 	flags[constants.PrecompileType] = precompilesJoined
 	flags[constants.NumberOfAirdrops] = strconv.Itoa(numAirdropAddresses)
-	metrics.HandleTracking(cmd, constants.MetricsSubnetCreateCommand, app, flags)
+	metrics.HandleTracking(app, flags, nil)
 	return nil
 }
 

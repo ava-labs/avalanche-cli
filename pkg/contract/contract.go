@@ -11,8 +11,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
@@ -332,7 +332,7 @@ func TxToMethod(
 		return nil, nil, err
 	}
 	defer client.Close()
-	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
+	contract := bind.NewBoundContract(contractAddress, *abi, client.EthClient, client.EthClient, client.EthClient)
 	var txOpts *bind.TransactOpts
 	if generateRawTxOnly {
 		txOpts = &bind.TransactOpts{
@@ -341,7 +341,7 @@ func TxToMethod(
 			NoSend: true,
 		}
 	} else {
-		txOpts, err = evm.GetTxOptsWithSigner(client, privateKey)
+		txOpts, err = client.GetTxOptsWithSigner(privateKey)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -375,7 +375,7 @@ func TxToMethod(
 	if generateRawTxOnly {
 		return tx, nil, nil
 	}
-	receipt, success, err := evm.WaitForTransaction(client, tx)
+	receipt, success, err := client.WaitForTransaction(tx)
 	if err != nil {
 		return tx, nil, err
 	} else if !success {
@@ -434,15 +434,14 @@ func TxToMethodWithWarpMessage(
 		return nil, nil, err
 	}
 	defer client.Close()
-	tx, err := evm.GetTxToMethodWithWarpMessage(
-		client,
-		generateRawTxOnly,
+	tx, err := client.TransactWithWarpMessage(
 		from,
 		privateKey,
 		warpMessage,
 		contractAddress,
 		callData,
 		payment,
+		generateRawTxOnly,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -450,10 +449,10 @@ func TxToMethodWithWarpMessage(
 	if generateRawTxOnly {
 		return tx, nil, nil
 	}
-	if err := evm.SendTransaction(client, tx); err != nil {
+	if err := client.SendTransaction(tx); err != nil {
 		return tx, nil, err
 	}
-	receipt, success, err := evm.WaitForTransaction(client, tx)
+	receipt, success, err := client.WaitForTransaction(tx)
 	if err != nil {
 		return tx, receipt, err
 	} else if !success {
@@ -487,7 +486,7 @@ func handleFailedReceiptStatus(
 	tx *types.Transaction,
 	receipt *types.Receipt,
 ) (*types.Transaction, *types.Receipt, error) {
-	trace, err := DebugTraceTransaction(
+	trace, err := evm.GetTxTrace(
 		rpcURL,
 		tx.Hash().String(),
 	)
@@ -506,20 +505,6 @@ func handleFailedReceiptStatus(
 		ux.Logger.PrintToUser("%#v", trace)
 	}
 	return tx, receipt, ErrFailedReceiptStatus
-}
-
-func DebugTraceTransaction(
-	rpcURL string,
-	txHash string,
-) (map[string]interface{}, error) {
-	client, err := evm.GetRPCClient(rpcURL)
-	if err != nil {
-		return nil, err
-	}
-	return evm.DebugTraceTransaction(
-		client,
-		txHash,
-	)
 }
 
 func DebugTraceCall(
@@ -546,7 +531,7 @@ func DebugTraceCall(
 	if err != nil {
 		return nil, err
 	}
-	client, err := evm.GetRPCClient(rpcURL)
+	client, err := evm.GetRawClient(rpcURL)
 	if err != nil {
 		return nil, err
 	}
@@ -567,10 +552,7 @@ func DebugTraceCall(
 		hexBytes, _ := hexutil.Big(*payment).MarshalText()
 		data["value"] = string(hexBytes)
 	}
-	return evm.DebugTraceCall(
-		client,
-		data,
-	)
+	return client.DebugTraceCall(data)
 }
 
 func CallToMethod(
@@ -595,13 +577,28 @@ func CallToMethod(
 		return nil, err
 	}
 	defer client.Close()
-	contract := bind.NewBoundContract(contractAddress, *abi, client, client, client)
+	contract := bind.NewBoundContract(contractAddress, *abi, client.EthClient, client.EthClient, client.EthClient)
 	var out []interface{}
 	err = contract.Call(&bind.CallOpts{}, &out, methodName, params...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
+}
+
+func GetSmartContractCallResult[T any](methodName string, out []interface{}) (T, error) {
+	empty := new(T)
+	if len(out) == 0 {
+		return *empty, fmt.Errorf("error at %s call: no return value", methodName)
+	}
+	if len(out) != 1 {
+		return *empty, fmt.Errorf("error at %s call: expected 1 return value, got %d", methodName, len(out))
+	}
+	received, typeIsOk := out[0].(T)
+	if !typeIsOk {
+		return *empty, fmt.Errorf("error at %s call, expected %T, got %T", methodName, *empty, out[0])
+	}
+	return received, nil
 }
 
 func DeployContract(
@@ -632,15 +629,15 @@ func DeployContract(
 		return common.Address{}, err
 	}
 	defer client.Close()
-	txOpts, err := evm.GetTxOptsWithSigner(client, privateKey)
+	txOpts, err := client.GetTxOptsWithSigner(privateKey)
 	if err != nil {
 		return common.Address{}, err
 	}
-	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client, params...)
+	address, tx, _, err := bind.DeployContract(txOpts, *abi, bin, client.EthClient, params...)
 	if err != nil {
 		return common.Address{}, err
 	}
-	if _, success, err := evm.WaitForTransaction(client, tx); err != nil {
+	if _, success, err := client.WaitForTransaction(tx); err != nil {
 		return common.Address{}, err
 	} else if !success {
 		return common.Address{}, ErrFailedReceiptStatus
