@@ -13,9 +13,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
-	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/multisig"
+	"github.com/ava-labs/avalanche-cli/sdk/network"
 	utilsSDK "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/vm"
@@ -342,10 +342,9 @@ func (c *Subnet) Commit(ms multisig.Multisig, wallet wallet.Wallet, waitForTxAcc
 func (c *Subnet) InitializeProofOfAuthority(
 	ctx context.Context,
 	log logging.Logger,
-	network models.Network,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	useACP99 bool,
@@ -370,11 +369,13 @@ func (c *Subnet) InitializeProofOfAuthority(
 		return fmt.Errorf("unable to initialize Proof of Authority: %w", errMissingBootstrapValidators)
 	}
 
-	if err := evm.SetupProposerVM(
-		c.RPC,
-		privateKey,
-	); err != nil {
-		log.Error("failure setting proposer VM on L1", zap.Error(err))
+	if client, err := evm.GetClient(c.RPC); err != nil {
+		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
+	} else {
+		if err := client.SetupProposerVM(privateKey); err != nil {
+			log.Error("failure setting proposer VM on L1", zap.Error(err))
+		}
+		client.Close()
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoAValidatorManagerInitialize(
@@ -397,7 +398,6 @@ func (c *Subnet) InitializeProofOfAuthority(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
@@ -427,19 +427,20 @@ func (c *Subnet) InitializeProofOfAuthority(
 func (c *Subnet) InitializeProofOfStake(
 	ctx context.Context,
 	log logging.Logger,
-	network models.Network,
+	network network.Network,
 	privateKey string,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	posParams validatormanager.PoSParams,
 	validatorManagerAddressStr string,
 ) error {
-	if err := evm.SetupProposerVM(
-		c.RPC,
-		privateKey,
-	); err != nil {
-		log.Error("failure setting proposer VM on L1", zap.Error(err))
+	if client, err := evm.GetClient(c.RPC); err != nil {
+		log.Error("failure connecting to L1 to setup proposer VM", zap.Error(err))
+	} else {
+		if err := client.SetupProposerVM(privateKey); err != nil {
+			log.Error("failure setting proposer VM on L1", zap.Error(err))
+		}
+		client.Close()
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	tx, _, err := validatormanager.PoSValidatorManagerInitialize(
@@ -460,7 +461,6 @@ func (c *Subnet) InitializeProofOfStake(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		c.SubnetID,
 		c.BlockchainID,
