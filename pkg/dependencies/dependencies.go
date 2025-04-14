@@ -49,7 +49,14 @@ func GetLatestCLISupportedDependencyVersion(app *application.Avalanche, dependen
 		}
 		return parsedDependency.AvalancheGo[network.Name()].LatestVersion, nil
 	case constants.SubnetEVMRepoName:
-		return parsedDependency.SubnetEVM, nil
+		// Currently we get latest subnet evm version during blockchain create, which we then use to update the sidecar.
+		// From the latest subnet evm version obtained, we then get the rpc version, which is also updated in the sidecar during blockchain create.
+		// Getting latest subnet evm version therefore is independent of rpc version and therefore there is no need for any rpc version checks here.
+		// We default to local network if network is undefined in argument.
+		if network == models.UndefinedNetwork {
+			network = models.NewLocalNetwork()
+		}
+		return parsedDependency.SubnetEVM[network.Name()].LatestVersion, nil
 	default:
 		return "", fmt.Errorf("unsupported dependency: %s", dependencyName)
 	}

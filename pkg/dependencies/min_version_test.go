@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testCLIMinVersion = []byte(`{"subnet-evm":"v0.7.3","rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0", "minimum-version":""},"DevNet":{"latest-version":"v1.13.0", "minimum-version":""},"Fuji":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0-fuji"},"Mainnet":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0"}}}`)
+var testCLIMinVersion = []byte(`{"subnet-evm":{"Local Network":{"latest-version":"v0.7.3", "minimum-version":""},"DevNet":{"latest-version":"v0.7.3", "minimum-version":""},"Fuji":{"latest-version":"v0.7.3", "minimum-version":"v0.7.2"},"Mainnet":{"latest-version":"v0.7.3", "minimum-version":"v0.7.2"}},"rpc":39,"avalanchego":{"Local Network":{"latest-version":"v1.13.0", "minimum-version":""},"DevNet":{"latest-version":"v1.13.0", "minimum-version":""},"Fuji":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0-fuji"},"Mainnet":{"latest-version":"v1.13.0", "minimum-version":"v1.13.0"}}}`)
 
 func TestCheckMinDependencyVersion(t *testing.T) {
 	tests := []struct {
@@ -42,14 +42,6 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 			network:           models.NewFujiNetwork(),
 		},
 		{
-			name:              "custom avalanchego dependency equal to cli minimum supported version of avalanchego",
-			dependency:        constants.AvalancheGoRepoName,
-			cliDependencyData: testCLIMinVersion,
-			expectedError:     false,
-			customVersion:     "v1.13.0-fuji",
-			network:           models.NewFujiNetwork(),
-		},
-		{
 			name:              "custom avalanchego dependency higher than cli minimum supported version of avalanchego",
 			dependency:        constants.AvalancheGoRepoName,
 			cliDependencyData: testCLIMinVersion,
@@ -71,6 +63,38 @@ func TestCheckMinDependencyVersion(t *testing.T) {
 			cliDependencyData: testCLIMinVersion,
 			expectedError:     false,
 			customVersion:     "v1.12.2",
+			network:           models.NewLocalNetwork(),
+		},
+		{
+			name:              "custom subnetEVM dependency equal to cli minimum supported version of subnetEVM",
+			dependency:        constants.SubnetEVMRepoName,
+			cliDependencyData: testCLIMinVersion,
+			expectedError:     false,
+			customVersion:     "v0.7.2",
+			network:           models.NewFujiNetwork(),
+		},
+		{
+			name:              "custom subnetEVM dependency higher than cli minimum supported version of subnetEVM",
+			dependency:        constants.SubnetEVMRepoName,
+			cliDependencyData: testCLIMinVersion,
+			expectedError:     false,
+			customVersion:     "v0.7.3",
+			network:           models.NewFujiNetwork(),
+		},
+		{
+			name:              "custom subnetEVM dependency lower than cli minimum supported version of subnetEVM",
+			dependency:        constants.SubnetEVMRepoName,
+			cliDependencyData: testCLIMinVersion,
+			expectedError:     true,
+			customVersion:     "v0.7.1",
+			network:           models.NewFujiNetwork(),
+		},
+		{
+			name:              "custom subnetEVM dependency for network that doesn't have minimum supported version of subnetEVM",
+			dependency:        constants.SubnetEVMRepoName,
+			cliDependencyData: testCLIMinVersion,
+			expectedError:     false,
+			customVersion:     "v0.7.1",
 			network:           models.NewLocalNetwork(),
 		},
 	}
