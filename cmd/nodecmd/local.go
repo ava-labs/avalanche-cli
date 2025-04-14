@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+  
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
@@ -246,6 +248,10 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	}
 
 	if useCustomAvalanchegoVersion != "" {
+		// TODO: we'll have to refactor all these when we consolidate input and flag handling for dependency versioning
+		if err = dependencies.CheckVersionIsOverMin(app, constants.AvalancheGoRepoName, network, useCustomAvalanchegoVersion); err != nil {
+			return err
+		}
 		latestAvagoPreReleaseVersion = false
 		latestAvagoReleaseVersion = false
 	}
