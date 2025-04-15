@@ -459,7 +459,6 @@ func convertSubnetToL1(
 	if err != nil {
 		return avaGoBootstrapValidators, false, false, err
 	}
-	deployer.CleanCacheWallet()
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 
 	if doStrongInputsCheck {
