@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package signatureAggregator
+package signatureaggregator
 
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"

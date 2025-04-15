@@ -733,6 +733,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
 		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
 		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
@@ -761,7 +762,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
+			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
+		deployer.CleanCacheWallet()
 
 		savePartialTx = !isFullySigned && err == nil
 	}
