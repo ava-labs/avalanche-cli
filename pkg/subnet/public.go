@@ -626,6 +626,8 @@ func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (*primary.Wallet, error
 
 func (d *PublicDeployer) CleanCacheWallet() {
 	d.wallet = nil
+	// wait some amount of time to avoid consumed utxos to be retrieved as free ones
+	time.Sleep(5 * time.Second)
 }
 
 func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (*primary.Wallet, error) {

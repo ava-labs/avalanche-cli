@@ -10,10 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -24,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -277,7 +275,7 @@ func InitializeValidatorManager(
 	validatorManagerAddrStr string,
 	proxyContractOwner string,
 	useACP99 bool,
-	signatureaggregatorFlags flags.SignatureAggregatorFlags,
+	signatureAggregatorFlags flags.SignatureAggregatorFlags,
 ) (bool, error) {
 	if useACP99 {
 		ux.Logger.PrintToUser(logging.Yellow.Wrap("Validator Manager Protocol: ACP99"))
@@ -382,8 +380,8 @@ func InitializeValidatorManager(
 		BootstrapValidators: avaGoBootstrapValidators,
 	}
 	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
-		signatureaggregatorFlags.AggregatorLogLevel,
-		signatureaggregatorFlags.AggregatorLogToStdout,
+		signatureAggregatorFlags.AggregatorLogLevel,
+		signatureAggregatorFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),
 	)
 	if err != nil {
@@ -459,7 +457,6 @@ func convertSubnetToL1(
 	if err != nil {
 		return avaGoBootstrapValidators, false, false, err
 	}
-	deployer.CleanCacheWallet()
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 
 	if doStrongInputsCheck {
