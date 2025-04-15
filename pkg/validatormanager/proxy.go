@@ -7,7 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/subnet-evm/core/types"
 
@@ -60,8 +60,7 @@ func ProxyHasValidatorManagerSet(
 	if err != nil {
 		return false, err
 	}
-	return evm.ContractAlreadyDeployed(
-		client,
+	return client.ContractAlreadyDeployed(
 		validatorManagerAddress.Hex(),
 	)
 }

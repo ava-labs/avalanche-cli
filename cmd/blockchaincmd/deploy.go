@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
@@ -93,11 +94,16 @@ var (
 	poSWeightToValueFactor         uint64
 	deployBalanceAVAX              float64
 	validatorManagerAddress        string
+	deployFlags                    BlockchainDeployFlags
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
+
+type BlockchainDeployFlags struct {
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 // avalanche blockchain deploy
 func newDeployCmd() *cobra.Command {
@@ -119,6 +125,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
 		"avalanchego-version",
@@ -178,10 +185,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
-	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
-	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().Float64Var(
@@ -730,6 +733,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
 		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
 		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
@@ -758,7 +762,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
+			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
+		deployer.CleanCacheWallet()
 
 		savePartialTx = !isFullySigned && err == nil
 	}
@@ -830,6 +837,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
 			sidecar.UseACP99,
+			deployFlags.SigAggFlags,
 		)
 		if err != nil {
 			return err
