@@ -581,73 +581,76 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
 	if sidecar.Sovereign {
-		if changeOwnerAddress == "" {
-			// use provided key as change owner unless already set
-			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
-				changeOwnerAddress = pAddr[0]
-				ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
-			}
-		}
-		if !generateNodeID {
-			if cancel, err := StartLocalMachine(
-				network,
-				sidecar,
-				blockchainName,
-				deployBalance,
-				availableBalance,
-				httpPorts,
-				stakingPorts,
-			); err != nil {
-				return err
-			} else if cancel {
-				return nil
-			}
-		}
-		switch {
-		case len(bootstrapEndpoints) > 0:
+		if len(bootstrapValidators) == 0 {
 			if changeOwnerAddress == "" {
-				changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
+				// use provided key as change owner unless already set
+				if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
+					changeOwnerAddress = pAddr[0]
+					ux.Logger.PrintToUser("Using [%s] to be set as a change owner for leftover AVAX", changeOwnerAddress)
+				}
+			}
+			if !generateNodeID {
+				if cancel, err := StartLocalMachine(
+					network,
+					sidecar,
+					blockchainName,
+					deployBalance,
+					availableBalance,
+					httpPorts,
+					stakingPorts,
+					cmd,
+				); err != nil {
+					return err
+				} else if cancel {
+					return nil
+				}
+			}
+			switch {
+			case len(bootstrapEndpoints) > 0:
+				if changeOwnerAddress == "" {
+					changeOwnerAddress, err = blockchain.GetKeyForChangeOwner(app, network)
+					if err != nil {
+						return err
+					}
+				}
+				for _, endpoint := range bootstrapEndpoints {
+					infoClient := info.NewClient(endpoint)
+					ctx, cancel := utils.GetAPILargeContext()
+					defer cancel()
+					nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
+					if err != nil {
+						return err
+					}
+					publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
+					pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
+
+					bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
+						NodeID:               nodeID.String(),
+						Weight:               constants.BootstrapValidatorWeight,
+						Balance:              deployBalance,
+						BLSPublicKey:         publicKey,
+						BLSProofOfPossession: pop,
+						ChangeOwnerAddr:      changeOwnerAddress,
+					})
+				}
+			case clusterNameFlagValue != "":
+				// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
+				bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
+				if err != nil {
+					return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
+				}
+
+			default:
+				bootstrapValidators, err = promptBootstrapValidators(
+					network,
+					changeOwnerAddress,
+					numBootstrapValidators,
+					deployBalance,
+					availableBalance,
+				)
 				if err != nil {
 					return err
 				}
-			}
-			for _, endpoint := range bootstrapEndpoints {
-				infoClient := info.NewClient(endpoint)
-				ctx, cancel := utils.GetAPILargeContext()
-				defer cancel()
-				nodeID, proofOfPossession, err := infoClient.GetNodeID(ctx)
-				if err != nil {
-					return err
-				}
-				publicKey = "0x" + hex.EncodeToString(proofOfPossession.PublicKey[:])
-				pop = "0x" + hex.EncodeToString(proofOfPossession.ProofOfPossession[:])
-
-				bootstrapValidators = append(bootstrapValidators, models.SubnetValidator{
-					NodeID:               nodeID.String(),
-					Weight:               constants.BootstrapValidatorWeight,
-					Balance:              deployBalance,
-					BLSPublicKey:         publicKey,
-					BLSProofOfPossession: pop,
-					ChangeOwnerAddr:      changeOwnerAddress,
-				})
-			}
-		case clusterNameFlagValue != "":
-			// for remote clusters we don't need to ask for bootstrap validators and can read it from filesystem
-			bootstrapValidators, err = getClusterBootstrapValidators(clusterNameFlagValue, network, deployBalance)
-			if err != nil {
-				return fmt.Errorf("error getting bootstrap validators from cluster %s: %w", clusterNameFlagValue, err)
-			}
-
-		default:
-			bootstrapValidators, err = promptBootstrapValidators(
-				network,
-				changeOwnerAddress,
-				numBootstrapValidators,
-				deployBalance,
-				availableBalance,
-			)
-			if err != nil {
-				return err
 			}
 		}
 	} else if network.Kind == models.Local {

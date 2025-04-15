@@ -122,6 +122,7 @@ func StartLocalMachine(
 	availableBalance uint64,
 	httpPorts []uint,
 	stakingPorts []uint,
+	cmd *cobra.Command,
 ) (bool, error) {
 	var err error
 	if network.Kind == models.Local {
@@ -147,7 +148,7 @@ func StartLocalMachine(
 		useLocalMachine = true
 	}
 	// ask user if we want to use local machine if cluster is not provided
-	if !useLocalMachine && clusterNameFlagValue == "" {
+	if !cmd.Flags().Changed("use-local-machine") && !useLocalMachine && clusterNameFlagValue == "" {
 		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
 		ux.Logger.PrintToUser("This means that you don't have to to set up a remote server on a cloud service (e.g. AWS / GCP) to be a validator on the blockchain.")
 
@@ -538,7 +539,7 @@ func convertSubnetToL1(
 }
 
 // convertBlockchain is the cobra command run for converting subnets into sovereign L1
-func convertBlockchain(_ *cobra.Command, args []string) error {
+func convertBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
 
 	chains, err := ValidateSubnetNameAndGetChains(args)
@@ -673,6 +674,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				cmd,
 			); err != nil {
 				return err
 			} else if cancel {
