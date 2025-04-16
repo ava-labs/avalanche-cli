@@ -63,24 +63,7 @@ func printValidators(_ *cobra.Command, args []string) error {
 
 	subnetID := deployInfo.SubnetID
 
-	if network.Kind == models.Local {
-		return printLocalValidators(network, subnetID)
-	} else {
-		return printPublicValidators(network, subnetID)
-	}
-}
-
-func printLocalValidators(network models.Network, subnetID ids.ID) error {
-	validators, err := subnet.GetSubnetValidators(subnetID)
-	if err != nil {
-		return err
-	}
-
-	return printValidatorsFromList(network, subnetID, validators)
-}
-
-func printPublicValidators(network models.Network, subnetID ids.ID) error {
-	validators, err := subnet.GetPublicSubnetValidators(subnetID, network)
+	validators, err := subnet.GetSubnetValidators(network, subnetID)
 	if err != nil {
 		return err
 	}

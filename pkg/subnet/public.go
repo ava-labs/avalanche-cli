@@ -997,16 +997,14 @@ func IsSubnetValidator(subnetID ids.ID, nodeID ids.NodeID, network models.Networ
 	return !(len(vals) == 0), nil
 }
 
-func GetPublicSubnetValidators(subnetID ids.ID, network models.Network) ([]platformvm.ClientPermissionlessValidator, error) {
+func GetSubnetValidators(network models.Network, subnetID ids.ID) ([]platformvm.ClientPermissionlessValidator, error) {
 	pClient := platformvm.NewClient(network.Endpoint)
 	ctx, cancel := utils.GetAPIContext()
 	defer cancel()
-
 	vals, err := pClient.GetCurrentValidators(ctx, subnetID, []ids.NodeID{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current validators")
 	}
-
 	return vals, nil
 }
 
