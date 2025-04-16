@@ -3,12 +3,14 @@
 package blockchaincmd
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
+	flagsmeta "github.com/ava-labs/avalanche-cli/cmd/flags-meta"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -64,9 +66,9 @@ var (
 	createLocalValidator                bool
 	externalValidatorManagerOwner       bool
 	validatorManagerOwner               string
-	httpPort                            uint32
-	stakingPort                         uint32
-	addValidatorFlags                   BlockchainAddValidatorFlags
+	// httpPort                            uint32
+	stakingPort       uint32
+	addValidatorFlags BlockchainAddValidatorFlags
 )
 
 type BlockchainAddValidatorFlags struct {
@@ -78,33 +80,45 @@ const (
 	validatorWeightFlag = "weight"
 )
 
+//go:embed add_validator.json
+var flagsConfigString string
+var addValidatorConfigs *flagsmeta.JSONFlags
+
 // avalanche blockchain addValidator
 func newAddValidatorCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "addValidator [blockchainName]",
-		Short: "Add a validator to an L1",
-		Long: `The blockchain addValidator command adds a node as a validator to
-an L1 of the user provided deployed network. If the network is proof of 
-authority, the owner of the validator manager contract must sign the 
-transaction. If the network is proof of stake, the node must stake the L1's
-staking token. Both processes will issue a RegisterL1ValidatorTx on the P-Chain.
-
-This command currently only works on Blockchains deployed to either the Fuji
-Testnet or Mainnet.`,
-		RunE: addValidator,
-		Args: cobrautils.MaximumNArgs(1),
+	// Load command meta and flags info from JSON
+	addValidatorConfigs, err := flagsmeta.LoadCommandFlagsFromJSON(flagsConfigString)
+	if err != nil {
+		panic(fmt.Errorf("failed to load command meta and flags info: %w", err))
 	}
+
+	cmdUse, _ := addValidatorConfigs.GetCommandMeta("use")
+	cmdShort, _ := addValidatorConfigs.GetCommandMeta("short")
+	cmdLong, _ := addValidatorConfigs.GetCommandMeta("long")
+
+	cmd := &cobra.Command{
+		Use:   cmdUse,
+		Short: cmdShort,
+		Long:  cmdLong,
+		RunE:  addValidator,
+		Args:  cobrautils.MaximumNArgs(1),
+	}
+
+	if err := addValidatorConfigs.RegisterToCOBRA(cmd); err != nil {
+		panic(fmt.Errorf("failed to register command flags: %w", err))
+	}
+
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddRPCFlagToCmd(cmd, app, &addValidatorFlags.RPC)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &addValidatorFlags.SigAggFlags)
-	cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
+	// cmd.Flags().StringVarP(&keyName, "key", "k", "", "select the key to use [fuji/devnet only]")
 	cmd.Flags().Float64Var(
 		&balanceAVAX,
 		"balance",
 		0,
 		"set the AVAX balance of the validator that will be used for continuous fee on P-Chain",
 	)
-	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
+	// cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVar(&nodeIDStr, "node-id", "", "node-id of the validator to add")
@@ -129,7 +143,7 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
 	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
-	cmd.Flags().Uint32Var(&httpPort, "http-port", 0, "http port for node")
+	// cmd.Flags().Uint32Var(&httpPort, "http-port", 0, "http port for node")
 	cmd.Flags().Uint32Var(&stakingPort, "staking-port", 0, "staking port for node")
 
 	return cmd
@@ -201,6 +215,8 @@ func addValidator(cmd *cobra.Command, args []string) error {
 
 	// TODO: will estimate fee in subsecuent PR
 	fee := uint64(0)
+	useEwoq, _ := flagsmeta.GetValue[bool](addValidatorConfigs, "ewoq")
+	keyName, _ := flagsmeta.GetValue[string](addValidatorConfigs, "keyName")
 	kc, err := keychain.GetKeychainFromCmdLineFlags(
 		app,
 		"to pay for transaction fees on P-Chain",
@@ -274,6 +290,7 @@ func addValidator(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("too many local clusters running for network %s and blockchain %s", network.Name(), blockchainName)
 		}
 		localValidatorClusterName = targetClusters[0]
+		httpPort, _ := flagsmeta.GetValue[uint32](addValidatorConfigs, "httpPort")
 		node, err := localnet.AddNodeToLocalCluster(app, ux.Logger.PrintToUser, localValidatorClusterName, httpPort, stakingPort)
 		if err != nil {
 			return err
