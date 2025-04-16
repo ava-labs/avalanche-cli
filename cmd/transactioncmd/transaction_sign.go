@@ -128,12 +128,9 @@ func signTx(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	_, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
-	}
-	if !isPermissioned {
-		return blockchaincmd.ErrNotPermissionedSubnet
 	}
 
 	// get the remaining tx signers so as to check that the wallet does contain an expected signer
