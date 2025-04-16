@@ -3,14 +3,13 @@
 package validator
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/avalanchego/vms/platformvm/api"
+
 	"github.com/ethereum/go-ethereum/common"
 	"golang.org/x/exp/maps"
 )
@@ -70,12 +69,9 @@ func GetValidatorInfo(net network.Network, validationID ids.ID) (platformvm.L1Va
 	return vdrInfo, nil
 }
 
-func GetValidationID(rpcURL string, nodeID ids.NodeID, validatorManagerAddressStr string) (ids.ID, error) {
-	managerAddress := common.HexToAddress(validatorManagerAddressStr)
-	return GetRegisteredValidator(rpcURL, managerAddress, nodeID)
-}
-
-func GetRegisteredValidator(
+// Returns the validation ID for the Node ID, as registered at the validator manager
+// Will return ids.Empty in case it is not registered
+func GetValidationID(
 	rpcURL string,
 	managerAddress common.Address,
 	nodeID ids.NodeID,
@@ -89,17 +85,10 @@ func GetRegisteredValidator(
 	if err != nil {
 		return ids.Empty, err
 	}
-	if len(out) == 0 {
-		return ids.Empty, fmt.Errorf("error at registeredValidators call, no value returned")
-	}
-	validatorID, typeIsOk := out[0].([32]byte)
-	if !typeIsOk {
-		return ids.Empty, fmt.Errorf("error at registeredValidators call, expected [32]byte, got %T", out[0])
-	}
-	return validatorID, nil
+	return contract.GetSmartContractCallResult[[32]byte]("registeredValidators", out)
 }
 
-func IsSovereignValidator(
+func GetValidatorKind(
 	network network.Network,
 	subnetID ids.ID,
 	nodeID ids.NodeID,

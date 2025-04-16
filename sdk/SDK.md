@@ -83,7 +83,7 @@ func vmID(vmName string) (ids.ID, error)
 
 ```go
 func NewSignatureAggregator(
-	network models.Network,
+	network network.Network,
 	logger logging.Logger,
 	subnetID ids.ID,
 	quorumPercentage uint64,
@@ -102,7 +102,7 @@ func TestSignatureAggregator(t *testing.T)
 
 ```go
 func createAppRequestNetwork(
-	network models.Network,
+	network network.Network,
 	logger logging.Logger,
 	registerer prometheus.Registerer,
 	allowPrivatePeers bool,
@@ -467,11 +467,11 @@ func IsValidator(net network.Network, subnetID ids.ID, nodeID ids.NodeID) (bool,
 
 ### Functions
 
-#### GetPChainSubnetConversionWarpMessage
+#### GetPChainSubnetToL1ConversionMessage
 
 ```go
-func GetPChainSubnetConversionWarpMessage(
-	network models.Network,
+func GetPChainSubnetToL1ConversionMessage(
+	network network.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
 	aggregatorAllowPrivateIPs bool,

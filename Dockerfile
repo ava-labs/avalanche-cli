@@ -12,7 +12,7 @@ COPY . .
 RUN ./scripts/build.sh
 
 # ============= Release Stage ================
-FROM debian:12-slim
+FROM debian:trixie-slim
 WORKDIR /
 
 # Copy the executables into the container

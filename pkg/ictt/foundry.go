@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	foundryVersion   = "v0.2.1"
 	foundryupPath    = utils.ExpandHome("~/.foundry/bin/foundryup")
 	defaultForgePath = utils.ExpandHome("~/.foundry/bin/forge")
 )
@@ -36,7 +37,11 @@ func GetForgePath() (string, error) {
 
 func InstallFoundry() error {
 	ux.Logger.PrintToUser("Installing Foundry")
-	downloadCmd := exec.Command("curl", "-L", "https://foundry.paradigm.xyz")
+	downloadCmd := exec.Command(
+		"curl",
+		"-L",
+		fmt.Sprintf("https://raw.githubusercontent.com/ava-labs/foundry/%s/foundryup/install", foundryVersion),
+	)
 	installCmd := exec.Command("bash")
 	var downloadOutbuf, downloadErrbuf strings.Builder
 	downloadCmdStdoutPipe, err := downloadCmd.StdoutPipe()
@@ -71,7 +76,7 @@ func InstallFoundry() error {
 		return err
 	}
 	ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
-	out, err := exec.Command(foundryupPath).CombinedOutput()
+	out, err := exec.Command(foundryupPath, "-v", foundryVersion).CombinedOutput()
 	ux.Logger.PrintToUser(string(out))
 	if err != nil {
 		ux.Logger.PrintToUser("")

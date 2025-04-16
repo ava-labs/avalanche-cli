@@ -10,8 +10,8 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
-	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -25,13 +25,11 @@ import (
 func GetAggregatorExtraPeers(
 	app *application.Avalanche,
 	clusterName string,
-	extraURIs []string,
 ) ([]info.Peer, error) {
 	uris, err := GetAggregatorNetworkUris(app, clusterName)
 	if err != nil {
 		return nil, err
 	}
-	uris = append(uris, extraURIs...)
 	urisSet := set.Of(uris...)
 	uris = urisSet.List()
 	return UrisToPeers(uris)
@@ -40,30 +38,14 @@ func GetAggregatorExtraPeers(
 func GetAggregatorNetworkUris(app *application.Avalanche, clusterName string) ([]string, error) {
 	aggregatorExtraPeerEndpointsUris := []string{}
 	if clusterName != "" {
-		clustersConfig, err := app.LoadClustersConfig()
-		if err != nil {
-			return nil, err
-		}
-		clusterConfig := clustersConfig.Clusters[clusterName]
-		if clusterConfig.Local {
-			cli, err := binutils.NewGRPCClientWithEndpoint(
-				binutils.LocalClusterGRPCServerEndpoint,
-				binutils.WithAvoidRPCVersionCheck(true),
-				binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-			)
-			if err != nil {
-				return nil, err
-			}
-			ctx, cancel := utils.GetANRContext()
-			defer cancel()
-			status, err := cli.Status(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, nodeInfo := range status.ClusterInfo.NodeInfos {
-				aggregatorExtraPeerEndpointsUris = append(aggregatorExtraPeerEndpointsUris, nodeInfo.Uri)
-			}
+		if localnet.LocalClusterExists(app, clusterName) {
+			return localnet.GetLocalClusterURIs(app, clusterName)
 		} else { // remote cluster case
+			clustersConfig, err := app.LoadClustersConfig()
+			if err != nil {
+				return nil, err
+			}
+			clusterConfig := clustersConfig.Clusters[clusterName]
 			hostIDs := utils.Filter(clusterConfig.GetCloudIDs(), clusterConfig.IsAvalancheGoHost)
 			for _, hostID := range hostIDs {
 				if nodeConfig, err := app.LoadClusterNodeConfig(hostID); err != nil {

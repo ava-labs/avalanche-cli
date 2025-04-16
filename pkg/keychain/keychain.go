@@ -5,6 +5,7 @@ package keychain
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
@@ -30,7 +31,8 @@ const (
 
 var (
 	ErrMutuallyExlusiveKeySource = errors.New("key source flags --key, --ewoq, --ledger/--ledger-addrs are mutually exclusive")
-	ErrStoredKeyOrEwoqOnMainnet  = errors.New("key sources --key, --ewoq are not available for mainnet operations")
+	ErrStoredKeyOnMainnet        = errors.New("--key flag is not supported for mainnet operations, please use ledger instead")
+	ErrNonEwoqKeyOnMainnet       = errors.New("key source --ewoq is not available for mainnet operations, please use ledger instead")
 	ErrNonEwoqKeyOnDevnet        = errors.New("key source --ewoq is the only one available for devnet operations")
 	ErrEwoqKeyOnFuji             = errors.New("key source --ewoq is not available for fuji operations")
 )
@@ -91,7 +93,7 @@ func (kc *Keychain) AddAddresses(addresses []string) error {
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(kc.LedgerIndices...)
 		kc.LedgerIndices = ledgerIndicesSet.List()
-		utils.SortUint32(kc.LedgerIndices)
+		slices.Sort(kc.LedgerIndices)
 		if len(kc.LedgerIndices) != prevNumIndices {
 			if err := showLedgerAddresses(kc.Network, kc.Ledger, kc.LedgerIndices); err != nil {
 				return err
@@ -157,8 +159,11 @@ func GetKeychainFromCmdLineFlags(
 		}
 	case network.Kind == models.Mainnet:
 		// mainnet requires ledger usage
-		if keyName != "" || useEwoq {
-			return nil, ErrStoredKeyOrEwoqOnMainnet
+		if keyName != "" {
+			return nil, ErrStoredKeyOnMainnet
+		}
+		if useEwoq {
+			return nil, ErrNonEwoqKeyOnMainnet
 		}
 		useLedger = true
 	}
@@ -206,7 +211,7 @@ func GetKeychain(
 		ledgerIndicesSet := set.Set[uint32]{}
 		ledgerIndicesSet.Add(ledgerIndices...)
 		ledgerIndices = ledgerIndicesSet.List()
-		utils.SortUint32(ledgerIndices)
+		slices.Sort(ledgerIndices)
 		if err := showLedgerAddresses(network, ledgerDevice, ledgerIndices); err != nil {
 			return nil, err
 		}

@@ -4,11 +4,10 @@ package validatormanager
 
 import (
 	_ "embed"
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/subnet-evm/core/types"
 
@@ -22,6 +21,8 @@ func SetupValidatorManagerAtProxy(
 ) (*types.Transaction, *types.Receipt, error) {
 	return contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		proxyManagerPrivateKey,
 		common.HexToAddress(validatorManagerSDK.ProxyAdminContractAddress),
 		big.NewInt(0),
@@ -45,11 +46,7 @@ func GetProxyValidatorManager(
 	if err != nil {
 		return common.Address{}, err
 	}
-	validatorManagerAddress, b := out[0].(common.Address)
-	if !b {
-		return common.Address{}, fmt.Errorf("error obtaining proxy implementation, expected common.Address, got %T", out[0])
-	}
-	return validatorManagerAddress, nil
+	return contract.GetSmartContractCallResult[common.Address]("getProxyImplementation", out)
 }
 
 func ProxyHasValidatorManagerSet(
@@ -63,8 +60,7 @@ func ProxyHasValidatorManagerSet(
 	if err != nil {
 		return false, err
 	}
-	return evm.ContractAlreadyDeployed(
-		client,
+	return client.ContractAlreadyDeployed(
 		validatorManagerAddress.Hex(),
 	)
 }

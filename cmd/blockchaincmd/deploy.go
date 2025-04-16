@@ -10,13 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
-
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
+	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -31,7 +29,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
+	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoutils "github.com/ava-labs/avalanchego/utils"
@@ -68,6 +67,8 @@ var (
 	avagoBinaryPath                 string
 	numBootstrapValidators          int
 	numLocalNodes                   int
+	httpPorts                       []uint
+	stakingPorts                    []uint
 	partialSync                     bool
 	changeOwnerAddress              string
 	subnetOnly                      bool
@@ -93,12 +94,16 @@ var (
 	poSWeightToValueFactor         uint64
 	deployBalanceAVAX              float64
 	validatorManagerAddress        string
-	validatorManagerOwnerAddress   string
+	deployFlags                    BlockchainDeployFlags
 	errMutuallyExlusiveControlKeys = errors.New("--control-keys and --same-control-key are mutually exclusive")
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
 )
+
+type BlockchainDeployFlags struct {
+	SigAggFlags flags.SignatureAggregatorFlags
+}
 
 // avalanche blockchain deploy
 func newDeployCmd() *cobra.Command {
@@ -120,6 +125,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		Args:              cobrautils.ExactArgs(1),
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
+	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
 		"avalanchego-version",
@@ -159,7 +165,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringVar(
 		&icmSpec.RelayerVersion,
 		"relayer-version",
-		constants.LatestPreReleaseVersionTag,
+		constants.DefaultRelayerVersion,
 		"relayer version to deploy",
 	)
 	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
@@ -179,10 +185,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
-	cmd.Flags().StringVar(&aggregatorLogLevel, "aggregator-log-level", constants.DefaultAggregatorLogLevel, "log level to use with signature aggregator")
-	cmd.Flags().BoolVar(&aggregatorLogToStdout, "aggregator-log-to-stdout", false, "use stdout for signature aggregator logs")
-	cmd.Flags().StringSliceVar(&aggregatorExtraEndpoints, "aggregator-extra-endpoints", nil, "endpoints for extra nodes that are needed in signature aggregation")
-	cmd.Flags().BoolVar(&aggregatorAllowPrivatePeers, "aggregator-allow-private-peers", true, "allow the signature aggregator to connect to peers with private IP")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
 	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
 	cmd.Flags().Float64Var(
@@ -192,6 +194,8 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
 	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
+	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
+	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 
 	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
@@ -585,7 +589,15 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			}
 		}
 		if !generateNodeID {
-			if cancel, err := StartLocalMachine(network, sidecar, blockchainName, deployBalance, availableBalance); err != nil {
+			if cancel, err := StartLocalMachine(
+				network,
+				sidecar,
+				blockchainName,
+				deployBalance,
+				availableBalance,
+				httpPorts,
+				stakingPorts,
+			); err != nil {
 				return err
 			} else if cancel {
 				return nil
@@ -721,6 +733,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
 		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
 		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
@@ -749,7 +762,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
+			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
+		deployer.CleanCacheWallet()
 
 		savePartialTx = !isFullySigned && err == nil
 	}
@@ -817,9 +833,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			blockchainID,
 			network,
 			avaGoBootstrapValidators,
-			sidecar.ValidatorManagement == models.ProofOfStake,
+			sidecar.ValidatorManagement == validatormanagertypes.ProofOfStake,
 			validatorManagerStr,
 			sidecar.ProxyContractOwner,
+			sidecar.UseACP99,
+			deployFlags.SigAggFlags,
 		)
 		if err != nil {
 			return err
@@ -840,11 +858,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		}
 		if network.Kind == models.Local && !simulatedPublicNetwork() {
 			ux.Logger.PrintToUser("")
-			ctx, cancel := localnet.GetLocalNetworkDefaultContext()
-			defer cancel()
 			if err := localnet.LocalNetworkTrackSubnet(
-				ctx,
 				app,
+				ux.Logger.PrintToUser,
 				blockchainName,
 			); err != nil {
 				return err
@@ -896,6 +912,14 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 				}
 			}
 			if !icmSpec.SkipRelayerDeploy && network.Kind != models.Mainnet {
+				_ = relayercmd.CallStop(nil, relayercmd.StopFlags{}, network)
+				if network.Kind == models.Local && icmSpec.RelayerBinPath == "" && icmSpec.RelayerVersion == constants.DefaultRelayerVersion {
+					if b, extraLocalNetworkData, err := localnet.GetExtraLocalNetworkData(app, ""); err != nil {
+						return err
+					} else if b {
+						icmSpec.RelayerBinPath = extraLocalNetworkData.RelayerPath
+					}
+				}
 				deployRelayerFlags := relayercmd.DeployFlags{
 					Version:            icmSpec.RelayerVersion,
 					BinPath:            icmSpec.RelayerBinPath,
@@ -906,6 +930,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					Key:                relayerKeyName,
 					Amount:             relayerAmount,
 					AllowPrivateIPs:    relayerAllowPrivateIPs,
+				}
+				if network.Kind == models.Local {
+					blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+					if err != nil {
+						return err
+					}
+					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
 				if network.Kind == models.Local || useLocalMachine {
 					deployRelayerFlags.Key = constants.ICMRelayerKeyName
@@ -928,7 +959,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	flags := make(map[string]string)
 	flags[constants.MetricsNetwork] = network.Name()
-	metrics.HandleTracking(cmd, constants.MetricsSubnetDeployCommand, app, flags)
+	metrics.HandleTracking(app, flags, nil)
 
 	if network.Kind == models.Local && !simulatedPublicNetwork() {
 		ux.Logger.PrintToUser("")
@@ -1154,7 +1185,7 @@ func PrintDeployResults(blockchainName string, subnetID ids.ID, blockchainID ids
 	}
 	t.AppendRow(table.Row{"Subnet ID", subnetID.String()})
 	if blockchainName != "" {
-		vmID, err := anrutils.VMID(blockchainName)
+		vmID, err := utils.VMID(blockchainName)
 		if err != nil {
 			return fmt.Errorf("failed to create VM ID from %s: %w", blockchainName, err)
 		}

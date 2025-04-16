@@ -659,6 +659,7 @@ func RestartNodes() error {
 		logging.NoLog{},
 		func(string, ...interface{}) {},
 		network,
+		network.Nodes,
 		nil,
 	); err != nil {
 		return err
@@ -694,7 +695,7 @@ func GetNodeVMVersion(nodeURI string, vmid string) (string, error) {
 
 func GetApp() *application.Avalanche {
 	app := application.New()
-	app.Setup(GetBaseDir(), logging.NoLog{}, nil, "", nil, nil)
+	app.Setup(GetBaseDir(), logging.NoLog{}, nil, "", nil, nil, nil)
 	return app
 }
 
@@ -727,25 +728,16 @@ func GetNodesInfo() (map[string]NodeInfo, error) {
 }
 
 func GetLocalClusterUris() ([]string, error) {
-	cli, err := binutils.NewGRPCClientWithEndpoint(
-		binutils.LocalClusterGRPCServerEndpoint,
-		binutils.WithAvoidRPCVersionCheck(true),
-		binutils.WithDialTimeout(constants.FastGRPCDialTimeout),
-	)
+	app := GetApp()
+	clusters, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	resp, err := cli.Status(ctx)
-	if err != nil {
-		return nil, err
+	if len(clusters) != 1 {
+		return nil, fmt.Errorf("expected 1 local network cluster running, found %d", len(clusters))
 	}
-	uris := []string{}
-	for _, nodeInfo := range resp.ClusterInfo.NodeInfos {
-		uris = append(uris, nodeInfo.Uri)
-	}
-	return uris, nil
+	clusterName := clusters[0]
+	return localnet.GetLocalClusterURIs(app, clusterName)
 }
 
 func GetWhitelistedSubnetsFromConfigFile(configFile string) (string, error) {

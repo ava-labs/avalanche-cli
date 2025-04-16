@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
-package interchain
+package relayer
 
 import (
 	"context"
@@ -19,27 +19,29 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	apiConfig "github.com/ava-labs/icm-services/config"
 	offchainregistry "github.com/ava-labs/icm-services/messages/off-chain-registry"
 	"github.com/ava-labs/icm-services/relayer/config"
 )
 
 const (
-	localRelayerSetupTime         = 2 * time.Second
-	localRelayerCheckPoolTime     = 100 * time.Millisecond
-	localRelayerCheckTimeout      = 3 * time.Second
-	defaultDBWriteIntervalSeconds = 10
-	defaultSignatureCacheSize     = 1024 * 1024
+	localRelayerSetupTime                  = 2 * time.Second
+	localRelayerCheckPoolTime              = 100 * time.Millisecond
+	localRelayerCheckTimeout               = 3 * time.Second
+	defaultDBWriteIntervalSeconds          = 10
+	defaultSignatureCacheSize              = 1024 * 1024
+	defaultInitialConnectionTimeoutSeconds = 60
 )
 
 var relayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 
-func GetRelayerKeyInfo(keyPath string) (string, string, error) {
+func GetRelayerKeyInfo(app *application.Avalanche) (string, string, error) {
+	keyPath := app.GetKeyPath(constants.ICMRelayerKeyName)
 	var (
 		k   *key.SoftKey
 		err error
@@ -71,14 +73,13 @@ func FundRelayer(
 	if err != nil {
 		return err
 	}
-	relayerBalance, err := evm.GetAddressBalance(client, relayerAddress)
+	relayerBalance, err := client.GetAddressBalance(relayerAddress)
 	if err != nil {
 		return err
 	}
 	if relayerBalance.Cmp(relayerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(relayerRequiredBalance, relayerBalance)
-		err := evm.FundAddress(
-			client,
+		err := client.FundAddress(
 			prefundedPrivateKey,
 			relayerAddress,
 			toFund,
@@ -407,14 +408,15 @@ func CreateBaseRelayerConfig(
 			BaseURL:     network.Endpoint,
 			QueryParams: map[string]string{},
 		},
-		StorageLocation:        storageLocation,
-		ProcessMissedBlocks:    false,
-		SourceBlockchains:      []*config.SourceBlockchain{},
-		DestinationBlockchains: []*config.DestinationBlockchain{},
-		MetricsPort:            metricsPort,
-		DBWriteIntervalSeconds: defaultDBWriteIntervalSeconds,
-		SignatureCacheSize:     defaultSignatureCacheSize,
-		AllowPrivateIPs:        allowPrivateIPs,
+		StorageLocation:                 storageLocation,
+		ProcessMissedBlocks:             false,
+		SourceBlockchains:               []*config.SourceBlockchain{},
+		DestinationBlockchains:          []*config.DestinationBlockchain{},
+		MetricsPort:                     metricsPort,
+		DBWriteIntervalSeconds:          defaultDBWriteIntervalSeconds,
+		SignatureCacheSize:              defaultSignatureCacheSize,
+		AllowPrivateIPs:                 allowPrivateIPs,
+		InitialConnectionTimeoutSeconds: defaultInitialConnectionTimeoutSeconds,
 	}
 	return saveRelayerConfig(awmRelayerConfig, relayerConfigPath)
 }

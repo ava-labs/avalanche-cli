@@ -83,7 +83,7 @@ func NewDeployCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&deployFlags.homeFlags.native, "deploy-native-home", false, "deploy a Transferrer Home for the Chain's Native Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.erc20Address, "deploy-erc20-home", "", "deploy a Transferrer Home for the given Chain's ERC20 Token")
 	cmd.Flags().StringVar(&deployFlags.homeFlags.homeAddress, "use-home", "", "use the given Transferrer's Home Address")
-	cmd.Flags().StringVar(&deployFlags.version, "version", "", "tag/branch/commit of Avalanche Interchain Token Transfer (ICTT) to be used (defaults to main branch)")
+	cmd.Flags().StringVar(&deployFlags.version, "version", constants.ICTTVersion, "tag/branch/commit of Avalanche Interchain Token Transfer (ICTT) to be used")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.native, "deploy-native-remote", false, "deploy a Transferrer Remote for the Chain's Native Token")
 	cmd.Flags().BoolVar(&deployFlags.remoteFlags.removeMinterAdmin, "remove-minter-admin", false, "remove the native minter precompile admin found on remote blockchain genesis")
 	deployFlags.homeFlags.privateKeyFlags.SetFlagNames("home-private-key", "home-key", "home-genesis-key")
@@ -483,11 +483,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 
 	// Setup Contracts
 	ux.Logger.PrintToUser("Downloading Avalanche ICTT Contracts")
-	version := constants.ICTTVersion
-	if flags.version != "" {
-		version = flags.version
-	}
-	if err := ictt.DownloadRepo(app, version); err != nil {
+	if err := ictt.DownloadRepo(app, flags.version); err != nil {
 		return err
 	}
 	ux.Logger.PrintToUser("Compiling Avalanche ICTT Contracts")
@@ -532,7 +528,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			tokenHomeDecimals,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying ERC20 Home: %w", err)
 		}
 		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
@@ -553,7 +549,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			nativeTokenSymbol,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying Wrapped Native Token: %w", err)
 		}
 		ux.Logger.PrintToUser("Wrapped Native Token Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("%s Address: %s", nativeTokenSymbol, wrappedNativeTokenAddress)
@@ -567,7 +563,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			wrappedNativeTokenAddress,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying Native Home: %w", err)
 		}
 		ux.Logger.PrintToUser("Home Deployed to %s", homeRPCEndpoint)
 		ux.Logger.PrintToUser("Home Address: %s", homeAddress)
@@ -642,7 +638,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			remoteDecimals,
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying ERC20 Remote: %w", err)
 		}
 	} else {
 		nativeTokenSymbol, err := getNativeTokenSymbol(
@@ -674,7 +670,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			big.NewInt(0),
 		)
 		if err != nil {
-			return err
+			return fmt.Errorf("failure deploying Native Remote: %w", err)
 		}
 	}
 	ux.Logger.PrintToUser("Remote Deployed to %s", remoteRPCEndpoint)

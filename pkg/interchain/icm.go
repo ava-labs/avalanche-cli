@@ -11,11 +11,11 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/key"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -275,15 +275,14 @@ func (t *ICMDeployer) DeployMessenger(
 	if err != nil {
 		return false, "", err
 	}
-	if messengerAlreadyDeployed, err := evm.ContractAlreadyDeployed(client, t.messengerContractAddress); err != nil {
+	if messengerAlreadyDeployed, err := client.ContractAlreadyDeployed(t.messengerContractAddress); err != nil {
 		return false, "", fmt.Errorf("failure making a request to %s: %w", rpcURL, err)
 	} else if messengerAlreadyDeployed {
 		ux.Logger.PrintToUser("ICM Messenger has already been deployed to %s", subnetName)
 		return true, t.messengerContractAddress, nil
 	}
 	// get icm deployer balance
-	messengerDeployerBalance, err := evm.GetAddressBalance(
-		client,
+	messengerDeployerBalance, err := client.GetAddressBalance(
 		t.messengerDeployerAddress,
 	)
 	if err != nil {
@@ -292,8 +291,7 @@ func (t *ICMDeployer) DeployMessenger(
 	if messengerDeployerBalance.Cmp(messengerDeployerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).
 			Sub(messengerDeployerRequiredBalance, messengerDeployerBalance)
-		if err := evm.FundAddress(
-			client,
+		if err := client.FundAddress(
 			privateKey,
 			t.messengerDeployerAddress,
 			toFund,
@@ -301,7 +299,7 @@ func (t *ICMDeployer) DeployMessenger(
 			return false, "", err
 		}
 	}
-	if err := evm.IssueTx(client, t.messengerDeployerTx); err != nil {
+	if err := client.IssueTx(t.messengerDeployerTx); err != nil {
 		return false, "", err
 	}
 	ux.Logger.PrintToUser(
@@ -382,47 +380,12 @@ func SetProposerVM(
 		return err
 	}
 	wsEndpoint := network.BlockchainWSEndpoint(blockchainID)
-	return evm.SetupProposerVM(wsEndpoint, privKeyStr)
-}
-
-func DeployAndFundRelayer(
-	app *application.Avalanche,
-	td *ICMDeployer,
-	network models.Network,
-	subnetName string,
-	blockchainID string,
-	fundedKeyName string,
-) (bool, string, string, error) {
-	privKeyStr, err := getPrivateKey(app, network, fundedKeyName)
+	client, err := evm.GetClient(wsEndpoint)
 	if err != nil {
-		return false, "", "", err
+		return err
 	}
-	endpoint := network.BlockchainEndpoint(blockchainID)
-	alreadyDeployed, messengerAddress, registryAddress, err := td.Deploy(
-		subnetName,
-		endpoint,
-		privKeyStr,
-		true,
-		true,
-		true,
-	)
-	if err != nil {
-		return false, "", "", err
-	}
-	// get relayer address
-	relayerAddress, _, err := GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
-	if err != nil {
-		return false, "", "", err
-	}
-	// fund relayer
-	if err := FundRelayer(
-		endpoint,
-		privKeyStr,
-		relayerAddress,
-	); err != nil {
-		return false, "", "", err
-	}
-	return alreadyDeployed, messengerAddress, registryAddress, err
+	defer client.Close()
+	return client.SetupProposerVM(privKeyStr)
 }
 
 func getICMKeyInfo(
@@ -441,7 +404,6 @@ type ICMInfo struct {
 	FundedAddress            string
 	FundedBalance            *big.Int
 	MessengerDeployerAddress string
-	RelayerAddress           string
 }
 
 func GetICMInfo(
@@ -462,10 +424,6 @@ func GetICMInfo(
 		app.GetICMContractsBinDir(),
 		ti.Version,
 	)
-	if err != nil {
-		return nil, err
-	}
-	ti.RelayerAddress, _, err = GetRelayerKeyInfo(app.GetKeyPath(constants.ICMRelayerKeyName))
 	if err != nil {
 		return nil, err
 	}

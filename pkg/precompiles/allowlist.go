@@ -4,7 +4,6 @@ package precompiles
 
 import (
 	_ "embed"
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -19,6 +18,8 @@ func SetAdmin(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -38,6 +39,8 @@ func SetManager(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -57,6 +60,8 @@ func SetEnabled(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -76,6 +81,8 @@ func SetNone(
 ) error {
 	_, _, err := contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		precompile,
 		nil,
@@ -101,9 +108,5 @@ func ReadAllowList(
 	if err != nil {
 		return nil, err
 	}
-	role, b := out[0].(*big.Int)
-	if !b {
-		return nil, fmt.Errorf("error at readAllowList, expected *big.Int, got %T", out[0])
-	}
-	return role, nil
+	return contract.GetSmartContractCallResult[*big.Int]("readAllowList", out)
 }

@@ -1,9 +1,11 @@
-// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package utils
 
 import (
 	"context"
+	"os"
+	"os/signal"
 	"sort"
 	"time"
 
@@ -48,5 +50,10 @@ func GetAPILargeContext() (context.Context, context.CancelFunc) {
 
 // Timed Context
 func GetTimedContext(timeout time.Duration) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), timeout)
+	parent, sigCancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, timeCancel := context.WithTimeout(parent, timeout)
+	return ctx, func() {
+		sigCancel()
+		timeCancel()
+	}
 }

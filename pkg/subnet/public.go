@@ -24,7 +24,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	anrutils "github.com/ava-labs/avalanche-network-runner/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	avagoconstants "github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/utils/formatting/address"
@@ -419,7 +418,7 @@ func (d *PublicDeployer) DeployBlockchain(
 		return false, ids.Empty, nil, nil, err
 	}
 
-	vmID, err := anrutils.VMID(chain)
+	vmID, err := utils.VMID(chain)
 	if err != nil {
 		return false, ids.Empty, nil, nil, fmt.Errorf("failed to create VM ID from %s: %w", chain, err)
 	}
@@ -627,6 +626,8 @@ func (d *PublicDeployer) loadWallet(subnetIDs ...ids.ID) (*primary.Wallet, error
 
 func (d *PublicDeployer) CleanCacheWallet() {
 	d.wallet = nil
+	// wait some amount of time to avoid consumed utxos to be retrieved as free ones
+	time.Sleep(5 * time.Second)
 }
 
 func (d *PublicDeployer) loadCacheWallet(preloadTxs ...ids.ID) (*primary.Wallet, error) {

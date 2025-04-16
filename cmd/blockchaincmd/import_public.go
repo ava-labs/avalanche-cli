@@ -19,10 +19,12 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/coreth/core"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 )
@@ -32,6 +34,7 @@ var (
 	subnetIDstr     string
 	useSubnetEvm    bool
 	useCustomVM     bool
+	rpcURL          string
 )
 
 // avalanche blockchain import public
@@ -45,7 +48,7 @@ func newImportPublicCmd() *cobra.Command {
 
 By default, an imported Blockchain
 doesn't overwrite an existing Blockchain with the same name. To allow overwrites, provide the --force
-flag.`,
+plag.`,
 	}
 
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, false, networkoptions.DefaultSupportedNetworkOptions)
@@ -84,22 +87,28 @@ func importPublic(*cobra.Command, []string) error {
 		return err
 	}
 
-	if rpcURL == "" {
-		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+	var blockchainID ids.ID
+	if blockchainIDStr != "" {
+		blockchainID, err = ids.FromString(blockchainIDStr)
 		if err != nil {
 			return err
 		}
 	}
 
-	sc, genBytes, err := importBlockchain(network, rpcURL, ids.Empty, ux.Logger.PrintToUser)
+	sc, genBytes, err := importBlockchain(network, rpcURL, blockchainID, ux.Logger.PrintToUser)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%#v\n", sc)
-	return fmt.Errorf("PEPE")
+
+	sc.TokenName = constants.DefaultTokenName
+	sc.TokenSymbol = constants.DefaultTokenSymbol
+
+	sc.VM, err = vm.PromptVMType(app, useSubnetEvm, useCustomVM)
+	if err != nil {
+		return err
+	}
 
 	var nodeVersionReply *info.GetNodeVersionReply
-
 	if nodeEndpoint == "" {
 		yes, err := app.Prompt.CaptureNoYes("Have validator nodes already been deployed to this blockchain?")
 		if err != nil {
@@ -122,97 +131,33 @@ func importPublic(*cobra.Command, []string) error {
 		}
 	}
 
-	var blockchainID ids.ID
-	if blockchainIDStr == "" {
-		blockchainID, err = app.Prompt.CaptureID("What is the ID of the blockchain?")
-		if err != nil {
-			return err
-		}
-	} else {
-		blockchainID, err = ids.FromString(blockchainIDStr)
-		if err != nil {
-			return err
-		}
-	}
-
-	ux.Logger.PrintToUser("Getting information from the %s network...", network.Name())
-
-	createChainTx, err := utils.GetBlockchainTx(network.Endpoint, blockchainID)
-	if err != nil {
-		return err
-	}
-
-	vmID := createChainTx.VMID
-	subnetID := createChainTx.SubnetID
-	blockchainName := createChainTx.ChainName
-	genBytes = createChainTx.GenesisData
-
-	ux.Logger.PrintToUser("Retrieved information:")
-	ux.Logger.PrintToUser("  BlockchainID: %s", blockchainID.String())
-	ux.Logger.PrintToUser("  SubnetID: %s", subnetID.String())
-	ux.Logger.PrintToUser("  Name: %s", blockchainName)
-	ux.Logger.PrintToUser("  VMID: %s", vmID.String())
-
-	// TODO: it's probably possible to deploy VMs with the same name on a public network
-	// In this case, an import could clash because the tool supports unique names only
-
-	vmType, err := vm.PromptVMType(app, useSubnetEvm, useCustomVM)
-	if err != nil {
-		return err
-	}
-
-	vmIDstr := vmID.String()
-
-	sc = models.Sidecar{
-		Name: blockchainName,
-		VM:   vmType,
-		Networks: map[string]models.NetworkData{
-			network.Name(): {
-				SubnetID:     subnetID,
-				BlockchainID: blockchainID,
-			},
-		},
-		Subnet:       blockchainName,
-		Version:      constants.SidecarVersion,
-		TokenName:    constants.DefaultTokenName,
-		TokenSymbol:  constants.DefaultTokenSymbol,
-		ImportedVMID: vmIDstr,
-	}
-
 	var versions []string
-
 	if nodeVersionReply != nil {
 		// a node was queried
 		for _, v := range nodeVersionReply.VMVersions {
-			if v == vmIDstr {
+			if v == sc.ImportedVMID {
 				sc.VMVersion = v
 				break
 			}
 		}
 		sc.RPCVersion = int(nodeVersionReply.RPCProtocolVersion)
-	} else {
+	} else if sc.VM == models.SubnetEvm {
 		// no node was queried, ask the user
-		switch vmType {
-		case models.SubnetEvm:
-			versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, "", application.All)
-			if err != nil {
-				return err
-			}
-			sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
-		case models.CustomVM:
-			return fmt.Errorf("importing custom VMs is not yet implemented, but will be available soon")
-		default:
-			return fmt.Errorf("unexpected VM type: %v", vmType)
-		}
+		versions, err = app.Downloader.GetAllReleasesForRepo(constants.AvaLabsOrg, constants.SubnetEVMRepoName, "", application.All)
 		if err != nil {
 			return err
 		}
-		sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, vmType, sc.VMVersion)
+		sc.VMVersion, err = app.Prompt.CaptureList("Pick the version for this VM", versions)
 		if err != nil {
-			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", vmType, sc.VMVersion)
+			return err
+		}
+		sc.RPCVersion, err = vm.GetRPCProtocolVersion(app, sc.VM, sc.VMVersion)
+		if err != nil {
+			return fmt.Errorf("failed getting RPCVersion for VM type %s with version %s", sc.VM, sc.VMVersion)
 		}
 	}
-	if vmType == models.SubnetEvm {
+
+	if sc.VM == models.SubnetEvm {
 		var genesis core.Genesis
 		if err := json.Unmarshal(genBytes, &genesis); err != nil {
 			return err
@@ -224,7 +169,7 @@ func importPublic(*cobra.Command, []string) error {
 		return fmt.Errorf("failed creating the sidecar for import: %w", err)
 	}
 
-	if err = app.WriteGenesisFile(blockchainName, genBytes); err != nil {
+	if err = app.WriteGenesisFile(sc.Name, genBytes); err != nil {
 		return err
 	}
 
@@ -239,8 +184,16 @@ func importBlockchain(
 	blockchainID ids.ID,
 	printFunc func(msg string, args ...interface{}),
 ) (models.Sidecar, []byte, error) {
+	var err error
+
+	if rpcURL == "" {
+		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
+		if err != nil {
+			return models.Sidecar{}, nil, err
+		}
+	}
+
 	if blockchainID == ids.Empty {
-		var err error
 		blockchainID, err = precompiles.WarpPrecompileGetBlockchainID(rpcURL)
 		if err != nil {
 			blockchainID, err = app.Prompt.CaptureID("What is the Blockchain ID?")
@@ -277,45 +230,35 @@ func importBlockchain(
 			network.Name(): {
 				SubnetID:     subnetID,
 				BlockchainID: blockchainID,
+				RPCEndpoints: []string{rpcURL},
 			},
 		},
-		Subnet:       blockchainName,
-		Version:      constants.SidecarVersion,
-		ImportedVMID: vmID.String(),
+		Subnet:          blockchainName,
+		Version:         constants.SidecarVersion,
+		ImportedVMID:    vmID.String(),
 		ImportedFromAPM: true,
 	}
 
-	if rpcURL != "" {
-		e := sc.Networks[network.Name()]
-		e.RPCEndpoints = []string{rpcURL}
-		sc.Networks[network.Name()] = e
-	}
-
 	if !subnetInfo.IsPermissioned {
-		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
-
 		sc.Sovereign = true
-		isPoA := validatorManagerSDK.ValidatorManagerIsPoA(rpcURL, common.HexToAddress(validatorManagerAddress))
+		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
+		e := sc.Networks[network.Name()]
+		e.ValidatorManagerAddress = validatorManagerAddress
+		sc.Networks[network.Name()] = e
+		sc.ValidatorManagement, err = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
 		if err != nil {
-			return models.Sidecar{}, nil, err
+			return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type: %w", err)
 		}
-		if isPoA {
-			sc.ValidatorManagement = models.ProofOfAuthority
+		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
+		printFunc("  Validation Kind: %s", sc.ValidatorManagement)
+		if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
 			owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
 			if err != nil {
 				return models.Sidecar{}, nil, err
 			}
 			sc.ValidatorManagerOwner = owner.String()
-		} else {
-			sc.ValidatorManagement = models.ProofOfStake
+			printFunc("  Validator Manager Owner: %s", sc.ValidatorManagerOwner)
 		}
-
-		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
-		printFunc("  Validation Kind: %s", sc.ValidatorManagement)
-
-		e := sc.Networks[network.Name()]
-		e.ValidatorManagerAddress = validatorManagerAddress
-		sc.Networks[network.Name()] = e
 	}
 
 	return sc, genBytes, err

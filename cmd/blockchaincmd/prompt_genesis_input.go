@@ -5,17 +5,17 @@ package blockchaincmd
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-
 	"github.com/ava-labs/avalanche-cli/pkg/application"
+	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
-	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls/signer/localsigner"
 	"github.com/ava-labs/avalanchego/utils/formatting"
 	"github.com/ava-labs/avalanchego/vms/platformvm/signer"
 )
@@ -65,15 +65,15 @@ func promptValidatorManagementType(
 ) error {
 	explainOption := "Explain the difference"
 	if createFlags.proofOfStake {
-		sidecar.ValidatorManagement = models.ProofOfStake
+		sidecar.ValidatorManagement = validatormanagertypes.ProofOfStake
 		return nil
 	}
 	if createFlags.proofOfAuthority {
-		sidecar.ValidatorManagement = models.ProofOfAuthority
+		sidecar.ValidatorManagement = validatormanagertypes.ProofOfAuthority
 		return nil
 	}
 
-	options := []string{models.ProofOfAuthority, models.ProofOfStake, explainOption}
+	options := []string{validatormanagertypes.ProofOfAuthority, validatormanagertypes.ProofOfStake, explainOption}
 	for {
 		option, err := app.Prompt.CaptureList(
 			"Which validator management type would you like to use in your blockchain?",
@@ -83,10 +83,10 @@ func promptValidatorManagementType(
 			return err
 		}
 		switch option {
-		case models.ProofOfAuthority:
-			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
-		case models.ProofOfStake:
-			sidecar.ValidatorManagement = models.ValidatorManagementTypeFromString(option)
+		case validatormanagertypes.ProofOfAuthority:
+			sidecar.ValidatorManagement = validatormanagertypes.ValidatorManagementTypeFromString(option)
+		case validatormanagertypes.ProofOfStake:
+			sidecar.ValidatorManagement = validatormanagertypes.ValidatorManagementTypeFromString(option)
 		case explainOption:
 			continue
 		}
@@ -105,11 +105,14 @@ func generateNewNodeAndBLS() (string, string, string, error) {
 	if err != nil {
 		return "", "", "", err
 	}
-	blsSignerKey, err := bls.NewSigner()
+	blsSignerKey, err := localsigner.New()
 	if err != nil {
 		return "", "", "", err
 	}
-	p := signer.NewProofOfPossession(blsSignerKey)
+	p, err := signer.NewProofOfPossession(blsSignerKey)
+	if err != nil {
+		return "", "", "", err
+	}
 	publicKey, err := formatting.Encode(formatting.HexNC, p.PublicKey[:])
 	if err != nil {
 		return "", "", "", err

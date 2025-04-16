@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/binutils"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain"
 	icmgenesis "github.com/ava-labs/avalanche-cli/pkg/interchain/genesis"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/validatormanager"
 	blockchainSDK "github.com/ava-labs/avalanche-cli/sdk/blockchain"
@@ -39,6 +40,7 @@ func CreateEvmSidecar(
 	tokenSymbol string,
 	getRPCVersionFromBinary bool,
 	sovereign bool,
+	useACP99 bool,
 ) (*models.Sidecar, error) {
 	var (
 		err        error
@@ -73,15 +75,18 @@ func CreateEvmSidecar(
 	sc.TokenSymbol = tokenSymbol
 	sc.TokenName = tokenSymbol + " Token"
 	sc.Sovereign = sovereign
+	sc.UseACP99 = useACP99
 	return sc, nil
 }
 
 func CreateEVMGenesis(
+	app *application.Avalanche,
 	params SubnetEVMGenesisParams,
 	icmInfo *interchain.ICMInfo,
 	addICMRegistryToGenesis bool,
 	proxyOwner string,
 	rewardBasisPoints uint64,
+	useACP99 bool,
 ) ([]byte, error) {
 	feeConfig := getFeeConfig(params)
 
@@ -127,11 +132,17 @@ func CreateEVMGenesis(
 	}
 	if params.UsePoAValidatorManager {
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
-		validatormanager.AddValidatorMessagesContractToAllocations(params.initialTokenAllocation)
-		validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		// valid for both ACP99 and v1.0.0
+		validatormanager.AddValidatorMessagesACP99ContractToAllocations(params.initialTokenAllocation)
+		if useACP99 {
+			validatormanager.AddPoAValidatorManagerACP99ContractToAllocations(params.initialTokenAllocation)
+		} else {
+			validatormanager.AddPoAValidatorManagerContractToAllocations(params.initialTokenAllocation)
+		}
 	} else if params.UsePoSValidatorManager {
 		validatormanager.AddTransparentProxyContractToAllocations(params.initialTokenAllocation, proxyOwner)
-		validatormanager.AddValidatorMessagesContractToAllocations(params.initialTokenAllocation)
+		// valid for v1.0.0
+		validatormanager.AddValidatorMessagesACP99ContractToAllocations(params.initialTokenAllocation)
 		validatormanager.AddRewardCalculatorToAllocations(params.initialTokenAllocation, rewardBasisPoints)
 		params.enableNativeMinterPrecompile = true
 	}
@@ -147,12 +158,16 @@ func CreateEVMGenesis(
 	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
 	precompiles := getPrecompiles(params, genesisBlock0Timestamp)
 
+	relayerAddress, _, err := relayer.GetRelayerKeyInfo(app)
+	if err != nil {
+		return nil, err
+	}
 	if params.UseICM || params.UseExternalGasToken {
 		addICMAddressesToAllowLists(
 			&precompiles,
 			icmInfo.FundedAddress,
 			icmInfo.MessengerDeployerAddress,
-			icmInfo.RelayerAddress,
+			relayerAddress,
 		)
 	}
 

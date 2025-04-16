@@ -4,7 +4,6 @@ package interchain
 
 import (
 	_ "embed"
-	"fmt"
 	"math/big"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
@@ -27,11 +26,7 @@ func GetNextMessageID(
 	if err != nil {
 		return ids.Empty, err
 	}
-	received, b := out[0].([32]byte)
-	if !b {
-		return ids.Empty, fmt.Errorf("error at getNextMessageID call, expected ids.ID, got %T", out[0])
-	}
-	return received, nil
+	return contract.GetSmartContractCallResult[[32]byte]("getNextMessageID", out)
 }
 
 func MessageReceived(
@@ -48,11 +43,7 @@ func MessageReceived(
 	if err != nil {
 		return false, err
 	}
-	received, b := out[0].(bool)
-	if !b {
-		return false, fmt.Errorf("error at messageReceived call, expected bool, got %T", out[0])
-	}
-	return received, nil
+	return contract.GetSmartContractCallResult[bool]("messageReceived", out)
 }
 
 func SendCrossChainMessage(
@@ -88,6 +79,8 @@ func SendCrossChainMessage(
 	}
 	return contract.TxToMethod(
 		rpcURL,
+		false,
+		common.Address{},
 		privateKey,
 		messengerAddress,
 		nil,

@@ -5,10 +5,9 @@ package networkcmd
 import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
-	"github.com/ava-labs/avalanche-cli/pkg/interchain"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 
 	"github.com/spf13/cobra"
@@ -50,7 +49,7 @@ func Stop(flags StopFlags) error {
 		return err
 	}
 
-	if err := interchain.RelayerCleanup(
+	if err := relayer.RelayerCleanup(
 		app.GetLocalRelayerRunPath(models.Local),
 		app.GetLocalRelayerLogPath(models.Local),
 		app.GetLocalRelayerStorageDir(models.Local),
@@ -76,16 +75,28 @@ func stopAndSaveNetwork(flags StopFlags) error {
 
 	if !dontSave {
 		snapshotPath := app.GetSnapshotPath(flags.snapshotName)
-		if err := localnet.TmpNetMigrate(networkDir, snapshotPath); err != nil {
+		if err := localnet.TmpNetMove(networkDir, snapshotPath); err != nil {
 			return err
 		}
 	}
 
-	if err := node.StopLocalNetworkConnectedCluster(app); err != nil {
+	clusterNames, err := localnet.GetRunningLocalClustersConnectedToLocalNetwork(app)
+	if err != nil {
 		return err
 	}
+	failedClusters := []string{}
+	for _, clusterName := range clusterNames {
+		if err := localnet.LocalClusterStop(app, clusterName); err != nil {
+			ux.Logger.RedXToUser("Could not properly stop cluster %s: %w", clusterName, err)
+			failedClusters = append(failedClusters, clusterName)
+		}
+	}
 
-	ux.Logger.PrintToUser("Network stopped successfully.")
+	if len(failedClusters) == 0 {
+		ux.Logger.PrintToUser("Network stopped successfully.")
+	} else {
+		ux.Logger.PrintToUser("Partial network stop: some clusters were not completely stopped.")
+	}
 
 	return nil
 }

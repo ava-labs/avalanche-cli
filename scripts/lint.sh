@@ -11,7 +11,24 @@ CLI_PATH=$(
     cd .. && pwd
 )
 
-GOLANGCI_LINT_VERSION=v1.56.2
+GOLANGCI_LINT_VERSION=v1.64.5
 
-go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+# avoid calling go install unless it is needed: makes the script able to be used offline
+
+exists=true
+which golangci-lint > /dev/null 2>&1 || exists=false
+
+install=false
+if [ $exists = true ]
+then
+	golangci-lint --version | grep $GOLANGCI_LINT_VERSION > /dev/null 2>&1 || install=true
+else
+	install=true
+fi
+
+if [ $install = true ]
+then
+	go install -v github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}
+fi
+
 golangci-lint run --config=$CLI_PATH/.golangci.yml ./... --timeout 5m

@@ -33,7 +33,7 @@ func TestExportImportSubnet(t *testing.T) {
 	mockAppDownloader := mocks.Downloader{}
 	mockAppDownloader.On("Download", mock.Anything).Return(testSubnetEVMCompat, nil)
 
-	app.Setup(testDir, logging.NoLog{}, nil, "", prompts.NewPrompter(), &mockAppDownloader)
+	app.Setup(testDir, logging.NoLog{}, nil, "", prompts.NewPrompter(), &mockAppDownloader, nil)
 	ux.NewUserLog(logging.NoLog{}, io.Discard)
 	genBytes, err := os.ReadFile("../../" + utils.SubnetEvmGenesisPath)
 	require.NoError(err)
@@ -44,6 +44,7 @@ func TestExportImportSubnet(t *testing.T) {
 		vmVersion,
 		"Test",
 		false,
+		true,
 		true,
 	)
 	require.NoError(err)
@@ -86,13 +87,13 @@ func TestExportImportSubnet(t *testing.T) {
 	err = os.Remove(sidecarFile)
 	require.NoError(err)
 
-	err = importBlockchain(nil, []string{"this-does-also-not-exist-import-should-fail"})
+	err = importPublic(nil, []string{"this-does-also-not-exist-import-should-fail"})
 	require.ErrorIs(err, os.ErrNotExist)
-	err = importBlockchain(nil, []string{exportOutput})
+	err = importPublic(nil, []string{exportOutput})
 	require.ErrorContains(err, "blockchain already exists")
 	genFile := filepath.Join(app.GetBaseDir(), constants.SubnetDir, testSubnet, constants.GenesisFileName)
 	err = os.Remove(genFile)
 	require.NoError(err)
-	err = importBlockchain(nil, []string{exportOutput})
+	err = importPublic(nil, []string{exportOutput})
 	require.NoError(err)
 }

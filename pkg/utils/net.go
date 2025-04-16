@@ -12,6 +12,7 @@ import (
 	"net/netip"
 	"net/url"
 	"regexp"
+	"strings"
 )
 
 // GetUserIPAddress retrieves the IP address of the user.
@@ -62,10 +63,17 @@ func IsValidURL(urlString string) bool {
 
 // IsValidIPPort checks if an  string IP:port pair is valid.
 func IsValidIPPort(ipPortPair string) bool {
-	if _, err := netip.ParseAddrPort(ipPortPair); err != nil {
+	if _, err := GetIPPort(ipPortPair); err != nil {
 		return false
 	}
 	return true
+}
+
+// GetIPPort parses netip.IPPort from string that also may include http schema
+func GetIPPort(uri string) (netip.AddrPort, error) {
+	uri = strings.TrimPrefix(uri, "https://")
+	uri = strings.TrimPrefix(uri, "http://")
+	return netip.ParseAddrPort(uri)
 }
 
 // SplitRPCURI splits the RPC URI into `endpoint` and `chain`.
