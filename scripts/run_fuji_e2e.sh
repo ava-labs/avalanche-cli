@@ -17,8 +17,10 @@ if ! aws sts get-caller-identity >/dev/null 2>&1 ; then
 fi
 
 # Variables
-blockchainName="newBlockchain"
-clusterName="newNodes"
+blockchainName="newBlockchain2"
+clusterName="newNodes2"
+keyPChainAddress="P-fuji1377nx80rx3pzneup5qywgdgdsmzntql7trcqlg"
+keyCChainAddress="0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf"
 
 # Function to create the node cluster
 createNodesCluster() {
@@ -44,7 +46,7 @@ createBlockchainConfig() {
     if ! ./bin/avalanche blockchain create "$blockchainName" \
         --evm \
         --proof-of-authority \
-        --validator-manager-owner=0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf \
+        --validator-manager-owner="$keyCChainAddress" \
         --production-defaults \
         --evm-chain-id=123456 \
         --evm-token=TEST; then
@@ -55,12 +57,13 @@ createBlockchainConfig() {
 
 # Function to deploy blockchain
 deployBlockchain() {
+    local bootstrap_file=$1
     echo "Deploying blockchain..."
     if ! ./bin/avalanche blockchain deploy "$blockchainName" \
         --fuji \
         --key newTestKey \
         --use-local-machine=false \
-        --bootstrap-filepath=bootstrap_validators.json; then
+        --bootstrap-filepath="$bootstrap_file"; then
         handle_error "Failed to deploy blockchain"
     fi
     echo -e "${GREEN}Blockchain deployed successfully${NC}"
@@ -167,11 +170,33 @@ extract_validator_info() {
     printf '%s\n' "${json_items[@]}" | jq -s .
 }
 
-echo "Starting node status check..."
-echo "Will check every 30 seconds until all nodes are bootstrapped and healthy."
+# Function to create bootstrap validators JSON
+create_bootstrap_validators_json() {
+    echo "Creating bootstrap validators JSON file..."
+    local validator_info=$1
+    
+    # Transform the validator info into the required format
+    local bootstrap_json
+    bootstrap_json=$(echo "$validator_info" | jq -c 'map({
+        NodeID: .nodeID,
+        Weight: 100,
+        Balance: 100000000,
+        BLSPublicKey: .publicKey,
+        BLSProofOfPossession: .pop,
+        ChangeOwnerAddr: "'"$keyPChainAddress"'",
+        ValidationID: ""
+    })')
+    
+    # Write to file
+    echo "$bootstrap_json" > test_bootstrap_validators.json
+    echo -e "${GREEN}Bootstrap validators JSON file created successfully${NC}"
+}
 
 # Create the node cluster first
 createNodesCluster
+
+echo "Starting node status check..."
+echo "Will check every 30 seconds until all nodes are bootstrapped and healthy."
 
 # Loop until all nodes are bootstrapped and healthy with 15 minute timeout
 start_time=$(date +%s)
@@ -201,11 +226,14 @@ validator_info=$(extract_validator_info)
 echo "Validator information:"
 echo "$validator_info" | jq .
 
+# Create bootstrap validators JSON file
+create_bootstrap_validators_json "$validator_info"
+
 # Create blockchain config
 createBlockchainConfig
 
-# Deploy blockchain
-deployBlockchain
+# Deploy blockchain with bootstrap file
+deployBlockchain "bootstrap_validators.json"
 
 # Sync nodes to blockchain
 syncNodesToBlockchain
