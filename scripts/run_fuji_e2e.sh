@@ -21,6 +21,7 @@ blockchainName="newBlockchain2"
 clusterName="newNodes2"
 keyPChainAddress="P-fuji1377nx80rx3pzneup5qywgdgdsmzntql7trcqlg"
 keyCChainAddress="0x43719cDF4B3CCDE97328Db4C3c2A955EFfCbb8Cf"
+keyName="newTestKey"
 
 # Function to create the node cluster
 createNodesCluster() {
@@ -61,7 +62,7 @@ deployBlockchain() {
     echo "Deploying blockchain..."
     if ! ./bin/avalanche blockchain deploy "$blockchainName" \
         --fuji \
-        --key newTestKey \
+        --key "$keyName" \
         --use-local-machine=false \
         --bootstrap-filepath="$bootstrap_file"; then
         handle_error "Failed to deploy blockchain"
@@ -74,7 +75,7 @@ initializeValidatorManager() {
     echo "Initializing validator manager..."
     if ! ./bin/avalanche contract initValidatorManager "$blockchainName" \
         --fuji \
-        --key newTestKey; then
+        --key "$keyName"; then
         handle_error "Failed to initialize validator manager"
     fi
     echo -e "${GREEN}Validator manager initialized successfully${NC}"
@@ -111,17 +112,13 @@ check_nodes_status() {
 
 # Function to check subnet status
 check_subnet_status() {
-    # Run the command and capture its output
     local output
     output=$(./bin/avalanche node status "$clusterName" --blockchain "$blockchainName")
 
-    # Check if all nodes are healthy
     if echo "$output" | grep -q "OK"; then
-        # Count the number of nodes that are healthy
         local healthy_count=$(echo "$output" | grep -c "OK")
         local total_nodes=$(echo "$output" | grep -c "NodeID-")
 
-        # If all nodes are healthy
         if [ "$healthy_count" -eq "$total_nodes" ]; then
             echo "All nodes are healthy!"
             return 0
@@ -188,8 +185,35 @@ create_bootstrap_validators_json() {
     })')
     
     # Write to file
-    echo "$bootstrap_json" > test_bootstrap_validators.json
+    echo "$bootstrap_json" > bootstrap_validators.json
     echo -e "${GREEN}Bootstrap validators JSON file created successfully${NC}"
+}
+
+# Function to destroy node cluster
+destroyNodesCluster() {
+    echo "Destroying node cluster..."
+    if ! ./bin/avalanche node destroy "$clusterName" --authorize-all; then
+        echo -e "${RED}Warning: Failed to destroy node cluster${NC}"
+        return 1
+    fi
+    echo -e "${GREEN}Node cluster destroyed successfully${NC}"
+    return 0
+}
+
+# Function to clean up temporary files
+cleanup() {
+    echo "Cleaning up resources..."
+    
+    # Destroy node cluster
+    destroyNodesCluster
+    
+    # Clean up temporary files
+    echo "Cleaning up temporary files..."
+    if [ -f "bootstrap_validators.json" ]; then
+        rm "bootstrap_validators.json"
+        echo -e "${GREEN}Removed bootstrap_validators.json${NC}"
+    fi
+    echo -e "${GREEN}Cleanup completed${NC}"
 }
 
 # Create the node cluster first
@@ -218,9 +242,6 @@ while true; do
     sleep 30
 done
 
-echo "Starting subnet status check..."
-echo "Will check every 10 seconds until all nodes are healthy (5 minute timeout)."
-
 echo "Extracting validator information..."
 validator_info=$(extract_validator_info)
 echo "Validator information:"
@@ -237,6 +258,9 @@ deployBlockchain "bootstrap_validators.json"
 
 # Sync nodes to blockchain
 syncNodesToBlockchain
+
+echo "Starting subnet status check..."
+echo "Will check every 10 seconds until all nodes are healthy (5 minute timeout)."
 
 # Loop until all nodes are healthy with 5 minute timeout
 start_time=$(date +%s)
@@ -261,3 +285,8 @@ done
 
 # Initialize validator manager
 initializeValidatorManager
+
+# Clean up temporary files
+cleanup
+
+echo -e "${GREEN}All operations completed successfully${NC}"
