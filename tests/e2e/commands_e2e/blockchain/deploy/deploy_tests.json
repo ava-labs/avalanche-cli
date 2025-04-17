@@ -1,0 +1,23 @@
+{
+  "globalFlags": {
+    "local": true,
+    "skip-icm-deploy": true,
+    "skip-update-check": true,
+    "blockchainName": "testSubnet"
+  },
+  "happyPath": [
+    {
+      "name": "local_deploy",
+      "flags": {}
+    }
+  ],
+  "notHappyPath": [
+    {
+      "name": "invalid_version",
+      "flags": {
+        "avalanchego-version": "invalid_version"
+      },
+      "expectedError": "invalid avalanchego version"
+    }
+  ]
+} 
