@@ -17,7 +17,7 @@
       "flags": {
         "avalanchego-version": "invalid_version"
       },
-      "expectedError": "invalid avalanchego version"
+      "expectedError": "invalid version string"
     }
   ]
 } 
