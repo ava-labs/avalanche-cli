@@ -111,20 +111,27 @@ func getHomeKeyAndAddress(app *application.Avalanche, network models.Network, ho
 		return "", "", err
 	}
 
-	// Propmt for the key to be used.
-	// Note that this key must have enough funds to cover gas cost on the
-	// home chain, and also enough of the token on the home chain to collateralize
-	// the remote chain if it is a native token remote.
-	homeKey, err := prompts.PromptPrivateKey(
-		app.Prompt,
-		"pay for home deployment fees, and collateralization (if necessary)",
-		app.GetKeyDir(),
-		app.GetKey,
-		genesisAddress,
-		genesisPrivateKey,
-	)
+	homeKey, err := homeFlags.privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return "", "", err
+	}
+
+	if homeKey == "" {
+		// Propmt for the key to be used.
+		// Note that this key must have enough funds to cover gas cost on the
+		// home chain, and also enough of the token on the home chain to collateralize
+		// the remote chain if it is a native token remote.
+		homeKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for home deployment fees, and collateralization (if necessary)",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return "", "", err
+		}
 	}
 
 	// Calculate the address for the key.
@@ -408,7 +415,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if remoteKey == "" {
 		remoteKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"pay for home deploy fees",
+			"pay for remote deploy fees",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
