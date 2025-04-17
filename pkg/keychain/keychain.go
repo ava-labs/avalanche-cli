@@ -143,7 +143,7 @@ func GetKeychainFromCmdLineFlags(
 				return nil, err
 			}
 		}
-	case network.Kind == models.Fuji || network.Kind == models.Mainnet:
+	case network.Kind == models.Fuji:
 		if useEwoq {
 			return nil, ErrEwoqKeyOnFujiOrMainnet
 		}
@@ -154,6 +154,13 @@ func GetKeychainFromCmdLineFlags(
 			if err != nil {
 				return nil, err
 			}
+		}
+	case network.Kind == models.Mainnet:
+		if useEwoq {
+			return nil, ErrEwoqKeyOnFujiOrMainnet
+		}
+		if keyName == "" {
+			useLedger = true
 		}
 	}
 
