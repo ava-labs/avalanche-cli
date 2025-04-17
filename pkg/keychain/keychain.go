@@ -31,8 +31,7 @@ const (
 
 var (
 	ErrMutuallyExlusiveKeySource = errors.New("key source flags --key, --ewoq, --ledger/--ledger-addrs are mutually exclusive")
-	ErrNonEwoqKeyOnDevnet        = errors.New("key source --ewoq is the only one available for devnet operations")
-	ErrEwoqKeyOnFujiOrMainnet    = errors.New("key source --ewoq is not available for mainnet/fuji operations")
+	ErrEwoqKeyOnFujiOrMainnet    = errors.New("key source ewoq is not available for mainnet/fuji operations")
 )
 
 type Keychain struct {
@@ -144,7 +143,7 @@ func GetKeychainFromCmdLineFlags(
 			}
 		}
 	case network.Kind == models.Fuji:
-		if useEwoq {
+		if useEwoq || keyName == "ewoq" {
 			return nil, ErrEwoqKeyOnFujiOrMainnet
 		}
 		// prompt the user if no key source was provided
@@ -156,11 +155,15 @@ func GetKeychainFromCmdLineFlags(
 			}
 		}
 	case network.Kind == models.Mainnet:
-		if useEwoq {
+		if useEwoq || keyName == "ewoq" {
 			return nil, ErrEwoqKeyOnFujiOrMainnet
 		}
 		if keyName == "" {
 			useLedger = true
+		} else {
+			ux.Logger.PrintToUser("")
+			ux.Logger.PrintToUser(logging.Red.Wrap("WARNING: Storing keys locally in plain text is insecure. A hardware wallet is recommended for Mainnet."))
+			ux.Logger.PrintToUser("")
 		}
 	}
 
