@@ -855,7 +855,10 @@ func FundLedgerAddress(amount uint64) error {
 	if err := ledgerDev.Disconnect(); err != nil {
 		return err
 	}
+	return FundAddress(ledgerAddr, amount)
+}
 
+func FundAddress(addr ids.ShortID, amount uint64) error {
 	// get genesis funded wallet
 	sk, err := key.LoadSoft(constants.LocalNetworkID, EwoqKeyPath)
 	if err != nil {
@@ -872,11 +875,10 @@ func FundLedgerAddress(amount uint64) error {
 	if err != nil {
 		return err
 	}
-
-	// transfer from P-Chain genesis addr to P-Chain ledger addr
+	// transfer from P-Chain genesis addr to addr
 	to := secp256k1fx.OutputOwners{
 		Threshold: 1,
-		Addrs:     []ids.ShortID{ledgerAddr},
+		Addrs:     []ids.ShortID{addr},
 	}
 	output := &avax.TransferableOutput{
 		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
@@ -889,7 +891,6 @@ func FundLedgerAddress(amount uint64) error {
 	if _, err := wallet.P().IssueBaseTx(outputs); err != nil {
 		return err
 	}
-
 	return nil
 }
 
