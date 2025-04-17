@@ -119,26 +119,54 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 }
 
 /* #nosec G204 */
-func KeyTransferSend(keyName string, targetAddr string, amount string) (string, error) {
+func KeyTransferSend(keyName, ledger, destinationAddr, destinationKey, amount, senderChain, senderBlockchainName, receiverChain, receiverBlockchainName string) *exec.Cmd {
 	// Create config
 	args := []string{
 		KeyCmd,
 		"transfer",
 		"--local",
-		"--key",
-		keyName,
-		"--destination-addr",
-		targetAddr,
-		"--amount",
-		amount,
-		"--p-chain-sender",
-		"--p-chain-receiver",
 		"--" + constants.SkipUpdateFlag,
 	}
+
+	if ledger != "" {
+		args = append(args, "--ledger", ledger)
+	}
+
+	if keyName != "" {
+		args = append(args, "--key", keyName)
+	}
+
+	if destinationAddr != "" {
+		args = append(args, "--destination-addr", destinationAddr)
+	}
+
+	if destinationKey != "" {
+		args = append(args, "--destination-key", destinationKey)
+	}
+
+	if senderChain != "" {
+		args = append(args, senderChain)
+	}
+
+	if senderBlockchainName != "" {
+		args = append(args, senderBlockchainName)
+	}
+
+	if receiverChain != "" {
+		args = append(args, receiverChain)
+	}
+
+	if receiverBlockchainName != "" {
+		args = append(args, receiverBlockchainName)
+	}
+
+	if amount != "" {
+		args = append(args, "--amount", amount)
+	}
+
 	cmd := exec.Command(CLIBinary, args...)
 
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	return cmd
 }
 
 /* #nosec G204 */
