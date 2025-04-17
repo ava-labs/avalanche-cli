@@ -417,8 +417,19 @@ func InitValidatorRegistration(
 	}
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 	ownerAddress := common.HexToAddress(ownerAddressStr)
-	var receipt *types.Receipt
+
 	alreadyInitialized := initiateTxHash != ""
+	if validationID, err := validator.GetValidationID(
+		rpcURL,
+		managerAddress,
+		nodeID,
+	); err != nil {
+		return nil, ids.Empty, nil, err
+	} else if validationID != ids.Empty {
+		alreadyInitialized = true
+	}
+
+	var receipt *types.Receipt
 	if !alreadyInitialized {
 		var tx *types.Transaction
 		if isPos {
