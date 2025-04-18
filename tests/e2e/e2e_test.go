@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/commands_e2e/blockchain/deploy"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/apm"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/errhandling"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key"
