@@ -56,7 +56,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 	ginkgo.It("can deploy a custom vm subnet to local SOV", func() {
 		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CreateCustomVMConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, customVMPath)
+		commands.CreateCustomVMConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, customVMPath, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, mapping[utils.SoloAvagoKey])
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -76,7 +76,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy a SubnetEvm subnet to local SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -96,7 +96,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can load viper config and setup node properties for local deploy SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallyWithViperConfSOV(subnetName, confPath)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -111,7 +111,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can't deploy the same subnet twice to local SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
 
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		fmt.Println(deployOutput)
@@ -135,8 +135,8 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy multiple subnets to local SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
-		commands.CreateSubnetEvmConfigSOV(secondSubnetName, utils.SubnetEvmGenesis2Path)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, commands.PoaValidatorManagerOwner)
 
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs1, err := utils.ParseRPCsFromOutput(deployOutput)
@@ -171,7 +171,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy custom chain config SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmAllowFeeRecpPath)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmAllowFeeRecpPath, commands.PoaValidatorManagerOwner)
 
 		addr := "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 
@@ -212,7 +212,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can deploy with custom per chain config node SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
 
 		// create per node chain config
 		nodesRPCTxFeeCap := map[string]string{
@@ -273,7 +273,7 @@ var _ = ginkgo.Describe("[Local Subnet SOV]", ginkgo.Ordered, func() {
 			"NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg",
 		}
 
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		_, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -308,7 +308,7 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 
 	ginkgo.It("can deploy a subnet-evm with old version SOV", func() {
 		subnetEVMVersion := mapping[utils.SoloSubnetEVMKey1]
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion)
+		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -331,8 +331,8 @@ var _ = ginkgo.Describe("[Subnet Compatibility]", func() {
 		subnetEVMVersion1 := mapping[utils.SoloSubnetEVMKey1]
 		subnetEVMVersion2 := "v0.6.12"
 
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion1)
-		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2)
+		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, subnetEVMVersion1, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigWithVersionSOV(secondSubnetName, utils.SubnetEvmGenesis2Path, subnetEVMVersion2, commands.PoaValidatorManagerOwner)
 
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)

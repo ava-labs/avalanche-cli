@@ -18,7 +18,7 @@ import (
 
 const (
 	subnetEVMMainnetChainID  = 11
-	poaValidatorManagerOwner = "0x2e6FcBb9d4E17eC4cF67eddfa7D32eabC4cdCFc6"
+	PoaValidatorManagerOwner = "0x2e6FcBb9d4E17eC4cF67eddfa7D32eabC4cdCFc6"
 	bootstrapFilepathFlag    = "--bootstrap-filepath"
 	avalancheGoPath          = "--avalanchego-path"
 	localNodeClusterName     = "testLocalNode"
@@ -35,12 +35,12 @@ func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string) (string,
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
-func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, string) {
+func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string, validatorManagerOwner string) (string, string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
+	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey], validatorManagerOwner)
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
@@ -85,7 +85,7 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, version string) {
+func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, version string, validatorManagerOwner string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -101,9 +101,9 @@ func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, 
 		subnetName,
 		"--proof-of-authority",
 		"--validator-manager-owner",
-		poaValidatorManagerOwner,
+		PoaValidatorManagerOwner,
 		"--proxy-contract-owner",
-		poaValidatorManagerOwner,
+		PoaValidatorManagerOwner,
 		"--" + constants.SkipUpdateFlag,
 		"--icm=false",
 		"--evm-token",
@@ -217,7 +217,7 @@ func CreateCustomVMConfigNonSOV(subnetName string, genesisPath string, vmPath st
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func CreateCustomVMConfigSOV(subnetName string, genesisPath string, vmPath string) {
+func CreateCustomVMConfigSOV(subnetName string, genesisPath string, vmPath string, validatorManagerOwner string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -236,9 +236,9 @@ func CreateCustomVMConfigSOV(subnetName string, genesisPath string, vmPath strin
 		genesisPath,
 		"--proof-of-authority",
 		"--validator-manager-owner",
-		poaValidatorManagerOwner,
+		PoaValidatorManagerOwner,
 		"--proxy-contract-owner",
-		poaValidatorManagerOwner,
+		PoaValidatorManagerOwner,
 		"--custom",
 		subnetName,
 		"--custom-vm-path",

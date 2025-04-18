@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can create and delete a subnet evm config SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
 		commands.DeleteSubnetConfig(subnetName)
 	})
 
@@ -51,7 +51,7 @@ var _ = ginkgo.Describe("[Subnet]", ginkgo.Ordered, func() {
 		customVMPath, err := utils.DownloadCustomVMBin(mapping[utils.SoloSubnetEVMKey1])
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.CreateCustomVMConfigSOV(subnetName, utils.SubnetEvmGenesisPath, customVMPath)
+		commands.CreateCustomVMConfigSOV(subnetName, utils.SubnetEvmGenesisPath, customVMPath, commands.PoaValidatorManagerOwner)
 		commands.DeleteSubnetConfig(subnetName)
 		exists, err := utils.SubnetCustomVMExists(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
