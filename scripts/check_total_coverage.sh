@@ -5,7 +5,8 @@ combined_coverage_file=$coverage_dir/combined.txt
 COVERAGE_THRESHOLD=15.0 # percentage threshold of code coverage required
 
 echo "Generating coverage report in text format..."
-go tool covdata merge -i=$coverage_dir/e2e,$coverage_dir/ut -o=$coverage_dir
+included_packages=$(go list ./... | grep -v /tests/ | grep -v '/sdk/') # not including 'tests' and 'sdk'
+go tool covdata merge -i=$coverage_dir/e2e,$coverage_dir/ut -o=$coverage_dir -pkg=${included_packages//$'\n'/,}
 go tool covdata textfmt -i=./coverage -o $combined_coverage_file
 go tool cover -func $combined_coverage_file
 
