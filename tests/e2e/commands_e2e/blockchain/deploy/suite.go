@@ -5,6 +5,7 @@ package deploy
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands_e2e/blockchain"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	deployTestJsonPath = "tests/e2e/commands_e2e/blockchain/deploy/deploy_tests.json"
+	deployTestJSONPath = "tests/e2e/commands_e2e/blockchain/deploy/deploy_tests.json"
 	subnetName         = "testSubnet"
 )
 
@@ -30,7 +31,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, ewoqEVMAddress)
 
 		// Read test configuration
-		config, err = blockchain.ReadTestConfig(deployTestJsonPath)
+		config, err = blockchain.ReadTestConfig(deployTestJSONPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -46,23 +47,23 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 			ginkgo.By(fmt.Sprintf("Running test case: %s", testCase.Name))
 			_, err = blockchain.TestCommandWithJSONConfig(
 				"deploy",
-				deployTestJsonPath,
+				deployTestJSONPath,
 				&testCase,
 			)
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
 	})
-	//
-	//ginkgo.It("should handle invalid configurations", func() {
-	//	// Run each not happy path test case
-	//	for _, testCase := range config.NotHappyPath {
-	//		ginkgo.By(fmt.Sprintf("Running test case: %s", testCase.Name))
-	//		_, err = blockchain.TestCommandWithJSONConfig(
-	//			"deploy",
-	//			deployTestJsonPath,
-	//			&testCase,
-	//		)
-	//		gomega.Expect(err).Should(gomega.HaveOccurred())
-	//	}
-	//})
+
+	ginkgo.It("should handle invalid configurations", func() {
+		// Run each not happy path test case
+		for _, testCase := range config.NotHappyPath {
+			ginkgo.By(fmt.Sprintf("Running test case: %s", testCase.Name))
+			_, err = blockchain.TestCommandWithJSONConfig(
+				"deploy",
+				deployTestJSONPath,
+				&testCase,
+			)
+			gomega.Expect(err).Should(gomega.HaveOccurred())
+		}
+	})
 })
