@@ -460,7 +460,16 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	return clievm.FundAddress(client, privateKey, destinationAddrStr, amount)
+
+	receipt, err := clievm.FundAddress(client, privateKey, destinationAddrStr, amount)
+	chainName, err := contract.GetBlockchainDesc(senderChain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("%s Paid fee: %.9f",
+		chainName,
+		calculateEvmFee(receipt.GasUsed, receipt.EffectiveGasPrice))
+	return err
 }
 
 func interEvmSend(
@@ -757,7 +766,6 @@ func exportFromP(
 	if err != nil {
 		return err
 	}
-	fmt.Println("tx fee", txFee)
 	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f", float64(txFee)/float64(units.Avax))
 	return nil
 }
@@ -1058,4 +1066,21 @@ func importIntoP(
 	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f", float64(txFee)/float64(units.Avax))
 
 	return nil
+}
+
+func calculateEvmFee(gasUsed uint64, gasPrice *big.Int) float64 {
+	// Convert gasUsed to a big.Int
+	gasUsedBig := new(big.Int).SetUint64(gasUsed)
+
+	// Multiply gasUsed * gasPrice
+	totalCost := new(big.Int).Mul(gasUsedBig, gasPrice)
+
+	// Divide by units.Avax (to normalize to AVAX units)
+	avaxUnits := new(big.Int).SetUint64(units.Avax)
+	totalCostInAvax := new(big.Int).Div(totalCost, avaxUnits)
+
+	// Convert to float64 for display purposes
+	result, _ := new(big.Float).SetInt(totalCostInAvax).Float64()
+
+	return result / float64(units.Avax)
 }

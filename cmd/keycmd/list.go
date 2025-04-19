@@ -646,16 +646,21 @@ func formatCChainBalance(balance *big.Int) (string, error) {
 	if useGwei {
 		return fmt.Sprintf("%d", balance), nil
 	}
-	// convert to nAvax
-	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
-	if balance.Cmp(big.NewInt(0)) == 0 {
+
+	// convert to nAvax with rounding
+	divisor := big.NewInt(int64(units.Avax))
+	half := big.NewInt(int64(units.Avax) - 1)
+	adjusted := new(big.Int).Add(balance, half)
+	result := new(big.Int).Div(adjusted, divisor)
+
+	if result.Cmp(big.NewInt(0)) == 0 {
 		return "0", nil
 	}
 	balanceStr := ""
 	if useNanoAvax {
-		balanceStr = fmt.Sprintf("%9d", balance.Uint64())
+		balanceStr = fmt.Sprintf("%9d", result.Uint64())
 	} else {
-		balanceStr = fmt.Sprintf("%.9f", float64(balance.Uint64())/float64(units.Avax))
+		balanceStr = fmt.Sprintf("%.9f", float64(result.Uint64())/float64(units.Avax))
 	}
 	return balanceStr, nil
 }

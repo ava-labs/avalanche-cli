@@ -57,13 +57,16 @@ func CreateKeyForce(keyName string) (string, error) {
 }
 
 /* #nosec G204 */
-func ListKeys(network string, omitCChain bool, useNanoAvax bool) (string, error) {
+func ListKeys(network string, omitCChain bool, useNanoAvax bool, subnets string) (string, error) {
 	args := []string{KeyCmd, "list", "--" + network, "--" + constants.SkipUpdateFlag}
 	if omitCChain {
 		args = append(args, "--cchain=false")
 	}
 	if useNanoAvax {
 		args = append(args, "--use-nano-avax=true")
+	}
+	if subnets != "" {
+		args = append(args, "--subnets", "c,x,p,"+subnets)
 	}
 	cmd := exec.Command(CLIBinary, args...)
 	out, err := cmd.Output()

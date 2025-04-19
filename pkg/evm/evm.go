@@ -225,20 +225,20 @@ func FundAddress(
 	sourceAddressPrivateKeyStr string,
 	targetAddressStr string,
 	amount *big.Int,
-) error {
+) (*types.Receipt, error) {
 	sourceAddressPrivateKey, err := crypto.HexToECDSA(sourceAddressPrivateKeyStr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sourceAddress := crypto.PubkeyToAddress(sourceAddressPrivateKey.PublicKey)
 	gasFeeCap, gasTipCap, nonce, err := CalculateTxParams(client, sourceAddress.Hex())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	targetAddress := common.HexToAddress(targetAddressStr)
 	chainID, err := GetChainID(client)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   chainID,
@@ -252,17 +252,19 @@ func FundAddress(
 	txSigner := types.LatestSignerForChainID(chainID)
 	signedTx, err := types.SignTx(tx, txSigner, sourceAddressPrivateKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := SendTransaction(client, signedTx); err != nil {
-		return err
+		return nil, err
 	}
-	if _, b, err := WaitForTransaction(client, signedTx); err != nil {
-		return err
+
+	receipt, b, err := WaitForTransaction(client, signedTx)
+	if err != nil {
+		return nil, err
 	} else if !b {
-		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
+		return nil, fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
 	}
-	return nil
+	return receipt, nil
 }
 
 func GetTxToMethodWithWarpMessage(

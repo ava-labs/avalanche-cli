@@ -415,7 +415,7 @@ func CallDeploy(_ []string, flags DeployFlags, network models.Network) error {
 				amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 				amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
 				amount, _ := amountBigFlt.Int(nil)
-				if err := evm.FundAddress(client, privateKey, addr.Hex(), amount); err != nil {
+				if _, err := evm.FundAddress(client, privateKey, addr.Hex(), amount); err != nil {
 					return err
 				}
 			}
