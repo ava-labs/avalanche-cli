@@ -5,6 +5,7 @@ package deploy
 
 import (
 	"fmt"
+
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands_e2e"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -39,7 +40,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		// Cleanup test subnet config
 		commands.DeleteSubnetConfig(subnetName)
 	})
-	var blockchainCmdArgs = []string{subnetName}
+	blockchainCmdArgs := []string{subnetName}
 	ginkgo.It("should successfully deploy a blockchain", func() {
 		// Run each happy path test case
 		for _, testCase := range config.HappyPath {
