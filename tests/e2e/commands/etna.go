@@ -27,7 +27,7 @@ const (
 	PoAString = "proof-of-authority"
 )
 
-func CreateEtnaSubnetEvmConfig(
+func CreateSubnetEvmConfigSOV(
 	subnetName string,
 	ewoqEVMAddress string,
 	subnetManagementType SubnetManagementType,

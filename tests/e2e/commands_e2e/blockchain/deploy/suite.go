@@ -8,7 +8,6 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands_e2e/blockchain"
-	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -28,7 +27,7 @@ const ewoqEVMAddress = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 	_ = ginkgo.BeforeEach(func() {
 		// Create test subnet config
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, ewoqEVMAddress)
+		commands.CreateSubnetEvmConfigSOV(subnetName, ewoqEVMAddress, commands.PoA)
 
 		// Read test configuration
 		config, err = blockchain.ReadTestConfig(deployTestJSONPath)
@@ -54,7 +53,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		}
 	})
 
-	ginkgo.It("should handle invalid configurations", func() {
+	ginkgo.It("should handle error cases", func() {
 		// Run each not happy path test case
 		for _, testCase := range config.NotHappyPath {
 			ginkgo.By(fmt.Sprintf("Running test case: %s", testCase.Name))

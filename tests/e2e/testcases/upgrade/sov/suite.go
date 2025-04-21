@@ -57,7 +57,7 @@ var _ = ginkgo.Describe("[Upgrade expect network failure SOV]", ginkgo.Ordered, 
 	})
 
 	ginkgo.It("fails on stopped network SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
 
 		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -97,7 +97,7 @@ var _ = ginkgo.Describe("[Upgrade public network SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can create and apply to public node SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
 
 		// simulate as if this had already been deployed to fuji
 		// by just entering fake data into the struct
@@ -168,7 +168,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("fails on undeployed subnet SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
 
 		_, err = commands.ImportUpgradeBytes(subnetName, upgradeBytesPath)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -181,7 +181,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can create and apply to locally running subnet SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
 
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 
@@ -214,7 +214,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can't upgrade transactionAllowList precompile because admin address doesn't have enough token SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
 
 		commands.DeploySubnetLocallySOV(subnetName)
 
@@ -226,7 +226,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can upgrade transactionAllowList precompile because admin address has enough tokens SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisPath, commands.PoaValidatorManagerOwner)
 
 		commands.DeploySubnetLocallySOV(subnetName)
 
@@ -240,7 +240,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 	ginkgo.It("can create and update future SOV", func() {
 		subnetEVMVersion1 := binaryToVersion[utils.SoloSubnetEVMKey1]
 		subnetEVMVersion2 := binaryToVersion[utils.SoloSubnetEVMKey2]
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigGenesisPathWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1, commands.PoaValidatorManagerOwner)
 
 		// check version
 		output, err := commands.DescribeSubnet(subnetName)
@@ -266,7 +266,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("upgrade SubnetEVM local deployment SOV", func() {
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigGenesisPathWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, subnetEVMVersion1, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -346,7 +346,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 		customVMPath, err := utils.DownloadCustomVMBin(binaryToVersion[utils.SoloSubnetEVMKey2])
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.CreateSubnetEvmConfigWithVersionSOV(
+		commands.CreateSubnetEvmConfigGenesisPathWithVersionSOV(
 			subnetName,
 			utils.SubnetEvmGenesisPath,
 			binaryToVersion[utils.SoloSubnetEVMKey1],
@@ -381,7 +381,7 @@ var _ = ginkgo.Describe("[Upgrade local network SOV]", ginkgo.Ordered, func() {
 
 	ginkgo.It("can upgrade subnet-evm on public deployment SOV", func() {
 		_ = commands.StartNetworkWithVersion(binaryToVersion[utils.SoloAvagoKey])
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1], commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigGenesisPathWithVersionSOV(subnetName, utils.SubnetEvmGenesisPath, binaryToVersion[utils.SoloSubnetEVMKey1], commands.PoaValidatorManagerOwner)
 
 		// Simulate fuji deployment
 		s := commands.SimulateFujiDeploySOV(subnetName, keyName, controlKeys)

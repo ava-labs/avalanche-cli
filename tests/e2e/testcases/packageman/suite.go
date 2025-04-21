@@ -77,7 +77,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		gomega.Expect(utils.CheckSubnetEVMExists(evmVersion)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, evmVersion, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigGenesisPathWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, evmVersion, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, avagoVersion)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -214,7 +214,7 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion1)).Should(gomega.BeFalse())
 		gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 
-		commands.CreateSubnetEvmConfigWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, evmVersion, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigGenesisPathWithVersionSOV(subnetName, utils.SubnetEvmGenesisPoaPath, evmVersion, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallyWithVersionSOV(subnetName, avagoVersion1)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {

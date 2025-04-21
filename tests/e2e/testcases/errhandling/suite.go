@@ -51,7 +51,7 @@ var _ = ginkgo.Describe("[Error handling]", func() {
 		ginkgo.Skip("run this manually only, times out")
 		// this will boot the subnet with a bad genesis:
 		// the root gas limit is smaller than the fee config gas limit, should fail
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisBadPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisBadPath, commands.PoaValidatorManagerOwner)
 		out, err := commands.DeploySubnetLocallyWithArgsAndOutputSOV(subnetName, "", "")
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(out).Should(gomega.ContainSubstring("does not match gas limit"))

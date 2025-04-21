@@ -70,7 +70,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can stop and restart a deployed subnet SOV", func() {
-		commands.CreateSubnetEvmConfigSOV(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
+		commands.CreateSubnetEvmConfigSOVWithGenesisPath(subnetName, utils.SubnetEvmGenesisPoaPath, commands.PoaValidatorManagerOwner)
 		deployOutput := commands.DeploySubnetLocallySOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {

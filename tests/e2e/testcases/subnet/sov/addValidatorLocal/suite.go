@@ -23,7 +23,7 @@ var avagoVersion string
 
 var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 	ginkgo.It("Create Etna Subnet Config", func() {
-		_, avagoVersion = commands.CreateEtnaSubnetEvmConfig(
+		_, avagoVersion = commands.CreateSubnetEvmConfigSOV(
 			utils.SubnetName,
 			ewoqEVMAddress,
 			commands.PoS,

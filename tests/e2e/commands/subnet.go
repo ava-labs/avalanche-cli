@@ -35,12 +35,12 @@ func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string) (string,
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
-func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string, validatorManagerOwner string) (string, string) {
+func CreateSubnetEvmConfigSOVWithGenesisPath(subnetName string, genesisPath string, validatorManagerOwner string) (string, string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	CreateSubnetEvmConfigWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey], validatorManagerOwner)
+	CreateSubnetEvmConfigGenesisPathWithVersionSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey], validatorManagerOwner)
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
@@ -85,7 +85,7 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 	gomega.Expect(exists).Should(gomega.BeTrue())
 }
 
-func CreateSubnetEvmConfigWithVersionSOV(subnetName string, genesisPath string, version string, validatorManagerOwner string) {
+func CreateSubnetEvmConfigGenesisPathWithVersionSOV(subnetName string, genesisPath string, version string, validatorManagerOwner string) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
