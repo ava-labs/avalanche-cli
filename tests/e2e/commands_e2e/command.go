@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package blockchain
+package commands_e2e
 
 import (
 	"encoding/json"
@@ -26,16 +26,19 @@ type TestJSONConfig struct {
 	NotHappyPath []TestCase             `json:"notHappyPath"`
 }
 
+// CommandGroup represents the different command groups available in the CLI
+type CommandGroup string
+
+const (
+	BlockchainCmd CommandGroup = "blockchain"
+)
+
 var avalancheBinaryPath = "./bin/avalanche"
 
-// SetAvalancheBinaryPath sets the path to the avalanche binary
-func SetAvalancheBinaryPath(path string) {
-	avalancheBinaryPath = path
-}
-
 // TestCommandWithJSONConfig tests a CLI command with flag inputs from a JSON file
-func TestCommandWithJSONConfig(command string, configPath string, testCase *TestCase) (string, error) {
-	blockchainCmd := "blockchain"
+func TestCommandWithJSONConfig(commandGroup CommandGroup, command string, args []string, configPath string, testCase *TestCase) (string, error) {
+	// Build command arguments
+	cmdArgs := []string{string(commandGroup), command}
 
 	// Read and parse the JSON config file
 	configData, err := os.ReadFile(configPath)
@@ -48,20 +51,15 @@ func TestCommandWithJSONConfig(command string, configPath string, testCase *Test
 		return "", fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Build command arguments
-	cmdArgs := []string{blockchainCmd, command}
-
-	// Add blockchain name from global flags
-	if blockchainName, ok := config.GlobalFlags["blockchainName"].(string); ok {
-		cmdArgs = append(cmdArgs, blockchainName)
+	// Append any additional arguments
+	if len(args) > 0 {
+		cmdArgs = append(cmdArgs, args...)
 	}
 
 	// Create a map to store all flags, starting with global flags
 	allFlags := make(map[string]interface{})
 	for flag, value := range config.GlobalFlags {
-		if flag != "blockchainName" {
-			allFlags[flag] = value
-		}
+		allFlags[flag] = value
 	}
 
 	// Override with test case specific flags if provided

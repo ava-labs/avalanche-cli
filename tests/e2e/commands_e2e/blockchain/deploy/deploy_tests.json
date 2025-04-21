@@ -2,8 +2,7 @@
   "globalFlags": {
     "local": true,
     "skip-icm-deploy": true,
-    "skip-update-check": true,
-    "blockchainName": "testSubnet"
+    "skip-update-check": true
   },
   "happyPath": [
     {
