@@ -6,7 +6,7 @@ package deploy
 import (
 	"fmt"
 
-	"github.com/ava-labs/avalanche-cli/tests/e2e/commandsE2E"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/commandse2e"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	config *commandsE2E.TestJSONConfig
+	config *commandse2e.TestJSONConfig
 	err    error
 )
 
@@ -31,7 +31,7 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		commands.CreateSubnetEvmConfigSOV(subnetName, ewoqEVMAddress, commands.PoA)
 
 		// Read test configuration
-		config, err = commandsE2E.ReadTestConfig(deployTestJSONPath)
+		config, err = commandse2e.ReadTestConfig(deployTestJSONPath)
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
@@ -45,8 +45,8 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		// Run each happy path test case
 		for _, testCase := range config.HappyPath {
 			ginkgo.By(fmt.Sprintf("Running test case: %s", testCase.Name))
-			_, err = commandsE2E.TestCommandWithJSONConfig(
-				commandsE2E.BlockchainCmd,
+			_, err = commandse2e.TestCommandWithJSONConfig(
+				commandse2e.BlockchainCmd,
 				"deploy",
 				blockchainCmdArgs,
 				deployTestJSONPath,
@@ -60,8 +60,8 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		// Run each not happy path test case
 		for _, testCase := range config.NotHappyPath {
 			ginkgo.By(fmt.Sprintf("Running test case: %s", testCase.Name))
-			_, err = commandsE2E.TestCommandWithJSONConfig(
-				commandsE2E.BlockchainCmd,
+			_, err = commandse2e.TestCommandWithJSONConfig(
+				commandse2e.BlockchainCmd,
 				"deploy",
 				blockchainCmdArgs,
 				deployTestJSONPath,
