@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	deployTestJSONPath = "tests/e2e/commands_e2e/blockchain/deploy/deploy_tests.json"
+	deployTestJSONPath = "tests/e2e/commandse2e/blockchain/deploy/deploy_tests.json"
 	subnetName         = "testSubnet"
 )
 
