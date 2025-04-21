@@ -195,6 +195,7 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
+	//TODO[artem]: remove
 	// C -> C +
 	// Subnet -> Subnet
 	if (senderChainFlags.CChain && receiverChainFlags.CChain) ||
@@ -202,12 +203,14 @@ func transferF(*cobra.Command, []string) error {
 		return intraEvmSend(network, senderChainFlags)
 	}
 
+	//TODO[artem]: remove
 	// C -> Subnet
 	// Subnet -> C
 	if !senderChainFlags.PChain && !senderChainFlags.XChain && !receiverChainFlags.PChain && !receiverChainFlags.XChain {
 		return interEvmSend(network, senderChainFlags, receiverChainFlags)
 	}
 
+	//TODO[artem]: remove
 	// Subnet -> P Not allowed
 	// Subnet -> X Not allowed
 	// P -> P +

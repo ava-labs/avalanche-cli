@@ -122,7 +122,7 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 }
 
 /* #nosec G204 */
-func KeyTransferSend(keyName, ledger, destinationAddr, destinationKey, amount, senderChain, senderBlockchainName, receiverChain, receiverBlockchainName string) *exec.Cmd {
+func KeyTransferSend(keyName, ledger, destinationAddr, destinationKey, amount, senderChain, senderBlockchainName, receiverChain, receiverBlockchainName, originTransferrerAddress, destinationTransferrerAddress string) *exec.Cmd {
 	// Create config
 	args := []string{
 		KeyCmd,
@@ -165,6 +165,14 @@ func KeyTransferSend(keyName, ledger, destinationAddr, destinationKey, amount, s
 
 	if amount != "" {
 		args = append(args, "--amount", amount)
+	}
+
+	if originTransferrerAddress != "" {
+		args = append(args, "--origin-transferrer-address", originTransferrerAddress)
+	}
+
+	if destinationTransferrerAddress != "" {
+		args = append(args, "--destination-transferrer-address", destinationTransferrerAddress)
 	}
 
 	cmd := exec.Command(CLIBinary, args...)
