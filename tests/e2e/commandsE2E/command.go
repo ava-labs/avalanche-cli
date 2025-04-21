@@ -1,6 +1,6 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package commands_e2e
+package commandsE2E
 
 import (
 	"encoding/json"
