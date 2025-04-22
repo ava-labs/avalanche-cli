@@ -17,7 +17,7 @@ type TestCase struct {
 	Name           string            `json:"name"`
 	Flags          map[string]string `json:"flags"`
 	ExpectedError  string            `json:"expectedError,omitempty"`
-	ExpectedOutput string            `json:"expectedOutput"`
+	ExpectedOutput []string          `json:"expectedOutput"`
 }
 
 // TestJSONConfig represents the json configuration that contains cli command flag inputs

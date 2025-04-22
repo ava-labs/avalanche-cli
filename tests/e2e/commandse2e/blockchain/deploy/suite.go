@@ -52,8 +52,13 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 				deployTestJSONPath,
 				&testCase,
 			)
-			if testCase.ExpectedOutput != "" {
-				gomega.Expect(output).Should(gomega.ContainSubstring(testCase.ExpectedOutput))
+			//if testCase.ExpectedOutput != "" {
+			//	gomega.Expect(output).Should(gomega.ContainSubstring(testCase.ExpectedOutput))
+			//}
+			if len(testCase.ExpectedOutput) > 0 {
+				for _, expectedOutput := range testCase.ExpectedOutput {
+					gomega.Expect(output).Should(gomega.ContainSubstring(expectedOutput))
+				}
 			}
 			gomega.Expect(err).Should(gomega.BeNil())
 		}

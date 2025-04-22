@@ -8,7 +8,38 @@
     {
       "name": "local deploy default",
       "flags": {},
-      "expectedOutput": "L1 is successfully deployed on Local Network"
+      "expectedOutput": [
+        "L1 is successfully deployed on Local Network"
+      ]
+    },
+    {
+      "name": "local deploy and use provided subnet id",
+      "flags": {
+        "subnet-id": ""
+      }
+    },
+    {
+      "name": "local deploy using provided avalanchego path in flag",
+      "flags": {
+        "avalanchego-path": ""
+      }
+    },
+    {
+      "name": "local deploy but only create Subnet",
+      "flags": {
+        "subnet-only": true
+      }
+    },
+    {
+      "name": "local deploy convert only",
+      "flags": {
+        "convert-only": true
+      },
+      "expectedOutput": [
+        "To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info",
+        "Ensure that the P2P port is exposed and 'public-ip' config value is set",
+        "Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager testSubnet` to finish conversion to sovereign L1"
+      ]
     }
   ],
   "notHappyPath": [
@@ -18,6 +49,26 @@
         "avalanchego-version": "invalid_version"
       },
       "expectedError": "invalid version string"
+    },
+    {
+      "name": "local deploy and use provided subnet id, but subnet id is invalid",
+      "flags": {
+        "subnet-id": ""
+      }
+    },
+    {
+      "name": "invalid_version",
+      "flags": {
+        "use-local-machine": false
+      },
+      "expectedError": "invalid version string"
+    },
+    {
+      "name": "local deploy and generate node id",
+      "flags": {
+        "generate-node-id": true
+      },
+      "expectedError": "invalid version string"
     }
   ]
-} 
+}
