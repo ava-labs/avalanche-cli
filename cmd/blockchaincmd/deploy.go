@@ -580,7 +580,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
-	if sidecar.Sovereign {
+	if sidecar.Sovereign && !subnetOnly {
 		if changeOwnerAddress == "" {
 			// use provided key as change owner unless already set
 			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
@@ -741,7 +741,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
 	var (
 		savePartialTx           bool
 		blockchainID            ids.ID
@@ -786,6 +785,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
+	}
+
+	// stop here if subnetOnly is true
+	if subnetOnly {
+		return nil
 	}
 
 	tracked := false
