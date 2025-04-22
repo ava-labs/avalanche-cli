@@ -5,13 +5,15 @@ package upgradecmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/spf13/cobra"
 )
 
-var upgradeBytesFilePath string
+var inputUpgradeBytesFilePath string
 
 const upgradeBytesFilePathKey = "upgrade-filepath"
 
@@ -25,7 +27,7 @@ func newUpgradeImportCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(1),
 	}
 
-	cmd.Flags().StringVar(&upgradeBytesFilePath, upgradeBytesFilePathKey, "", "Import upgrade bytes file into local environment")
+	cmd.Flags().StringVar(&inputUpgradeBytesFilePath, upgradeBytesFilePathKey, "", "Import upgrade bytes file into local environment")
 
 	return cmd
 }
@@ -37,25 +39,39 @@ func upgradeImportCmd(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if upgradeBytesFilePath == "" {
+	if inputUpgradeBytesFilePath == "" {
 		var err error
-		upgradeBytesFilePath, err = app.Prompt.CaptureExistingFilepath("Provide the path to the upgrade file to import")
+		inputUpgradeBytesFilePath, err = app.Prompt.CaptureExistingFilepath("Provide the path to the upgrade file to import")
 		if err != nil {
 			return err
 		}
 	}
 
-	if _, err := os.Stat(upgradeBytesFilePath); err != nil {
+	if _, err := os.Stat(inputUpgradeBytesFilePath); err != nil {
 		if err == os.ErrNotExist {
-			return fmt.Errorf("the upgrade file specified with path %q does not exist", upgradeBytesFilePath)
+			return fmt.Errorf("the upgrade file specified with path %q does not exist", inputUpgradeBytesFilePath)
 		}
 		return err
 	}
 
-	fileBytes, err := os.ReadFile(upgradeBytesFilePath)
+	fileBytes, err := os.ReadFile(inputUpgradeBytesFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to read the provided upgrade file: %w", err)
 	}
+
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(blockchainName)
+	if utils.FileExists(upgradeBytesFilePath) {
+		timestamp := time.Now().UTC().Format("20060102150405")
+		renamedUpgradeBytesFilePath := upgradeBytesFilePath + "_" + timestamp
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("A previous upgrade is found. Renaming it to %s", renamedUpgradeBytesFilePath)
+		if err := os.Rename(upgradeBytesFilePath, renamedUpgradeBytesFilePath); err != nil {
+			return err
+		}
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Writing upgrade into %s", upgradeBytesFilePath)
 
 	return app.WriteUpgradeFile(blockchainName, fileBytes)
 }

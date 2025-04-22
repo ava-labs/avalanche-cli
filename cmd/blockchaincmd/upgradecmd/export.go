@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var force bool
+var (
+	force bool
+	outputUpgradeBytesFilePath string
+)
 
 // avalanche blockchain upgrade import
 func newUpgradeExportCmd() *cobra.Command {
@@ -23,7 +26,7 @@ func newUpgradeExportCmd() *cobra.Command {
 		Args:  cobrautils.ExactArgs(1),
 	}
 
-	cmd.Flags().StringVar(&upgradeBytesFilePath, upgradeBytesFilePathKey, "", "Export upgrade bytes file to location of choice on disk")
+	cmd.Flags().StringVar(&outputUpgradeBytesFilePath, upgradeBytesFilePathKey, "", "Export upgrade bytes file to location of choice on disk")
 	cmd.Flags().BoolVar(&force, "force", false, "If true, overwrite a possibly existing file without prompting")
 
 	return cmd
@@ -36,17 +39,17 @@ func upgradeExportCmd(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if upgradeBytesFilePath == "" {
+	if outputUpgradeBytesFilePath == "" {
 		var err error
-		upgradeBytesFilePath, err = app.Prompt.CaptureString("Provide a path where we should export the file to")
+		outputUpgradeBytesFilePath, err = app.Prompt.CaptureString("Provide a path where we should export the file to")
 		if err != nil {
 			return err
 		}
 	}
 
 	if !force {
-		if _, err := os.Stat(upgradeBytesFilePath); err == nil {
-			ux.Logger.PrintToUser("The file specified with path %q already exists!", upgradeBytesFilePath)
+		if _, err := os.Stat(outputUpgradeBytesFilePath); err == nil {
+			ux.Logger.PrintToUser("The file specified with path %q already exists!", outputUpgradeBytesFilePath)
 
 			yes, err := app.Prompt.CaptureYesNo("Should we overwrite it?")
 			if err != nil {
@@ -63,8 +66,8 @@ func upgradeExportCmd(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Writing the upgrade bytes file to %q...", upgradeBytesFilePath)
-	err = os.WriteFile(upgradeBytesFilePath, fileBytes, constants.DefaultPerms755)
+	ux.Logger.PrintToUser("Writing the upgrade bytes file to %q...", outputUpgradeBytesFilePath)
+	err = os.WriteFile(outputUpgradeBytesFilePath, fileBytes, constants.DefaultPerms755)
 	if err != nil {
 		return err
 	}
