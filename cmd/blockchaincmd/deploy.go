@@ -183,10 +183,10 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
-	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
+	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints (not for local network)")
 	cmd.Flags().BoolVar(&convertOnly, "convert-only", false, "avoid node track, restart and poa manager setup")
 	cmd.Flags().BoolVar(&useLocalMachine, "use-local-machine", false, "use local machine as a blockchain validator")
-	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "(only if --generate-node-id is true) number of bootstrap validators to set up in sovereign L1 validator)")
+	cmd.Flags().IntVar(&numBootstrapValidators, "num-bootstrap-validators", 0, "number of bootstrap validators to set up in sovereign L1 validator (only if --generate-node-id is true)")
 	cmd.Flags().Float64Var(
 		&deployBalanceAVAX,
 		"balance",
@@ -381,6 +381,14 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 	}
 	return app.UpdateSidecar(sc)
 }
+func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) error {
+	if network.Kind == models.Local {
+		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine {
+			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
+		}
+	}
+	return nil
+}
 
 // deployBlockchain is the cobra command run for deploying subnets
 func deployBlockchain(cmd *cobra.Command, args []string) error {
@@ -478,6 +486,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {
+		if err = deployLocalNetworkPreCheck(cmd, network); err != nil {
+			return err
+		}
 		app.Log.Debug("Deploy local")
 
 		avagoVersion := userProvidedAvagoVersion

@@ -6,8 +6,9 @@
   },
   "happyPath": [
     {
-      "name": "local_deploy",
-      "flags": {}
+      "name": "local deploy default",
+      "flags": {},
+      "expectedOutput": "L1 is successfully deployed on Local Network"
     }
   ],
   "notHappyPath": [

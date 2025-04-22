@@ -45,13 +45,16 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		// Run each happy path test case
 		for _, testCase := range config.HappyPath {
 			ginkgo.By(fmt.Sprintf("Running test case: %s", testCase.Name))
-			_, err = commandse2e.TestCommandWithJSONConfig(
+			output, err := commandse2e.TestCommandWithJSONConfig(
 				commandse2e.BlockchainCmd,
 				"deploy",
 				blockchainCmdArgs,
 				deployTestJSONPath,
 				&testCase,
 			)
+			if testCase.ExpectedOutput != "" {
+				gomega.Expect(output).Should(gomega.ContainSubstring(testCase.ExpectedOutput))
+			}
 			gomega.Expect(err).Should(gomega.BeNil())
 		}
 	})
