@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -549,15 +550,26 @@ func LocalClusterTrackSubnet(
 // Loads an already existing cluster [clusterName]
 // Waits for all blockchains validated by the cluster to be bootstrapped
 // Sets default aliases for all blockchains validated by the cluster
+// If [blockchainName] is given, updates the blockchain configuration for it
 func LoadLocalCluster(
 	app *application.Avalanche,
 	clusterName string,
+	blockchainName string,
 	avalancheGoBinaryPath string,
 ) error {
 	if !LocalClusterExists(app, clusterName) {
 		return fmt.Errorf("local cluster %q is not found", clusterName)
 	}
 	networkDir := GetLocalClusterDir(app, clusterName)
+	if blockchainName != "" {
+		if err := UpdateBlockchainConfig(
+			app,
+			networkDir,
+			blockchainName,
+		); err != nil {
+			return err
+		}
+	}
 	networkModel, err := GetLocalClusterNetworkModel(app, clusterName)
 	if err != nil {
 		return err
@@ -597,4 +609,11 @@ func RefreshLocalClusterAliases(
 	defer cancel()
 	networkDir := GetLocalClusterDir(app, clusterName)
 	return TmpNetSetDefaultAliases(ctx, networkDir)
+}
+
+// Returns stardard cluster name as generated from [network] and [blockchainName]
+func LocalClusterName(network models.Network, blockchainName string) string {
+	blockchainNameComponent := strings.ReplaceAll(blockchainName, " ", "-")
+	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
+	return fmt.Sprintf("%s-local-node-%s", blockchainNameComponent, networkNameComponent)
 }

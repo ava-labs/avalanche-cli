@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
@@ -125,8 +124,7 @@ func StartLocalMachine(
 	if network.Kind == models.Local {
 		useLocalMachine = true
 	}
-	networkNameComponent := strings.ReplaceAll(strings.ToLower(network.Name()), " ", "-")
-	clusterName := fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent)
+	clusterName := localnet.LocalClusterName(network, blockchainName)
 	if clusterNameFlagValue != "" {
 		clusterName = clusterNameFlagValue
 		if localnet.LocalClusterExists(app, clusterName) {
@@ -242,6 +240,7 @@ func StartLocalMachine(
 		if err = node.StartLocalNode(
 			app,
 			clusterName,
+			blockchainName,
 			avagoBinaryPath,
 			uint32(numLocalNodes),
 			nodeConfig,

@@ -49,6 +49,7 @@ func setupAvalancheGo(
 func StartLocalNode(
 	app *application.Avalanche,
 	clusterName string,
+	blockchainName string,
 	avalancheGoBinaryPath string,
 	numNodes uint32,
 	defaultFlags map[string]interface{},
@@ -69,7 +70,7 @@ func StartLocalNode(
 
 	if localnet.LocalClusterExists(app, clusterName) {
 		ux.Logger.GreenCheckmarkToUser("Local cluster %s found. Booting up...", clusterName)
-		if err := localnet.LoadLocalCluster(app, clusterName, avalancheGoBinaryPath); err != nil {
+		if err := localnet.LoadLocalCluster(app, clusterName, blockchainName, avalancheGoBinaryPath); err != nil {
 			return err
 		}
 	} else {

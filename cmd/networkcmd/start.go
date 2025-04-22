@@ -262,13 +262,14 @@ func startLocalClusters(avalancheGoBinPath string) error {
 	}
 	for _, blockchain := range blockchains {
 		blockchainName := blockchain.Name
-		clusterName := blockchainName + "-local-node-local-network"
+		clusterName := localnet.LocalClusterName(models.NewLocalNetwork(), blockchainName)
 		if !localnet.LocalClusterExists(app, clusterName) {
 			continue
 		}
 		if err = node.StartLocalNode(
 			app,
 			clusterName,
+			blockchainName,
 			avalancheGoBinPath,
 			0,
 			nil,

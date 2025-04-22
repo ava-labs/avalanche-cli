@@ -10,21 +10,17 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
+	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 )
 
-// Tracks the given [blockchainName] at network given on [networkDir]
-// After P-Chain is bootstrapped, set alias [blockchainName]->blockchainID
-// for the network, and persists RPC into sidecar
-// Use both for local networks and local clusters
-func TrackSubnet(
+// Update network given by [networkDir], with all blockchain config of [blockchainName]
+func UpdateBlockchainConfig(
 	app *application.Avalanche,
-	printFunc func(msg string, args ...interface{}),
-	blockchainName string,
 	networkDir string,
-	wallet *primary.Wallet,
+	blockchainName string,
 ) error {
 	networkModel, err := GetNetworkModel(networkDir)
 	if err != nil {
@@ -40,15 +36,26 @@ func TrackSubnet(
 	blockchainID := sc.Networks[networkModel.Name()].BlockchainID
 	subnetID := sc.Networks[networkModel.Name()].SubnetID
 	var (
-		blockchainConfig []byte
-		subnetConfig     []byte
+		blockchainConfig   []byte
+		blockchainUpgrades []byte
+		subnetConfig       []byte
 	)
+	vmID, err := utils.VMID(blockchainName)
+	if err != nil {
+		return err
+	}
 	vmBinaryPath, err := SetupVMBinary(app, blockchainName)
 	if err != nil {
 		return fmt.Errorf("failed to setup VM binary: %w", err)
 	}
 	if app.ChainConfigExists(blockchainName) {
 		blockchainConfig, err = os.ReadFile(app.GetChainConfigPath(blockchainName))
+		if err != nil {
+			return err
+		}
+	}
+	if app.NetworkUpgradeExists(blockchainName) {
+		blockchainUpgrades, err = os.ReadFile(app.GetUpgradeBytesFilepath(blockchainName))
 		if err != nil {
 			return err
 		}
@@ -63,6 +70,51 @@ func TrackSubnet(
 	if err != nil {
 		return err
 	}
+	return TmpNetUpdateBlockchainConfig(
+		app.Log,
+		networkDir,
+		subnetID,
+		blockchainID,
+		vmID,
+		vmBinaryPath,
+		blockchainConfig,
+		perNodeBlockchainConfig,
+		blockchainUpgrades,
+		subnetConfig,
+	)
+}
+
+// Tracks the given [blockchainName] at network given on [networkDir]
+// After P-Chain is bootstrapped, set alias [blockchainName]->blockchainID
+// for the network, and persists RPC into sidecar
+// Use both for local networks and local clusters
+func TrackSubnet(
+	app *application.Avalanche,
+	printFunc func(msg string, args ...interface{}),
+	blockchainName string,
+	networkDir string,
+	wallet *primary.Wallet,
+) error {
+	if err := UpdateBlockchainConfig(
+		app,
+		networkDir,
+		blockchainName,
+	); err != nil {
+		return err
+	}
+	networkModel, err := GetNetworkModel(networkDir)
+	if err != nil {
+		return err
+	}
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	if sc.Networks[networkModel.Name()].BlockchainID == ids.Empty {
+		return fmt.Errorf("blockchain %s has not been deployed to %s", blockchainName, networkModel.Name())
+	}
+	blockchainID := sc.Networks[networkModel.Name()].BlockchainID
+	subnetID := sc.Networks[networkModel.Name()].SubnetID
 	ctx, cancel := networkModel.BootstrappingContext()
 	defer cancel()
 	if err := TmpNetTrackSubnet(
@@ -70,14 +122,9 @@ func TrackSubnet(
 		app.Log,
 		printFunc,
 		networkDir,
-		blockchainName,
 		sc.Sovereign,
 		blockchainID,
 		subnetID,
-		vmBinaryPath,
-		blockchainConfig,
-		subnetConfig,
-		perNodeBlockchainConfig,
 		wallet,
 	); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {

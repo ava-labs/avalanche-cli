@@ -5,7 +5,7 @@ package upgradecmd
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
+	"os"
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
@@ -17,8 +17,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	avalancheSDK "github.com/ava-labs/avalanche-cli/sdk/vm"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/units"
-	"github.com/ava-labs/coreth/ethclient"
 	"github.com/ava-labs/subnet-evm/commontype"
 	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/deployerallowlist"
@@ -30,7 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 const (
@@ -118,7 +115,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 			return err
 		}
 
-		ux.Logger.PrintToUser(fmt.Sprintf("Set parameters for the %q precompile", precomp))
+		ux.Logger.PrintToUser("Set parameters for the %q precompile", precomp)
 		if cancelled, err := promptParams(precomp, &precompiles.PrecompileUpgrades); err != nil {
 			return err
 		} else if cancelled {
@@ -147,6 +144,20 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(blockchainName)
+	if utils.FileExists(upgradeBytesFilePath) {
+		timestamp := time.Now().UTC().Format("20060102150405")
+		renamedUpgradeBytesFilePath := upgradeBytesFilePath + "_" + timestamp
+		ux.Logger.PrintToUser("")
+		ux.Logger.PrintToUser("A previous upgrade is found. Renaming it to %s", renamedUpgradeBytesFilePath)
+		if err := os.Rename(upgradeBytesFilePath, renamedUpgradeBytesFilePath); err != nil {
+			return err
+		}
+	}
+
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("Writing upgrade into %s", upgradeBytesFilePath)
 
 	return app.WriteUpgradeFile(blockchainName, jsonBytes)
 }
@@ -529,71 +540,6 @@ func promptTxAllowListParams(
 	return false, nil
 }
 
-func getCClient(apiEndpoint string, blockchainID string) (ethclient.Client, error) {
-	cClient, err := ethclient.Dial(fmt.Sprintf("%s/ext/bc/%s/rpc", apiEndpoint, blockchainID))
-	if err != nil {
-		return nil, err
-	}
-	return cClient, nil
-}
-
-func ensureHaveBalanceLocalNetwork(which string, addresses []common.Address, blockchainID string) error {
-	cClient, err := getCClient(constants.LocalAPIEndpoint, blockchainID)
-	if err != nil {
-		return err
-	}
-	for _, address := range addresses {
-		// we can break at the first address who has a non-zero balance
-		accountBalance, err := getAccountBalance(cClient, address.String())
-		if err != nil {
-			return err
-		}
-		if accountBalance > float64(0) {
-			return nil
-		}
-	}
-	return fmt.Errorf("at least one of the %s addresses requires a positive token balance", which)
-}
-
-func ensureHaveBalance(
-	sc *models.Sidecar,
-	which string,
-	addresses []common.Address,
-) error {
-	if len(addresses) < 1 {
-		return nil
-	}
-	switch sc.VM {
-	case models.SubnetEvm:
-		// Currently only checking if admins have balance for subnets deployed in Local Network
-		if networkData, ok := sc.Networks["Local Network"]; ok {
-			blockchainID := networkData.BlockchainID.String()
-			if err := ensureHaveBalanceLocalNetwork(which, addresses, blockchainID); err != nil {
-				return err
-			}
-		}
-	default:
-		app.Log.Warn("Unsupported VM type", zap.Any("vm-type", sc.VM))
-	}
-	return nil
-}
-
-func getAccountBalance(cClient ethclient.Client, addrStr string) (float64, error) {
-	addr := common.HexToAddress(addrStr)
-	ctx, cancel := utils.GetAPIContext()
-	balance, err := cClient.BalanceAt(ctx, addr, nil)
-	defer cancel()
-	if err != nil {
-		return 0, err
-	}
-	// convert to nAvax
-	balance = balance.Div(balance, big.NewInt(int64(units.Avax)))
-	if balance.Cmp(big.NewInt(0)) == 0 {
-		return 0, nil
-	}
-	return float64(balance.Uint64()) / float64(units.Avax), nil
-}
-
 func promptAdminManagerAndEnabledAddresses(
 	sc *models.Sidecar,
 	action string,
@@ -601,12 +547,6 @@ func promptAdminManagerAndEnabledAddresses(
 	allowList, cancelled, err := vm.GenerateAllowList(app, vm.AllowList{}, action, sc.VMVersion)
 	if cancelled || err != nil {
 		return nil, nil, nil, cancelled, err
-	}
-	if err := ensureHaveBalance(sc, adminLabel, allowList.AdminAddresses); err != nil {
-		return nil, nil, nil, false, err
-	}
-	if err := ensureHaveBalance(sc, managerLabel, allowList.ManagerAddresses); err != nil {
-		return nil, nil, nil, false, err
 	}
 	return allowList.AdminAddresses, allowList.ManagerAddresses, allowList.EnabledAddresses, false, nil
 }
