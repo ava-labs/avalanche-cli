@@ -131,7 +131,7 @@ func MigrateANRToTmpNet(
 	}
 	if clusterToReload != "" {
 		printFunc("Restarting cluster %s.", clusterToReload)
-		if err := LoadLocalCluster(app, clusterToReload, "", ""); err != nil {
+		if err := LoadLocalCluster(app, clusterToReload, ""); err != nil {
 			return err
 		}
 		if clusterToReloadHasRelayer {

@@ -38,7 +38,7 @@ func networkStatus(*cobra.Command, []string) error {
 		}
 		nodesCount += len(network.Nodes)
 	}
-	blockchains, err := localnet.GetLocalNetworkBlockchainInfo(app)
+	blockchains, err := localnet.GetLocalNetworkBlockchainsInfo(app)
 	if err != nil {
 		return err
 	}

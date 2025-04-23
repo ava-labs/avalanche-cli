@@ -44,8 +44,6 @@ const (
 	RewardManager     = "Customize Fees Distribution"
 )
 
-var blockchainName string
-
 // avalanche blockchain upgrade generate
 func newUpgradeGenerateCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -60,7 +58,7 @@ guides the user through the process using an interactive wizard.`,
 }
 
 func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
-	blockchainName = args[0]
+	blockchainName := args[0]
 	if !app.GenesisExists(blockchainName) {
 		ux.Logger.PrintToUser("The provided blockchain name %q does not exist", blockchainName)
 		return nil
@@ -116,7 +114,7 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		}
 
 		ux.Logger.PrintToUser("Set parameters for the %q precompile", precomp)
-		if cancelled, err := promptParams(precomp, &precompiles.PrecompileUpgrades); err != nil {
+		if cancelled, err := promptParams(blockchainName, precomp, &precompiles.PrecompileUpgrades); err != nil {
 			return err
 		} else if cancelled {
 			continue
@@ -140,11 +138,15 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	jsonBytes, err := json.Marshal(&precompiles)
+	upgradeBytes, err := json.Marshal(&precompiles)
 	if err != nil {
 		return err
 	}
 
+	return writeUpgrade(blockchainName, upgradeBytes)
+}
+
+func writeUpgrade(blockchainName string, upgradeBytes []byte) error {
 	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(blockchainName)
 	if utils.FileExists(upgradeBytesFilePath) {
 		timestamp := time.Now().UTC().Format("20060102150405")
@@ -155,11 +157,31 @@ func upgradeGenerateCmd(_ *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
 	ux.Logger.PrintToUser("")
 	ux.Logger.PrintToUser("Writing upgrade into %s", upgradeBytesFilePath)
+	if err := app.WriteUpgradeFile(blockchainName, upgradeBytes); err != nil {
+		return err
+	}
+	PrintHowToApplyConfChangesMessage(blockchainName)
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("For instructions/help on applying the change to validators not managed by CLI:")
+	ux.Logger.PrintToUser("  avalanche blockchain upgrade apply")
+	return nil
+}
 
-	return app.WriteUpgradeFile(blockchainName, jsonBytes)
+func PrintHowToApplyConfChangesMessage(blockchainName string) {
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("To apply the change on Local Network:")
+	ux.Logger.PrintToUser("  avalanche network stop")
+	ux.Logger.PrintToUser("  avalanche network start")
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("To apply the change to local validators on Fuji:")
+	ux.Logger.PrintToUser("  avalanche node local stop %s-local-node-fuji", blockchainName)
+	ux.Logger.PrintToUser("  avalanche node local start %s-local-start-fuji", blockchainName)
+	ux.Logger.PrintToUser("")
+	ux.Logger.PrintToUser("To apply the change to local validators on Mainnet:")
+	ux.Logger.PrintToUser("  avalanche node local stop %s-local-node-mainnet", blockchainName)
+	ux.Logger.PrintToUser("  avalanche node local start %s-local-start-mainnet", blockchainName)
 }
 
 func queryActivationTimestamp() (time.Time, error) {
@@ -200,7 +222,7 @@ func queryActivationTimestamp() (time.Time, error) {
 	return date, nil
 }
 
-func promptParams(precomp string, precompiles *[]params.PrecompileUpgrade) (bool, error) {
+func promptParams(blockchainName string, precomp string, precompiles *[]params.PrecompileUpgrade) (bool, error) {
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
 		return false, err

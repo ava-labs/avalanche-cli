@@ -4,6 +4,7 @@ package localnet
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -39,6 +40,7 @@ func UpdateBlockchainConfig(
 		blockchainConfig   []byte
 		blockchainUpgrades []byte
 		subnetConfig       []byte
+		nodeConfig         map[string]interface{}
 	)
 	vmID, err := utils.VMID(blockchainName)
 	if err != nil {
@@ -70,6 +72,24 @@ func UpdateBlockchainConfig(
 	if err != nil {
 		return err
 	}
+	// general node config
+	nodeConfigStr, err := app.Conf.LoadNodeConfig()
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal([]byte(nodeConfigStr), &nodeConfig); err != nil {
+		return fmt.Errorf("invalid common node config JSON: %w", err)
+	}
+	// blockchain node config
+	if app.AvagoNodeConfigExists(blockchainName) {
+		blockchainNodeConfig, err := utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
+		if err != nil {
+			return err
+		}
+		for k, v := range blockchainNodeConfig {
+			nodeConfig[k] = v
+		}
+	}
 	return TmpNetUpdateBlockchainConfig(
 		app.Log,
 		networkDir,
@@ -81,6 +101,7 @@ func UpdateBlockchainConfig(
 		perNodeBlockchainConfig,
 		blockchainUpgrades,
 		subnetConfig,
+		nodeConfig,
 	)
 }
 

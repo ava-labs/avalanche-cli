@@ -209,12 +209,6 @@ func StartLocalMachine(
 			return false, err
 		}
 		nodeConfig := map[string]interface{}{}
-		if app.AvagoNodeConfigExists(blockchainName) {
-			nodeConfig, err = utils.ReadJSON(app.GetAvagoNodeConfigPath(blockchainName))
-			if err != nil {
-				return false, err
-			}
-		}
 		if partialSync {
 			nodeConfig[config.PartialSyncPrimaryNetworkKey] = true
 		}
@@ -240,7 +234,6 @@ func StartLocalMachine(
 		if err = node.StartLocalNode(
 			app,
 			clusterName,
-			blockchainName,
 			avagoBinaryPath,
 			uint32(numLocalNodes),
 			nodeConfig,

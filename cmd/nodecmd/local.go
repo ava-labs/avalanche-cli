@@ -268,7 +268,6 @@ func localStartNode(_ *cobra.Command, args []string) error {
 	return node.StartLocalNode(
 		app,
 		clusterName,
-		"",
 		avalanchegoBinaryPath,
 		numNodes,
 		nodeConfig,

@@ -349,7 +349,7 @@ func IsTmpNetNodeTrackingSubnet(
 	if subnetID == ids.Empty {
 		return true, nil
 	}
-	trackedSubnets, err := GetTmpNetNodesTrackedSubnets(nodes)
+	trackedSubnets, err := GetTmpNetTrackedSubnets(nodes)
 	if err != nil {
 		return false, err
 	}
@@ -357,7 +357,7 @@ func IsTmpNetNodeTrackingSubnet(
 }
 
 // Returns the subnets tracked by [nodes]
-func GetTmpNetNodesTrackedSubnets(
+func GetTmpNetTrackedSubnets(
 	nodes []*tmpnet.Node,
 ) ([]ids.ID, error) {
 	trackedSubnets := []ids.ID{}
@@ -427,7 +427,7 @@ func TmpNetSetDefaultAliases(ctx context.Context, networkDir string) error {
 	if err != nil {
 		return err
 	}
-	blockchains, err := GetBlockchainInfo(endpoint)
+	blockchains, err := GetBlockchainsInfo(endpoint)
 	if err != nil {
 		return err
 	}
@@ -718,10 +718,17 @@ func TmpNetUpdateBlockchainConfig(
 	perNodeBlockchainConfig map[ids.NodeID][]byte,
 	blockchainUpgrades []byte,
 	subnetConfig []byte,
+	nodeConfig map[string]interface{},
 ) error {
 	network, err := GetTmpNetNetwork(networkDir)
 	if err != nil {
 		return err
+	}
+	// blockchain specific avalanchego flags
+	for i := range network.Nodes {
+		for k, v := range nodeConfig {
+			network.Nodes[i].Flags[k] = v
+		}
 	}
 	// VM Binary setup
 	if err := TmpNetInstallVM(log, network, vmBinaryPath, vmID); err != nil {
@@ -763,7 +770,7 @@ func TmpNetUpdateBlockchainConfig(
 			return err
 		}
 	}
-	return nil
+	return network.Write()
 }
 
 // Add all network nodes of [network] as non SOV validators of [subnetID], using [wallet] to pay for fees
