@@ -4,8 +4,6 @@
 package deploy
 
 import (
-	"fmt"
-
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commandse2e"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -47,7 +45,6 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 			"avalanchego-version": "invalid_version",
 		}
 		output, err := commandse2e.TestCommand(commandse2e.BlockchainCmd, "deploy", blockchainCmdArgs, testFlags)
-		fmt.Printf("obtained output %s \n", string(output))
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("invalid version string"))
 	})
