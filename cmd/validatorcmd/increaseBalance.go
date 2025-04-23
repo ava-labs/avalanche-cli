@@ -86,7 +86,6 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	deployer := subnet.NewPublicDeployer(app, kc, network)
 
 	var balance uint64
 	if balanceAVAX == 0 {
@@ -102,11 +101,11 @@ func increaseBalance(_ *cobra.Command, _ []string) error {
 	}
 	balance = uint64(balanceAVAX * float64(units.Avax))
 
-	_, err = deployer.IncreaseValidatorPChainBalance(validationID, balance)
-	if err != nil {
+	deployer := subnet.NewPublicDeployer(app, kc, network)
+	if _, err := deployer.IncreaseValidatorPChainBalance(validationID, balance); err != nil {
 		return err
 	}
-	deployer.CleanCacheWallet()
+
 	balance, err = validator.GetValidatorBalance(network.SDKNetwork(), validationID)
 	if err != nil {
 		return err

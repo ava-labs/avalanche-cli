@@ -56,7 +56,16 @@ then
 	extra_build_args="-tags ledger_zemu"
 fi
 
-ACK_GINKGO_RC=true ginkgo build $extra_build_args ./tests/e2e
+ACK_GINKGO_RC=true ~/go/bin/ginkgo build $extra_build_args ./tests/e2e
+
+if [ "${COVERAGE_MODE:-}" == true ]
+then
+    export GOCOVERDIR=coverage/e2e
+	echo 'Coverage mode enabled - re-creating coverage dir $GOCOVERDIR'
+	echo 'It requires the CLI binary to be built by build.sh with COVERAGE_MODE=true too'
+	rm -rf ${GOCOVERDIR}
+	mkdir -p ${GOCOVERDIR}
+fi
 
 ./tests/e2e/e2e.test --ginkgo.v $description_filter
 
@@ -67,4 +76,11 @@ if [[ ${EXIT_CODE} -gt 0 ]]; then
   exit ${EXIT_CODE}
 else
   echo "ALL SUCCESS!"
+
+  if [ "${COVERAGE_MODE:-}" == true ]
+  then
+    echo "Generating coverage report: ${GOCOVERDIR}/profile.txt"
+    go tool covdata textfmt -i=${GOCOVERDIR} -o ${GOCOVERDIR}/profile.txt
+    # go tool cover -func ${GOCOVERDIR}/profile.txt
+  fi
 fi

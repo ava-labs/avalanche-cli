@@ -7,7 +7,7 @@ import "time"
 const (
 	// http
 	APIRequestTimeout      = 10 * time.Second
-	APIRequestLargeTimeout = 2 * time.Minute
+	APIRequestLargeTimeout = 30 * time.Second
 
 	// node
 	UserOnlyWriteReadPerms     = 0o600

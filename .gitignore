@@ -3,6 +3,8 @@
 *~
 .DS_Store
 
+# code coverage files
+coverage/
 
 # Binaries for programs and plugins
 *.exe

@@ -30,5 +30,9 @@ if [ "${LEDGER_SIM:-}" == true ]
 then
 	extra_build_args="-tags ledger_zemu"
 fi
+if [ "${COVERAGE_MODE:-}" == true ]
+then
+	extra_build_args+=" -cover -race"
+fi
 
 go build -v -ldflags="-X 'github.com/ava-labs/avalanche-cli/cmd.Version=$VERSION' -X github.com/ava-labs/avalanche-cli/pkg/metrics.telemetryToken=$AVALANCHE_CLI_METRICS_TOKEN" $extra_build_args -o $BIN

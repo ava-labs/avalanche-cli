@@ -10,10 +10,10 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
-	"github.com/ava-labs/avalanche-cli/pkg/evm"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
@@ -67,7 +67,6 @@ func InitValidatorWeightChange(
 	ownerPrivateKey string,
 	nodeID ids.NodeID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	weight uint64,
@@ -145,7 +144,7 @@ func InitValidatorWeightChange(
 	}
 
 	if receipt != nil {
-		unsignedMessage, err = GetWarpMessageFromLogs(receipt.Logs)
+		unsignedMessage, err = evm.ExtractWarpMessageFromReceipt(receipt)
 		if err != nil {
 			return nil, ids.Empty, nil, err
 		}
@@ -164,7 +163,6 @@ func InitValidatorWeightChange(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		unsignedMessage,
 		subnetID,
@@ -211,7 +209,6 @@ func FinishValidatorWeightChange(
 	privateKey string,
 	validationID ids.ID,
 	aggregatorExtraPeerEndpoints []info.Peer,
-	aggregatorAllowPrivatePeers bool,
 	aggregatorLogger logging.Logger,
 	validatorManagerAddressStr string,
 	l1ValidatorRegistrationSignedMessage *warp.Message,
@@ -238,7 +235,6 @@ func FinishValidatorWeightChange(
 		network,
 		aggregatorLogger,
 		0,
-		aggregatorAllowPrivatePeers,
 		aggregatorExtraPeerEndpoints,
 		subnetID,
 		l1ValidatorRegistrationSignedMessage,
@@ -250,11 +246,13 @@ func FinishValidatorWeightChange(
 		return nil, err
 	}
 	if privateKey != "" {
-		if err := evm.SetupProposerVM(
-			rpcURL,
-			privateKey,
-		); err != nil {
-			ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+		if client, err := evm.GetClient(rpcURL); err != nil {
+			ux.Logger.RedXToUser("failure connecting to L1 to setup proposer VM: %s", err)
+		} else {
+			if err := client.SetupProposerVM(privateKey); err != nil {
+				ux.Logger.RedXToUser("failure setting proposer VM on L1: %w", err)
+			}
+			client.Close()
 		}
 	}
 	ownerAddress := common.HexToAddress(ownerAddressStr)
@@ -280,7 +278,6 @@ func GetL1ValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	// message is given
 	unsignedMessage *warp.UnsignedMessage,
@@ -323,7 +320,6 @@ func GetL1ValidatorWeightMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -337,7 +333,6 @@ func GetPChainL1ValidatorWeightMessage(
 	network models.Network,
 	aggregatorLogger logging.Logger,
 	aggregatorQuorumPercentage uint64,
-	aggregatorAllowPrivateIPs bool,
 	aggregatorExtraPeerEndpoints []info.Peer,
 	subnetID ids.ID,
 	// message is given
@@ -389,7 +384,6 @@ func GetPChainL1ValidatorWeightMessage(
 		aggregatorLogger,
 		subnetID,
 		aggregatorQuorumPercentage,
-		aggregatorAllowPrivateIPs,
 		aggregatorExtraPeerEndpoints,
 	)
 	if err != nil {
@@ -408,13 +402,11 @@ func GetL1ValidatorWeightMessageFromTx(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPILargeContext()
-	defer cancel()
-	receipt, err := client.TransactionReceipt(ctx, common.HexToHash(txHash))
+	receipt, err := client.TransactionReceipt(common.HexToHash(txHash))
 	if err != nil {
 		return nil, err
 	}
-	msgs := GetWarpMessagesFromLogs(receipt.Logs)
+	msgs := evm.GetWarpMessagesFromLogs(receipt.Logs)
 	for _, msg := range msgs {
 		payload := msg.Payload
 		addressedCall, err := warpPayload.ParseAddressedCall(payload)
@@ -440,30 +432,26 @@ func SearchForL1ValidatorWeightMessage(
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := utils.GetAPILargeContext()
-	defer cancel()
-	height, err := client.BlockNumber(ctx)
+	height, err := client.BlockNumber()
 	if err != nil {
 		return nil, err
 	}
 	maxBlock := int64(height)
 	minBlock := max(maxBlock-maxBlocksToSearch, 0)
 	for blockNumber := maxBlock; blockNumber >= minBlock; blockNumber-- {
-		ctx, cancel := utils.GetAPILargeContext()
-		defer cancel()
-		block, err := client.BlockByNumber(ctx, big.NewInt(blockNumber))
+		block, err := client.BlockByNumber(big.NewInt(blockNumber))
 		if err != nil {
 			return nil, err
 		}
 		blockHash := block.Hash()
-		logs, err := client.FilterLogs(ctx, interfaces.FilterQuery{
+		logs, err := client.FilterLogs(interfaces.FilterQuery{
 			BlockHash: &blockHash,
 			Addresses: []common.Address{subnetEvmWarp.Module.Address},
 		})
 		if err != nil {
 			return nil, err
 		}
-		msgs := GetWarpMessagesFromLogs(utils.PointersSlice(logs))
+		msgs := evm.GetWarpMessagesFromLogs(utils.PointersSlice(logs))
 		for _, msg := range msgs {
 			payload := msg.Payload
 			addressedCall, err := warpPayload.ParseAddressedCall(payload)
