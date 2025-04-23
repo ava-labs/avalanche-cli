@@ -3,6 +3,8 @@
 package networkcmd
 
 import (
+	"path"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
@@ -16,6 +18,7 @@ import (
 type StopFlags struct {
 	snapshotName string
 	dontSave     bool
+	snapshotDir  string
 }
 
 var stopFlags StopFlags
@@ -37,6 +40,14 @@ default snapshot with network start.`,
 	}
 	cmd.Flags().StringVar(&stopFlags.snapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to save network state into")
 	cmd.Flags().BoolVar(&stopFlags.dontSave, "dont-save", false, "do not save snapshot, just stop the network")
+
+	optNameSnapshotDir := "snapshot-dir" // TODO: move it to centralized const file
+	cmd.Flags().StringVar(&stopFlags.snapshotDir, optNameSnapshotDir, app.GetSnapshotsDir(), "(internal) directory to save snapshots into")
+	err := cmd.Flags().MarkHidden(optNameSnapshotDir)
+	if err != nil {
+		ux.Logger.PrintToUser("Error marking flag %s as hidden: %v", optNameSnapshotDir, err)
+	}
+
 	return cmd
 }
 
@@ -74,7 +85,7 @@ func stopAndSaveNetwork(flags StopFlags) error {
 	dontSave := autoSave || flags.dontSave
 
 	if !dontSave {
-		snapshotPath := app.GetSnapshotPath(flags.snapshotName)
+		snapshotPath := path.Join(stopFlags.snapshotDir, flags.snapshotName)
 		if err := localnet.TmpNetMove(networkDir, snapshotPath); err != nil {
 			return err
 		}
