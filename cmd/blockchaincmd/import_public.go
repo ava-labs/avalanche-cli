@@ -35,6 +35,7 @@ var (
 	useSubnetEvm    bool
 	useCustomVM     bool
 	rpcURL          string
+	noRPCAvailable  bool
 )
 
 // avalanche blockchain import public
@@ -70,6 +71,7 @@ plag.`,
 		"the blockchain ID",
 	)
 	cmd.Flags().StringVar(&rpcURL, "rpc", "", "rpc endpoint for the blockchain")
+	cmd.Flags().BoolVar(&noRPCAvailable, "no-rpc-available", false, "use this when an RPC if offline and can't be accesed")
 	return cmd
 }
 
@@ -95,7 +97,7 @@ func importPublic(*cobra.Command, []string) error {
 		}
 	}
 
-	sc, genBytes, err := importBlockchain(network, rpcURL, blockchainID, ux.Logger.PrintToUser)
+	sc, genBytes, err := importBlockchain(network, rpcURL, !noRPCAvailable, blockchainID, ux.Logger.PrintToUser)
 	if err != nil {
 		return err
 	}
@@ -181,12 +183,13 @@ func importPublic(*cobra.Command, []string) error {
 func importBlockchain(
 	network models.Network,
 	rpcURL string,
+	rpcIsAvailable bool,
 	blockchainID ids.ID,
 	printFunc func(msg string, args ...interface{}),
 ) (models.Sidecar, []byte, error) {
 	var err error
 
-	if rpcURL == "" {
+	if rpcIsAvailable && rpcURL == "" {
 		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
 			return models.Sidecar{}, nil, err
@@ -194,8 +197,11 @@ func importBlockchain(
 	}
 
 	if blockchainID == ids.Empty {
-		blockchainID, err = precompiles.WarpPrecompileGetBlockchainID(rpcURL)
-		if err != nil {
+		var err error
+		if rpcIsAvailable {
+			blockchainID, _ = precompiles.WarpPrecompileGetBlockchainID(rpcURL)
+		}
+		if blockchainID == ids.Empty {
 			blockchainID, err = app.Prompt.CaptureID("What is the Blockchain ID?")
 			if err != nil {
 				return models.Sidecar{}, nil, err
@@ -230,7 +236,6 @@ func importBlockchain(
 			network.Name(): {
 				SubnetID:     subnetID,
 				BlockchainID: blockchainID,
-				RPCEndpoints: []string{rpcURL},
 			},
 		},
 		Subnet:          blockchainName,
@@ -239,25 +244,33 @@ func importBlockchain(
 		ImportedFromAPM: true,
 	}
 
+	if rpcIsAvailable {
+		e := sc.Networks[network.Name()]
+		e.RPCEndpoints = []string{rpcURL}
+		sc.Networks[network.Name()] = e
+	}
+
 	if !subnetInfo.IsPermissioned {
 		sc.Sovereign = true
 		validatorManagerAddress = "0x" + hex.EncodeToString(subnetInfo.ManagerAddress)
 		e := sc.Networks[network.Name()]
 		e.ValidatorManagerAddress = validatorManagerAddress
 		sc.Networks[network.Name()] = e
-		sc.ValidatorManagement, err = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
-		if err != nil {
-			return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type: %w", err)
-		}
 		printFunc("  Validator Manager Address: %s", validatorManagerAddress)
-		printFunc("  Validation Kind: %s", sc.ValidatorManagement)
-		if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
-			owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+		if rpcIsAvailable {
+			sc.ValidatorManagement, err = validatorManagerSDK.GetValidatorManagerType(rpcURL, common.HexToAddress(validatorManagerAddress))
 			if err != nil {
-				return models.Sidecar{}, nil, err
+				return models.Sidecar{}, nil, fmt.Errorf("could not obtain validator manager type: %w", err)
 			}
-			sc.ValidatorManagerOwner = owner.String()
-			printFunc("  Validator Manager Owner: %s", sc.ValidatorManagerOwner)
+			printFunc("  Validation Kind: %s", sc.ValidatorManagement)
+			if sc.ValidatorManagement == validatormanagertypes.ProofOfAuthority {
+				owner, err := contract.GetContractOwner(rpcURL, common.HexToAddress(validatorManagerAddress))
+				if err != nil {
+					return models.Sidecar{}, nil, err
+				}
+				sc.ValidatorManagerOwner = owner.String()
+				printFunc("  Validator Manager Owner: %s", sc.ValidatorManagerOwner)
+			}
 		}
 	}
 
