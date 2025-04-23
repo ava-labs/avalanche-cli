@@ -28,6 +28,7 @@ const (
 	SubnetEvmGenesisPath      = "tests/e2e/assets/test_subnet_evm_genesis.json"
 	SubnetEvmGenesis2Path     = "tests/e2e/assets/test_subnet_evm_genesis_2.json"
 	EwoqKeyPath               = "tests/e2e/assets/ewoq_key.pk"
+	AvalancheGoBinaryPath     = "tests/e2e/assets/avalanchego"
 	SubnetEvmAllowFeeRecpPath = "tests/e2e/assets/test_subnet_evm_allowFeeRecps_genesis.json"
 	SubnetEvmGenesisBadPath   = "tests/e2e/assets/test_subnet_evm_genesis_bad.json"
 	BootstrapValidatorPath    = "tests/e2e/assets/test_bootstrap_validator.json"

@@ -14,10 +14,11 @@ import (
 
 // TestCase represents a single test case configuration
 type TestCase struct {
-	Name           string            `json:"name"`
-	Flags          map[string]string `json:"flags"`
-	ExpectedError  string            `json:"expectedError,omitempty"`
-	ExpectedOutput []string          `json:"expectedOutput"`
+	Name               string            `json:"name"`
+	Flags              map[string]string `json:"flags"`
+	ExpectedError      string            `json:"expectedError,omitempty"`
+	ExpectedContain    []string          `json:"expectedContain"`
+	ExpectedNotContain []string          `json:"expectedNotContain"`
 }
 
 // TestJSONConfig represents the json configuration that contains cli command flag inputs

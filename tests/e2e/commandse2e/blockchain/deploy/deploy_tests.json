@@ -8,7 +8,7 @@
     {
       "name": "local deploy default",
       "flags": {},
-      "expectedOutput": [
+      "expectedContain": [
         "L1 is successfully deployed on Local Network"
       ]
     },
@@ -16,30 +16,59 @@
       "name": "local deploy and use provided subnet id",
       "flags": {
         "subnet-id": ""
-      }
+      },
+      "expectedContain": [
+        "Deploying into pre-existent subnet ID",
+        "CreateChainTx fee",
+        "ConvertSubnetToL1Tx fee",
+        "L1 is successfully deployed on Local Network"
+      ],
+      "expectedNotContain": [
+        "CreateSubnetTx fee"
+      ]
     },
     {
       "name": "local deploy using provided avalanchego path in flag",
       "flags": {
-        "avalanchego-path": ""
-      }
-    },
-    {
-      "name": "local deploy but only create Subnet",
-      "flags": {
-        "subnet-only": true
-      }
+        "avalanchego-path": "tests/e2e/assets/avalanchego"
+      },
+    "expectedContain": [
+      "AvalancheGo path: {avalanchego-path}"
+    ]
     },
     {
       "name": "local deploy convert only",
       "flags": {
         "convert-only": true
       },
-      "expectedOutput": [
+      "expectedContain": [
         "To finish conversion to sovereign L1, create the corresponding Avalanche node(s) with the provided Node ID and BLS Info",
         "Ensure that the P2P port is exposed and 'public-ip' config value is set",
         "Once the Avalanche Node(s) are created and are tracking the blockchain, call `avalanche contract initValidatorManager testSubnet` to finish conversion to sovereign L1"
+      ],
+      "expectedNotContain": [
+        "CreateChainTx fee",
+        "ConvertSubnetToL1Tx fee",
+        "L1 is successfully deployed on Local Network"
       ]
+    },
+    {
+      "name": "local deploy using provided avalanchego path in flag",
+      "flags": {
+        "num-bootstrap-validators": ""
+      }
+    },
+    {
+      "name": "local deploy using provided avalanchego path in flag",
+      "flags": {
+        "balance": ""
+      }
+    },
+    {
+      "name": "local deploy using provided avalanchego path in flag",
+      "flags": {
+        "num-local-nodes": ""
+      }
     }
   ],
   "notHappyPath": [
@@ -51,10 +80,18 @@
       "expectedError": "invalid version string"
     },
     {
+      "name": "local deploy using invalid avalanchego path",
+      "flags": {
+        "avalanchego-path": "invalid_avago_path"
+      },
+      "expectedError": "invalid version string"
+    },
+    {
       "name": "local deploy and use provided subnet id, but subnet id is invalid",
       "flags": {
-        "subnet-id": ""
-      }
+        "subnet-id": "invalid_subnet_id"
+      },
+      "expectedError": "invalid version string"
     },
     {
       "name": "invalid_version",
