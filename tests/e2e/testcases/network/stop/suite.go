@@ -5,6 +5,7 @@ package network
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
@@ -30,13 +31,12 @@ var _ = ginkgo.Describe("[Local Network]", ginkgo.Ordered, func() {
 		gomega.Expect(err).ShouldNot(gomega.BeNil())
 		gomega.Expect(out).Should(gomega.ContainSubstring("network is not running"))
 
-		// check snapshot exists
+		// check default snapshot exists
 		snapshotExists := utils.CheckSnapshotExists(constants.DefaultSnapshotName)
 		gomega.Expect(snapshotExists).Should(gomega.BeTrue(), "default snapshot should exist")
 
-		// TODO
 		// clean up the snapshot
-		// utils.DeleteSnapshot(constants.DefaultSnapshotName)
+		utils.DeleteSnapshot(constants.DefaultSnapshotName)
 	})
 
 	ginkgo.It("can stop a started network with --dont-save", func() {
@@ -50,7 +50,10 @@ var _ = ginkgo.Describe("[Local Network]", ginkgo.Ordered, func() {
 		gomega.Expect(err).ShouldNot(gomega.BeNil())
 		gomega.Expect(out).Should(gomega.ContainSubstring("network is not running"))
 
-		// TODO
+		// make sure no snapshots exist
+		entries, err := os.ReadDir(utils.GetSnapshotsDir())
+		gomega.Expect(err).Should(gomega.BeNil())
+		gomega.Expect(entries).Should(gomega.BeEmpty(), "no snapshots should exist")
 	})
 
 	ginkgo.It("can stop a started network with --snapshot-name", func() {

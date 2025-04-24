@@ -462,7 +462,7 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
 				gomega.Expect(output).
-					Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/key/%s.pk: no such file or directory", keyName)))
+					Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/e2e/key/%s.pk: no such file or directory", keyName)))
 			})
 
 			ginkgo.It("should fail when destinationKeyName (not ewoq) is provided but no key is found", func() {
@@ -483,7 +483,7 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
 				gomega.Expect(output).
-					Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/key/%s.pk: no such file or directory", keyName)))
+					Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/e2e/key/%s.pk: no such file or directory", keyName)))
 			})
 
 			ginkgo.It("should fail when amount provided amount is negative", func() {
