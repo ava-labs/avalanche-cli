@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/spf13/pflag"
 	"os"
 	"path/filepath"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/networkcmd"
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
-	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
@@ -99,6 +99,7 @@ var (
 	ErrMutuallyExlusiveKeyLedger   = errors.New("key source flags --key, --ledger/--ledger-addrs are mutually exclusive")
 	ErrStoredKeyOnMainnet          = errors.New("key --key is not available for mainnet operations")
 	errMutuallyExlusiveSubnetFlags = errors.New("--subnet-only and --subnet-id are mutually exclusive")
+	showICMFlags                   bool
 )
 
 type BlockchainDeployFlags struct {
@@ -122,7 +123,15 @@ redeploy the chain with fresh state. You can deploy the same Blockchain to multi
 so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.`,
 		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
-		Args:              cobrautils.ExactArgs(1),
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Printf("we are pre runnign deploy only required arg %s \n", cmd.Name())
+			requiredArgCount := 1
+			if len(args) != requiredArgCount {
+				_ = cmd.Help() // show full help with flag grouping
+				return utils.ErrWrongArgCount(requiredArgCount, len(args))
+			}
+			return nil
+		},
 	}
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
@@ -145,42 +154,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().Uint32Var(&mainnetChainID, "mainnet-chain-id", 0, "use different ChainID for mainnet deployment")
 	cmd.Flags().StringVar(&avagoBinaryPath, "avalanchego-path", "", "use this avalanchego binary path")
 	cmd.Flags().BoolVar(&subnetOnly, "subnet-only", false, "only create a subnet")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
-	cmd.Flags().BoolVar(&icmSpec.SkipICMDeploy, "noicm", false, "skip automatic ICM deploy")
-	cmd.Flags().BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
-	cmd.Flags().StringVar(
-		&icmSpec.ICMVersion,
-		"teleporter-version",
-		constants.LatestReleaseVersionTag,
-		"ICM version to deploy",
-	)
-	cmd.Flags().StringVar(
-		&icmSpec.ICMVersion,
-		"icm-version",
-		constants.LatestReleaseVersionTag,
-		"ICM version to deploy",
-	)
-	cmd.Flags().StringVar(
-		&icmSpec.RelayerVersion,
-		"relayer-version",
-		constants.DefaultRelayerVersion,
-		"relayer version to deploy",
-	)
-	cmd.Flags().StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
-	cmd.Flags().StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
-	cmd.Flags().Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
-	cmd.Flags().StringVar(&relayerKeyName, "relayer-key", "", "key to be used by default both for rewards and to pay fees")
-	cmd.Flags().StringVar(&icmKeyName, "icm-key", constants.ICMKeyName, "key to be used to pay for ICM deploys")
-	cmd.Flags().StringVar(&cchainIcmKeyName, "cchain-icm-key", "", "key to be used to pay for ICM deploys on C-Chain")
-	cmd.Flags().BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
-	cmd.Flags().StringVar(&cChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
-	cmd.Flags().BoolVar(&relayerAllowPrivateIPs, "relayer-allow-private-ips", true, "allow relayer to connec to private ips")
-	cmd.Flags().StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
-	cmd.Flags().StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an ICM Messenger deployer address file")
-	cmd.Flags().StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an ICM Messenger deployer tx file")
-	cmd.Flags().StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
 	cmd.Flags().StringVar(&bootstrapValidatorsJSONFilePath, "bootstrap-filepath", "", "JSON file path that provides details about bootstrap validators, leave Node-ID and BLS values empty if using --generate-node-id=true")
 	cmd.Flags().BoolVar(&generateNodeID, "generate-node-id", false, "whether to create new node id for bootstrap validators (Node-ID and BLS values in bootstrap JSON file will be overridden if --bootstrap-filepath flag is used)")
 	cmd.Flags().StringSliceVar(&bootstrapEndpoints, "bootstrap-endpoints", nil, "take validator node info from the given endpoints")
@@ -207,6 +180,92 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
+	//cmd.Flags().BoolVar(&showICMFlags, "show-icm-flags", false, "Show ICM-related flags")
+	//// Create a separate FlagSet for ICM flags
+	//icmFlagSet := pflag.NewFlagSet("ICM Flags", pflag.ContinueOnError)
+	//
+	//// Define the flag in icmFlagSet
+	//icmFlagSet.BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
+	//
+	//// Add it to the main command *before* using Lookup
+	//cmd.Flags().AddFlagSet(icmFlagSet)
+	//
+	//// Now you can safely call Lookup on cmd.Flags()
+	//cmd.Flags().Lookup("skip-icm-deploy").Hidden = true
+
+	//cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+	//	show := false
+	//	for _, arg := range os.Args {
+	//		if arg == "--show-icm-flags" {
+	//			show = true
+	//			break
+	//		}
+	//	}
+	//
+	//	if show {
+	//		unhideICMFlags(cmd)
+	//	}
+	//
+	//	// Print normal help
+	//	cmd.Root().UsageFunc()(cmd)
+	//
+	//	// Add section manually if not showing flags
+	//	if !show {
+	//		fmt.Fprintln(cmd.OutOrStdout(), "\nICM Flags:\n  (hidden) Use --show-icm-flags to show these options")
+	//	} else {
+	//		fmt.Fprintln(cmd.OutOrStdout(), "\nICM Flags:")
+	//		icmFlagSet.VisitAll(func(flag *pflag.Flag) {
+	//			fmt.Fprintf(cmd.OutOrStdout(), "  --%s", flag.Name)
+	//			if flag.Value.Type() != "bool" {
+	//				fmt.Fprintf(cmd.OutOrStdout(), " %s", flag.Value.Type())
+	//			}
+	//			fmt.Fprintf(cmd.OutOrStdout(), "\t%s\n", flag.Usage)
+	//		})
+	//	}
+	//})
+	//cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{
+	//	{
+	//		Name:     "ICM Flags",
+	//		ShowFlag: "--show-icm-flags",
+	//		FlagSet:  icmFlagSet,
+	//		UnhideFunc: func(cmd *cobra.Command) {
+	//			unhideICMFlags(cmd)
+	//		},
+	//	},
+	//}))
+	icmGroup := flags.RegisterHiddenFlagGroup(cmd, "ICM Flags", "show-icm-flags", func(set *pflag.FlagSet) {
+		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "Skip automatic ICM deploy")
+		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
+		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
+		set.BoolVar(&icmSpec.SkipICMDeploy, "noicm", false, "skip automatic ICM deploy")
+
+		set.BoolVar(&icmSpec.SkipRelayerDeploy, skipRelayerFlagName, false, "skip relayer deploy")
+
+		set.StringVar(&icmSpec.ICMVersion, "teleporter-version", constants.LatestReleaseVersionTag, "ICM version to deploy")
+		set.StringVar(&icmSpec.ICMVersion, "icm-version", constants.LatestReleaseVersionTag, "ICM version to deploy")
+
+		set.StringVar(&icmSpec.RelayerVersion, "relayer-version", constants.DefaultRelayerVersion, "relayer version to deploy")
+		set.StringVar(&icmSpec.RelayerBinPath, "relayer-path", "", "relayer binary to use")
+		set.StringVar(&icmSpec.RelayerLogLevel, "relayer-log-level", "info", "log level to be used for relayer logs")
+
+		set.Float64Var(&relayerAmount, "relayer-amount", 0, "automatically fund relayer fee payments with the given amount")
+		set.StringVar(&relayerKeyName, "relayer-key", "", "key to be used by default both for rewards and to pay fees")
+
+		set.StringVar(&icmKeyName, "icm-key", constants.ICMKeyName, "key to be used to pay for ICM deploys")
+		set.StringVar(&cchainIcmKeyName, "cchain-icm-key", "", "key to be used to pay for ICM deploys on C-Chain")
+
+		set.BoolVar(&relayCChain, "relay-cchain", true, "relay C-Chain as source and destination")
+		set.StringVar(&cChainFundingKey, "cchain-funding-key", "", "key to be used to fund relayer account on cchain")
+
+		set.BoolVar(&relayerAllowPrivateIPs, "relayer-allow-private-ips", true, "allow relayer to connec to private ips")
+
+		set.StringVar(&icmSpec.MessengerContractAddressPath, "teleporter-messenger-contract-address-path", "", "path to an ICM Messenger contract address file")
+		set.StringVar(&icmSpec.MessengerDeployerAddressPath, "teleporter-messenger-deployer-address-path", "", "path to an ICM Messenger deployer address file")
+		set.StringVar(&icmSpec.MessengerDeployerTxPath, "teleporter-messenger-deployer-tx-path", "", "path to an ICM Messenger deployer tx file")
+		set.StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
+	})
+
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{icmGroup}))
 	return cmd
 }
 
