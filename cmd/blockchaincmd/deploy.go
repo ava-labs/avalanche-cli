@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/spf13/pflag"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"

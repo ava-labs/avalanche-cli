@@ -4,9 +4,10 @@ package flags
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
 )
 
 type GroupedFlags struct {
