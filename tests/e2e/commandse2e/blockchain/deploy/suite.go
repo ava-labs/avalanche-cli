@@ -15,10 +15,6 @@ const (
 	subnetName = "testSubnet"
 )
 
-var (
-	err error
-)
-
 const ewoqEVMAddress = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 
 var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
