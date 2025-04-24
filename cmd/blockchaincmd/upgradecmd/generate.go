@@ -163,23 +163,20 @@ func writeUpgrade(blockchainName string, upgradeBytes []byte) error {
 		return err
 	}
 	PrintHowToApplyConfChangesMessage(blockchainName)
-	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("For instructions/help on applying the change to validators not managed by CLI:")
-	ux.Logger.PrintToUser("  avalanche blockchain upgrade apply")
 	return nil
 }
 
 func PrintHowToApplyConfChangesMessage(blockchainName string) {
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("To apply the change on Local Network:")
+	ux.Logger.PrintToUser("To apply the change on Local Network:", blockchainName)
 	ux.Logger.PrintToUser("  avalanche network stop")
 	ux.Logger.PrintToUser("  avalanche network start")
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("To apply the change to local validators on Fuji:")
+	ux.Logger.PrintToUser("To apply the change to local validators on Fuji:", blockchainName)
 	ux.Logger.PrintToUser("  avalanche node local stop %s-local-node-fuji", blockchainName)
 	ux.Logger.PrintToUser("  avalanche node local start %s-local-start-fuji", blockchainName)
 	ux.Logger.PrintToUser("")
-	ux.Logger.PrintToUser("To apply the change to local validators on Mainnet:")
+	ux.Logger.PrintToUser("To apply the change to local validators on Mainnet:", blockchainName)
 	ux.Logger.PrintToUser("  avalanche node local stop %s-local-node-mainnet", blockchainName)
 	ux.Logger.PrintToUser("  avalanche node local start %s-local-start-mainnet", blockchainName)
 }
