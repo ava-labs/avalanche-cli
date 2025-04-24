@@ -29,6 +29,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -940,7 +941,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
+					deployRelayerFlags.BlockchainsToRelay = utils.Unique(sdkutils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
 				if network.Kind == models.Local || useLocalMachine {
 					deployRelayerFlags.Key = constants.ICMRelayerKeyName
@@ -1234,7 +1235,7 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodeIDs := utils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
+	nodeIDs := sdkutils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
 		return peer.Info.ID
 	})
 	nodeIDsSet := set.Of(nodeIDs...)

@@ -144,14 +144,6 @@ func Filter[T any](input []T, f func(T) bool) []T {
 	return output
 }
 
-func Map[T, U any](input []T, f func(T) U) []U {
-	output := make([]U, 0, len(input))
-	for _, e := range input {
-		output = append(output, f(e))
-	}
-	return output
-}
-
 func MapWithError[T, U any](input []T, f func(T) (U, error)) ([]U, error) {
 	output := make([]U, 0, len(input))
 	for _, e := range input {

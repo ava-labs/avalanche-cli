@@ -95,7 +95,7 @@ func importFile(_ *cobra.Command, args []string) error {
 	}
 	// add inventory
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	nodes := utils.Map(importCluster.Nodes, func(node models.ExportNode) models.NodeConfig { return node.NodeConfig })
+	nodes := sdkutils.Map(importCluster.Nodes, func(node models.ExportNode) models.NodeConfig { return node.NodeConfig })
 	if err := ansible.WriteNodeConfigsToAnsibleInventory(inventoryPath, nodes); err != nil {
 		ux.Logger.RedXToUser("error writing inventory file: %v", err)
 		return err

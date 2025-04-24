@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/config"
 	avago_upgrade "github.com/ava-labs/avalanchego/upgrade"
 	avago_constants "github.com/ava-labs/avalanchego/utils/constants"
@@ -223,7 +224,7 @@ func setupDevnet(clusterName string, hosts []*models.Host, apiNodeIPMap map[stri
 	hostsWithoutAPI := utils.Filter(hosts, func(h *models.Host) bool {
 		return !slices.Contains(maps.Keys(apiNodeIPMap), h.GetCloudID())
 	})
-	hostsWithoutAPIIDs := utils.Map(hostsWithoutAPI, func(h *models.Host) string { return h.NodeID })
+	hostsWithoutAPIIDs := sdkutils.Map(hostsWithoutAPI, func(h *models.Host) string { return h.NodeID })
 
 	// create genesis file at each node dir
 	genesisBytes, err := generateCustomGenesis(network.ID, walletAddrStr, stakingAddrStr, hostsWithoutAPI)

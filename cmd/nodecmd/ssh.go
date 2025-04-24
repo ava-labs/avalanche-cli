@@ -172,7 +172,7 @@ func sshHosts(hosts []*models.Host, cmd string, clusterConf models.ClusterConfig
 		// open shell
 		switch {
 		case len(hosts) > 1:
-			return fmt.Errorf("cannot open ssh shell on multiple nodes: %s", strings.Join(utils.Map(hosts, func(h *models.Host) string { return h.GetCloudID() }), ", "))
+			return fmt.Errorf("cannot open ssh shell on multiple nodes: %s", strings.Join(sdkutils.Map(hosts, func(h *models.Host) string { return h.GetCloudID() }), ", "))
 		case len(hosts) == 0:
 			return fmt.Errorf("no nodes found")
 		default:

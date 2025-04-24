@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -128,12 +128,12 @@ func logs(_ *cobra.Command, _ []string) error {
 			}
 			logMsg := wordwrap.WrapString(msg, 80)
 			logMsgLines := strings.Split(logMsg, "\n")
-			logMsgLines = utils.Map(logMsgLines, func(s string) string { return logging.Green.Wrap(s) })
+			logMsgLines = sdkutils.Map(logMsgLines, func(s string) string { return logging.Green.Wrap(s) })
 			logMsg = strings.Join(logMsgLines, "\n")
 			keys := maps.Keys(logMap)
 			sort.Strings(keys)
 			for _, k := range keys {
-				if !sdkUtils.Belongs([]string{"logger", "caller", "level", "timestamp", "msg"}, k) {
+				if !sdkutils.Belongs([]string{"logger", "caller", "level", "timestamp", "msg"}, k) {
 					logMsg = addAditionalInfo(
 						logMsg,
 						logMap,

@@ -12,24 +12,20 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/maps"
 )
 
 var globalNetworkFlags networkoptions.NetworkFlags
 
 var (
-	l1                      string
-	validationIDStr         string
-	nodeIDStr               string
-	validatorManagerAddress string
+	l1              string
+	validationIDStr string
+	nodeIDStr       string
 )
 
 func NewGetBalanceCmd() *cobra.Command {
@@ -155,24 +151,19 @@ func getNodeValidationID(
 		if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
 			return ids.Empty, false, fmt.Errorf("unable to find Validator Manager address")
 		}
-		validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
+		subnetID, err := contract.GetSubnetID(app, network, chainSpec)
+		if err != nil {
+			return ids.Empty, false, err
+		}
+		validators, err := validator.GetCurrentValidators(network.SDKNetwork(), subnetID)
+		if err != nil {
+			return ids.Empty, false, err
+		}
+		if len(validators) == 0 {
+			return ids.Empty, false, fmt.Errorf("l1 has no validators")
+		}
 		if nodeIDStr == "" {
-			subnetID, err := contract.GetSubnetID(app, network, chainSpec)
-			if err != nil {
-				return ids.Empty, false, err
-			}
-			pClient := platformvm.NewClient(network.Endpoint)
-			ctx, cancel := utils.GetAPIContext()
-			defer cancel()
-			validators, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
-			if err != nil {
-				return ids.Empty, false, err
-			}
-			if len(validators) == 0 {
-				return ids.Empty, false, fmt.Errorf("l1 has no validators")
-			}
-			nodeIDs := maps.Keys(validators)
-			nodeIDStrs := utils.Map(nodeIDs, func(nodeID ids.NodeID) string { return nodeID.String() })
+			nodeIDStrs := sdkutils.Map(validators, func(v validator.CurrentValidatorInfo) string { return v.NodeID.String() })
 			sort.Strings(nodeIDStrs)
 			nodeIDStr, err = app.Prompt.CaptureListWithSize("Choose Node ID of the validator", nodeIDStrs, 8)
 			if err != nil {
@@ -183,21 +174,11 @@ func getNodeValidationID(
 		if err != nil {
 			return ids.Empty, false, err
 		}
-		rpcURL, _, err := contract.GetBlockchainEndpoints(
-			app,
-			network,
-			chainSpec,
-			true,
-			false,
-		)
-		if err != nil {
-			return ids.Empty, false, err
+		found := utils.Find(validators, func(v validator.CurrentValidatorInfo) bool { return v.NodeID == nodeID })
+		if found == nil {
+			return ids.Empty, false, fmt.Errorf("node %s not found among L1 validators", nodeID.String())
 		}
-		managerAddress := common.HexToAddress(validatorManagerAddress)
-		validationID, err = validator.GetValidationID(rpcURL, managerAddress, nodeID)
-		if err != nil {
-			return ids.Empty, false, err
-		}
+		validationID = found.ValidationID
 	case validationIDOption:
 		validationID, err = app.Prompt.CaptureID("What is the validator's validationID?")
 		if err != nil {

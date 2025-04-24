@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 
 	"github.com/spf13/cobra"
@@ -230,8 +231,8 @@ func GetNetworkFromCmdLineFlags(
 		if err != nil {
 			return models.UndefinedNetwork, err
 		}
-		supportedNetworkOptionsStrs = strings.Join(utils.Map(supportedNetworkOptions, func(s NetworkOption) string { return s.String() }), ", ")
-		filteredSupportedNetworkOptionsStrs = strings.Join(utils.Map(filteredSupportedNetworkOptions, func(s NetworkOption) string { return s.String() }), ", ")
+		supportedNetworkOptionsStrs = strings.Join(sdkutils.Map(supportedNetworkOptions, func(s NetworkOption) string { return s.String() }), ", ")
+		filteredSupportedNetworkOptionsStrs = strings.Join(sdkutils.Map(filteredSupportedNetworkOptions, func(s NetworkOption) string { return s.String() }), ", ")
 		if len(filteredSupportedNetworkOptions) == 0 {
 			return models.UndefinedNetwork, fmt.Errorf("no supported deployed networks available on blockchain %q. please deploy to one of: [%s]", subnetName, supportedNetworkOptionsStrs)
 		}
@@ -245,7 +246,7 @@ func GetNetworkFromCmdLineFlags(
 		Mainnet: "--mainnet",
 		Cluster: "--cluster",
 	}
-	supportedNetworksFlags := strings.Join(utils.Map(supportedNetworkOptions, func(n NetworkOption) string { return networkFlagsMap[n] }), ", ")
+	supportedNetworksFlags := strings.Join(sdkutils.Map(supportedNetworkOptions, func(n NetworkOption) string { return networkFlagsMap[n] }), ", ")
 	// received option
 	networkOption := Undefined
 	switch {
@@ -318,7 +319,7 @@ func GetNetworkFromCmdLineFlags(
 		}
 		networkOptionStr, err := app.Prompt.CaptureList(
 			promptStr,
-			utils.Map(supportedNetworkOptionsToPrompt, func(n NetworkOption) string { return n.String() }),
+			sdkutils.Map(supportedNetworkOptionsToPrompt, func(n NetworkOption) string { return n.String() }),
 		)
 		if err != nil {
 			return models.UndefinedNetwork, err
