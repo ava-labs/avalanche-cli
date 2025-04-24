@@ -49,9 +49,7 @@ func AddSignatureAggregatorFlagsToCmd(cmd *cobra.Command, sigAggFlags *Signature
 
 	existingPreRunE := cmd.PreRunE
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		fmt.Printf("prerun sigagg %s \n", cmd.Name())
 		if existingPreRunE != nil {
-			fmt.Printf("prerun sigagg  existingPreRunE %s, cmd name %s  \n", existingPreRunE, cmd.Name())
 			if err := existingPreRunE(cmd, args); err != nil {
 				return err
 			}

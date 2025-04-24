@@ -61,30 +61,39 @@ func flagExists(target string, args []string) bool {
 	return false
 }
 
-func RegisterHiddenFlagGroup(cmd *cobra.Command, groupName string, showFlag string, defineFlags func(set *pflag.FlagSet)) GroupedFlags {
+func RegisterFlagGroup(cmd *cobra.Command, groupName string, showFlag string, isAlwaysVisible bool, defineFlags func(set *pflag.FlagSet)) GroupedFlags {
+	// Define the showFlag for controlling visibility
 	show := false
 	cmd.Flags().BoolVar(&show, showFlag, false, fmt.Sprintf("Show %s", groupName))
+
+	// If the group is always visible, don't hide the showFlag
+	if !isAlwaysVisible {
+		cmd.Flags().Lookup(showFlag).Hidden = true
+	}
 
 	// Create a new FlagSet for the group
 	flagSet := pflag.NewFlagSet(groupName, pflag.ContinueOnError)
 
-	// Let caller define their flags in this flag set
+	// Let the caller define their flags in this flag set
 	defineFlags(flagSet)
 
-	// Add flagSet to cmd
+	// Add the flagSet to the cmd
 	cmd.Flags().AddFlagSet(flagSet)
 
-	// Hide the flags
-	flagSet.VisitAll(func(f *pflag.Flag) {
-		cmd.Flags().Lookup(f.Name).Hidden = true
-	})
+	// For hidden groups, hide all flags by default
+	if !isAlwaysVisible {
+		flagSet.VisitAll(func(f *pflag.Flag) {
+			cmd.Flags().Lookup(f.Name).Hidden = true
+		})
+	}
 
-	// Return a GroupedFlags struct
+	// Return the GroupedFlags struct
 	return GroupedFlags{
 		Name:     groupName,
 		ShowFlag: "--" + showFlag,
 		FlagSet:  flagSet,
 		UnhideFunc: func(cmd *cobra.Command) {
+			// Show the flags when the user explicitly calls the UnhideFunc
 			flagSet.VisitAll(func(f *pflag.Flag) {
 				cmd.Flags().Lookup(f.Name).Hidden = false
 			})

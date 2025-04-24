@@ -124,7 +124,6 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		RunE:              deployBlockchain,
 		PersistentPostRun: handlePostRun,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Printf("we are pre runnign deploy only required arg %s \n", cmd.Name())
 			requiredArgCount := 1
 			if len(args) != requiredArgCount {
 				_ = cmd.Help() // show full help with flag grouping
@@ -147,7 +146,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
 	cmd.Flags().StringSliceVar(&subnetAuthKeys, "auth-keys", nil, "control keys that will be used to authenticate chain creation")
 	cmd.Flags().StringVar(&outputTxPath, "output-tx-path", "", "file path of the blockchain creation tx")
-	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [fuji/devnet deploy only]")
+	cmd.Flags().BoolVarP(&useEwoq, "ewoq", "e", false, "use ewoq key [local/devnet deploy only]")
 	cmd.Flags().BoolVarP(&useLedger, "ledger", "g", false, "use ledger instead of key (always true on mainnet, defaults to false on fuji/devnet)")
 	cmd.Flags().StringSliceVar(&ledgerAddresses, "ledger-addrs", []string{}, "use the given ledger addresses")
 	cmd.Flags().StringVarP(&subnetIDStr, "subnet-id", "u", "", "do not create a subnet, deploy the blockchain into the given subnet id")
@@ -171,69 +170,10 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
 
-	cmd.Flags().Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
-	cmd.Flags().Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
-	cmd.Flags().Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
-	cmd.Flags().Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
-	cmd.Flags().Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
-	cmd.Flags().Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
-
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
-	//cmd.Flags().BoolVar(&showICMFlags, "show-icm-flags", false, "Show ICM-related flags")
-	//// Create a separate FlagSet for ICM flags
-	//icmFlagSet := pflag.NewFlagSet("ICM Flags", pflag.ContinueOnError)
-	//
-	//// Define the flag in icmFlagSet
-	//icmFlagSet.BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "skip automatic ICM deploy")
-	//
-	//// Add it to the main command *before* using Lookup
-	//cmd.Flags().AddFlagSet(icmFlagSet)
-	//
-	//// Now you can safely call Lookup on cmd.Flags()
-	//cmd.Flags().Lookup("skip-icm-deploy").Hidden = true
 
-	//cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-	//	show := false
-	//	for _, arg := range os.Args {
-	//		if arg == "--show-icm-flags" {
-	//			show = true
-	//			break
-	//		}
-	//	}
-	//
-	//	if show {
-	//		unhideICMFlags(cmd)
-	//	}
-	//
-	//	// Print normal help
-	//	cmd.Root().UsageFunc()(cmd)
-	//
-	//	// Add section manually if not showing flags
-	//	if !show {
-	//		fmt.Fprintln(cmd.OutOrStdout(), "\nICM Flags:\n  (hidden) Use --show-icm-flags to show these options")
-	//	} else {
-	//		fmt.Fprintln(cmd.OutOrStdout(), "\nICM Flags:")
-	//		icmFlagSet.VisitAll(func(flag *pflag.Flag) {
-	//			fmt.Fprintf(cmd.OutOrStdout(), "  --%s", flag.Name)
-	//			if flag.Value.Type() != "bool" {
-	//				fmt.Fprintf(cmd.OutOrStdout(), " %s", flag.Value.Type())
-	//			}
-	//			fmt.Fprintf(cmd.OutOrStdout(), "\t%s\n", flag.Usage)
-	//		})
-	//	}
-	//})
-	//cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{
-	//	{
-	//		Name:     "ICM Flags",
-	//		ShowFlag: "--show-icm-flags",
-	//		FlagSet:  icmFlagSet,
-	//		UnhideFunc: func(cmd *cobra.Command) {
-	//			unhideICMFlags(cmd)
-	//		},
-	//	},
-	//}))
-	icmGroup := flags.RegisterHiddenFlagGroup(cmd, "ICM Flags", "show-icm-flags", func(set *pflag.FlagSet) {
+	icmGroup := flags.RegisterFlagGroup(cmd, "ICM Flags", "show-icm-flags", false, func(set *pflag.FlagSet) {
 		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-icm-deploy", false, "Skip automatic ICM deploy")
 		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-local-teleporter", false, "skip automatic ICM deploy on local networks [to be deprecated]")
 		set.BoolVar(&icmSpec.SkipICMDeploy, "skip-teleporter-deploy", false, "skip automatic ICM deploy")
@@ -265,7 +205,16 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.StringVar(&icmSpec.RegistryBydecodePath, "teleporter-registry-bytecode-path", "", "path to an ICM Registry bytecode file")
 	})
 
-	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{icmGroup}))
+	posGroup := flags.RegisterFlagGroup(cmd, "Proof Of Stake Flags", "show-pos-flags", false, func(set *pflag.FlagSet) {
+		set.Uint64Var(&poSMinimumStakeAmount, "pos-minimum-stake-amount", 1, "minimum stake amount")
+		set.Uint64Var(&poSMaximumStakeAmount, "pos-maximum-stake-amount", 1000, "maximum stake amount")
+		set.Uint64Var(&poSMinimumStakeDuration, "pos-minimum-stake-duration", constants.PoSL1MinimumStakeDurationSeconds, "minimum stake duration (in seconds)")
+		set.Uint16Var(&poSMinimumDelegationFee, "pos-minimum-delegation-fee", 1, "minimum delegation fee")
+		set.Uint8Var(&poSMaximumStakeMultiplier, "pos-maximum-stake-multiplier", 1, "maximum stake multiplier")
+		set.Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
+	})
+
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{icmGroup, posGroup}))
 	return cmd
 }
 

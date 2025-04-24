@@ -3,7 +3,6 @@
 package flags
 
 import (
-	"fmt"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/spf13/cobra"
@@ -25,9 +24,7 @@ func AddRPCFlagToCmd(cmd *cobra.Command, app *application.Avalanche, rpc *string
 
 	existingPreRunE := cmd.PreRunE
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		fmt.Printf("prerun rpc %s \n", cmd.Name())
 		if existingPreRunE != nil {
-			fmt.Printf("prerun rpc  existingPreRunE %s, cmd name %s  \n", existingPreRunE, cmd.Name())
 			if err := existingPreRunE(cmd, args); err != nil {
 				return err
 			}
