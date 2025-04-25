@@ -189,6 +189,10 @@ func importBlockchain(
 ) (models.Sidecar, []byte, error) {
 	var err error
 
+	if !rpcIsAvailable && rpcURL != "" {
+		return models.Sidecar{}, nil, fmt.Errorf("RPC can't be both non empty and unavailable")
+	}
+
 	if rpcIsAvailable && rpcURL == "" {
 		rpcURL, err = app.Prompt.CaptureURL("What is the RPC endpoint?", false)
 		if err != nil {
