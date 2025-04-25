@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package keycmd
 
@@ -289,6 +289,12 @@ func listKeys(*cobra.Command, []string) error {
 		}
 		networks = append(networks, network)
 	}
+	mainnetIsIncluded := len(utils.Filter(networks, func(n models.Network) bool { return n.Kind == models.Mainnet })) > 0
+	if mainnetIsIncluded && len(keys) != 1 {
+		ux.Logger.PrintToUser("For mainnet you need to specify the key name to be listed by using the --keys flag")
+		return nil
+	}
+
 	if len(subnets) == 0 {
 		subnets = []string{"p", "x", "c"}
 	}
