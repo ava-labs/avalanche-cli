@@ -4,10 +4,11 @@ package networkoptions
 
 import (
 	"fmt"
-	"github.com/spf13/pflag"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/spf13/pflag"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
