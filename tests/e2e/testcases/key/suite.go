@@ -306,7 +306,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				utils.DeleteCustomBinary(subnetName)
 			})
 
-			ginkgo.PIt("can transfer from P-chain to P-chain with ewoq key and local key", func() {
+			ginkgo.It("can transfer from P-chain to P-chain with ewoq key and local key", func() {
 				amount := 0.2
 				amountStr := fmt.Sprintf("%.2f", amount)
 				amountNAvax := uint64(amount * float64(units.Avax))
@@ -346,7 +346,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
 			})
 
-			ginkgo.PIt("can transfer from P-chain to C-chain with ewoq key and local key", func() {
+			ginkgo.It("can transfer from P-chain to C-chain with ewoq key and local key", func() {
 				amount := 0.2
 				amountStr := fmt.Sprintf("%.2f", amount)
 				amountNAvax := uint64(amount * float64(units.Avax))
@@ -389,7 +389,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax - cChainFee))
 			})
 
-			ginkgo.PIt("can transfer from C-chain to C-chain with ewoq key and local key", func() {
+			ginkgo.It("can transfer from C-chain to C-chain with ewoq key and local key", func() {
 				amount := 0.2
 				amountStr := fmt.Sprintf("%.2f", amount)
 				amountNAvax := uint64(amount * float64(units.Avax))
@@ -429,7 +429,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
 			})
 
-			ginkgo.PIt("can transfer from C-chain to P-chain with ewoq key and local key", func() {
+			ginkgo.It("can transfer from C-chain to P-chain with ewoq key and local key", func() {
 				amount := 0.2
 				amountStr := fmt.Sprintf("%.2f", amount)
 				amountNAvax := uint64(amount * float64(units.Avax))
@@ -473,7 +473,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax - pChainFee))
 			})
 
-			ginkgo.PIt("can transfer from P-chain to X-chain with ewoq key", func() {
+			ginkgo.It("can transfer from P-chain to X-chain with ewoq key", func() {
 				amount := 0.2
 				amountStr := fmt.Sprintf("%.2f", amount)
 				amountNAvax := uint64(amount * float64(units.Avax))
@@ -517,7 +517,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax - xChainFee))
 			})
 
-			ginkgo.PIt("can transfer from Subnet to Subnet with ewoq key", func() {
+			ginkgo.It("can transfer from Subnet to Subnet with ewoq key", func() {
 				amount := 0.2
 				amountStr := fmt.Sprintf("%.2f", amount)
 				amountNAvax := uint64(amount * float64(units.Avax))
@@ -562,7 +562,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
 			})
 
-			ginkgo.PIt("can transfer from C-Chain to Subnet with ewoq key and local key", func() {
+			ginkgo.It("can transfer from C-Chain to Subnet with ewoq key and local key", func() {
 				commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, true)
 				commands.DeploySubnetLocallyNonSOV(subnetName)
 				commands.SendICMMessage("--local", "cchain", subnetName, "hello world", ewoqKeyName)
@@ -627,7 +627,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				gomega.Expect(keyBalance2 - keyERCBalance1).Should(gomega.Equal(amount))
 			})
 
-			ginkgo.PIt("can transfer from Subnet to C-chain with ewoq key and local key", func() {
+			ginkgo.It("can transfer from Subnet to C-chain with ewoq key and local key", func() {
 				commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, true)
 				commands.DeploySubnetLocallyNonSOV(subnetName)
 				commands.SendICMMessage("--local", "cchain", subnetName, "hello world", ewoqKeyName)

@@ -452,7 +452,7 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("%s Paid fee: %.9f",
+	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 		chainName,
 		calculateEvmFee(receipt.GasUsed, receipt.EffectiveGasPrice))
 	return err
@@ -603,7 +603,7 @@ func interEvmSend(
 		if err != nil {
 			return err
 		}
-		ux.Logger.PrintToUser("%s Paid fee: %.9f",
+		ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 			chainName,
 			calculateEvmFee(receipt2.GasUsed, receipt2.EffectiveGasPrice))
 	}
@@ -679,7 +679,7 @@ func pToPSend(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f", float64(txFee)/float64(units.Avax))
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
 	return nil
 }
 
@@ -775,7 +775,7 @@ func exportFromP(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f", float64(txFee)/float64(units.Avax))
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
 	return nil
 }
 
@@ -815,7 +815,7 @@ func importIntoX(
 		}
 		return err
 	}
-	ux.Logger.PrintToUser("X-Chain Paid fee: %.9f", float64(wallet.X().Builder().Context().BaseTxFee)/float64(units.Avax))
+	ux.Logger.PrintToUser("X-Chain Paid fee: %.9f AVAX", float64(wallet.X().Builder().Context().BaseTxFee)/float64(units.Avax))
 	return nil
 }
 
@@ -915,7 +915,11 @@ func importIntoC(
 		}
 		return err
 	}
-	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f", float64(amt-unsignedTx.Outs[0].Amount)/float64(units.Avax))
+
+	if len(unsignedTx.Outs) == 0 {
+		return fmt.Errorf("no outputs for C-Chain transaction")
+	}
+	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f AVAX", float64(amt-unsignedTx.Outs[0].Amount)/float64(units.Avax))
 	return nil
 }
 
@@ -1025,7 +1029,10 @@ func exportFromC(
 		}
 		return err
 	}
-	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f", float64(unsignedTx.Ins[0].Amount-amount)/float64(units.Avax))
+	if len(unsignedTx.Ins) == 0 {
+		return fmt.Errorf("no inputs for C-Chain transaction")
+	}
+	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f AVAX", float64(unsignedTx.Ins[0].Amount-amount)/float64(units.Avax))
 
 	return nil
 }
@@ -1072,7 +1079,7 @@ func importIntoP(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f", float64(txFee)/float64(units.Avax))
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
 
 	return nil
 }
