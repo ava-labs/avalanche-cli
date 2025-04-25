@@ -388,10 +388,21 @@ func ParseAddrBalanceFromKeyListOutput(output string, keyName string, subnet str
 			}
 			addr := strings.TrimSpace(components[4])
 			balanceStr := strings.TrimSpace(components[6])
+
+			var balance uint64
+			if strings.Contains(balanceStr, ".") {
+				balanceFloat, err := strconv.ParseFloat(balanceStr, 64)
+				if err != nil {
+					return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
+				}
+				return addr, uint64(balanceFloat), nil
+			}
+
 			balance, err := strconv.ParseUint(balanceStr, 0, 64)
 			if err != nil {
 				return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
 			}
+
 			return addr, balance, nil
 		}
 	}
@@ -1115,4 +1126,56 @@ func GetE2EHostInstanceID() (string, error) {
 	}
 	_, cloudHostID, _ := models.HostAnsibleIDToCloudID(hosts[0].NodeID)
 	return cloudHostID, nil
+}
+
+func GetERC20TokenAddress(output string) (string, error) {
+	substr := "Token Address: "
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			tokenAddress := lineFields[2]
+			return tokenAddress, nil
+		}
+	}
+
+	return "", fmt.Errorf("token address not found in output")
+}
+
+func GetTokenTransferrerAddresses(output string) (string, string, error) {
+	substr := "Home Address: "
+	var homeAddress string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			homeAddress = lineFields[2]
+		}
+	}
+
+	if homeAddress == "" {
+		return "", "", fmt.Errorf("home address not found in output")
+	}
+
+	substr = "Remote Address: "
+	var remoteAddress string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			remoteAddress = lineFields[2]
+		}
+	}
+
+	if remoteAddress == "" {
+		return "", "", fmt.Errorf("remote address not found in output")
+	}
+
+	return homeAddress, remoteAddress, nil
 }

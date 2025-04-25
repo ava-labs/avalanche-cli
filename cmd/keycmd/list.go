@@ -646,6 +646,7 @@ func formatCChainBalance(balance *big.Int) (string, error) {
 	if useGwei {
 		return fmt.Sprintf("%d", balance), nil
 	}
+	fmt.Println("balance", balance.String())
 
 	// convert to nAvax with rounding
 	divisor := big.NewInt(int64(units.Avax))
@@ -662,6 +663,7 @@ func formatCChainBalance(balance *big.Int) (string, error) {
 	} else {
 		balanceStr = fmt.Sprintf("%.9f", float64(result.Uint64())/float64(units.Avax))
 	}
+	fmt.Println("balanceStr", balanceStr)
 	return balanceStr, nil
 }
 

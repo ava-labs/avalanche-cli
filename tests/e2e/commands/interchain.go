@@ -10,26 +10,20 @@ import (
 )
 
 const (
-	ICTTCmd = "ictt"
+	InterchainCMD = "interchain"
 )
 
 /* #nosec G204 */
-func DeployICTT(network, subnet string) string {
+func DeployInterchainTokenTransferrer(args []string) string {
 	// Create config
-	cmdArgs := []string{
-		ICTTCmd,
+	icctArgs := []string{
+		InterchainCMD,
+		"tokenTransferrer",
 		"deploy",
-		network,
-		"--c-chain-home",
-		"--remote-blockchain",
-		subnet,
-		"--deploy-native-home",
-		"--home-genesis-key",
-		"--remote-genesis-key",
 		"--" + constants.SkipUpdateFlag,
 	}
 
-	cmd := exec.Command(CLIBinary, cmdArgs...)
+	cmd := exec.Command(CLIBinary, append(icctArgs, args...)...)
 	output, err := cmd.CombinedOutput()
 	fmt.Println(string(output))
 	if err != nil {

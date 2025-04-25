@@ -57,16 +57,16 @@ func CreateKeyForce(keyName string) (string, error) {
 }
 
 /* #nosec G204 */
-func ListKeys(network string, omitCChain bool, useNanoAvax bool, subnets string) (string, error) {
+func ListKeys(network string, useNanoAvax bool, subnets string, tokens string) (string, error) {
 	args := []string{KeyCmd, "list", "--" + network, "--" + constants.SkipUpdateFlag}
-	if omitCChain {
-		args = append(args, "--cchain=false")
-	}
 	if useNanoAvax {
 		args = append(args, "--use-nano-avax=true")
 	}
 	if subnets != "" {
-		args = append(args, "--subnets", "c,x,p,"+subnets)
+		args = append(args, "--subnets", "c,"+subnets) //x,p
+	}
+	if tokens != "" {
+		args = append(args, "--tokens", tokens)
 	}
 	cmd := exec.Command(CLIBinary, args...)
 	out, err := cmd.Output()
@@ -122,62 +122,18 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 }
 
 /* #nosec G204 */
-func KeyTransferSend(keyName, ledger, destinationAddr, destinationKey, amount, senderChain, senderBlockchainName, receiverChain, receiverBlockchainName, originTransferrerAddress, destinationTransferrerAddress string) *exec.Cmd {
-	// Create config
-	args := []string{
+func KeyTransferSend(
+	args []string,
+) (string, error) {
+	transferArgs := []string{
 		KeyCmd,
 		"transfer",
-		"--local",
 		"--" + constants.SkipUpdateFlag,
 	}
 
-	if ledger != "" {
-		args = append(args, "--ledger", ledger)
-	}
-
-	if keyName != "" {
-		args = append(args, "--key", keyName)
-	}
-
-	if destinationAddr != "" {
-		args = append(args, "--destination-addr", destinationAddr)
-	}
-
-	if destinationKey != "" {
-		args = append(args, "--destination-key", destinationKey)
-	}
-
-	if senderChain != "" {
-		args = append(args, senderChain)
-	}
-
-	if senderBlockchainName != "" {
-		args = append(args, senderBlockchainName)
-	}
-
-	if receiverChain != "" {
-		args = append(args, receiverChain)
-	}
-
-	if receiverBlockchainName != "" {
-		args = append(args, receiverBlockchainName)
-	}
-
-	if amount != "" {
-		args = append(args, "--amount", amount)
-	}
-
-	if originTransferrerAddress != "" {
-		args = append(args, "--origin-transferrer-address", originTransferrerAddress)
-	}
-
-	if destinationTransferrerAddress != "" {
-		args = append(args, "--destination-transferrer-address", destinationTransferrerAddress)
-	}
-
-	cmd := exec.Command(CLIBinary, args...)
-
-	return cmd
+	cmd := exec.Command(CLIBinary, append(transferArgs, args...)...)
+	outputByte, err := cmd.CombinedOutput()
+	return string(outputByte), err
 }
 
 /* #nosec G204 */

@@ -195,34 +195,14 @@ func transferF(*cobra.Command, []string) error {
 		}
 	}
 
-	//TODO[artem]: remove
-	// C -> C +
-	// Subnet -> Subnet
 	if (senderChainFlags.CChain && receiverChainFlags.CChain) ||
 		(senderChainFlags.BlockchainName != "" && senderChainFlags.BlockchainName == receiverChainFlags.BlockchainName) {
 		return intraEvmSend(network, senderChainFlags)
 	}
 
-	//TODO[artem]: remove
-	// C -> Subnet
-	// Subnet -> C
 	if !senderChainFlags.PChain && !senderChainFlags.XChain && !receiverChainFlags.PChain && !receiverChainFlags.XChain {
 		return interEvmSend(network, senderChainFlags, receiverChainFlags)
 	}
-
-	//TODO[artem]: remove
-	// Subnet -> P Not allowed
-	// Subnet -> X Not allowed
-	// P -> P +
-	// P -> C +
-	// P -> Subnet Not allowed
-	// P -> X +
-	// C -> P +
-	// C -> X Not Supported
-	// X -> X Not allowed
-	// X -> C Not allowed
-	// X -> P Not allowed
-	// X -> Subnet Not allowed
 
 	senderDesc, err := contract.GetBlockchainDesc(senderChainFlags)
 	if err != nil {
@@ -465,6 +445,9 @@ func intraEvmSend(
 	}
 
 	receipt, err := client.FundAddress(privateKey, destinationAddrStr, amount)
+	if err != nil {
+		return err
+	}
 	chainName, err := contract.GetBlockchainDesc(senderChain)
 	if err != nil {
 		return err
@@ -594,7 +577,7 @@ func interEvmSend(
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amountInt, _ := amount.Int(nil)
-	return ictt.Send(
+	receipt, receipt2, err := ictt.Send(
 		senderURL,
 		goethereumcommon.HexToAddress(originTransferrerAddress),
 		privateKey,
@@ -603,6 +586,29 @@ func interEvmSend(
 		destinationAddr,
 		amountInt,
 	)
+	if err != nil {
+		return err
+	}
+
+	chainName, err := contract.GetBlockchainDesc(senderChain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("%s Paid fee: %.9f",
+		chainName,
+		calculateEvmFee(receipt.GasUsed, receipt.EffectiveGasPrice))
+
+	if receipt2 != nil {
+		chainName, err := contract.GetBlockchainDesc(receiverChain)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("%s Paid fee: %.9f",
+			chainName,
+			calculateEvmFee(receipt2.GasUsed, receipt2.EffectiveGasPrice))
+	}
+
+	return nil
 }
 
 func pToPSend(
@@ -875,7 +881,7 @@ func importIntoC(
 	if err != nil {
 		return fmt.Errorf("error getting importable balance: %w", err)
 	}
-	client, err := clievm.GetClient(network.BlockchainEndpoint("C"))
+	client, err := evm.GetClient(network.BlockchainEndpoint("C"))
 	if err != nil {
 		return err
 	}
@@ -1084,6 +1090,5 @@ func calculateEvmFee(gasUsed uint64, gasPrice *big.Int) float64 {
 
 	// Convert to float64 for display purposes
 	result, _ := new(big.Float).SetInt(totalCostInAvax).Float64()
-
 	return result / float64(units.Avax)
 }
