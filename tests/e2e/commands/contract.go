@@ -19,7 +19,7 @@ func DeployERC20Contract(network, key, symbol, supply, receiver, blockchain stri
 		ContractCMD,
 		"deploy",
 		"erc20",
-		"--local",
+		network,
 		"--key",
 		key,
 		"--symbol",

@@ -727,7 +727,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 					output, err := commands.KeyTransferSend(commandArguments)
 
 					gomega.Expect(err).Should(gomega.HaveOccurred())
-					gomega.Expect(string(output)).
+					gomega.Expect(output).
 						Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/key/%s.pk: no such file or directory", keyName)))
 				})
 
@@ -748,7 +748,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 					output, err := commands.KeyTransferSend(commandArguments)
 
 					gomega.Expect(err).Should(gomega.HaveOccurred())
-					gomega.Expect(string(output)).
+					gomega.Expect(output).
 						Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/key/%s.pk: no such file or directory", keyName)))
 				})
 
@@ -767,7 +767,7 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 					output, err := commands.KeyTransferSend(commandArguments)
 
 					gomega.Expect(err).Should(gomega.HaveOccurred())
-					gomega.Expect(string(output)).
+					gomega.Expect(output).
 						Should(gomega.ContainSubstring("amount must be positive"))
 				})
 
@@ -788,13 +788,13 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 					output, err := commands.KeyTransferSend(commandArguments)
 
 					gomega.Expect(err).Should(gomega.HaveOccurred())
-					gomega.Expect(string(output)).
+					gomega.Expect(output).
 						Should(gomega.ContainSubstring("failed to load sidecar"))
 				})
 			})
 		})
 		ginkgo.Context("With unsupported paths", func() {
-			ginkgo.It("should fail when transfering from X-Chain to X-Chain", func() {
+			ginkgo.It("should fail when transferring from X-Chain to X-Chain", func() {
 				commandArguments := []string{
 					"--local",
 					"--key",
@@ -809,11 +809,11 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				output, err := commands.KeyTransferSend(commandArguments)
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
-				gomega.Expect(string(output)).
+				gomega.Expect(output).
 					Should(gomega.ContainSubstring("transfer from X-Chain to X-Chain is not supported"))
 			})
 
-			ginkgo.It("should fail when transfering from X-Chain to C-Chain", func() {
+			ginkgo.It("should fail when transferring from X-Chain to C-Chain", func() {
 				commandArguments := []string{
 					"--local",
 					"--key",
@@ -828,11 +828,11 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				output, err := commands.KeyTransferSend(commandArguments)
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
-				gomega.Expect(string(output)).
+				gomega.Expect(output).
 					Should(gomega.ContainSubstring("transfer from X-Chain to C-Chain is not supported"))
 			})
 
-			ginkgo.It("should fail when transfering from X-Chain to P-Chain", func() {
+			ginkgo.It("should fail when transferring from X-Chain to P-Chain", func() {
 				commandArguments := []string{
 					"--local",
 					"--key",
@@ -847,11 +847,11 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				output, err := commands.KeyTransferSend(commandArguments)
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
-				gomega.Expect(string(output)).
+				gomega.Expect(output).
 					Should(gomega.ContainSubstring("transfer from X-Chain to P-Chain is not supported"))
 			})
 
-			ginkgo.It("should fail when transfering from X-Chain to Subnet", func() {
+			ginkgo.It("should fail when transferring from X-Chain to Subnet", func() {
 				commandArguments := []string{
 					"--local",
 					"--key",
@@ -867,11 +867,11 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				output, err := commands.KeyTransferSend(commandArguments)
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
-				gomega.Expect(string(output)).
+				gomega.Expect(output).
 					Should(gomega.ContainSubstring("transfer from X-Chain to Test-Chain is not supported"))
 			})
 
-			ginkgo.It("should fail when transfering from Subnet to X-Chain", func() {
+			ginkgo.It("should fail when transferring from Subnet to X-Chain", func() {
 				commandArguments := []string{
 					"--local",
 					"--key",
@@ -887,11 +887,11 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				output, err := commands.KeyTransferSend(commandArguments)
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
-				gomega.Expect(string(output)).
+				gomega.Expect(output).
 					Should(gomega.ContainSubstring("transfer from Test-Chain to X-Chain is not supported"))
 			})
 
-			ginkgo.It("should fail when transfering from Subnet to P-Chain", func() {
+			ginkgo.It("should fail when transferring from Subnet to P-Chain", func() {
 				commandArguments := []string{
 					"--local",
 					"--key",
@@ -907,11 +907,11 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				output, err := commands.KeyTransferSend(commandArguments)
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
-				gomega.Expect(string(output)).
+				gomega.Expect(output).
 					Should(gomega.ContainSubstring("transfer from Test-Chain to P-Chain is not supported"))
 			})
 
-			ginkgo.It("should fail when transfering from P-Chain to Subnet", func() {
+			ginkgo.It("should fail when transferring from P-Chain to Subnet", func() {
 				commandArguments := []string{
 					"--local",
 					"--key",
@@ -927,10 +927,9 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				output, err := commands.KeyTransferSend(commandArguments)
 
 				gomega.Expect(err).Should(gomega.HaveOccurred())
-				gomega.Expect(string(output)).
+				gomega.Expect(output).
 					Should(gomega.ContainSubstring("transfer from P-Chain to Test-Chain is not supported"))
 			})
-
 		})
 	})
 })

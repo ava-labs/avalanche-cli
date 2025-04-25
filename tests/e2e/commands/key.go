@@ -63,7 +63,7 @@ func ListKeys(network string, useNanoAvax bool, subnets string, tokens string) (
 		args = append(args, "--use-nano-avax=true")
 	}
 	if subnets != "" {
-		args = append(args, "--subnets", "c,"+subnets) //x,p
+		args = append(args, "--subnets", "c,x,p"+subnets)
 	}
 	if tokens != "" {
 		args = append(args, "--tokens", tokens)
