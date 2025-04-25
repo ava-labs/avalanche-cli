@@ -4,6 +4,7 @@ package networkoptions
 
 import (
 	"fmt"
+	"github.com/spf13/pflag"
 	"os"
 	"regexp"
 	"strings"
@@ -124,6 +125,35 @@ func AddNetworkFlagsToCmd(cmd *cobra.Command, networkFlags *NetworkFlags, addEnd
 	if addEndpoint {
 		cmd.Flags().StringVar(&networkFlags.Endpoint, "endpoint", "", "use the given endpoint for network operations")
 	}
+}
+
+func GetNetworkFlagsGroup(cmd *cobra.Command, networkFlags *NetworkFlags, addEndpoint bool, supportedNetworkOptions []NetworkOption) flags.GroupedFlags {
+	return flags.RegisterFlagGroup(cmd, "Network Flags (Select One)", "show-network-flags", true, func(set *pflag.FlagSet) {
+		addCluster := false
+		for _, networkOption := range supportedNetworkOptions {
+			switch networkOption {
+			case Local:
+				set.BoolVarP(&networkFlags.UseLocal, "local", "l", false, "operate on a local network")
+			case Devnet:
+				set.BoolVar(&networkFlags.UseDevnet, "devnet", false, "operate on a devnet network")
+				addEndpoint = true
+				addCluster = true
+			case Fuji:
+				set.BoolVarP(&networkFlags.UseFuji, "testnet", "t", false, "operate on testnet (alias to `fuji`)")
+				set.BoolVarP(&networkFlags.UseFuji, "fuji", "f", false, "operate on fuji (alias to `testnet`)")
+			case Mainnet:
+				set.BoolVarP(&networkFlags.UseMainnet, "mainnet", "m", false, "operate on mainnet")
+			case Cluster:
+				addCluster = true
+			}
+		}
+		if addCluster {
+			set.StringVar(&networkFlags.ClusterName, "cluster", "", "operate on the given cluster")
+		}
+		if addEndpoint {
+			set.StringVar(&networkFlags.Endpoint, "endpoint", "", "use the given endpoint for network operations")
+		}
+	})
 }
 
 func GetSupportedNetworkOptionsForSubnet(

@@ -132,7 +132,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 			return nil
 		},
 	}
-	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
+	networkGroup := networkoptions.GetNetworkFlagsGroup(cmd, &globalNetworkFlags, true, networkoptions.DefaultSupportedNetworkOptions)
 	flags.AddSignatureAggregatorFlagsToCmd(cmd, &deployFlags.SigAggFlags)
 	cmd.Flags().StringVar(
 		&userProvidedAvagoVersion,
@@ -214,7 +214,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		set.Uint64Var(&poSWeightToValueFactor, "pos-weight-to-value-factor", 1, "weight to value factor")
 	})
 
-	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{icmGroup, posGroup}))
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, icmGroup, posGroup}))
 	return cmd
 }
 
