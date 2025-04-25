@@ -19,7 +19,7 @@ type GroupedFlags struct {
 
 // WithGroupedHelp returns a cobra-compatible help function that displays extra flag groups.
 func WithGroupedHelp(groups []GroupedFlags) func(cmd *cobra.Command, args []string) {
-	return func(cmd *cobra.Command, args []string) {
+	return func(cmd *cobra.Command, _ []string) {
 		shownGroups := make(map[string]bool)
 
 		// Handle any unhide funcs and decide what groups to show
@@ -33,7 +33,9 @@ func WithGroupedHelp(groups []GroupedFlags) func(cmd *cobra.Command, args []stri
 		}
 
 		// Show normal usage help
-		cmd.Root().UsageFunc()(cmd)
+		if err := cmd.Root().UsageFunc()(cmd); err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "error showing command usage: %v\n", err)
+		}
 
 		// Append each group
 		for _, group := range groups {
