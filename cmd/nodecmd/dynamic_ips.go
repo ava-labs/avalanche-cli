@@ -6,16 +6,14 @@ import (
 	"context"
 	"fmt"
 
-	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
-
+	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	gcpAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/gcp"
-
-	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	nodePkg "github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 )
 
 func getNodesWithDynamicIP(clusterNodes []string) ([]models.NodeConfig, error) {
@@ -98,7 +96,7 @@ func updatePublicIPs(clusterName string) error {
 		return err
 	}
 	if len(nodesWithDynamicIP) > 0 {
-		nodeIDs := utils.Map(nodesWithDynamicIP, func(c models.NodeConfig) string { return c.NodeID })
+		nodeIDs := sdkutils.Map(nodesWithDynamicIP, func(c models.NodeConfig) string { return c.NodeID })
 		ux.Logger.PrintToUser("Nodes with dynamic IPs in cluster: %s", nodeIDs)
 		publicIPMap, err := getPublicIPsForNodesWithDynamicIP(nodesWithDynamicIP)
 		if err != nil {

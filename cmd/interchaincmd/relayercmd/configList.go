@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/olekukonko/tablewriter"
 )
@@ -261,7 +262,7 @@ func removeSource(
 		return configSpec, true, nil
 	}
 	prompt := "Select the source you want to remove"
-	options := utils.Map(configSpec.sources, func(s SourceSpec) string { return s.blockchainDesc })
+	options := sdkutils.Map(configSpec.sources, func(s SourceSpec) string { return s.blockchainDesc })
 	options = append(options, cancelOption)
 	opt, err := app.Prompt.CaptureList(prompt, options)
 	if err != nil {
@@ -283,7 +284,7 @@ func removeDestination(
 		return configSpec, true, nil
 	}
 	prompt := "Select the destination you want to remove"
-	options := utils.Map(configSpec.destinations, func(d DestinationSpec) string { return d.blockchainDesc })
+	options := sdkutils.Map(configSpec.destinations, func(d DestinationSpec) string { return d.blockchainDesc })
 	options = append(options, cancelOption)
 	opt, err := app.Prompt.CaptureList(prompt, options)
 	if err != nil {

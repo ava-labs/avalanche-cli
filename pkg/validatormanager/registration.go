@@ -17,6 +17,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/evm"
 	"github.com/ava-labs/avalanche-cli/sdk/interchain"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -62,13 +63,13 @@ func InitializeValidatorRegistrationPoSNative(
 
 	balanceOwnersAux := PChainOwner{
 		Threshold: balanceOwners.Threshold,
-		Addresses: utils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
+		Addresses: sdkutils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
 			return common.BytesToAddress(addr[:])
 		}),
 	}
 	disableOwnersAux := PChainOwner{
 		Threshold: disableOwners.Threshold,
-		Addresses: utils.Map(disableOwners.Addresses, func(addr ids.ShortID) common.Address {
+		Addresses: sdkutils.Map(disableOwners.Addresses, func(addr ids.ShortID) common.Address {
 			return common.BytesToAddress(addr[:])
 		}),
 	}
@@ -117,13 +118,13 @@ func InitializeValidatorRegistrationPoA(
 	}
 	balanceOwnersAux := PChainOwner{
 		Threshold: balanceOwners.Threshold,
-		Addresses: utils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
+		Addresses: sdkutils.Map(balanceOwners.Addresses, func(addr ids.ShortID) common.Address {
 			return common.BytesToAddress(addr[:])
 		}),
 	}
 	disableOwnersAux := PChainOwner{
 		Threshold: disableOwners.Threshold,
-		Addresses: utils.Map(disableOwners.Addresses, func(addr ids.ShortID) common.Address {
+		Addresses: sdkutils.Map(disableOwners.Addresses, func(addr ids.ShortID) common.Address {
 			return common.BytesToAddress(addr[:])
 		}),
 	}

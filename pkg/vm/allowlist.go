@@ -10,7 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -43,7 +43,7 @@ func addRoleToPreviewTable(table *tablewriter.Table, name string, addresses []co
 	if len(addresses) == 0 {
 		table.Append([]string{name, strings.Repeat(" ", 11)})
 	} else {
-		addressesStr := strings.Join(utils.Map(addresses, func(a common.Address) string { return a.Hex() }), "\n")
+		addressesStr := strings.Join(sdkutils.Map(addresses, func(a common.Address) string { return a.Hex() }), "\n")
 		table.Append([]string{name, addressesStr})
 	}
 }
@@ -59,11 +59,11 @@ func getNewAddresses(
 	}
 	for _, address := range addresses {
 		switch {
-		case sdkUtils.Belongs(allowList.AdminAddresses, address):
+		case sdkutils.Belongs(allowList.AdminAddresses, address):
 			fmt.Println(address.Hex() + " is already allowed as admin role")
-		case sdkUtils.Belongs(allowList.ManagerAddresses, address):
+		case sdkutils.Belongs(allowList.ManagerAddresses, address):
 			fmt.Println(address.Hex() + " is already allowed as manager role")
-		case sdkUtils.Belongs(allowList.EnabledAddresses, address):
+		case sdkutils.Belongs(allowList.EnabledAddresses, address):
 			fmt.Println(address.Hex() + " is already allowed as enabled role")
 		default:
 			newAddresses = append(newAddresses, address)
@@ -84,7 +84,7 @@ func removeAddress(
 	}
 	cancelOption := "Cancel"
 	prompt := "Select the address you want to remove"
-	options := utils.Map(addresses, func(a common.Address) string { return a.Hex() })
+	options := sdkutils.Map(addresses, func(a common.Address) string { return a.Hex() })
 	options = append(options, cancelOption)
 	opt, err := app.Prompt.CaptureList(prompt, options)
 	if err != nil {

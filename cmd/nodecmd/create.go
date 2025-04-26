@@ -14,27 +14,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
-
-	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
-	"github.com/ava-labs/avalanche-cli/pkg/docker"
-
-	"github.com/ava-labs/avalanche-cli/pkg/metrics"
-
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
+	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/docker"
+	"github.com/ava-labs/avalanche-cli/pkg/metrics"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
+	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
-	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
 	"github.com/ava-labs/avalanchego/utils/logging"
+
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -1010,7 +1008,7 @@ func generateNodeCertAndKeys(stakerCertFilePath, stakerKeyFilePath, blsKeyFilePa
 
 func provideStakingCertAndKey(host *models.Host) error {
 	keyPath := app.GetNodeStakingDir(host.IP)
-	if sdkUtils.DirExists(keyPath) && !overrideExisting {
+	if sdkutils.DirExists(keyPath) && !overrideExisting {
 		yes, err := app.Prompt.CaptureNoYes(fmt.Sprintf("Directory %s alreday exists. Do you want to override it?", keyPath))
 		if err != nil {
 			return err
@@ -1349,11 +1347,11 @@ func getRegionsNodeNum(cloudName string) (
 		nodes[userRegion] = NumNodes{int(numNodes), int(numAPINodes)}
 		var currentInput []string
 		if globalNetworkFlags.UseDevnet || globalNetworkFlags.UseFuji {
-			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+			currentInput = sdkutils.Map(maps.Keys(nodes), func(region string) string {
 				return fmt.Sprintf("[%s]: %d validator(s) %d api(s)", region, nodes[region].numValidators, nodes[region].numAPI)
 			})
 		} else {
-			currentInput = utils.Map(maps.Keys(nodes), func(region string) string {
+			currentInput = sdkutils.Map(maps.Keys(nodes), func(region string) string {
 				return fmt.Sprintf("[%s]: %d validator(s)", region, nodes[region].numValidators)
 			})
 		}
@@ -1376,7 +1374,7 @@ func setSSHIdentity() (string, error) {
 		return "", err
 	}
 	yubikeyRegexp := regexp.MustCompile(yubikeyPattern)
-	sshIdentities = utils.Map(sshIdentities, func(id string) string {
+	sshIdentities = sdkutils.Map(sshIdentities, func(id string) string {
 		if len(yubikeyRegexp.FindStringSubmatch(id)) > 0 {
 			return fmt.Sprintf("%s%s", id, yubikeyMark)
 		}
