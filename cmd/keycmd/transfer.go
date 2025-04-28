@@ -30,6 +30,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/chain/p/builder"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/ava-labs/coreth/plugin/evm/atomic"
@@ -454,7 +455,7 @@ func intraEvmSend(
 	}
 	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 		chainName,
-		calculateEvmFee(receipt.GasUsed, receipt.EffectiveGasPrice))
+		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 	return err
 }
 
@@ -594,9 +595,9 @@ func interEvmSend(
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("%s Paid fee: %.9f",
+	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 		chainName,
-		calculateEvmFee(receipt.GasUsed, receipt.EffectiveGasPrice))
+		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
 
 	if receipt2 != nil {
 		chainName, err := contract.GetBlockchainDesc(receiverChain)
@@ -605,7 +606,7 @@ func interEvmSend(
 		}
 		ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
 			chainName,
-			calculateEvmFee(receipt2.GasUsed, receipt2.EffectiveGasPrice))
+			calculateEvmFeeInAvax(receipt2.GasUsed, receipt2.EffectiveGasPrice))
 	}
 
 	return nil
@@ -638,7 +639,7 @@ func pToPSend(
 		Addrs:     []ids.ShortID{destinationAddr},
 	}
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Asset: avax.Asset{ID: getBuilderContext(wallet).AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
@@ -673,7 +674,7 @@ func pToPSend(
 		}
 		return err
 	}
-	pContext := wallet.P().Builder().Context()
+	pContext := getBuilderContext(wallet)
 	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 	if err != nil {
@@ -733,7 +734,7 @@ func exportFromP(
 	usingLedger bool,
 ) error {
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Asset: avax.Asset{ID: getBuilderContext(wallet).AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
@@ -769,7 +770,7 @@ func exportFromP(
 		}
 		return err
 	}
-	pContext := wallet.P().Builder().Context()
+	pContext := getBuilderContext(wallet)
 	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 	if err != nil {
@@ -1073,7 +1074,7 @@ func importIntoP(
 		}
 		return err
 	}
-	pContext := wallet.P().Builder().Context()
+	pContext := getBuilderContext(wallet)
 	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 	if err != nil {
@@ -1084,18 +1085,19 @@ func importIntoP(
 	return nil
 }
 
-func calculateEvmFee(gasUsed uint64, gasPrice *big.Int) float64 {
-	// Convert gasUsed to a big.Int
+func calculateEvmFeeInAvax(gasUsed uint64, gasPrice *big.Int) float64 {
 	gasUsedBig := new(big.Int).SetUint64(gasUsed)
-
-	// Multiply gasUsed * gasPrice
 	totalCost := new(big.Int).Mul(gasUsedBig, gasPrice)
 
-	// Divide by units.Avax (to normalize to AVAX units)
-	avaxUnits := new(big.Int).SetUint64(units.Avax)
-	totalCostInAvax := new(big.Int).Div(totalCost, avaxUnits)
+	totalCostInNanoAvax := utils.ConvertToNanoAvax(totalCost)
 
-	// Convert to float64 for display purposes
-	result, _ := new(big.Float).SetInt(totalCostInAvax).Float64()
+	result, _ := new(big.Float).SetInt(totalCostInNanoAvax).Float64()
 	return result / float64(units.Avax)
+}
+
+func getBuilderContext(wallet *primary.Wallet) *builder.Context {
+	if wallet == nil {
+		return nil
+	}
+	return wallet.P().Builder().Context()
 }

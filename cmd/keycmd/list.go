@@ -653,12 +653,7 @@ func formatCChainBalance(balance *big.Int) (string, error) {
 		return fmt.Sprintf("%d", balance), nil
 	}
 
-	// convert to nAvax with rounding
-	divisor := big.NewInt(int64(units.Avax))
-	half := big.NewInt(int64(units.Avax) - 1)
-	adjusted := new(big.Int).Add(balance, half)
-	result := new(big.Int).Div(adjusted, divisor)
-
+	result := utils.ConvertToNanoAvax(balance)
 	if result.Cmp(big.NewInt(0)) == 0 {
 		return "0", nil
 	}
