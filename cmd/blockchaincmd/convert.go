@@ -62,7 +62,7 @@ func newConvertCmd() *cobra.Command {
 
 Sovereign L1s require bootstrap validators. avalanche blockchain convert command gives the option of: 
 - either using local machine as bootstrap validators (set the number of bootstrap validators using 
---num-local-nodes flag, default is set to 1)
+--num-bootstrap-validators flag, default is set to 1)
 - or using remote nodes (we require the node's Node-ID and BLS info)`,
 		RunE:              convertBlockchain,
 		PersistentPostRun: handlePostRun,
@@ -88,7 +88,6 @@ Sovereign L1s require bootstrap validators. avalanche blockchain convert command
 		float64(constants.BootstrapValidatorBalanceNanoAVAX)/float64(units.Avax),
 		"set the AVAX balance of each bootstrap validator that will be used for continuous fee on P-Chain",
 	)
-	cmd.Flags().IntVar(&numLocalNodes, "num-local-nodes", 0, "number of nodes to be created on local machine")
 	cmd.Flags().UintSliceVar(&httpPorts, "http-port", []uint{}, "http port for node(s)")
 	cmd.Flags().UintSliceVar(&stakingPorts, "staking-port", []uint{}, "staking port for node(s)")
 	cmd.Flags().StringVar(&changeOwnerAddress, "change-owner-address", "", "address that will receive change if node is no longer L1 validator")
@@ -120,6 +119,7 @@ func StartLocalMachine(
 	availableBalance uint64,
 	httpPorts []uint,
 	stakingPorts []uint,
+	numBootstrapValidator int,
 ) (bool, error) {
 	var err error
 	if network.Kind == models.Local {
@@ -141,9 +141,6 @@ func StartLocalMachine(
 			network = models.ConvertClusterToNetwork(network)
 		}
 	}
-	if numLocalNodes > 0 {
-		useLocalMachine = true
-	}
 	// ask user if we want to use local machine if cluster is not provided
 	if !useLocalMachine && clusterNameFlagValue == "" {
 		ux.Logger.PrintToUser("You can use your local machine as a bootstrap validator on the blockchain")
@@ -156,8 +153,8 @@ func StartLocalMachine(
 	}
 	// default number of local machine nodes to be 1
 	// we set it here instead of at flag level so that we don't prompt if user wants to use local machine when they set numLocalNodes flag value
-	if useLocalMachine && numLocalNodes == 0 {
-		numLocalNodes = constants.DefaultNumberOfLocalMachineNodes
+	if useLocalMachine && numBootstrapValidator == 0 {
+		numBootstrapValidator = constants.DefaultNumberOfLocalMachineNodes
 	}
 	// if no cluster provided - we create one with fmt.Sprintf("%s-local-node-%s", blockchainName, networkNameComponent) name
 	if useLocalMachine && clusterNameFlagValue == "" {
@@ -180,11 +177,11 @@ func StartLocalMachine(
 			_ = localnet.LocalClusterRemove(app, clusterName)
 			ux.Logger.GreenCheckmarkToUser("Local node %s cleaned up.", clusterName)
 		}
-		requiredBalance := deployBalance * uint64(numLocalNodes)
+		requiredBalance := deployBalance * uint64(numBootstrapValidator)
 		if availableBalance < requiredBalance {
 			return false, fmt.Errorf(
 				"required balance for %d validators dynamic fee on PChain is %d but the given key has %d",
-				numLocalNodes,
+				numBootstrapValidator,
 				requiredBalance,
 				availableBalance,
 			)
@@ -243,7 +240,7 @@ func StartLocalMachine(
 			app,
 			clusterName,
 			avagoBinaryPath,
-			uint32(numLocalNodes),
+			uint32(numBootstrapValidator),
 			nodeConfig,
 			localnet.ConnectionSettings{},
 			nodeSettings,
@@ -670,6 +667,7 @@ func convertBlockchain(_ *cobra.Command, args []string) error {
 				availableBalance,
 				httpPorts,
 				stakingPorts,
+				numBootstrapValidators,
 			); err != nil {
 				return err
 			} else if cancel {
