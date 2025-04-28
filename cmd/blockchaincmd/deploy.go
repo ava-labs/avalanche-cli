@@ -156,7 +156,7 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 		)
 	})
 
-	nonSovGroup := flags.RegisterFlagGroup(cmd, "Non Subnet-Only-Validators (SOV) Flags", "show-non-sov-flags", true, func(set *pflag.FlagSet) {
+	nonSovGroup := flags.RegisterFlagGroup(cmd, "Non Subnet-Only-Validators (Non-SOV) Flags", "show-non-sov-flags", true, func(set *pflag.FlagSet) {
 		set.BoolVar(&sameControlKey, "same-control-key", false, "use the fee-paying key as control key")
 		set.Uint32Var(&threshold, "threshold", 0, "required number of control key signatures to make blockchain changes")
 		set.StringSliceVar(&controlKeys, "control-keys", nil, "addresses that may make blockchain changes")
