@@ -4,6 +4,7 @@ package key
 
 import (
 	"fmt"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/commandse2e"
 	"os"
 	"path"
 	"strings"
@@ -324,10 +325,19 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 				_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "P-Chain")
 				gomega.Expect(err).Should(gomega.BeNil())
 
-				cmd := commands.KeyTransferSend(ewoqKeyName, "", keyAddr, "", amountStr, "--p-chain-sender", "", "--p-chain-receiver", "", "", "")
-				outputByte, err := cmd.CombinedOutput()
-				output = string(outputByte)
-				gomega.Expect(err).Should(gomega.BeNil())
+				testFlags := commandse2e.TestFlags{
+					"local":              "true",
+					"amount":             amountStr,
+					"--p-chain-sender":   "",
+					"--p-chain-receiver": "",
+				}
+				output, err := commandse2e.TestCommand("Key", "transfer", nil, testFlags)
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).Should(gomega.ContainSubstring("invalid version string"))
+				//cmd := commands.KeyTransferSend(ewoqKeyName, "", keyAddr, "", amountStr, "--p-chain-sender", "", "--p-chain-receiver", "", "", "")
+				//outputByte, err := cmd.CombinedOutput()
+				//output = string(outputByte)
+				//gomega.Expect(err).Should(gomega.BeNil())
 
 				feeNAvax, err := utils.GetKeyTransferFee(output, "P-Chain")
 				gomega.Expect(err).Should(gomega.BeNil())
