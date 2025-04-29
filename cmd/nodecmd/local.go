@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 	"time"
-  
+
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
