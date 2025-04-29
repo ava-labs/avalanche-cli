@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/ava-labs/avalanche-cli/pkg/subnet"
+	"github.com/ava-labs/avalanche-cli/pkg/ux"
+
 	"golang.org/x/mod/semver"
 
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -104,4 +107,110 @@ func GetAvailableAvalancheGoVersions(app *application.Avalanche, rpcVersion int,
 		return nil, ErrNoAvagoVersion
 	}
 	return availableVersions, nil
+}
+
+type AvalancheGoVersionSettings struct {
+	UseCustomAvalanchegoVersion           string
+	UseLatestAvalanchegoReleaseVersion    bool
+	UseLatestAvalanchegoPreReleaseVersion bool
+	UseAvalanchegoVersionFromSubnet       string
+}
+
+// GetAvalancheGoVersion asks users whether they want to install the newest Avalanche Go version
+// or if they want to use the newest Avalanche Go Version that is still compatible with Subnet EVM
+// version of their choice
+func GetAvalancheGoVersion(app *application.Avalanche, avagoVersion AvalancheGoVersionSettings, network models.Network) (string, error) {
+	// skip this logic if custom-avalanchego-version flag is set
+	if avagoVersion.UseCustomAvalanchegoVersion != "" {
+		return avagoVersion.UseCustomAvalanchegoVersion, nil
+	}
+	latestReleaseVersion, err := GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, nil)
+	if err != nil {
+		return "", err
+	}
+	latestPreReleaseVersion, err := app.Downloader.GetLatestPreReleaseVersion(
+		constants.AvaLabsOrg,
+		constants.AvalancheGoRepoName,
+		"",
+	)
+	if err != nil {
+		return "", err
+	}
+
+	if !avagoVersion.UseLatestAvalanchegoReleaseVersion && !avagoVersion.UseLatestAvalanchegoPreReleaseVersion && avagoVersion.UseCustomAvalanchegoVersion == "" && avagoVersion.UseAvalanchegoVersionFromSubnet == "" {
+		avagoVersion, err = promptAvalancheGoVersionChoice(app, latestReleaseVersion, latestPreReleaseVersion)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	var version string
+	switch {
+	case avagoVersion.UseLatestAvalanchegoReleaseVersion:
+		version = latestReleaseVersion
+	case avagoVersion.UseLatestAvalanchegoPreReleaseVersion:
+		version = latestPreReleaseVersion
+	case avagoVersion.UseCustomAvalanchegoVersion != "":
+		version = avagoVersion.UseCustomAvalanchegoVersion
+	case avagoVersion.UseAvalanchegoVersionFromSubnet != "":
+		sc, err := app.LoadSidecar(avagoVersion.UseAvalanchegoVersionFromSubnet)
+		if err != nil {
+			return "", err
+		}
+		version, err = GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sc.RPCVersion)
+		if err != nil {
+			return "", err
+		}
+	}
+	return version, nil
+}
+
+// promptAvalancheGoVersionChoice sets flags for either using the latest Avalanche Go
+// version or using the latest Avalanche Go version that is still compatible with the subnet that user
+// wants the cloud server to track
+func promptAvalancheGoVersionChoice(app *application.Avalanche, latestReleaseVersion string, latestPreReleaseVersion string) (AvalancheGoVersionSettings, error) {
+	versionComments := map[string]string{
+		"v1.11.0-fuji": " (recommended for fuji durango)",
+	}
+	latestReleaseVersionOption := "Use latest Avalanche Go Release Version" + versionComments[latestReleaseVersion]
+	latestPreReleaseVersionOption := "Use latest Avalanche Go Pre-release Version" + versionComments[latestPreReleaseVersion]
+	subnetBasedVersionOption := "Use the deployed Subnet's VM version that the node will be validating"
+	customOption := "Custom"
+
+	txt := "What version of Avalanche Go would you like to install in the node?"
+	versionOptions := []string{latestReleaseVersionOption, subnetBasedVersionOption, customOption}
+	if latestPreReleaseVersion != latestReleaseVersion {
+		versionOptions = []string{latestPreReleaseVersionOption, latestReleaseVersionOption, subnetBasedVersionOption, customOption}
+	}
+	versionOption, err := app.Prompt.CaptureList(txt, versionOptions)
+	if err != nil {
+		return AvalancheGoVersionSettings{}, err
+	}
+
+	switch versionOption {
+	case latestReleaseVersionOption:
+		return AvalancheGoVersionSettings{UseLatestAvalanchegoReleaseVersion: true}, nil
+	case latestPreReleaseVersionOption:
+		return AvalancheGoVersionSettings{UseLatestAvalanchegoPreReleaseVersion: true}, nil
+	case customOption:
+		useCustomAvalanchegoVersion, err := app.Prompt.CaptureVersion("Which version of AvalancheGo would you like to install? (Use format v1.10.13)")
+		if err != nil {
+			return AvalancheGoVersionSettings{}, err
+		}
+		return AvalancheGoVersionSettings{UseCustomAvalanchegoVersion: useCustomAvalanchegoVersion}, nil
+	default:
+		useAvalanchegoVersionFromSubnet := ""
+		for {
+			useAvalanchegoVersionFromSubnet, err = app.Prompt.CaptureString("Which Subnet would you like to use to choose the avalanche go version?")
+			if err != nil {
+				return AvalancheGoVersionSettings{}, err
+			}
+			_, err = subnet.ValidateSubnetNameAndGetChains(app, []string{useAvalanchegoVersionFromSubnet})
+			if err == nil {
+				break
+			}
+			ux.Logger.PrintToUser(fmt.Sprintf("no blockchain named as %s found", useAvalanchegoVersionFromSubnet))
+		}
+		return AvalancheGoVersionSettings{UseAvalanchegoVersionFromSubnet: useAvalanchegoVersionFromSubnet}, nil
+	}
 }

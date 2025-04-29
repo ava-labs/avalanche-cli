@@ -5,6 +5,7 @@ package localnet
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/netip"
@@ -20,6 +21,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/admin"
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/config"
+	"github.com/ava-labs/avalanchego/config/node"
 	"github.com/ava-labs/avalanchego/genesis"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
@@ -153,6 +155,28 @@ func GetTmpNetNetwork(networkDir string) (*tmpnet.Network, error) {
 	if err != nil {
 		return network, err
 	}
+	for i := range network.Nodes {
+		// ensure that URI and StakingAddress are empty if the process does not exists
+		processPath := filepath.Join(networkDir, network.Nodes[i].NodeID.String(), "process.json")
+		if bytes, err := os.ReadFile(processPath); errors.Is(err, os.ErrNotExist) {
+			network.Nodes[i].URI = ""
+			network.Nodes[i].StakingAddress = netip.AddrPort{}
+		} else if err != nil {
+			return network, fmt.Errorf("failed to read node process context: %w", err)
+		} else {
+			processContext := node.ProcessContext{}
+			if err := json.Unmarshal(bytes, &processContext); err != nil {
+				return network, fmt.Errorf("failed to unmarshal node process context: %w", err)
+			}
+			if _, err := utils.GetProcess(processContext.PID); err != nil {
+				network.Nodes[i].URI = ""
+				network.Nodes[i].StakingAddress = netip.AddrPort{}
+				if err := os.Remove(processPath); err != nil {
+					return network, fmt.Errorf("failed to clean up node process context: %w", err)
+				}
+			}
+		}
+	}
 	networkID, err := GetTmpNetNetworkID(network)
 	if err != nil {
 		return network, err
@@ -194,9 +218,13 @@ func TmpNetLoad(
 func TmpNetStop(
 	networkDir string,
 ) error {
+	network, err := GetTmpNetNetwork(networkDir)
+	if err != nil {
+		return err
+	}
 	ctx, cancel := sdkutils.GetTimedContext(2 * time.Minute)
 	defer cancel()
-	return tmpnet.StopNetwork(ctx, networkDir)
+	return network.Stop(ctx)
 }
 
 // Indicates whether the given network has all, part, or none of its nodes running
@@ -711,7 +739,7 @@ func TmpNetTrackBlockchainOnNodes(
 			return err
 		}
 	}
-	nodeIDs := utils.Map(nodes, func(node *tmpnet.Node) ids.NodeID { return node.NodeID })
+	nodeIDs := sdkutils.Map(nodes, func(node *tmpnet.Node) ids.NodeID { return node.NodeID })
 	for nodeID, blockchainConfig := range perNodeBlockchainConfig {
 		if !sdkutils.Belongs(nodeIDs, nodeID) {
 			continue
@@ -850,7 +878,7 @@ func GetNewTmpNetNodes(
 			node.Flags[config.StakingPortKey] = 0
 		}
 		if len(trackedSubnets) > 0 {
-			trackedSubnetsStr := utils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })
+			trackedSubnetsStr := sdkutils.Map(trackedSubnets, func(i ids.ID) string { return i.String() })
 			node.Flags[config.TrackSubnetsKey] = strings.Join(trackedSubnetsStr, ",")
 		}
 		if err := node.EnsureKeys(); err != nil {
@@ -1092,7 +1120,7 @@ func GetTmpNetNodeURIsWithFix(
 	if err != nil {
 		return nil, err
 	}
-	return utils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
+	return sdkutils.Map(network.GetNodeURIs(), func(nodeURI tmpnet.NodeURI) string { return nodeURI.URI }), nil
 }
 
 // Get paths for most important avalanchego logs that are present on the network nodes

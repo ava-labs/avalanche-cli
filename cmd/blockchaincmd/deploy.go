@@ -31,6 +31,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	validatorManagerSDK "github.com/ava-labs/avalanche-cli/sdk/validatormanager"
 	"github.com/ava-labs/avalanche-cli/sdk/validatormanager/validatormanagertypes"
 	"github.com/ava-labs/avalanchego/api/info"
@@ -579,7 +580,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	deployBalance := uint64(deployBalanceAVAX * float64(units.Avax))
 	// whether user has created Avalanche Nodes when blockchain deploy command is called
-	if sidecar.Sovereign {
+	if sidecar.Sovereign && !subnetOnly {
 		if changeOwnerAddress == "" {
 			// use provided key as change owner unless already set
 			if pAddr, err := kc.PChainFormattedStrAddresses(); err == nil && len(pAddr) > 0 {
@@ -732,6 +733,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
 		deployer.CleanCacheWallet()
 		// get the control keys in the same order as the tx
 		_, controlKeys, threshold, err = txutils.GetOwners(network, subnetID)
@@ -739,7 +741,6 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-
 	var (
 		savePartialTx           bool
 		blockchainID            ids.ID
@@ -760,7 +761,10 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 			ux.Logger.PrintToUser(logging.Red.Wrap(
 				fmt.Sprintf("error deploying blockchain: %s. fix the issue and try again with a new deploy cmd", err),
 			))
+			return err
 		}
+		// TODO: remove once dynamic fees conf can be updated on wallet
+		deployer.CleanCacheWallet()
 
 		savePartialTx = !isFullySigned && err == nil
 	}
@@ -781,6 +785,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		); err != nil {
 			return err
 		}
+	}
+
+	// stop here if subnetOnly is true
+	if subnetOnly {
+		return nil
 	}
 
 	tracked := false
@@ -931,7 +940,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					if err != nil {
 						return err
 					}
-					deployRelayerFlags.BlockchainsToRelay = utils.Unique(utils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
+					deployRelayerFlags.BlockchainsToRelay = utils.Unique(sdkutils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
 				if network.Kind == models.Local || useLocalMachine {
 					deployRelayerFlags.Key = constants.ICMRelayerKeyName
@@ -1225,7 +1234,7 @@ func ConvertURIToPeers(uris []string) ([]info.Peer, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodeIDs := utils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
+	nodeIDs := sdkutils.Map(aggregatorPeers, func(peer info.Peer) ids.NodeID {
 		return peer.Info.ID
 	})
 	nodeIDsSet := set.Of(nodeIDs...)
