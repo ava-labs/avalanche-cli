@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -308,13 +310,13 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	avaGoVersionSetting := dependencies.AvalancheGoVersionSettings{
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
+	avalancheGoVersion, err := dependencies.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 	if err != nil {
 		return err
 	}

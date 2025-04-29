@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
-	"github.com/ava-labs/avalanche-cli/pkg/node"
+	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 
 	"github.com/ava-labs/avalanche-cli/pkg/docker"
 
@@ -141,13 +141,13 @@ func setupNode(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	avaGoVersionSetting := dependencies.AvalancheGoVersionSettings{
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
+	avalancheGoVersion, err := dependencies.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 	if err != nil {
 		return err
 	}

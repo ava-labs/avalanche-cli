@@ -190,7 +190,7 @@ func StartLocalMachine(
 				availableBalance,
 			)
 		}
-		avagoVersionSettings := node.AvalancheGoVersionSettings{}
+		avagoVersionSettings := dependencies.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
 		if userProvidedAvagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
