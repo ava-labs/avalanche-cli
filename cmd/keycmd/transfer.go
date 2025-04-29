@@ -444,7 +444,19 @@ func intraEvmSend(
 	if err != nil {
 		return err
 	}
-	return client.FundAddress(privateKey, destinationAddrStr, amount)
+
+	receipt, err := client.FundAddress(privateKey, destinationAddrStr, amount)
+	if err != nil {
+		return err
+	}
+	chainName, err := contract.GetBlockchainDesc(senderChain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
+		chainName,
+		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+	return err
 }
 
 func interEvmSend(
@@ -1055,4 +1067,14 @@ func getBuilderContext(wallet *primary.Wallet) *builder.Context {
 		return nil
 	}
 	return wallet.P().Builder().Context()
+}
+
+func calculateEvmFeeInAvax(gasUsed uint64, gasPrice *big.Int) float64 {
+	gasUsedBig := new(big.Int).SetUint64(gasUsed)
+	totalCost := new(big.Int).Mul(gasUsedBig, gasPrice)
+
+	totalCostInNanoAvax := utils.ConvertToNanoAvax(totalCost)
+
+	result, _ := new(big.Float).SetInt(totalCostInNanoAvax).Float64()
+	return result / float64(units.Avax)
 }
