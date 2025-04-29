@@ -5,10 +5,11 @@ package node
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
 
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
