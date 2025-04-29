@@ -1545,7 +1545,7 @@ func TestFundAddress(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.setupMock()
-			err := client.FundAddress(privateKeyHex, targetAddress.Hex(), amount)
+			_, err := client.FundAddress(privateKeyHex, targetAddress.Hex(), amount)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), "failure")

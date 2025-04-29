@@ -372,20 +372,20 @@ func (client Client) FundAddress(
 	sourceAddressPrivateKeyStr string,
 	targetAddressStr string,
 	amount *big.Int,
-) error {
+) (*types.Receipt, error) {
 	sourceAddressPrivateKey, err := crypto.HexToECDSA(sourceAddressPrivateKeyStr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sourceAddress := crypto.PubkeyToAddress(sourceAddressPrivateKey.PublicKey)
 	gasFeeCap, gasTipCap, nonce, err := client.CalculateTxParams(sourceAddress.Hex())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	targetAddress := common.HexToAddress(targetAddressStr)
 	chainID, err := client.GetChainID()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   chainID,
@@ -399,17 +399,18 @@ func (client Client) FundAddress(
 	txSigner := types.LatestSignerForChainID(chainID)
 	signedTx, err := types.SignTx(tx, txSigner, sourceAddressPrivateKey)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := client.SendTransaction(signedTx); err != nil {
-		return err
+		return nil, err
 	}
-	if _, b, err := client.WaitForTransaction(signedTx); err != nil {
-		return err
+	receipt, b, err := client.WaitForTransaction(signedTx)
+	if err != nil {
+		return nil, err
 	} else if !b {
-		return fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
+		return nil, fmt.Errorf("failure funding %s from %s amount %d", targetAddressStr, sourceAddress.Hex(), amount)
 	}
-	return nil
+	return receipt, nil
 }
 
 // encode [txStr] to binary, sends and waits for it

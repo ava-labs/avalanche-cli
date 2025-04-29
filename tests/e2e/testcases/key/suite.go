@@ -476,6 +476,46 @@ var _ = ginkgo.Describe("[Key]", func() {
 					Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax - xChainFee))
 			})
+
+			ginkgo.It("can transfer from C-chain to C-chain with ewoq key and local key", func() {
+				amount := 0.2
+				amountStr := fmt.Sprintf("%.2f", amount)
+				amountNAvax := uint64(amount * float64(units.Avax))
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					keyName,
+					"--c-chain-sender",
+					"--c-chain-receiver",
+					"--amount",
+					amountStr,
+				}
+
+				output, err := commands.ListKeys("local", true, "", "")
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, keyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				output, err = commands.KeyTransferSend(commandArguments)
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				feeNAvax, err := utils.GetKeyTransferFee(output, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				output, err = commands.ListKeys("local", true, "", "")
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+				gomega.Expect(feeNAvax + amountNAvax).
+					Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
+				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
+			})
 		})
 		ginkgo.Context("with invalid input", func() {
 			ginkgo.It("should fail when both key and ledger index were provided", func() {
