@@ -423,6 +423,8 @@ func intraEvmSend(
 		if err != nil {
 			return err
 		}
+	} else if amountFlt < 0 {
+		return fmt.Errorf("amount must be positive")
 	}
 	amountBigFlt := new(big.Float).SetFloat64(amountFlt)
 	amountBigFlt = amountBigFlt.Mul(amountBigFlt, new(big.Float).SetInt(vm.OneAvax))
