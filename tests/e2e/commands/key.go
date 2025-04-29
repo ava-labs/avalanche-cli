@@ -119,26 +119,18 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 }
 
 /* #nosec G204 */
-func KeyTransferSend(keyName string, targetAddr string, amount string) (string, error) {
-	// Create config
-	args := []string{
+func KeyTransferSend(
+	args []string,
+) (string, error) {
+	transferArgs := []string{
 		KeyCmd,
 		"transfer",
-		"--local",
-		"--key",
-		keyName,
-		"--destination-addr",
-		targetAddr,
-		"--amount",
-		amount,
-		"--p-chain-sender",
-		"--p-chain-receiver",
 		"--" + constants.SkipUpdateFlag,
 	}
-	cmd := exec.Command(CLIBinary, args...)
 
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	cmd := exec.Command(CLIBinary, append(transferArgs, args...)...)
+	outputByte, err := cmd.CombinedOutput()
+	return string(outputByte), err
 }
 
 /* #nosec G204 */

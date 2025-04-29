@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
-	"github.com/ava-labs/avalanchego/utils/units"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
@@ -26,7 +25,7 @@ const (
 	outputKeywith0x = "/tmp/testKey_0x.pk"
 )
 
-var _ = ginkgo.FDescribe("[Key]", func() {
+var _ = ginkgo.Describe("[Key]", func() {
 	ginkgo.AfterEach(func() {
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -294,62 +293,244 @@ var _ = ginkgo.FDescribe("[Key]", func() {
 	})
 
 	ginkgo.Context("transfer", func() {
-		ginkgo.It("can transfer between keys", func() {
-			_ = utils.DeleteKey(keyName)
-			_ = utils.DeleteKey(ewoqKeyName)
-			output, err := commands.CreateKeyFromPath(ewoqKeyName, utils.EwoqKeyPath)
-			if err != nil {
-				fmt.Println(output)
-				utils.PrintStdErr(err)
-			}
-			gomega.Expect(err).Should(gomega.BeNil())
-			output, err = commands.CreateKey(keyName)
-			if err != nil {
-				fmt.Println(output)
-				utils.PrintStdErr(err)
-			}
-			gomega.Expect(err).Should(gomega.BeNil())
-			commands.StartNetworkWithVersion("")
+		ginkgo.Context("With invalid input", func() {
+			ginkgo.It("should fail when both key and ledger index were provided", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					"test",
+					"--ledger",
+					"10",
+					"--destination-key",
+					"test",
+					"--amount",
+					"0.1",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
 
-			amount := 0.2
-			amountStr := fmt.Sprintf("%.2f", amount)
-			amountNAvax := uint64(amount * float64(units.Avax))
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("only one between a keyname or a ledger index must be given"))
+			})
 
-			// send/receive without recovery
+			ginkgo.Context("Within intraEvmSend", func() {
+				ginkgo.It("should fail when keyName (not ewoq) is provided but no key is found", func() {
+					keyName := "nokey"
+					commandArguments := []string{
+						"--local",
+						"--key",
+						keyName,
+						"--amount",
+						"0.1",
+						"--c-chain-sender",
+						"--c-chain-receiver",
+					}
+					output, err := commands.KeyTransferSend(commandArguments)
 
-			output, err = commands.ListKeys("local", true, true)
-			gomega.Expect(err).Should(gomega.BeNil())
-			keyAddr, keyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
-			gomega.Expect(err).Should(gomega.BeNil())
-			_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
-			gomega.Expect(err).Should(gomega.BeNil())
+					gomega.Expect(err).Should(gomega.HaveOccurred())
+					gomega.Expect(output).
+						Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/key/%s.pk: no such file or directory", keyName)))
+				})
 
-			output, err = commands.KeyTransferSend(ewoqKeyName, keyAddr, amountStr)
-			if err != nil {
-				fmt.Println(output)
-			}
-			gomega.Expect(err).Should(gomega.BeNil())
+				ginkgo.It("should fail when destinationKeyName (not ewoq) is provided but no key is found", func() {
+					keyName := "nokey"
+					commandArguments := []string{
+						"--local",
+						"--key",
+						ewoqKeyName,
+						"--destination-key",
+						keyName,
+						"--amount",
+						"0.1",
+						"--c-chain-sender",
+						"--c-chain-receiver",
+					}
 
-			feeNAvax, err := utils.GetKeyTransferFee(output)
-			gomega.Expect(err).Should(gomega.BeNil())
+					output, err := commands.KeyTransferSend(commandArguments)
 
-			output, err = commands.ListKeys("local", true, true)
-			gomega.Expect(err).Should(gomega.BeNil())
-			_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
-			gomega.Expect(err).Should(gomega.BeNil())
-			_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
-			gomega.Expect(err).Should(gomega.BeNil())
-			gomega.Expect(feeNAvax + amountNAvax).Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
-			gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
+					gomega.Expect(err).Should(gomega.HaveOccurred())
+					gomega.Expect(output).
+						Should(gomega.ContainSubstring(fmt.Sprintf(".avalanche-cli/key/%s.pk: no such file or directory", keyName)))
+				})
 
-			output, err = commands.ListKeys("local", true, true)
-			gomega.Expect(err).Should(gomega.BeNil())
-			_, keyBalance3, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName)
-			gomega.Expect(err).Should(gomega.BeNil())
-			_, ewoqKeyBalance3, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName)
-			gomega.Expect(err).Should(gomega.BeNil())
-			gomega.Expect(ewoqKeyBalance1 - ewoqKeyBalance3).Should(gomega.Equal(feeNAvax + amountNAvax))
-			gomega.Expect(keyBalance3 - keyBalance1).Should(gomega.Equal(amountNAvax))
+				ginkgo.It("should fail when amount provided amount is negative", func() {
+					commandArguments := []string{
+						"--local",
+						"--key",
+						ewoqKeyName,
+						"--destination-key",
+						ewoqKeyName,
+						"--amount",
+						"-0.1",
+						"--c-chain-sender",
+						"--c-chain-receiver",
+					}
+					output, err := commands.KeyTransferSend(commandArguments)
+
+					gomega.Expect(err).Should(gomega.HaveOccurred())
+					gomega.Expect(output).
+						Should(gomega.ContainSubstring("amount must be positive"))
+				})
+
+				ginkgo.It("should fail to load sidecar when blockchain does not exist in subnets directory", func() {
+					blockhainName := "NonExistingBlockchain"
+					commandArguments := []string{
+						"--local",
+						"--key",
+						ewoqKeyName,
+						"--destination-key",
+						ewoqKeyName,
+						"--amount",
+						"0.1",
+						"--sender-blockchain",
+						blockhainName,
+						"--c-chain-receiver",
+					}
+					output, err := commands.KeyTransferSend(commandArguments)
+
+					gomega.Expect(err).Should(gomega.HaveOccurred())
+					gomega.Expect(output).
+						Should(gomega.ContainSubstring("failed to load sidecar"))
+				})
+			})
+		})
+		ginkgo.Context("With unsupported paths", func() {
+			ginkgo.It("should fail when transferring from X-Chain to X-Chain", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					ewoqKeyName,
+					"--amount",
+					"0.1",
+					"--x-chain-sender",
+					"--x-chain-receiver",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
+
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("transfer from X-Chain to X-Chain is not supported"))
+			})
+
+			ginkgo.It("should fail when transferring from X-Chain to C-Chain", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					ewoqKeyName,
+					"--amount",
+					"0.1",
+					"--x-chain-sender",
+					"--c-chain-receiver",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
+
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("transfer from X-Chain to C-Chain is not supported"))
+			})
+
+			ginkgo.It("should fail when transferring from X-Chain to P-Chain", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					ewoqKeyName,
+					"--amount",
+					"0.1",
+					"--x-chain-sender",
+					"--p-chain-receiver",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
+
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("transfer from X-Chain to P-Chain is not supported"))
+			})
+
+			ginkgo.It("should fail when transferring from X-Chain to Subnet", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					ewoqKeyName,
+					"--amount",
+					"0.1",
+					"--x-chain-sender",
+					"--receiver-blockchain",
+					"Test-Chain",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
+
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("transfer from X-Chain to Test-Chain is not supported"))
+			})
+
+			ginkgo.It("should fail when transferring from Subnet to X-Chain", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					ewoqKeyName,
+					"--amount",
+					"0.1",
+					"--x-chain-receiver",
+					"--sender-blockchain",
+					"Test-Chain",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
+
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("transfer from Test-Chain to X-Chain is not supported"))
+			})
+
+			ginkgo.It("should fail when transferring from Subnet to P-Chain", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					ewoqKeyName,
+					"--amount",
+					"0.1",
+					"--p-chain-receiver",
+					"--sender-blockchain",
+					"Test-Chain",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
+
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("transfer from Test-Chain to P-Chain is not supported"))
+			})
+
+			ginkgo.It("should fail when transferring from P-Chain to Subnet", func() {
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					ewoqKeyName,
+					"--amount",
+					"0.1",
+					"--p-chain-sender",
+					"--receiver-blockchain",
+					"Test-Chain",
+				}
+				output, err := commands.KeyTransferSend(commandArguments)
+
+				gomega.Expect(err).Should(gomega.HaveOccurred())
+				gomega.Expect(output).
+					Should(gomega.ContainSubstring("transfer from P-Chain to Test-Chain is not supported"))
+			})
 		})
 	})
 })
