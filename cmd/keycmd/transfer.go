@@ -578,7 +578,7 @@ func interEvmSend(
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amount = amount.Mul(amount, new(big.Float).SetFloat64(float64(units.Avax)))
 	amountInt, _ := amount.Int(nil)
-	return ictt.Send(
+	receipt, receipt2, err := ictt.Send(
 		senderURL,
 		goethereumcommon.HexToAddress(originTransferrerAddress),
 		privateKey,
@@ -587,6 +587,29 @@ func interEvmSend(
 		destinationAddr,
 		amountInt,
 	)
+	if err != nil {
+		return err
+	}
+
+	chainName, err := contract.GetBlockchainDesc(senderChain)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
+		chainName,
+		calculateEvmFeeInAvax(receipt.GasUsed, receipt.EffectiveGasPrice))
+
+	if receipt2 != nil {
+		chainName, err := contract.GetBlockchainDesc(receiverChain)
+		if err != nil {
+			return err
+		}
+		ux.Logger.PrintToUser("%s Paid fee: %.9f AVAX",
+			chainName,
+			calculateEvmFeeInAvax(receipt2.GasUsed, receipt2.EffectiveGasPrice))
+	}
+
+	return nil
 }
 
 func pToPSend(
