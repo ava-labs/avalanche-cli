@@ -4,7 +4,7 @@
 package deploy
 
 import (
-	"github.com/ava-labs/avalanche-cli/tests/e2e/commandse2e"
+	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -29,18 +29,23 @@ var _ = ginkgo.Describe("[Blockchain Deploy Flags]", ginkgo.Ordered, func() {
 		commands.DeleteSubnetConfig(subnetName)
 	})
 	blockchainCmdArgs := []string{subnetName}
+	globalFlags := utils.GlobalFlags{
+		"local":             true,
+		"skip-icm-deploy":   true,
+		"skip-update-check": true,
+	}
 	ginkgo.It("HAPPY PATH: local deploy default", func() {
-		testFlags := commandse2e.TestFlags{}
-		output, err := commandse2e.TestCommand(commandse2e.BlockchainCmd, "deploy", blockchainCmdArgs, testFlags)
+		testFlags := utils.TestFlags{}
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(output).Should(gomega.ContainSubstring("L1 is successfully deployed on Local Network"))
 		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("ERROR PATH: invalid_version", func() {
-		testFlags := commandse2e.TestFlags{
+		testFlags := utils.TestFlags{
 			"avalanchego-version": "invalid_version",
 		}
-		output, err := commandse2e.TestCommand(commandse2e.BlockchainCmd, "deploy", blockchainCmdArgs, testFlags)
+		output, err := utils.TestCommand(utils.BlockchainCmd, "deploy", blockchainCmdArgs, globalFlags, testFlags)
 		gomega.Expect(err).Should(gomega.HaveOccurred())
 		gomega.Expect(output).Should(gomega.ContainSubstring("invalid version string"))
 	})

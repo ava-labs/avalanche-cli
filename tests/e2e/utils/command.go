@@ -1,16 +1,17 @@
 // Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
-package commandse2e
+package utils
 
 import (
 	"errors"
 	"fmt"
+	"golang.org/x/exp/maps"
 	"os/exec"
-
-	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 )
 
-type TestFlags map[string]string
+type GlobalFlags map[string]interface{}
+
+type TestFlags map[string]interface{}
 
 // CommandGroup represents the different command groups available in the CLI
 type CommandGroup string
@@ -21,36 +22,23 @@ const (
 
 var avalancheBinaryPath = "./bin/avalanche"
 
-var GlobalFlags = map[string]interface{}{
-	"local":             true,
-	"skip-icm-deploy":   true,
-	"skip-update-check": true,
-}
-
 // TestCommand tests a CLI command with flag inputs
-func TestCommand(commandGroup CommandGroup, command string, args []string, testFlags TestFlags) (string, error) {
+func TestCommand(commandGroup CommandGroup, command string, args []string, globalFlags GlobalFlags, testFlags TestFlags) (string, error) {
 	// Build command arguments
 	cmdArgs := []string{string(commandGroup), command}
 
 	// Append any additional arguments
-	if len(args) > 0 {
-		cmdArgs = append(cmdArgs, args...)
-	}
+	cmdArgs = append(cmdArgs, args...)
 
-	// Create a map to store all flags, starting with global flags
 	allFlags := make(map[string]interface{})
-	for flag, value := range GlobalFlags {
-		allFlags[flag] = value
-	}
+	maps.Copy(allFlags, globalFlags)
 
 	// Override with test case specific flags if provided
-	for flag, value := range testFlags {
-		allFlags[flag] = value
-	}
+	maps.Copy(allFlags, testFlags)
 
 	// Add all flags to command arguments
 	for flag, value := range allFlags {
-		cmdArgs = append(cmdArgs, "--"+flag+"="+fmt.Sprintf("%v", value))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%v", flag, value))
 	}
 
 	// Execute the command
@@ -66,7 +54,7 @@ func TestCommand(commandGroup CommandGroup, command string, args []string, testF
 			stderr = string(exitErr.Stderr)
 		}
 		fmt.Println(string(output))
-		utils.PrintStdErr(err)
+		PrintStdErr(err)
 		fmt.Println(stderr)
 	}
 
