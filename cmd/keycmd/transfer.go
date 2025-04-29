@@ -30,6 +30,7 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/txs"
 	avagofee "github.com/ava-labs/avalanchego/vms/platformvm/txs/fee"
 	"github.com/ava-labs/avalanchego/vms/secp256k1fx"
+	"github.com/ava-labs/avalanchego/wallet/chain/p/builder"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary"
 	"github.com/ava-labs/avalanchego/wallet/subnet/primary/common"
 	"github.com/ava-labs/coreth/plugin/evm/atomic"
@@ -603,7 +604,7 @@ func pToPSend(
 		Addrs:     []ids.ShortID{destinationAddr},
 	}
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Asset: avax.Asset{ID: getBuilderContext(wallet).AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
@@ -638,13 +639,13 @@ func pToPSend(
 		}
 		return err
 	}
-	pContext := wallet.P().Builder().Context()
+	pContext := getBuilderContext(wallet)
 	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
 	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
 	if err != nil {
 		return err
 	}
-	ux.Logger.PrintToUser("Paid fee: %.9f", float64(txFee)/float64(units.Avax))
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
 	return nil
 }
 
@@ -698,7 +699,7 @@ func exportFromP(
 	usingLedger bool,
 ) error {
 	output := &avax.TransferableOutput{
-		Asset: avax.Asset{ID: wallet.P().Builder().Context().AVAXAssetID},
+		Asset: avax.Asset{ID: getBuilderContext(wallet).AVAXAssetID},
 		Out: &secp256k1fx.TransferOutput{
 			Amt:          amount,
 			OutputOwners: to,
@@ -1017,4 +1018,11 @@ func importIntoP(
 		return err
 	}
 	return nil
+}
+
+func getBuilderContext(wallet *primary.Wallet) *builder.Context {
+	if wallet == nil {
+		return nil
+	}
+	return wallet.P().Builder().Context()
 }
