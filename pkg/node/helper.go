@@ -270,4 +270,3 @@ func WaitForHealthyCluster(
 		time.Sleep(poolTime)
 	}
 }
-
