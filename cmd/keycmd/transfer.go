@@ -735,6 +735,13 @@ func exportFromP(
 		}
 		return err
 	}
+	pContext := getBuilderContext(wallet)
+	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
+	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
 	return nil
 }
 
@@ -774,6 +781,7 @@ func importIntoX(
 		}
 		return err
 	}
+	ux.Logger.PrintToUser("X-Chain Paid fee: %.9f AVAX", float64(wallet.X().Builder().Context().BaseTxFee)/float64(units.Avax))
 	return nil
 }
 
@@ -835,6 +843,10 @@ func importIntoC(
 	if usingLedger {
 		ux.Logger.PrintToUser("*** Please sign ImportTx transaction on the ledger device *** ")
 	}
+	amt, err := wallet.C().Builder().GetImportableBalance(blockchainID)
+	if err != nil {
+		return fmt.Errorf("error getting importable balance: %w", err)
+	}
 	client, err := evm.GetClient(network.BlockchainEndpoint("C"))
 	if err != nil {
 		return err
@@ -869,6 +881,11 @@ func importIntoC(
 		}
 		return err
 	}
+
+	if len(unsignedTx.Outs) == 0 {
+		return fmt.Errorf("no outputs for C-Chain transaction")
+	}
+	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f AVAX", float64(amt-unsignedTx.Outs[0].Amount)/float64(units.Avax))
 	return nil
 }
 
@@ -978,6 +995,11 @@ func exportFromC(
 		}
 		return err
 	}
+	if len(unsignedTx.Ins) == 0 {
+		return fmt.Errorf("no inputs for C-Chain transaction")
+	}
+	ux.Logger.PrintToUser("C-Chain Paid fee: %.9f AVAX", float64(unsignedTx.Ins[0].Amount-amount)/float64(units.Avax))
+
 	return nil
 }
 
@@ -1017,6 +1039,14 @@ func importIntoP(
 		}
 		return err
 	}
+	pContext := getBuilderContext(wallet)
+	pFeeCalculator := avagofee.NewDynamicCalculator(pContext.ComplexityWeights, pContext.GasPrice)
+	txFee, err := pFeeCalculator.CalculateFee(unsignedTx)
+	if err != nil {
+		return err
+	}
+	ux.Logger.PrintToUser("P-Chain Paid fee: %.9f AVAX", float64(txFee)/float64(units.Avax))
+
 	return nil
 }
 
