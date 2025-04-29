@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package transactioncmd
 
@@ -108,13 +108,11 @@ func commitTx(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	isPermissioned, controlKeys, _, err := txutils.GetOwners(network, subnetID)
+	_, controlKeys, _, err := txutils.GetOwners(network, subnetID)
 	if err != nil {
 		return err
 	}
-	if !isPermissioned {
-		return blockchaincmd.ErrNotPermissionedSubnet
-	}
+
 	subnetAuthKeys, remainingSubnetAuthKeys, err := txutils.GetRemainingSigners(tx, controlKeys)
 	if err != nil {
 		return err

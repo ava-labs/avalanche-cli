@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package subnet
@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/tests/e2e/commands"
 	"github.com/ava-labs/avalanche-cli/tests/e2e/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/formatting/address"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/units"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -24,8 +25,11 @@ import (
 
 const (
 	subnetName     = "e2eSubnetTest"
-	controlKeys    = "P-custom18jma8ppw3nhx5r4ap8clazz0dps7rv5u9xde7p"
-	keyName        = "ewoq"
+	ewoqKey        = "ewoq"
+	testKeyName    = "e2eKey"
+	testKeyPath    = "tests/e2e/assets/test_key.pk"
+	testKeyAddr    = "P-custom1wu9sae0z2s80lv2x5gt5ys57y5yasqtnt6n2hs"
+	controlKeys    = testKeyAddr
 	stakeAmount    = "2000"
 	stakeDuration  = "336h"
 	localNetwork   = "Local Network"
@@ -37,8 +41,17 @@ const (
 )
 
 func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
+	// fund non ewoq key
+	_, _ = commands.DeleteKey(testKeyName)
+	_, err := commands.CreateKeyFromPath(testKeyName, testKeyPath)
+	gomega.Expect(err).Should(gomega.BeNil())
+	testKeyAddrShort, err := address.ParseToID(testKeyAddr)
+	gomega.Expect(err).Should(gomega.BeNil())
+	fee := 3 * units.Avax
+	err = utils.FundAddress(testKeyAddrShort, fee)
+	gomega.Expect(err).Should(gomega.BeNil())
 	// deploy
-	s := commands.SimulateFujiDeployNonSOV(subnetName, keyName, controlKeys)
+	s := commands.SimulateFujiDeployNonSOV(subnetName, testKeyName, controlKeys)
 	fmt.Println(s)
 	subnetID, err := utils.ParsePublicDeployOutput(s, utils.SubnetIDParseType)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -47,7 +60,7 @@ func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
 	gomega.Expect(err).Should(gomega.BeNil())
 	for _, nodeInfo := range nodeInfos {
 		start := time.Now().Add(time.Second * 30).UTC().Format("2006-01-02 15:04:05")
-		_ = commands.SimulateFujiAddValidator(subnetName, keyName, nodeInfo.ID, start, "24h", "20")
+		_ = commands.SimulateFujiAddValidator(subnetName, testKeyName, nodeInfo.ID, start, "24h", "20")
 	}
 	// join to copy vm binary and update config file
 	for _, nodeInfo := range nodeInfos {
@@ -72,8 +85,8 @@ func deploySubnetToFujiNonSOV() (string, map[string]utils.NodeInfo) {
 var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 	ginkgo.BeforeEach(func() {
 		// key
-		_ = utils.DeleteKey(keyName)
-		output, err := commands.CreateKeyFromPath(keyName, utils.EwoqKeyPath)
+		_ = utils.DeleteKey(ewoqKey)
+		output, err := commands.CreateKeyFromPath(ewoqKey, utils.EwoqKeyPath)
 		if err != nil {
 			fmt.Println(output)
 			utils.PrintStdErr(err)
@@ -89,7 +102,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 
 	ginkgo.AfterEach(func() {
 		commands.DeleteSubnetConfig(subnetName)
-		err := utils.DeleteKey(keyName)
+		err := utils.DeleteKey(ewoqKey)
 		gomega.Expect(err).Should(gomega.BeNil())
 		commands.CleanNetwork()
 	})
@@ -197,7 +210,7 @@ var _ = ginkgo.Describe("[Public Subnet non SOV]", func() {
 		gomega.Expect(found).Should(gomega.BeTrue())
 
 		// remove validator
-		_ = commands.SimulateFujiRemoveValidator(subnetName, keyName, validatorToRemove)
+		_ = commands.SimulateFujiRemoveValidator(subnetName, testKeyName, validatorToRemove)
 
 		// confirm current validator set
 		validators, err = subnet.GetSubnetValidators(subnetID)

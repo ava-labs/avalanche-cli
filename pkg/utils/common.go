@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package utils
 
@@ -140,14 +140,6 @@ func Filter[T any](input []T, f func(T) bool) []T {
 		if f(e) {
 			output = append(output, e)
 		}
-	}
-	return output
-}
-
-func Map[T, U any](input []T, f func(T) U) []U {
-	output := make([]U, 0, len(input))
-	for _, e := range input {
-		output = append(output, f(e))
 	}
 	return output
 }

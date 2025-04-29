@@ -1,4 +1,4 @@
-// Copyright (C) 2024, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package nodecmd
 
@@ -95,7 +95,7 @@ func importFile(_ *cobra.Command, args []string) error {
 	}
 	// add inventory
 	inventoryPath := app.GetAnsibleInventoryDirPath(clusterName)
-	nodes := utils.Map(importCluster.Nodes, func(node models.ExportNode) models.NodeConfig { return node.NodeConfig })
+	nodes := sdkutils.Map(importCluster.Nodes, func(node models.ExportNode) models.NodeConfig { return node.NodeConfig })
 	if err := ansible.WriteNodeConfigsToAnsibleInventory(inventoryPath, nodes); err != nil {
 		ux.Logger.RedXToUser("error writing inventory file: %v", err)
 		return err

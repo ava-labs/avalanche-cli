@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package node
 
@@ -18,7 +18,8 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	sdkUtils "github.com/ava-labs/avalanche-cli/sdk/utils"
+	"github.com/ava-labs/avalanche-cli/pkg/vm"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/api/info"
 )
 
@@ -174,9 +175,9 @@ func getPublicEndpoints(
 		publicNodes = clusterConfig.Nodes
 	}
 	publicTrackers := utils.Filter(trackers, func(tracker *models.Host) bool {
-		return sdkUtils.Belongs(publicNodes, tracker.GetCloudID())
+		return sdkutils.Belongs(publicNodes, tracker.GetCloudID())
 	})
-	endpoints := utils.Map(publicTrackers, func(tracker *models.Host) string {
+	endpoints := sdkutils.Map(publicTrackers, func(tracker *models.Host) string {
 		return GetAvalancheGoEndpoint(tracker.IP)
 	})
 	return endpoints, nil

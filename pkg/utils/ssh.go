@@ -1,4 +1,4 @@
-// Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package utils
 
@@ -9,10 +9,11 @@ import (
 	"regexp"
 	"strings"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/sdk/utils"
+
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/exp/slices"
 )
 
 // GetSSHConnectionString returns the SSH connection string for the given public IP and certificate file path.
@@ -108,7 +109,7 @@ func ListSSHAgentIdentities() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	identityList := Map(sshIDs, func(id *agent.Key) string { return id.Comment })
+	identityList := utils.Map(sshIDs, func(id *agent.Key) string { return id.Comment })
 	return identityList, nil
 }
 
