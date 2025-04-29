@@ -28,7 +28,7 @@ const (
 	subnetName      = "e2eSubnetTest"
 )
 
-var _ = ginkgo.FDescribe("[Key]", func() {
+var _ = ginkgo.Describe("[Key]", func() {
 	ginkgo.AfterEach(func() {
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
