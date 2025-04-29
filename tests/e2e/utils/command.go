@@ -5,8 +5,9 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"golang.org/x/exp/maps"
 	"os/exec"
+
+	"golang.org/x/exp/maps"
 )
 
 type GlobalFlags map[string]interface{}
