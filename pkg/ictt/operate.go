@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -190,7 +191,7 @@ func ERC20TokenHomeSend(
 	destinationICTTEndpoint common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
-) error {
+) (*types.Receipt, *types.Receipt, error) {
 	type Params struct {
 		DestinationBlockchainID [32]byte
 		DestinationICTTEndpoint common.Address
@@ -203,9 +204,9 @@ func ERC20TokenHomeSend(
 	}
 	tokenAddress, err := ERC20TokenHomeGetTokenAddress(rpcURL, homeAddress)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	if _, _, err := contract.TxToMethod(
+	_, receipt, err := contract.TxToMethod(
 		rpcURL,
 		false,
 		common.Address{},
@@ -217,9 +218,11 @@ func ERC20TokenHomeSend(
 		"approve(address, uint256)->(bool)",
 		homeAddress,
 		amount,
-	); err != nil {
-		return err
+	)
+	if err != nil {
+		return nil, nil, err
 	}
+
 	params := Params{
 		DestinationBlockchainID: destinationBlockchainID,
 		DestinationICTTEndpoint: destinationICTTEndpoint,
@@ -230,7 +233,7 @@ func ERC20TokenHomeSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	_, _, err = contract.TxToMethod(
+	_, receipt2, err := contract.TxToMethod(
 		rpcURL,
 		false,
 		common.Address{},
@@ -243,7 +246,11 @@ func ERC20TokenHomeSend(
 		params,
 		amount,
 	)
-	return err
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return receipt, receipt2, nil
 }
 
 func NativeTokenHomeSend(
@@ -254,7 +261,7 @@ func NativeTokenHomeSend(
 	destinationICTTEndpoint common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
-) error {
+) (*types.Receipt, error) {
 	type Params struct {
 		DestinationBlockchainID [32]byte
 		DestinationICTTEndpoint common.Address
@@ -267,7 +274,7 @@ func NativeTokenHomeSend(
 	}
 	tokenAddress, err := NativeTokenHomeGetTokenAddress(rpcURL, homeAddress)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	params := Params{
 		DestinationBlockchainID: destinationBlockchainID,
@@ -279,7 +286,7 @@ func NativeTokenHomeSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	_, _, err = contract.TxToMethod(
+	_, receipt, err := contract.TxToMethod(
 		rpcURL,
 		false,
 		common.Address{},
@@ -291,7 +298,7 @@ func NativeTokenHomeSend(
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
 		params,
 	)
-	return err
+	return receipt, err
 }
 
 func ERC20TokenRemoteSend(
@@ -302,8 +309,8 @@ func ERC20TokenRemoteSend(
 	destinationICTTEndpoint common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
-) error {
-	if _, _, err := contract.TxToMethod(
+) (*types.Receipt, *types.Receipt, error) {
+	_, receipt, err := contract.TxToMethod(
 		rpcURL,
 		false,
 		common.Address{},
@@ -315,8 +322,9 @@ func ERC20TokenRemoteSend(
 		"approve(address, uint256)->(bool)",
 		remoteAddress,
 		amount,
-	); err != nil {
-		return err
+	)
+	if err != nil {
+		return nil, nil, err
 	}
 	type Params struct {
 		DestinationBlockchainID [32]byte
@@ -338,7 +346,7 @@ func ERC20TokenRemoteSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	_, _, err := contract.TxToMethod(
+	_, receipt2, err := contract.TxToMethod(
 		rpcURL,
 		false,
 		common.Address{},
@@ -351,7 +359,10 @@ func ERC20TokenRemoteSend(
 		params,
 		amount,
 	)
-	return err
+	if err != nil {
+		return nil, nil, err
+	}
+	return receipt, receipt2, err
 }
 
 func NativeTokenRemoteSend(
@@ -362,7 +373,7 @@ func NativeTokenRemoteSend(
 	destinationICTTEndpoint common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
-) error {
+) (*types.Receipt, error) {
 	type Params struct {
 		DestinationBlockchainID [32]byte
 		DestinationICTTEndpoint common.Address
@@ -383,7 +394,7 @@ func NativeTokenRemoteSend(
 		RequiredGasLimit:        big.NewInt(250000),
 		MultiHopFallback:        common.Address{},
 	}
-	_, _, err := contract.TxToMethod(
+	_, receipt, err := contract.TxToMethod(
 		rpcURL,
 		false,
 		common.Address{},
@@ -395,7 +406,7 @@ func NativeTokenRemoteSend(
 		"send((bytes32, address, address, address, uint256, uint256, uint256, address))",
 		params,
 	)
-	return err
+	return receipt, err
 }
 
 func NativeTokenHomeAddCollateral(
@@ -517,13 +528,13 @@ func Send(
 	destinationAddress common.Address,
 	amountRecipient common.Address,
 	amount *big.Int,
-) error {
+) (*types.Receipt, *types.Receipt, error) {
 	endpointKind, err := GetEndpointKind(
 		rpcURL,
 		address,
 	)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	switch endpointKind {
 	case ERC20TokenRemote:
@@ -547,7 +558,7 @@ func Send(
 			amount,
 		)
 	case NativeTokenHome:
-		return NativeTokenHomeSend(
+		receipt, err := NativeTokenHomeSend(
 			rpcURL,
 			address,
 			privateKey,
@@ -556,8 +567,9 @@ func Send(
 			amountRecipient,
 			amount,
 		)
+		return receipt, nil, err
 	case NativeTokenRemote:
-		return NativeTokenRemoteSend(
+		receipt, err := NativeTokenRemoteSend(
 			rpcURL,
 			address,
 			privateKey,
@@ -566,6 +578,7 @@ func Send(
 			amountRecipient,
 			amount,
 		)
+		return receipt, nil, err
 	}
-	return fmt.Errorf("unknown ictt endpoint")
+	return nil, nil, fmt.Errorf("unknown ictt endpoint")
 }

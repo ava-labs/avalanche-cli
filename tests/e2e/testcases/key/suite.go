@@ -25,6 +25,7 @@ const (
 	outputKey       = "/tmp/testKey.pk"
 	outputKeywith0x = "/tmp/testKey_0x.pk"
 	subnetName      = "e2eSubnetTest"
+	ewoqEVMAddress  = "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC"
 )
 
 var _ = ginkgo.Describe("[Key]", func() {
@@ -305,6 +306,9 @@ var _ = ginkgo.Describe("[Key]", func() {
 
 			ginkgo.AfterEach(func() {
 				commands.CleanNetwork()
+				err := utils.DeleteConfigs(subnetName)
+				gomega.Expect(err).Should(gomega.BeNil())
+				utils.DeleteCustomBinary(subnetName)
 			})
 
 			ginkgo.It("can transfer from P-chain to P-chain with ewoq key and local key", func() {
@@ -561,6 +565,71 @@ var _ = ginkgo.Describe("[Key]", func() {
 				gomega.Expect(feeNAvax + amountNAvax).
 					Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
 				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
+			})
+
+			ginkgo.It("can transfer from C-Chain to Subnet with ewoq key and local key", func() {
+				commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, true)
+				commands.DeploySubnetLocallyNonSOV(subnetName)
+				commands.SendICMMessage("--local", "cchain", subnetName, "hello world", ewoqKeyName)
+				output := commands.DeployERC20Contract("--local", ewoqKeyName, "TEST", "100000", ewoqEVMAddress, "--c-chain")
+				erc20Address, err := utils.GetERC20TokenAddress(output)
+				gomega.Expect(err).Should(gomega.BeNil())
+				icctArgs := []string{
+					"--local",
+					"--c-chain-home",
+					"--remote-blockchain",
+					subnetName,
+					"--deploy-erc20-home",
+					erc20Address,
+					"--home-genesis-key",
+					"--remote-genesis-key",
+				}
+
+				output = commands.DeployInterchainTokenTransferrer(icctArgs)
+				gomega.Expect(err).Should(gomega.BeNil())
+				homeAddress, remoteAddress, err := utils.GetTokenTransferrerAddresses(output)
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				// Get ERC20 balances
+				output, err = commands.ListKeys("local", true, "c,"+subnetName, fmt.Sprintf("%s,%s", erc20Address, remoteAddress))
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, keyERCBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, subnetName)
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, ewoqKeyERCBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				amount := uint64(500)
+				amountStr := fmt.Sprintf("%d", amount)
+				transferArgs := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					keyName,
+					"--c-chain-sender",
+					"--receiver-blockchain",
+					subnetName,
+					"--amount",
+					amountStr,
+					"--origin-transferrer-address",
+					homeAddress,
+					"--destination-transferrer-address",
+					remoteAddress,
+				}
+
+				_, err = commands.KeyTransferSend(transferArgs)
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				// Verify ERC20 balances
+				output, err = commands.ListKeys("local", true, "c,"+subnetName, fmt.Sprintf("%s,%s", erc20Address, remoteAddress))
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, subnetName)
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, ewoqKeyERCBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+				gomega.Expect(amount).
+					Should(gomega.Equal(ewoqKeyERCBalance1 - ewoqKeyERCBalance2))
+				gomega.Expect(keyBalance2 - keyERCBalance1).Should(gomega.Equal(amount))
 			})
 		})
 		ginkgo.Context("with invalid input", func() {

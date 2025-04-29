@@ -1128,3 +1128,55 @@ func GetE2EHostInstanceID() (string, error) {
 	_, cloudHostID, _ := models.HostAnsibleIDToCloudID(hosts[0].NodeID)
 	return cloudHostID, nil
 }
+
+func GetERC20TokenAddress(output string) (string, error) {
+	substr := "Token Address: "
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			tokenAddress := lineFields[2]
+			return tokenAddress, nil
+		}
+	}
+
+	return "", fmt.Errorf("token address not found in output")
+}
+
+func GetTokenTransferrerAddresses(output string) (string, string, error) {
+	substr := "Home Address: "
+	var homeAddress string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			homeAddress = lineFields[2]
+		}
+	}
+
+	if homeAddress == "" {
+		return "", "", fmt.Errorf("home address not found in output")
+	}
+
+	substr = "Remote Address: "
+	var remoteAddress string
+	for _, line := range strings.Split(output, "\n") {
+		if strings.Contains(line, substr) {
+			lineFields := strings.Fields(line)
+			if len(lineFields) < 3 {
+				return "", "", fmt.Errorf("incorrect format for token address output: %s", line)
+			}
+			remoteAddress = lineFields[2]
+		}
+	}
+
+	if remoteAddress == "" {
+		return "", "", fmt.Errorf("remote address not found in output")
+	}
+
+	return homeAddress, remoteAddress, nil
+}

@@ -758,7 +758,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 
 		// Send a single token unit to report that the remote is collateralized.
-		err = ictt.Send(
+		_, _, err = ictt.Send(
 			homeRPCEndpoint,
 			homeAddress,
 			homeKey,
