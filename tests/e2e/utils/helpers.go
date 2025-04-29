@@ -369,27 +369,42 @@ func ParseRPCsFromOutput(output string) ([]string, error) {
 	return rpcs, nil
 }
 
-func ParseAddrBalanceFromKeyListOutput(output string, keyName string) (string, uint64, error) {
+func ParseAddrBalanceFromKeyListOutput(output string, keyName string, subnet string) (string, uint64, error) {
 	lines := strings.Split(output, "\n")
+	keyFound := false
 	for _, line := range lines {
-		if !strings.Contains(line, keyName) {
-			continue
+		if strings.Contains(line, keyName) {
+			keyFound = true
 		}
-		components := strings.Split(line, "|")
-		if len(components) != expectedKeyListLineComponents {
-			return "", 0, fmt.Errorf("unexpected number of components in key list line %q: expected %d got %d",
-				line,
-				expectedKeyListLineComponents,
-				len(components),
-			)
+
+		if keyFound && strings.Contains(line, subnet) {
+			components := strings.Split(line, "|")
+			if len(components) != expectedKeyListLineComponents {
+				return "", 0, fmt.Errorf("unexpected number of components in key list line %q: expected %d got %d",
+					line,
+					expectedKeyListLineComponents,
+					len(components),
+				)
+			}
+			addr := strings.TrimSpace(components[4])
+			balanceStr := strings.TrimSpace(components[6])
+
+			var balance uint64
+			if strings.Contains(balanceStr, ".") {
+				balanceFloat, err := strconv.ParseFloat(balanceStr, 64)
+				if err != nil {
+					return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
+				}
+				return addr, uint64(balanceFloat), nil
+			}
+
+			balance, err := strconv.ParseUint(balanceStr, 0, 64)
+			if err != nil {
+				return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
+			}
+
+			return addr, balance, nil
 		}
-		addr := strings.TrimSpace(components[4])
-		balanceStr := strings.TrimSpace(components[6])
-		balance, err := strconv.ParseUint(balanceStr, 0, 64)
-		if err != nil {
-			return "", 0, fmt.Errorf("error parsing expected float %s", balanceStr)
-		}
-		return addr, balance, nil
 	}
 	return "", 0, fmt.Errorf("keyName %s not found in key list", keyName)
 }
@@ -1076,15 +1091,16 @@ func ExecCommand(cmdName string, args []string, showStdout bool, errorIsExpected
 	return stdout + string(stderr)
 }
 
-func GetKeyTransferFee(output string) (uint64, error) {
+func GetKeyTransferFee(output string, network string) (uint64, error) {
+	substr := fmt.Sprintf("%s Paid fee", network)
 	feeNAvax := uint64(1)
 	for _, line := range strings.Split(output, "\n") {
-		if strings.Contains(line, "Paid fee") {
+		if strings.Contains(line, substr) {
 			lineFields := strings.Fields(line)
 			if len(lineFields) < 3 {
 				return 0, fmt.Errorf("incorrect format for fee output of key transfer: %s", line)
 			}
-			feeAvaxStr := lineFields[2]
+			feeAvaxStr := lineFields[3]
 			feeAvax, err := strconv.ParseFloat(feeAvaxStr, 64)
 			if err != nil {
 				return 0, err
