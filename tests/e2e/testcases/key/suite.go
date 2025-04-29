@@ -24,6 +24,7 @@ const (
 	testKeyWith0x   = "tests/e2e/assets/test_key_0x.pk"
 	outputKey       = "/tmp/testKey.pk"
 	outputKeywith0x = "/tmp/testKey_0x.pk"
+	subnetName      = "e2eSubnetTest"
 )
 
 var _ = ginkgo.Describe("[Key]", func() {
@@ -511,6 +512,51 @@ var _ = ginkgo.Describe("[Key]", func() {
 				_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, "C-Chain")
 				gomega.Expect(err).Should(gomega.BeNil())
 				_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, "C-Chain")
+				gomega.Expect(err).Should(gomega.BeNil())
+				gomega.Expect(feeNAvax + amountNAvax).
+					Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
+				gomega.Expect(keyBalance2 - keyBalance1).Should(gomega.Equal(amountNAvax))
+			})
+
+			ginkgo.It("can transfer from Subnet to Subnet with ewoq key", func() {
+				amount := 0.2
+				amountStr := fmt.Sprintf("%.2f", amount)
+				amountNAvax := uint64(amount * float64(units.Avax))
+				commandArguments := []string{
+					"--local",
+					"--key",
+					ewoqKeyName,
+					"--destination-key",
+					keyName,
+					"--sender-blockchain",
+					subnetName,
+					"--receiver-blockchain",
+					subnetName,
+					"--amount",
+					amountStr,
+				}
+
+				commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
+				commands.DeploySubnetLocallyNonSOV(subnetName)
+
+				output, err := commands.ListKeys("local", true, "c,"+subnetName, "")
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, keyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, subnetName)
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, ewoqKeyBalance1, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, subnetName)
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				output, err = commands.KeyTransferSend(commandArguments)
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				feeNAvax, err := utils.GetKeyTransferFee(output, subnetName)
+				gomega.Expect(err).Should(gomega.BeNil())
+
+				output, err = commands.ListKeys("local", true, "c,"+subnetName, "")
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, keyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, keyName, subnetName)
+				gomega.Expect(err).Should(gomega.BeNil())
+				_, ewoqKeyBalance2, err := utils.ParseAddrBalanceFromKeyListOutput(output, ewoqKeyName, subnetName)
 				gomega.Expect(err).Should(gomega.BeNil())
 				gomega.Expect(feeNAvax + amountNAvax).
 					Should(gomega.Equal(ewoqKeyBalance1 - ewoqKeyBalance2))
