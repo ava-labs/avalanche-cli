@@ -2,6 +2,11 @@
 
 set -e
 
+if ! [[ "$0" =~ scripts/run.e2e.sh ]]; then
+  echo "script must be run from repository root"
+  exit 1
+fi
+
 description_filter=""
 if [ "$1" = "--filter" ]
 then
