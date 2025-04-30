@@ -151,6 +151,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 			return err
 		}
 	}
+	return nil
 	network, err := networkoptions.GetNetworkFromCmdLineFlags(
 		app,
 		"On what Network do you want to deploy the Transferrer?",
