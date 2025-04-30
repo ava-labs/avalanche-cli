@@ -158,7 +158,7 @@ func CreateEVMGenesis(
 	genesisBlock0Timestamp := utils.TimeToNewUint64(time.Now())
 	precompiles := getPrecompiles(params, genesisBlock0Timestamp)
 
-	relayerAddress, _, err := relayer.GetRelayerKeyInfo(app)
+	_, relayerAddress, _, err := relayer.GetDefaultRelayerKeyInfo(app)
 	if err != nil {
 		return nil, err
 	}
