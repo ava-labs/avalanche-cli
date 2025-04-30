@@ -17,6 +17,7 @@ import (
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key/list"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key/transfer"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network/stop"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/create"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/devnet"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/monitoring"

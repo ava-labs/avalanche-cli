@@ -79,6 +79,14 @@ func GetAPMDir() string {
 	return path.Join(usr.HomeDir, constants.APMDir)
 }
 
+func GetSnapshotsDir() string {
+	return filepath.Join(GetBaseDir(), constants.SnapshotsDirName)
+}
+
+func GetSnapshotPath(snapshotName string) string {
+	return filepath.Join(GetSnapshotsDir(), snapshotName)
+}
+
 func ChainConfigExists(subnetName string) (bool, error) {
 	cfgPath := filepath.Join(GetBaseDir(), constants.SubnetDir, subnetName, constants.ChainConfigFileName)
 	cfgExists := true
@@ -307,6 +315,13 @@ func DeleteAPMBin(vmid string) {
 
 	// ignore error, file may not exist
 	_ = os.RemoveAll(vmPath)
+}
+
+func DeleteSnapshot(snapshotName string) {
+	snapshotPath := path.Join(GetSnapshotsDir(), snapshotName)
+
+	// ignore error, file may not exist
+	_ = os.RemoveAll(snapshotPath)
 }
 
 func stdoutParser(output string, queue string, capture string) (string, error) {
@@ -614,6 +629,12 @@ func CheckSubnetEVMExists(version string) bool {
 func CheckAvalancheGoExists(version string) bool {
 	avagoPath := path.Join(GetBaseDir(), constants.AvalancheCliBinDir, constants.AvalancheGoInstallDir, "avalanchego-"+version)
 	_, err := os.Stat(avagoPath)
+	return err == nil
+}
+
+func CheckSnapshotExists(snapshotName string) bool {
+	snapshotPath := filepath.Join(GetSnapshotsDir(), snapshotName)
+	_, err := os.Stat(snapshotPath)
 	return err == nil
 }
 

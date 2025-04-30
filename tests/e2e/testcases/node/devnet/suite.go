@@ -72,7 +72,7 @@ var _ = ginkgo.Describe("[Node devnet]", func() {
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
 		relativePath := "nodes"
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.ClustersConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)

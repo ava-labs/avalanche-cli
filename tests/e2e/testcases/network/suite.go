@@ -55,7 +55,8 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.StopNetwork()
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		commands.StartNetwork()
 
 		// Check greeter contract has right value
@@ -101,7 +102,8 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.StopNetwork()
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		commands.StartNetwork()
 
 		// Check greeter contract has right value
