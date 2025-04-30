@@ -382,6 +382,15 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 	return app.UpdateSidecar(sc)
 }
 
+func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) error {
+	if network.Kind == models.Local {
+		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine {
+			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
+		}
+	}
+	return nil
+}
+
 // deployBlockchain is the cobra command run for deploying subnets
 func deployBlockchain(cmd *cobra.Command, args []string) error {
 	blockchainName := args[0]
@@ -478,6 +487,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 	ux.Logger.PrintToUser("Deploying %s to %s", chains, network.Name())
 
 	if network.Kind == models.Local {
+		if err = deployLocalNetworkPreCheck(cmd, network); err != nil {
+			return err
+		}
 		app.Log.Debug("Deploy local")
 
 		avagoVersion := userProvidedAvagoVersion
