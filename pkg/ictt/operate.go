@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -449,6 +450,8 @@ func ERC20TokenHomeAddCollateral(
 	); err != nil {
 		return err
 	}
+	// TODO: use the same API node connection for this two operations
+	time.Sleep(5 * time.Second)
 	_, _, err = contract.TxToMethod(
 		rpcURL,
 		false,
