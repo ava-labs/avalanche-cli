@@ -27,6 +27,7 @@ const (
 
 /* #nosec G204 */
 func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string, icmEnabled bool) (string, string) {
+	fmt.Println("FELI1", icmEnabled)
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -46,12 +47,14 @@ func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, st
 
 /* #nosec G204 */
 func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath string, version string, icmEnabled bool) {
+	fmt.Println("FELI2", icmEnabled)
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
 
 	icmFlag := fmt.Sprintf("--icm=%t", icmEnabled)
+	fmt.Println("FELI3", icmFlag)
 
 	// Create config
 	cmdArgs := []string{
