@@ -1,0 +1,99 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: ['tonyz/add_cov_report']
+  pull_request:
+    branches: ['tonyz/add_cov_report']
+  workflow_dispatch:
+      inputs:
+        branch:
+          description: "Define branch name"
+          required: true
+env:
+  COVERAGE_MODE: true
+
+jobs:
+  code_coverage:
+    name: Code Coverage
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        suite:
+          [
+            "\\[APM\\]",
+          ]
+          
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16.x"
+
+      - name: Yarn Install
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_on: error
+          command: yarn --cwd ./tests/e2e/hardhat
+
+      - name: Install Typescript
+        shell: bash
+        run: |
+          npm install -g typescript
+          npm install -g ts-node
+          npm install -g tsx
+
+      - name: Generate SSH token for E2E tests
+        run: |
+          mkdir -p ~/.ssh && ssh-keygen -b 2048 -t rsa -f ~/.ssh/runner-avalanche-cli-keypair -q -N ""
+          echo "E2E_SSH_PUB_KEY<<EOF" >> $GITHUB_ENV
+          cat ~/.ssh/runner-avalanche-cli-keypair >> $GITHUB_ENV 
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ env.E2E_SSH_PUB_KEY }}   
+
+      - name: Build with coverage
+        working-directory: ${{ github.workspace }}
+        run: |
+          scripts/build.sh
+      
+      - name: Run E2E tests with coverage
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: AVALANCHE_CLI_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} LEDGER_SIM=true scripts/run.e2e.sh --filter "${{ matrix.suite }}"
+
+      - name: Run Unit tests
+        working-directory: ${{ github.workspace }}
+        run: scripts/unit_test.sh
+        env:
+          CGO_CFLAGS: "-O -D__BLST_PORTABLE__" # Set the CGO flags to use the portable version of BLST
+      
+      - name: Generate coverage report
+        run: scripts/coverage.sh
+
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: coverage/merged/merged.txt
+
+      - name: Coverage report
+        uses: fgrosse/go-coverage-report@v1.0.2
+        with:
+          coverage-artifact-name: "code-coverage"
+          coverage-file-name: "merged.txt"
+        continue-on-error: true
+          
