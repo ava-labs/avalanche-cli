@@ -73,7 +73,9 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 		cmdArgs = append(cmdArgs, "--vm-version", version)
 	}
 	cmd := exec.Command(CLIBinary, cmdArgs...)
+	fmt.Println(cmd)
 	output, err := cmd.CombinedOutput()
+	fmt.Println(output)
 	if err != nil {
 		fmt.Println(cmd.String())
 		fmt.Println(string(output))
