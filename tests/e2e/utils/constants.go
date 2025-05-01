@@ -3,8 +3,12 @@
 
 package utils
 
+import (
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+)
+
 const (
-	baseDir      = ".avalanche-cli"
+	baseDir      = constants.E2EBaseDirName
 	hardhatDir   = "./tests/e2e/hardhat"
 	confFilePath = hardhatDir + "/dynamic_conf.json"
 	greeterFile  = hardhatDir + "/greeter.json"

@@ -59,7 +59,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, constants.ClustersConfigFileName))
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.E2EBaseDirName, nodesRelativePath, constants.ClustersConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)
@@ -74,7 +74,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, hostName, "node_cloud_config.json"))
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.E2EBaseDirName, nodesRelativePath, hostName, "node_cloud_config.json"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodeCloudConfig := models.NodeConfig{}
 		err = json.Unmarshal(content, &nodeCloudConfig)
@@ -212,7 +212,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, constants.ClustersConfigFileName))
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.E2EBaseDirName, nodesRelativePath, constants.ClustersConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)
@@ -227,7 +227,7 @@ var _ = ginkgo.Describe("[Node create]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, nodesRelativePath, hostName, "node_cloud_config.json"))
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.E2EBaseDirName, nodesRelativePath, hostName, "node_cloud_config.json"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodeCloudConfig := models.NodeConfig{}
 		err = json.Unmarshal(content, &nodeCloudConfig)

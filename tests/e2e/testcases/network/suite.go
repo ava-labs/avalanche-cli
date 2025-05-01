@@ -24,7 +24,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("can stop and restart a deployed subnet non SOV", func() {
-		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {
@@ -55,7 +55,8 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.StopNetwork()
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		commands.StartNetwork()
 
 		// Check greeter contract has right value
@@ -101,7 +102,8 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 		}
 		gomega.Expect(err).Should(gomega.BeNil())
 
-		commands.StopNetwork()
+		err = commands.StopNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 		commands.StartNetwork()
 
 		// Check greeter contract has right value
@@ -116,7 +118,7 @@ var _ = ginkgo.Describe("[Network]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.It("clean hard deletes plugin binaries non SOV", func() {
-		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath)
+		commands.CreateSubnetEvmConfigNonSOV(subnetName, utils.SubnetEvmGenesisPath, false)
 		deployOutput := commands.DeploySubnetLocallyNonSOV(subnetName)
 		rpcs, err := utils.ParseRPCsFromOutput(deployOutput)
 		if err != nil {

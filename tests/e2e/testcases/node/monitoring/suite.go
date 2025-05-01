@@ -57,7 +57,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
+		content, err := os.ReadFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.ClustersConfigFileName))
 		gomega.Expect(err).Should(gomega.BeNil())
 		clustersConfig := models.ClustersConfig{}
 		err = json.Unmarshal(content, &clustersConfig)
@@ -71,12 +71,12 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
+		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(monitoringHost).To(gomega.HaveLen(1))
-		err = ssh.RunSSHDownloadNodePrometheusConfig(monitoringHost[0], filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID))
+		err = ssh.RunSSHDownloadNodePrometheusConfig(monitoringHost[0], filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, monitoringHostID))
 		gomega.Expect(err).Should(gomega.BeNil())
-		createdDockerHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e"))
+		createdDockerHosts, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		createdHosts = createdDockerHosts
 		hostavalancheGoPorts := []string{}
@@ -85,7 +85,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 			hostavalancheGoPorts = append(hostavalancheGoPorts, fmt.Sprintf("%s:9650", host.IP))
 			hostMachinePorts = append(hostMachinePorts, fmt.Sprintf("%s:9100", host.IP))
 		}
-		prometheusConfig := commands.ParsePrometheusYamlConfig(filepath.Join(homeDir, constants.BaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
+		prometheusConfig := commands.ParsePrometheusYamlConfig(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, monitoringHostID, constants.NodePrometheusConfigFileName))
 		scrapeConfig := prometheusConfig.ScrapeConfigs
 		avalancheGoJob := "avalanchego"
 		avalancheGoMachineJob := "avalanchego-machine"
@@ -130,7 +130,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
+		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(monitoringHost).To(gomega.HaveLen(1))
 		sshOutput := commands.NodeSSH(monitoringHostID, "sudo cat /etc/promtail/promtail.yml")
@@ -147,7 +147,7 @@ var _ = ginkgo.Describe("[Node monitoring]", func() {
 		usr, err := user.Current()
 		gomega.Expect(err).Should(gomega.BeNil())
 		homeDir := usr.HomeDir
-		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
+		monitoringHost, err := ansible.GetInventoryFromAnsibleInventoryFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.AnsibleInventoryDir, "e2e", "monitoring"))
 		gomega.Expect(err).Should(gomega.BeNil())
 		gomega.Expect(monitoringHost).To(gomega.HaveLen(1))
 		sshOutput := commands.NodeSSH(monitoringHostID, "sudo cat /etc/loki/loki.yml")
