@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package cmd
 
@@ -248,6 +248,9 @@ func setupEnv() (string, error) {
 		return "", err
 	}
 	baseDir := filepath.Join(usr.HomeDir, constants.BaseDirName)
+	if utils.IsE2E() {
+		baseDir = filepath.Join(usr.HomeDir, constants.E2EBaseDirName)
+	}
 
 	// Create base dir if it doesn't exist
 	if err := os.MkdirAll(baseDir, os.ModePerm); err != nil {

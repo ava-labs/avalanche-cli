@@ -1,17 +1,19 @@
-// Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package validator
 
 import (
+	"encoding/json"
+
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/sdk/network"
 	"github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
+	avalanchegojson "github.com/ava-labs/avalanchego/utils/json"
+	"github.com/ava-labs/avalanchego/utils/rpc"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
 
 	"github.com/ethereum/go-ethereum/common"
-	"golang.org/x/exp/maps"
 )
 
 type ValidatorKind int64
@@ -23,30 +25,32 @@ const (
 	NonSovereignValidator
 )
 
-func GetTotalWeight(net network.Network, subnetID ids.ID) (uint64, error) {
-	pClient := platformvm.NewClient(net.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	validators, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
+// To enable querying validation IDs from P-Chain
+type CurrentValidatorInfo struct {
+	Weight       avalanchegojson.Uint64 `json:"weight"`
+	NodeID       ids.NodeID             `json:"nodeID"`
+	ValidationID ids.ID                 `json:"validationID"`
+	Balance      avalanchegojson.Uint64 `json:"balance"`
+}
+
+func GetTotalWeight(network network.Network, subnetID ids.ID) (uint64, error) {
+	validators, err := GetCurrentValidators(network, subnetID)
 	if err != nil {
 		return 0, err
 	}
 	weight := uint64(0)
 	for _, vdr := range validators {
-		weight += vdr.Weight
+		weight += uint64(vdr.Weight)
 	}
 	return weight, nil
 }
 
-func IsValidator(net network.Network, subnetID ids.ID, nodeID ids.NodeID) (bool, error) {
-	pClient := platformvm.NewClient(net.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	validators, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
+func IsValidator(network network.Network, subnetID ids.ID, nodeID ids.NodeID) (bool, error) {
+	validators, err := GetCurrentValidators(network, subnetID)
 	if err != nil {
 		return false, err
 	}
-	nodeIDs := maps.Keys(validators)
+	nodeIDs := utils.Map(validators, func(v CurrentValidatorInfo) ids.NodeID { return v.NodeID })
 	return utils.Belongs(nodeIDs, nodeID), nil
 }
 
@@ -109,4 +113,36 @@ func IsSovereignValidator(
 		}
 	}
 	return NonValidator, nil
+}
+
+// Enables querying the validation IDs from P-Chain
+func GetCurrentValidators(network network.Network, subnetID ids.ID) ([]CurrentValidatorInfo, error) {
+	ctx, cancel := utils.GetAPIContext()
+	defer cancel()
+	requester := rpc.NewEndpointRequester(network.Endpoint + "/ext/P")
+	res := &platformvm.GetCurrentValidatorsReply{}
+	if err := requester.SendRequest(
+		ctx,
+		"platform.getCurrentValidators",
+		&platformvm.GetCurrentValidatorsArgs{
+			SubnetID: subnetID,
+			NodeIDs:  nil,
+		},
+		res,
+	); err != nil {
+		return nil, err
+	}
+	validators := make([]CurrentValidatorInfo, 0, len(res.Validators))
+	for _, vI := range res.Validators {
+		vBytes, err := json.Marshal(vI)
+		if err != nil {
+			return nil, err
+		}
+		var v CurrentValidatorInfo
+		if err := json.Unmarshal(vBytes, &v); err != nil {
+			return nil, err
+		}
+		validators = append(validators, v)
+	}
+	return validators, nil
 }

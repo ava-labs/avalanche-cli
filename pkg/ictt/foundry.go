@@ -1,11 +1,11 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package ictt
 
 import (
-	_ "embed"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -42,7 +42,9 @@ func InstallFoundry() error {
 		"-L",
 		fmt.Sprintf("https://raw.githubusercontent.com/ava-labs/foundry/%s/foundryup/install", foundryVersion),
 	)
+	cmdsEnv := append(os.Environ(), "XDG_CONFIG_HOME=")
 	installCmd := exec.Command("bash")
+	installCmd.Env = cmdsEnv
 	var downloadOutbuf, downloadErrbuf strings.Builder
 	downloadCmdStdoutPipe, err := downloadCmd.StdoutPipe()
 	if err != nil {
@@ -76,7 +78,9 @@ func InstallFoundry() error {
 		return err
 	}
 	ux.Logger.PrintToUser(strings.TrimSuffix(installOutbuf.String(), "\n"))
-	out, err := exec.Command(foundryupPath, "-v", foundryVersion).CombinedOutput()
+	foundryupCmd := exec.Command(foundryupPath, "-v", foundryVersion)
+	foundryupCmd.Env = cmdsEnv
+	out, err := foundryupCmd.CombinedOutput()
 	ux.Logger.PrintToUser(string(out))
 	if err != nil {
 		ux.Logger.PrintToUser("")

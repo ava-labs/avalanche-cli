@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package e2e
@@ -9,10 +9,16 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/commandse2e/blockchain/deploy"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/apm"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/errhandling"
-	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key/create"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key/delete"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key/export"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key/list"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/key/transfer"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network"
+	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/network/stop"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/create"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/devnet"
 	_ "github.com/ava-labs/avalanche-cli/tests/e2e/testcases/node/monitoring"

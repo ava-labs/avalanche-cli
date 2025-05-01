@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package tokentransferrercmd
 
@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -111,20 +112,27 @@ func getHomeKeyAndAddress(app *application.Avalanche, network models.Network, ho
 		return "", "", err
 	}
 
-	// Propmt for the key to be used.
-	// Note that this key must have enough funds to cover gas cost on the
-	// home chain, and also enough of the token on the home chain to collateralize
-	// the remote chain if it is a native token remote.
-	homeKey, err := prompts.PromptPrivateKey(
-		app.Prompt,
-		"pay for home deployment fees, and collateralization (if necessary)",
-		app.GetKeyDir(),
-		app.GetKey,
-		genesisAddress,
-		genesisPrivateKey,
-	)
+	homeKey, err := homeFlags.privateKeyFlags.GetPrivateKey(app, genesisPrivateKey)
 	if err != nil {
 		return "", "", err
+	}
+
+	if homeKey == "" {
+		// Propmt for the key to be used.
+		// Note that this key must have enough funds to cover gas cost on the
+		// home chain, and also enough of the token on the home chain to collateralize
+		// the remote chain if it is a native token remote.
+		homeKey, err = prompts.PromptPrivateKey(
+			app.Prompt,
+			"pay for home deployment fees, and collateralization (if necessary)",
+			app.GetKeyDir(),
+			app.GetKey,
+			genesisAddress,
+			genesisPrivateKey,
+		)
+		if err != nil {
+			return "", "", err
+		}
 	}
 
 	// Calculate the address for the key.
@@ -219,7 +227,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		if err != nil {
 			return err
 		}
-		popularTokensDesc := utils.Map(
+		popularTokensDesc := sdkutils.Map(
 			popularTokensInfo,
 			func(i PopularTokenInfo) string {
 				return i.Desc()
@@ -408,7 +416,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 	if remoteKey == "" {
 		remoteKey, err = prompts.PromptPrivateKey(
 			app.Prompt,
-			"pay for home deploy fees",
+			"pay for remote deploy fees",
 			app.GetKeyDir(),
 			app.GetKey,
 			genesisAddress,
@@ -750,7 +758,7 @@ func CallDeploy(_ []string, flags DeployFlags) error {
 		}
 
 		// Send a single token unit to report that the remote is collateralized.
-		err = ictt.Send(
+		_, _, err = ictt.Send(
 			homeRPCEndpoint,
 			homeAddress,
 			homeKey,

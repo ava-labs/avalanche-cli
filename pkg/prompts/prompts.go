@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package prompts
 
@@ -16,7 +16,9 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
+	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
@@ -585,7 +587,7 @@ func (*realPrompter) CaptureAddresses(promptStr string) ([]common.Address, error
 			validated = true
 		}
 	}
-	addresses := utils.Map(
+	addresses := sdkutils.Map(
 		strings.Split(addressesStr, ","),
 		func(s string) common.Address {
 			return common.HexToAddress(strings.TrimSpace(s))
@@ -1029,7 +1031,7 @@ func PromptChain(
 		subnetOptions = append(subnetOptions, cChainOption)
 	}
 	subnetNames = utils.RemoveFromSlice(subnetNames, avoidBlockchainName)
-	subnetOptions = append(subnetOptions, utils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
+	subnetOptions = append(subnetOptions, sdkutils.Map(subnetNames, func(s string) string { return "Blockchain " + s })...)
 	if includeCustom {
 		subnetOptions = append(subnetOptions, customOption)
 	} else {

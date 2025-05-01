@@ -1,24 +1,17 @@
-// Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package validatorcmd
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
-	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
 	"github.com/ava-labs/avalanche-cli/sdk/validator"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/units"
-	"github.com/ava-labs/avalanchego/vms/platformvm"
-	"github.com/ava-labs/avalanchego/vms/platformvm/api"
-	"golang.org/x/exp/maps"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
@@ -58,24 +51,8 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	if sc.Networks[network.Name()].ValidatorManagerAddress == "" {
-		return fmt.Errorf("unable to find Validator Manager address")
-	}
-	validatorManagerAddress = sc.Networks[network.Name()].ValidatorManagerAddress
-
 	chainSpec := contract.ChainSpec{
 		BlockchainName: blockchainName,
-	}
-
-	rpcURL, _, err := contract.GetBlockchainEndpoints(
-		app,
-		network,
-		chainSpec,
-		true,
-		false,
-	)
-	if err != nil {
-		return err
 	}
 
 	subnetID, err := contract.GetSubnetID(app, network, chainSpec)
@@ -83,41 +60,24 @@ func list(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	pClient := platformvm.NewClient(network.Endpoint)
-	ctx, cancel := utils.GetAPIContext()
-	defer cancel()
-	validators, err := pClient.GetValidatorsAt(ctx, subnetID, api.ProposedHeight)
+	validators, err := validator.GetCurrentValidators(network.SDKNetwork(), subnetID)
 	if err != nil {
 		return err
 	}
-	managerAddress := common.HexToAddress(validatorManagerAddress)
 
 	t := ux.DefaultTable(
 		fmt.Sprintf("%s Validators", blockchainName),
 		table.Row{"Node ID", "Validation ID", "Weight", "Remaining Balance (AVAX)"},
 	)
-
-	nodeIDs := maps.Keys(validators)
-	nodeIDStrs := utils.Map(nodeIDs, func(nodeID ids.NodeID) string { return nodeID.String() })
-	sort.Strings(nodeIDStrs)
-
-	for _, nodeIDStr := range nodeIDStrs {
-		nodeID, err := ids.NodeIDFromString(nodeIDStr)
-		if err != nil {
-			return err
-		}
-		balance := uint64(0)
-		validationID, err := validator.GetValidationID(rpcURL, managerAddress, nodeID)
-		if err != nil {
-			ux.Logger.RedXToUser("could not get validation ID for node %s due to %s", nodeID, err)
-		} else {
-			balance, err = validator.GetValidatorBalance(network.SDKNetwork(), validationID)
-			if err != nil {
-				ux.Logger.RedXToUser("could not get balance for node %s due to %s", nodeID, err)
-			}
-		}
-		t.AppendRow(table.Row{nodeID, validationID, validators[nodeID].Weight, float64(balance) / float64(units.Avax)})
+	for _, validator := range validators {
+		t.AppendRow(table.Row{
+			validator.NodeID,
+			validator.ValidationID,
+			validator.Weight,
+			float64(validator.Balance) / float64(units.Avax),
+		})
 	}
 	fmt.Println(t.Render())
+
 	return nil
 }

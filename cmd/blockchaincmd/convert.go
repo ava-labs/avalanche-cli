@@ -11,10 +11,8 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
-	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
-
 	"github.com/ava-labs/avalanche-cli/pkg/blockchain"
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -25,6 +23,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/networkoptions"
 	"github.com/ava-labs/avalanche-cli/pkg/node"
 	"github.com/ava-labs/avalanche-cli/pkg/prompts"
+	"github.com/ava-labs/avalanche-cli/pkg/signatureaggregator"
 	"github.com/ava-labs/avalanche-cli/pkg/subnet"
 	"github.com/ava-labs/avalanche-cli/pkg/txutils"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
@@ -199,7 +198,7 @@ func StartLocalMachine(
 				availableBalance,
 			)
 		}
-		avagoVersionSettings := node.AvalancheGoVersionSettings{}
+		avagoVersionSettings := dependencies.AvalancheGoVersionSettings{}
 		// setup (install if needed) avalanchego binary
 		avagoVersion := userProvidedAvagoVersion
 		if userProvidedAvagoVersion != constants.DefaultAvalancheGoVersion {
@@ -469,7 +468,6 @@ func convertSubnetToL1(
 	if err != nil {
 		return avaGoBootstrapValidators, false, false, err
 	}
-	deployer.CleanCacheWallet()
 	managerAddress := common.HexToAddress(validatorManagerAddressStr)
 
 	if doStrongInputsCheck {
