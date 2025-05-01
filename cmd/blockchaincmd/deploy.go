@@ -384,7 +384,16 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 
 func deployLocalNetworkPreCheck(cmd *cobra.Command, network models.Network) error {
 	if network.Kind == models.Local {
-		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine {
+		if cmd.Flags().Changed("use-local-machine") && !useLocalMachine && bootstrapEndpoints == nil && bootstrapValidatorsJSONFilePath == "" {
+			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
+		}
+		// generateNodeID = useLocalMachine false
+		// generateNodeID = convertOnly true need to print sync message
+		// generateNodeID = numBootstrap validators need to be specified
+		if generateNodeID {
+
+		}
+		if cmd.Flags().Changed("use-local-machine") && useLocalMachine && generateNodeID && cmd.Flags().Changed("convert-only") && !convertOnly {
 			return fmt.Errorf("deploying blockchain on local network requires local machine to be used as bootstrap validator")
 		}
 	}
