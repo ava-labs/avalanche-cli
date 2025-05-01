@@ -35,7 +35,7 @@ var _ = ginkgo.Describe("[Key] transfer", func() {
 		})
 
 		ginkgo.AfterEach(func() {
-			commands.CleanNetwork()
+			_, _ = commands.CleanNetwork()
 			err := utils.DeleteConfigs(subnetName)
 			gomega.Expect(err).Should(gomega.BeNil())
 			utils.DeleteCustomBinary(subnetName)
