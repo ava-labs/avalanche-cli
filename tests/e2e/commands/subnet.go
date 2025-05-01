@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package commands
@@ -26,12 +26,12 @@ const (
 )
 
 /* #nosec G204 */
-func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string) (string, string) {
+func CreateSubnetEvmConfigNonSOV(subnetName string, genesisPath string, icmEnabled bool) (string, string) {
 	mapper := utils.NewVersionMapper()
 	mapping, err := utils.GetVersionMapping(mapper)
 	gomega.Expect(err).Should(gomega.BeNil())
 	// let's use a SubnetEVM version which has a guaranteed compatible avago
-	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey])
+	CreateSubnetEvmConfigWithVersionNonSOV(subnetName, genesisPath, mapping[utils.LatestEVM2AvagoKey], icmEnabled)
 	return mapping[utils.LatestEVM2AvagoKey], mapping[utils.LatestAvago2EVMKey]
 }
 
@@ -45,11 +45,13 @@ func CreateSubnetEvmConfigSOV(subnetName string, genesisPath string) (string, st
 }
 
 /* #nosec G204 */
-func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath string, version string) {
+func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath string, version string, icmEnabled bool) {
 	// Check config does not already exist
 	exists, err := utils.SubnetConfigExists(subnetName)
 	gomega.Expect(err).Should(gomega.BeNil())
 	gomega.Expect(exists).Should(gomega.BeFalse())
+
+	icmFlag := fmt.Sprintf("--icm=%t", icmEnabled)
 
 	// Create config
 	cmdArgs := []string{
@@ -61,7 +63,7 @@ func CreateSubnetEvmConfigWithVersionNonSOV(subnetName string, genesisPath strin
 		"--evm",
 		subnetName,
 		"--" + constants.SkipUpdateFlag,
-		"--icm=false",
+		icmFlag,
 		"--evm-token",
 		"TOK",
 	}

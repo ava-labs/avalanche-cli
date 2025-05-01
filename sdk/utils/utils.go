@@ -34,6 +34,14 @@ func Belongs[T comparable](input []T, elem T) bool {
 	return false
 }
 
+func Map[T, U any](input []T, f func(T) U) []U {
+	output := make([]U, 0, len(input))
+	for _, e := range input {
+		output = append(output, f(e))
+	}
+	return output
+}
+
 func Uint32Sort(arr []uint32) {
 	sort.Slice(arr, func(i, j int) bool { return arr[i] < arr[j] })
 }

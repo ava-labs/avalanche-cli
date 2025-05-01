@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 package signatureaggregator
 
@@ -9,7 +9,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
-func NewSignatureAggregatorLoggerNewLogger(
+func NewSignatureAggregatorLogger(
 	aggregatorLogLevel string,
 	aggregatorLogToStdout bool,
 	logDir string,

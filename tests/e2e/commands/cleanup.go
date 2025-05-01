@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package commands
@@ -19,7 +19,7 @@ func DeleteE2EInventory() {
 	usr, err := user.Current()
 	gomega.Expect(err).Should(gomega.BeNil())
 	homeDir := usr.HomeDir
-	inventoryE2E := filepath.Join(homeDir, constants.BaseDirName, "nodes/inventories/", constants.E2EClusterName)
+	inventoryE2E := filepath.Join(homeDir, constants.E2EBaseDirName, "nodes/inventories/", constants.E2EClusterName)
 	fmt.Println("deleting: ", inventoryE2E)
 	err = os.RemoveAll(inventoryE2E)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -32,7 +32,7 @@ func DeleteNode(nodeID string) {
 	usr, err := user.Current()
 	gomega.Expect(err).Should(gomega.BeNil())
 	homeDir := usr.HomeDir
-	nodeE2E := filepath.Join(homeDir, constants.BaseDirName, "nodes", nodeID)
+	nodeE2E := filepath.Join(homeDir, constants.E2EBaseDirName, "nodes", nodeID)
 	fmt.Println("deleting: ", nodeE2E)
 	err = os.RemoveAll(nodeE2E)
 	gomega.Expect(err).Should(gomega.BeNil())
@@ -43,7 +43,7 @@ func DeleteE2ECluster() {
 	gomega.Expect(err).Should(gomega.BeNil())
 	homeDir := usr.HomeDir
 	relativePath := "nodes"
-	content, err := os.ReadFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName))
+	content, err := os.ReadFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.ClustersConfigFileName))
 	if err == os.ErrNotExist {
 		return
 	}
@@ -55,6 +55,6 @@ func DeleteE2ECluster() {
 	clustersConfig.Clusters[constants.E2EClusterName] = models.ClusterConfig{}
 	content, err = json.MarshalIndent(clustersConfig, "", "    ")
 	gomega.Expect(err).Should(gomega.BeNil())
-	err = os.WriteFile(filepath.Join(homeDir, constants.BaseDirName, relativePath, constants.ClustersConfigFileName), content, 0o600)
+	err = os.WriteFile(filepath.Join(homeDir, constants.E2EBaseDirName, relativePath, constants.ClustersConfigFileName), content, 0o600)
 	gomega.Expect(err).Should(gomega.BeNil())
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2022, Ava Labs, Inc. All rights reserved
+// Copyright (C) 2025, Ava Labs, Inc. All rights reserved
 // See the file LICENSE for licensing terms.
 package relayer
 
@@ -40,8 +40,9 @@ const (
 
 var relayerRequiredBalance = big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(500)) // 500 AVAX
 
-func GetRelayerKeyInfo(app *application.Avalanche) (string, string, error) {
-	keyPath := app.GetKeyPath(constants.ICMRelayerKeyName)
+func GetDefaultRelayerKeyInfo(app *application.Avalanche) (string, string, string, error) {
+	keyName := constants.ICMRelayerKeyName
+	keyPath := app.GetKeyPath(keyName)
 	var (
 		k   *key.SoftKey
 		err error
@@ -49,18 +50,18 @@ func GetRelayerKeyInfo(app *application.Avalanche) (string, string, error) {
 	if utils.FileExists(keyPath) {
 		k, err = key.LoadSoft(models.NewLocalNetwork().ID, keyPath)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 	} else {
 		k, err = key.NewSoft(0)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 		if err := k.Save(keyPath); err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 	}
-	return k.C(), k.PrivKeyHex(), nil
+	return keyName, k.C(), k.PrivKeyHex(), nil
 }
 
 func FundRelayer(
@@ -79,7 +80,7 @@ func FundRelayer(
 	}
 	if relayerBalance.Cmp(relayerRequiredBalance) < 0 {
 		toFund := big.NewInt(0).Sub(relayerRequiredBalance, relayerBalance)
-		err := client.FundAddress(
+		_, err := client.FundAddress(
 			prefundedPrivateKey,
 			relayerAddress,
 			toFund,
