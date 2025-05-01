@@ -317,7 +317,7 @@ func removeValidatorSOV(
 	if err != nil {
 		return err
 	}
-	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLoggerNewLogger(
+	aggregatorLogger, err := signatureaggregator.NewSignatureAggregatorLogger(
 		removeValidatorFlags.SigAggFlags.AggregatorLogLevel,
 		removeValidatorFlags.SigAggFlags.AggregatorLogToStdout,
 		app.GetAggregatorLogDir(clusterName),

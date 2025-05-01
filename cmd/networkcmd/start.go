@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
@@ -274,7 +276,7 @@ func startLocalClusters(avalancheGoBinPath string) error {
 			nil,
 			localnet.ConnectionSettings{},
 			nil,
-			node.AvalancheGoVersionSettings{},
+			dependencies.AvalancheGoVersionSettings{},
 			models.NewLocalNetwork(),
 		); err != nil {
 			return err

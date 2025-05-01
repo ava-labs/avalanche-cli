@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	awsAPI "github.com/ava-labs/avalanche-cli/pkg/cloud/aws"
@@ -27,7 +29,6 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/ssh"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
-	"github.com/ava-labs/avalanche-cli/pkg/vm"
 	sdkutils "github.com/ava-labs/avalanche-cli/sdk/utils"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/staking"
@@ -309,13 +310,13 @@ func createNodes(cmd *cobra.Command, args []string) error {
 	}
 	network = models.NewNetworkFromCluster(network, clusterName)
 	globalNetworkFlags.UseDevnet = network.Kind == models.Devnet // set globalNetworkFlags.UseDevnet to true if network is devnet for further use
-	avaGoVersionSetting := node.AvalancheGoVersionSettings{
+	avaGoVersionSetting := dependencies.AvalancheGoVersionSettings{
 		UseAvalanchegoVersionFromSubnet:       useAvalanchegoVersionFromSubnet,
 		UseLatestAvalanchegoReleaseVersion:    useLatestAvalanchegoReleaseVersion,
 		UseLatestAvalanchegoPreReleaseVersion: useLatestAvalanchegoPreReleaseVersion,
 		UseCustomAvalanchegoVersion:           useCustomAvalanchegoVersion,
 	}
-	avalancheGoVersion, err := node.GetAvalancheGoVersion(app, avaGoVersionSetting)
+	avalancheGoVersion, err := dependencies.GetAvalancheGoVersion(app, avaGoVersionSetting, network)
 	if err != nil {
 		return err
 	}
@@ -1041,19 +1042,6 @@ func provideStakingCertAndKey(host *models.Host) error {
 		}
 	}
 	return ssh.RunSSHUploadStakingFiles(host, keyPath)
-}
-
-func GetLatestAvagoVersionForRPC(configuredRPCVersion int, latestPreReleaseVersion string) (string, error) {
-	desiredAvagoVersion, err := vm.GetLatestAvalancheGoByProtocolVersion(
-		app, configuredRPCVersion, constants.AvalancheGoCompatibilityURL)
-	if err == vm.ErrNoAvagoVersion {
-		ux.Logger.PrintToUser("No Avago version found for subnet. Defaulting to latest pre-release version")
-		return latestPreReleaseVersion, nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return desiredAvagoVersion, nil
 }
 
 func setCloudService() (string, error) {

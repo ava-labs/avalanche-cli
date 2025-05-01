@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/cmd/flags"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/messengercmd"
 	"github.com/ava-labs/avalanche-cli/cmd/interchaincmd/relayercmd"
@@ -485,14 +487,9 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		avagoVersion := userProvidedAvagoVersion
 
 		if avagoVersion == constants.DefaultAvalancheGoVersion && avagoBinaryPath == "" {
-			// nothing given: get avago version from RPC compat
-			avagoVersion, err = vm.GetLatestAvalancheGoByProtocolVersion(
-				app,
-				sidecar.RPCVersion,
-				constants.AvalancheGoCompatibilityURL,
-			)
+			avagoVersion, err = dependencies.GetLatestCLISupportedDependencyVersion(app, constants.AvalancheGoRepoName, network, &sidecar.RPCVersion)
 			if err != nil {
-				if err != vm.ErrNoAvagoVersion {
+				if err != dependencies.ErrNoAvagoVersion {
 					return err
 				}
 				avagoVersion = constants.LatestPreReleaseVersionTag

@@ -363,10 +363,6 @@ func (app *Avalanche) GetDownloader() Downloader {
 	return app.Downloader
 }
 
-func (*Avalanche) GetAvalanchegoCompatibilityURL() string {
-	return constants.AvalancheGoCompatibilityURL
-}
-
 func (app *Avalanche) ReadUpgradeFile(blockchainName string) ([]byte, error) {
 	upgradeBytesFilePath := app.GetUpgradeBytesFilePath(blockchainName)
 

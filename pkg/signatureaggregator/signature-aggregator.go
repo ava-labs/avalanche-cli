@@ -9,7 +9,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 )
 
-func NewSignatureAggregatorLoggerNewLogger(
+func NewSignatureAggregatorLogger(
 	aggregatorLogLevel string,
 	aggregatorLogToStdout bool,
 	logDir string,
