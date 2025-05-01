@@ -20,6 +20,7 @@ import (
 	"github.com/ava-labs/avalanche-cli/pkg/cobrautils"
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
 	"github.com/ava-labs/avalanche-cli/pkg/contract"
+	"github.com/ava-labs/avalanche-cli/pkg/interchain/relayer"
 	"github.com/ava-labs/avalanche-cli/pkg/keychain"
 	"github.com/ava-labs/avalanche-cli/pkg/localnet"
 	"github.com/ava-labs/avalanche-cli/pkg/metrics"
@@ -941,7 +942,11 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 					deployRelayerFlags.BlockchainsToRelay = utils.Unique(sdkutils.Map(blockchains, func(i localnet.BlockchainInfo) string { return i.Name }))
 				}
 				if network.Kind == models.Local || useLocalMachine {
-					deployRelayerFlags.Key = constants.ICMRelayerKeyName
+					relayerKeyName, _, _, err := relayer.GetDefaultRelayerKeyInfo(app)
+					if err != nil {
+						return err
+					}
+					deployRelayerFlags.Key = relayerKeyName
 					deployRelayerFlags.Amount = constants.DefaultRelayerAmount
 					deployRelayerFlags.BlockchainFundingKey = constants.ICMKeyName
 				}

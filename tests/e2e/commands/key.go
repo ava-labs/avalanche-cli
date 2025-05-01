@@ -57,13 +57,16 @@ func CreateKeyForce(keyName string) (string, error) {
 }
 
 /* #nosec G204 */
-func ListKeys(network string, omitCChain bool, useNanoAvax bool) (string, error) {
+func ListKeys(network string, useNanoAvax bool, subnets string, tokens string) (string, error) {
 	args := []string{KeyCmd, "list", "--" + network, "--" + constants.SkipUpdateFlag}
-	if omitCChain {
-		args = append(args, "--cchain=false")
-	}
 	if useNanoAvax {
 		args = append(args, "--use-nano-avax=true")
+	}
+	if subnets != "" {
+		args = append(args, "--subnets", subnets)
+	}
+	if tokens != "" {
+		args = append(args, "--tokens", tokens)
 	}
 	cmd := exec.Command(CLIBinary, args...)
 	out, err := cmd.Output()
@@ -119,26 +122,18 @@ func ExportKeyToFile(keyName string, outputPath string) (string, error) {
 }
 
 /* #nosec G204 */
-func KeyTransferSend(keyName string, targetAddr string, amount string) (string, error) {
-	// Create config
-	args := []string{
+func KeyTransferSend(
+	args []string,
+) (string, error) {
+	transferArgs := []string{
 		KeyCmd,
 		"transfer",
-		"--local",
-		"--key",
-		keyName,
-		"--destination-addr",
-		targetAddr,
-		"--amount",
-		amount,
-		"--p-chain-sender",
-		"--p-chain-receiver",
 		"--" + constants.SkipUpdateFlag,
 	}
-	cmd := exec.Command(CLIBinary, args...)
 
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	cmd := exec.Command(CLIBinary, append(transferArgs, args...)...)
+	outputByte, err := cmd.CombinedOutput()
+	return string(outputByte), err
 }
 
 /* #nosec G204 */

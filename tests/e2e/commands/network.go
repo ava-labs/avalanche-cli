@@ -81,11 +81,30 @@ func StartNetworkWithVersion(version string) string {
 }
 
 /* #nosec G204 */
-func StopNetwork() {
+func StopNetwork(stopCmdFlags ...string) error {
+	stopCmdFlasg := append([]string{
+		NetworkCmd,
+		"stop",
+		"--" + constants.SkipUpdateFlag,
+	}, stopCmdFlags...)
+	cmd := exec.Command(
+		CLIBinary,
+		stopCmdFlasg...,
+	)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		fmt.Println(string(output))
+		utils.PrintStdErr(err)
+	}
+	return err
+}
+
+func GetNetworkStatus() (string, error) {
 	cmd := exec.Command(
 		CLIBinary,
 		NetworkCmd,
-		"stop",
+		"status",
 		"--"+constants.SkipUpdateFlag,
 	)
 	output, err := cmd.CombinedOutput()
@@ -94,5 +113,5 @@ func StopNetwork() {
 		fmt.Println(string(output))
 		utils.PrintStdErr(err)
 	}
-	gomega.Expect(err).Should(gomega.BeNil())
+	return string(output), err
 }
