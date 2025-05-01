@@ -34,8 +34,9 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
-		err := utils.DeleteConfigs(subnetName)
+		_, err := commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
+		err = utils.DeleteConfigs(subnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
 		err = utils.DeleteConfigs(secondSubnetName)
 		gomega.Expect(err).Should(gomega.BeNil())
@@ -232,7 +233,8 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago1Key])).Should(gomega.BeTrue())
 		gomega.Expect(utils.CheckAvalancheGoExists(binaryToVersion[utils.MultiAvago2Key])).Should(gomega.BeFalse())
 
-		commands.CleanNetwork()
+		_, err = commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		deployOutput = commands.DeploySubnetLocallyWithVersionNonSOV(subnetName, binaryToVersion[utils.MultiAvago2Key])
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)
@@ -298,7 +300,8 @@ var _ = ginkgo.Describe("[Package Management]", ginkgo.Ordered, func() {
 			gomega.Expect(utils.CheckAvalancheGoExists(avagoVersion2)).Should(gomega.BeFalse())
 		}
 
-		commands.CleanNetwork()
+		_, err = commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 
 		deployOutput = commands.DeploySubnetLocallyWithVersionSOV(subnetName, avagoVersion2)
 		rpcs, err = utils.ParseRPCsFromOutput(deployOutput)

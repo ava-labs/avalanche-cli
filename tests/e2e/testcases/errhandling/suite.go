@@ -25,7 +25,7 @@ const (
 */
 var _ = ginkgo.Describe("[Error handling]", func() {
 	ginkgo.AfterEach(func() {
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 		err := utils.DeleteConfigs(subnetName)
 		if err != nil {
 			fmt.Println("Clean network error:", err)

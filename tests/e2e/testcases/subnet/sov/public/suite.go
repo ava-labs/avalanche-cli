@@ -86,7 +86,8 @@ var _ = ginkgo.Describe("[Public Subnet SOV]", func() {
 		commands.DeleteSubnetConfig(subnetName)
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CleanNetwork()
+		_, err = commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("deploy subnet to fuji SOV", func() {

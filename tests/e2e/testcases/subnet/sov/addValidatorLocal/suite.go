@@ -60,7 +60,8 @@ var _ = ginkgo.Describe("[Etna Add Validator SOV Local]", func() {
 	})
 
 	ginkgo.It("Can destroy Etna Local Network", func() {
-		commands.CleanNetwork()
+		_, err := commands.CleanNetwork()
+		gomega.Expect(err).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("Can remove Etna Subnet Config", func() {

@@ -363,7 +363,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV]", func() {
 		destroyLocalNode()
 		commands.DeleteSubnetConfig(utils.BlockchainName)
 		_ = utils.DeleteKey(keyName)
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 	})
 
 	ginkgo.It("Test Create Etna POA Subnet Config With Key Name for Validator Manager Flag", func() {
@@ -435,7 +435,7 @@ var _ = ginkgo.Describe("[Etna Subnet SOV With Errors]", func() {
 	ginkgo.AfterEach(func() {
 		err := utils.DeleteKey(keyName)
 		gomega.Expect(err).Should(gomega.BeNil())
-		commands.CleanNetwork()
+		_, _ = commands.CleanNetwork()
 	})
 
 	ginkgo.It("Test Create Etna POA Subnet Config With P Chain Address for Validator Manager Flag", func() {
