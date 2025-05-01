@@ -6,7 +6,6 @@ package commands
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 
 	"github.com/ava-labs/avalanche-cli/pkg/constants"
@@ -16,19 +15,20 @@ import (
 
 /* #nosec G204 */
 func CleanNetwork() (string, error) {
-	cmd := exec.Command(
-		CLIBinary,
-		NetworkCmd,
+	output, err := utils.TestCommand(
+		utils.NetworkCmd,
 		"clean",
-		"--"+constants.SkipUpdateFlag,
+		[]string{
+			"--" + constants.SkipUpdateFlag,
+		},
+		utils.GlobalFlags{},
+		utils.TestFlags{},
 	)
-	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
+		fmt.Println(output)
 		utils.PrintStdErr(err)
 	}
-	return string(output), err
+	return output, err
 }
 
 /* #nosec G204 */
@@ -50,76 +50,72 @@ func StartNetworkWithVersion(version string) string {
 }
 
 func startNetworkWithParams(paramMap map[string]string) string {
-	cmdArgs := []string{NetworkCmd, "start"}
-	cmdArgs = append(cmdArgs, "--"+constants.SkipUpdateFlag)
+	cmdArgs := utils.GlobalFlags{}
 
 	for k, v := range paramMap {
 		switch k {
 		case "version":
 			if v != "" {
-				cmdArgs = append(
-					cmdArgs,
-					"--avalanchego-version",
-					v,
-				)
+				cmdArgs["avalanchego-version"] = v
 			}
 		case "number-of-nodes":
-			cmdArgs = append(
-				cmdArgs,
-				"--num-nodes",
-				v,
-			)
+			cmdArgs["num-nodes"] = v
 		}
 	}
 
 	// in case we want to use specific avago for local tests
 	debugAvalanchegoPath := os.Getenv(constants.E2EDebugAvalancheGoPath)
 	if debugAvalanchegoPath != "" {
-		cmdArgs = append(cmdArgs, "--avalanchego-path", debugAvalanchegoPath)
+		cmdArgs["avalanchego-path"] = debugAvalanchegoPath
 	}
-	cmd := exec.Command(CLIBinary, cmdArgs...)
-	output, err := cmd.CombinedOutput()
+	output, err := utils.TestCommand(
+		utils.NetworkCmd,
+		"start",
+		[]string{
+			"--" + constants.SkipUpdateFlag,
+		},
+		cmdArgs,
+		utils.TestFlags{},
+	)
 	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
+		fmt.Println(output)
 		utils.PrintStdErr(err)
 	}
 	gomega.Expect(err).Should(gomega.BeNil())
-	return string(output)
+	return output
 }
 
 /* #nosec G204 */
 func StopNetwork(stopCmdFlags ...string) error {
-	stopCmdFlasg := append([]string{
-		NetworkCmd,
+	output, err := utils.TestCommand(
+		utils.NetworkCmd,
 		"stop",
-		"--" + constants.SkipUpdateFlag,
-	}, stopCmdFlags...)
-	cmd := exec.Command(
-		CLIBinary,
-		stopCmdFlasg...,
+		append([]string{
+			"--" + constants.SkipUpdateFlag,
+		}, stopCmdFlags...),
+		utils.GlobalFlags{},
+		utils.TestFlags{},
 	)
-	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
+		fmt.Println(output)
 		utils.PrintStdErr(err)
 	}
 	return err
 }
 
 func GetNetworkStatus() (string, error) {
-	cmd := exec.Command(
-		CLIBinary,
-		NetworkCmd,
+	output, err := utils.TestCommand(
+		utils.NetworkCmd,
 		"status",
-		"--"+constants.SkipUpdateFlag,
+		[]string{
+			"--" + constants.SkipUpdateFlag,
+		},
+		utils.GlobalFlags{},
+		utils.TestFlags{},
 	)
-	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(cmd.String())
-		fmt.Println(string(output))
+		fmt.Println(output)
 		utils.PrintStdErr(err)
 	}
-	return string(output), err
+	return output, err
 }
