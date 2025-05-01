@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/ux"
@@ -43,6 +46,12 @@ func TrackSubnet(
 		blockchainConfig []byte
 		subnetConfig     []byte
 	)
+	if sc.VM == models.SubnetEvm {
+		if err = dependencies.CheckVersionIsOverMin(app, constants.SubnetEVMRepoName, networkModel, sc.VMVersion); err != nil {
+			ux.Logger.PrintToUser(dependencies.UpdateSubnetEVMInstruction)
+			return err
+		}
+	}
 	vmBinaryPath, err := SetupVMBinary(app, blockchainName)
 	if err != nil {
 		return fmt.Errorf("failed to setup VM binary: %w", err)

@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ava-labs/avalanche-cli/pkg/constants"
+	"github.com/ava-labs/avalanche-cli/pkg/dependencies"
+
 	"github.com/ava-labs/avalanche-cli/pkg/ansible"
 	"github.com/ava-labs/avalanche-cli/pkg/application"
 	"github.com/ava-labs/avalanche-cli/pkg/models"
@@ -28,6 +31,16 @@ func SyncSubnet(app *application.Avalanche, clusterName, blockchainName string, 
 	}
 	if _, err := subnet.ValidateSubnetNameAndGetChains(app, []string{blockchainName}); err != nil {
 		return err
+	}
+	sc, err := app.LoadSidecar(blockchainName)
+	if err != nil {
+		return err
+	}
+	if sc.VM == models.SubnetEvm {
+		if err = dependencies.CheckVersionIsOverMin(app, constants.SubnetEVMRepoName, clusterConfig.Network, sc.VMVersion); err != nil {
+			ux.Logger.PrintToUser(dependencies.UpdateSubnetEVMInstruction)
+			return err
+		}
 	}
 	hosts, err := ansible.GetInventoryFromAnsibleInventoryFile(app.GetAnsibleInventoryDirPath(clusterName))
 	if err != nil {
