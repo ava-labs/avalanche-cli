@@ -114,13 +114,8 @@ Testnet or Mainnet.`,
 	cmd.Flags().StringVar(&remainingBalanceOwnerAddr, "remaining-balance-owner", "", "P-Chain address that will receive any leftover AVAX from the validator when it is removed from Subnet")
 	cmd.Flags().StringVar(&disableOwnerAddr, "disable-owner", "", "P-Chain address that will able to disable the validator with a P-Chain transaction")
 	cmd.Flags().StringVar(&nodeEndpoint, "node-endpoint", "", "gather node id/bls from publicly available avalanchego apis on the given endpoint")
-	cmd.Flags().DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
-
-	cmd.Flags().StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
-	cmd.Flags().BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
-	cmd.Flags().StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 
 	remoteBlockchainGroup := flags.RegisterFlagGroup(cmd, "Add Validator To Remote Blockchain Flags (Blockchain config is not in local machine)", "show-remote-blockchain-flags", false, func(set *pflag.FlagSet) {
 		set.StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
@@ -134,6 +129,7 @@ Testnet or Mainnet.`,
 		set.StringSliceVar(&subnetAuthKeys, "subnet-auth-keys", nil, "(for Subnets, not L1s) control keys that will be used to authenticate add validator tx")
 		set.StringVar(&outputTxPath, "output-tx-path", "", "(for Subnets, not L1s) file path of the add validator tx")
 		set.BoolVar(&waitForTxAcceptance, "wait-for-tx-acceptance", true, "(for Subnets, not L1s) just issue the add validator tx, without waiting for its acceptance")
+		set.DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	})
 
 	localMachineGroup := flags.RegisterFlagGroup(cmd, "Local Machine Flags", "show-local-machine-flags", true, func(set *pflag.FlagSet) {
@@ -145,9 +141,14 @@ Testnet or Mainnet.`,
 
 	posGroup := flags.RegisterFlagGroup(cmd, "Proof Of Stake Flags", "show-pos-flags", false, func(set *pflag.FlagSet) {
 		set.Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
+		set.DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
+	})
+	externalSigningGroup := flags.RegisterFlagGroup(cmd, "External EVM Signature Flags (For EVM Multisig and Ledger Signing)", "show-pos-flags", false, func(set *pflag.FlagSet) {
+		set.BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
+		set.StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 	})
 
-	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, nonSovGroup, posGroup, localMachineGroup, remoteBlockchainGroup}))
+	cmd.SetHelpFunc(flags.WithGroupedHelp([]flags.GroupedFlags{networkGroup, externalSigningGroup, remoteBlockchainGroup, localMachineGroup, posGroup, nonSovGroup}))
 	return cmd
 }
 
