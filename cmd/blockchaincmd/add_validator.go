@@ -117,11 +117,11 @@ Testnet or Mainnet.`,
 	cmd.Flags().Uint64Var(&weight, validatorWeightFlag, uint64(constants.DefaultStakeWeight), "set the weight of the validator")
 	cmd.Flags().StringVar(&validatorManagerOwner, "validator-manager-owner", "", "force using this address to issue transactions to the validator manager")
 
-	remoteBlockchainGroup := flags.RegisterFlagGroup(cmd, "Add Validator To Remote Blockchain Flags (Blockchain config is not in local machine)", "show-remote-blockchain-flags", false, func(set *pflag.FlagSet) {
+	remoteBlockchainGroup := flags.RegisterFlagGroup(cmd, "Add Validator To Remote Blockchain Flags (Blockchain config is not in local machine)", "show-remote-blockchain-flags", true, func(set *pflag.FlagSet) {
 		set.StringVar(&subnetIDstr, "subnet-id", "", "subnet ID (only if blockchain name is not provided)")
 	})
 
-	nonSovGroup := flags.RegisterFlagGroup(cmd, "Non Subnet-Only-Validators (Non-SOV) Flags", "show-non-sov-flags", true, func(set *pflag.FlagSet) {
+	nonSovGroup := flags.RegisterFlagGroup(cmd, "Non Subnet-Only-Validators (Non-SOV) Flags", "show-non-sov-flags", false, func(set *pflag.FlagSet) {
 		set.BoolVar(&useDefaultStartTime, "default-start-time", false, "(for Subnets, not L1s) use default start time for subnet validator (5 minutes later for fuji & mainnet, 30 seconds later for devnet)")
 		set.StringVar(&startTimeStr, "start-time", "", "(for Subnets, not L1s) UTC start time when this validator starts validating, in 'YYYY-MM-DD HH:MM:SS' format")
 		set.BoolVar(&useDefaultDuration, "default-duration", false, "(for Subnets, not L1s) set duration so as to validate until primary validator ends its period")
@@ -132,7 +132,7 @@ Testnet or Mainnet.`,
 		set.DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	})
 
-	localMachineGroup := flags.RegisterFlagGroup(cmd, "Local Machine Flags", "show-local-machine-flags", true, func(set *pflag.FlagSet) {
+	localMachineGroup := flags.RegisterFlagGroup(cmd, "Local Machine Flags (Use local machine as a validator)", "show-local-machine-flags", false, func(set *pflag.FlagSet) {
 		set.Uint32Var(&httpPort, "http-port", 0, "http port for node")
 		set.Uint32Var(&stakingPort, "staking-port", 0, "staking port for node")
 		set.BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
@@ -143,7 +143,8 @@ Testnet or Mainnet.`,
 		set.Uint16Var(&delegationFee, "delegation-fee", 100, "(PoS only) delegation fee (in bips)")
 		set.DurationVar(&duration, "staking-period", 0, "how long this validator will be staking")
 	})
-	externalSigningGroup := flags.RegisterFlagGroup(cmd, "External EVM Signature Flags (For EVM Multisig and Ledger Signing)", "show-pos-flags", false, func(set *pflag.FlagSet) {
+
+	externalSigningGroup := flags.RegisterFlagGroup(cmd, "External EVM Signature Flags (For EVM Multisig and Ledger Signing)", "show-external-signing-flags", true, func(set *pflag.FlagSet) {
 		set.BoolVar(&externalValidatorManagerOwner, "external-evm-signature", false, "set this value to true when signing validator manager tx outside of cli (for multisig or ledger)")
 		set.StringVar(&initiateTxHash, "initiate-tx-hash", "", "initiate tx is already issued, with the given hash")
 	})
